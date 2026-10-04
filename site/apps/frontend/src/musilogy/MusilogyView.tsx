@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import type {
   MusilogyArtist,
@@ -6,13 +6,14 @@ import type {
   MusilogyCard,
   MusilogyLink,
   MusilogyLinkKind,
-  MusilogyNeighbour,
   MusilogySearchHit,
 } from '@aubesonore/shared-types/client';
 import { getLocale } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
-import { Header, Section } from '../artist/ArtistPageView';
-import { TEXT_ACTION } from '../home/styles';
+import { Section } from '../design/molecules/Section';
+import { SiteHeader } from '../home/SiteHeader';
+import { ARTIST_LINK, TEXT_ACTION } from '../home/styles';
+import { cn } from '@/lib/utils';
 import { artistPath } from '../lib/artistProfile';
 import { musilogyPath } from '../lib/musilogy';
 import { MusilogyMap } from './MusilogyMap';
@@ -84,7 +85,7 @@ export function cardLine(card: MusilogyCard): string {
           .filter(Boolean)
           .join(', ')
       : end
-        ? `${card.y0} – ${end}`
+        ? m.years_range({ from: String(card.y0), to: end })
         : String(card.y0);
   return [kind, where, when].filter(Boolean).join(' · ');
 }
@@ -94,19 +95,15 @@ function ArtistRow({ artist, years }: { artist: MusilogyArtistRef; years?: strin
   return (
     <li className="border-border reveal grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1">
       <span className="flex min-w-0 flex-col">
-        <Link to={musilogyPath(artist)} className={`${TEXT_ACTION} text-row truncate`}>
+        {/* One page per artist: the antenna's page when it played them, Musilogy's otherwise. */}
+        <Link
+          to={artist.played ? artistPath(artist.played) : musilogyPath(artist)}
+          className={cn(ARTIST_LINK, 'text-row self-start truncate underline-offset-4')}
+        >
           {artist.name}
         </Link>
         {artist.disambiguation ? (
           <span className="text-ui text-text-muted truncate">{artist.disambiguation}</span>
-        ) : null}
-        {artist.played ? (
-          <Link
-            to={artistPath(artist.played)}
-            className={`${TEXT_ACTION} text-label self-start font-mono uppercase`}
-          >
-            {m.musilogy_played()}
-          </Link>
         ) : null}
       </span>
       <span className="flex items-center">
@@ -120,10 +117,13 @@ function ArtistRow({ artist, years }: { artist: MusilogyArtistRef; years?: strin
   );
 }
 
-/** A link's years in the group: "1971 – 1975", or the end it is open on. */
+/** A link's years in the group: "de 1971 à 1975", "depuis 1971" or "jusqu'en 1975". */
 export function linkYears(link: MusilogyLink): string | null {
-  if (!link.yBegin && !link.yEnd) return null;
-  return `${link.yBegin ?? ''} – ${link.yEnd ?? ''}`.trim();
+  if (link.yBegin && link.yEnd)
+    return m.years_range({ from: String(link.yBegin), to: String(link.yEnd) });
+  if (link.yBegin) return m.artist_since({ year: String(link.yBegin) });
+  if (link.yEnd) return m.musilogy_until({ year: String(link.yEnd) });
+  return null;
 }
 
 function ArtistList<T extends MusilogyArtistRef>({
@@ -137,7 +137,7 @@ function ArtistList<T extends MusilogyArtistRef>({
   const shown = open ? artists : artists.slice(0, FIRST_SHOWN);
   return (
     <>
-      <ol className="border-accent m-0 list-none border-t p-0">
+      <ol className="m-0 list-none p-0">
         {shown.map((artist) => (
           <ArtistRow
             key={artist.mbid}
@@ -160,37 +160,15 @@ function ArtistList<T extends MusilogyArtistRef>({
 }
 
 function Empty({ text }: { text: string }) {
-  return <p className="text-text-muted border-accent m-0 border-t pt-4">{text}</p>;
+  return <p className="text-text-muted m-0">{text}</p>;
 }
 
-function NeighbourSection({
-  id,
-  title,
-  body,
-  neighbours,
-  surveyed,
-}: {
-  id: string;
-  title: string;
-  body: string;
-  neighbours: readonly MusilogyNeighbour[] | null;
-  /** False when the snapshot never asked about this artist: no neighbour, for want of asking. */
-  surveyed: boolean | null;
-}) {
+function SubList({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <Section id={id} title={title} body={body}>
-      {neighbours === null ? (
-        <Empty text={m.musilogy_neighbours_pending()} />
-      ) : neighbours.length > 0 ? (
-        <ArtistList artists={neighbours} />
-      ) : (
-        <Empty
-          text={
-            surveyed === false ? m.musilogy_neighbours_unsurveyed() : m.musilogy_neighbours_empty()
-          }
-        />
-      )}
-    </Section>
+    <div className="flex flex-col gap-2">
+      <h3 className="text-ui text-text-muted m-0 font-normal">{label}</h3>
+      {children}
+    </div>
   );
 }
 
@@ -201,106 +179,113 @@ function Links({ links }: { links: readonly MusilogyLink[] }) {
       {byKind
         .filter(([, list]) => list.length > 0)
         .map(([kind, list]) => (
-          <div key={kind} className="flex flex-col gap-2">
-            <h3 className="text-label text-text-muted m-0 font-mono uppercase">
-              {LINK_LABELS[kind]()}
-            </h3>
+          <SubList key={kind} label={LINK_LABELS[kind]()}>
             <ArtistList artists={list} yearsOf={linkYears} />
-          </div>
+          </SubList>
         ))}
     </div>
   );
 }
 
-function ArtistView({ artist, thisYear }: { artist: MusilogyArtist; thisYear: number }) {
-  const { card, neighbours, influences, links } = artist;
-  const line = cardLine(card);
+/** Whether Musilogy holds anything to show about an artist. */
+export function hasMusilogySections({ neighbours, influences, links }: MusilogyArtist): boolean {
+  const near = neighbours
+    ? neighbours.before.length +
+      neighbours.during.length +
+      neighbours.after.length +
+      neighbours.undated.length
+    : 0;
+  const cited = influences ? influences.cites.length + influences.citedBy.length : 0;
+  return near + cited + links.length > 0;
+}
+
+/**
+ * What Musilogy knows of an artist, one section per thing it holds: its place in time (the map,
+ * then before, alongside, after), the influences it declared, its bands. A section with nothing
+ * in it is left out: no « nothing yet » under a title.
+ */
+export function MusilogySections({
+  artist,
+  thisYear,
+}: {
+  artist: MusilogyArtist;
+  thisYear: number;
+}) {
+  const { neighbours, influences, links } = artist;
+  const near = neighbours
+    ? (
+        [
+          ['before', m.musilogy_before_title(), m.musilogy_before_body(), neighbours.before],
+          ['during', m.musilogy_during_title(), m.musilogy_during_body(), neighbours.during],
+          ['after', m.musilogy_after_title(), m.musilogy_after_body(), neighbours.after],
+          ['undated', m.musilogy_undated_title(), m.musilogy_undated_body(), neighbours.undated],
+        ] as const
+      ).filter(([, , , list]) => list.length > 0)
+    : [];
+  const cited = influences
+    ? (
+        [
+          [m.musilogy_cites(), influences.cites],
+          [m.musilogy_cited_by(), influences.citedBy],
+        ] as const
+      ).filter(([, list]) => list.length > 0)
+    : [];
+
   return (
     <>
-      <div className="lift-in px-page flex flex-col gap-4 pt-10 md:pt-16">
-        <p className="text-label text-text-muted m-0 font-mono uppercase">{m.musilogy_title()}</p>
-        <h1 className="text-hero m-0 break-words">{card.name}</h1>
-        {card.disambiguation ? (
-          <p className="text-sub text-text-muted m-0">{card.disambiguation}</p>
-        ) : null}
-        {line ? <p className="text-sub m-0">{line}</p> : null}
-        {card.genres.length > 0 ? (
-          <p className="text-ui text-text-muted m-0">{card.genres.slice(0, 6).join(' · ')}</p>
-        ) : null}
-        {card.played ? (
-          <Link to={artistPath(card.played)} className={`${TEXT_ACTION} self-start`}>
-            {m.musilogy_played_page()}
-          </Link>
-        ) : null}
-      </div>
-
-      <div className="px-page flex flex-col gap-16 py-12 md:gap-28 md:py-20">
-        <div className="flex flex-col gap-6">
-          <p className="text-intro text-text-muted m-0 max-w-prose">
-            {m.musilogy_neighbours_note()}
-          </p>
+      {near.length > 0 ? (
+        <Section id="time" title={m.musilogy_map_title()} body={m.musilogy_neighbours_note()}>
           <MusilogyMap artist={artist} thisYear={thisYear} />
-        </div>
-        <NeighbourSection
-          id="before"
-          title={m.musilogy_before_title()}
-          body={m.musilogy_before_body()}
-          neighbours={neighbours?.before ?? null}
-          surveyed={card.proximitySurveyed}
-        />
-        <NeighbourSection
-          id="during"
-          title={m.musilogy_during_title()}
-          body={m.musilogy_during_body()}
-          neighbours={neighbours?.during ?? null}
-          surveyed={card.proximitySurveyed}
-        />
-        <NeighbourSection
-          id="after"
-          title={m.musilogy_after_title()}
-          body={m.musilogy_after_body()}
-          neighbours={neighbours?.after ?? null}
-          surveyed={card.proximitySurveyed}
-        />
-        {neighbours && neighbours.undated.length > 0 ? (
-          <Section id="undated" title={m.musilogy_undated_title()} body={m.musilogy_undated_body()}>
-            <ArtistList artists={neighbours.undated} />
-          </Section>
-        ) : null}
-
+        </Section>
+      ) : null}
+      {near.map(([id, title, body, list]) => (
+        <Section key={id} id={id} title={title} body={body}>
+          <ArtistList artists={list} />
+        </Section>
+      ))}
+      {cited.length > 0 ? (
         <Section
           id="influences"
           title={m.musilogy_influences_title()}
           body={m.musilogy_influences_body()}
         >
-          {influences === null ? (
-            <Empty text={m.musilogy_influences_pending()} />
-          ) : influences.cites.length + influences.citedBy.length === 0 ? (
-            <Empty text={m.musilogy_influences_empty()} />
-          ) : (
-            <div className="flex flex-col gap-8">
-              {(
-                [
-                  [m.musilogy_cites(), influences.cites],
-                  [m.musilogy_cited_by(), influences.citedBy],
-                ] as const
-              )
-                .filter(([, list]) => list.length > 0)
-                .map(([label, list]) => (
-                  <div key={label} className="flex flex-col gap-2">
-                    <h3 className="text-label text-text-muted m-0 font-mono uppercase">{label}</h3>
-                    <ArtistList artists={list} />
-                  </div>
-                ))}
-            </div>
-          )}
+          <div className="flex flex-col gap-8">
+            {cited.map(([label, list]) => (
+              <SubList key={label} label={label}>
+                <ArtistList artists={list} />
+              </SubList>
+            ))}
+          </div>
         </Section>
+      ) : null}
+      {links.length > 0 ? (
+        <Section id="links" title={m.musilogy_links_title()} body={m.musilogy_links_body()}>
+          <Links links={links} />
+        </Section>
+      ) : null}
+    </>
+  );
+}
 
-        {links.length > 0 ? (
-          <Section id="links" title={m.musilogy_links_title()} body={m.musilogy_links_body()}>
-            <Links links={links} />
-          </Section>
+/** An artist the antenna never played: who Musilogy says they are, and what it holds of them. */
+function ArtistView({ artist, thisYear }: { artist: MusilogyArtist; thisYear: number }) {
+  const { card } = artist;
+  const line = cardLine(card);
+  return (
+    <>
+      <div className="lift-in px-page flex flex-col gap-3 pt-10 md:pt-16">
+        <h1 className="text-hero m-0 break-words">{card.name}</h1>
+        {card.disambiguation ? (
+          <p className="text-sub text-text-muted m-0">{card.disambiguation}</p>
         ) : null}
+        {line ? <p className="text-sub text-text-muted m-0">{line}</p> : null}
+      </div>
+      <div className="px-page flex flex-col gap-16 py-16 md:gap-28 md:py-28">
+        {hasMusilogySections(artist) ? (
+          <MusilogySections artist={artist} thisYear={thisYear} />
+        ) : (
+          <Empty text={m.musilogy_nothing_yet()} />
+        )}
       </div>
     </>
   );
@@ -326,7 +311,7 @@ export function MusilogyArtistView({
 }) {
   return (
     <main id="main" className="min-h-dvh">
-      <Header />
+      <SiteHeader />
       {state.status === 'loading' ? (
         <div aria-busy="true" className="px-page flex flex-col gap-6 pt-10 md:pt-16">
           <span className="bg-surface-raised h-12 w-2/3 rounded-sm" />
@@ -364,21 +349,19 @@ export function MusilogyHomeView({
 }) {
   return (
     <main id="main" className="min-h-dvh">
-      <Header />
+      <SiteHeader />
       <div className="lift-in px-page flex flex-col gap-6 pt-10 pb-24 md:pt-16">
         <h1 className="text-hero m-0">{m.musilogy_title()}</h1>
         <p className="text-intro text-text-muted max-w-blurb m-0">{m.musilogy_lead()}</p>
-        <label className="flex max-w-xl flex-col gap-2">
-          <span className="text-label text-text-muted font-mono uppercase">
-            {m.musilogy_search_label()}
-          </span>
+        <label className="flex max-w-xl flex-col gap-1.5">
+          <span className="text-ui">{m.musilogy_search_label()}</span>
           <input
             type="search"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
             placeholder={m.musilogy_search_placeholder()}
             autoComplete="off"
-            className="border-accent text-row focus-visible:outline-accent min-h-11 rounded-sm border bg-transparent px-3 focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-search-cancel-button]:hidden"
+            className="border-accent text-row ease-out-quart placeholder:text-text-faint h-13 rounded-none border-0 border-b bg-transparent px-0 transition-[border-width] duration-150 focus-visible:border-b-2 focus-visible:outline-none [&::-webkit-search-cancel-button]:hidden"
           />
         </label>
         <div aria-live="polite" className="max-w-xl">
@@ -388,7 +371,7 @@ export function MusilogyHomeView({
             <Empty text={m.musilogy_search_error()} />
           ) : search.status === 'done' ? (
             search.hits.length > 0 ? (
-              <ol className="border-accent m-0 list-none border-t p-0">
+              <ol className="m-0 list-none p-0">
                 {search.hits.map((hit) => (
                   <ArtistRow key={hit.mbid} artist={{ ...hit, played: null }} />
                 ))}

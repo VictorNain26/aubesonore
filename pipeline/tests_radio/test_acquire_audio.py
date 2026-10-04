@@ -7,15 +7,20 @@ import numpy as np
 import pytest
 
 from radio.acquire.audio import (
+    Cue,
     Probe,
     Tags,
     ToolError,
     check,
+    cue_from_frames,
+    cue_of,
+    cue_points,
     fingerprint,
     isrc_of,
     prepare,
     probe,
     similarity,
+    with_cue,
 )
 from radio.core.config import AcquisitionConfig
 
@@ -111,6 +116,7 @@ def test_real_tools_identity_and_preparation(tmp_path: Path) -> None:
     )
     assert "REPLAYGAIN_TRACK_GAIN" in {k.upper() for k in tags}
     assert isrc_of(dest) == "FRZ039800212"
+    assert cue_of(dest) == cue_points(full)  # points de coupe du fichier source
     assert _pictures(dest) == 1  # la pochette survit à rsgain
     assert sorted(f.name for f in tmp_path.iterdir() if f.name.startswith(".")) == []
 
@@ -193,3 +199,130 @@ def _pictures(f: Path) -> int:
         check=True,
     ).stdout
     return sum(s["disposition"]["attached_pic"] for s in json.loads(out)["streams"])
+
+
+def _sound(path: Path, *parts: tuple[float, float | None]) -> None:
+    """Une suite de segments (durée, volume en dB ; None pour du silence numérique)."""
+    inputs, labels = [], []
+    for i, (seconds, db) in enumerate(parts):
+        src = (
+            f"anullsrc=r=44100:cl=mono:d={seconds}"
+            if db is None
+            else f"sine=f=440:r=44100:d={seconds},volume={db}dB"
+        )
+        inputs += ["-f", "lavfi", "-i", src]
+        labels.append(f"[{i}]")
+    _ffmpeg(
+        *inputs,
+        "-filter_complex",
+        f"{''.join(labels)}concat=n={len(parts)}:v=0:a=1",
+        str(path),
+    )
+
+
+@pytest.mark.skipif(not TOOLS, reason="ffmpeg requis")
+def test_cue_points_cut_silence_as_liquidsoap_autocue_does(tmp_path: Path) -> None:
+    # Liquidsoap 2.4.5 (autocue.internal), lancé dans le conteneur AzuraCast sur le même son en
+    # MP3, a donné cue_in 0,6 : 0,9 (la trame qui précède le son), moins 0,1 et 0,2 s.
+    wav = tmp_path / "s.wav"
+    _sound(wav, (1, None), (5, -3), (3, None))
+    cue = cue_points(wav)
+    assert cue is not None
+    assert round(cue.cue_in, 3) == 0.6 and 6.0 <= cue.cue_out <= 6.5
+
+
+@pytest.mark.skipif(not TOOLS, reason="ffmpeg requis")
+def test_a_quiet_ending_is_music_not_silence(tmp_path: Path) -> None:
+    # 30 dB sous le reste : au-dessus du seuil de fin (- 42 dB sous la sonie intégrée), gardé.
+    wav = tmp_path / "s.wav"
+    _sound(wav, (5, -3), (2, -33), (2, None))
+    cue = cue_points(wav)
+    assert cue is not None and cue.cue_in == 0.0 and 6.9 <= cue.cue_out <= 7.5
+
+
+@pytest.mark.skipif(not TOOLS, reason="ffmpeg requis")
+def test_a_hiss_far_below_the_track_is_silence(tmp_path: Path) -> None:
+    # Breaks if the thresholds are absolute: the fade of a record ends on a hiss, here 57 dB
+    # under the music, below its integrated loudness - 42 dB, so cut.
+    wav = tmp_path / "s.wav"
+    _ffmpeg(
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=f=440:r=44100:d=5,volume=-3dB",
+        "-f",
+        "lavfi",
+        "-i",
+        "anoisesrc=r=44100:d=3:c=pink:a=0.001",
+        "-filter_complex",
+        "[0][1]concat=n=2:v=0:a=1",
+        str(wav),
+    )
+    cue = cue_points(wav)
+    assert cue is not None and 5.0 <= cue.cue_out <= 5.6
+
+
+@pytest.mark.skipif(not TOOLS, reason="ffmpeg requis")
+def test_no_sound_gives_no_cue(tmp_path: Path) -> None:
+    wav = tmp_path / "s.wav"
+    _sound(wav, (3, None))
+    assert cue_points(wav) is None
+
+
+@pytest.mark.skipif(not TOOLS, reason="ffmpeg et rsgain requis")
+def test_cue_tags_are_added_without_touching_anything_else(tmp_path: Path) -> None:
+    src, dest = tmp_path / "a.mp3", tmp_path / "b.mp3"
+    _ffmpeg(
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=d=3",
+        "-c:a",
+        "libmp3lame",
+        "-id3v2_version",
+        "3",
+        "-metadata",
+        "TSRC=FRZ039800212",
+        str(src),
+    )
+    subprocess.run([str(shutil.which("rsgain")), "custom", "-s", "i", "-q", str(src)], check=True)
+    assert cue_of(src) is None
+    with_cue(src, dest, Cue(0.5, 2.5))
+    assert cue_of(dest) == Cue(0.5, 2.5)
+    assert isrc_of(dest) == "FRZ039800212"
+    before, after = _tags(src), _tags(dest)
+    assert before["REPLAYGAIN_TRACK_GAIN"] == after["REPLAYGAIN_TRACK_GAIN"]
+    assert probe(dest).duration_s == probe(src).duration_s
+
+
+def _frames(*m: float, integrated: float = -10.0) -> list[tuple[float, float, float]]:
+    return [(i / 10, v, integrated) for i, v in enumerate(m)]
+
+
+def test_the_sound_ends_after_its_last_loud_frame() -> None:
+    # Seuil de fin : - 10 - 42 = - 52. La dernière trame au-dessus commence à 0,4 s : la fin est
+    # le début de la suivante, 0,5 s, la fin de cette trame.
+    frames = _frames(-200, -20, -20, -20, -50, -60, -70)
+    assert cue_from_frames(frames, 0.7) == Cue(0.0, 0.5)
+
+
+def test_a_sound_loud_to_the_last_frame_ends_with_the_file() -> None:
+    assert cue_from_frames(_frames(-200, -20, -20, -20), 0.43) == Cue(0.0, 0.43)
+
+
+def test_the_integrated_loudness_is_read_on_the_last_complete_frame() -> None:
+    # La dernière trame, incomplète, porte une sonie intégrée fausse (- 80) : seuils - 52 et non
+    # - 122, et la trame à - 60 est du silence.
+    frames = _frames(-20, -20, -20, -60, -60)
+    frames[-1] = (frames[-1][0], -60, -80.0)
+    assert cue_from_frames(frames, 0.5) == Cue(0.0, 0.3)
+
+
+def test_the_start_takes_liquidsoap_margin_and_ignores_a_tiny_cut() -> None:
+    # Première trame forte à 3,0 s : 2,9 (la précédente), - 0,1, - 0,2 = 2,6.
+    late = _frames(*([-200] * 30), -20, -20, -20)
+    cue = cue_from_frames(late, 3.3)
+    assert cue is not None and round(cue.cue_in, 3) == 2.6
+    # Première trame forte à 0,3 s : 0,2 - 0,1 = 0,1, sous 0,2 : pas de coupe.
+    early = cue_from_frames(_frames(-200, -200, -200, -20, -20, -20), 0.6)
+    assert early is not None and early.cue_in == 0.0

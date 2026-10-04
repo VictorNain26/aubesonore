@@ -108,8 +108,7 @@ export const authApi = {
 
   forgetPassword: async (email: string): Promise<void> => {
     // Better Auth appends ?token=<TOKEN> (or ?error=INVALID_TOKEN) to redirectTo.
-    // We point it to /reset-password so the SPA can detect the URL on landing
-    // and open the reset modal automatically.
+    // /reset-password is the sign-in page in its new-password form.
     const response = await fetch(`${API_BASE_URL}/api/auth/forget-password`, {
       method: 'POST',
       credentials: 'include',
@@ -135,12 +134,12 @@ export const authApi = {
 
   // Better Auth's /sign-in/social is POST-only: POST {provider, callbackURL},
   // receive { url } (the provider authorize URL) and redirect the browser to it.
-  signInWithProvider: async (provider: 'google'): Promise<void> => {
+  signInWithProvider: async (provider: 'google', callbackURL: string): Promise<void> => {
     const response = await fetch(`${API_BASE_URL}/api/auth/sign-in/social`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider, callbackURL: window.location.href }),
+      body: JSON.stringify({ provider, callbackURL }),
     });
     if (!response.ok) throw await authError(response, m.error_oauth_failed);
     const data = (await response.json()) as { url?: string };

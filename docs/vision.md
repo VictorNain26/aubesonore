@@ -30,12 +30,14 @@ sans compte ; le compte personnalise, il ne débloque rien.
 |---|---|---|---|
 | **Écouter** | « Qu'est-ce qui passe ? » | accueil | le direct, ce qui vient de passer, les plus gardés |
 | **Garder** | « Je ne veux pas le perdre » | bibliothèque, compte | aimer, retrouver, être prévenu quand l'artiste repasse |
-| **Savoir** | « Qui est-ce ? » | page artiste | portrait, ouverture de Wikipédia ou portrait factuel, vos titres gardés de l'artiste (sinon ce que l'antenne en a joué), où l'écouter, le lien vers Musilogy |
-| **Comprendre** | « D'où vient cette musique ? » | Musilogy | la carte de l'artiste : avant, pendant, après, influences déclarées, liens de groupe |
+| **Savoir** | « Qui est-ce ? » | page artiste | portrait, ouverture de Wikipédia ou portrait factuel, vos titres gardés de l'artiste, où l'écouter |
+| **Comprendre** | « D'où vient cette musique ? » | la même page artiste, ou Musilogy pour un artiste jamais joué | la carte de l'artiste : avant, pendant, après, influences déclarées, liens de groupe |
 
-Les gestes se bouclent : le titre en cours mène à sa page artiste et à sa carte Musilogy ; chaque
-page Musilogy garde le lecteur du direct, signale les artistes passés sur AubeSonore et mène à
-leur page artiste.
+Les gestes se bouclent : le titre en cours mène à sa page artiste, qui porte aussi ce que Musilogy
+sait de lui. **Un artiste, une page** (depuis le 2026-10-04) : la page artiste réunit qui il est et
+sa place dans l'histoire de sa musique, chaque section seulement quand elle a quelque chose à
+montrer. Musilogy garde sa recherche et une page pour les artistes que l'antenne n'a jamais joués ;
+celle d'un artiste joué renvoie à sa page artiste. Chaque page garde le lecteur du direct.
 
 ### 1.2 Ce que les produits ne sont pas
 
@@ -231,9 +233,10 @@ Risques connus, acceptés tant que leur déclencheur ne s'est pas produit :
 | Surface | Route | Indexée | Geste |
 |---|---|---|---|
 | Accueil | `/`, `/en` | oui, pré-rendue | Écouter |
-| Page artiste | `/artist/:id/:slug` | oui | Savoir |
-| Musilogy | `/musilogy`, `/musilogy/:mbid/:slug` (et `/en/…`) | au-delà d'un seuil de contenu (§2.3) | Comprendre |
-| Bibliothèque, compte | fenêtres de l'accueil | non | Garder |
+| Page artiste | `/artist/:id/:slug` | oui | Savoir, Comprendre |
+| Musilogy | `/musilogy` (recherche), `/musilogy/:mbid/:slug` pour un artiste jamais joué (et `/en/…`) | au-delà d'un seuil de contenu (§2.3) | Comprendre |
+| Connexion | `/connexion`, `/en/sign-in` | non | Garder |
+| Bibliothèque, compte | panneau et menu de l'en-tête | non | Garder |
 
 `/frieze` disparaît.
 

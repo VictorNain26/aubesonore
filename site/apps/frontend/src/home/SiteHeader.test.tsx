@@ -5,7 +5,6 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { SiteHeader } from './SiteHeader';
 import { useAuthStore } from '../stores/authStore';
-import { useAuthModalStore } from '../stores/authModalStore';
 
 const mockMatchMedia = () => {
   window.matchMedia = vi.fn().mockReturnValue({
@@ -26,17 +25,16 @@ beforeEach(() => {
   mockMatchMedia();
   window.history.replaceState({}, '', '/');
   useAuthStore.setState(baseAuthState);
-  useAuthModalStore.setState({ isOpen: false, mode: 'signin', resetToken: null });
 });
 
 describe('SiteHeader', () => {
-  it('shows the sign-in button when unauthenticated and opens the auth modal on click', async () => {
+  it('leads to the sign-in page when unauthenticated', () => {
     render(<SiteHeader />, { wrapper: MemoryRouter });
 
-    const button = screen.getByRole('button', { name: 'Se connecter' });
-    await userEvent.click(button);
-
-    expect(useAuthModalStore.getState().isOpen).toBe(true);
+    expect(screen.getByRole('link', { name: 'Se connecter' })).toHaveAttribute(
+      'href',
+      '/connexion'
+    );
   });
 
   function signIn(): ReturnType<typeof vi.fn> {
@@ -81,16 +79,28 @@ describe('SiteHeader', () => {
 
     render(<SiteHeader />, { wrapper: MemoryRouter });
 
-    expect(screen.queryByRole('button', { name: 'Se connecter' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Se connecter' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Mes titres' })).not.toBeInTheDocument();
   });
 
   it('opens my tracks only for a signed-in listener', () => {
     render(<SiteHeader />, { wrapper: MemoryRouter });
     expect(screen.queryByRole('button', { name: 'Mes titres' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Les plus gardés' })).toHaveAttribute(
-      'href',
-      '#plus-gardes'
+    expect(screen.queryByRole('link', { name: 'Les plus gardés' })).not.toBeInTheDocument();
+  });
+
+  it('leads home from the name on every page, a heading on the home page only', () => {
+    const { unmount } = render(<SiteHeader />, { wrapper: MemoryRouter });
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('aubesonore');
+    expect(screen.getByRole('link', { name: /aubesonore/ })).toHaveAttribute('href', '/');
+    unmount();
+
+    render(
+      <MemoryRouter initialEntries={['/mentions-legales/']}>
+        <SiteHeader />
+      </MemoryRouter>
     );
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /aubesonore/ })).toHaveAttribute('href', '/');
   });
 });

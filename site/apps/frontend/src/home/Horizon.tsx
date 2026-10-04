@@ -14,7 +14,7 @@ export interface HorizonViewProps {
  */
 export function HorizonView({ isPlaying }: HorizonViewProps) {
   return (
-    <div data-horizon className="px-page relative mt-8 h-40 md:h-48 lg:mt-auto">
+    <div data-horizon className="px-page relative mt-8 h-40 md:h-48">
       <div className="relative size-full">
         <div className="draw-in bleed-left absolute right-3 bottom-0 h-20 mask-r-from-75% md:right-14 md:h-30 md:mask-r-from-80%">
           <HorizonLine isPlaying={isPlaying} className="size-full" />

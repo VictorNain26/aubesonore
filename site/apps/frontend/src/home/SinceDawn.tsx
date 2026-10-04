@@ -47,7 +47,7 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
       aria-labelledby="since-dawn-title"
       className="grid scroll-mt-10 gap-6 md:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] md:gap-16"
     >
-      <div className="reveal-heading flex flex-col gap-2 self-start md:sticky md:top-10 md:gap-3">
+      <div className="reveal flex flex-col gap-2 self-start md:sticky md:top-10 md:gap-3">
         <h2 id="since-dawn-title" className="text-section m-0">
           {m.since_dawn_title()}
         </h2>
@@ -56,7 +56,7 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
 
       <div className="flex flex-col">
         {status === 'loading' && rows.length === 0 ? (
-          <ol aria-busy="true" className="border-accent m-0 list-none border-t p-0">
+          <ol aria-busy="true" className="m-0 list-none p-0">
             {Array.from({ length: 6 }, (_, i) => (
               <li key={i} className="border-border flex min-h-16 items-center border-b">
                 <span className="bg-surface-raised h-4 w-2/3 rounded-sm" />
@@ -64,11 +64,11 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
             ))}
           </ol>
         ) : rows.length === 0 ? (
-          <p className="text-text-muted border-accent m-0 border-t pt-4">
+          <p className="text-text-muted m-0">
             {status === 'error' ? m.since_dawn_error() : m.since_dawn_empty()}
           </p>
         ) : (
-          <ol className="border-accent m-0 list-none border-t p-0">
+          <ol className="m-0 list-none p-0">
             {shown.map((row) => (
               <li
                 key={row.id}

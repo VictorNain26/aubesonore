@@ -42,7 +42,7 @@ export function SiteFooterView({
   onInstall,
 }: SiteFooterViewProps) {
   return (
-    <footer className="reveal border-accent text-ui mx-page flex flex-wrap items-center justify-between gap-6 border-t pt-7 pb-32 font-normal">
+    <footer className="border-border text-ui mx-page flex flex-wrap items-center justify-between gap-6 border-t pt-7 pb-32 font-normal">
       <span className="text-text-muted">
         © {new Date().getFullYear()} AubeSonore · {m.footer_free()}
       </span>
@@ -53,9 +53,9 @@ export function SiteFooterView({
         <button type="button" onClick={onOpenAbout} className={LINK}>
           {m.footer_about()}
         </button>
-        <a href={m.legal_href()} target="_blank" rel="noopener noreferrer" className={LINK}>
+        <Link to={m.legal_href()} className={LINK}>
           {m.footer_legal()}
-        </a>
+        </Link>
         {onInstall ? (
           <button type="button" onClick={onInstall} className={LINK}>
             {m.footer_install()}

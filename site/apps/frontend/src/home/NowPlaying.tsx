@@ -14,8 +14,8 @@ import { VolumeControl, type VolumeControlProps } from './VolumeControl';
 import { ARTIST_LINK, TEXT_ACTION } from './styles';
 import {
   ListenDisc,
+  ListenLabel,
   listenAria,
-  listenLabel,
   listenState,
   useHeroListenVisible,
   type ListenState,
@@ -81,8 +81,8 @@ export function NowPlayingView({
   const trackKey = track ? `${track.artist}|${track.title}` : 'none';
   const album = track ? shownAlbum(track.album, track.title) : null;
   return (
-    <div className="grid gap-6 md:grid-cols-12 md:items-end md:gap-x-10">
-      <div className="lift-in md:col-span-5 lg:col-span-4">
+    <div className="grid w-full gap-6 md:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] md:items-end md:gap-x-16">
+      <div className="lift-in">
         {track ? (
           <Cover
             key={trackKey}
@@ -100,7 +100,7 @@ export function NowPlayingView({
         )}
       </div>
 
-      <div className="lift-in-late flex min-w-0 flex-col gap-2 md:col-span-7 lg:col-span-8">
+      <div className="lift-in-late flex min-w-0 flex-col gap-2">
         {!isOnline ? (
           <p className="text-intro text-text-muted m-0" aria-live="polite">
             {m.off_air()}
@@ -144,7 +144,7 @@ export function NowPlayingView({
             className="bg-accent text-on-accent ease-out-quart focus-visible:outline-accent flex h-14 w-full items-center gap-3 rounded-full py-1.5 pr-6 pl-1.5 transition-transform duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95 md:w-auto"
           >
             <ListenDisc state={listen} className="size-11" />
-            <span className="text-ui font-semibold">{listenLabel(listen)}</span>
+            <ListenLabel state={listen} className="text-ui font-semibold" />
           </button>
           {track && isOnline ? (
             <span className="flex flex-wrap gap-x-5">

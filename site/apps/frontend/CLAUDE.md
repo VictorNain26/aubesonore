@@ -23,7 +23,7 @@
 
 - `node scripts/check-contrast.mjs` passes (wired in CI Quality).
 - Every interactive element: hover, focus-visible, active, disabled states; touch target ≥ 44px.
-- Decorative motion only under `prefers-reduced-motion: no-preference` (`motion-safe:`, or the `reveal` and `reveal-heading` utilities): the light breathes, the now dot pulses, blocks rise and fade in as they enter, a section's title rises without fading so it reads where the page rests; micro-interactions 150–300ms. CSS only, no animation library.
+- Decorative motion only under `prefers-reduced-motion: no-preference` (`motion-safe:` or the `reveal` utility): the light breathes, the now dot pulses, blocks come forward as they enter the screen (opacity and a 98% scale, never a shift that opens gaps between rows); micro-interactions 150–300ms. CSS only, no animation library.
 - Never ship UI blind: before a UI PR, screenshot the real page at 1280 and 390 px wide (headless Chromium `--screenshot`) and look at it.
 - The home page is pre-rendered at build time in French (`/`) and English (`/en/`): `vite build`, then `vite build --ssr src/entry-server.tsx`, then `scripts/prerender.mjs`, and the client hydrates it. No browser API (`window`, `document`, `navigator`, `localStorage`, `Audio`) at module import or during render, only in effects and handlers; `src/entry-server.test.tsx` renders the app without a window and fails otherwise. Locale comes from the URL (Paraglide `url` strategy); `useLocaleStore.setLocale` swaps the URL without reloading so the stream keeps playing.
 - Store-coupled components ship a presentational unit (props in) + a thin store container, so the unit is testable without stores.

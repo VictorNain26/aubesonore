@@ -79,10 +79,10 @@ describe('MusilogyArtistView', () => {
     expect(screen.getByText(/jamais une influence/)).toBeInTheDocument();
   });
 
-  it('leads to the AubeSonore page of an artist the antenna played', () => {
+  it('leads straight to the page of a neighbour the antenna played', () => {
     show({ status: 'ready', artist: artist() });
 
-    expect(screen.getByRole('link', { name: 'Passé sur AubeSonore' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'David Bowie' })).toHaveAttribute(
       'href',
       '/artist/a-bowie/david-bowie'
     );
@@ -95,11 +95,19 @@ describe('MusilogyArtistView', () => {
     expect(screen.getByRole('link', { name: 'Marc Bolan' })).toBeInTheDocument();
   });
 
-  it('says a section is not loaded yet rather than empty', () => {
+  it('leaves out every section with nothing in it, without a title over an absence', () => {
     show({ status: 'ready', artist: artist({ neighbours: null, influences: null }) });
 
-    expect(screen.getAllByText("Pas encore d'artistes proches à montrer.")).toHaveLength(3);
-    expect(screen.getByText("Pas encore d'influences à montrer.")).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Avant' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Influences déclarées' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Groupes et projets' })).toBeInTheDocument();
+  });
+
+  it('says once that there is nothing to show when Musilogy holds nothing', () => {
+    show({ status: 'ready', artist: artist({ neighbours: null, influences: null, links: [] }) });
+
+    expect(screen.getByText("Rien à montrer sur cet artiste pour l'instant.")).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
   });
 
   it('shows the closest first and opens the rest on demand', async () => {
@@ -124,14 +132,25 @@ describe('MusilogyArtistView', () => {
     expect(screen.getByRole('heading', { name: 'Artiste absent.' })).toBeInTheDocument();
   });
 
-  it('tells an artist the snapshot never asked about from one without neighbours', () => {
-    const none = { before: [], during: [], after: [], undated: [] };
-    const card = { ...artist().card, proximitySurveyed: false };
-    show({ status: 'ready', artist: artist({ card, neighbours: none }) });
+  it('shows influences only when the artist declared some', () => {
+    const { rerender } = show({ status: 'ready', artist: artist() });
+    expect(screen.queryByRole('heading', { name: 'Influences déclarées' })).not.toBeInTheDocument();
 
-    expect(
-      screen.getAllByText("Trop peu écouté pour qu'on lui connaisse des proches.")
-    ).toHaveLength(3);
+    rerender(
+      <MusilogyArtistView
+        state={{
+          status: 'ready',
+          artist: artist({
+            influences: {
+              cites: [{ ...neighbour(40, { name: 'Elvis' }), statement: 'Q1$abc' }],
+              citedBy: [],
+            },
+          }),
+        }}
+      />
+    );
+    expect(screen.getByRole('heading', { name: 'Influences déclarées' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Elvis' })).toBeInTheDocument();
   });
 
   it('lists the neighbours whose start is unknown', () => {
@@ -167,15 +186,16 @@ describe('MusilogyArtistView', () => {
 describe('linkYears', () => {
   it('gives the years in the group, open on the side it is not known', () => {
     const link = { ...neighbour(1), kind: 'members' as const, yBegin: 1971, yEnd: 1975 };
-    expect(linkYears(link)).toBe('1971 – 1975');
-    expect(linkYears({ ...link, yEnd: null })).toBe('1971 –');
+    expect(linkYears(link)).toBe('de 1971 à 1975');
+    expect(linkYears({ ...link, yEnd: null })).toBe('depuis 1971');
+    expect(linkYears({ ...link, yBegin: null })).toBe("jusqu'en 1975");
     expect(linkYears({ ...link, yBegin: null, yEnd: null })).toBeNull();
   });
 });
 
 describe('cardLine', () => {
   it('states the type, where and when', () => {
-    expect(cardLine(artist().card)).toBe('Groupe · London, Royaume-Uni · 1967 – 1977');
+    expect(cardLine(artist().card)).toBe('Groupe · London, Royaume-Uni · de 1967 à 1977');
   });
 
   it('shows no end it can only infer, and says a start comes from the first album', () => {
