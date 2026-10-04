@@ -81,8 +81,8 @@ export function NowPlayingView({
   const trackKey = track ? `${track.artist}|${track.title}` : 'none';
   const album = track ? shownAlbum(track.album, track.title) : null;
   return (
-    <div className="grid gap-6 md:grid-cols-12 md:items-end md:gap-x-10">
-      <div className="lift-in md:col-span-5 lg:col-span-4">
+    <div className="grid w-full gap-6 md:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] md:items-end md:gap-x-16">
+      <div className="lift-in">
         {track ? (
           <Cover
             key={trackKey}
@@ -100,7 +100,7 @@ export function NowPlayingView({
         )}
       </div>
 
-      <div className="lift-in-late flex min-w-0 flex-col gap-2 md:col-span-7 lg:col-span-8">
+      <div className="lift-in-late flex min-w-0 flex-col gap-2">
         {!isOnline ? (
           <p className="text-intro text-text-muted m-0" aria-live="polite">
             {m.off_air()}
