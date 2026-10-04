@@ -23,7 +23,7 @@ describe('ArtistPage', () => {
       await screen.findByRole('heading', { level: 1, name: 'Hania Rani' })
     ).toBeInTheDocument();
     // Set by an effect after the heading renders.
-    await waitFor(() => expect(document.title).toBe('Hania Rani — AubeSonore'));
+    await waitFor(() => expect(document.title).toBe('Hania Rani · AubeSonore'));
   });
 
   it('shows the not-found state for an id the API does not know', async () => {

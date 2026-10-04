@@ -14,8 +14,8 @@ import { VolumeControl, type VolumeControlProps } from './VolumeControl';
 import { ARTIST_LINK, TEXT_ACTION } from './styles';
 import {
   ListenDisc,
+  ListenLabel,
   listenAria,
-  listenLabel,
   listenState,
   useHeroListenVisible,
   type ListenState,
@@ -144,7 +144,7 @@ export function NowPlayingView({
             className="bg-accent text-on-accent ease-out-quart focus-visible:outline-accent flex h-14 w-full items-center gap-3 rounded-full py-1.5 pr-6 pl-1.5 transition-transform duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95 md:w-auto"
           >
             <ListenDisc state={listen} className="size-11" />
-            <span className="text-ui font-semibold">{listenLabel(listen)}</span>
+            <ListenLabel state={listen} className="text-ui font-semibold" />
           </button>
           {track && isOnline ? (
             <span className="flex flex-wrap gap-x-5">

@@ -79,6 +79,26 @@ class AzuracastClient:
             out[song] = max(out.get(song, 0.0), float(h["played_at"]))
         return out
 
+    def queued(self) -> dict[str, float]:
+        """Heure où chaque titre en file d'attente doit passer (`GET /station/{id}/queue`) :
+        `played_at`, ou `cued_at` tant qu'AzuraCast ne l'a pas estimée (`StationQueue`, 0.23.8)."""
+        out: dict[str, float] = {}
+        for q in self._call("GET", self._at("/queue")):
+            song = str(q["song"]["id"])
+            at = float(q["cued_at"] if q["played_at"] is None else q["played_at"])
+            out[song] = max(out.get(song, at), at)
+        return out
+
+    def start_next_s(self) -> float:
+        """Avance, en secondes, du titre suivant sur la fin du précédent : AzuraCast le fait partir
+        `getCrossfadeDuration()` avant la fin, soit `crossfade` * 1,5, ou 0 si le fondu est coupé,
+        ce qu'AutoCue impose (`Queue::addDurationToTime`, `StationBackendConfiguration`, 0.23.8)."""
+        backend = self._call("GET", f"/admin/station/{self._station}")["backend_config"]
+        crossfade = float(backend["crossfade"])
+        if backend["enable_auto_cue"] or backend["crossfade_type"] == "none" or crossfade <= 0:
+            return 0.0
+        return round(crossfade * 1.5, 2)
+
     def timezone(self) -> str:
         return str(self._call("GET", f"/station/{self._station}")["timezone"])
 
@@ -125,6 +145,9 @@ class AzuracastClient:
             files={"playlist_file": ("grille.m3u", m3u.encode(), "audio/x-mpegurl")},
         )
         return sum(1 for x in r.get("import_results") or [] if x.get("match"))
+
+    def empty_playlist(self, playlist_id: int) -> None:
+        self._call("DELETE", f"{self._at('/playlist')}/{playlist_id}/empty")
 
     def busy_song_ids(self) -> set[str]:
         """Titre en cours, et titres en file d'attente ou déjà préparés par Liquidsoap : jamais

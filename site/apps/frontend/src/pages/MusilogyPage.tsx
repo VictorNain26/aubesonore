@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router';
+import { Navigate, useParams } from 'react-router';
 import * as m from '@/paraglide/messages.js';
 import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../home/SiteFooter';
 import { fetchMusilogyArtist, MusilogyUnavailableError, searchMusilogy } from '../lib/musilogy';
+import { artistPath } from '../lib/artistProfile';
 import {
   MusilogyArtistView,
   MusilogyHomeView,
@@ -39,13 +40,17 @@ function MusilogyArtist({ mbid }: { mbid: string }) {
 
   const name = state.status === 'ready' ? state.artist.card.name : null;
   useEffect(() => {
-    document.title = name ? `${name} — Musilogy` : `${m.musilogy_title()} — AubeSonore`;
+    document.title = `${name ?? m.musilogy_title()} · AubeSonore`;
   }, [name]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [mbid]);
 
+  // One page per artist: an artist the antenna played has theirs, with Musilogy's sections in it.
+  if (state.status === 'ready' && state.artist.card.played) {
+    return <Navigate to={artistPath(state.artist.card.played)} replace />;
+  }
   return <MusilogyArtistView state={state} />;
 }
 
@@ -54,7 +59,7 @@ function MusilogyHome() {
   const [search, setSearch] = useState<SearchState>({ status: 'idle' });
 
   useEffect(() => {
-    document.title = `${m.musilogy_title()} — AubeSonore`;
+    document.title = `${m.musilogy_title()} · AubeSonore`;
   }, []);
 
   useEffect(() => {

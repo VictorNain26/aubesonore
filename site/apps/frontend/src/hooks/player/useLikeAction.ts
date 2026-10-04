@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { useLikedTracksStore } from '../../stores/likedTracksStore';
 import { useAuthStore } from '../../stores/authStore';
-import { useAuthModalStore } from '../../stores/authModalStore';
+import { useOpenSignIn } from '../../lib/signIn';
 import { artistPath, resolveArtistPage } from '../../lib/artistProfile';
 import { keepRequest, savePendingKeep } from '../../lib/pendingKeep';
 import * as m from '@/paraglide/messages.js';
@@ -27,14 +27,14 @@ export function useLikeAction(): UseLikeAction {
   const likingTrackId = useLikedTracksStore((s) => s.likingTrackId);
   const setLikingTrackId = useLikedTracksStore((s) => s.setLikingTrackId);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const openAuthModal = useAuthModalStore((s) => s.open);
+  const openSignIn = useOpenSignIn();
   const navigate = useNavigate();
 
   const toggleLike = useCallback(
     async (title: string, artist: string, artworkUrl?: string): Promise<void> => {
       if (!isAuthenticated) {
         savePendingKeep(keepRequest(title, artist, artworkUrl));
-        openAuthModal({ keepTitle: title });
+        openSignIn({ keepTitle: title });
         return;
       }
 
@@ -74,7 +74,7 @@ export function useLikeAction(): UseLikeAction {
         setLikingTrackId(null);
       }
     },
-    [likeTrack, unlikeTrack, tracks, isAuthenticated, openAuthModal, setLikingTrackId, navigate]
+    [likeTrack, unlikeTrack, tracks, isAuthenticated, openSignIn, setLikingTrackId, navigate]
   );
 
   return { likingTrackId, toggleLike };

@@ -23,8 +23,9 @@ export function TextField({ label, error, trailing, className, ...props }: TextF
         <Field.Control
           className={cn(
             'border-accent text-sub text-text h-13 w-full rounded-none border-0 border-b bg-transparent px-0',
-            'ease-out-quart placeholder:text-text-faint transition-colors duration-150',
-            'focus-visible:outline-accent focus-visible:outline-2 focus-visible:outline-offset-2',
+            'ease-out-quart placeholder:text-text-faint transition-[border-width,color] duration-150',
+            // Focus thickens the ink underline instead of drawing a box around the field.
+            'focus-visible:border-b-2 focus-visible:outline-none',
             'disabled:pointer-events-none disabled:opacity-50',
             error !== undefined && 'border-b-2',
             trailing !== undefined && 'pr-11',
