@@ -711,7 +711,7 @@ def grille(
             plan = grille_mod.plan_day(
                 grille_mod.load_titres(conn), played, cfg, day, spans, midnight, start_next
             )
-            errors = grille_mod.publish(plan, station)
+            errors = grille_mod.publish(plan, station, [h for h in hours if h not in spans])
             grille_mod.record(conn, plan)
             _record(
                 conn,

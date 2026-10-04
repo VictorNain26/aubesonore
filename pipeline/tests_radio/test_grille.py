@@ -2,7 +2,7 @@ import json
 import sqlite3
 from collections.abc import Iterable
 from dataclasses import replace
-from datetime import date, datetime
+from datetime import date, datetime, tzinfo
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -128,7 +128,7 @@ def test_the_least_recently_played_pass_and_each_artist_once_a_day() -> None:
     played["s39"] = 0.0  # le plus ancien passage
     plan = plan_day(titres, played, _grille(decouvertes=40), FRIDAY, _spans([8]), MIDNIGHT, XF)
     chosen = plan.hours[8]
-    assert len(chosen) == 16  # ceil(14,6) + 1 créneaux
+    assert len(chosen) == 16  # 16 x 225 s d'antenne couvrent l'heure
     assert 39 in {t.tid for t in chosen}
     assert len({t.artist for t in chosen}) == len(chosen)
 
@@ -271,7 +271,7 @@ def test_the_sunday_pass_frees_the_hours_it_rewrites(tmp_path: Path) -> None:
     assert all(played[t.song_id] == MIDNIGHT + 7 * 3600 for t in night.hours[6])
     # Le même plan, quand les heures réécrites comptent, laisse le secours jouer.
     stale = with_published(conn, history, now, [])
-    assert plan_day(titres, stale, grille, FRIDAY, _spans(rest), MIDNIGHT, XF).empty_slots > 0
+    assert plan_day(titres, stale, grille, FRIDAY, _spans(rest), MIDNIGHT, XF).short_hours > 0
 
 
 def test_a_published_hour_counts_until_it_ends_unless_the_plan_rewrites_it(
@@ -366,6 +366,48 @@ def test_an_hour_is_filled_to_its_length_not_to_a_count() -> None:
     assert len(plan.hours[8]) == 24 and plan.short_hours == 0  # 24 x 150 s = 3 600 s
 
 
+def test_the_lead_of_the_next_title_shortens_each_one() -> None:
+    # Breaks if the lead is ignored: 15 titles of 240 s make exactly an hour, but each one starts
+    # 15 s before the end of the previous, and the hour would run out a minute early.
+    titres = [replace(_titre(i, "decouvertes", 0.5), duration_s=240.0) for i in range(400)]
+    plan = plan_day(titres, {}, _grille(decouvertes=400), FRIDAY, _spans([8]), MIDNIGHT, 15.0)
+    assert len(plan.hours[8]) == 16  # 16 x 225 s
+
+
+def test_an_hour_after_a_long_title_keeps_room_for_its_overrun() -> None:
+    # Breaks if the hour after a long title counts on starting on time: the title of 1 000 s
+    # placed at 8 h can run 997 s into 9 h, so only 12 titles of 9 h are sure to start, and the 4
+    # least pressed (the first placed: never played, they are the least late) end the hour.
+    long = replace(_titre(0, "decouvertes", 0.5), duration_s=1000.0)
+    titres = [long, *(_titre(i, "decouvertes", 0.5) for i in range(1, 400))]
+    plan = plan_day(titres, {}, _grille(decouvertes=400), FRIDAY, _spans([8, 9]), MIDNIGHT, XF)
+    assert 0 in {t.tid for t in plan.hours[8]}
+    nine = [t.tid for t in plan.hours[9]]
+    assert len(nine) == 16 and nine[-4:] == sorted(nine)[:4]
+
+
+def test_the_turn_follows_the_measured_lengths() -> None:
+    # 400 titles of 300 s on air: 12 an hour, 288 a day, a turn of 400 / 288 days. An unmeasured
+    # title counts for the median length of the measured ones.
+    titres = [replace(_titre(i, "decouvertes", 0.5), duration_s=303.0) for i in range(399)]
+    titres.append(replace(_titre(399, "decouvertes", 0.5), duration_s=None, measured=False))
+    plan = plan_day(titres, {}, _grille(decouvertes=400), FRIDAY, _spans([8]), MIDNIGHT, XF)
+    assert abs(plan.turnover_days["decouvertes"] - 400 / 288) < 1e-9
+
+
+def test_a_slot_given_away_is_counted_once() -> None:
+    # Breaks if every draw of a blocked category counts: only the cues are allowed, and each of
+    # them takes the slot of one blocked category, not of every one the round-robin offers.
+    new = [_titre(i, "nouveautes", 0.5) for i in range(100)]
+    disc = [_titre(1000 + i, "decouvertes", 0.5) for i in range(100)]
+    cues = [_titre(2000 + i, "reperes", 0.5) for i in range(100)]
+    played = {t.song_id: MIDNIGHT + 8 * 3600 - 60 for t in new + disc}
+    grille = _grille(nouveautes=100, decouvertes=100, reperes=100)
+    plan = plan_day([*new, *disc, *cues], played, grille, FRIDAY, _spans([8]), MIDNIGHT, XF)
+    assert {t.categorie for t in plan.hours[8]} == {"reperes"} and len(plan.hours[8]) == 16
+    assert plan.empty_slots == 16
+
+
 def test_the_category_with_nothing_allowed_gives_its_slot_away() -> None:
     # Ten new titles and a deep stock of discoveries: once the new ones have all played, the hour
     # goes on with discoveries instead of leaving a hole that the fallback would fill.
@@ -408,6 +450,7 @@ class FakeStation:
         self.existing = {"Grille ven 08h": 7}
         self.created: list[tuple[str, int, int]] = []
         self.filled: dict[int, str] = {}
+        self.emptied: list[int] = []
         self.found = found or {}
 
     def playlists(self) -> dict[str, int]:
@@ -421,12 +464,26 @@ class FakeStation:
         self.filled[playlist_id] = m3u_text
         return self.found.get(str(playlist_id), m3u_text.count("\n") - 1)
 
+    def empty_playlist(self, playlist_id: int) -> None:
+        self.emptied.append(playlist_id)
+
+
+def test_publish_empties_the_playlist_of_an_hour_that_does_not_exist() -> None:
+    # Breaks if the missing hour keeps last week's grid: on 2027-03-28 AzuraCast still plays
+    # « Grille dim 02h » once at 3 h, its start and end both falling on 03:00.
+    titres = [_titre(i, "decouvertes", 0.5) for i in range(32)]
+    plan = plan_day(titres, {}, _grille(decouvertes=32), FRIDAY, _spans([9]), MIDNIGHT, XF)
+    station = FakeStation()
+    publish(plan, station, [8, 10])
+    assert station.emptied == [7]  # « Grille ven 08h » ; celle de 10 h n'existe pas encore
+    assert 7 not in station.filled
+
 
 def test_publish_writes_each_hour_into_its_playlist() -> None:
     titres = [_titre(i, "decouvertes", 0.5) for i in range(32)]
     plan = plan_day(titres, {}, _grille(decouvertes=32), FRIDAY, _spans([8, 9]), MIDNIGHT, XF)
     station = FakeStation(found={"109": 3})
-    errors = publish(plan, station)
+    errors = publish(plan, station, [])
     assert station.created == [("Grille ven 09h", 5, 9)]
     assert station.filled[7] == m3u(plan.hours[8])
     assert station.filled[7].startswith("#EXTM3U\nantenne/")
@@ -483,15 +540,15 @@ def test_client_hour_playlists_history_and_import() -> None:
 def test_client_reads_how_early_azuracast_starts_the_next_title() -> None:
     admin = "http://127.0.0.1:8080/api/admin/station/1"
     c = AzuracastClient("http://127.0.0.1:8080", "k")
-    for crossfade, mode, expected in (
-        (2, "normal", 3.0),
-        (2, "smart", 3.0),
-        (2, "none", 0.0),
-        (0, "normal", 0.0),
+    for crossfade, mode, autocue, expected in (
+        (2, "normal", False, 3.0),
+        (2, "smart", False, 3.0),
+        (2, "none", False, 0.0),
+        (0, "normal", False, 0.0),
+        (2, "normal", True, 0.0),  # AutoCue coupe le fondu (getCrossfadeTypeEnum)
     ):
-        responses.get(
-            admin, json={"backend_config": {"crossfade": crossfade, "crossfade_type": mode}}
-        )
+        backend = {"crossfade": crossfade, "crossfade_type": mode, "enable_auto_cue": autocue}
+        responses.get(admin, json={"backend_config": backend})
         assert c.start_next_s() == expected
         responses.reset()
 
@@ -578,6 +635,23 @@ def test_a_short_hour_is_published_then_fails_the_grid(
     short = stages[0][3]["heures courtes"]
     assert isinstance(short, int) and short > 0
     assert f"{short} heures trop courtes : le secours jouera" in res.output
+
+
+def test_the_grid_empties_the_hour_missing_from_the_day(
+    tmp_path: Path, grille_env: FakeAzuracast, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The command passes the hours the day lacks to `publish`: here, 2 h, as on 2027-03-28.
+    _on_air(tmp_path, 400)
+    grille_env.existing = {playlist_name(d, 2): 200 + d for d in range(1, 8)}
+    real = cli.grille_mod.hour_spans
+
+    def spring(day: date, hours: Iterable[int], tz: tzinfo) -> dict[int, tuple[float, float]]:
+        return {h: span for h, span in real(day, hours, tz).items() if h != 2}
+
+    monkeypatch.setattr(cli.grille_mod, "hour_spans", spring)
+    res = CliRunner().invoke(cli.app, ["grille"])
+    assert res.exit_code == 0, res.output
+    assert len(grille_env.emptied) == 1 and grille_env.emptied[0] not in grille_env.filled
 
 
 def test_the_grid_counts_what_azuracast_has_already_queued(

@@ -370,8 +370,9 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
     titres par heure, titres en retard de plus de deux tours de 8-19 par jour à 0 dès le
     troisième, aucune heure courte, aucun créneau cédé ; le titre le moins joué passe 1,5 fois
     par semaine au lieu de 1.
-- **Vérifié par simulation** (14 jours sur l'antenne du 2026-10-02, 273 découvertes et 68
-  repères, en ne jouant que les ~14,6 premiers titres de chaque heure) : aucun titre sans passage,
+- **Vérifié par simulation, avec 16 titres par heure, avant le remplissage au temps** (14 jours
+  sur l'antenne du 2026-10-02, 273 découvertes et 68 repères, en ne jouant que les ~14,6 premiers
+  titres de chaque heure) : aucun titre sans passage,
   aucun créneau vide, au moins 3 passages par semaine pour chaque découverte. Entre deux passages
   d'un même artiste, au moins 3 h, sans exception (0,1 h au plus court avec la règle « ni l'heure
   ni la précédente », qui ne passait pas minuit). L'artiste le plus joué passe de 74 à 41 passages
@@ -396,8 +397,12 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
   (`Scheduler::shouldPlayInSchedulePeriod`, 0.23.8), et la grille date chaque heure de même
   (`hour_spans`), jamais `minuit + h × 3600`, qui se décale d'une heure les jours de changement
   d'heure, deux dimanches, jour de la passe. Le 2026-10-25, l'heure de 2 h se répète : son
-  créneau dure deux heures et reçoit deux heures de titres, que `loop_once` joue d'un trait. Le
-  2027-03-28, 2 h n'existe pas : l'heure n'est pas planifiée.
+  créneau dure deux heures et reçoit deux heures de titres ; AzuraCast enchaîne la playlist sur
+  la seconde 2 h tant que sa file en garde un titre (le cas normal, file de 3), sinon il la
+  reprend au début (`shouldPlaylistLoopNow`). Le 2027-03-28, 2 h n'existe pas : l'heure n'est
+  pas planifiée, et sa playlist est vidée, car AzuraCast la jouerait quand même une fois à 3 h
+  avec la grille d'une autre semaine (2 h et 3 h donnent toutes deux 03:00,
+  `StationSchedule::getDateTime`).
 
 **Mesures par titre** (`radio mesures`, depuis le 2026-10-02 ;
 `recherches/2026-10-02-mesures-titres.md`). Chaque titre de la table `antenne`, au repos compris

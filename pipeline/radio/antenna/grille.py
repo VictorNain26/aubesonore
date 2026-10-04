@@ -170,9 +170,9 @@ def hour_spans(day: date, hours: Iterable[int], tz: tzinfo) -> dict[int, Span]:
     """Début et fin (horodatages UNIX) de chaque heure murale du jour, dans le fuseau de la
     station. `minuit + h * 3600` se décale d'une heure les jours de changement d'heure, deux
     dimanches, jour de la passe. AzuraCast programme une playlist horaire sur l'heure murale
-    (`Scheduler::shouldPlayInSchedulePeriod`, 0.23.8) : une heure qui n'existe pas (2 h, au
-    passage à l'heure d'été) ne joue jamais et est omise ; celle qui se répète (2 h, au passage à
-    l'heure d'hiver) dure deux heures."""
+    (`Scheduler::shouldPlayInSchedulePeriod`, 0.23.8) : celle qui se répète (2 h, au passage à
+    l'heure d'hiver) dure deux heures ; une heure qui n'existe pas (2 h, au passage à l'heure
+    d'été) est omise, et `publish` vide sa playlist."""
 
     def start(d: date, h: int) -> datetime | None:
         t = datetime.combine(d, time(h), tzinfo=tz)
@@ -259,8 +259,8 @@ def plan_day(
     plan.late = sum(overdue(t, midnight) > grille.force for c in weights for t in by_cat[c])
 
     urgency: dict[int, float] = {}
-    # Retard de la première heure sur son début : au plus le titre le plus long, sans meilleure
-    # borne ; ensuite, au plus le plus long de l'heure précédente.
+    # Retard d'une heure sur son début : au plus le plus long titre de l'heure précédente, ou de
+    # toute l'antenne quand on ne la connaît pas.
     carry = on_air(previous) if previous is not None else max(on_air(t) for t in titres)
     last = previous
     for h, (hour_start, hour_end) in spans.items():
@@ -275,7 +275,9 @@ def plan_day(
             rotation = sorted(by_cat[c], key=lambda t: (clock[t.tid] or -math.inf, t.tid))
             eligible = [t for t in rotation if allowed(t, now, hour_start)][: window[c]]
             if not eligible:
-                plan.empty_slots += 1
+                # Le créneau, cédé, revient à la catégorie suivante : compté une fois.
+                if not stuck:
+                    plan.empty_slots += 1
                 stuck.add(c)
                 continue
             stuck.clear()
@@ -304,7 +306,7 @@ def plan_day(
             last = ordered[-1]
             carry = max(on_air(t) for t in ordered)
         else:
-            carry = 0.0
+            carry = max(on_air(t) for t in titres)
     return plan
 
 
@@ -370,8 +372,8 @@ def with_published(
     écrite à 23:00 replace à minuit les titres et les artistes de 23 h. Les heures que le plan
     réécrit (`rewritten`, leurs débuts) ne joueront pas ce qu'elles avaient : les compter
     bloquerait jusqu'au soir chaque titre et chaque artiste qu'elles remplacent, quand la passe du
-    dimanche réécrit le reste de la journée. Le titre de trop d'une heure, jamais joué, n'y perd
-    qu'un jour de rotation."""
+    dimanche réécrit le reste de la journée. Un titre de fin d'heure coupé n'y perd qu'un jour de
+    rotation."""
     rewritten = set(rewritten)
     out = dict(played)
     for start, song in conn.execute(
@@ -394,12 +396,21 @@ class Programmer(Protocol):
 
     def fill_playlist(self, playlist_id: int, m3u: str) -> int: ...
 
+    def empty_playlist(self, playlist_id: int) -> None: ...
 
-def publish(plan: Plan, station: Programmer) -> list[str]:
+
+def publish(plan: Plan, station: Programmer, missing: Iterable[int]) -> list[str]:
     """Écrit chaque heure du plan dans sa playlist, créée au premier usage ; renvoie les erreurs
-    (titres que la station n'a pas retrouvés)."""
+    (titres que la station n'a pas retrouvés). Vide la playlist des heures `missing`, qui
+    n'existent pas ce jour-là : AzuraCast la jouerait quand même, une fois, à l'heure qui suit
+    (au passage à l'heure d'été, 2 h et 3 h donnent toutes deux 3 h ;
+    `StationSchedule::getDateTime`, 0.23.8), avec la grille d'une autre semaine."""
     iso = plan.day.isoweekday()
     existing = station.playlists()
+    for h in missing:
+        pid = existing.get(playlist_name(iso, h))
+        if pid is not None:
+            station.empty_playlist(pid)
     errors = []
     for h, titres in plan.hours.items():
         name = playlist_name(iso, h)
