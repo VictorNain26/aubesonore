@@ -36,6 +36,8 @@ them all. `azuracast/RUNBOOK.md` covers rebuilding the whole system from nothing
 - **Deploying is merging to `master`.** `aubesonore-deploy.timer` fast-forwards `~/aubesonore`; it
   rebuilds the site containers only when `site/` changed, and never moves the tree while the
   radio's weekly pass (`radio-weekly.service`) runs, since that pass loads `pipeline/` code.
+  Each pass also runs `uv sync --locked` in `pipeline/`, so a dependency change reaches the
+  `.venv` the radio-* units run.
 - **Where to develop.** `site/` runs on any workstation clone (`site/README.md`: local Postgres,
   `pnpm dev`, the public station for now-playing). `pipeline/` and `musilogy/` need the server's
   data (Plex, AzuraCast, MusicBrainz dumps), so they are developed on the server, in a git

@@ -31,6 +31,11 @@ if [ -n "$(git status --porcelain)" ]; then
   exit 1
 fi
 
+# The radio-* units run pipeline/.venv directly. Syncing it on every pass, not only when
+# uv.lock moves, also repairs a sync that failed after its code was already promoted.
+uv="${UV:-$HOME/.local/bin/uv}"
+(cd pipeline && "$uv" sync --locked --quiet)
+
 current=$(git rev-parse HEAD)
 target=$(git ls-remote origin refs/heads/master | cut -f1)
 
@@ -86,6 +91,7 @@ git merge --ff-only "$target"
 # The vote page is a long-running process: it keeps serving the pipeline code it
 # was started with until it restarts.
 if ! git diff --quiet "$current" "$target" -- pipeline/; then
+  (cd pipeline && "$uv" sync --locked --quiet)
   systemctl --user try-restart radio-votes.service
   echo "restarted radio-votes on ${target:0:8}"
 fi
