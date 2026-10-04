@@ -1,4 +1,4 @@
-"""CLI entry point: run, snapshot-popularity, make-fixtures, load."""
+"""CLI entry point: run, snapshot-popularity, snapshot-proximity, make-fixtures, load."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from musilogy.fetch import (
     expected_sums,
     fetch_dump,
     fetch_popularity,
+    fetch_proximity,
     sha256_file,
     verify,
 )
@@ -31,6 +32,8 @@ from musilogy.paths import (
     out_dir,
     popularity_snapshot,
     popularity_sums,
+    proximity_snapshot,
+    proximity_sums,
     work_dir,
 )
 from musilogy.publish import extraction_matches_rows_loaded, publish
@@ -121,6 +124,35 @@ def snapshot_popularity() -> None:
     n = fetch_popularity(batches, dest)
     popularity_sums(date).write_text(f"{sha256_file(dest)}  {dest.name}\n", encoding="utf-8")
     print(f"{n} artists asked; pin it: REFERENCE_POPULARITY = {date!r}")
+
+
+# The artists ListenBrainz relates to others: those with at least this many
+# listeners in the pinned popularity snapshot. 111 402 artists, about 31 hours
+# at one request a second, and 228 of the 235 played artists with an MBID
+# (2026-10-04); the 7 others have 132 listeners or more.
+PROXIMITY_MIN_USERS = 500
+
+
+def snapshot_proximity() -> None:
+    """Asks ListenBrainz for the neighbours of every artist with at least
+    PROXIMITY_MIN_USERS listeners. Like the popularity, a snapshot is taken
+    once and pinned. A run stopped before the end resumes the snapshot it left
+    partial, whatever day it started."""
+    partials = sorted(RAW_DIR.glob("listenbrainz/*/artist-similar.jsonl.partial"))
+    date = partials[-1].parent.name if partials else datetime.now(UTC).date().isoformat()
+    dest = proximity_snapshot(date)
+    if dest.exists():
+        raise SystemExit(
+            f"ListenBrainz proximity {date} already taken at {dest}: it is never taken again"
+        )
+    cur = connect().execute(
+        f"SELECT artist_mbid FROM read_ndjson('{verified_popularity().as_posix()}', "
+        "columns={artist_mbid:'VARCHAR', total_user_count:'BIGINT'}) "
+        f"WHERE total_user_count >= {PROXIMITY_MIN_USERS} ORDER BY artist_mbid"
+    )
+    n = fetch_proximity((r[0] for r in iter(cur.fetchone, None)), dest)
+    proximity_sums(date).write_text(f"{sha256_file(dest)}  {dest.name}\n", encoding="utf-8")
+    print(f"{n} artists asked; pin it: REFERENCE_PROXIMITY = {date!r}")
 
 
 def verified_popularity() -> Path:
@@ -246,6 +278,10 @@ def main() -> None:
     subparsers.add_parser(
         "snapshot-popularity", help="take a dated ListenBrainz snapshot of every artist"
     )
+    subparsers.add_parser(
+        "snapshot-proximity",
+        help="take a dated ListenBrainz snapshot of each popular artist's neighbours",
+    )
     subparsers.add_parser("make-fixtures", help="extract witness records for the test fixtures")
     subparsers.add_parser(
         "load", help="load the published tables into the site's Postgres (libpq environment)"
@@ -256,6 +292,8 @@ def main() -> None:
         run()
     elif args.command == "snapshot-popularity":
         snapshot_popularity()
+    elif args.command == "snapshot-proximity":
+        snapshot_proximity()
     elif args.command == "make-fixtures":
         make_fixtures()
     elif args.command == "load":

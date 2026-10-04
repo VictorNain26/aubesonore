@@ -119,6 +119,10 @@ Six tables sont chargées — `artists`, `genres`, `density`, `links`, `lineage`
 
 **Contemporains, à la demande.** Une fonction, pas une table : `musilogy.contemporaries(mbid, page_size, page_offset)` renvoie une page des artistes dont les années de présence (`y0` à `y_presence_end`) recouvrent celles de l'artiste, qui partagent sa scène et au moins un genre, avec le total de la liste. La scène est le même `begin_area_mbid` — l'identité du lieu, pas son nom, que London partage avec l'Ontario —, sinon le même pays quand l'artiste n'a pas de lieu de début ; `scene` dit lequel a servi. Aucun seuil : la liste est ordonnée par similarité de Jaccard des genres, puis par `mbid`, et chaque ligne porte les genres partagés. Publiée complète, elle ferait environ 188 millions de lignes (extrapolé d'un échantillon de 2 000 artistes, médiane 21, p99 9 667). Le classement lit `scenes`, la projection étroite des 285 284 artistes qui ont une année et un genre : 5 à 30 ms pour un artiste courant, 180 ms pour le pire cas mesuré, un artiste américain sans lieu de début et ses 22 152 contemporains. Sur 300 artistes tirés par `hash(mbid)`, ses 167 104 lignes étaient identiques à celles de l'ancienne macro DuckDB.
 
+## Proximité (relevé, refonte en cours)
+
+`musilogy snapshot-proximity` relève, pour chaque artiste qu'au moins 500 auditeurs écoutent dans le relevé de popularité épinglé (111 402 artistes au 2026-10-04), ses 100 voisins selon ListenBrainz (`labs.api.listenbrainz.org/similar-artists`, algorithme épinglé dans `fetch.SIMILAR_ALGORITHM`) : une ligne par artiste, `{artist_mbid, similar: [{artist_mbid, score}]}`, dans `data/raw/listenbrainz/<date>/artist-similar.jsonl`, empreinte dans `reference/listenbrainz-similar-<date>.SHA256SUMS`. Le service prend un artiste par requête et n'annonce aucune limite : le relevé s'en tient à une requête par seconde, environ 31 heures. Interrompu, il reprend le relevé resté partiel, quel que soit le jour où il a commencé. Les données ListenBrainz sont publiées en CC0 (metabrainz.org/datasets/postgres-dumps) ; le service de similarité, qui en dérive, ne précise pas de licence. Ce relevé nourrit Musilogy (`docs/vision.md` racine, §2) ; son entrée dans `run` et dans le schéma du site vient avec la refonte de musilogy.
+
 ## Chiffres de référence
 
 Le **contrat exécutable** est `tests/test_baseline.py` : il confronte le pipeline entier au dump de référence et compare exactement les comptes, la somme des cellules de densité et la répartition des provenances. Les chiffres cités ici sont descriptifs ; en cas de divergence, c'est le test qui fait foi.
@@ -166,6 +170,7 @@ La suite passe depuis n'importe quel répertoire : tous les chemins sont ancrés
 ```bash
 uv run musilogy run                 # fetch → extract → transform → validate → publish
 uv run musilogy snapshot-popularity # relevé ListenBrainz daté, à épingler (~1 h)
+uv run musilogy snapshot-proximity  # voisins ListenBrainz des artistes d'au moins 500 auditeurs (~31 h, reprenable)
 uv run musilogy make-fixtures       # régénère les témoins depuis les extractions
 uv run musilogy load                # charge data/out/ dans la base du site (environnement libpq)
 ```
