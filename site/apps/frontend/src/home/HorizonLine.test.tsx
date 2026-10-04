@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import {
   HorizonLine,
   LAYERS,
@@ -128,35 +128,6 @@ describe('listening to the stream', () => {
 describe('HorizonLine', () => {
   afterEach(() => {
     analyser.current = null;
-  });
-
-  it('beats the now dot with the bass while the live plays', () => {
-    let frame = 0;
-    const ctx = fakeContext();
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
-      ctx as unknown as CanvasRenderingContext2D
-    );
-    analyser.current = {
-      frequencyBinCount: 64,
-      context: { sampleRate: 48000 },
-      // A kick every half second (30 frames at 60 fps) over a loud, steady bass.
-      getByteFrequencyData: (into: Uint8Array) =>
-        into.fill(0).fill(frame++ % 30 < 3 ? 255 : 230, 0, 2),
-    };
-
-    render(
-      <div data-horizon data-testid="horizon">
-        <HorizonLine isPlaying />
-      </div>
-    );
-    const levels: number[] = [];
-    let now = performance.now();
-    for (let i = 0; i < 120; i++) {
-      now += 1000 / 60;
-      frames.shift()?.(now);
-      levels.push(Number(screen.getByTestId('horizon').style.getPropertyValue('--bass')));
-    }
-    expect(Math.max(...levels) - Math.min(...levels)).toBeGreaterThan(0.3);
   });
 
   it('draws the two traces on every frame', () => {

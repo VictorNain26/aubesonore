@@ -9,8 +9,7 @@ import { getAnalyser } from '../lib/player';
 //
 // While it plays, the line listens: each of the three sines follows a band
 // of the stream (its widest swell the bass, the finest the treble) and the
-// whole line breathes with the energy; the bass also beats the "now" dot
-// through `--bass` on the horizon. On iOS the stream stays off Web Audio
+// whole line breathes with the energy. On iOS the stream stays off Web Audio
 // (lib/player.ts): the bands rest at their middle and the line is the
 // mockup's alone.
 //
@@ -206,7 +205,6 @@ export function HorizonLine({ isPlaying, className }: HorizonLineProps) {
     };
     let frequencies: Uint8Array<ArrayBuffer> | null = null;
     let gain: Gain | null = null;
-    const horizon = canvas.closest<HTMLElement>('[data-horizon]');
     let frame = 0;
     let lastTime = performance.now();
 
@@ -225,8 +223,6 @@ export function HorizonLine({ isPlaying, className }: HorizonLineProps) {
           heard = read.bands;
         }
         motion = stepMotion(motion, isPlayingRef.current, dt, heard);
-        // The dot beats with the bass only while it is heard: 0 when quiet.
-        horizon?.style.setProperty('--bass', String(analyser ? motion.bands[0] : 0));
       }
 
       const { width, height } = canvas;

@@ -83,14 +83,7 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
                     row.isNow ? 'text-text' : 'text-text-muted font-normal'
                   )}
                 >
-                  {row.isNow ? (
-                    <>
-                      <span aria-hidden="true" className="motion-safe:animate-live">
-                        ●{' '}
-                      </span>
-                      <span className="sr-only">{m.on_air_sr()} </span>
-                    </>
-                  ) : null}
+                  {row.isNow ? <span className="sr-only">{m.on_air_sr()} </span> : null}
                   {formatClock(row.playedAt)}
                 </span>
                 <Cover
