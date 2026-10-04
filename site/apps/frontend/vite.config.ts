@@ -34,6 +34,12 @@ export default defineConfig(({ mode }) => {
         filename: 'sw.ts',
         registerType: 'autoUpdate',
         injectRegister: 'script-defer',
+        // No HTML in the precache: the worker served the precached home until a new worker was
+        // installed, so a deploy showed the previous site, and came back after a hard refresh.
+        // Pages go to the network (nginx: no-cache); hashed scripts and styles stay precached.
+        injectManifest: {
+          globPatterns: ['**/*.{js,css}'],
+        },
         includeAssets: [
           'favicon.svg',
           'icon-32.png',
