@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router';
 import { localizeHref } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
@@ -32,6 +33,10 @@ function silentHorizonPath(): string {
  * under /en/), and the client hydrates it there. The horizon falls silent in its middle.
  */
 export function NotFoundPage() {
+  // Reached inside the app, the tab says where the listener is; pre-rendered, the head already does.
+  useEffect(() => {
+    document.title = `${m.notfound_meta_title()} · AubeSonore`;
+  }, []);
   return (
     <>
       <main id="main" className="relative flex min-h-dvh flex-col overflow-hidden">

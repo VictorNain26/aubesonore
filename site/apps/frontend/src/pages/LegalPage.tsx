@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import * as m from '@/paraglide/messages.js';
 import { SiteHeader } from '../home/SiteHeader';
 import { SiteFooter } from '../home/SiteFooter';
@@ -16,6 +16,10 @@ const CONTACT = 'contact@aubesonore.fr';
 
 /** Legal notice and privacy policy, pre-rendered in each language and hydrated like any page. */
 export function LegalPage() {
+  // Reached inside the app, the tab says where the listener is; pre-rendered, the head already does.
+  useEffect(() => {
+    document.title = `${m.legal_title()} · AubeSonore`;
+  }, []);
   const mail = (
     <a href={`mailto:${CONTACT}`} className="text-text underline decoration-1 underline-offset-4">
       {CONTACT}
