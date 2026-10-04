@@ -559,8 +559,10 @@
 /* Mobile: the full width, unless Écouter would fall below the fold of a small phone. */
 /* The cover fills its column, the same 4 parts of 12 as a section's title column, as long as
    the first screen still holds the title and the horizon. */
+/* svh, not dvh: the dynamic height follows the address bar as it folds on scroll, so the cover
+   grew and shrank under the finger and moved the page (MDN, CSS <length>, viewport units). */
 @utility artwork-size {
-  width: min(100%, 46dvh);
+  width: min(100%, 46svh);
 
   @media (width >= 64rem) {
     width: min(100%, 60svh);
