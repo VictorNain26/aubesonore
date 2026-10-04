@@ -89,6 +89,7 @@ Musilogy (`/musilogy`, `/musilogy/:mbid/:slug`, and `/en/…`) places any artist
 - **Proximity is never an influence.** Neighbours come from ListenBrainz co-listening, sorted by musilogy into before / alongside / after by their start year (±3 years); only Wikidata's declared influences are called influences, each with its statement.
 - **Band links** keep MusicBrainz's band relations only (`LINK_KINDS`: member of band, founder, subgroup, artist rename, is person, collaboration), worded from the artist's side; the direction of each was checked on the loaded data.
 - An artist the antenna played links to its artist page (`played`), read from `artist.mbid`; the artist page links back (`ArtistProfile.mbid`).
+- **The map** (`MusilogyMap`) draws the 40 closest neighbours in time, laid out by `layoutMap` (a pure function): years left to right, the artist's span on the axis with its name, each neighbour at its start year, the closest on the rows nearest the axis; a label with no free row is left to the lists. Labels are Geist Mono at 12 units, whose advance (0.6 em, measured in Chromium) makes their width known — a CSS letter-spacing on the SVG would break that. The drawing is `aria-hidden`: the lists below are its accessible form. On a narrow screen it keeps its size, scrolls sideways and opens on the artist.
 - The pages are the app shell, `X-Robots-Tag: noindex` (nginx), until a richness threshold for indexing is measured.
 
 ## SSRF, headers, and other security baselines
