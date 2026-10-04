@@ -218,7 +218,7 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
   Liquidsoap recalcule le gain à chaque titre, ce qui coûte beaucoup de CPU (doc AzuraCast,
   « optimizing »).
 - **Balises** (ffmpeg, qui remplace toutes les balises d'origine) : artiste et titre Deezer,
-  commentaire `deezer:<id>`, album et pochette (`album.cover_xl`, 1000 × 1000) lus sur
+  commentaire `deezer:<id>`, ISRC, album et pochette (`album.cover_xl`, 1000 × 1000) lus sur
   `/track/<id>` : l'id exact donne le bon album, là où la recherche native d'AzuraCast
   (MusicBrainz par artiste et titre) prend le premier venu. La lecture de `/track/<id>` qui donne
   l'extrait frais du contrôle d'identité donne aussi l'album : une seule requête par fichier. La
@@ -282,6 +282,15 @@ Justification : `recherches/…-observabilite.md` §3.
   dossier.
 - **Retrait.** `PUT /station/1/files/batch` avec `do=delete`.
 - **Interdit.** Jamais de `PUT /file/{id}` : il réécrit et supprime les balises.
+- **ISRC.** L'ISRC de `/track/<id>`, quand Deezer en a un bien formé (ISO 3901), est écrit en
+  trame ID3 `TSRC` (`-metadata TSRC=…` ; `-metadata ISRC=…` donnerait une trame libre `TXXX`).
+  AzuraCast lit les balises avec getID3, qui range `TSRC` sous `isrc` (`PhpReader`,
+  `MetadataTags::Isrc`, `StationMedia` : vérifié dans le conteneur le 2026-10-04) ; le titre en
+  cours l'expose dans `song.isrc`, que le site lit pour identifier le titre et son artiste
+  (`docs/vision.md` racine, §4.4). Les titres publiés avant se rattrapent par
+  `radio antenne-isrc` : chaque fichier est relu par `GET /file/{id}/play`, reçoit sa trame
+  (flux et autres balises copiés tels quels) et est redéposé sur son chemin ; le titre en cours
+  et la file attendent une relance, un fichier déjà étiqueté n'est pas redéposé.
 - **Réalignement à chaque passe.** On compare la base au contenu de `antenne/` et on rapporte les
   écarts.
 

@@ -23,7 +23,7 @@ from pydantic import ValidationError
 from radio.acquire.run import acquire_pass
 from radio.acquire.sockseek import SockseekError
 from radio.antenna import grille as grille_mod
-from radio.antenna.sync import antenne_pass
+from radio.antenna.sync import IsrcReport, antenne_pass, isrc_backfill
 from radio.core.backup import BackupError, backup
 from radio.core.config import Editorial, Settings, load_editorial
 from radio.core.db import connect
@@ -606,6 +606,38 @@ def antenne() -> None:
     )
     if rep.errors:
         _fail(f"{_n(len(rep.errors))} erreurs de publication", 1)
+
+
+@app.command("antenne-isrc")
+def antenne_isrc() -> None:
+    """Rattrapage ponctuel : écrit l'ISRC dans chaque fichier déjà à l'antenne. Se relance sans
+    effet sur les titres déjà étiquetés."""
+    settings = _settings()
+    if settings.azuracast_api_key is None:
+        _fail("AZURACAST_API_KEY doit être défini dans .env", 2)
+    station = AzuracastClient(
+        settings.azuracast_url,
+        settings.azuracast_api_key.get_secret_value(),
+        settings.azuracast_station_id,
+    )
+    rep = IsrcReport()
+    with _db(settings) as conn:
+        try:
+            isrc_backfill(conn, station, DeezerClient(), rep)
+        except AzuracastUnavailable as e:
+            _fail(f"AzuraCast indisponible ({e}) : le travail fait est gardé", 1)
+        except DeezerUnavailable as e:
+            _fail(_unavailable(e), 1)
+    _echo(
+        [
+            f"ISRC : {_n(rep.n_tagged)} fichiers étiquetés, {_n(rep.n_already)} l'étaient déjà",
+            f"  sans ISRC chez Deezer : {_n(rep.n_no_isrc)}, disparus de Deezer : {_n(rep.n_gone)}",
+            f"  en cours ou en file, à reprendre : {_n(rep.n_busy)}",
+            *(f"  erreur : {e}" for e in rep.errors),
+        ]
+    )
+    if rep.errors:
+        _fail(f"{_n(len(rep.errors))} erreurs", 1)
 
 
 @app.command()

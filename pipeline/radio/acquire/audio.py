@@ -100,6 +100,9 @@ class Tags:
     deezer_id: int
     album: str
     cover: bytes | None
+    # Écrit en trame TSRC : AzuraCast la lit (getID3) dans le champ `isrc` du média, que le
+    # site lit dans le titre en cours (docs/vision.md racine, §4.4).
+    isrc: str | None = None
 
 
 def prepare(src: Path, dest: Path, codec: str, tags: Tags, rsgain: Path) -> None:
@@ -148,6 +151,7 @@ def prepare(src: Path, dest: Path, codec: str, tags: Tags, rsgain: Path) -> None
                 f"album={tags.album}",
                 "-metadata",
                 f"comment=deezer:{tags.deezer_id}",
+                *(["-metadata", f"TSRC={tags.isrc}"] if tags.isrc else []),
                 "-f",
                 "mp3",
                 str(tmp),
@@ -158,3 +162,39 @@ def prepare(src: Path, dest: Path, codec: str, tags: Tags, rsgain: Path) -> None
     finally:
         cover.unlink(missing_ok=True)
         tmp.unlink(missing_ok=True)
+
+
+def isrc_of(path: Path) -> str | None:
+    out = json.loads(
+        _run(["ffprobe", "-v", "error", "-show_entries", "format_tags", "-of", "json", str(path)])
+    )
+    tags = {k.upper(): v for k, v in out.get("format", {}).get("tags", {}).items()}
+    return tags.get("TSRC")
+
+
+def with_isrc(src: Path, dest: Path, isrc: str) -> None:
+    """Ajoute la trame TSRC à un MP3 déjà préparé : flux, pochette et autres balises copiés tels
+    quels, ReplayGain compris."""
+    _run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-y",
+            "-i",
+            str(src),
+            "-map",
+            "0",
+            "-c",
+            "copy",
+            "-map_metadata",
+            "0",
+            "-id3v2_version",
+            "3",
+            "-metadata",
+            f"TSRC={isrc}",
+            "-f",
+            "mp3",
+            str(dest),
+        ]
+    )

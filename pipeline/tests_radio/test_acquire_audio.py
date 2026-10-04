@@ -12,6 +12,7 @@ from radio.acquire.audio import (
     ToolError,
     check,
     fingerprint,
+    isrc_of,
     prepare,
     probe,
     similarity,
@@ -98,7 +99,8 @@ def test_real_tools_identity_and_preparation(tmp_path: Path) -> None:
     )
     rsgain = Path(str(shutil.which("rsgain")))
     dest = tmp_path / "123.mp3"
-    prepare(full, dest, p.codec, Tags("Artiste", "Titre", 123, "Album", cover.read_bytes()), rsgain)
+    tags_in = Tags("Artiste", "Titre", 123, "Album", cover.read_bytes(), "FRZ039800212")
+    prepare(full, dest, p.codec, tags_in, rsgain)
     tags = _tags(dest)
     assert probe(dest).codec == "mp3"
     assert (tags["artist"], tags["title"], tags["album"], tags["comment"]) == (
@@ -108,12 +110,14 @@ def test_real_tools_identity_and_preparation(tmp_path: Path) -> None:
         "deezer:123",
     )
     assert "REPLAYGAIN_TRACK_GAIN" in {k.upper() for k in tags}
+    assert isrc_of(dest) == "FRZ039800212"
     assert _pictures(dest) == 1  # la pochette survit à rsgain
     assert sorted(f.name for f in tmp_path.iterdir() if f.name.startswith(".")) == []
 
     bare = tmp_path / "124.mp3"
     prepare(dest, bare, "mp3", Tags("Artiste", "Titre", 124, "", None), rsgain)
     assert _pictures(bare) == 0
+    assert isrc_of(bare) is None
 
 
 def _ffmpeg(*args: str) -> None:

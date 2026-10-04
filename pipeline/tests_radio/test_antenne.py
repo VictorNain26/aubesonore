@@ -1,4 +1,6 @@
 import json
+import shutil
+import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -8,8 +10,8 @@ import pytest
 import responses
 
 import radio.antenna.sync as sync_mod
-from radio.acquire.audio import Probe, Tags, ToolError
-from radio.antenna.sync import antenne_pass
+from radio.acquire.audio import Probe, Tags, ToolError, isrc_of
+from radio.antenna.sync import IsrcReport, antenne_pass, isrc_backfill
 from radio.core.config import AntenneConfig, Creneau, GrilleConfig
 from radio.sources.azuracast import AzuracastClient, AzuracastError, Media
 from radio.sources.deezer import DeezerAlbum, DeezerError, DeezerTrack, TrackPage
@@ -40,6 +42,7 @@ class FakeStation:
     def __init__(self, media: list[Media] | None = None, refuse: set[str] = frozenset()) -> None:
         self.media = list(media or [])
         self.refuse = refuse
+        self.blobs: dict[int, bytes] = {}
         self.busy: set[str] = set()
         self.deleted: list[str] = []
         self.moved: list[tuple[str, str]] = []
@@ -52,7 +55,11 @@ class FakeStation:
             raise AzuracastError("HTTP 413")
         m = Media(1000 + len(self.media), f"song-{path}", path)
         self.media.append(m)
+        self.blobs[m.id] = data
         return m
+
+    def download(self, media_id: int) -> bytes:
+        return self.blobs[media_id]
 
     def delete(self, paths: list[str]) -> list[str]:
         self.deleted += paths
@@ -450,6 +457,8 @@ def test_client_shapes() -> None:
         "currentDirectory": "",
         "directory": "repos",
     }
+    responses.get(API + "/file/3/play", body=b"ID3")
+    assert c.download(3) == b"ID3"
     assert all(call.request.headers["X-API-Key"] == "cle" for call in responses.calls)
 
 
@@ -465,3 +474,61 @@ def test_client_refusal_is_an_error() -> None:
     responses.post(API + "/files", status=413)
     with pytest.raises(AzuracastError):
         AzuracastClient("http://127.0.0.1:8080", "k").upload("antenne/1.mp3", b"")
+
+
+ISRC = "FRZ039800212"
+
+
+class IsrcDeezer:
+    """1 a un ISRC, 2 n'en a pas, 3 a disparu de Deezer, les autres ont l'ISRC 1."""
+
+    def track_page(self, tid: int) -> TrackPage | None:
+        if tid == 3:
+            return None
+        track = DeezerTrack(tid, "T", "T", 1, 1, 1, "A", True)
+        return TrackPage(track, None, None, None if tid == 2 else ISRC)
+
+
+def _mp3(path: Path, *tags: str) -> bytes:
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono", "-t", "1"]
+        + ["-c:a", "libmp3lame", "-id3v2_version", "3", "-metadata", "comment=deezer:1"]
+        + [x for t in tags for x in ("-metadata", t)]
+        + [str(path)],
+        check=True,
+    )
+    return path.read_bytes()
+
+
+@pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")), reason="ffmpeg")
+def test_isrc_backfill_tags_each_file_once(tmp_path: Path) -> None:
+    conn = make_model_db(tmp_path)
+    rows = [(t, "decouverte", "decouvertes") for t in (1, 2, 3, 4, 5)]
+    station = _on_air(conn, rows, LATER)
+    bare = _mp3(tmp_path / "bare.mp3")
+    station.blobs = {
+        1: bare,
+        2: bare,
+        3: bare,
+        4: bare,
+        5: _mp3(tmp_path / "t.mp3", f"TSRC={ISRC}"),
+    }
+    station.busy = {"s4"}
+    deezer: Any = IsrcDeezer()
+
+    rep = IsrcReport()
+    isrc_backfill(conn, station, deezer, rep)
+
+    assert (rep.n_tagged, rep.n_already, rep.n_no_isrc, rep.n_gone, rep.n_busy) == (1, 1, 1, 1, 1)
+    assert rep.errors == []
+    media_id, path = conn.execute(
+        "SELECT media_id, path FROM antenne WHERE deezer_track_id = 1"
+    ).fetchone()
+    assert path == "antenne/1.mp3"
+    written = tmp_path / "written.mp3"
+    written.write_bytes(station.blobs[media_id])
+    assert isrc_of(written) == ISRC
+
+    again = IsrcReport()
+    isrc_backfill(conn, station, deezer, again)
+    assert (again.n_tagged, again.n_already) == (0, 2)
