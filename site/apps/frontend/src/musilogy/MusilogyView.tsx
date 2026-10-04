@@ -137,7 +137,7 @@ function ArtistList<T extends MusilogyArtistRef>({
   const shown = open ? artists : artists.slice(0, FIRST_SHOWN);
   return (
     <>
-      <ol className="border-accent m-0 list-none border-t p-0">
+      <ol className="m-0 list-none p-0">
         {shown.map((artist) => (
           <ArtistRow
             key={artist.mbid}
@@ -160,7 +160,7 @@ function ArtistList<T extends MusilogyArtistRef>({
 }
 
 function Empty({ text }: { text: string }) {
-  return <p className="text-text-muted border-accent m-0 border-t pt-4">{text}</p>;
+  return <p className="text-text-muted m-0">{text}</p>;
 }
 
 function NeighbourSection({
@@ -388,7 +388,7 @@ export function MusilogyHomeView({
             <Empty text={m.musilogy_search_error()} />
           ) : search.status === 'done' ? (
             search.hits.length > 0 ? (
-              <ol className="border-accent m-0 list-none border-t p-0">
+              <ol className="m-0 list-none p-0">
                 {search.hits.map((hit) => (
                   <ArtistRow key={hit.mbid} artist={{ ...hit, played: null }} />
                 ))}

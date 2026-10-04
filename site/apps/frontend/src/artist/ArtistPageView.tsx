@@ -293,7 +293,7 @@ function Profile({
       <div className="px-page flex flex-col gap-16 py-12 md:gap-28 md:py-20">
         {kept.length > 0 ? (
           <Section id="kept" title={m.artist_kept_title()} body={m.artist_kept_body()}>
-            <ol className="border-accent m-0 list-none border-t p-0">
+            <ol className="m-0 list-none p-0">
               {kept.map((track) => (
                 <li
                   key={track.id}
@@ -310,22 +310,20 @@ function Profile({
         ) : (
           <Section id="played" title={m.artist_played_title()} body={m.artist_played_body()}>
             {profile.playedOnRadio.length > 0 ? (
-              <ol className="border-accent m-0 list-none border-t p-0">
+              <ol className="m-0 list-none p-0">
                 {profile.playedOnRadio.map((played) => (
                   <PlayedRow key={played.title} played={played} keep={keep} />
                 ))}
               </ol>
             ) : (
-              <p className="text-text-muted border-accent m-0 border-t pt-4">
-                {m.artist_played_empty()}
-              </p>
+              <p className="text-text-muted m-0">{m.artist_played_empty()}</p>
             )}
           </Section>
         )}
 
         {profile.links.length > 0 ? (
           <Section id="listen" title={m.artist_listen_title()} body={m.artist_listen_body()}>
-            <ul className="border-accent m-0 flex list-none flex-wrap gap-x-8 border-t p-0 pt-2">
+            <ul className="m-0 flex list-none flex-wrap gap-x-8 p-0">
               {profile.links.map((link) => (
                 <li key={link.url} className="reveal">
                   <a href={link.url} {...OUTSIDE_LINK} className={TEXT_ACTION}>
