@@ -3,15 +3,10 @@ from contextlib import contextmanager
 
 import duckdb
 import pytest
-from conftest import FIX, SQL, build_synthetic, unreliable_genre_records
+from conftest import FIX, SQL
 
 from musilogy.build import INVARIANTS, build, check_invariants
 from musilogy.paths import SQL_DIR
-
-# genre_unreliable_recomputed is a helper other invariants read, not itself an
-# invariant (it legitimately returns rows): its exclusion from INVARIANTS is a
-# written decision, not the oversight this test otherwise guards against.
-VIEWS_NOT_CHECKED_AS_INVARIANTS = {"genre_unreliable_recomputed"}
 
 
 @contextmanager
@@ -34,14 +29,14 @@ def test_every_view_defined_in_90_invariants_is_registered_in_invariants():
     # crossed this seam three times by hand before this test existed.
     sql = (SQL_DIR / "90_invariants.sql").read_text(encoding="utf-8")
     defined_views = set(re.findall(r"CREATE OR REPLACE VIEW (\w+)", sql))
-    assert defined_views - set(INVARIANTS) == VIEWS_NOT_CHECKED_AS_INVARIANTS
+    assert defined_views == set(INVARIANTS)
 
 
 def test_no_invariant_joins_without_an_equality(con):
     # Case this must catch: an OR or an inequality inside a correlated
     # subquery. The fixtures answer in milliseconds whatever the plan, but on
-    # the reference dump a cross product of lineage with every raw relation
-    # spilled tens of GB without finishing and starved the shared server. The
+    # the reference dump a cross product with every raw relation spilled tens
+    # of GB without finishing and starved the shared server (2026-10-02). The
     # plan is the same shape on the witnesses, so it is checked here.
     con.execute((SQL / "90_invariants.sql").read_text(encoding="utf-8"))
     unhashed = ("CROSS_PRODUCT", "NESTED_LOOP_JOIN", "BLOCKWISE_NL_JOIN", "PIECEWISE_MERGE_JOIN")
@@ -179,22 +174,17 @@ def test_end_before_min_year_is_reported(con):
 
 def test_contractual_bounds_are_not_read_from_the_session_variables():
     # Built with dump_year = 2030, the production rules accept Thunder Jolt's
-    # declared end in 2027 and Inspiral Carpets' 2027 album, and presence and
-    # density stretch past 2026. The invariants must not follow the variable:
-    # [1850, 2026] is the reference dump's contract, hardcoded in
-    # 90_invariants.sql, and moving to another dump is a deliberate edit there
-    # — that edit is the point of the check. Reading getvariable('dump_year')
-    # back made all four views agree with whatever the production rules did.
+    # declared end in 2027 and Inspiral Carpets' 2027 album. The invariants
+    # must not follow the variable: [1850, 2026] is the reference dump's
+    # contract, hardcoded in 90_invariants.sql, and moving to another dump is
+    # a deliberate edit there — that edit is the point of the check. Reading
+    # getvariable('dump_year') back made the views agree with whatever the
+    # production rules did.
     c = duckdb.connect(":memory:")
     build(c, SQL, FIX / "artists.jsonl", FIX / "release_groups.jsonl", None, dump_year=2030)
     assert dict(check_invariants(c, SQL)) == {
         "end_after_dump_year": 1,
         "album_out_of_window": 1,
-        "presence_out_of_range": 2,
-        "density_out_of_range": 7,
-        # activity counts the same population year by year: it stretches past
-        # 2026 with density, and its recount holds the same hardcoded window.
-        "activity_mismatch": 1,
     }
 
 
@@ -306,25 +296,6 @@ def test_y_end_source_mismatch_catches_a_last_album_label_naming_another_value(c
     assert violations.get("y_end_source_mismatch") == 1
 
 
-def test_density_population_mismatch_is_reported(con):
-    genre_mbid, year, original_present = con.execute(
-        "SELECT genre_mbid, year, present FROM density LIMIT 1"
-    ).fetchone()
-    with restored(
-        con,
-        (
-            "UPDATE density SET present = ? WHERE genre_mbid = ? AND year = ?",
-            [original_present, genre_mbid, year],
-        ),
-    ):
-        con.execute(
-            "UPDATE density SET present = ? WHERE genre_mbid = ? AND year = ?",
-            [original_present + 1, genre_mbid, year],
-        )
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("density_population_mismatch") == 1
-
-
 def test_artist_genres_out_of_order_is_reported(con):
     mbid = con.execute(
         "SELECT mbid FROM artists WHERE len(genres) > 1 AND genre_source = 'declared' LIMIT 1"
@@ -433,116 +404,6 @@ def test_genre_n_artists_mismatch_is_reported(con):
     assert violations.get("genre_n_artists_mismatch") == 1
 
 
-def test_presence_out_of_range_is_reported(con):
-    mbid = con.execute("SELECT mbid FROM presence LIMIT 1").fetchone()[0]
-    original = con.execute("SELECT y_presence_end FROM presence WHERE mbid = ?", [mbid]).fetchone()[
-        0
-    ]
-    with restored(con, ("UPDATE presence SET y_presence_end = ? WHERE mbid = ?", [original, mbid])):
-        con.execute("UPDATE presence SET y_presence_end = 2100 WHERE mbid = ?", [mbid])
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("presence_out_of_range") == 1
-
-
-def test_presence_end_mismatch_is_reported(con):
-    mbid = con.execute("SELECT mbid FROM presence LIMIT 1").fetchone()[0]
-    original = con.execute("SELECT y_presence_end FROM artists WHERE mbid = ?", [mbid]).fetchone()[
-        0
-    ]
-    with restored(con, ("UPDATE artists SET y_presence_end = ? WHERE mbid = ?", [original, mbid])):
-        con.execute("UPDATE artists SET y_presence_end = ? WHERE mbid = ?", [original - 1, mbid])
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("presence_end_mismatch") == 1
-
-
-def test_density_out_of_range_is_reported(con):
-    row = con.execute("SELECT * FROM density LIMIT 1").fetchone()
-    cols = [d[0] for d in con.description]
-    genre_mbid = row[cols.index("genre_mbid")]
-    with restored(
-        con,
-        ("DELETE FROM density WHERE genre_mbid = ? AND year = 2100", [genre_mbid]),
-    ):
-        con.execute(
-            f"INSERT INTO density VALUES ({', '.join('?' for _ in cols)})",
-            [genre_mbid, 2100, row[cols.index("present")]],
-        )
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("density_out_of_range") == 1
-
-
-def test_density_out_of_range_is_reported_below_1850(con):
-    row = con.execute("SELECT * FROM density LIMIT 1").fetchone()
-    cols = [d[0] for d in con.description]
-    genre_mbid = row[cols.index("genre_mbid")]
-    with restored(
-        con,
-        ("DELETE FROM density WHERE genre_mbid = ? AND year = 1700", [genre_mbid]),
-    ):
-        con.execute(
-            f"INSERT INTO density VALUES ({', '.join('?' for _ in cols)})",
-            [genre_mbid, 1700, row[cols.index("present")]],
-        )
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("density_out_of_range") == 1
-
-
-def test_density_above_band_count_catches_a_genre_absent_from_the_vocabulary(con):
-    with restored(con, ("DELETE FROM density WHERE genre_mbid = 'inconnu' AND year = 1900", [])):
-        con.execute("INSERT INTO density VALUES ('inconnu', 1900, 1)")
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("density_above_band_count") == 1
-
-
-def test_density_excluded_genre_present_is_reported(tmp_path):
-    # Own connection, own records: no witness genre reaches 200 candidate
-    # release-groups, so the shared fixtures cannot exercise this rule at all.
-    # The view recomputes the rule from raw_release_groups and artists; it must
-    # stay empty on a correct build and fire on a smuggled-in row.
-    artists, release_groups = unreliable_genre_records()
-    c = build_synthetic(tmp_path, artists, release_groups)
-    assert check_invariants(c, SQL) == []
-
-    c.execute("INSERT INTO density VALUES ('g-excluded', 1990, 1)")
-    violations = dict(check_invariants(c, SQL))
-    assert violations.get("density_excluded_genre_present") == 1
-
-
-def test_density_excluded_genre_present_does_not_read_back_the_published_measurement(tmp_path):
-    # Wiping the published rate leaves the raw evidence untouched, so the
-    # invariant must still fire: an implementation that filtered on
-    # genres.multi_artist_drop_pct would go silent here — exactly the failure
-    # that once let 265 real violations through.
-    artists, release_groups = unreliable_genre_records()
-    c = build_synthetic(tmp_path, artists, release_groups)
-    c.execute("INSERT INTO density VALUES ('g-excluded', 1990, 1)")
-    c.execute("UPDATE genres SET multi_artist_drop_pct = 0, n_candidate_credits = 0")
-    violations = dict(check_invariants(c, SQL))
-    assert violations.get("density_excluded_genre_present") == 1
-
-
-def test_density_above_band_count_is_reported(con):
-    genre_mbid, year, original_present = con.execute(
-        "SELECT genre_mbid, year, present FROM density LIMIT 1"
-    ).fetchone()
-    n_artists = con.execute(
-        "SELECT n_artists FROM genres WHERE genre_mbid = ?", [genre_mbid]
-    ).fetchone()[0]
-    with restored(
-        con,
-        (
-            "UPDATE density SET present = ? WHERE genre_mbid = ? AND year = ?",
-            [original_present, genre_mbid, year],
-        ),
-    ):
-        con.execute(
-            "UPDATE density SET present = ? WHERE genre_mbid = ? AND year = ?",
-            [n_artists + 1, genre_mbid, year],
-        )
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("density_above_band_count") == 1
-
-
 def test_link_endpoint_missing_is_reported(con):
     artist = con.execute("SELECT mbid FROM artists LIMIT 1").fetchone()[0]
     with restored(con, ("DELETE FROM links WHERE dst_mbid = 'inconnu'", [])):
@@ -591,33 +452,6 @@ def test_duplicate_link_is_reported(con):
             con.execute("INSERT INTO links VALUES (?, ?, 'duplicate', NULL, NULL)", [src, dst])
         violations = dict(check_invariants(con, SQL))
     assert violations.get("duplicate_link") == 1
-
-
-def test_lineage_endpoint_missing_is_reported(con):
-    artist = con.execute("SELECT mbid FROM artists LIMIT 1").fetchone()[0]
-    with restored(con, ("DELETE FROM lineage WHERE model_mbid = 'inconnu'", [])):
-        con.execute("INSERT INTO lineage VALUES (?, 'inconnu', 'mb_tribute')", [artist])
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("lineage_endpoint_missing") == 1
-
-
-def test_duplicate_lineage_is_reported(con):
-    # The same pair under two sources is two rows by design: only the same
-    # pair, same source, twice is a duplicate.
-    artist, model, source = con.execute(
-        "SELECT artist_mbid, model_mbid, source FROM lineage LIMIT 1"
-    ).fetchone()
-    with restored(
-        con,
-        (
-            "DELETE FROM lineage WHERE artist_mbid = ? AND model_mbid = ? AND source = ?",
-            [artist, model, source],
-        ),
-        ("INSERT INTO lineage VALUES (?, ?, ?)", [artist, model, source]),
-    ):
-        con.execute("INSERT INTO lineage VALUES (?, ?, ?)", [artist, model, source])
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("duplicate_lineage") == 1
 
 
 def test_link_misoriented_catches_a_reversed_link(con):
@@ -676,42 +510,6 @@ def test_corrections_invalid_is_reported(con):
     assert violations.get("corrections_invalid") == 3
 
 
-def test_density_missing_cell_is_reported(con):
-    # density_population_mismatch iterates over the rows that exist, so a
-    # deleted cell is simply never examined. A production change that drops
-    # cells — a join that loses rows, a filter applied one file too early —
-    # was caught by nothing but the baseline, and only on the reference dump.
-    genre_mbid, year, present = con.execute(
-        "SELECT genre_mbid, year, present FROM density LIMIT 1"
-    ).fetchone()
-    with restored(con, ("INSERT INTO density VALUES (?, ?, ?)", [genre_mbid, year, present])):
-        con.execute("DELETE FROM density WHERE genre_mbid = ? AND year = ?", [genre_mbid, year])
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("density_missing_cell") == 1
-
-
-def test_density_missing_cell_does_not_demand_the_cells_the_exclusion_withholds(tmp_path):
-    # The symmetric trap: an invariant that enumerated expected cells without
-    # recomputing the exclusion would demand a row for every excluded genre and
-    # fire on a correct build. g-excluded legitimately owns no cell at all.
-    artists, release_groups = unreliable_genre_records()
-    c = build_synthetic(tmp_path, artists, release_groups)
-    assert check_invariants(c, SQL) == []
-    assert c.execute("SELECT count(*) FROM density WHERE genre_mbid = 'g-excluded'").fetchone() == (
-        0,
-    )
-
-
-def test_density_missing_cell_does_not_read_back_the_published_measurement(tmp_path):
-    # Same rationale as density_excluded_genre_present: wiping the published
-    # rate leaves the raw evidence untouched. An implementation that read
-    # genres.multi_artist_drop_pct would start demanding g-excluded's cells.
-    artists, release_groups = unreliable_genre_records()
-    c = build_synthetic(tmp_path, artists, release_groups)
-    c.execute("UPDATE genres SET multi_artist_drop_pct = 0, n_candidate_credits = 0")
-    assert check_invariants(c, SQL) == []
-
-
 def test_birth_misread_is_reported_on_both_sides(con):
     # A person's begin must land in y_birth only, and no other type may carry
     # one: each half of a swapped CASE in 10_bands.sql is caught.
@@ -737,9 +535,9 @@ def test_birth_misread_catches_a_birth_that_never_reached_y_birth(con):
 
 
 def test_artist_unexpected_type_is_reported(con):
-    # extract.py keeps {Group, Orchestra, Choir, Person} and nothing states that
-    # contract in SQL, while 60_density.sql depends on type = 'Group'. A change
-    # to KEPT_TYPES moved both the population and the projection in silence.
+    # extract.py keeps {Group, Orchestra, Choir, Person} and nothing else
+    # states that contract: a change to KEPT_TYPES would move the population
+    # in silence.
     mbid = con.execute("SELECT mbid FROM artists LIMIT 1").fetchone()[0]
     original = con.execute("SELECT type FROM artists WHERE mbid = ?", [mbid]).fetchone()[0]
     with restored(con, ("UPDATE artists SET type = ? WHERE mbid = ?", [original, mbid])):

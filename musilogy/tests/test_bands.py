@@ -5,26 +5,12 @@ def rows(con, q):
     return con.execute(q).fetchall()
 
 
-def test_orchestra_is_in_artists_but_excluded_from_density(con):
-    # Wiener Philharmoniker: type Orchestra, carrier of "classical" in the
-    # fixtures alongside Bach, a person — no group carries it, so density must
-    # show no row for that genre, since density is restricted to type = 'Group'.
+def test_an_orchestra_is_in_artists(con):
+    # Wiener Philharmoniker: type Orchestra. The population is not only groups.
     orchestra = "d770374d-05e9-4ed3-a068-3fbd4e6e4dd6"
-    assert con.execute("SELECT count(*) FROM artists WHERE mbid = ?", [orchestra]).fetchone() == (
-        1,
+    assert con.execute("SELECT type FROM artists WHERE mbid = ?", [orchestra]).fetchone() == (
+        "Orchestra",
     )
-    genre_mbid = con.execute(
-        "SELECT g.mbid FROM artists, UNNEST(artists.genres) AS t(g) WHERE artists.mbid = ?",
-        [orchestra],
-    ).fetchone()[0]
-    assert con.execute(
-        "SELECT count(*) FROM artists, UNNEST(artists.genres) AS t(g) "
-        "WHERE t.g.mbid = ? AND artists.type = 'Group'",
-        [genre_mbid],
-    ).fetchone() == (0,)
-    assert con.execute(
-        "SELECT count(*) FROM density WHERE genre_mbid = ?", [genre_mbid]
-    ).fetchone() == (0,)
 
 
 def test_unreadable_begin_yields_no_y0(con):
@@ -101,8 +87,7 @@ def test_month_precision_is_reduced_to_the_year(con):
 
 def test_group_without_any_genre_is_in_artists_but_carries_no_vocabulary(con):
     # Thunder Jolt: Group, dated, and neither it nor its albums carry a genre —
-    # kept in `artists` (population is complete), but its empty genre list means
-    # it can never be joined into density.
+    # kept in `artists` all the same: the population is complete.
     thunder_jolt = "d36b0fad-abd7-44e4-88fa-f638bbf8c9a6"
     assert con.execute(
         "SELECT y0, len(genres), genre_source FROM artists WHERE mbid = ?", [thunder_jolt]

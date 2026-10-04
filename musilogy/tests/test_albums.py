@@ -70,8 +70,8 @@ def test_same_artist_credited_twice_is_kept(con):
 
 def test_album_long_after_declared_end_is_kept(con):
     # Cardiacs: declared end 2020, an album dated 2025 is still kept in
-    # `albums` — no window relates album selection to the band's lifespan
-    # any more, that is presence's job (30_bands_lifespan.sql/40_presence.sql).
+    # `albums` — no window relates album selection to the band's lifespan:
+    # the lifespan reads the albums, not the reverse (30_bands_lifespan.sql).
     assert con.execute(
         "SELECT max(y) FROM albums WHERE artist_mbid = ?", [CARDIACS]
     ).fetchall() == [(2025,)]

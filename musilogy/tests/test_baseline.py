@@ -1,8 +1,8 @@
 import pytest
 
-from musilogy import REFERENCE_DUMP, REFERENCE_POPULARITY
+from musilogy import REFERENCE_DUMP, REFERENCE_INFLUENCES, REFERENCE_POPULARITY
 from musilogy.build import build, check_invariants, connect
-from musilogy.paths import SQL_DIR, popularity_snapshot, work_dir
+from musilogy.paths import SQL_DIR, influences_snapshot, popularity_snapshot, work_dir
 
 # artists: 682 447 groups, orchestras and choirs, plus 1 599 244 persons. Every
 # count the persons moved splits along type: restricted to the other types, the
@@ -12,12 +12,17 @@ BASELINE = {
     "artists": 2_281_691,
     "albums": 1_290_584,
     "genres": 1_729,
-    "density": 58_767,
-    "activity": 172,
     "links": 771_147,
-    "lineage": 32_667,
     "popularity": 989_488,
+    # One row per pair of MBIDs Wikidata relates by "influenced by" (P737),
+    # deprecated statements left out.
+    "influences": 9_517,
 }
+# The influences whose two ends are artists of the dump, the only ones the
+# site can name; the other 251 have an end whose MBID `artists` does not hold.
+# A drift in how MBIDs are read on either side — case, whitespace — moves this
+# first.
+INFLUENCES_BETWEEN_ARTISTS = 9_266
 # links: every artist-to-artist relation, oriented source -> target and
 # de-duplicated across the two artists that carry it. Memberships replace the
 # former `members` table (601 759 rows), which read them from the band's side:
@@ -46,38 +51,13 @@ LINK_TYPE_BREAKDOWN = {
     "composer-in-residence": 227,
     "artist-in-residence": 6,
 }
-# lineage reads three link types, one row per pair and source: the teacher
-# pairs taught over several spans of years (20) and one tribute pair recorded
-# twice are why these sit below their LINK_TYPE_BREAKDOWN counts.
-LINEAGE_SOURCE_BREAKDOWN = {"mb_teacher": 29_222, "mb_tribute": 2_779, "mb_named_after": 666}
 # Links with an end outside `artists` (characters, untyped artists...).
 LINK_EXCLUSIONS = {"to_unextracted_artist": 38_442}
-# What the density exclusion rule (55_genre_reliability.sql) costs: 13 genres,
-# 4 311 (band, genre) pairs, 1 011 cells and 37 138 band-years. artists, albums,
-# genres and links keep every one of them — population and projection are
-# different things, and only the projection narrows.
-DENSITY_EXCLUSIONS = {"genres": 13, "artist_genre_pairs": 4_311}
-# Witness measurements of the multi-artist bias, from both extremes: classical
-# loses almost all its candidate credits, alternative metal almost none. A
-# definition computed from `albums` instead of raw_release_groups, or one that
-# forgot to explode the credited artists, moves these.
-MULTI_ARTIST_DROP = {
-    "classical": (27_199, 94.3),
-    "orchestral": (3_771, 86.3),
-    "string quartet": (2_866, 83.3),
-    "jazz": (13_410, 13.4),
-    "rock": (37_870, 1.8),
-    "alternative metal": (3_006, 0.6),
-}
 Y0_SOURCE_BREAKDOWN = {"declared": 235_246, "first_album": 346_442, None: 1_700_003}
 Y_END_SOURCE_BREAKDOWN = {"declared": 147_025, "last_album": 438_801, None: 1_695_865}
-# 25_band_genres.sql: the declared genres win, the albums take over. Every
-# count below that moved when it landed splits exactly along this column —
-# restricted to 'declared' artists, density, present and the excluded pairs give
-# back their previous values (52 201, 1 972 825 and 1 554).
+# 25_band_genres.sql: the declared genres win, the albums take over.
 GENRE_SOURCE_BREAKDOWN = {"declared": 199_611, "albums": 153_624, None: 1_928_456}
 PLACEABLE = 581_688
-DENSITY_PRESENT = 4_242_411
 # The date readings the dump loses, and the album inferences the guards of
 # 30_bands_lifespan.sql refuse. Frozen here too: a guard that stops firing is
 # as much a regression as a count that moves.
@@ -112,6 +92,7 @@ LIVE_LONG_AFTER_LAST_STUDIO = 914
 BANDS_WITHOUT_ALBUM = 1_801_156
 WORK = work_dir(REFERENCE_DUMP)
 POPULARITY = popularity_snapshot(REFERENCE_POPULARITY)
+INFLUENCES = influences_snapshot(REFERENCE_INFLUENCES)
 
 
 def test_the_baseline_looks_for_the_extractions_at_an_absolute_path():
@@ -132,6 +113,8 @@ def test_reference_dump_matches_the_baseline():
         pytest.skip("extractions missing: run Task 3")
     if not POPULARITY.exists():
         pytest.skip(f"ListenBrainz snapshot {REFERENCE_POPULARITY} missing")
+    if not INFLUENCES.exists():
+        pytest.skip(f"Wikidata snapshot {REFERENCE_INFLUENCES} missing")
     con = connect()
     build(
         con,
@@ -141,6 +124,8 @@ def test_reference_dump_matches_the_baseline():
         None,
         popularity=POPULARITY,
         popularity_snapshot=REFERENCE_POPULARITY,
+        influences=INFLUENCES,
+        influences_snapshot=REFERENCE_INFLUENCES,
     )
     assert check_invariants(con, SQL_DIR) == []
     for table, expected in BASELINE.items():
@@ -163,42 +148,20 @@ def test_reference_dump_matches_the_baseline():
     assert row is not None
     assert row[0] == PLACEABLE
 
-    # The cell count alone says nothing about what fills the cells: a band
-    # gained or lost inside an existing (genre, year) moves present without
-    # moving the count.
-    row = con.execute("SELECT sum(present) FROM density").fetchone()
+    row = con.execute(
+        "SELECT count(*) FROM influences i "
+        "WHERE EXISTS (SELECT 1 FROM artists a WHERE a.mbid = i.artist_mbid) "
+        "AND EXISTS (SELECT 1 FROM artists a WHERE a.mbid = i.influence_mbid)"
+    ).fetchone()
     assert row is not None
-    assert row[0] == DENSITY_PRESENT
+    assert row[0] == INFLUENCES_BETWEEN_ARTISTS
 
     assert single_row(con, "r2_anomalies") == DATE_ANOMALIES
     assert single_row(con, "neutralised_inferences") == NEUTRALISED_INFERENCES
-    assert single_row(con, "density_exclusions") == DENSITY_EXCLUSIONS
     assert single_row(con, "link_exclusions") == LINK_EXCLUSIONS
     assert dict(con.execute("SELECT type, count(*) FROM links GROUP BY type").fetchall()) == (
         LINK_TYPE_BREAKDOWN
     )
-    assert (
-        dict(con.execute("SELECT source, count(*) FROM lineage GROUP BY source").fetchall())
-        == LINEAGE_SOURCE_BREAKDOWN
-    )
-
-    for name, expected_measure in MULTI_ARTIST_DROP.items():
-        row = con.execute(
-            "SELECT n_candidate_credits, multi_artist_drop_pct FROM genres WHERE name = ?", [name]
-        ).fetchone()
-        assert row == expected_measure, f"{name}: expected {expected_measure}, got {row}"
-
-    # The rule empties the projection, never the vocabulary: not one excluded
-    # genre keeps a density row, and `classical` is still a genre.
-    row = con.execute(
-        "SELECT count(DISTINCT d.genre_mbid) FROM density d JOIN genres g USING (genre_mbid) "
-        "WHERE g.multi_artist_drop_pct >= 50 AND g.n_candidate_credits >= 200"
-    ).fetchone()
-    assert row is not None
-    assert row[0] == 0
-    row = con.execute("SELECT count(*) FROM genres WHERE name = 'classical'").fetchone()
-    assert row is not None
-    assert row[0] == 1
 
     row = con.execute(
         "SELECT count(*) FROM artists WHERE y_end IS NOT NULL AND y0 IS NOT NULL AND y_end < y0"

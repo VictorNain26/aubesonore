@@ -10,7 +10,7 @@ One self-hosted webradio, AubeSonore, in a single repository cloned at `~/aubeso
 | `site/`      | Web app (listener site + API)               | pnpm, Turbo, Bun, React        |
 | `pipeline/`  | Taste model, discovery, acquisition, antenne | Python 3.12, uv                |
 | `azuracast/` | Broadcast server runtime                    | Docker — **config only** here  |
-| `musilogy/`  | Frieze and lineage tables from MusicBrainz  | Python 3.12, uv, DuckDB        |
+| `musilogy/`  | Musilogy's data, offline, from MusicBrainz  | Python 3.12, uv, DuckDB        |
 
 Until 2026-10-01 they were separate repositories; the standalone `radio-pipeline` and `musilogy`
 repositories were deleted on 2026-10-03, their history kept under `pipeline/` and `musilogy/`
@@ -62,8 +62,8 @@ AzuraCast is the hub. The other two never talk to each other.
   read-only consumer of the station and must stay that way.
 - Any change that seems to need pipeline↔app coupling is a design smell — route it through
   AzuraCast, or reconsider.
-- musilogy is **offline reference data**, outside the radio: it turns MusicBrainz dumps and a
-  ListenBrainz snapshot into eight Parquet tables. `musilogy load` copies them into a `musilogy`
+- musilogy is **offline reference data**, outside the radio: it turns a MusicBrainz dump and
+  dated ListenBrainz and Wikidata snapshots into Parquet tables. `musilogy load` copies them into a `musilogy`
   schema of the site's database, and the site reads them only through musilogy's SQL functions
   — never by calling musilogy at runtime (`docs/vision.md` §4.3).
 

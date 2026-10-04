@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import json
 import subprocess
-from decimal import Decimal
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import duckdb
 
 from musilogy.fetch import expected_sums, sha256_file
-from musilogy.paths import PACKAGE_DIR, REFERENCE_DIR, popularity_sums
+from musilogy.paths import PACKAGE_DIR, REFERENCE_DIR, influences_sums, popularity_sums
 
-TABLES = ("artists", "albums", "genres", "density", "activity", "links", "lineage", "popularity")
+TABLES = ("artists", "albums", "genres", "links", "popularity", "influences")
 # A delivery has to come out in a fixed order, or the same code on the same
 # extraction writes different bytes: the tables are built by parallel joins and
 # aggregates, so their insertion order is whatever the threads produced. Each
@@ -25,11 +25,9 @@ ORDER_BY = {
     "artists": "mbid",
     "albums": "rg_mbid",
     "genres": "genre_mbid",
-    "density": "genre_mbid, year",
-    "activity": "year",
     "links": "src_mbid, dst_mbid, type, y_begin NULLS LAST, y_end NULLS LAST",
-    "lineage": "artist_mbid, model_mbid, source",
     "popularity": "mbid",
+    "influences": "artist_mbid, influence_mbid",
 }
 
 
@@ -116,7 +114,7 @@ def extraction_matches_rows_loaded(
     return _extraction_matches_rows_loaded(_extraction(extraction), input_rows_loaded(con))
 
 
-PARAMETERS = ("dump_year", "min_year", "multi_artist_drop_limit", "min_candidate_credits")
+PARAMETERS = ("dump_year", "min_year")
 
 
 def _parameters(con: duckdb.DuckDBPyConnection) -> dict[str, Any]:
@@ -126,20 +124,19 @@ def _parameters(con: duckdb.DuckDBPyConnection) -> dict[str, Any]:
         "SELECT " + ", ".join(f"getvariable('{name}')" for name in PARAMETERS)
     ).fetchone()
     assert row is not None  # a single-row projection always returns one row
-    # DuckDB reads a float session variable back as a Decimal; the manifest is
-    # JSON, which has no Decimal type, so it travels as a float instead.
-    values = (float(v) if isinstance(v, Decimal) else v for v in row)
-    return dict(zip(PARAMETERS, values, strict=True))
+    return dict(zip(PARAMETERS, row, strict=True))
 
 
-def _popularity(con: duckdb.DuckDBPyConnection) -> dict[str, Any] | None:
+def _snapshot(
+    con: duckdb.DuckDBPyConnection, variable: str, sums: Callable[[str], Path]
+) -> dict[str, Any] | None:
     """Read back from the connection, like the parameters: the snapshot the
     build loaded, with the digest pinned for it."""
-    row = con.execute("SELECT getvariable('popularity_snapshot')::VARCHAR").fetchone()
+    row = con.execute(f"SELECT getvariable('{variable}')::VARCHAR").fetchone()
     assert row is not None  # a single-row projection always returns one row
     if row[0] is None:
         return None
-    return {"snapshot": row[0], "sha256": expected_sums(popularity_sums(row[0]))}
+    return {"snapshot": row[0], "sha256": expected_sums(sums(row[0]))}
 
 
 def publish(
@@ -184,7 +181,8 @@ def publish(
     manifest = {
         "dump": dump,
         "archive_sha256": expected_sums(REFERENCE_DIR / f"{dump}.SHA256SUMS"),
-        "popularity": _popularity(con),
+        "popularity": _snapshot(con, "popularity_snapshot", popularity_sums),
+        "influences": _snapshot(con, "influences_snapshot", influences_sums),
         "counts": counts,
         "output_sha256": output_sha256,
         "parameters": _parameters(con),
@@ -202,7 +200,6 @@ def publish(
         },
         "r2_anomalies": _counters(con, "r2_anomalies"),
         "neutralised_inferences": _counters(con, "neutralised_inferences"),
-        "density_exclusions": _counters(con, "density_exclusions"),
         "link_exclusions": _counters(con, "link_exclusions"),
         "git_sha": _git_sha(),
         "corrections_sha256": sha256_file(corrections) if corrections else None,

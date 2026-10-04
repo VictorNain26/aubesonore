@@ -6,7 +6,7 @@ from typing import Any
 import duckdb
 import pytest
 
-from musilogy import REFERENCE_DUMP, REFERENCE_POPULARITY
+from musilogy import REFERENCE_DUMP, REFERENCE_INFLUENCES, REFERENCE_POPULARITY
 from musilogy.build import build
 from musilogy.load import load
 from musilogy.paths import SQL_DIR
@@ -27,6 +27,8 @@ def con():
         None,
         popularity=FIX / "popularity.jsonl",
         popularity_snapshot=REFERENCE_POPULARITY,
+        influences=FIX / "influences.jsonl",
+        influences_snapshot=REFERENCE_INFLUENCES,
     )
     return c
 
@@ -103,13 +105,25 @@ def pg():
     return conninfo
 
 
-def published(tmp_path, artists, popularity=None):
+def influences_file(path, rows):
+    """A synthetic Wikidata snapshot: (artist, influence, statement) rows."""
+    path.write_text(
+        "".join(
+            json.dumps({"artist_mbid": a, "influence_mbid": i, "statement": s}) + "\n"
+            for a, i, s in rows
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def published(tmp_path, artists, popularity=None, influences=None):
     """A synthetic build, published as a delivery. `popularity` maps an mbid
     to its listen count; every other artist gets the null row ListenBrainz
     sends for an artist it has no listen of, as a real snapshot asks about
-    everyone."""
+    everyone. `influences` lists (artist, influence, statement) rows."""
     tmp_path.mkdir(exist_ok=True)
-    kwargs = {}
+    kwargs: dict[str, Any] = {}
     if popularity is not None:
         path = tmp_path / "popularity.jsonl"
         path.write_text(
@@ -127,6 +141,9 @@ def published(tmp_path, artists, popularity=None):
             encoding="utf-8",
         )
         kwargs = {"popularity": path, "popularity_snapshot": REFERENCE_POPULARITY}
+    if influences is not None:
+        kwargs["influences"] = influences_file(tmp_path / "influences.jsonl", influences)
+        kwargs["influences_snapshot"] = REFERENCE_INFLUENCES
     out = tmp_path / "out"
     publish(build_synthetic(tmp_path, artists, **kwargs), out, REFERENCE_DUMP, None)
     return out
@@ -140,74 +157,6 @@ def pg_query(conninfo, sql):
     return con.execute("SELECT * FROM postgres_query('pg', ?)", [sql]).fetchall()
 
 
-def loaded(tmp_path, conninfo, artists, popularity=None):
-    load(published(tmp_path, artists, popularity), conninfo)
+def loaded(tmp_path, conninfo, artists, popularity=None, influences=None):
+    load(published(tmp_path, artists, popularity, influences), conninfo)
     return conninfo
-
-
-BAND_EXCLUDED = "00000000-0000-4000-8000-000000000001"
-BAND_EXCLUDED_2 = "00000000-0000-4000-8000-000000000002"
-BAND_SMALL = "00000000-0000-4000-8000-000000000003"
-BAND_CLEAN = "00000000-0000-4000-8000-000000000004"
-BAND_ORPHAN = "00000000-0000-4000-8000-000000000005"
-
-
-def unreliable_genre_records():
-    """Four genres that differ only in what the multi-artist rule costs them:
-    `g-excluded` loses 250 candidate release-groups out of 250, `g-small` loses
-    10 out of 10 (over the rate, under the sample minimum), `g-clean` loses
-    none out of 250, `g-orphan` has no candidate at all. `guest` is credited on
-    the multi-artist release-groups and is deliberately absent from the artist
-    records: a co-credit does not have to be a band of this pipeline.
-
-    Shared by the reliability, invariant and manifest suites, which all need
-    the same scenario and must not each invent their own."""
-    artists = [
-        synthetic_artist(
-            BAND_EXCLUDED,
-            "1990",
-            None,
-            genres=[{"mbid": "g-excluded", "name": "excluded", "votes": 3}],
-            name="band-excluded",
-        ),
-        synthetic_artist(
-            BAND_EXCLUDED_2,
-            "1995",
-            None,
-            genres=[{"mbid": "g-excluded", "name": "excluded", "votes": 3}],
-            name="band-excluded-2",
-        ),
-        synthetic_artist(
-            BAND_SMALL,
-            "1990",
-            None,
-            genres=[{"mbid": "g-small", "name": "small", "votes": 2}],
-            name="band-small",
-        ),
-        synthetic_artist(
-            BAND_CLEAN,
-            "1990",
-            None,
-            genres=[{"mbid": "g-clean", "name": "clean", "votes": 1}],
-            name="band-clean",
-        ),
-        synthetic_artist(
-            BAND_ORPHAN,
-            "1990",
-            None,
-            genres=[{"mbid": "g-orphan", "name": "orphan", "votes": 1}],
-            name="band-orphan",
-        ),
-    ]
-    release_groups = [
-        *(
-            synthetic_release_group(f"rg-excluded-{i}", BAND_EXCLUDED, "2000", co_artists=["guest"])
-            for i in range(250)
-        ),
-        *(
-            synthetic_release_group(f"rg-small-{i}", BAND_SMALL, "2000", co_artists=["guest"])
-            for i in range(10)
-        ),
-        *(synthetic_release_group(f"rg-clean-{i}", BAND_CLEAN, "2000") for i in range(250)),
-    ]
-    return artists, release_groups

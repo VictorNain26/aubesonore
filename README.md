@@ -9,4 +9,4 @@ Vision produit et architecture : [`docs/vision.md`](docs/vision.md).
 | [`site/`](site/) | Site d'écoute et API |
 | [`pipeline/`](pipeline/) | Goût, découverte, acquisition et publication à l'antenne ([conception](pipeline/docs/vision.md)) |
 | [`azuracast/`](azuracast/) | Configuration du serveur de diffusion ([runbook](azuracast/RUNBOOK.md)) |
-| [`musilogy/`](musilogy/) | Tables de référence de la frise : artistes, filiation, popularité, depuis MusicBrainz et ListenBrainz |
+| [`musilogy/`](musilogy/) | Données de Musilogy : artistes, liens, popularité, influences, depuis MusicBrainz, ListenBrainz et Wikidata |

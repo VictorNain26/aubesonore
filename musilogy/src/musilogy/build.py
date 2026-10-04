@@ -81,6 +81,31 @@ def load_popularity(
     )
 
 
+RAW_INFLUENCE_COLUMNS = "{artist_mbid:'VARCHAR', influence_mbid:'VARCHAR', statement:'VARCHAR'}"
+
+
+def load_influences(
+    con: duckdb.DuckDBPyConnection, influences: Path | None, snapshot: str | None
+) -> None:
+    if influences is None:
+        # Always materialized, even empty, like popularity: synthetic builds
+        # carry no snapshot, and 88_influences.sql reads this table anyway.
+        con.execute(
+            "CREATE OR REPLACE TABLE raw_influences (artist_mbid VARCHAR, "
+            "influence_mbid VARCHAR, statement VARCHAR)"
+        )
+    else:
+        con.execute(
+            f"CREATE OR REPLACE TABLE raw_influences AS SELECT * FROM read_ndjson("
+            f"'{influences.as_posix()}', columns={RAW_INFLUENCE_COLUMNS}, "
+            f"format='newline_delimited')"
+        )
+    con.execute(
+        "SET VARIABLE influences_snapshot = "
+        + ("NULL" if snapshot is None else f"DATE '{snapshot}'")
+    )
+
+
 def apply_corrections(con: duckdb.DuckDBPyConnection, corrections: Path | None) -> int:
     if corrections is None:
         # Always materialized, even empty: the fast suite builds
@@ -115,22 +140,17 @@ def build(
     corrections: Path | None,
     dump_year: int = 2026,
     min_year: int = 1850,
-    multi_artist_drop_limit: float = 50.0,
-    min_candidate_credits: int = 200,
     popularity: Path | None = None,
     popularity_snapshot: str | None = None,
+    influences: Path | None = None,
+    influences_snapshot: str | None = None,
 ) -> None:
     load_raw(con, artists, rgs)
     apply_corrections(con, corrections)
     load_popularity(con, popularity, popularity_snapshot)
+    load_influences(con, influences, influences_snapshot)
     con.execute(f"SET VARIABLE dump_year = {dump_year}")
     con.execute(f"SET VARIABLE min_year = {min_year}")
-    # The two bounds of density's exclusion rule (55_genre_reliability.sql,
-    # 60_density.sql) travel as session variables, like the calendar window:
-    # a rule that removes data must be readable and overridable from here,
-    # not buried in a literal inside the SQL that applies it.
-    con.execute(f"SET VARIABLE multi_artist_drop_limit = {multi_artist_drop_limit}")
-    con.execute(f"SET VARIABLE min_candidate_credits = {min_candidate_credits}")
     for path in sorted(sql_dir.glob("*.sql")):
         if path.name.startswith("90_"):
             continue
@@ -158,25 +178,16 @@ INVARIANTS = (
     "genres_from_albums_mismatch",
     "unknown_genre",
     "genre_n_artists_mismatch",
-    "presence_out_of_range",
-    "presence_end_mismatch",
-    "density_out_of_range",
-    "density_above_band_count",
-    "density_population_mismatch",
-    "density_missing_cell",
-    "density_excluded_genre_present",
-    "activity_mismatch",
-    "activity_below_density",
     "link_endpoint_missing",
     "link_incomplete",
     "duplicate_link",
     "link_misoriented",
-    "lineage_misoriented",
-    "lineage_endpoint_missing",
-    "duplicate_lineage",
     "duplicate_popularity",
     "popularity_out_of_range",
     "popularity_unrequested",
+    "duplicate_influence",
+    "influence_malformed",
+    "influence_unsourced",
     "corrections_file_too_large",
     "corrections_invalid",
     "corrections_duplicate",

@@ -61,12 +61,11 @@ ignore_missing_imports = true
 # one-line test adds annotation noise without catching real bugs. Bodies are
 # still checked (check_untyped_defs, part of strict, stays on).
 module = [
-    "conftest", "test_albums", "test_bands", "test_baseline",
-    "test_cli", "test_corrections", "test_density",
-    "test_env", "test_extract", "test_fetch", "test_fixtures",
-    "test_genre_reliability", "test_genres", "test_invariants",
-    "test_frieze", "test_lifespan", "test_lineage", "test_links", "test_load", "test_paths",
-    "test_persons", "test_popularity", "test_presence", "test_publish",
+    "conftest", "test_albums", "test_artist", "test_bands", "test_baseline",
+    "test_cli", "test_corrections", "test_env", "test_extract", "test_fetch",
+    "test_fixtures", "test_genres", "test_influences", "test_invariants", "test_lifespan",
+    "test_links", "test_load", "test_paths", "test_persons", "test_popularity",
+    "test_publish", "test_search",
 ]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false

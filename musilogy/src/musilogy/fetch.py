@@ -1,4 +1,4 @@
-"""Downloads and verifies the MusicBrainz archives and the ListenBrainz snapshots."""
+"""Downloads and verifies the MusicBrainz archives, the ListenBrainz and Wikidata snapshots."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ import hashlib
 import http.client
 import itertools
 import json
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -95,15 +96,19 @@ def _post(url: str, payload: dict[str, Any]) -> tuple[Any, Message]:
 
 
 def _reset_in(headers: Message) -> float:
-    return float(headers.get("X-RateLimit-Reset-In") or MIN_INTERVAL)
+    # ListenBrainz names the wait X-RateLimit-Reset-In; the Wikidata Query
+    # Service answers its 429 with Retry-After (User Manual, "Query limits").
+    return float(headers.get("X-RateLimit-Reset-In") or headers.get("Retry-After") or MIN_INTERVAL)
 
 
 def _backoff(attempt: int) -> float:
     return min(2.0**attempt, MAX_BACKOFF)
 
 
-def _with_retries(call: Callable[[], tuple[Any, Message]]) -> tuple[Any, Message]:
-    """One ListenBrainz request, through its outages: a 429 waits for the reset
+def _with_retries(
+    call: Callable[[], tuple[Any, Message]], service: str = "ListenBrainz"
+) -> tuple[Any, Message]:
+    """One request, through the service's outages: a 429 waits for the reset
     the service names, a 5xx or a cut connection waits longer each time, any
     other refusal is final."""
     attempt = 0
@@ -114,9 +119,9 @@ def _with_retries(call: Callable[[], tuple[Any, Message]]) -> tuple[Any, Message
         except urllib.error.HTTPError as e:
             throttled = e.code == HTTPStatus.TOO_MANY_REQUESTS
             if not throttled and e.code < HTTPStatus.INTERNAL_SERVER_ERROR:
-                raise DownloadError(f"ListenBrainz refused a request: {e}") from e
+                raise DownloadError(f"{service} refused a request: {e}") from e
             if attempt == MAX_ATTEMPTS:
-                raise DownloadError(f"ListenBrainz: {e}, {attempt} attempts") from e
+                raise DownloadError(f"{service}: {e}, {attempt} attempts") from e
             time.sleep(_reset_in(e.headers) if throttled else _backoff(attempt))
         # A connection cut mid-answer raises outside URLError (RemoteDisconnected,
         # ConnectionResetError, IncompleteRead): an outage all the same.
@@ -127,7 +132,7 @@ def _with_retries(call: Callable[[], tuple[Any, Message]]) -> tuple[Any, Message
             http.client.HTTPException,
         ) as e:
             if attempt == MAX_ATTEMPTS:
-                raise DownloadError(f"ListenBrainz: {e}, {attempt} attempts") from e
+                raise DownloadError(f"{service}: {e}, {attempt} attempts") from e
             time.sleep(_backoff(attempt))
 
 
@@ -232,8 +237,9 @@ def _resume(dest: Path, batches: Iterable[list[str]]) -> tuple[Path, int, Iterat
 
 def fetch_proximity(mbids: Iterable[str], dest: Path) -> int:
     """One line per artist asked, written as answered, aside then renamed like
-    the popularity snapshot: about 31 hours for the 111 402 artists with 500
-    listeners or more (2026-10-04), so a stopped run resumes where it was."""
+    the popularity snapshot: several days for the 111 402 artists with 500
+    listeners or more, at about 0.6 artist a second measured with the
+    service's outages (2026-10-04), so a stopped run resumes where it was."""
     partial, n, rest = _resume(dest, ([m] for m in mbids))
     with partial.open("a", encoding="utf-8") as out:
         for (mbid,) in rest:
@@ -260,3 +266,71 @@ def fetch_popularity(batches: Iterable[list[str]], dest: Path) -> int:
             n += len(rows)
     partial.replace(dest)
     return n
+
+
+WDQS_URL = "https://query.wikidata.org/sparql"
+# Every "influenced by" (P737) statement whose subject and object both carry a
+# MusicBrainz artist ID (P434). A deprecated statement is one Wikidata itself
+# holds wrong: left out. wdt:P434 reads the truthy MBIDs, the best
+# non-deprecated rank (mediawiki.org/wiki/Wikibase/Indexing/RDF_Dump_Format,
+# "Truthy statements"); an item with several MBIDs gives one row per pair.
+#
+# The service stops a query at 60 seconds and gives each client 60 seconds of
+# processing a minute (mediawiki.org/wiki/Wikidata_Query_Service/User_Manual,
+# "Query limits"). This one answered its 9 517 rows in 3 to 5 seconds
+# (2026-10-04): one request, no paging. A query cut by the deadline comes back
+# as an error or as a body that does not parse, never as a shorter result.
+INFLUENCES_QUERY = """
+SELECT ?statement ?artist ?influence WHERE {
+  ?subject p:P737 ?statement .
+  ?statement ps:P737 ?object ;
+             wikibase:rank ?rank .
+  FILTER(?rank != wikibase:DeprecatedRank)
+  ?subject wdt:P434 ?artist .
+  ?object wdt:P434 ?influence .
+}
+"""
+# A statement node is named after the statement id, its "$" written "-"
+# (wds:Q42-…); the id keeps the case of its item prefix, "q" on old ones.
+# Checked against the wbgetclaims API on a sample, 2026-10-04.
+STATEMENT_IRI = re.compile(r"http://www\.wikidata\.org/entity/statement/([Qq][0-9]+)-(.+)")
+
+
+def _statement_id(iri: str) -> str:
+    match = STATEMENT_IRI.fullmatch(iri)
+    if match is None:
+        raise DownloadError(f"Wikidata answered a statement that is not one: {iri}")
+    return f"{match[1]}${match[2]}"
+
+
+def influences() -> list[dict[str, str]]:
+    """The declared influences between two MusicBrainz artists, one row per
+    statement and pair of MBIDs, sorted: a snapshot of the same answer is the
+    same bytes. An external payload: a row missing a value is refused rather
+    than written half."""
+    answer, _ = _with_retries(
+        lambda: _get(WDQS_URL, {"query": INFLUENCES_QUERY, "format": "json"}), "Wikidata"
+    )
+    try:
+        rows = [
+            {
+                "artist_mbid": b["artist"]["value"],
+                "influence_mbid": b["influence"]["value"],
+                "statement": _statement_id(b["statement"]["value"]),
+            }
+            for b in answer["results"]["bindings"]
+        ]
+    except (KeyError, TypeError) as e:
+        raise DownloadError(f"Wikidata answered an unexpected shape: {e!r}") from e
+    return sorted(rows, key=lambda r: (r["artist_mbid"], r["influence_mbid"], r["statement"]))
+
+
+def fetch_influences(dest: Path) -> int:
+    """Written aside and renamed, like the ListenBrainz snapshots: a run that
+    fails leaves no file that looks like a complete one."""
+    rows = influences()
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    partial = dest.with_name(dest.name + ".partial")
+    partial.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    partial.replace(dest)
+    return len(rows)

@@ -2,12 +2,12 @@ import json
 import subprocess
 
 import pytest
-from conftest import build_synthetic, synthetic_artist, unreliable_genre_records
+from conftest import build_synthetic, synthetic_artist
 
 from musilogy import REFERENCE_DUMP as DUMP
-from musilogy import REFERENCE_POPULARITY
+from musilogy import REFERENCE_INFLUENCES, REFERENCE_POPULARITY
 from musilogy.fetch import expected_sums, sha256_file
-from musilogy.paths import PACKAGE_DIR, REFERENCE_DIR, popularity_sums
+from musilogy.paths import PACKAGE_DIR, REFERENCE_DIR, influences_sums, popularity_sums
 from musilogy.publish import publish
 
 REF_SUMS = REFERENCE_DIR / f"{DUMP}.SHA256SUMS"
@@ -15,16 +15,7 @@ REF_SUMS = REFERENCE_DIR / f"{DUMP}.SHA256SUMS"
 
 def test_publish_writes_every_table(con, tmp_path):
     manifest = publish(con, tmp_path, DUMP, None)
-    for name in (
-        "artists",
-        "albums",
-        "genres",
-        "density",
-        "activity",
-        "links",
-        "lineage",
-        "popularity",
-    ):
+    for name in ("artists", "albums", "genres", "links", "popularity", "influences"):
         assert (tmp_path / f"{name}.parquet").exists()
         assert name in manifest["counts"]
     assert manifest["dump"] == DUMP
@@ -51,12 +42,6 @@ def test_publish_removes_a_parquet_it_no_longer_writes(con, tmp_path):
     assert (tmp_path / "artists.parquet").exists()
 
 
-def test_presence_is_never_published(con, tmp_path):
-    manifest = publish(con, tmp_path, DUMP, None)
-    assert "presence" not in manifest["counts"]
-    assert not (tmp_path / "presence.parquet").exists()
-
-
 def test_manifest_carries_archive_checksums(con, tmp_path):
     manifest = publish(con, tmp_path, DUMP, None)
     assert manifest["archive_sha256"] == expected_sums(REF_SUMS)
@@ -70,9 +55,19 @@ def test_manifest_names_the_popularity_snapshot_the_build_loaded(con, tmp_path):
     }
 
 
+def test_manifest_names_the_influences_snapshot_the_build_loaded(con, tmp_path):
+    manifest = publish(con, tmp_path, DUMP, None)
+    assert manifest["influences"] == {
+        "snapshot": REFERENCE_INFLUENCES,
+        "sha256": expected_sums(influences_sums(REFERENCE_INFLUENCES)),
+    }
+
+
 def test_a_build_without_snapshot_says_so_in_the_manifest(tmp_path):
     con = build_synthetic(tmp_path, [synthetic_artist("a", "1990", None)])
-    assert publish(con, tmp_path / "out", DUMP, None)["popularity"] is None
+    manifest = publish(con, tmp_path / "out", DUMP, None)
+    assert manifest["popularity"] is None
+    assert manifest["influences"] is None
 
 
 def test_manifest_carries_r2_anomaly_counters(con, tmp_path):
@@ -110,16 +105,6 @@ def test_manifest_carries_the_seven_neutralised_inference_counters(con, tmp_path
         "first_album_before_birth": 0,
         "last_album_before_birth": 0,
     }
-
-
-def test_manifest_counts_what_the_density_exclusion_rule_removes(tmp_path):
-    # A rule that removes data must leave a visible trace. The two numbers
-    # differ on purpose (one genre, carried by two artists): a counter reporting
-    # the genre count in both slots would pass on a scenario where they match.
-    artists, release_groups = unreliable_genre_records()
-    c = build_synthetic(tmp_path, artists, release_groups)
-    manifest = publish(c, tmp_path / "out", DUMP, None)
-    assert manifest["density_exclusions"] == {"genres": 1, "artist_genre_pairs": 2}
 
 
 def test_manifest_carries_git_sha(con, tmp_path):
@@ -198,17 +183,11 @@ def test_manifest_carries_the_parameters_the_build_actually_used(tmp_path):
     # published dataset was not replayable from its own artifacts. Read back
     # from the connection, never from the caller, so the manifest reports what
     # the build used rather than what the caller meant to set.
-    artists, release_groups = unreliable_genre_records()
     c = build_synthetic(
-        tmp_path, artists, release_groups, min_candidate_credits=5, multi_artist_drop_limit=99.5
+        tmp_path, [synthetic_artist("a", "1990", None)], dump_year=2030, min_year=1900
     )
     manifest = publish(c, tmp_path / "out", DUMP, None)
-    assert manifest["parameters"] == {
-        "dump_year": 2026,
-        "min_year": 1850,
-        "multi_artist_drop_limit": 99.5,
-        "min_candidate_credits": 5,
-    }
+    assert manifest["parameters"] == {"dump_year": 2030, "min_year": 1900}
 
 
 def test_manifest_counts_the_rows_that_fed_the_build(con, tmp_path):
@@ -341,8 +320,8 @@ PARQUET_KEYS = {
     "artists": ["mbid"],
     "albums": ["rg_mbid"],
     "genres": ["genre_mbid"],
-    "density": ["genre_mbid", "year"],
     "links": ["src_mbid", "dst_mbid", "type", "y_begin", "y_end"],
+    "influences": ["artist_mbid", "influence_mbid"],
 }
 
 
