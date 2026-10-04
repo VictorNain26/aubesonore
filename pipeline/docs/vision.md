@@ -52,7 +52,7 @@ suivante reprend.
 | Étape | Rôle | Outils | État |
 |---|---|---|---|
 | 1 Bibliothèque | Lire Plex, rapprocher chaque titre de Deezer (strict : artiste, titre, durée ±3 s ; un seul des artistes d'un crédit « A & B » ou « A, B » suffit, jamais sur « and ») | python-plexapi, API Deezer | fait |
-| 2 Découverte | 15 graines par semaine, tirées selon l'écoute ; voisins confirmés par Deezer `related` ET Last.fm `getSimilar` (`recherches/2026-09-24-sources-decouverte.md`) ; 10 titres par voisin | API Deezer, Last.fm | fait |
+| 2 Découverte | 15 graines par semaine, tirées selon l'écoute ; voisins confirmés par Deezer `related` ET Last.fm `getSimilar` (`recherches/2026-09-24-sources-decouverte.md`) ; 10 titres par voisin. Un voisin sans titre est sauté et nommé. Une source qui répond vide partout est indisponible, d'après les taux mesurés le 2026-10-04 : aucun artiste relié pour aucune graine (9,5 % des artistes de la bibliothèque n'en ont pas sur Deezer), aucun similaire pour aucune graine (2 % sur Last.fm), aucun titre pour aucun voisin (1 artiste relié sur 1 809) ; l'étape échoue alors et garde ses graines (le 2026-10-04, 126 voisins vides étaient passés pour une découverte sans résultat) | API Deezer, Last.fm | fait |
 | 2b Nouveautés | Titres récents choisis par des humains, ajoutés à la fournée (§3.1) | API Hype Machine v2, API Deezer | en service |
 | 2c Favoris | Les favoris Hype Machine de Victor : plus des découvertes, et mesure du goût (§3.2) | API Hype Machine v2, API Deezer | en service |
 | 3 Empreinte | Empreinte Discogs-EffNet de l'extrait Deezer de 30 s | essentia-tensorflow, modèle MTG épinglé | fait |
@@ -217,6 +217,23 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
   vérifiée ; la CI installe la même. Sans ces balises,
   Liquidsoap recalcule le gain à chaque titre, ce qui coûte beaucoup de CPU (doc AzuraCast,
   « optimizing »).
+- **Points de coupe.** Mesuré le 2026-10-04 : 15 titres sur 40 finissaient sur plus de 3 s de
+  quasi-silence (jusqu'à 7 s), où le fondu de 3 s d'AzuraCast tombait, d'où des blancs entre
+  les titres. Chaque fichier reçoit les balises `cue_in` et `cue_out`, qu'AzuraCast lit (ses
+  balises inconnues vont dans `extra_metadata`), passe à Liquidsoap et retire de la durée du
+  titre (`StationMedia::getCalculatedLength`, 0.23.8) : la file et la grille comptent la partie
+  jouée. Le calcul est celui de l'AutoCue de Liquidsoap 2.4.5 (`autocue.liq`) : sonie
+  momentanée EBU R128 par trame de 100 ms (filtre `ebur128` de ffmpeg), début avant la première
+  trame à plus de la sonie intégrée − 34 dB, fin après la dernière à plus de − 42 dB. Comparé
+  à Liquidsoap lancé dans le conteneur sur 12 titres de l'antenne : débuts identiques, fins
+  identiques sauf quand Liquidsoap raccourcit une fin douce pour son fondu (`max_overlap`),
+  qu'on garde ici. AutoCue reste coupé dans AzuraCast : il calcule ses points à la lecture et ne
+  les donne pas à la file, qui prendrait de l'avance sur la grille. Avec des points de coupe,
+  AzuraCast donne à Liquidsoap un fondu égal au réglage `crossfade`, 2 s, quand sa file compte
+  `crossfade` × 1,5, 3 s (`Annotations.php`, `Queue::addDurationToTime`, 0.23.8) : la grille suit
+  la file, qui choisit l'heure de chaque titre, et une heure joue ~14 s de plus que prévu, ce
+  que ses titres de fin absorbent. Les titres publiés avant le 2026-10-04 se rattrapent par
+  `radio antenne-cues`, puis `radio mesures`, qui remplace leurs mesures une à une.
 - **Balises** (ffmpeg, qui remplace toutes les balises d'origine) : artiste et titre Deezer,
   commentaire `deezer:<id>`, ISRC, album et pochette (`album.cover_xl`, 1000 × 1000) lus sur
   `/track/<id>` : l'id exact donne le bon album, là où la recherche native d'AzuraCast
@@ -313,9 +330,22 @@ chaque heure (`recherches/2026-10-02-cycle-de-vie.md` §2 et §6). `radio grille
 soir à 23:00 la journée du lendemain ; la passe du dimanche réécrit les heures qui restent après
 avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours).
 
-- **Créneaux.** Une heure en prévoit `ceil(titres_par_heure) + 1` (16), répartis entre les
-  catégories par smooth weighted round-robin. Tant qu'une catégorie n'a pas son stock, sa part
-  est réduite en proportion et rendue aux autres.
+- **Une heure se remplit au temps, pas au nombre.** AzuraCast prend chaque titre dans la
+  playlist programmée à l'heure prévue de son passage : la fin du précédent moins
+  `crossfade` × 1,5, soit 3 s (`Queue::addDurationToTime`, `getCrossfadeDuration`, 0.23.8, lu
+  par `start_next_s`). Un titre passe donc s'il commence avant la fin de l'heure, et l'heure
+  suivante démarre après lui : mesuré le 2026-10-04, chaque heure a commencé 0 à 4 min après
+  l'heure pile et a joué 13 à 16 titres. Une heure reçoit des titres, de la durée mesurée de
+  leur fichier (`track_features.duration_s`), jusqu'à couvrir toute sa durée ; avec 16 titres
+  fixes, une heure de titres courts s'épuisait (5 h le 2026-10-04 : 3 585 s) et le secours
+  jouait. Les catégories se suivent par smooth weighted round-robin ; tant qu'une catégorie n'a
+  pas son stock, sa part est réduite en proportion et rendue aux autres.
+- **Les plus en retard partent à coup sûr.** L'heure démarre après la fin du dernier titre de la
+  précédente, d'au plus sa durée : les titres qui partent avant la fin de l'heure dans
+  n'importe quel ordre, les plus en retard choisis d'abord, forment le fil ; les moins pressés
+  viennent après, où l'heure suivante peut les couper. Sans cela, le fil rangeait en fin d'heure
+  les titres entrés d'office, loin de l'ambiance des autres : coupés, ils restaient en retard
+  (32 titres la nuit du 2026-10-03).
 - **Remplissage, créneau par créneau**, avec la mécanique des logiciels du métier
   (`recherches/2026-10-02-programmation.md` §3) : la catégorie est parcourue dans l'ordre de
   rotation (pile de MusicMaster : dernier passage dans l'historique d'AzuraCast, 14 jours), sur
@@ -333,12 +363,33 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
   - **La grille publiée compte** (table `grille`) : à 23:00, l'heure de 23 h n'est pas encore
     dans l'historique d'AzuraCast. Un titre publié mais pas encore joué compte comme joué à la
     fin de son heure, le pire cas ; sans cela, les titres et les artistes de 23 h repassaient dès
-    minuit. Le titre de trop d'une heure, jamais joué, n'y perd qu'un jour de rotation.
+    minuit. Un titre de fin d'heure coupé n'y perd qu'un jour de rotation. Les
+    heures que la grille réécrit ne comptent pas : elles ne joueront pas ce qu'elles avaient. Le
+    2026-10-04, la passe du dimanche les comptait encore ; elle a bloqué jusqu'au soir les titres
+    et les artistes de la grille de la nuit, et de midi à 23 h chaque heure n'avait que 4 à 6
+    titres sur 16 (121 créneaux vides).
+  - **La file d'attente d'AzuraCast compte aussi** : environ 4 titres, 15 à 20 min d'avance
+    (mesuré le 2026-10-04). Vider une playlist retire de la file ses titres pas encore remis à
+    Liquidsoap, pas les autres (`emptyPlaylist` puis `clearForPlaylist`, 0.23.8) : un titre en
+    file compte comme joué à l'heure prévue de son passage (`played_at`, ou `cued_at` tant
+    qu'elle n'est pas estimée), le pire cas. Sans cela, une passe finie peu avant une heure
+    replaçait dans la journée un titre déjà en file.
   - Un titre placé repart en fin de rotation. Le rapport donne le tour de chaque catégorie, les
-    créneaux vides, les titres pas joués depuis plus de deux tours (doit être nul) et le plus
-    grand nombre de titres d'un même artiste à l'antenne (doit rester à 2).
-- **Vérifié par simulation** (14 jours sur l'antenne du 2026-10-02, 273 découvertes et 68
-  repères, en ne jouant que les ~14,6 premiers titres de chaque heure) : aucun titre sans passage,
+    heures courtes, les créneaux cédés, les titres pas joués depuis plus de deux tours (doit être
+    nul) et le plus grand nombre de titres d'un même artiste à l'antenne (doit rester à 2).
+  - **Une catégorie sans titre permis cède son créneau** à la suivante : l'heure continue au
+    lieu de laisser un trou, et le rapport compte les créneaux cédés.
+  - **Une heure trop courte fait échouer la commande**, après la publication : ses titres ne la
+    couvrent pas, elle s'épuise et le secours joue à la place de la grille (§1). La grille
+    publiée est gardée, et Gatus alerte (§8.2).
+  - **Vérifié par simulation** (14 jours sur l'antenne du 2026-10-04, 532 titres, durées
+    réelles, lecture selon `Queue::addDurationToTime`) : 0 min de secours contre 33 avec 16
+    titres par heure, titres en retard de plus de deux tours de 8-19 par jour à 0 dès le
+    troisième, aucune heure courte, aucun créneau cédé ; le titre le moins joué passe 1,5 fois
+    par semaine au lieu de 1.
+- **Vérifié par simulation, avec 16 titres par heure, avant le remplissage au temps** (14 jours
+  sur l'antenne du 2026-10-02, 273 découvertes et 68 repères, en ne jouant que les ~14,6 premiers
+  titres de chaque heure) : aucun titre sans passage,
   aucun créneau vide, au moins 3 passages par semaine pour chaque découverte. Entre deux passages
   d'un même artiste, au moins 3 h, sans exception (0,1 h au plus court avec la règle « ni l'heure
   ni la précédente », qui ne passait pas minuit). L'artiste le plus joué passe de 74 à 41 passages
@@ -352,19 +403,29 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
   Society Open Science*, 2021, PMC8580447) ; fête le vendredi et le samedi de 20 h à 3 h
   (décision du 2026-09-23). Un titre pas encore mesuré est neutre.
 - **Ordre** : fil qui dérive, du dernier titre de l'heure précédente au plus proche, de la fin
-  d'un titre au début du suivant.
+  d'un titre au début du suivant, sur les titres qui partent à coup sûr, puis sur les autres.
 - **AzuraCast** : 168 playlists « Grille {jour} {hh}h », séquentielles, programmées une heure par
   semaine avec `loop_once`, sans `avoid_duplicates`, créées au premier usage
   (`POST /station/1/playlists` avec `schedule_items` ; `start_date` et `end_date` à `null`
   obligatoires). Remplissage : `DELETE …/empty` puis `POST …/import` (M3U, ordre conservé,
   `ImportAction` 0.23.8). Les playlists programmées passent devant la playlist « AubeSonore »,
-  qui reste le secours (`QueueBuilder`, 0.23.8). Le titre de trop d'une heure n'est pas joué :
-  l'heure suivante démarre à l'heure.
+  qui reste le secours (`QueueBuilder`, 0.23.8).
+- **Heures murales** : AzuraCast programme chaque playlist horaire sur l'heure de la station
+  (`Scheduler::shouldPlayInSchedulePeriod`, 0.23.8), et la grille date chaque heure de même
+  (`hour_spans`), jamais `minuit + h × 3600`, qui se décale d'une heure les jours de changement
+  d'heure, deux dimanches, jour de la passe. Le 2026-10-25, l'heure de 2 h se répète : son
+  créneau dure deux heures et reçoit deux heures de titres ; AzuraCast enchaîne la playlist sur
+  la seconde 2 h tant que sa file en garde un titre (le cas normal, file de 3), sinon il la
+  reprend au début (`shouldPlaylistLoopNow`). Le 2027-03-28, 2 h n'existe pas : l'heure n'est
+  pas planifiée, et sa playlist est vidée, car AzuraCast la jouerait quand même une fois à 3 h
+  avec la grille d'une autre semaine (2 h et 3 h donnent toutes deux 03:00,
+  `StationSchedule::getDateTime`).
 
 **Mesures par titre** (`radio mesures`, depuis le 2026-10-02 ;
 `recherches/2026-10-02-mesures-titres.md`). Chaque titre de la table `antenne`, au repos compris
 (il reviendra au fond), est mesuré une fois sur son fichier du dossier média d'AzuraCast
-(`AZURACAST_MEDIA_DIR`, lu, jamais écrit), dans la table `track_features` :
+(`AZURACAST_MEDIA_DIR`, lu, jamais écrit), dans la table `track_features`, sur la partie jouée,
+entre ses points de coupe, dont la durée est celle que la grille compte :
 
 - dansabilité (`danceability-msd-musicnn-1`), arousal et valence DEAM sur [1, 9]
   (`deam-msd-musicnn-2`), sur un seul réseau d'embedding, MSD-MusiCNN ; l'arousal tient lieu
@@ -429,8 +490,8 @@ toutes les 24 h et un message de retour à la normale, sur deux canaux :
 | `flux-public` : `radio.aubesonore.fr/listen/aubesonore/radio.mp3`, toutes les 5 min | HTTP 200 : vérifie aussi le tunnel Cloudflare (en place) |
 | `passe-hebdo` (endpoint externe) | Poussée par `ExecStopPost=` avec `$SERVICE_RESULT` ; alerte au premier échec ou après 8 jours de silence (en place) |
 | `sauvegarde` (endpoint externe) | Même mécanisme pour `radio-backup` ; alerte au premier échec ou après 2 jours de silence |
-| `grille-a-l-antenne` : `nowplaying`, toutes les 10 min | la playlist en cours s'appelle « Grille … » ; alerte après 7 échecs (plus d'une heure de secours) |
-| `grille` (endpoint externe) | `radio-grille` ; alerte au premier échec ou après 2 jours de silence |
+| `grille-a-l-antenne` : `nowplaying`, toutes les 10 min | la playlist en cours s'appelle « Grille … » ; alerte après 7 échecs (plus d'une heure de secours). Une heure à moitié vide ne la fait pas alerter : ses sondes alternent ; c'est l'échec de `radio grille` sur une heure trop courte qui la signale |
+| `grille` (endpoint externe) | `radio-grille` ; alerte au premier échec (heure mal écrite, heure trop courte) ou après 2 jours de silence. Dans la passe du dimanche, `radio check` fait échouer la passe |
 | `page-de-vote` : `127.0.0.1:8040`, toutes les 5 min | HTTP 403 sans jeton Access : la page tourne (en place) |
 | `page-de-vote-publique` : `votes.aubesonore.fr`, toutes les 5 min, redirection non suivie | HTTP 302 vers la connexion Access : la règle Access et la route du tunnel tiennent |
 
