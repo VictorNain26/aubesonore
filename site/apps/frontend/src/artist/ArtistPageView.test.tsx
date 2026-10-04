@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import type { MusilogyArtist } from '@aubesonore/shared-types/client';
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { makeArtistProfile } from '../mocks/handlers';
 import {
@@ -17,6 +17,44 @@ function show(state: ArtistPageState, kept: Kept = []) {
   return render(<ArtistPageView state={state} kept={kept} />, { wrapper: MemoryRouter });
 }
 
+const MUSILOGY: MusilogyArtist = {
+  card: {
+    mbid: '00000000-0000-4000-8000-000000000001',
+    name: 'Hania Rani',
+    disambiguation: null,
+    y0: 2015,
+    played: { id: 'a-1', slug: 'hania-rani' },
+    type: 'Person',
+    country: 'PL',
+    beginArea: null,
+    y0Source: 'declared',
+    yEnd: null,
+    yEndSource: null,
+    ended: false,
+    genres: [],
+    listeners: 1000,
+    proximitySurveyed: true,
+  },
+  neighbours: {
+    before: [
+      {
+        mbid: '00000000-0000-4000-8000-000000000002',
+        name: 'Nils Frahm',
+        disambiguation: null,
+        y0: 2005,
+        played: null,
+        yEnd: null,
+        score: 900,
+      },
+    ],
+    during: [],
+    after: [],
+    undated: [],
+  },
+  influences: null,
+  links: [],
+};
+
 const SUMMARY = {
   text: 'Hania Rani est une pianiste et compositrice polonaise.',
   lang: 'fr' as const,
@@ -24,13 +62,32 @@ const SUMMARY = {
 };
 
 describe('ArtistPageView', () => {
-  it('says who the artist is, then what the antenna played', () => {
+  it('says who the artist is, without listing what the antenna played', () => {
     show({ status: 'ready', profile: makeArtistProfile({ summary: SUMMARY }) });
 
     expect(screen.getByRole('heading', { level: 1, name: 'Hania Rani' })).toBeInTheDocument();
     expect(screen.getByText('Artiste · Pologne')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: "Ses titres à l'antenne" })).toBeInTheDocument();
-    expect(screen.getByText('F Major')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: "Ses titres à l'antenne" })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('F Major')).not.toBeInTheDocument();
+  });
+
+  it("carries Musilogy's sections that hold something, on the same page", () => {
+    render(
+      <ArtistPageView
+        state={{ status: 'ready', profile: makeArtistProfile() }}
+        musilogy={MUSILOGY}
+        thisYear={2026}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(screen.getByRole('heading', { name: 'Sa place dans le temps' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Avant' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Après' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Influences déclarées' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Explorer dans Musilogy' })).not.toBeInTheDocument();
   });
 
   it('says the facts in a sentence when Wikipedia has no article', () => {
@@ -41,59 +98,13 @@ describe('ArtistPageView', () => {
     expect(screen.queryByText('Artiste · Pologne')).not.toBeInTheDocument();
   });
 
-  it('lists each title once: how often it played, then keep it or hear it on Deezer', async () => {
-    const onToggle = vi.fn();
-    const profile = makeArtistProfile({
-      playedOnRadio: [
-        {
-          title: 'The Word',
-          artist: 'Supergrass',
-          plays: 3,
-          lastPlayedAt: '2026-10-04T15:46:00.000Z',
-          deezer: { link: 'https://www.deezer.com/track/1', cover: null },
-        },
-        {
-          title: 'The Bird is on Fire',
-          artist: 'Supergrass',
-          plays: 1,
-          lastPlayedAt: '2026-10-03T19:21:00.000Z',
-          deezer: null,
-        },
-      ],
-    });
-    render(
-      <ArtistPageView
-        state={{ status: 'ready', profile }}
-        keep={{ isKept: () => false, isKeeping: () => false, onToggle }}
-      />,
-      { wrapper: MemoryRouter }
-    );
-
-    const [word, bird] = screen.getAllByRole('listitem');
-    expect(word).toHaveTextContent('The Word3 passages · dernier le 4 oct.');
-    expect(bird).toHaveTextContent('The Bird is on FirePassé le 3 oct.');
-    expect(screen.getByRole('link', { name: 'Écouter « The Word » sur Deezer' })).toHaveAttribute(
-      'href',
-      'https://www.deezer.com/track/1'
-    );
-    expect(
-      screen.queryByRole('link', { name: 'Écouter « The Bird is on Fire » sur Deezer' })
-    ).not.toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('button', { name: 'Garder « The Word »' }));
-    expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ title: 'The Word' }));
-  });
-
-  it("shows what the listener kept of the artist instead of the antenna's plays", () => {
+  it('shows what the listener kept of the artist', () => {
     show({ status: 'ready', profile: makeArtistProfile() }, [
       { id: 'k-1', title: 'Glass', createdAt: '2026-09-12T08:00:00.000Z' },
     ]);
 
     expect(screen.getByRole('heading', { name: 'Vos titres gardés' })).toBeInTheDocument();
     expect(screen.getByText('Glass')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('heading', { name: "Ses titres à l'antenne" })
-    ).not.toBeInTheDocument();
   });
 
   it('quotes the Wikipedia summary and links its article, naming no licence on the page', () => {
@@ -118,12 +129,6 @@ describe('ArtistPageView', () => {
     expect(
       screen.getByRole('link', { name: 'Lire la suite sur Wikipédia, en anglais' })
     ).toBeInTheDocument();
-  });
-
-  it('says so when no play is recorded yet', () => {
-    show({ status: 'ready', profile: makeArtistProfile({ playedOnRadio: [] }) });
-
-    expect(screen.getByText("Aucun passage enregistré pour l'instant.")).toBeInTheDocument();
   });
 
   it('shows nothing a source could not fill', () => {

@@ -3,10 +3,11 @@ import { useParams } from 'react-router';
 import { ArtistPageView, type ArtistPageState } from '../artist/ArtistPageView';
 import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../home/SiteFooter';
+import type { MusilogyArtist } from '@aubesonore/shared-types/client';
 import { fetchArtistProfile } from '../lib/artistProfile';
+import { fetchMusilogyArtist } from '../lib/musilogy';
 import { useAuthStore } from '../stores/authStore';
-import { isTrackLiked, useLikedTracksStore } from '../stores/likedTracksStore';
-import { useLikeAction } from '../hooks/player/useLikeAction';
+import { useLikedTracksStore } from '../stores/likedTracksStore';
 import { useLocaleStore } from '../stores/localeStore';
 
 export default function ArtistPage() {
@@ -18,7 +19,6 @@ export default function ArtistPage() {
   } | null>(null);
   const key = `${id}:${locale}`;
   const setListenVisible = useHeroListenVisible((s) => s.setVisible);
-  const { likingTrackId, toggleLike } = useLikeAction();
   // The listener's kept tracks: this artist's, newest first. Loaded again on
   // each page, since a track kept a moment ago is tied to its artist after the
   // like answered.
@@ -59,6 +59,21 @@ export default function ArtistPage() {
   const state: ArtistPageState =
     loaded !== null && loaded.key === key ? loaded.state : { status: 'loading' };
 
+  // What Musilogy holds of the artist, once the profile gives their MBID. A failure or Musilogy not
+  // loaded leaves the page without those sections; the profile still answers.
+  const mbid = state.status === 'ready' ? state.profile.mbid : null;
+  const [musilogy, setMusilogy] = useState<{ mbid: string; artist: MusilogyArtist } | null>(null);
+  useEffect(() => {
+    if (!mbid) return;
+    const controller = new AbortController();
+    fetchMusilogyArtist(mbid, controller.signal)
+      .then((artist) => {
+        if (artist) setMusilogy({ mbid, artist });
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [mbid]);
+
   useEffect(() => {
     const previous = document.title;
     return () => {
@@ -80,12 +95,7 @@ export default function ArtistPage() {
       <ArtistPageView
         state={state}
         kept={kept}
-        keep={{
-          isKept: (title, artist) => isTrackLiked(tracks, title, artist),
-          isKeeping: (title, artist) => likingTrackId === `${title}-${artist}`,
-          onToggle: (played) =>
-            void toggleLike(played.title, played.artist, played.deezer?.cover ?? undefined),
-        }}
+        musilogy={musilogy !== null && musilogy.mbid === mbid ? musilogy.artist : null}
       />
       <SiteFooter />
     </>
