@@ -316,3 +316,46 @@ def test_the_band_sections_keep_the_signatures_the_site_reads(tmp_path, pg):
             "TABLE(kind text, mbid text, name text, disambiguation text, y0 integer)",
         ),
     ]
+
+
+D = "00000000-0000-4000-8000-0000000000f4"
+E = "00000000-0000-4000-8000-0000000000f5"
+
+
+def neighbours(conninfo, mbid):
+    return pg_query(conninfo, f"SELECT mbid, rank, side FROM musilogy.artist_neighbours('{mbid}')")
+
+
+def test_neighbours_come_in_rank_order_each_with_its_side_in_time(tmp_path, pg):
+    # A began in 1978. B (1960) is more than 3 years before, D (1982) more than
+    # 3 after, C (1975) exactly 3 before: during. E has no year: no side. The
+    # neighbour absent from the dump has no name to show and is left out,
+    # without renumbering the others.
+    loaded(
+        tmp_path,
+        pg,
+        [group(A, "1978"), group(B, "1960"), group(C, "1975"), group(D, "1982"), group(E, None)],
+        proximity={A: [(D, 90), (ABSENT, 80), (B, 70), (E, 60), (C, 50)]},
+    )
+    assert neighbours(pg, A) == [
+        (D, 1, "after"),
+        (B, 3, "before"),
+        (E, 4, None),
+        (C, 5, "during"),
+    ]
+
+
+def test_an_artist_absent_from_the_dump_has_no_neighbours(tmp_path, pg):
+    loaded(tmp_path, pg, [group(A)], proximity={ABSENT: [(A, 90)]})
+    assert neighbours(pg, ABSENT) == []
+
+
+def test_the_card_tells_a_surveyed_artist_from_one_never_asked(tmp_path, pg):
+    # A was asked and has no neighbour; B was never asked. Only B's empty list
+    # is no answer.
+    loaded(tmp_path, pg, [group(A), group(B)], proximity={A: []})
+    assert pg_query(
+        pg,
+        f"SELECT mbid, proximity_surveyed FROM musilogy.artist_card('{A}') "
+        f"UNION ALL SELECT mbid, proximity_surveyed FROM musilogy.artist_card('{B}')",
+    ) == [(A, True), (B, False)]

@@ -2,7 +2,7 @@ import json
 import subprocess
 
 import pytest
-from conftest import build_synthetic, synthetic_artist
+from conftest import build_synthetic, proximity_file, synthetic_artist
 
 from musilogy import REFERENCE_DUMP as DUMP
 from musilogy import REFERENCE_INFLUENCES, REFERENCE_POPULARITY
@@ -15,7 +15,7 @@ REF_SUMS = REFERENCE_DIR / f"{DUMP}.SHA256SUMS"
 
 def test_publish_writes_every_table(con, tmp_path):
     manifest = publish(con, tmp_path, DUMP, None)
-    for name in ("artists", "albums", "genres", "links", "popularity", "influences"):
+    for name in ("artists", "albums", "genres", "links", "popularity", "influences", "proximity"):
         assert (tmp_path / f"{name}.parquet").exists()
         assert name in manifest["counts"]
     assert manifest["dump"] == DUMP
@@ -63,11 +63,37 @@ def test_manifest_names_the_influences_snapshot_the_build_loaded(con, tmp_path):
     }
 
 
+def test_manifest_names_the_proximity_snapshot_the_build_loaded(tmp_path, monkeypatch):
+    # The digest is the one pinned for the snapshot's date, read from its
+    # reference file; here a file of this test's own, so the wiring is checked
+    # without depending on which snapshot is pinned.
+    sums = tmp_path / "listenbrainz-similar.SHA256SUMS"
+    sums.write_text(f"{'0' * 64}  artist-similar.jsonl\n", encoding="utf-8")
+    monkeypatch.setattr("musilogy.publish.proximity_sums", lambda _date: sums)
+    con = build_synthetic(
+        tmp_path,
+        [synthetic_artist("a", "1990", None)],
+        proximity=proximity_file(tmp_path / "proximity.jsonl", {"a": []}),
+        proximity_snapshot="2026-10-04",
+    )
+    manifest = publish(con, tmp_path / "out", DUMP, None)
+    assert manifest["proximity"] == {
+        "snapshot": "2026-10-04",
+        "sha256": {"artist-similar.jsonl": "0" * 64},
+    }
+
+
+def test_manifest_counts_the_repeated_neighbours_it_dropped(con, tmp_path):
+    # The first 120 lines of the snapshot repeat one neighbour once (line 119).
+    assert publish(con, tmp_path, DUMP, None)["proximity_exclusions"] == {"repeated_neighbour": 1}
+
+
 def test_a_build_without_snapshot_says_so_in_the_manifest(tmp_path):
     con = build_synthetic(tmp_path, [synthetic_artist("a", "1990", None)])
     manifest = publish(con, tmp_path / "out", DUMP, None)
     assert manifest["popularity"] is None
     assert manifest["influences"] is None
+    assert manifest["proximity"] is None
 
 
 def test_manifest_carries_r2_anomaly_counters(con, tmp_path):
@@ -322,6 +348,7 @@ PARQUET_KEYS = {
     "genres": ["genre_mbid"],
     "links": ["src_mbid", "dst_mbid", "type", "y_begin", "y_end"],
     "influences": ["artist_mbid", "influence_mbid"],
+    "proximity": ["artist_mbid", "rank"],
 }
 
 

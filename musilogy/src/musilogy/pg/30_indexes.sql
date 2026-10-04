@@ -7,4 +7,6 @@ CREATE INDEX ON links (dst_mbid);
 CREATE INDEX ON influences (influence_mbid);
 -- artist_urls; artist_releases reads the primary key.
 CREATE INDEX ON urls (artist_mbid);
+-- An artist's neighbours, read in their rank order (artist_neighbours).
+CREATE INDEX ON proximity (artist_mbid, rank);
 ANALYZE;

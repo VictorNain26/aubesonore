@@ -36,6 +36,10 @@ def con():
         influences_snapshot=REFERENCE_INFLUENCES,
         discography=FIX / "discography.jsonl",
         discography_snapshot=REFERENCE_DISCOGRAPHY,
+        # The first lines of the proximity snapshot. No date: the manifest
+        # would then name a snapshot and its pinned digest, which the
+        # publication tests set up themselves (test_publish.py).
+        proximity=FIX / "proximity.jsonl",
     )
     return c
 
@@ -128,13 +132,39 @@ def influences_file(path, rows):
     return path
 
 
+def proximity_file(path, rows):
+    """A synthetic ListenBrainz proximity snapshot: `rows` maps each artist
+    asked to its neighbours, (mbid, score) pairs in the service's order."""
+    path.write_text(
+        "".join(
+            json.dumps(
+                {
+                    "artist_mbid": artist,
+                    "similar": [{"artist_mbid": m, "score": s} for m, s in neighbours],
+                }
+            )
+            + "\n"
+            for artist, neighbours in rows.items()
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
 def published(
-    tmp_path, artists, popularity=None, influences=None, release_groups=(), discography=None
+    tmp_path,
+    artists,
+    popularity=None,
+    influences=None,
+    release_groups=(),
+    discography=None,
+    proximity=None,
 ):
     """A synthetic build, published as a delivery. `popularity` maps an mbid
     to its listen count; every other artist gets the null row ListenBrainz
     sends for an artist it has no listen of, as a real snapshot asks about
-    everyone. `influences` lists (artist, influence, statement) rows."""
+    everyone. `influences` lists (artist, influence, statement) rows,
+    `proximity` maps each artist asked to its neighbours (proximity_file)."""
     tmp_path.mkdir(exist_ok=True)
     kwargs: dict[str, Any] = {}
     if popularity is not None:
@@ -165,6 +195,8 @@ def published(
         )
         kwargs["discography"] = path
         kwargs["discography_snapshot"] = REFERENCE_DISCOGRAPHY
+    if proximity is not None:
+        kwargs["proximity"] = proximity_file(tmp_path / "proximity.jsonl", proximity)
     out = tmp_path / "out"
     publish(build_synthetic(tmp_path, artists, release_groups, **kwargs), out, REFERENCE_DUMP, None)
     return out
@@ -186,9 +218,12 @@ def loaded(
     influences=None,
     release_groups=(),
     discography=None,
+    proximity=None,
 ):
     load(
-        published(tmp_path, artists, popularity, influences, release_groups, discography),
+        published(
+            tmp_path, artists, popularity, influences, release_groups, discography, proximity
+        ),
         conninfo,
     )
     return conninfo

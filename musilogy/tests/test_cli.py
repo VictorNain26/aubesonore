@@ -68,6 +68,7 @@ def test_run_refuses_to_publish_when_the_extraction_disagrees(tmp_path, monkeypa
     monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
     monkeypatch.setattr(cli, "verified_influences", lambda: FIX / "influences.jsonl")
     monkeypatch.setattr(cli, "verified_discography", lambda: FIX / "discography.jsonl")
+    monkeypatch.setattr(cli, "verified_proximity", lambda: FIX / "proximity.jsonl")
 
     def record_publish(*args):
         # Returns a plausible manifest on purpose: a double returning None
@@ -132,3 +133,16 @@ def test_influences_taken_today_are_never_taken_again(tmp_path, monkeypatch):
     with pytest.raises(SystemExit) as raised:
         cli.snapshot_influences()
     assert "never taken again" in str(raised.value)
+
+
+def test_run_stops_when_the_pinned_proximity_is_missing(tmp_path, monkeypatch):
+    # The neighbours change with every listening day: a run neither asks
+    # ListenBrainz again nor builds without the snapshot it pins.
+    monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
+    monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
+    monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
+    monkeypatch.setattr(cli, "verified_influences", lambda: FIX / "influences.jsonl")
+    monkeypatch.setattr(cli, "PROXIMITY_JSONL", tmp_path / "artist-similar.jsonl")
+    with pytest.raises(SystemExit) as raised:
+        cli.run()
+    assert "cannot be taken again" in str(raised.value)
