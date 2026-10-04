@@ -1,14 +1,14 @@
-import type { ArtistProfile, SiteLocale } from '@aubesonore/shared-types/client';
+import type { ArtistProfile, ArtistRadioTitle, SiteLocale } from '@aubesonore/shared-types/client';
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import { artist, artistProfile } from '../db/schema';
 import { logger } from '../lib/logger';
 import type { Lookup } from '../lib/lookup';
 import { createSingleFlight } from '../lib/singleFlight';
-import { getArtist } from './deezerService';
-import { ensureMbid } from './artistResolver';
+import { findTrackByIsrc, getArtist } from './deezerService';
+import { ensureMbid, normalizeArtistName, sameTitle } from './artistResolver';
 import { getArtistByMbid } from './musicbrainzService';
-import { getPlaysByArtist } from './radioPlayService';
+import { getTitlesByArtist, type PlayedTitle } from './radioPlayService';
 import { getSummary } from './wikipediaService';
 
 const SOURCE_TIMEOUT_MS = 6_000;
@@ -83,6 +83,26 @@ function refresh(row: ArtistRow, previous: StoredProfile | null): Promise<Stored
   });
 }
 
+/**
+ * A played title on Deezer, from its ISRC, once the answer is shown to be it:
+ * the same title, crediting this artist (an ISRC can be filed on another
+ * recording, see identifyByIsrc). Anything else, or Deezer failing, gives no
+ * link rather than another song's.
+ */
+async function deezerRecording(
+  played: PlayedTitle,
+  row: { deezerId: string | null; normalizedName: string }
+): Promise<ArtistRadioTitle['deezer']> {
+  if (!played.isrc) return null;
+  const track = await findTrackByIsrc(played.isrc);
+  if (track.status !== 'found' || !track.value.link) return null;
+  if (!sameTitle(played.title, track.value.title)) return null;
+  const credited = track.value.artists.some(
+    (a) => a.id === row.deezerId || normalizeArtistName(a.name) === row.normalizedName
+  );
+  return credited ? { link: track.value.link, cover: track.value.cover } : null;
+}
+
 export async function getArtistProfile(
   id: string,
   locale: SiteLocale
@@ -109,13 +129,22 @@ export async function getArtistProfile(
     });
   }
 
-  const playedOnRadio = await getPlaysByArtist(row.normalizedName).catch((err: unknown) => {
+  const titles = await getTitlesByArtist(row.normalizedName).catch((err: unknown) => {
     logger.warn('artistProfile.source_failed', {
       label: 'radioPlay',
       message: (err as Error).message,
     });
     return [];
   });
+  const playedOnRadio: ArtistRadioTitle[] = await Promise.all(
+    titles.map(async (played) => ({
+      title: played.title,
+      artist: played.artist,
+      plays: played.plays,
+      lastPlayedAt: played.lastPlayedAt.toISOString(),
+      deezer: await deezerRecording(played, row),
+    }))
+  );
 
   return {
     id: row.id,

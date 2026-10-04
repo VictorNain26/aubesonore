@@ -152,10 +152,15 @@ export interface DeezerIsrcTrack {
   title: string;
   /** The track's main artist, then its other contributors. */
   artists: DeezerArtist[];
+  link: string | null;
+  /** The album cover, hotlinked from Deezer's CDN. */
+  cover: string | null;
 }
 
 interface RawIsrcTrack extends RawTrack {
   contributors?: RawArtist[];
+  link?: string;
+  album?: { cover_medium?: string };
 }
 
 /**
@@ -182,7 +187,15 @@ export async function findTrackByIsrc(isrc: string): Promise<Lookup<DeezerIsrcTr
     }
     const result: Lookup<DeezerIsrcTrack> =
       body?.title && artists.size > 0
-        ? { status: 'found', value: { title: body.title, artists: [...artists.values()] } }
+        ? {
+            status: 'found',
+            value: {
+              title: body.title,
+              artists: [...artists.values()],
+              link: body.link ?? null,
+              cover: body.album?.cover_medium ?? null,
+            },
+          }
         : { status: 'none' };
     deezerCache.set(key, result, result.status === 'none' ? NEGATIVE_TTL_MS : undefined);
     return result;

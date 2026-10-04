@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { makeArtistProfile } from '../mocks/handlers';
 import {
@@ -28,7 +29,7 @@ describe('ArtistPageView', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Hania Rani' })).toBeInTheDocument();
     expect(screen.getByText('Artiste · Pologne')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Passé sur AubeSonore' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: "Ses titres à l'antenne" })).toBeInTheDocument();
     expect(screen.getByText('F Major')).toBeInTheDocument();
   });
 
@@ -40,6 +41,49 @@ describe('ArtistPageView', () => {
     expect(screen.queryByText('Artiste · Pologne')).not.toBeInTheDocument();
   });
 
+  it('lists each title once: how often it played, then keep it or hear it on Deezer', async () => {
+    const onToggle = vi.fn();
+    const profile = makeArtistProfile({
+      playedOnRadio: [
+        {
+          title: 'The Word',
+          artist: 'Supergrass',
+          plays: 3,
+          lastPlayedAt: '2026-10-04T15:46:00.000Z',
+          deezer: { link: 'https://www.deezer.com/track/1', cover: null },
+        },
+        {
+          title: 'The Bird is on Fire',
+          artist: 'Supergrass',
+          plays: 1,
+          lastPlayedAt: '2026-10-03T19:21:00.000Z',
+          deezer: null,
+        },
+      ],
+    });
+    render(
+      <ArtistPageView
+        state={{ status: 'ready', profile }}
+        keep={{ isKept: () => false, isKeeping: () => false, onToggle }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    const [word, bird] = screen.getAllByRole('listitem');
+    expect(word).toHaveTextContent('The Word3 passages · dernier le 4 oct.');
+    expect(bird).toHaveTextContent('The Bird is on FirePassé le 3 oct.');
+    expect(screen.getByRole('link', { name: 'Écouter « The Word » sur Deezer' })).toHaveAttribute(
+      'href',
+      'https://www.deezer.com/track/1'
+    );
+    expect(
+      screen.queryByRole('link', { name: 'Écouter « The Bird is on Fire » sur Deezer' })
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Garder « The Word »' }));
+    expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ title: 'The Word' }));
+  });
+
   it("shows what the listener kept of the artist instead of the antenna's plays", () => {
     show({ status: 'ready', profile: makeArtistProfile() }, [
       { id: 'k-1', title: 'Glass', createdAt: '2026-09-12T08:00:00.000Z' },
@@ -47,7 +91,9 @@ describe('ArtistPageView', () => {
 
     expect(screen.getByRole('heading', { name: 'Vos titres gardés' })).toBeInTheDocument();
     expect(screen.getByText('Glass')).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Passé sur AubeSonore' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: "Ses titres à l'antenne" })
+    ).not.toBeInTheDocument();
   });
 
   it('quotes the Wikipedia summary with its source and licence', () => {

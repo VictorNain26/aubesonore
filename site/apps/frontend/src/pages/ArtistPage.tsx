@@ -5,7 +5,8 @@ import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../home/SiteFooter';
 import { fetchArtistProfile } from '../lib/artistProfile';
 import { useAuthStore } from '../stores/authStore';
-import { useLikedTracksStore } from '../stores/likedTracksStore';
+import { isTrackLiked, useLikedTracksStore } from '../stores/likedTracksStore';
+import { useLikeAction } from '../hooks/player/useLikeAction';
 import { useLocaleStore } from '../stores/localeStore';
 
 export default function ArtistPage() {
@@ -17,6 +18,7 @@ export default function ArtistPage() {
   } | null>(null);
   const key = `${id}:${locale}`;
   const setListenVisible = useHeroListenVisible((s) => s.setVisible);
+  const { likingTrackId, toggleLike } = useLikeAction();
   // The listener's kept tracks: this artist's, newest first. Loaded again on
   // each page, since a track kept a moment ago is tied to its artist after the
   // like answered.
@@ -75,7 +77,16 @@ export default function ArtistPage() {
 
   return (
     <>
-      <ArtistPageView state={state} kept={kept} />
+      <ArtistPageView
+        state={state}
+        kept={kept}
+        keep={{
+          isKept: (title, artist) => isTrackLiked(tracks, title, artist),
+          isKeeping: (title, artist) => likingTrackId === `${title}-${artist}`,
+          onToggle: (played) =>
+            void toggleLike(played.title, played.artist, played.deezer?.cover ?? undefined),
+        }}
+      />
       <SiteFooter />
     </>
   );

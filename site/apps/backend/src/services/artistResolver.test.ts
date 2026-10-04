@@ -385,7 +385,12 @@ describe('identity by ISRC', () => {
   const deezerTrack = (title: string, ...artists: Array<[string, string]>) =>
     ({
       status: 'found',
-      value: { title, artists: artists.map(([id, name]) => ({ id, name, picture: null })) },
+      value: {
+        title,
+        artists: artists.map(([id, name]) => ({ id, name, picture: null })),
+        link: null,
+        cover: null,
+      },
     }) as const;
 
   it('identifies a new artist by an ISRC whose recording is the played track', async () => {

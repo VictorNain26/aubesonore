@@ -4,13 +4,15 @@ import type {
   ArtistFacts,
   ArtistPlatform,
   ArtistProfile,
+  ArtistRadioTitle,
   ArtistSummary,
   ClientLikedTrack,
 } from '@aubesonore/shared-types/client';
 import { getLocale, localizeHref } from '@/paraglide/runtime.js';
 import { Cover } from '../home/Cover';
+import { KeepHeart } from '../home/KeepHeart';
 import { musilogyPath } from '../lib/musilogy';
-import { TEXT_ACTION } from '../home/styles';
+import { ARTIST_LINK, TEXT_ACTION } from '../home/styles';
 import * as m from '@/paraglide/messages.js';
 
 export type ArtistPageState =
@@ -94,14 +96,77 @@ function formatKeptAt(iso: string): string {
   }).format(new Date(iso));
 }
 
-function formatPlayedAt(iso: string): string {
+/** The day of a play: the year only when it is not this one. */
+function formatPlayedDay(iso: string): string {
+  const date = new Date(iso);
   return new Intl.DateTimeFormat(getLocale(), {
     day: 'numeric',
     month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(new Date(iso));
+    ...(date.getFullYear() === new Date().getFullYear() ? {} : { year: 'numeric' }),
+  }).format(date);
+}
+
+/** Garder on a played title; the container brings the store. */
+export interface KeepOnPage {
+  isKept: (title: string, artist: string) => boolean;
+  isKeeping: (title: string, artist: string) => boolean;
+  onToggle: (played: ArtistRadioTitle) => void;
+}
+
+const KEEP_BUTTON =
+  'group ease-out-quart focus-visible:outline-accent flex size-11 items-center justify-center rounded-full transition-[scale] duration-150 focus-visible:outline-2 active:scale-90 disabled:opacity-50';
+
+/** One title the antenna plays: what it is (on Deezer, when known), how often, then keep it. */
+function PlayedRow({ played, keep }: { played: ArtistRadioTitle; keep: KeepOnPage | null }) {
+  const day = formatPlayedDay(played.lastPlayedAt);
+  return (
+    <li className="border-border reveal grid min-h-16 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-x-3 border-b py-2 md:gap-x-6 md:px-1">
+      <Cover
+        src={played.deezer?.cover}
+        alt=""
+        seed={`${played.artist}|${played.title}`}
+        className="size-11"
+      />
+      <span className="flex min-w-0 flex-col">
+        {played.deezer ? (
+          // Negative margins grow the tap target to 44px without moving the row.
+          <a
+            href={played.deezer.link}
+            {...OUTSIDE_LINK}
+            aria-label={m.artist_listen_on_deezer({ title: played.title })}
+            className={`${ARTIST_LINK} text-row -my-3 truncate py-3 underline-offset-4`}
+          >
+            {played.title}
+          </a>
+        ) : (
+          <span className="text-row truncate">{played.title}</span>
+        )}
+        <span className="text-sub text-text-muted truncate">
+          {played.plays > 1
+            ? m.artist_played_many({ count: played.plays, date: day })
+            : m.artist_played_once({ date: day })}
+        </span>
+      </span>
+      {keep ? (
+        <button
+          type="button"
+          onClick={() => keep.onToggle(played)}
+          disabled={keep.isKeeping(played.title, played.artist)}
+          aria-pressed={keep.isKept(played.title, played.artist)}
+          aria-label={m.track_keep_aria({ title: played.title })}
+          className={KEEP_BUTTON}
+        >
+          <KeepHeart
+            isKept={keep.isKept(played.title, played.artist)}
+            className="ease-spring size-4.5 transition-transform duration-250 group-hover:scale-118"
+            strokeWidth={1.5}
+          />
+        </button>
+      ) : (
+        <span aria-hidden="true" />
+      )}
+    </li>
+  );
 }
 
 export function Section({
@@ -192,7 +257,15 @@ function Portrait({ text }: { text: string }) {
 
 type KeptTrack = Pick<ClientLikedTrack, 'id' | 'title' | 'createdAt'>;
 
-function Profile({ profile, kept }: { profile: ArtistProfile; kept: readonly KeptTrack[] }) {
+function Profile({
+  profile,
+  kept,
+  keep,
+}: {
+  profile: ArtistProfile;
+  kept: readonly KeptTrack[];
+  keep: KeepOnPage | null;
+}) {
   // Without a Wikipedia article, the facts are said in a sentence rather than listed.
   const portrait = !profile.summary && profile.facts ? portraitSentence(profile.facts) : null;
   const facts = profile.facts && !portrait ? factsLine(profile.facts) : null;
@@ -244,16 +317,8 @@ function Profile({ profile, kept }: { profile: ArtistProfile; kept: readonly Kep
           <Section id="played" title={m.artist_played_title()} body={m.artist_played_body()}>
             {profile.playedOnRadio.length > 0 ? (
               <ol className="border-accent m-0 list-none border-t p-0">
-                {profile.playedOnRadio.map((play) => (
-                  <li
-                    key={`${play.playedAt}-${play.title}`}
-                    className="border-border reveal grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1"
-                  >
-                    <span className="text-row truncate">{play.title}</span>
-                    <span className="text-ui text-text-muted font-mono whitespace-nowrap tabular-nums">
-                      {formatPlayedAt(play.playedAt)}
-                    </span>
-                  </li>
+                {profile.playedOnRadio.map((played) => (
+                  <PlayedRow key={played.title} played={played} keep={keep} />
                 ))}
               </ol>
             ) : (
@@ -289,9 +354,11 @@ function Profile({ profile, kept }: { profile: ArtistProfile; kept: readonly Kep
 export function ArtistPageView({
   state,
   kept = [],
+  keep = null,
 }: {
   state: ArtistPageState;
   kept?: readonly KeptTrack[];
+  keep?: KeepOnPage | null;
 }) {
   return (
     <main id="main" className="min-h-dvh">
@@ -306,7 +373,7 @@ export function ArtistPageView({
       ) : state.status === 'error' ? (
         <Message title={m.artist_error_title()} body={m.artist_error_body()} />
       ) : (
-        <Profile profile={state.profile} kept={kept} />
+        <Profile profile={state.profile} kept={kept} keep={keep} />
       )}
     </main>
   );

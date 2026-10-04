@@ -5,10 +5,12 @@ import { radioPlay } from '../db/schema';
 import { normalizeArtistName, primaryArtistName } from './artistResolver';
 import { fetchNowPlaying } from './nowPlaying';
 
-export interface RadioPlay {
+export interface PlayedTitle {
   title: string;
   artist: string;
-  playedAt: string;
+  isrc: string | null;
+  plays: number;
+  lastPlayedAt: Date;
 }
 
 const RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
@@ -48,20 +50,55 @@ export async function recordPlay(
   await db.insert(radioPlay).values(row).onConflictDoNothing({ target: radioPlay.shId });
 }
 
-export async function getPlaysByArtist(normalizedName: string, limit = 20): Promise<RadioPlay[]> {
+// Enough plays to cover a year of rotation for one artist.
+const MAX_PLAYS_READ = 500;
+
+/**
+ * Each title the antenna played of this artist, once: the plays of one title
+ * (same words once normalised) folded together, the latest first. `plays` is
+ * newest first, as read.
+ */
+export function groupTitles(
+  plays: ReadonlyArray<{ title: string; artist: string; isrc: string | null; playedAt: Date }>,
+  limit: number
+): PlayedTitle[] {
+  const titles = new Map<string, PlayedTitle>();
+  for (const play of plays) {
+    const key = normalizeArtistName(play.title);
+    const known = titles.get(key);
+    if (known) {
+      known.plays += 1;
+      known.isrc ??= play.isrc;
+    } else {
+      titles.set(key, {
+        title: play.title,
+        artist: play.artist,
+        isrc: play.isrc,
+        plays: 1,
+        lastPlayedAt: play.playedAt,
+      });
+    }
+  }
+  return [...titles.values()].slice(0, limit);
+}
+
+export async function getTitlesByArtist(
+  normalizedName: string,
+  limit = 20
+): Promise<PlayedTitle[]> {
   const since = new Date(Date.now() - RETENTION_MS);
   const rows = await db
-    .select({ title: radioPlay.title, artist: radioPlay.artist, playedAt: radioPlay.playedAt })
+    .select({
+      title: radioPlay.title,
+      artist: radioPlay.artist,
+      isrc: radioPlay.isrc,
+      playedAt: radioPlay.playedAt,
+    })
     .from(radioPlay)
     .where(and(eq(radioPlay.artistNormalized, normalizedName), gte(radioPlay.playedAt, since)))
     .orderBy(desc(radioPlay.playedAt))
-    .limit(limit);
-
-  return rows.map((row) => ({
-    title: row.title,
-    artist: row.artist,
-    playedAt: row.playedAt.toISOString(),
-  }));
+    .limit(MAX_PLAYS_READ);
+  return groupTitles(rows, limit);
 }
 
 type Play = { title: string; isrc: string | null };
