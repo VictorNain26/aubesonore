@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { FallbackProps } from 'react-error-boundary';
 import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
 import { Share2 } from 'lucide-react';
@@ -13,6 +14,7 @@ import { Cover } from './Cover';
 import { VolumeControl, type VolumeControlProps } from './VolumeControl';
 import { ARTIST_LINK, TEXT_ACTION } from './styles';
 import {
+  LISTEN_PILL,
   ListenDisc,
   listenAria,
   listenLabel,
@@ -141,7 +143,7 @@ export function NowPlayingView({
             onClick={onToggleListen}
             aria-label={listenAria(listen)}
             aria-busy={listen === 'connecting'}
-            className="bg-accent text-on-accent ease-out-quart focus-visible:outline-accent flex h-14 w-full items-center gap-3 rounded-full py-1.5 pr-6 pl-1.5 transition-transform duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95 md:w-auto"
+            className={LISTEN_PILL}
           >
             <ListenDisc state={listen} className="size-11" />
             <span className="text-ui font-semibold">{listenLabel(listen)}</span>
@@ -228,5 +230,41 @@ export function NowPlaying() {
       hasChanged={firstTrackKey !== null && trackKey !== firstTrackKey}
       volume={{ volume, isMuted, onVolumeChange: setVolume, onToggleMute: toggleMute }}
     />
+  );
+}
+
+/**
+ * When the track on air cannot be shown, its zone says so and nothing else goes: the header, the
+ * dawn and the horizon stay, and the live can still be heard.
+ */
+export function NowPlayingFallback({ resetErrorBoundary }: FallbackProps) {
+  const { isPlaying, isConnecting, toggle } = usePlayer(
+    useShallow((s) => ({ isPlaying: s.isPlaying, isConnecting: s.isConnecting, toggle: s.toggle }))
+  );
+  const listen = listenState(isPlaying, isConnecting);
+  return (
+    <div role="alert" className="flex flex-col gap-2">
+      <p className="text-section m-0">{m.error_track_title()}</p>
+      <p className="text-intro text-text-muted m-0">{m.error_track_body()}</p>
+      <div className="mt-6 flex flex-col gap-3 md:mt-8 md:flex-row md:items-center md:gap-6">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={listenAria(listen)}
+          aria-busy={listen === 'connecting'}
+          className={LISTEN_PILL}
+        >
+          <ListenDisc state={listen} className="size-11" />
+          <span className="text-ui font-semibold">{listenLabel(listen)}</span>
+        </button>
+        <button
+          type="button"
+          onClick={resetErrorBoundary}
+          className={cn(TEXT_ACTION, 'self-start')}
+        >
+          {m.error_retry()}
+        </button>
+      </div>
+    </div>
   );
 }
