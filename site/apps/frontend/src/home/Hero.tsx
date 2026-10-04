@@ -29,7 +29,7 @@ export function Hero() {
 
       <SiteHeader />
 
-      <div className="px-page relative z-10 pt-10 md:pt-12">
+      <div className="px-page relative z-10 flex flex-1 items-center pt-10 md:pt-12">
         <NowPlaying />
       </div>
 

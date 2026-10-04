@@ -383,11 +383,11 @@
     var(--surface);
 }
 
-/* L'écran d'ouverture remplit la fenêtre sans dépasser 50rem sur les grands écrans ; sur
-   tablette en portrait, il suit son contenu au lieu de le laisser flotter. */
+/* L'écran d'ouverture remplit toute la fenêtre : la page suivante commence sous le pli, jamais
+   coupée en bas du premier écran. Sur tablette en portrait, il suit son contenu. */
 @utility hero-height {
   @media (width >= 64rem) {
-    min-height: min(100svh, 50rem);
+    min-height: 100svh;
   }
 }
 
@@ -496,11 +496,13 @@
 }
 
 /* Mobile: the full width, unless Écouter would fall below the fold of a small phone. */
+/* The cover fills its column, the same 4 parts of 12 as a section's title column, as long as
+   the first screen still holds the title and the horizon. */
 @utility artwork-size {
   width: min(100%, 46dvh);
 
   @media (width >= 64rem) {
-    width: min(24rem, 42dvh);
+    width: min(100%, 50svh);
   }
 }
 
