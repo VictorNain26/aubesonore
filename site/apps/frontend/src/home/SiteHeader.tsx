@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useAuthStore } from '../stores/authStore';
-import { useAuthModalStore } from '../stores/authModalStore';
 import { ModalErrorFallback } from '../design/organisms/ErrorFallback';
 import { Menu } from '../design/molecules/Menu';
 import { Link, useLocation } from 'react-router';
@@ -39,7 +38,6 @@ export function SiteHeader() {
       signOut: s.signOut,
     }))
   );
-  const openAuthModal = useAuthModalStore((s) => s.open);
   const { pathname } = useLocation();
   const isHome = ['/', '/en', '/en/', '/reset-password'].includes(pathname);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
@@ -98,9 +96,9 @@ export function SiteHeader() {
             />
           </span>
         ) : (
-          <button type="button" onClick={() => openAuthModal()} className={OUTLINE_PILL}>
+          <Link to={m.signin_href()} state={{ from: pathname }} className={OUTLINE_PILL}>
             {m.nav_sign_in()}
-          </button>
+          </Link>
         )}
       </nav>
 

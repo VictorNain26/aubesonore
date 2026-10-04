@@ -155,6 +155,7 @@
   "footer_legal": "Legal notice",
   "auth_privacy_notice": "By creating an account, you accept our",
   "auth_privacy_link": "privacy policy",
+  "signin_href": "/en/sign-in",
   "legal_href": "/en/legal/",
   "footer_free": "Free, ad-free, non-commercial.",
   "player_connecting": "One moment…",
