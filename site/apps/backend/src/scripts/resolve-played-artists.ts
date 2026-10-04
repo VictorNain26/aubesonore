@@ -8,6 +8,7 @@ import {
   primaryArtistName,
   resolveArtist,
   resolveKeptArtist,
+  reverifyArtist,
 } from '../services/artistResolver';
 import { findPlay } from '../services/radioPlayService';
 import { searchDeezer } from '../services/trackLinksService';
@@ -65,6 +66,24 @@ for (const { name } of played) {
   }
 }
 
+// Every known artist identified again from scratch: an identity taken from an
+// ISRC before answers were checked against the played title and name is
+// replaced, and its stored profile dropped.
+const known = await db
+  .select({ normalizedName: artist.normalizedName, displayName: artist.displayName })
+  .from(artist);
+const outcomes = { changed: 0, kept: 0, unplayed: 0, failed: 0 };
+for (const row of known) {
+  try {
+    const outcome = await reverifyArtist(row.normalizedName, row.displayName);
+    outcomes[outcome] += 1;
+    if (outcome === 'changed') console.log(`identity changed: ${row.displayName}`);
+  } catch (err) {
+    outcomes.failed += 1;
+    console.error(`${row.displayName}: ${(err as Error).message}`);
+  }
+}
+
 const untied = await db
   .select({ id: likedTracks.id, title: likedTracks.title, artist: likedTracks.artist })
   .from(likedTracks)
@@ -92,7 +111,7 @@ for (const kept of untied) {
   }
 }
 
-const [known] = await db.select({ n: count() }).from(artist);
+const [total] = await db.select({ n: count() }).from(artist);
 const [byIsrc] = await db
   .select({ n: count() })
   .from(artist)
@@ -100,7 +119,8 @@ const [byIsrc] = await db
 const [bridged] = await db.select({ n: count() }).from(artist).where(isNotNull(artist.mbid));
 console.log(
   `${filled} of ${withoutIsrc.length} plays given their ISRC; ${played.length} played names, ` +
-    `${failed} failed; ${known?.n ?? 0} artists, ${byIsrc?.n ?? 0} identified by ISRC, ` +
+    `${failed} failed; ${total?.n ?? 0} artists (${outcomes.changed} identities changed, ` +
+    `${outcomes.failed} could not be checked), ${byIsrc?.n ?? 0} identified by ISRC, ` +
     `${bridged?.n ?? 0} with an MBID; ${tied} of ${untied.length} kept tracks tied to their artist`
 );
 await pool.end();

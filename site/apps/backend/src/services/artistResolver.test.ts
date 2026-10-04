@@ -1,7 +1,7 @@
 import { describe, it, expect, mock, spyOn, afterAll, beforeEach } from 'bun:test';
-import type { ArtistSearch } from './deezerService';
+import type { ArtistSearch, DeezerIsrcTrack } from './deezerService';
 import type { Lookup } from '../lib/lookup';
-import type { MusicBrainzArtist } from './musicbrainzService';
+import type { IsrcRecording, MusicBrainzArtist } from './musicbrainzService';
 import { DrizzleQueryError } from 'drizzle-orm';
 import type { NowPlayingTrack } from './nowPlaying';
 
@@ -16,10 +16,11 @@ let artistRows: ArtistRow[] = [];
 // When set, each artist query answers the next entry: the resolver's lookups in order.
 let artistAnswers: ArtistRow[][] | null = null;
 let insertConflict = false;
-let isrcLookup: Lookup<string> = { status: 'none' };
+let isrcLookup: Lookup<IsrcRecording[]> = { status: 'none' };
 let isrcLookups = 0;
 let mbArtist: Lookup<MusicBrainzArtist> = { status: 'none' };
-let deezerByIsrc: ArtistSearch = { status: 'none' };
+let deezerByIsrc: Lookup<DeezerIsrcTrack> = { status: 'none' };
+let deletedProfiles = 0;
 let updates: Array<Record<string, unknown>> = [];
 let updateError: Error | null = null;
 let mbLookup: Lookup<string> = { status: 'none' };
@@ -65,6 +66,12 @@ void mock.module('../db', () => ({
         },
       }),
     }),
+    delete: () => ({
+      where: () => {
+        deletedProfiles += 1;
+        return Promise.resolve();
+      },
+    }),
   },
 }));
 
@@ -85,20 +92,26 @@ const spies = [
     mbLookups += 1;
     return Promise.resolve(mbLookup);
   }),
-  spyOn(musicbrainz, 'findMbidByIsrc').mockImplementation(() => {
+  spyOn(musicbrainz, 'findRecordingsByIsrc').mockImplementation(() => {
     isrcLookups += 1;
     return Promise.resolve(isrcLookup);
   }),
   spyOn(musicbrainz, 'getArtistByMbid').mockImplementation(() => Promise.resolve(mbArtist)),
-  spyOn(deezer, 'findArtistByIsrc').mockImplementation(() => Promise.resolve(deezerByIsrc)),
+  spyOn(deezer, 'findTrackByIsrc').mockImplementation(() => Promise.resolve(deezerByIsrc)),
 ];
 
 afterAll(() => {
   for (const spy of spies) spy.mockRestore();
 });
 
-const { normalizeArtistName, primaryArtistName, resolveArtist, slugify } =
-  await import('./artistResolver');
+const {
+  normalizeArtistName,
+  primaryArtistName,
+  resolveArtist,
+  reverifyArtist,
+  sameTitle,
+  slugify,
+} = await import('./artistResolver');
 
 beforeEach(() => {
   artistRows = [];
@@ -108,6 +121,7 @@ beforeEach(() => {
   isrcLookups = 0;
   mbArtist = { status: 'none' };
   deezerByIsrc = { status: 'none' };
+  deletedProfiles = 0;
   playRows = [];
   inserted = [];
   search = { status: 'none' };
@@ -258,14 +272,18 @@ describe('the MBID, pivot to Musilogy', () => {
     artist: { id: '27', name: 'Daft Punk', picture: null },
   } as const;
 
-  it('writes the MBID MusicBrainz declares for the Deezer artist', async () => {
+  it('takes the MBID MusicBrainz declares for the Deezer artist found by name', async () => {
     playRows = [{ title: 'Da Funk' }];
     search = DAFT_PUNK;
     mbLookup = { status: 'found', value: 'mb-daft-punk' };
 
     await resolveArtist('Daft Punk');
 
-    expect(updates).toEqual([{ mbid: 'mb-daft-punk' }]);
+    expect(inserted[0]).toMatchObject({
+      deezerId: '27',
+      mbid: 'mb-daft-punk',
+      identifiedBy: 'name',
+    });
   });
 
   it('asks MusicBrainz nothing for an artist Deezer does not know', async () => {
@@ -274,20 +292,17 @@ describe('the MBID, pivot to Musilogy', () => {
     await resolveArtist('Unsigned Band');
 
     expect(mbLookups).toBe(0);
-    expect(updates).toEqual([]);
+    expect(inserted[0]).toMatchObject({ deezerId: null, mbid: null });
   });
 
-  it.each([{ status: 'none' as const }, { status: 'failed' as const }])(
-    'writes nothing when MusicBrainz answers $status, so a later call retries',
-    async (answer) => {
-      playRows = [{ title: 'Da Funk' }];
-      search = DAFT_PUNK;
-      mbLookup = answer;
+  it('persists nothing while MusicBrainz fails, so a later play retries', async () => {
+    playRows = [{ title: 'Da Funk' }];
+    search = DAFT_PUNK;
+    mbLookup = { status: 'failed' };
 
-      expect(await resolveArtist('Daft Punk')).not.toBeNull();
-      expect(updates).toEqual([]);
-    }
-  );
+    expect(await resolveArtist('Daft Punk')).toBeNull();
+    expect(inserted).toEqual([]);
+  });
 
   it('completes a known artist still missing its MBID, without asking Deezer again', async () => {
     artistRows = [{ id: 'a-27', slug: 'daft-punk', deezerId: '27', mbid: null }];
@@ -334,6 +349,17 @@ describe('the MBID, pivot to Musilogy', () => {
   });
 });
 
+describe('sameTitle', () => {
+  it('matches a title and its versions, never another song', () => {
+    expect(sameTitle('Un mec en or', 'Un Mec En Or')).toBe(true);
+    expect(sameTitle('Come Together', 'Come Together (Remastered 2009)')).toBe(true);
+    expect(sameTitle('Illusion Of Time', 'Dissolution')).toBe(false);
+    expect(sameTitle('Un mec en or', 'Lirik Banzay')).toBe(false);
+    // The Drums, measured 2026-10-04: an apostrophe typed on one side only.
+    expect(sameTitle('Lets Go Surfing', 'Let’s Go Surfing')).toBe(true);
+  });
+});
+
 describe('identity by ISRC', () => {
   const ISRC = 'GBDUW0000053';
   const page = (deezerId: string | null): Lookup<MusicBrainzArtist> => ({
@@ -352,10 +378,19 @@ describe('identity by ISRC', () => {
       deezerId,
     },
   });
+  const recording = (title: string, ...credits: Array<[string, string]>): IsrcRecording => ({
+    title,
+    credits: credits.map(([mbid, name]) => ({ mbid, names: [name] })),
+  });
+  const deezerTrack = (title: string, ...artists: Array<[string, string]>) =>
+    ({
+      status: 'found',
+      value: { title, artists: artists.map(([id, name]) => ({ id, name, picture: null })) },
+    }) as const;
 
-  it('identifies a new artist by the ISRC of its play, without searching its name', async () => {
+  it('identifies a new artist by an ISRC whose recording is the played track', async () => {
     playRows = [{ title: 'One More Time', isrc: ISRC }];
-    isrcLookup = { status: 'found', value: 'mb-daft-punk' };
+    isrcLookup = { status: 'found', value: [recording('One More Time', ['mb-dp', 'Daft Punk'])] };
     mbArtist = page('27');
 
     await resolveArtist('Daft Punk');
@@ -364,25 +399,75 @@ describe('identity by ISRC', () => {
     expect(inserted[0]).toMatchObject({
       displayName: 'Daft Punk',
       deezerId: '27',
-      mbid: 'mb-daft-punk',
+      mbid: 'mb-dp',
       identifiedBy: 'isrc',
     });
   });
 
+  it('takes the credited artist bearing the played name, not the first credited', async () => {
+    playRows = [{ title: 'Something', isrc: ISRC }];
+    isrcLookup = {
+      status: 'found',
+      value: [recording('Something', ['mb-a', 'Another Artist'], ['mb-b', 'Played Name'])],
+    };
+    mbArtist = page('99');
+
+    await resolveArtist('Played Name');
+
+    expect(inserted[0]).toMatchObject({ mbid: 'mb-b', identifiedBy: 'isrc' });
+  });
+
+  // Measured in production on 2026-10-04: Paul McCartney's track, whose ISRC
+  // MusicBrainz credits to Wings, had made his page Wings'.
+  it('does not take another artist credited on the ISRC', async () => {
+    playRows = [{ title: 'Band on the Run', isrc: 'GBCCS1500158' }];
+    isrcLookup = { status: 'found', value: [recording('Band on the Run', ['mb-wings', 'Wings'])] };
+    deezerByIsrc = deezerTrack('Band On The Run', ['2709', 'Wings']);
+    search = { status: 'match', artist: { id: '1', name: 'Paul McCartney', picture: null } };
+    mbLookup = { status: 'found', value: 'mb-paul' };
+
+    await resolveArtist('Paul McCartney');
+
+    expect(inserted[0]).toMatchObject({ deezerId: '1', mbid: 'mb-paul', identifiedBy: 'name' });
+  });
+
+  // Daniel Avery's « Illusion Of Time » had its ISRC filed on ANNA's « Dissolution ».
+  it('does not take a recording of another title', async () => {
+    playRows = [{ title: 'Illusion Of Time', isrc: 'GBTZZ2000002' }];
+    isrcLookup = {
+      status: 'found',
+      value: [recording('Dissolution', ['mb-anna', 'Daniel Avery'])],
+    };
+
+    await resolveArtist('Daniel Avery');
+
+    expect(inserted[0]).toMatchObject({ mbid: null, identifiedBy: 'name' });
+  });
+
+  // Deezer answered « Lirik Banzay » by Sweelk Mc for The Pirouettes' « Un mec en or ».
+  it('does not take a Deezer track of another title', async () => {
+    playRows = [{ title: 'Un mec en or', isrc: 'FR9W11309005' }];
+    deezerByIsrc = deezerTrack('Lirik Banzay', ['4438509', 'Sweelk Mc']);
+
+    await resolveArtist('The Pirouettes');
+
+    expect(inserted[0]).toMatchObject({ deezerId: null, identifiedBy: 'name' });
+  });
+
   it('asks Deezer for the ISRC when MusicBrainz declares no single Deezer artist', async () => {
     playRows = [{ title: 'One More Time', isrc: ISRC }];
-    isrcLookup = { status: 'found', value: 'mb-daft-punk' };
+    isrcLookup = { status: 'found', value: [recording('One More Time', ['mb-dp', 'Daft Punk'])] };
     mbArtist = page(null);
-    deezerByIsrc = { status: 'match', artist: { id: '27', name: 'Daft Punk', picture: null } };
+    deezerByIsrc = deezerTrack('One More Time', ['27', 'Daft Punk']);
 
     await resolveArtist('Daft Punk');
 
-    expect(inserted[0]).toMatchObject({ deezerId: '27', mbid: 'mb-daft-punk' });
+    expect(inserted[0]).toMatchObject({ deezerId: '27', mbid: 'mb-dp' });
   });
 
   it('reaches the MBID through the Deezer link when MusicBrainz does not know the ISRC', async () => {
     playRows = [{ title: 'One More Time', isrc: ISRC }];
-    deezerByIsrc = { status: 'match', artist: { id: '27', name: 'Daft Punk', picture: null } };
+    deezerByIsrc = deezerTrack('One More Time', ['27', 'Daft Punk']);
     mbLookup = { status: 'found', value: 'mb-daft-punk' };
 
     await resolveArtist('Daft Punk');
@@ -394,16 +479,6 @@ describe('identity by ISRC', () => {
     });
   });
 
-  it('falls back to the name when no source knows the ISRC', async () => {
-    playRows = [{ title: 'One More Time', isrc: ISRC }];
-    search = { status: 'match', artist: { id: '27', name: 'Daft Punk', picture: null } };
-
-    await resolveArtist('Daft Punk');
-
-    expect(searches).toBe(1);
-    expect(inserted[0]).toMatchObject({ deezerId: '27', identifiedBy: 'name' });
-  });
-
   it('persists nothing while a source fails on the ISRC, so the next play retries', async () => {
     playRows = [{ title: 'One More Time', isrc: ISRC }];
     isrcLookup = { status: 'failed' };
@@ -413,17 +488,18 @@ describe('identity by ISRC', () => {
     expect(searches).toBe(0);
   });
 
-  it('re-identifies a row bound by its name once a play carries an ISRC', async () => {
+  it('re-identifies a row bound by its name once a checked ISRC tells better, and drops its profile', async () => {
     // Can was bound by name to a one-album homonym on Deezer (measured 2026-10-03).
     artistRows = [
       { id: 'a-can', slug: 'can', deezerId: '366546802', mbid: null, identifiedBy: 'name' },
     ];
     playRows = [{ title: 'Vitamin C', isrc: 'DEAE87200093' }];
-    isrcLookup = { status: 'found', value: 'mb-can' };
+    isrcLookup = { status: 'found', value: [recording('Vitamin C', ['mb-can', 'Can'])] };
     mbArtist = page('8213');
 
     expect(await resolveArtist('Can')).toEqual({ id: 'a-can', slug: 'can' });
     expect(updates).toEqual([{ deezerId: '8213', mbid: 'mb-can', identifiedBy: 'isrc' }]);
+    expect(deletedProfiles).toBe(1);
   });
 
   it('leaves a row identified by its ISRC alone', async () => {
@@ -440,12 +516,71 @@ describe('identity by ISRC', () => {
 
   it("gives another spelling of an identified artist that artist's page", async () => {
     playRows = [{ title: 'Frank Sinatra', isrc: 'FR0W60100020' }];
-    isrcLookup = { status: 'found', value: 'mb-kittin' };
+    isrcLookup = {
+      status: 'found',
+      value: [recording('Frank Sinatra', ['mb-kittin', 'Miss Kittin'])],
+    };
     mbArtist = page('1234');
     insertConflict = true;
     // No row under this spelling, before or after the insert; one holds the identity.
     artistAnswers = [[], [], [{ id: 'a-kittin', slug: 'kittin' }]];
 
     expect(await resolveArtist('Miss Kittin')).toEqual({ id: 'a-kittin', slug: 'kittin' });
+  });
+});
+
+describe('reverifyArtist', () => {
+  it('replaces an identity an unchecked ISRC gave, whole, and drops its profile', async () => {
+    // Paul McCartney's row held Wings' identity, marked as found by ISRC.
+    artistRows = [
+      {
+        id: 'a-paul',
+        slug: 'paul-mccartney',
+        deezerId: '2709',
+        mbid: 'mb-wings',
+        identifiedBy: 'isrc',
+      },
+    ];
+    playRows = [{ title: 'Band on the Run', isrc: 'GBCCS1500158' }];
+    isrcLookup = {
+      status: 'found',
+      value: [{ title: 'Band on the Run', credits: [{ mbid: 'mb-wings', names: ['Wings'] }] }],
+    };
+    search = { status: 'match', artist: { id: '1', name: 'Paul McCartney', picture: null } };
+    mbLookup = { status: 'found', value: 'mb-paul' };
+
+    expect(await reverifyArtist('paul mccartney', 'Paul McCartney')).toBe('changed');
+    expect(updates).toEqual([{ deezerId: '1', mbid: 'mb-paul', identifiedBy: 'name' }]);
+    expect(deletedProfiles).toBe(1);
+  });
+
+  it('keeps an identity that checks out', async () => {
+    artistRows = [
+      { id: 'a-dp', slug: 'daft-punk', deezerId: '27', mbid: 'mb-dp', identifiedBy: 'isrc' },
+    ];
+    playRows = [{ title: 'One More Time', isrc: 'GBDUW0000053' }];
+    isrcLookup = {
+      status: 'found',
+      value: [{ title: 'One More Time', credits: [{ mbid: 'mb-dp', names: ['Daft Punk'] }] }],
+    };
+    mbArtist = {
+      status: 'found',
+      value: {
+        facts: {
+          kind: 'group',
+          place: null,
+          country: null,
+          formed: null,
+          ended: null,
+          active: false,
+        },
+        links: [],
+        wikidataId: null,
+        deezerId: '27',
+      },
+    };
+
+    expect(await reverifyArtist('daft punk', 'Daft Punk')).toBe('kept');
+    expect(deletedProfiles).toBe(0);
   });
 });

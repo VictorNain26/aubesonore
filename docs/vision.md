@@ -153,12 +153,22 @@ Deezer de chaque titre qu'il publie ; il en tire l'ISRC et l'écrit dans le fich
 AzuraCast le lit. Le site résout
 ensuite, dans cet ordre :
 
-1. **ISRC → MusicBrainz** (`/ws/2/isrc/{isrc}?inc=artist-credits`) : le MBID de chaque artiste
-   crédité. 32 des 40 titres de l'antenne tirés au hasard y sont reconnus (2026-10-04).
-2. **ISRC → Deezer** : l'artiste Deezer exact du titre, sans recherche par nom.
-3. **Lien Deezer déclaré dans MusicBrainz** : pour les titres que l'ISRC ne relie pas.
-4. **Rien d'autre.** Un artiste non identifié a sa page avec ce que l'antenne en sait, sans faits
+1. **ISRC → MusicBrainz** (`/ws/2/isrc/{isrc}?inc=artist-credits`) : l'artiste crédité qui porte
+   le nom joué, sur un enregistrement du titre joué. 32 des 40 titres de l'antenne tirés au
+   hasard y sont reconnus (2026-10-04).
+2. **ISRC → Deezer** : l'artiste Deezer du titre portant cet ISRC, sous les mêmes conditions.
+3. **Lien Deezer déclaré dans MusicBrainz**, pour compléter l'une des deux identités par l'autre.
+4. **Le nom, en dernier recours**, seulement lié à un titre joué (la recherche Deezer garde
+   l'artiste du titre joué dont le nom est le même une fois normalisé, et seulement s'il n'a
+   pas d'homonyme exact), puis le lien Deezer que MusicBrainz déclare.
+5. **Rien d'autre.** Un artiste non identifié a sa page avec ce que l'antenne en sait, sans faits
    ni Musilogy ; l'absence se corrige à la source (MusicBrainz), pas par une devinette.
+
+**Un ISRC ne suffit pas seul** : un code peut être déposé sur un autre enregistrement ou crédité
+à un autre artiste. Mesuré en production le 2026-10-04, avant cette vérification : le titre de
+Paul McCartney crédité à Wings, celui de Daniel Avery déposé sur un titre d'ANNA, celui des
+Pirouettes rendu par un autre titre Deezer. Une réponse ISRC n'est donc retenue que si le titre
+et l'un des noms crédités sont ceux joués, une fois normalisés.
 
 Un titre gardé enregistre son ISRC et l'artiste qu'il désigne, au moment où il est gardé : c'est
 ce qui permet à la page artiste de montrer « vos titres gardés ». Un featuring crédite plusieurs
