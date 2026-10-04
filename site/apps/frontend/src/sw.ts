@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 
-import { precacheAndRoute } from 'workbox-precaching';
+import { clientsClaim } from 'workbox-core';
+import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { CacheFirst } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
@@ -9,7 +10,14 @@ import type { WorkboxPlugin } from 'workbox-core/types';
 
 declare const self: ServiceWorkerGlobalScope;
 
-// Workbox precaching (injected by vite-plugin-pwa)
+// A new deploy takes over at once, as registerType 'autoUpdate' expects: without these, the new
+// worker waited for every tab to close and listeners kept the old precached site
+// (vite-plugin-pwa, "injectManifest": "you must include self.skipWaiting() and clientsClaim()").
+void self.skipWaiting();
+clientsClaim();
+
+// The previous deploys' precaches are dropped once this one is in place.
+cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 
 // Runtime cache for AzuraCast album artwork. Without this the same image is
