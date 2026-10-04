@@ -80,7 +80,7 @@ describe('PlayerBarView', () => {
     const { rerender } = render(<PlayerBarView {...props({ onToggleMute })} />);
 
     expect(screen.getByRole('slider', { name: 'Volume' })).toHaveAttribute('aria-valuenow', '80');
-    await userEvent.click(screen.getByRole('button', { name: 'Volume — couper le son' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Couper le son' }));
     expect(onToggleMute).toHaveBeenCalledOnce();
     expect(screen.queryByRole('button', { name: 'Diffuser via AirPlay' })).not.toBeInTheDocument();
 
