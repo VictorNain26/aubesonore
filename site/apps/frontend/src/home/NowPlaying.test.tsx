@@ -85,6 +85,15 @@ describe('NowPlayingView', () => {
     );
   });
 
+  it('offers the volume beside Écouter only while listening', () => {
+    const volume = { volume: 0.5, isMuted: false, onVolumeChange: vi.fn(), onToggleMute: vi.fn() };
+    const { rerender } = render(<NowPlayingView {...props({ volume })} />);
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+
+    rerender(<NowPlayingView {...props({ volume, listen: 'playing' })} />);
+    expect(screen.getByRole('slider', { name: 'Volume' })).toHaveAttribute('aria-valuenow', '50');
+  });
+
   it('says radio silence when the station is off air', () => {
     render(<NowPlayingView {...props({ isOnline: false })} />);
     expect(screen.getByText('Silence radio. Retour dans un instant.')).toBeInTheDocument();

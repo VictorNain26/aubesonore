@@ -214,6 +214,24 @@ describe('player store', () => {
     expect(usePlayer.getState().isMuted).toBe(false);
     expect(usePlayer.getState().volume).toBe(0.5);
   });
+
+  it('keeps the last audible level for the next visit, never a mute', async () => {
+    const { usePlayer } = await import('./player');
+    usePlayer.getState().setVolume(0.6);
+    usePlayer.getState().toggleMute();
+    expect(usePlayer.getState().volume).toBe(0);
+
+    usePlayer.getState().restoreVolume();
+    expect(usePlayer.getState().volume).toBe(0.6);
+    expect(usePlayer.getState().isMuted).toBe(false);
+  });
+
+  it('starts at full volume over a 0 an older version saved', async () => {
+    localStorage.setItem('aubesonore_volume', '0');
+    const { usePlayer } = await import('./player');
+    usePlayer.getState().restoreVolume();
+    expect(usePlayer.getState().volume).toBe(1);
+  });
 });
 
 describe('player resilience (stream auto-recovery)', () => {

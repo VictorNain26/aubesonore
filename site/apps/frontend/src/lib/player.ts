@@ -82,8 +82,9 @@ let reconnectAttempts = 0;
 
 const getStoredVolume = (): number => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? parseFloat(stored) : 1;
+    const stored = parseFloat(localStorage.getItem(STORAGE_KEY) ?? '');
+    // A 0 saved before silence stopped being kept would start every visit muted.
+    return stored > 0 && stored <= 1 ? stored : 1;
   } catch {
     return 1;
   }
@@ -206,10 +207,14 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
   setVolume: (value: number) => {
     const clamped = Math.max(0, Math.min(1, value));
     getAudioElement().volume = clamped;
-    try {
-      localStorage.setItem(STORAGE_KEY, clamped.toString());
-    } catch {
-      // localStorage unavailable (private mode) — keep in-memory state only
+    // Silence is not kept: the next visit starts at the last audible level,
+    // never on a mute the listener has forgotten.
+    if (clamped > 0) {
+      try {
+        localStorage.setItem(STORAGE_KEY, clamped.toString());
+      } catch {
+        // localStorage unavailable (private mode) — keep in-memory state only
+      }
     }
     if (clamped > 0) prevVolume = clamped;
     set({ volume: clamped, isMuted: clamped === 0 });
