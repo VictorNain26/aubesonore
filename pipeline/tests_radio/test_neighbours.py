@@ -42,10 +42,12 @@ def test_intersection_minus_library() -> None:
         ]
     )
     got = neighbours(SEED, dz, lf, 50, exclude_ids={70}, exclude_names=frozenset({"air"}))
-    assert [a.id for a in got] == [1, 5]
+    assert [a.id for a in got.artists] == [1, 5]
+    assert (got.n_related, got.n_similar) == (5, 4)
     assert lf.calls == [("M83", 50)]
 
 
 def test_no_lastfm_similar_means_no_neighbour() -> None:
     dz = FakeDeezer([DeezerArtist(1, "Knife")])
-    assert neighbours(SEED, dz, FakeLastfm([]), 50, set(), frozenset()) == []
+    got = neighbours(SEED, dz, FakeLastfm([]), 50, set(), frozenset())
+    assert got.artists == [] and (got.n_related, got.n_similar) == (1, 0)

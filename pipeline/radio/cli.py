@@ -23,7 +23,7 @@ from pydantic import ValidationError
 from radio.acquire.run import acquire_pass
 from radio.acquire.sockseek import SockseekError
 from radio.antenna import grille as grille_mod
-from radio.antenna.sync import IsrcReport, antenne_pass, isrc_backfill
+from radio.antenna.sync import CueReport, IsrcReport, antenne_pass, cue_backfill, isrc_backfill
 from radio.core.backup import BackupError, backup
 from radio.core.config import Editorial, Settings, load_editorial
 from radio.core.db import connect
@@ -674,6 +674,36 @@ def mesures() -> None:
         _fail(f"Fichiers d'antenne absents de {settings.azuracast_media_dir}", 1)
 
 
+@app.command("antenne-cues")
+def antenne_cues() -> None:
+    """Rattrapage ponctuel : écrit les points de coupe dans chaque fichier déjà à l'antenne,
+    puis lancer `radio mesures`. Se relance sans effet sur les titres déjà coupés."""
+    settings = _settings()
+    if settings.azuracast_api_key is None:
+        _fail("AZURACAST_API_KEY doit être défini dans .env", 2)
+    station = AzuracastClient(
+        settings.azuracast_url,
+        settings.azuracast_api_key.get_secret_value(),
+        settings.azuracast_station_id,
+    )
+    rep = CueReport()
+    with _db(settings) as conn:
+        try:
+            cue_backfill(conn, station, rep)
+        except AzuracastUnavailable as e:
+            _fail(f"AzuraCast indisponible ({e}) : le travail fait est gardé", 1)
+    _echo(
+        [
+            f"Points de coupe : {_n(rep.n_tagged)} fichiers coupés, {_n(rep.n_already)} l'étaient "
+            f"déjà, {_n(rep.n_silent)} sans son au-dessus des seuils",
+            f"  en cours ou en file, à reprendre : {_n(rep.n_busy)}",
+            *(f"  erreur : {e}" for e in rep.errors),
+        ]
+    )
+    if rep.errors:
+        _fail(f"{_n(len(rep.errors))} erreurs", 1)
+
+
 @app.command()
 @_stage("grille")
 def grille(
@@ -694,27 +724,35 @@ def grille(
     )
     try:
         tz = ZoneInfo(station.timezone())
+        start_next = station.start_next_s()
         now = datetime.now(tz)
         day = now.date() if aujourdhui else now.date() + timedelta(days=1)
         hours = list(range(now.hour + 1, 24)) if aujourdhui else list(range(24))
         history = station.last_played((now - timedelta(days=14)).isoformat(), now.isoformat())
+        # Un titre en file passe même si son heure est réécrite, une fois remis à Liquidsoap :
+        # il compte comme joué à son heure prévue.
+        for song, at in station.queued().items():
+            history[song] = max(history.get(song, at), at)
         with _db(settings) as conn:
+            spans = grille_mod.hour_spans(day, hours, tz)
+            rewritten = [begin for begin, _ in spans.values()]
+            played = grille_mod.with_published(conn, history, now.timestamp(), rewritten)
             midnight = datetime.combine(day, time(0), tzinfo=tz).timestamp()
-            played = grille_mod.with_published(conn, history, now.timestamp())
             plan = grille_mod.plan_day(
-                grille_mod.load_titres(conn), played, cfg, day, hours, midnight
+                grille_mod.load_titres(conn), played, cfg, day, spans, midnight, start_next
             )
-            errors = grille_mod.publish(plan, station)
-            grille_mod.record(conn, plan, midnight)
+            errors = grille_mod.publish(plan, station, [h for h in hours if h not in spans])
+            grille_mod.record(conn, plan)
             _record(
                 conn,
                 "grille",
-                not errors,
+                not errors and not plan.short_hours,
                 {
                     "jour": day.isoformat(),
-                    "heures": len(hours),
+                    "heures": len(plan.hours),
                     "créneaux": plan.slots,
-                    "créneaux vides": plan.empty_slots,
+                    "heures courtes": plan.short_hours,
+                    "créneaux cédés": plan.empty_slots,
                     "titres non mesurés": plan.unmeasured,
                     "titres en retard": plan.late,
                     "tour en jours": {c: round(d, 2) for c, d in plan.turnover_days.items()},
@@ -726,9 +764,10 @@ def grille(
         _fail(f"AzuraCast indisponible ({e})", 1)
     _echo(
         [
-            f"Grille du {day.isoformat()} : {_n(len(hours))} heures, créneaux "
+            f"Grille du {day.isoformat()} : {_n(len(plan.hours))} heures, créneaux "
             + ", ".join(f"{c} {_n(n)}" for c, n in plan.slots.items()),
-            f"  créneaux vides : {_n(plan.empty_slots)}, titres pas encore mesurés : "
+            f"  heures courtes : {_n(plan.short_hours)}, créneaux cédés à une autre catégorie : "
+            f"{_n(plan.empty_slots)}, titres pas encore mesurés : "
             f"{_n(plan.unmeasured)}, titres pas joués depuis plus de deux tours : "
             f"{_n(plan.late)}",
             "  tour de chaque catégorie : "
@@ -737,8 +776,13 @@ def grille(
             *(f"  erreur : {e}" for e in errors),
         ]
     )
-    if errors:
-        _fail(f"{_n(len(errors))} heures mal écrites", 1)
+    # Une heure que ses titres ne couvrent pas s'épuise, et le secours joue à la place de la
+    # grille (vision §1). La grille publiée est gardée, et l'échec fait alerter Gatus.
+    problems = [f"{_n(len(errors))} heures mal écrites"] if errors else []
+    if plan.short_hours:
+        problems.append(f"{_n(plan.short_hours)} heures trop courtes : le secours jouera")
+    if problems:
+        _fail(" ; ".join(problems), 1)
 
 
 def _train_lines(r: TrainReport) -> list[str]:

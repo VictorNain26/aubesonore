@@ -1,15 +1,20 @@
+import shutil
+import subprocess
 from pathlib import Path
 
 import numpy as np
 import pytest
 
+from radio.acquire.audio import Cue
 from radio.core.db import connect
 from radio.signals.features import (
+    FEATURES_TAG,
     MODELS,
     Features,
     ModelError,
     check_models,
     measure_antenna,
+    played,
     summarize,
 )
 
@@ -50,21 +55,34 @@ class FakeExtractor:
     def __init__(self, broken: set[str]) -> None:
         self.broken = broken
         self.seen: list[str] = []
+        self.cues: dict[str, Cue | None] = {}
 
-    def measure(self, path: Path) -> Features | None:
+    def measure(self, path: Path, cue: Cue | None) -> Features | None:
         self.seen.append(path.name)
+        self.cues[path.name] = cue
         if path.name in self.broken:
             return None
         return Features(200.0, *(0.5,) * 9, 120.0, 118.0, 122.0)
 
 
+def _mp3(path: Path, *tags: str) -> None:
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=d=1", "-c:a", "libmp3lame"]
+        + [x for t in tags for x in ("-metadata", t)]
+        + [str(path)],
+        check=True,
+    )
+
+
+@pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")), reason="ffmpeg")
 def test_titles_on_air_are_measured_once_and_missing_files_named(tmp_path: Path) -> None:
     conn = connect(tmp_path / "radio.db")
     media = tmp_path / "media"
     (media / "antenne").mkdir(parents=True)
     (media / "repos").mkdir()
-    (media / "antenne" / "1.mp3").write_bytes(b"audio")
-    (media / "repos" / "2.mp3").write_bytes(b"audio")
+    # Le titre coupé est mesuré entre ses points de coupe.
+    _mp3(media / "antenne" / "1.mp3", "cue_in=0.2", "cue_out=0.9")
+    _mp3(media / "repos" / "2.mp3")
     # Le titre au repos est mesuré aussi : il reviendra au fond.
     conn.executemany(
         "INSERT INTO antenne VALUES (?, 'decouverte', ?, ?, ?, ?, 'd', 'd')",
@@ -88,6 +106,7 @@ def test_titles_on_air_are_measured_once_and_missing_files_named(tmp_path: Path)
     again = measure_antenna(conn, media, fake, NOW)
     assert (again.n_todo, again.missing) == (1, ["antenne/3.mp3"])  # seul l'absent est retenté
     assert fake.seen == ["1.mp3", "2.mp3"]
+    assert fake.cues == {"1.mp3": Cue(0.2, 0.9), "2.mp3": None}
 
 
 def test_models_are_pinned(tmp_path: Path) -> None:
@@ -97,3 +116,35 @@ def test_models_are_pinned(tmp_path: Path) -> None:
         (tmp_path / name).write_bytes(b"pas le modele officiel")
     with pytest.raises(ModelError, match="somme de contrôle"):
         check_models(tmp_path)
+
+
+def test_the_part_that_plays_is_measured() -> None:
+    audio = np.arange(10 * 100, dtype=np.float32)  # 10 s à 100 Hz
+    assert played(audio, 100, None) is audio
+    cut = played(audio, 100, Cue(1.5, 8.0))
+    assert cut.size == 650 and cut[0] == 150 and cut[-1] == 799
+
+
+@pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")), reason="ffmpeg")
+def test_a_measure_of_another_model_is_replaced_in_place(tmp_path: Path) -> None:
+    # Breaks if an old measure is erased before its replacement: the grid would plan the titles
+    # as unmeasured, neutral, until `radio mesures` comes by.
+    conn = connect(tmp_path / "radio.db")
+    media = tmp_path / "media"
+    (media / "antenne").mkdir(parents=True)
+    for tid in (1, 2):
+        _mp3(media / "antenne" / f"{tid}.mp3")
+    conn.executemany(
+        "INSERT INTO antenne VALUES (?, 'decouverte', 'decouvertes', ?, ?, ?, 'd', 'd')",
+        [(1, 1, "s1", "antenne/1.mp3"), (2, 2, "s2", "antenne/2.mp3")],
+    )
+    conn.executemany(
+        "INSERT INTO track_features VALUES (?, 'ok', ?, 'd', 300.0, " + ", ".join("?" * 12) + ")",
+        [(1, "", *([0.1] * 12)), (2, FEATURES_TAG, *([0.1] * 12))],
+    )
+    conn.commit()
+    fake = FakeExtractor(set())
+    rep = measure_antenna(conn, media, fake, NOW)
+    assert (rep.n_todo, fake.seen) == (1, ["1.mp3"])
+    rows = dict(conn.execute("SELECT deezer_track_id, duration_s FROM track_features"))
+    assert rows == {1: 200.0, 2: 300.0}
