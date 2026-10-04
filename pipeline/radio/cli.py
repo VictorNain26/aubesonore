@@ -698,9 +698,13 @@ def grille(
         day = now.date() if aujourdhui else now.date() + timedelta(days=1)
         hours = list(range(now.hour + 1, 24)) if aujourdhui else list(range(24))
         history = station.last_played((now - timedelta(days=14)).isoformat(), now.isoformat())
+        # Un titre en file passe même si son heure est réécrite, une fois remis à Liquidsoap :
+        # il compte comme joué à son heure prévue.
+        for song, at in station.queued().items():
+            history[song] = max(history.get(song, at), at)
         with _db(settings) as conn:
             midnight = datetime.combine(day, time(0), tzinfo=tz).timestamp()
-            played = grille_mod.with_published(conn, history, now.timestamp())
+            played = grille_mod.with_published(conn, history, now.timestamp(), midnight, hours)
             plan = grille_mod.plan_day(
                 grille_mod.load_titres(conn), played, cfg, day, hours, midnight
             )
@@ -709,7 +713,7 @@ def grille(
             _record(
                 conn,
                 "grille",
-                not errors,
+                not errors and not plan.empty_slots,
                 {
                     "jour": day.isoformat(),
                     "heures": len(hours),
@@ -737,8 +741,14 @@ def grille(
             *(f"  erreur : {e}" for e in errors),
         ]
     )
-    if errors:
-        _fail(f"{_n(len(errors))} heures mal écrites", 1)
+    # Une heure prévoit un titre de plus qu'elle n'en joue : un créneau vide entame cette marge,
+    # au-delà le secours joue à la place de la grille (vision §1). La grille publiée est gardée,
+    # et l'échec fait alerter Gatus.
+    problems = [f"{_n(len(errors))} heures mal écrites"] if errors else []
+    if plan.empty_slots:
+        problems.append(f"{_n(plan.empty_slots)} créneaux vides : le secours peut jouer")
+    if problems:
+        _fail(" ; ".join(problems), 1)
 
 
 def _train_lines(r: TrainReport) -> list[str]:
