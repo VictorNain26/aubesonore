@@ -165,8 +165,6 @@
     }
   }
 
-  /* Montée sans fondu : liée au défilement, l'animation peut s'arrêter à
-     mi-course si l'écran s'arrête là, et le texte doit rester lisible. */
   /* Entrée : l'aube monte de l'horizon, la ligne se trace, le point « maintenant »
      s'allume, les blocs se posent. Décor et mouvement seuls : le texte n'est
      jamais masqué (opacité), pour ne pas retarder l'affichage mesuré (LCP). */
@@ -210,11 +208,9 @@
 
   @keyframes rise {
     from {
-      opacity: 0;
-      transform: translateY(2.5rem);
+      transform: translateY(1rem);
     }
     to {
-      opacity: 1;
       transform: none;
     }
   }
@@ -398,10 +394,11 @@
   font-stretch: 75%;
 }
 
-/* Each block rises and lights up as it enters the screen, tied to the scroll
+/* Each block rises into place as it enters the screen, tied to the scroll
    (animation-timeline: view(): Chrome 115, Safari 26; elsewhere it just shows).
-   It ends once the block is wholly on screen, so nothing stays half-faded,
-   not even the footer at the very end of the page. */
+   No fade: the scroll can stop mid-way, and a block resting half-entered at the
+   foot of the screen (a section title under the hero) must read at full
+   contrast. */
 @utility reveal {
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
