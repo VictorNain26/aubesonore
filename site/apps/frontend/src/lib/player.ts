@@ -73,7 +73,9 @@ let analyser: AnalyserNode | null = null;
 let sourceNode: MediaElementAudioSourceNode | null = null;
 // Fades the sound in on play and out on stop, as SoundCloud does, apart from the listener's
 // volume (audio.volume). Before the analyser, so the horizon line calms down with the sound.
-// None on iOS (no Web Audio there, and the page cannot set its volume): the sound cuts.
+// None on iOS: the stream stays off Web Audio there (above), a gain on a media element has no
+// effect there anyway (WebKit #151589) and the page cannot set the volume (Apple's Safari
+// audio guide, iOS-Specific Considerations): the sound cuts.
 let fader: GainNode | null = null;
 let stopTimer: ReturnType<typeof setTimeout> | null = null;
 const FADE_IN_S = 0.6;
@@ -110,7 +112,10 @@ const initAudioContext = (audio: HTMLAudioElement) => {
   analyser.connect(audioContext.destination);
 };
 
-/** Ramps the fader from where it is to `value` in `seconds`. */
+/**
+ * Ramps the fader from where it is to `value` in `seconds`. A ramp starts at the previous
+ * scheduled event, hence the value set now; cancelAndHoldAtTime would do both, but Firefox lacks it.
+ */
 function fadeTo(value: number, seconds: number): void {
   if (!fader || !audioContext) return;
   const now = audioContext.currentTime;
