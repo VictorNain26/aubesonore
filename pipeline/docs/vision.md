@@ -333,10 +333,18 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
   - **La grille publiée compte** (table `grille`) : à 23:00, l'heure de 23 h n'est pas encore
     dans l'historique d'AzuraCast. Un titre publié mais pas encore joué compte comme joué à la
     fin de son heure, le pire cas ; sans cela, les titres et les artistes de 23 h repassaient dès
-    minuit. Le titre de trop d'une heure, jamais joué, n'y perd qu'un jour de rotation.
+    minuit. Le titre de trop d'une heure, jamais joué, n'y perd qu'un jour de rotation. Les
+    heures que la grille réécrit ne comptent pas : elles ne joueront pas ce qu'elles avaient. Le
+    2026-10-04, la passe du dimanche les comptait encore ; elle a bloqué jusqu'au soir les titres
+    et les artistes de la grille de la nuit, et de midi à 23 h chaque heure n'avait que 4 à 6
+    titres sur 16 (121 créneaux vides).
   - Un titre placé repart en fin de rotation. Le rapport donne le tour de chaque catégorie, les
     créneaux vides, les titres pas joués depuis plus de deux tours (doit être nul) et le plus
     grand nombre de titres d'un même artiste à l'antenne (doit rester à 2).
+  - **Un créneau vide fait échouer la commande**, après la publication : le secours le joue à
+    la place de la grille (§1), et Gatus alerte (§8.2). Vérifié sur l'antenne du 2026-10-04
+    (532 titres) : la grille de chaque soir et la passe du dimanche, simulées sur huit jours,
+    n'en laissent aucun.
 - **Vérifié par simulation** (14 jours sur l'antenne du 2026-10-02, 273 découvertes et 68
   repères, en ne jouant que les ~14,6 premiers titres de chaque heure) : aucun titre sans passage,
   aucun créneau vide, au moins 3 passages par semaine pour chaque découverte. Entre deux passages
@@ -429,8 +437,8 @@ toutes les 24 h et un message de retour à la normale, sur deux canaux :
 | `flux-public` : `radio.aubesonore.fr/listen/aubesonore/radio.mp3`, toutes les 5 min | HTTP 200 : vérifie aussi le tunnel Cloudflare (en place) |
 | `passe-hebdo` (endpoint externe) | Poussée par `ExecStopPost=` avec `$SERVICE_RESULT` ; alerte au premier échec ou après 8 jours de silence (en place) |
 | `sauvegarde` (endpoint externe) | Même mécanisme pour `radio-backup` ; alerte au premier échec ou après 2 jours de silence |
-| `grille-a-l-antenne` : `nowplaying`, toutes les 10 min | la playlist en cours s'appelle « Grille … » ; alerte après 7 échecs (plus d'une heure de secours) |
-| `grille` (endpoint externe) | `radio-grille` ; alerte au premier échec ou après 2 jours de silence |
+| `grille-a-l-antenne` : `nowplaying`, toutes les 10 min | la playlist en cours s'appelle « Grille … » ; alerte après 7 échecs (plus d'une heure de secours). Une heure à moitié vide ne la fait pas alerter : ses sondes alternent ; c'est l'échec de `radio grille` sur un créneau vide qui la signale |
+| `grille` (endpoint externe) | `radio-grille` ; alerte au premier échec (heure mal écrite, créneau vide) ou après 2 jours de silence. Dans la passe du dimanche, `radio check` fait échouer la passe |
 | `page-de-vote` : `127.0.0.1:8040`, toutes les 5 min | HTTP 403 sans jeton Access : la page tourne (en place) |
 | `page-de-vote-publique` : `votes.aubesonore.fr`, toutes les 5 min, redirection non suivie | HTTP 302 vers la connexion Access : la règle Access et la route du tunnel tiennent |
 

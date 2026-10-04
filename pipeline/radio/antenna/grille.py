@@ -268,16 +268,26 @@ def record(conn: sqlite3.Connection, plan: Plan, midnight: float) -> None:
 
 
 def with_published(
-    conn: sqlite3.Connection, played: dict[str, float], now: float
+    conn: sqlite3.Connection,
+    played: dict[str, float],
+    now: float,
+    midnight: float,
+    hours: Iterable[int],
 ) -> dict[str, float]:
-    """Le dernier passage de chaque titre, en comptant ce que la grille publiée fera jouer d'ici
-    la fin de l'heure en cours : un titre publié, pas encore joué, compte comme joué à la fin de
-    son heure. Sans cela, la grille écrite à 23:00 replace à minuit les titres et les artistes de
-    23 h. Le titre de trop d'une heure, jamais joué, n'y perd qu'un jour de rotation."""
+    """Le dernier passage de chaque titre, en comptant ce que la grille publiée jouera encore :
+    un titre publié, pas encore joué, compte comme joué à la fin de son heure. Sans cela, la grille
+    écrite à 23:00 replace à minuit les titres et les artistes de 23 h. Les heures que le plan
+    réécrit (`hours` du jour de `midnight`) ne joueront pas ce qu'elles avaient : les compter
+    bloquerait jusqu'au soir chaque titre et chaque artiste qu'elles remplacent, quand la passe du
+    dimanche réécrit le reste de la journée. Le titre de trop d'une heure, jamais joué, n'y perd
+    qu'un jour de rotation."""
+    rewritten = {midnight + h * 3600 for h in hours}
     out = dict(played)
     for start, song in conn.execute(
         "SELECT hour_start, song_id FROM grille WHERE hour_start + 3600 > ?", (now,)
     ):
+        if start in rewritten:
+            continue
         out[str(song)] = max(out.get(str(song), -math.inf), float(start) + 3600)
     return out
 

@@ -700,7 +700,7 @@ def grille(
         history = station.last_played((now - timedelta(days=14)).isoformat(), now.isoformat())
         with _db(settings) as conn:
             midnight = datetime.combine(day, time(0), tzinfo=tz).timestamp()
-            played = grille_mod.with_published(conn, history, now.timestamp())
+            played = grille_mod.with_published(conn, history, now.timestamp(), midnight, hours)
             plan = grille_mod.plan_day(
                 grille_mod.load_titres(conn), played, cfg, day, hours, midnight
             )
@@ -709,7 +709,7 @@ def grille(
             _record(
                 conn,
                 "grille",
-                not errors,
+                not errors and not plan.empty_slots,
                 {
                     "jour": day.isoformat(),
                     "heures": len(hours),
@@ -737,8 +737,13 @@ def grille(
             *(f"  erreur : {e}" for e in errors),
         ]
     )
-    if errors:
-        _fail(f"{_n(len(errors))} heures mal écrites", 1)
+    # Un créneau vide, c'est le secours à l'antenne à sa place (vision §1) : la grille publiée
+    # est gardée, et l'échec fait alerter Gatus.
+    problems = [f"{_n(len(errors))} heures mal écrites"] if errors else []
+    if plan.empty_slots:
+        problems.append(f"{_n(plan.empty_slots)} créneaux vides, joués par le secours")
+    if problems:
+        _fail(" ; ".join(problems), 1)
 
 
 def _train_lines(r: TrainReport) -> list[str]:

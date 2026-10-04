@@ -3,8 +3,11 @@ from datetime import date
 from pathlib import Path
 
 import numpy as np
+import pytest
 import responses
+from typer.testing import CliRunner
 
+import radio.cli as cli
 from radio.antenna.grille import (
     Titre,
     bloc,
@@ -18,7 +21,9 @@ from radio.antenna.grille import (
     slot_sequence,
     with_published,
 )
-from radio.core.config import Categorie, Creneau, GrilleConfig
+from radio.core.config import Categorie, Creneau, GrilleConfig, Settings
+from radio.core.db import connect
+from radio.core.report import last_stages
 from radio.sources.azuracast import AzuracastClient
 from tests_radio.model_factory import make_model_db
 
@@ -190,11 +195,48 @@ def test_the_hour_published_but_not_yet_played_counts_for_the_next_day(tmp_path:
     record(conn, today, MIDNIGHT)
     late = {t.artist for t in today.hours[23]}
 
-    played = with_published(conn, {}, MIDNIGHT + 23 * 3600)
+    played = with_published(conn, {}, MIDNIGHT + 23 * 3600, MIDNIGHT + 86400, range(24))
     tomorrow = plan_day(titres, played, grille, SATURDAY, [0, 1, 2, 3], MIDNIGHT + 86400)
 
     assert not late & {t.artist for h in (0, 1, 2) for t in tomorrow.hours[h]}
     assert set(played) == {t.song_id for t in today.hours[23]}
+
+
+def test_the_sunday_pass_frees_the_hours_it_rewrites(tmp_path: Path) -> None:
+    # Breaks if the hours the plan rewrites still count as published: on 2026-10-04 the pass of
+    # 06:38 kept every title and artist of the night's grid for 7 h-23 h, and from noon each hour
+    # had 4 to 6 titles out of 16, the rest played by the fallback.
+    conn = make_model_db(tmp_path)
+    titres = [_titre(i, "decouvertes", 0.5) for i in range(400)]
+    grille = _grille(decouvertes=400)
+    night = plan_day(titres, {}, grille, FRIDAY, list(range(24)), MIDNIGHT)
+    record(conn, night, MIDNIGHT)
+    history = {t.song_id: MIDNIGHT + h * 3600 + 1800 for h in range(6) for t in night.hours[h]}
+    now, rest = MIDNIGHT + 6.5 * 3600, list(range(7, 24))
+
+    played = with_published(conn, history, now, MIDNIGHT, rest)
+    plan = plan_day(titres, played, grille, FRIDAY, rest, MIDNIGHT)
+
+    assert plan.empty_slots == 0 and all(len(plan.hours[h]) == 16 for h in rest)
+    # L'heure en cours, publiée et pas réécrite, compte toujours.
+    assert all(played[t.song_id] == MIDNIGHT + 7 * 3600 for t in night.hours[6])
+    # Le même plan, quand les heures réécrites comptent, laisse le secours jouer.
+    stale = with_published(conn, history, now, MIDNIGHT, [])
+    assert plan_day(titres, stale, grille, FRIDAY, rest, MIDNIGHT).empty_slots > 0
+
+
+def test_a_published_hour_counts_until_it_ends_unless_the_plan_rewrites_it(
+    tmp_path: Path,
+) -> None:
+    # The grid of tomorrow written by hand at 15:30: today's hours from 15 h still play, an hour
+    # gone by no longer counts, and tomorrow's hours already published are rewritten.
+    conn = make_model_db(tmp_path)
+    rows = [(14, "past"), (15, "now"), (20, "tonight"), (24 + 3, "tomorrow")]
+    published = [(MIDNIGHT + h * 3600, song) for h, song in rows]
+    conn.executemany("INSERT INTO grille VALUES (?, ?)", published)
+    conn.commit()
+    played = with_published(conn, {}, MIDNIGHT + 15.5 * 3600, MIDNIGHT + 86400, range(24))
+    assert played == {"now": MIDNIGHT + 16 * 3600, "tonight": MIDNIGHT + 21 * 3600}
 
 
 def test_missing_titles_leave_empty_slots() -> None:
@@ -304,3 +346,64 @@ def test_client_hour_playlists_history_and_import() -> None:
     assert c.fill_playlist(11, "#EXTM3U\na\nb\n") == 1
     assert b"playlist_file" in responses.calls[4].request.body
     assert c.timezone() == "Europe/Paris"
+
+
+class FakeAzuracast(FakeStation):
+    def timezone(self) -> str:
+        return "Europe/Paris"
+
+    def last_played(self, start: str, end: str) -> dict[str, float]:
+        return {}
+
+
+@pytest.fixture
+def grille_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeAzuracast:
+    cfg = tmp_path / "config"
+    cfg.mkdir()
+    (cfg / "editorial.toml").write_text("")
+    settings = Settings(
+        _env_file=None,
+        plex_token="tok",
+        plex_music_section="Musique",
+        azuracast_api_key="k",
+        RADIO_DATA_DIR=tmp_path / "data",
+        RADIO_CONFIG_DIR=cfg,
+    )
+    monkeypatch.setattr(cli, "_settings", lambda: settings)
+    station = FakeAzuracast()
+    monkeypatch.setattr(cli, "AzuracastClient", lambda *a: station)
+    return station
+
+
+def _on_air(tmp_path: Path, n: int) -> None:
+    with connect(tmp_path / "data" / "radio.db") as conn:
+        conn.executemany(
+            "INSERT INTO antenne VALUES (?, 'decouverte', 'decouvertes', ?, ?, ?, ?, ?)",
+            [(i, i, f"s{i}", f"antenne/{i}.mp3", ENTERED, ENTERED) for i in range(1, n + 1)],
+        )
+
+
+def test_grille_command_writes_a_full_day(tmp_path: Path, grille_env: FakeAzuracast) -> None:
+    _on_air(tmp_path, 400)
+    res = CliRunner().invoke(cli.app, ["grille"])
+    assert res.exit_code == 0, res.output
+    assert "créneaux vides : 0" in res.stdout
+    assert len(grille_env.filled) == 24
+
+
+def test_an_empty_slot_is_published_then_fails_the_grid(
+    tmp_path: Path, grille_env: FakeAzuracast
+) -> None:
+    # Breaks if an empty slot passes in silence: the fallback plays in its place (vision §1),
+    # and only a failed command makes Gatus alert.
+    _on_air(tmp_path, 10)
+    res = CliRunner().invoke(cli.app, ["grille"])
+    assert res.exit_code == 1
+    assert len(grille_env.filled) == 24  # la grille publiée est gardée
+    with connect(tmp_path / "data" / "radio.db") as conn:
+        stages = [s for s in last_stages(conn) if s[0] == "grille"]
+        n_rows = conn.execute("SELECT COUNT(*) FROM stage_reports").fetchone()[0]
+    assert n_rows == 1 and not stages[0][2]
+    empty = stages[0][3]["créneaux vides"]
+    assert isinstance(empty, int) and empty > 0
+    assert f"{empty} créneaux vides, joués par le secours" in res.output
