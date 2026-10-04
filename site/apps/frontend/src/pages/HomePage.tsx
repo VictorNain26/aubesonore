@@ -12,7 +12,7 @@ export default function HomePage() {
         <ErrorBoundary FallbackComponent={PlayerErrorFallback}>
           <Hero />
         </ErrorBoundary>
-        <div className="px-page flex flex-col gap-16 py-12 md:gap-28 md:py-20">
+        <div className="px-page flex flex-col gap-16 py-12 md:gap-28 md:pb-20">
           <SinceDawn />
           <MostKept />
         </div>
