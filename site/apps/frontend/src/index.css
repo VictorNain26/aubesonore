@@ -8,7 +8,7 @@
 @layer base {
   /* Keeps a focused element clear of the pinned player bar (WCAG 2.4.11). */
   html {
-    scroll-padding-bottom: 6rem;
+    scroll-padding-bottom: var(--bar-space);
   }
 
   body {

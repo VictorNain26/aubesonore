@@ -1,8 +1,13 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { render as rtlRender, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
 import { PlayerBarView, type PlayerBarViewProps } from './PlayerBar';
+
+// The track links to the artist's page: a router <Link>.
+const render = (ui: ReactElement) => rtlRender(ui, { wrapper: MemoryRouter });
 
 const playedAt = Math.floor(new Date(2026, 9, 1, 17, 1).getTime() / 1000);
 
@@ -19,6 +24,8 @@ function props(overrides: Partial<PlayerBarViewProps> = {}): PlayerBarViewProps 
     onVolumeChange: vi.fn(),
     onToggleMute: vi.fn(),
     airPlay: null,
+    artistHref: null,
+    isOnline: true,
     ...overrides,
   };
 }
@@ -87,5 +94,22 @@ describe('PlayerBarView', () => {
     rerender(<PlayerBarView {...props({ airPlay: { isActive: false, onOpen } })} />);
     await userEvent.click(screen.getByRole('button', { name: 'Diffuser via AirPlay' }));
     expect(onOpen).toHaveBeenCalledOnce();
+  });
+
+  it("leads from the track to the artist's page once it exists", () => {
+    const { rerender } = render(<PlayerBarView {...props()} />);
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+
+    rerender(<PlayerBarView {...props({ artistHref: '/artist/a-1/mickey-3d' })} />);
+    expect(screen.getByRole('link', { name: /Mimoun/ })).toHaveAttribute(
+      'href',
+      '/artist/a-1/mickey-3d'
+    );
+  });
+
+  it('says radio silence instead of a track when the station is off air', () => {
+    render(<PlayerBarView {...props({ isOnline: false })} />);
+    expect(screen.getByText('Silence radio. Retour dans un instant.')).toBeInTheDocument();
+    expect(screen.queryByText('Mimoun')).not.toBeInTheDocument();
   });
 });
