@@ -8,8 +8,9 @@ import itertools
 import json
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from email.message import Message
 from http import HTTPStatus
 from pathlib import Path
@@ -101,24 +102,22 @@ def _backoff(attempt: int) -> float:
     return min(2.0**attempt, MAX_BACKOFF)
 
 
-def popularity_batch(mbids: list[str]) -> tuple[list[dict[str, Any]], float]:
-    """Rows of one batch, and how long to wait before the next request.
-
-    The response is an external payload: it must answer the batch asked, in
-    order, or a count lands on the wrong artist without anything noticing."""
+def _with_retries(call: Callable[[], tuple[Any, Message]]) -> tuple[Any, Message]:
+    """One ListenBrainz request, through its outages: a 429 waits for the reset
+    the service names, a 5xx or a cut connection waits longer each time, any
+    other refusal is final."""
     attempt = 0
     while True:
         attempt += 1
         try:
-            rows, headers = _post(POPULARITY_URL, {"artist_mbids": mbids})
+            return call()
         except urllib.error.HTTPError as e:
             throttled = e.code == HTTPStatus.TOO_MANY_REQUESTS
             if not throttled and e.code < HTTPStatus.INTERNAL_SERVER_ERROR:
-                raise DownloadError(f"ListenBrainz refused a batch: {e}") from e
+                raise DownloadError(f"ListenBrainz refused a request: {e}") from e
             if attempt == MAX_ATTEMPTS:
                 raise DownloadError(f"ListenBrainz: {e}, {attempt} attempts") from e
             time.sleep(_reset_in(e.headers) if throttled else _backoff(attempt))
-            continue
         # A connection cut mid-answer raises outside URLError (RemoteDisconnected,
         # ConnectionResetError, IncompleteRead): an outage all the same.
         except (
@@ -130,14 +129,62 @@ def popularity_batch(mbids: list[str]) -> tuple[list[dict[str, Any]], float]:
             if attempt == MAX_ATTEMPTS:
                 raise DownloadError(f"ListenBrainz: {e}, {attempt} attempts") from e
             time.sleep(_backoff(attempt))
-            continue
-        if (
-            not isinstance(rows, list)
-            or [r.get("artist_mbid") if isinstance(r, dict) else None for r in rows] != mbids
-        ):
-            raise DownloadError("ListenBrainz answered a batch other than the one asked")
-        remaining = int(headers.get("X-RateLimit-Remaining") or 1)
-        return rows, _reset_in(headers) if remaining == 0 else MIN_INTERVAL
+
+
+def popularity_batch(mbids: list[str]) -> tuple[list[dict[str, Any]], float]:
+    """Rows of one batch, and how long to wait before the next request.
+
+    The response is an external payload: it must answer the batch asked, in
+    order, or a count lands on the wrong artist without anything noticing."""
+    rows, headers = _with_retries(lambda: _post(POPULARITY_URL, {"artist_mbids": mbids}))
+    if (
+        not isinstance(rows, list)
+        or [r.get("artist_mbid") if isinstance(r, dict) else None for r in rows] != mbids
+    ):
+        raise DownloadError("ListenBrainz answered a batch other than the one asked")
+    remaining = int(headers.get("X-RateLimit-Remaining") or 1)
+    return rows, _reset_in(headers) if remaining == 0 else MIN_INTERVAL
+
+
+SIMILAR_URL = "https://labs.api.listenbrainz.org/similar-artists/json"
+# Of the algorithms the service lists, the one reading the longest history of
+# listening sessions (7 500 days), so a 1970s band's neighbours are not only
+# today's listening. Pinned: another algorithm is another snapshot.
+SIMILAR_ALGORITHM = (
+    "session_based_days_7500_session_300_contribution_5_threshold_10_limit_100_filter_True_skip_30"
+)
+
+
+def _get(url: str, params: dict[str, str]) -> tuple[Any, Message]:
+    req = urllib.request.Request(
+        f"{url}?{urllib.parse.urlencode(params)}", headers={"User-Agent": UA}
+    )
+    with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as r:
+        return json.load(r), r.headers
+
+
+def similar_artists(mbid: str) -> dict[str, Any]:
+    """The neighbours ListenBrainz gives one artist, as one snapshot row. The
+    service answers one artist per request (it takes no batch) and states no
+    rate limit: the snapshot keeps to the API's one call per second.
+
+    An external payload: every neighbour must name the artist asked, or a
+    neighbour lands on the wrong artist without anything noticing."""
+    rows, _ = _with_retries(
+        lambda: _get(SIMILAR_URL, {"artist_mbids": mbid, "algorithm": SIMILAR_ALGORITHM})
+    )
+    if not isinstance(rows, list) or any(
+        not isinstance(r, dict)
+        or r.get("reference_mbid") != mbid
+        or not isinstance(r.get("artist_mbid"), str)
+        or not isinstance(r.get("score"), int)
+        for r in rows
+    ):
+        raise DownloadError(f"ListenBrainz answered another artist than {mbid}")
+    return {
+        "artist_mbid": mbid,
+        "similar": [{"artist_mbid": r["artist_mbid"], "score": r["score"]} for r in rows],
+    }
 
 
 def _skip_written(partial: Path, batches: Iterator[list[str]]) -> tuple[int, Iterator[list[str]]]:
@@ -171,15 +218,36 @@ def _skip_written(partial: Path, batches: Iterator[list[str]]) -> tuple[int, Ite
     return kept_rows, itertools.chain([pending] if pending else [], batches)
 
 
+def _resume(dest: Path, batches: Iterable[list[str]]) -> tuple[Path, int, Iterator[list[str]]]:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    partial = dest.with_name(dest.name + ".partial")
+    if partial.exists():
+        n, rest = _skip_written(partial, iter(batches))
+        return partial, n, rest
+    return partial, 0, iter(batches)
+
+
+def fetch_proximity(mbids: Iterable[str], dest: Path) -> int:
+    """One line per artist asked, written as answered, aside then renamed like
+    the popularity snapshot: about 31 hours for the 111 402 artists with 500
+    listeners or more (2026-10-04), so a stopped run resumes where it was."""
+    partial, n, rest = _resume(dest, ([m] for m in mbids))
+    with partial.open("a", encoding="utf-8") as out:
+        for (mbid,) in rest:
+            started = time.monotonic()
+            out.write(json.dumps(similar_artists(mbid)) + "\n")
+            out.flush()
+            n += 1
+            time.sleep(max(0.0, MIN_INTERVAL - (time.monotonic() - started)))
+    partial.replace(dest)
+    return n
+
+
 def fetch_popularity(batches: Iterable[list[str]], dest: Path) -> int:
     """Writes the answers as received, one row per line. Written aside and
     renamed at the end: an interrupted snapshot leaves no file that looks like
     a complete one, and the next run of the day resumes it."""
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    partial = dest.with_name(dest.name + ".partial")
-    n, rest = 0, iter(batches)
-    if partial.exists():
-        n, rest = _skip_written(partial, rest)
+    partial, n, rest = _resume(dest, batches)
     wait = 0.0
     with partial.open("a", encoding="utf-8") as out:
         for batch in rest:
