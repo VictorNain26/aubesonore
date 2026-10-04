@@ -1,8 +1,10 @@
 """Passe de découverte : graines → voisins → titres candidats.
 
-Erreur définitive sur un artiste : sauté, compté, nommé. Deezer ou Last.fm indisponible : la
-passe s'arrête, le travail fait est gardé, aucune graine n'est marquée ; la passe suivante
-reprend avec les mêmes graines.
+Erreur définitive sur un artiste, ou voisin sans titre : sauté, compté, nommé. Deezer ou
+Last.fm indisponible : la passe s'arrête, le travail fait est gardé, aucune graine n'est marquée ;
+la passe suivante reprend avec les mêmes graines. Un Deezer qui ne rend aucun titre pour aucun
+voisin est indisponible : un voisin sans titre est rare (1 artiste relié sur 1 809, mesuré le
+2026-10-04), et ce jour-là 126 voisins sur 126 étaient vides.
 """
 
 import logging
@@ -83,6 +85,9 @@ def discover_pass(
             except DeezerError as e:
                 rep.skipped.append(f"{n.name} ({type(e).__name__})")
                 continue
+            if not top:
+                rep.skipped.append(f"{n.name} (aucun titre sur Deezer)")
+                continue
             kept = keep_tracks(top, n.id)
             with conn:
                 added = add_tracks(conn, n.id, n.name, kept, "candidate", stamp)
@@ -95,5 +100,7 @@ def discover_pass(
             rep.n_filtered += len(top) - len(kept)
             rep.n_added += len(added)
             rep.n_duplicates += len(kept) - len(added)
+    if rep.n_neighbours and not rep.n_seen:
+        raise DeezerUnavailable(f"aucun titre pour {rep.n_neighbours} voisins")
     finish_run(conn, run.run_id, now)
     return rep

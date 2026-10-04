@@ -93,6 +93,32 @@ def test_definitive_error_skips_and_names(tmp_path: Path) -> None:
     assert status(conn) == "done"
 
 
+def test_a_neighbour_without_titles_is_skipped_and_named(tmp_path: Path) -> None:
+    # Breaks if an empty top passes in silence. It happens: 1 related artist out of 1 809 had no
+    # title on Deezer, measured on 2026-10-04.
+    conn = make_library(tmp_path)
+    dz = FakeDeezer()
+    dz.top_[2] = []
+    rep = discover_pass(conn, dz, FakeLastfm(), CFG, NOW, np.random.default_rng(0))
+    assert rep.skipped == ["The Fall (aucun titre sur Deezer)"]
+    assert rep.n_added == 1 and status(conn) == "done"
+
+
+def test_no_title_for_any_neighbour_is_deezer_down_and_keeps_the_seeds(tmp_path: Path) -> None:
+    # Breaks if Deezer answering empty for every neighbour passes as a discovery that found
+    # nothing: on 2026-10-04, 126 neighbours gave 0 titles, the seeds were spent and nothing
+    # alerted.
+    conn = make_library(tmp_path)
+    dz = FakeDeezer()
+    dz.top_ = {1: [], 2: []}
+    with pytest.raises(DeezerUnavailable, match="aucun titre pour 2 voisins"):
+        discover_pass(conn, dz, FakeLastfm(), CFG, NOW, np.random.default_rng(0))
+    assert status(conn) == "running"
+    assert recently_used(conn, NOW, 30) == set()
+    rep = discover_pass(conn, FakeDeezer(), FakeLastfm(), CFG, NOW, np.random.default_rng(1))
+    assert rep.resumed and rep.n_added == 2 and status(conn) == "done"
+
+
 def test_unavailable_keeps_work_and_resumes_same_run(tmp_path: Path) -> None:
     conn = make_library(tmp_path)
     dz, lf = FakeDeezer(), FakeLastfm()
