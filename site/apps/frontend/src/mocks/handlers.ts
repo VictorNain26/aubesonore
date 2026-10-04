@@ -60,6 +60,20 @@ export const handlers = [
     return HttpResponse.json({ id: 'a-1', slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-') });
   }),
 
+  http.post(`${API}/api/artist/pages`, async ({ request }) => {
+    const { names } = (await request.json()) as { names: string[] };
+    return HttpResponse.json(
+      Object.fromEntries(
+        names
+          .filter((name) => name !== 'Unknown')
+          .map((name) => [
+            name,
+            { id: 'a-1', slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-') },
+          ])
+      )
+    );
+  }),
+
   http.get(`${API}/api/artist/:id`, ({ params }) => {
     if (params.id === 'malformed') return new HttpResponse(null, { status: 400 });
     if (params.id !== 'a-1') return new HttpResponse(null, { status: 404 });

@@ -11,7 +11,7 @@ import { useArtistPage } from '../hooks/useArtistPage';
 import { artistPath } from '../lib/artistProfile';
 import { Cover } from './Cover';
 import { formatClock } from './time';
-import { TEXT_ACTION } from './styles';
+import { ARTIST_LINK, TEXT_ACTION } from './styles';
 import {
   ListenDisc,
   listenAria,
@@ -117,10 +117,7 @@ export function NowPlayingView({
             <p className="text-headline text-text-muted m-0 font-normal">
               {/* Inline padding grows the tap target to 44px without moving the line. */}
               {artistHref ? (
-                <Link
-                  to={artistHref}
-                  className="ease-out-quart hover:text-text focus-visible:outline-accent decoration-text-muted/40 hover:decoration-text rounded-sm py-3 underline decoration-1 underline-offset-6 transition-[color,opacity] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70"
-                >
+                <Link to={artistHref} className={cn(ARTIST_LINK, 'py-3 underline-offset-6')}>
                   {track.artist}
                 </Link>
               ) : (

@@ -8,6 +8,7 @@ const UNKNOWN_ID = '22222222-2222-2222-2222-222222222222';
 // replace these modules for every other test file of the run (Bun 1.3).
 const profileService = await import('../services/artistProfileService');
 const resolver = await import('../services/artistResolver');
+const pagesService = await import('../services/artistPages');
 
 const spies = [
   spyOn(profileService, 'getArtistProfile').mockImplementation((id: string) =>
@@ -29,6 +30,11 @@ const spies = [
   ),
   spyOn(resolver, 'resolveArtist').mockImplementation((name: string) =>
     Promise.resolve(name === 'Daft Punk' ? { id: VALID_ID, slug: 'daft-punk' } : null)
+  ),
+  spyOn(pagesService, 'findArtistPages').mockImplementation((names: readonly string[]) =>
+    Promise.resolve(
+      names.includes('Daft Punk') ? { 'Daft Punk': { id: VALID_ID, slug: 'daft-punk' } } : {}
+    )
   ),
 ];
 
@@ -119,5 +125,47 @@ describe('GET /api/artist/resolve', () => {
     );
 
     expect(res.status).toBe(404);
+  });
+});
+
+describe('POST /api/artist/pages', () => {
+  const pages = (body: unknown) =>
+    app.handle(
+      new Request('http://localhost/api/artist/pages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+    );
+
+  it('answers the pages of the names that have one', async () => {
+    const res = await pages({ names: ['Daft Punk', 'Nobody At All'] });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ 'Daft Punk': { id: VALID_ID, slug: 'daft-punk' } });
+  });
+
+  it('keeps a comma inside a name', async () => {
+    const findSpy = spies[2];
+    await pages({ names: ['Earth, Wind & Fire'] });
+
+    expect(findSpy?.mock.calls.at(-1)).toEqual([['Earth, Wind & Fire']]);
+  });
+
+  it('rejects a body that is not a short list of names', async () => {
+    expect((await pages({})).status).toBe(400);
+    expect((await pages({ names: [''] })).status).toBe(400);
+    expect((await pages({ names: ['x'.repeat(201)] })).status).toBe(400);
+    expect((await pages({ names: Array.from({ length: 401 }, (_, i) => `A${i}`) })).status).toBe(
+      400
+    );
+  });
+
+  it('rate-limits a client past thirty requests a minute', async () => {
+    const answers = [];
+    for (let i = 0; i < 31; i++) answers.push((await pages({ names: ['Daft Punk'] })).status);
+
+    expect(answers.slice(0, 30).every((status) => status === 200)).toBe(true);
+    expect(answers[30]).toBe(429);
   });
 });
