@@ -63,7 +63,7 @@ export function MostKeptView({ trends, status }: MostKeptViewProps) {
             <h2 id="most-kept-title" className="text-section m-0">
               {m.most_kept_title()}
             </h2>
-            <p className="text-text-muted m-0">{m.most_kept_body()}</p>
+            <p className="text-intro text-text-muted m-0">{m.most_kept_body()}</p>
           </div>
           <Tabs.List aria-label={m.most_kept_period()} className="relative flex gap-6">
             <Tabs.Tab value="week" className={TAB}>

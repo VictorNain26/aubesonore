@@ -26,7 +26,7 @@ export function NotFoundPage() {
   return (
     <main className="relative flex min-h-dvh flex-col overflow-hidden">
       <div aria-hidden="true" className="dawn-band dawn-arrive" />
-      <div className="lift-in relative z-10 flex flex-1 flex-col justify-center gap-5 px-6 md:px-10">
+      <div className="lift-in px-page relative z-10 flex flex-1 flex-col justify-center gap-5">
         <p className="text-label text-text-muted m-0 font-mono uppercase">404 — hors antenne</p>
         <h1 className="text-hero m-0">Un blanc à l&apos;antenne.</h1>
         <p className="text-intro text-text-muted max-w-blurb m-0">
@@ -50,7 +50,7 @@ export function NotFoundPage() {
           </a>
         </p>
       </div>
-      <div className="relative z-10 h-36 md:h-50">
+      <div className="px-page relative z-10 h-36 md:h-50">
         <svg
           aria-hidden="true"
           viewBox="0 0 1000 80"
@@ -66,9 +66,11 @@ export function NotFoundPage() {
             vectorEffect="non-scaling-stroke"
           />
         </svg>
-        <p className="text-logo condensed absolute bottom-10 left-6 m-0 md:bottom-15 md:left-10">
-          aubesonore
-        </p>
+        <div className="relative size-full">
+          <p className="text-logo condensed absolute bottom-10 left-0 m-0 md:bottom-15">
+            aubesonore
+          </p>
+        </div>
       </div>
     </main>
   );

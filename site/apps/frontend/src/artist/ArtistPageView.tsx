@@ -85,7 +85,7 @@ function Section({
         <h2 id={`${id}-title`} className="text-section m-0">
           {title}
         </h2>
-        {body ? <p className="text-text-muted max-w-blurb m-0">{body}</p> : null}
+        {body ? <p className="text-intro text-text-muted max-w-blurb m-0">{body}</p> : null}
       </div>
       <div className="flex min-w-0 flex-col">{children}</div>
     </section>
@@ -94,7 +94,7 @@ function Section({
 
 function Header() {
   return (
-    <header className="flex items-center justify-between gap-6 px-6 pt-5 md:px-10 md:pt-7">
+    <header className="px-page flex items-center justify-between gap-6 pt-5 md:pt-7">
       <Link
         to={localizeHref('/')}
         className="text-mark condensed ease-out-quart focus-visible:outline-accent inline-flex min-h-11 items-center rounded-sm transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4"
@@ -110,7 +110,7 @@ function Header() {
 
 function Message({ title, body }: { title: string; body: string }) {
   return (
-    <div className="lift-in flex flex-col gap-4 px-6 py-24 md:px-10">
+    <div className="lift-in px-page flex flex-col gap-4 py-24">
       <h1 className="text-hero m-0">{title}</h1>
       <p className="text-intro text-text-muted max-w-blurb m-0">{body}</p>
     </div>
@@ -145,7 +145,7 @@ function Profile({ profile }: { profile: ArtistProfile }) {
 
   return (
     <>
-      <div className="lift-in grid gap-6 px-6 pt-10 md:grid-cols-12 md:items-end md:gap-x-10 md:gap-y-12 md:px-10 md:pt-16">
+      <div className="lift-in px-page grid gap-6 pt-10 md:grid-cols-12 md:items-end md:gap-x-10 md:gap-y-12 md:pt-16">
         <Cover
           src={profile.image}
           alt={m.artist_portrait_alt({ name: profile.name })}
@@ -160,7 +160,7 @@ function Profile({ profile }: { profile: ArtistProfile }) {
         {profile.summary ? <Summary summary={profile.summary} /> : null}
       </div>
 
-      <div className="flex flex-col gap-16 px-6 py-12 md:gap-28 md:px-10 md:py-20">
+      <div className="px-page flex flex-col gap-16 py-12 md:gap-28 md:py-20">
         <Section id="played" title={m.artist_played_title()} body={m.artist_played_body()}>
           {profile.playedOnRadio.length > 0 ? (
             <ol className="border-accent m-0 list-none border-t p-0">
@@ -207,7 +207,7 @@ export function ArtistPageView({ state }: { state: ArtistPageState }) {
     <main id="main" className="min-h-dvh">
       <Header />
       {state.status === 'loading' ? (
-        <div aria-busy="true" className="flex flex-col gap-6 px-6 pt-10 md:px-10 md:pt-16">
+        <div aria-busy="true" className="px-page flex flex-col gap-6 pt-10 md:pt-16">
           <span className="bg-surface-raised aspect-square w-40 rounded-sm md:w-60" />
           <span className="bg-surface-raised h-12 w-2/3 rounded-sm" />
         </div>

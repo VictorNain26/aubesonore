@@ -40,7 +40,7 @@ export function SiteFooterView({
   onInstall,
 }: SiteFooterViewProps) {
   return (
-    <footer className="reveal border-accent text-ui mx-6 flex flex-wrap items-center justify-between gap-6 border-t pt-7 pb-32 font-normal md:mx-10">
+    <footer className="reveal border-accent text-ui mx-page flex flex-wrap items-center justify-between gap-6 border-t pt-7 pb-32 font-normal">
       <span className="text-text-muted">
         © {new Date().getFullYear()} AubeSonore · {m.footer_free()}
       </span>

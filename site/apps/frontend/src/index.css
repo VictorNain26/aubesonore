@@ -3,8 +3,6 @@
 
 @theme inline {
   --radius-lg: 0.5rem;
-
-  --container-page: 75rem;
 }
 
 @layer base {

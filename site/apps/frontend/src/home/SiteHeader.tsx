@@ -37,7 +37,7 @@ export function SiteHeader() {
   if (isLibraryOpen && !hasOpenedLibrary) setHasOpenedLibrary(true);
 
   return (
-    <header className="relative z-10 flex items-start justify-between gap-6 px-6 pt-5 md:px-10 md:pt-7">
+    <header className="px-page relative z-10 flex items-start justify-between gap-6 pt-5 md:pt-7">
       <h1 className="m-0 flex flex-col gap-1.5">
         <span className="text-mark condensed">aubesonore</span>
         <span className="sr-only"> — </span>

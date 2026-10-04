@@ -15,7 +15,7 @@
 - Never write hex/hsl/oklch values outside `src/design/tokens.css`.
 - Never use arbitrary values for color, spacing, typography (`bg-[#fff]`, `p-[13px]`, `text-[17px]`).
 - Typography: Bricolage Grotesque, plus Geist Mono (`font-mono`) for times and labels; both self-hosted with Fontsource (the CSP allows `font-src 'self'` only).
-- Home sizes (v4): `text-hero`, `text-logo` (+ `condensed`), `text-section`, `text-headline`, `text-intro`, `text-row`, `text-sub`, `text-ui`, `text-label`. Modals still use `text-title`, `text-lead`, `text-body`, `text-caption` until they are redrawn. A new size goes in `tokens.css` **and** in the `extendTailwindMerge` list of `src/lib/utils.ts`, or `cn()` drops it next to a text color.
+- Home sizes (v4): `text-hero`, `text-logo` (+ `condensed`), `text-section`, `text-headline`, `text-intro`, `text-row`, `text-sub`, `text-ui`, `text-label`. Modals still use `text-title`, `text-body`, `text-caption` until they are redrawn. A new size goes in `tokens.css` **and** in the `extendTailwindMerge` list of `src/lib/utils.ts`, or `cn()` drops it next to a text color.
 - Radii: `rounded-sm`, `rounded-md`, `rounded-full` — nothing else.
 - New token needed? Add it to `tokens.css`, add its pair to `scripts/check-contrast.mjs`, run the script.
 

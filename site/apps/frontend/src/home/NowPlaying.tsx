@@ -25,13 +25,6 @@ import * as m from '@/paraglide/messages.js';
 // Past this length the title would take three lines at hero size.
 const LONG_TITLE = 28;
 
-export interface BeforeRow {
-  id: number;
-  playedAt: number;
-  title: string;
-  artist: string;
-}
-
 export interface NowPlayingViewProps {
   track: {
     title: string;
@@ -52,15 +45,14 @@ export interface NowPlayingViewProps {
   onShare: () => void;
   /** The artist's page, once it exists: no link rather than a dead one. */
   artistHref: string | null;
-  /** The last tracks before this one, newest first: the thread the live belongs to. */
-  before: BeforeRow[];
   /** True once the live has moved past the track shown at load: changes then animate. */
   hasChanged?: boolean;
 }
 
 /**
- * What plays now, the biggest thing on the page: the cover, the title, and
- * Écouter right under it, then Garder, Partager and L'artiste.
+ * What plays now, the biggest thing on the page: the cover, the title, the
+ * artist (a link to their page once it exists), and Écouter right under it,
+ * beside Garder and Partager. What played before is the thread just below.
  */
 export function NowPlayingView({
   track,
@@ -74,12 +66,11 @@ export function NowPlayingView({
   onToggleKeep,
   onShare,
   artistHref,
-  before,
   hasChanged = false,
 }: NowPlayingViewProps) {
   const trackKey = track ? `${track.artist}|${track.title}` : 'none';
   return (
-    <div className="grid gap-6 md:grid-cols-12 md:items-center md:gap-x-10">
+    <div className="grid gap-6 md:grid-cols-12 md:items-end md:gap-x-10">
       <div className="lift-in md:col-span-5 lg:col-span-4">
         {track ? (
           <Cover
@@ -105,7 +96,11 @@ export function NowPlayingView({
           </p>
         ) : track ? (
           <div key={trackKey} className={cn('flex flex-col gap-2', hasChanged && 'swap-in-late')}>
-            <span className="text-label text-text-muted font-mono uppercase">
+            <span className="text-label text-text-muted flex items-center gap-2 font-mono uppercase">
+              <span
+                aria-hidden="true"
+                className="bg-accent motion-safe:animate-live size-1.5 rounded-full"
+              />
               {m.now_on_air({ time: formatClock(track.playedAt) })}
               {listeners !== undefined && listeners >= 2
                 ? ` · ${m.now_listeners({ count: listeners })}`
@@ -119,7 +114,18 @@ export function NowPlayingView({
             >
               {track.title}
             </h2>
-            <p className="text-headline text-text-muted m-0 font-normal">{track.artist}</p>
+            <p className="text-headline text-text-muted m-0 font-normal">
+              {artistHref ? (
+                <Link
+                  to={artistHref}
+                  className="ease-out-quart hover:text-text focus-visible:outline-accent decoration-text-muted/40 hover:decoration-text rounded-sm underline decoration-1 underline-offset-6 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-4"
+                >
+                  {track.artist}
+                </Link>
+              ) : (
+                track.artist
+              )}
+            </p>
           </div>
         ) : (
           <div aria-busy="true" className="flex flex-col gap-2">
@@ -157,50 +163,17 @@ export function NowPlayingView({
                 <Share2 className="size-4" strokeWidth={1.6} aria-hidden="true" />
                 {m.track_share()}
               </button>
-              {artistHref ? (
-                <Link to={artistHref} className={TEXT_ACTION}>
-                  {m.track_artist()}
-                </Link>
-              ) : null}
             </span>
           ) : null}
         </div>
-
-        {before.length > 0 ? (
-          <div className="mt-8 flex flex-col md:mt-10 md:max-w-xl">
-            <span className="text-label text-text-muted mb-2 font-mono uppercase">
-              {m.now_before()}
-            </span>
-            <ol className="border-border m-0 list-none border-t p-0">
-              {before.map((row) => (
-                <li
-                  key={row.id}
-                  className="thread-in border-border grid grid-cols-[3.5rem_minmax(0,1fr)] items-baseline gap-x-3 border-b py-2.5"
-                >
-                  <span className="text-ui text-text-muted font-mono font-normal tabular-nums">
-                    {formatClock(row.playedAt)}
-                  </span>
-                  <span className="text-ui truncate">
-                    <span className="font-semibold">{row.title}</span>
-                    <span className="text-text-muted font-normal"> — {row.artist}</span>
-                  </span>
-                </li>
-              ))}
-            </ol>
-            <a href="#depuis-l-aube" className={cn(TEXT_ACTION, 'self-start')}>
-              {m.now_before_all()}
-            </a>
-          </div>
-        ) : null}
       </div>
     </div>
   );
 }
 
 export function NowPlaying() {
-  const { title, artist, art, playedAt, isOnline, listeners, history } = useNowPlayingStore(
+  const { title, artist, art, playedAt, isOnline, listeners } = useNowPlayingStore(
     useShallow((s) => ({
-      history: s.data?.song_history,
       title: s.data?.now_playing?.song.title,
       artist: s.data?.now_playing?.song.artist,
       art: s.data?.now_playing?.song.art,
@@ -247,12 +220,6 @@ export function NowPlaying() {
       onShare={handleShare}
       artistHref={artistPage ? artistPath(artistPage) : null}
       hasChanged={firstTrackKey !== null && trackKey !== firstTrackKey}
-      before={(history ?? []).slice(0, 3).map((e) => ({
-        id: e.sh_id,
-        playedAt: e.played_at,
-        title: e.song.title,
-        artist: e.song.artist,
-      }))}
     />
   );
 }

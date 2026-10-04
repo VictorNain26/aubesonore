@@ -13,7 +13,7 @@ export function Hero() {
       <div aria-hidden="true" className="dawn-band dawn-arrive" />
       <svg
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 size-full opacity-13 mix-blend-multiply"
+        className="grain-fade pointer-events-none absolute inset-0 size-full opacity-13 mix-blend-multiply"
       >
         <filter id="grain">
           <feTurbulence
@@ -29,7 +29,7 @@ export function Hero() {
 
       <SiteHeader />
 
-      <div className="relative z-10 px-6 pt-10 md:px-10 md:pt-12">
+      <div className="px-page relative z-10 pt-10 md:pt-12">
         <NowPlaying />
       </div>
 
