@@ -375,6 +375,12 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
   `ImportAction` 0.23.8). Les playlists programmées passent devant la playlist « AubeSonore »,
   qui reste le secours (`QueueBuilder`, 0.23.8). Le titre de trop d'une heure n'est pas joué :
   l'heure suivante démarre à l'heure.
+- **Heures murales** : AzuraCast programme chaque playlist horaire sur l'heure de la station
+  (`Scheduler::shouldPlayInSchedulePeriod`, 0.23.8), et la grille date chaque heure de même
+  (`hour_spans`), jamais `minuit + h × 3600`, qui se décale d'une heure les jours de changement
+  d'heure, deux dimanches, jour de la passe. Le 2026-10-25, l'heure de 2 h se répète : son
+  créneau dure deux heures et reçoit deux heures de titres, que `loop_once` joue d'un trait. Le
+  2027-03-28, 2 h n'existe pas : l'heure n'est pas planifiée.
 
 **Mesures par titre** (`radio mesures`, depuis le 2026-10-02 ;
 `recherches/2026-10-02-mesures-titres.md`). Chaque titre de la table `antenne`, au repos compris

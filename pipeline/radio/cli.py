@@ -703,20 +703,22 @@ def grille(
         for song, at in station.queued().items():
             history[song] = max(history.get(song, at), at)
         with _db(settings) as conn:
+            spans = grille_mod.hour_spans(day, hours, tz)
+            rewritten = [begin for begin, _ in spans.values()]
+            played = grille_mod.with_published(conn, history, now.timestamp(), rewritten)
             midnight = datetime.combine(day, time(0), tzinfo=tz).timestamp()
-            played = grille_mod.with_published(conn, history, now.timestamp(), midnight, hours)
             plan = grille_mod.plan_day(
-                grille_mod.load_titres(conn), played, cfg, day, hours, midnight
+                grille_mod.load_titres(conn), played, cfg, day, spans, midnight
             )
             errors = grille_mod.publish(plan, station)
-            grille_mod.record(conn, plan, midnight)
+            grille_mod.record(conn, plan)
             _record(
                 conn,
                 "grille",
                 not errors and not plan.empty_slots,
                 {
                     "jour": day.isoformat(),
-                    "heures": len(hours),
+                    "heures": len(plan.hours),
                     "créneaux": plan.slots,
                     "créneaux vides": plan.empty_slots,
                     "titres non mesurés": plan.unmeasured,
@@ -730,7 +732,7 @@ def grille(
         _fail(f"AzuraCast indisponible ({e})", 1)
     _echo(
         [
-            f"Grille du {day.isoformat()} : {_n(len(hours))} heures, créneaux "
+            f"Grille du {day.isoformat()} : {_n(len(plan.hours))} heures, créneaux "
             + ", ".join(f"{c} {_n(n)}" for c, n in plan.slots.items()),
             f"  créneaux vides : {_n(plan.empty_slots)}, titres pas encore mesurés : "
             f"{_n(plan.unmeasured)}, titres pas joués depuis plus de deux tours : "
