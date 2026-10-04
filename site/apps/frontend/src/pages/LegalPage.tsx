@@ -51,6 +51,7 @@ export function LegalPage() {
         <p className="m-0">{m.legal_cookies_body()}</p>
       </Section>
       <Section title={m.legal_credits_title()}>
+        <p className="m-0">{m.legal_credits_sources()}</p>
         <p className="m-0">{m.about_credit()}</p>
       </Section>
     </main>
