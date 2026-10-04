@@ -24,12 +24,28 @@ function recordRequests(): string[][] {
 afterEach(() => server.events.removeAllListeners());
 
 describe('useArtistPages', () => {
-  it('maps each played artist to its page, and an artist without one to null', async () => {
+  it('maps each played artist to its page, and leaves out an artist without one', async () => {
     const { result } = renderHook(() => useArtistPages(['Hania Rani', 'Unknown']));
 
-    await waitFor(() => expect(result.current.size).toBe(2));
+    await waitFor(() => expect(result.current.size).toBe(1));
     expect(result.current.get('Hania Rani')).toEqual({ id: 'a-1', slug: 'hania-rani' });
-    expect(result.current.get('Unknown')).toBeNull();
+    expect(result.current.has('Unknown')).toBe(false);
+  });
+
+  it('asks again, with the next track, for an artist that had no page yet', async () => {
+    const asked = recordRequests();
+    const { result, rerender } = renderHook(({ names }) => useArtistPages(names), {
+      initialProps: { names: ['Unknown', 'Weval'] },
+    });
+    await waitFor(() => expect(result.current.size).toBe(1));
+
+    rerender({ names: ['Doves', 'Unknown', 'Weval'] });
+    await waitFor(() => expect(result.current.size).toBe(2));
+
+    expect(asked).toEqual([
+      ['Unknown', 'Weval'],
+      ['Doves', 'Unknown'],
+    ]);
   });
 
   it('asks the day once, then only the artist of a new track', async () => {
