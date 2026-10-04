@@ -38,7 +38,7 @@ export default function Layout({ children }: LayoutProps) {
   }, [openAuthModal]);
 
   return (
-    <div className="text-text min-h-dvh">
+    <div className="text-text pb-bar min-h-dvh">
       <a href="#main" className="skip-link">
         {m.skip_link()}
       </a>

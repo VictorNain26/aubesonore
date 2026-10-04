@@ -32,6 +32,7 @@
   --glyph-2: oklch(0.83 0.05 352);
   --glyph-3: oklch(0.85 0.03 290);
   --glyph-4: oklch(0.82 0.022 68);
+  --bar-space: calc(5.75rem + env(safe-area-inset-bottom));
 }
 
 @theme inline {
@@ -394,6 +395,12 @@
 /* Barre du lecteur : au-dessus de la zone gestuelle des téléphones (iPhone). */
 @utility bottom-safe {
   bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+
+/* The room every page keeps free at its foot for the player bar (3.75rem high, 1rem off the
+   bottom, plus 1rem of air and the iPhone's gesture area), so the bar never covers content. */
+@utility pb-bar {
+  padding-bottom: var(--bar-space);
 }
 
 @utility condensed {
