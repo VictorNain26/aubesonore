@@ -4,7 +4,8 @@ import type { ReactElement } from 'react';
 import { render as rtlRender, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
-import { NowPlayingView, type NowPlayingViewProps } from './NowPlaying';
+import { ErrorBoundary } from 'react-error-boundary';
+import { NowPlayingFallback, NowPlayingView, type NowPlayingViewProps } from './NowPlaying';
 
 // The artist link is a router <Link>.
 const render = (ui: ReactElement) => rtlRender(ui, { wrapper: MemoryRouter });
@@ -119,5 +120,29 @@ describe('NowPlayingView', () => {
     rerender(<NowPlayingView {...props({ isKept: false })} />);
     rerender(<NowPlayingView {...props({ isKept: true })} />);
     expect(keep()).toContainHTML('keep-pop');
+  });
+});
+
+describe('NowPlayingFallback', () => {
+  it('says the track does not show, keeps the live to hear, and retries', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let shouldThrow = true;
+    function Track() {
+      if (shouldThrow) throw new Error('boom');
+      return <p>Mimoun</p>;
+    }
+    render(
+      <ErrorBoundary FallbackComponent={NowPlayingFallback}>
+        <Track />
+      </ErrorBoundary>
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent("Le titre en cours ne s'affiche pas.");
+    expect(screen.getByRole('button', { name: 'Écouter le direct' })).toBeInTheDocument();
+
+    shouldThrow = false;
+    await userEvent.click(screen.getByRole('button', { name: 'Réessayer' }));
+    expect(screen.getByText('Mimoun')).toBeInTheDocument();
+    spy.mockRestore();
   });
 });

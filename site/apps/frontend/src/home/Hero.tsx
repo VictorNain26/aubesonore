@@ -1,5 +1,6 @@
 import { SiteHeader } from './SiteHeader';
-import { NowPlaying } from './NowPlaying';
+import { ErrorBoundary } from 'react-error-boundary';
+import { NowPlaying, NowPlayingFallback } from './NowPlaying';
 import { Horizon } from './Horizon';
 
 /**
@@ -30,7 +31,9 @@ export function Hero() {
       <SiteHeader />
 
       <div className="px-page relative z-10 flex flex-1 items-center pt-10 md:pt-12">
-        <NowPlaying />
+        <ErrorBoundary FallbackComponent={NowPlayingFallback}>
+          <NowPlaying />
+        </ErrorBoundary>
       </div>
 
       <Horizon />
