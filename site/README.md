@@ -97,7 +97,7 @@ Toute la stack est auto-hébergée sur le même serveur et exposée via Cloudfla
 
 Le déploiement est automatique et _pull-based_ : merger sur `master` suffit. Sur le serveur, le timer systemd utilisateur `aubesonore-deploy.timer` lance toutes les 2 minutes [`scripts/deploy.sh`](scripts/deploy.sh), qui compare le checkout à `origin/master` (`git ls-remote`) et, quand `master` a bougé :
 
-1. `git merge --ff-only` vers la nouvelle révision ;
+1. `git merge --ff-only` vers la nouvelle révision, après avoir aligné `pipeline/.venv` sur `uv.lock` (`uv sync --locked`, à chaque passage, puis de nouveau quand `pipeline/` change) ;
 2. `docker compose up -d --build --remove-orphans` ;
 3. attend que tous les healthchecks soient verts (échec au-delà de 300 s) ;
 4. supprime les images de plus de 72 h.
