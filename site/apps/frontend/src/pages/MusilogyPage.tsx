@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router';
+import { Navigate, useParams } from 'react-router';
 import * as m from '@/paraglide/messages.js';
 import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../home/SiteFooter';
 import { fetchMusilogyArtist, MusilogyUnavailableError, searchMusilogy } from '../lib/musilogy';
+import { artistPath } from '../lib/artistProfile';
 import {
   MusilogyArtistView,
   MusilogyHomeView,
@@ -46,6 +47,10 @@ function MusilogyArtist({ mbid }: { mbid: string }) {
     window.scrollTo(0, 0);
   }, [mbid]);
 
+  // One page per artist: an artist the antenna played has theirs, with Musilogy's sections in it.
+  if (state.status === 'ready' && state.artist.card.played) {
+    return <Navigate to={artistPath(state.artist.card.played)} replace />;
+  }
   return <MusilogyArtistView state={state} />;
 }
 
