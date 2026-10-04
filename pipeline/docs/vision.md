@@ -313,9 +313,22 @@ chaque heure (`recherches/2026-10-02-cycle-de-vie.md` §2 et §6). `radio grille
 soir à 23:00 la journée du lendemain ; la passe du dimanche réécrit les heures qui restent après
 avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours).
 
-- **Créneaux.** Une heure en prévoit `ceil(titres_par_heure) + 1` (16), répartis entre les
-  catégories par smooth weighted round-robin. Tant qu'une catégorie n'a pas son stock, sa part
-  est réduite en proportion et rendue aux autres.
+- **Une heure se remplit au temps, pas au nombre.** AzuraCast prend chaque titre dans la
+  playlist programmée à l'heure prévue de son passage : la fin du précédent moins
+  `crossfade` × 1,5, soit 3 s (`Queue::addDurationToTime`, `getCrossfadeDuration`, 0.23.8, lu
+  par `start_next_s`). Un titre passe donc s'il commence avant la fin de l'heure, et l'heure
+  suivante démarre après lui : mesuré le 2026-10-04, chaque heure a commencé 0 à 4 min après
+  l'heure pile et a joué 13 à 16 titres. Une heure reçoit des titres, de la durée mesurée de
+  leur fichier (`track_features.duration_s`), jusqu'à couvrir toute sa durée ; avec 16 titres
+  fixes, une heure de titres courts s'épuisait (5 h le 2026-10-04 : 3 585 s) et le secours
+  jouait. Les catégories se suivent par smooth weighted round-robin ; tant qu'une catégorie n'a
+  pas son stock, sa part est réduite en proportion et rendue aux autres.
+- **Les plus en retard partent à coup sûr.** L'heure démarre après la fin du dernier titre de la
+  précédente, d'au plus sa durée : les titres qui partent avant la fin de l'heure dans
+  n'importe quel ordre, les plus en retard choisis d'abord, forment le fil ; les moins pressés
+  viennent après, où l'heure suivante peut les couper. Sans cela, le fil rangeait en fin d'heure
+  les titres entrés d'office, loin de l'ambiance des autres : coupés, ils restaient en retard
+  (32 titres la nuit du 2026-10-03).
 - **Remplissage, créneau par créneau**, avec la mécanique des logiciels du métier
   (`recherches/2026-10-02-programmation.md` §3) : la catégorie est parcourue dans l'ordre de
   rotation (pile de MusicMaster : dernier passage dans l'historique d'AzuraCast, 14 jours), sur
@@ -333,7 +346,7 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
   - **La grille publiée compte** (table `grille`) : à 23:00, l'heure de 23 h n'est pas encore
     dans l'historique d'AzuraCast. Un titre publié mais pas encore joué compte comme joué à la
     fin de son heure, le pire cas ; sans cela, les titres et les artistes de 23 h repassaient dès
-    minuit. Le titre de trop d'une heure, jamais joué, n'y perd qu'un jour de rotation. Les
+    minuit. Un titre de fin d'heure coupé n'y perd qu'un jour de rotation. Les
     heures que la grille réécrit ne comptent pas : elles ne joueront pas ce qu'elles avaient. Le
     2026-10-04, la passe du dimanche les comptait encore ; elle a bloqué jusqu'au soir les titres
     et les artistes de la grille de la nuit, et de midi à 23 h chaque heure n'avait que 4 à 6
@@ -345,13 +358,18 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
     qu'elle n'est pas estimée), le pire cas. Sans cela, une passe finie peu avant une heure
     replaçait dans la journée un titre déjà en file.
   - Un titre placé repart en fin de rotation. Le rapport donne le tour de chaque catégorie, les
-    créneaux vides, les titres pas joués depuis plus de deux tours (doit être nul) et le plus
-    grand nombre de titres d'un même artiste à l'antenne (doit rester à 2).
-  - **Un créneau vide fait échouer la commande**, après la publication : une heure prévoit un
-    titre de plus qu'elle n'en joue, un créneau vide entame cette marge, et au-delà le secours
-    joue à la place de la grille (§1). La grille publiée est gardée, et Gatus alerte (§8.2).
-    Vérifié sur l'antenne du 2026-10-04 (532 titres) : la grille de chaque soir et la passe du
-    dimanche, simulées sur huit jours, n'en laissent aucun.
+    heures courtes, les créneaux cédés, les titres pas joués depuis plus de deux tours (doit être
+    nul) et le plus grand nombre de titres d'un même artiste à l'antenne (doit rester à 2).
+  - **Une catégorie sans titre permis cède son créneau** à la suivante : l'heure continue au
+    lieu de laisser un trou, et le rapport compte les créneaux cédés.
+  - **Une heure trop courte fait échouer la commande**, après la publication : ses titres ne la
+    couvrent pas, elle s'épuise et le secours joue à la place de la grille (§1). La grille
+    publiée est gardée, et Gatus alerte (§8.2).
+  - **Vérifié par simulation** (14 jours sur l'antenne du 2026-10-04, 532 titres, durées
+    réelles, lecture selon `Queue::addDurationToTime`) : 0 min de secours contre 33 avec 16
+    titres par heure, titres en retard de plus de deux tours de 8-19 par jour à 0 dès le
+    troisième, aucune heure courte, aucun créneau cédé ; le titre le moins joué passe 1,5 fois
+    par semaine au lieu de 1.
 - **Vérifié par simulation** (14 jours sur l'antenne du 2026-10-02, 273 découvertes et 68
   repères, en ne jouant que les ~14,6 premiers titres de chaque heure) : aucun titre sans passage,
   aucun créneau vide, au moins 3 passages par semaine pour chaque découverte. Entre deux passages
@@ -367,14 +385,13 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
   Society Open Science*, 2021, PMC8580447) ; fête le vendredi et le samedi de 20 h à 3 h
   (décision du 2026-09-23). Un titre pas encore mesuré est neutre.
 - **Ordre** : fil qui dérive, du dernier titre de l'heure précédente au plus proche, de la fin
-  d'un titre au début du suivant.
+  d'un titre au début du suivant, sur les titres qui partent à coup sûr, puis sur les autres.
 - **AzuraCast** : 168 playlists « Grille {jour} {hh}h », séquentielles, programmées une heure par
   semaine avec `loop_once`, sans `avoid_duplicates`, créées au premier usage
   (`POST /station/1/playlists` avec `schedule_items` ; `start_date` et `end_date` à `null`
   obligatoires). Remplissage : `DELETE …/empty` puis `POST …/import` (M3U, ordre conservé,
   `ImportAction` 0.23.8). Les playlists programmées passent devant la playlist « AubeSonore »,
-  qui reste le secours (`QueueBuilder`, 0.23.8). Le titre de trop d'une heure n'est pas joué :
-  l'heure suivante démarre à l'heure.
+  qui reste le secours (`QueueBuilder`, 0.23.8).
 - **Heures murales** : AzuraCast programme chaque playlist horaire sur l'heure de la station
   (`Scheduler::shouldPlayInSchedulePeriod`, 0.23.8), et la grille date chaque heure de même
   (`hour_spans`), jamais `minuit + h × 3600`, qui se décale d'une heure les jours de changement
@@ -450,8 +467,8 @@ toutes les 24 h et un message de retour à la normale, sur deux canaux :
 | `flux-public` : `radio.aubesonore.fr/listen/aubesonore/radio.mp3`, toutes les 5 min | HTTP 200 : vérifie aussi le tunnel Cloudflare (en place) |
 | `passe-hebdo` (endpoint externe) | Poussée par `ExecStopPost=` avec `$SERVICE_RESULT` ; alerte au premier échec ou après 8 jours de silence (en place) |
 | `sauvegarde` (endpoint externe) | Même mécanisme pour `radio-backup` ; alerte au premier échec ou après 2 jours de silence |
-| `grille-a-l-antenne` : `nowplaying`, toutes les 10 min | la playlist en cours s'appelle « Grille … » ; alerte après 7 échecs (plus d'une heure de secours). Une heure à moitié vide ne la fait pas alerter : ses sondes alternent ; c'est l'échec de `radio grille` sur un créneau vide qui la signale |
-| `grille` (endpoint externe) | `radio-grille` ; alerte au premier échec (heure mal écrite, créneau vide) ou après 2 jours de silence. Dans la passe du dimanche, `radio check` fait échouer la passe |
+| `grille-a-l-antenne` : `nowplaying`, toutes les 10 min | la playlist en cours s'appelle « Grille … » ; alerte après 7 échecs (plus d'une heure de secours). Une heure à moitié vide ne la fait pas alerter : ses sondes alternent ; c'est l'échec de `radio grille` sur une heure trop courte qui la signale |
+| `grille` (endpoint externe) | `radio-grille` ; alerte au premier échec (heure mal écrite, heure trop courte) ou après 2 jours de silence. Dans la passe du dimanche, `radio check` fait échouer la passe |
 | `page-de-vote` : `127.0.0.1:8040`, toutes les 5 min | HTTP 403 sans jeton Access : la page tourne (en place) |
 | `page-de-vote-publique` : `votes.aubesonore.fr`, toutes les 5 min, redirection non suivie | HTTP 302 vers la connexion Access : la règle Access et la route du tunnel tiennent |
 

@@ -89,6 +89,16 @@ class AzuracastClient:
             out[song] = max(out.get(song, at), at)
         return out
 
+    def start_next_s(self) -> float:
+        """Avance, en secondes, du titre suivant sur la fin du précédent : AzuraCast le fait partir
+        `getCrossfadeDuration()` avant la fin, soit `crossfade` * 1,5, ou 0 si le fondu est coupé
+        (`Queue::addDurationToTime`, `StationBackendConfiguration`, 0.23.8)."""
+        backend = self._call("GET", f"/admin/station/{self._station}")["backend_config"]
+        crossfade = float(backend["crossfade"])
+        if backend["crossfade_type"] == "none" or crossfade <= 0:
+            return 0.0
+        return round(crossfade * 1.5, 2)
+
     def timezone(self) -> str:
         return str(self._call("GET", f"/station/{self._station}")["timezone"])
 

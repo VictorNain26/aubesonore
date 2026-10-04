@@ -4,7 +4,8 @@ docs/recherches/2026-10-02-programmation.md §3).
 La grille se remplit créneau par créneau, avec la mécanique des logiciels de programmation radio
 (pile de MusicMaster, règles et objectifs de GSelector) :
 
-1. Chaque heure a ses créneaux, répartis entre les catégories selon leurs parts.
+1. Chaque heure reçoit des titres jusqu'à couvrir sa durée, les catégories se suivant selon
+   leurs parts ; une catégorie sans titre permis cède son créneau.
 2. Pour un créneau, on parcourt la catégorie dans l'ordre de rotation (joué il y a le plus
    longtemps d'abord, d'après l'historique d'AzuraCast), sur une fenêtre de recherche. Deux
    règles incassables : un titre se repose au moins `repos` tour de sa catégorie, un artiste ne
@@ -13,19 +14,19 @@ La grille se remplit créneau par créneau, avec la mécanique des logiciels de 
    et à `force` tours il passe d'office (règle anti-famine de GSelector). Un titre placé repart en
    fin de rotation.
 3. Chaque heure est ensuite ordonnée en fil qui dérive : elle part du dernier titre de la
-   précédente et va chaque fois au plus proche, de la fin d'un titre au début du suivant.
-
-Une heure prévoit un titre de plus que la station n'en joue : l'heure suivante démarre à l'heure,
-et le secours ne comble pas une fin d'heure. Le titre de trop n'est pas joué ; il reste parmi les
-plus anciens et revient le lendemain.
+   précédente et va chaque fois au plus proche, de la fin d'un titre au début du suivant. Les
+   titres qui partent à coup sûr avant la fin de l'heure, les plus en retard, viennent d'abord ;
+   les moins pressés finissent l'heure, que la suivante peut couper.
 """
 
 import math
 import sqlite3
+import statistics
 from collections import Counter
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta, tzinfo
+from itertools import islice
 from typing import Protocol
 
 import numpy as np
@@ -71,6 +72,8 @@ class Titre:
     measured: bool
     # Entrée dans sa catégorie (horodatage UNIX) : le retard d'un titre jamais joué en part.
     since: float
+    # Durée du fichier (`radio mesures`) ; None tant qu'il n'est pas mesuré.
+    duration_s: float | None
 
 
 Span = tuple[float, float]
@@ -83,6 +86,7 @@ class Plan:
     spans: dict[int, Span] = field(default_factory=dict)
     slots: dict[str, int] = field(default_factory=dict)
     empty_slots: int = 0
+    short_hours: int = 0
     unmeasured: int = 0
     late: int = 0
     turnover_days: dict[str, float] = field(default_factory=dict)
@@ -99,7 +103,7 @@ def load_titres(conn: sqlite3.Connection) -> list[Titre]:
                n.path, n.song_id, f.status = 'ok',
                f.arousal, f.danceability, f.bpm,
                f.arousal_start, f.danceability_start, f.bpm_start,
-               f.arousal_end, f.danceability_end, f.bpm_end, n.since
+               f.arousal_end, f.danceability_end, f.bpm_end, n.since, f.duration_s
         FROM antenne n
         LEFT JOIN tracks t USING (deezer_track_id)
         LEFT JOIN track_features f USING (deezer_track_id)
@@ -130,6 +134,7 @@ def load_titres(conn: sqlite3.Connection) -> list[Titre]:
                 quantiles(map(float, r[12:15])) if measured else NEUTRE,
                 measured,
                 datetime.fromisoformat(str(r[15])).timestamp(),
+                float(r[16]) if measured else None,
             )
         )
     return out
@@ -144,19 +149,21 @@ def shares(titres: list[Titre], grille: GrilleConfig) -> dict[Categorie, float]:
     return {c: (w[c] / total if total else 0.0) for c in CATEGORIES}
 
 
-def slot_sequence(weights: dict[Categorie, float], n: int) -> list[Categorie]:
-    """`n` créneaux répartis au prorata des poids, régulièrement (smooth weighted round-robin,
+def round_robin(weights: dict[Categorie, float]) -> Iterator[Categorie]:
+    """Créneaux répartis au prorata des poids, régulièrement (smooth weighted round-robin,
     l'algorithme de répartition de nginx)."""
     current = dict.fromkeys(weights, 0.0)
-    out: list[Categorie] = []
     total = sum(weights.values())
-    for _ in range(n):
+    while True:
         for c, w in weights.items():
             current[c] += w
         best = max(current, key=lambda c: current[c])
         current[best] -= total
-        out.append(best)
-    return out
+        yield best
+
+
+def slot_sequence(weights: dict[Categorie, float], n: int) -> list[Categorie]:
+    return list(islice(round_robin(weights), n))
 
 
 def hour_spans(day: date, hours: Iterable[int], tz: tzinfo) -> dict[int, Span]:
@@ -189,21 +196,37 @@ def plan_day(
     day: date,
     spans: dict[int, Span],
     midnight: float,
+    start_next_s: float,
     previous: Titre | None = None,
 ) -> Plan:
     """`spans` : début et fin de chaque heure à planifier (`hour_spans`) ; `midnight` : minuit du
-    jour ; `last_played` : dernier passage de chaque titre (song_id). Tous en horodatages UNIX."""
+    jour ; `last_played` : dernier passage de chaque titre (song_id). Tous en horodatages UNIX.
+    `start_next_s` : avance du titre suivant sur la fin du précédent (`start_next_s` d'AzuraCast).
+
+    Chaque heure se remplit au temps, pas au nombre : AzuraCast prend chaque titre dans la
+    playlist programmée à l'heure prévue de son passage, la fin du précédent moins
+    `start_next_s` (`Queue::addDurationToTime`, 0.23.8). L'heure reçoit des titres jusqu'à couvrir
+    toute sa durée : sans cela, une heure de titres courts s'épuise et le secours joue. Elle
+    démarre après la fin du dernier titre de la précédente, d'au plus sa durée : les titres qui
+    partent à coup sûr avant la fin de l'heure sont les plus en retard ; les autres, les moins
+    pressés, viennent en fin d'heure, où l'heure suivante peut les couper."""
     plan = Plan(
         day, {h: [] for h in spans}, spans=spans, unmeasured=sum(not t.measured for t in titres)
     )
     weights = {c: w for c, w in shares(titres, grille).items() if w > 0}
     if not weights or not spans:
         return plan
-    per_hour = math.ceil(grille.titres_par_heure) + 1
+    known = [t.duration_s for t in titres if t.duration_s is not None]
+    typical = statistics.median(known) if known else 3600 / grille.titres_par_heure
+
+    def on_air(t: Titre) -> float:
+        return max(1.0, (typical if t.duration_s is None else t.duration_s) - start_next_s)
+
     iso = day.isoweekday()
-    # Rotation : dernier passage connu, puis chaque titre placé prend l'heure de son créneau.
+    # Rotation : dernier passage connu, puis chaque titre placé prend l'heure de son passage.
     clock: dict[int, float | None] = {t.tid: last_played.get(t.song_id) for t in titres}
     by_cat = {c: [t for t in titres if t.categorie == c] for c in weights}
+    per_hour = 3600 / statistics.fmean(on_air(t) for t in titres)
     per_day = {c: weights[c] * per_hour * 24 for c in weights}
     window = {c: max(1, math.ceil(per_day[c] * (grille.marge - 1))) for c in weights}
     # Tour d'une catégorie : le temps qu'il faut pour la jouer en entier. Le retard d'un titre se
@@ -235,34 +258,73 @@ def plan_day(
     # Un titre pas joué depuis plus de `force` tours : la rotation ne tient pas, à surveiller.
     plan.late = sum(overdue(t, midnight) > grille.force for c in weights for t in by_cat[c])
 
+    urgency: dict[int, float] = {}
+    # Retard de la première heure sur son début : au plus le titre le plus long, sans meilleure
+    # borne ; ensuite, au plus le plus long de l'heure précédente.
+    carry = on_air(previous) if previous is not None else max(on_air(t) for t in titres)
+    last = previous
     for h, (hour_start, hour_end) in spans.items():
         target = _target(grille, iso, h)
-        n_slots = round(per_hour * (hour_end - hour_start) / 3600)
-        for k, c in enumerate(slot_sequence(weights, n_slots)):
-            now = hour_start + k * (hour_end - hour_start) / n_slots
+        length = hour_end - hour_start
+        filled = 0.0
+        stuck: set[Categorie] = set()
+        slots = round_robin(weights)
+        while filled < length and stuck != set(weights):
+            c = next(slots)
+            now = hour_start + filled
             rotation = sorted(by_cat[c], key=lambda t: (clock[t.tid] or -math.inf, t.tid))
             eligible = [t for t in rotation if allowed(t, now, hour_start)][: window[c]]
             if not eligible:
                 plan.empty_slots += 1
+                stuck.add(c)
                 continue
+            stuck.clear()
             starved = [t for t in eligible if overdue(t, now) >= grille.force]
             t = (
                 max(starved, key=lambda t: overdue(t, now))
                 if starved
                 else min(eligible, key=lambda t: score(t, now, target))
             )
+            urgency[t.tid] = overdue(t, now)
             clock[t.tid] = now
             # Le fil qui dérive réordonne l'heure : l'artiste peut y passer jusqu'à sa fin, et la
             # séparation se compte de là jusqu'au début de l'heure suivante qui le reprend.
             artist_clock[t.artist] = hour_end
             plan.hours[h].append(t)
             plan.slots[c] = plan.slots.get(c, 0) + 1
-    last = previous
-    for h in spans:
-        plan.hours[h] = _drift(plan.hours[h], last, _target(grille, iso, h))
-        if plan.hours[h]:
-            last = plan.hours[h][-1]
+            filled += on_air(t)
+        if filled < length:
+            plan.short_hours += 1
+        sure = _sure(plan.hours[h], length - carry, urgency, on_air)
+        spare = [t for t in plan.hours[h] if t not in sure]
+        ordered = _drift(sure, last, target)
+        ordered += _drift(spare, ordered[-1] if ordered else last, target)
+        plan.hours[h] = ordered
+        if ordered:
+            last = ordered[-1]
+            carry = max(on_air(t) for t in ordered)
+        else:
+            carry = 0.0
     return plan
+
+
+def _sure(
+    titres: list[Titre],
+    capacity: float,
+    urgency: dict[int, float],
+    on_air: Callable[[Titre], float],
+) -> list[Titre]:
+    """Les titres qui partent avant la fin de l'heure dans n'importe quel ordre, les plus en
+    retard d'abord : le dernier part après tous les autres, au pire après les plus longs."""
+    out: list[Titre] = []
+    total, shortest = 0.0, math.inf
+    for t in sorted(titres, key=lambda t: -urgency[t.tid]):
+        d = on_air(t)
+        if total + d - min(shortest, d) < capacity:
+            out.append(t)
+            total += d
+            shortest = min(shortest, d)
+    return out
 
 
 def _target(grille: GrilleConfig, day: int, hour: int) -> Vector:

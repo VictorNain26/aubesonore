@@ -694,6 +694,7 @@ def grille(
     )
     try:
         tz = ZoneInfo(station.timezone())
+        start_next = station.start_next_s()
         now = datetime.now(tz)
         day = now.date() if aujourdhui else now.date() + timedelta(days=1)
         hours = list(range(now.hour + 1, 24)) if aujourdhui else list(range(24))
@@ -708,19 +709,20 @@ def grille(
             played = grille_mod.with_published(conn, history, now.timestamp(), rewritten)
             midnight = datetime.combine(day, time(0), tzinfo=tz).timestamp()
             plan = grille_mod.plan_day(
-                grille_mod.load_titres(conn), played, cfg, day, spans, midnight
+                grille_mod.load_titres(conn), played, cfg, day, spans, midnight, start_next
             )
             errors = grille_mod.publish(plan, station)
             grille_mod.record(conn, plan)
             _record(
                 conn,
                 "grille",
-                not errors and not plan.empty_slots,
+                not errors and not plan.short_hours,
                 {
                     "jour": day.isoformat(),
                     "heures": len(plan.hours),
                     "créneaux": plan.slots,
-                    "créneaux vides": plan.empty_slots,
+                    "heures courtes": plan.short_hours,
+                    "créneaux cédés": plan.empty_slots,
                     "titres non mesurés": plan.unmeasured,
                     "titres en retard": plan.late,
                     "tour en jours": {c: round(d, 2) for c, d in plan.turnover_days.items()},
@@ -734,7 +736,8 @@ def grille(
         [
             f"Grille du {day.isoformat()} : {_n(len(plan.hours))} heures, créneaux "
             + ", ".join(f"{c} {_n(n)}" for c, n in plan.slots.items()),
-            f"  créneaux vides : {_n(plan.empty_slots)}, titres pas encore mesurés : "
+            f"  heures courtes : {_n(plan.short_hours)}, créneaux cédés à une autre catégorie : "
+            f"{_n(plan.empty_slots)}, titres pas encore mesurés : "
             f"{_n(plan.unmeasured)}, titres pas joués depuis plus de deux tours : "
             f"{_n(plan.late)}",
             "  tour de chaque catégorie : "
@@ -743,12 +746,11 @@ def grille(
             *(f"  erreur : {e}" for e in errors),
         ]
     )
-    # Une heure prévoit un titre de plus qu'elle n'en joue : un créneau vide entame cette marge,
-    # au-delà le secours joue à la place de la grille (vision §1). La grille publiée est gardée,
-    # et l'échec fait alerter Gatus.
+    # Une heure que ses titres ne couvrent pas s'épuise, et le secours joue à la place de la
+    # grille (vision §1). La grille publiée est gardée, et l'échec fait alerter Gatus.
     problems = [f"{_n(len(errors))} heures mal écrites"] if errors else []
-    if plan.empty_slots:
-        problems.append(f"{_n(plan.empty_slots)} créneaux vides : le secours peut jouer")
+    if plan.short_hours:
+        problems.append(f"{_n(plan.short_hours)} heures trop courtes : le secours jouera")
     if problems:
         _fail(" ; ".join(problems), 1)
 
