@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useAuthStore } from '../stores/authStore';
-import { useAuthModalStore } from '../stores/authModalStore';
 import { ModalErrorFallback } from '../design/organisms/ErrorFallback';
 import { Menu } from '../design/molecules/Menu';
 import { Link, useLocation } from 'react-router';
@@ -39,9 +38,10 @@ export function SiteHeader() {
       signOut: s.signOut,
     }))
   );
-  const openAuthModal = useAuthModalStore((s) => s.open);
   const { pathname } = useLocation();
-  const isHome = ['/', '/en', '/en/', '/reset-password'].includes(pathname);
+  const isHome = ['/', '/en', '/en/'].includes(pathname);
+  // The sign-in page is where Se connecter leads: the header does not offer it twice.
+  const isSignInPage = [m.signin_href(), '/reset-password'].includes(pathname);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const closeLibrary = () => setIsLibraryOpen(false);
   // Kept mounted after the first opening, so closing it can animate.
@@ -97,10 +97,10 @@ export function SiteHeader() {
               items={[{ label: m.library_sign_out(), onSelect: () => void signOut() }]}
             />
           </span>
-        ) : (
-          <button type="button" onClick={() => openAuthModal()} className={OUTLINE_PILL}>
+        ) : isSignInPage ? null : (
+          <Link to={m.signin_href()} state={{ from: pathname }} className={OUTLINE_PILL}>
             {m.nav_sign_in()}
-          </button>
+          </Link>
         )}
       </nav>
 

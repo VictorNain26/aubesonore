@@ -155,6 +155,7 @@
   "footer_legal": "Mentions légales",
   "auth_privacy_notice": "En créant un compte, vous acceptez notre",
   "auth_privacy_link": "politique de confidentialité",
+  "signin_href": "/connexion",
   "legal_href": "/mentions-legales/",
   "footer_free": "Gratuite, sans publicité, non commerciale.",
   "auth_keep_title": "Pour garder « {title} », connectez-vous.",

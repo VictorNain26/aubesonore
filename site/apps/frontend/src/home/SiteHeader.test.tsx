@@ -5,7 +5,6 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { SiteHeader } from './SiteHeader';
 import { useAuthStore } from '../stores/authStore';
-import { useAuthModalStore } from '../stores/authModalStore';
 
 const mockMatchMedia = () => {
   window.matchMedia = vi.fn().mockReturnValue({
@@ -26,17 +25,16 @@ beforeEach(() => {
   mockMatchMedia();
   window.history.replaceState({}, '', '/');
   useAuthStore.setState(baseAuthState);
-  useAuthModalStore.setState({ isOpen: false, mode: 'signin', resetToken: null });
 });
 
 describe('SiteHeader', () => {
-  it('shows the sign-in button when unauthenticated and opens the auth modal on click', async () => {
+  it('leads to the sign-in page when unauthenticated', () => {
     render(<SiteHeader />, { wrapper: MemoryRouter });
 
-    const button = screen.getByRole('button', { name: 'Se connecter' });
-    await userEvent.click(button);
-
-    expect(useAuthModalStore.getState().isOpen).toBe(true);
+    expect(screen.getByRole('link', { name: 'Se connecter' })).toHaveAttribute(
+      'href',
+      '/connexion'
+    );
   });
 
   function signIn(): ReturnType<typeof vi.fn> {
@@ -81,7 +79,7 @@ describe('SiteHeader', () => {
 
     render(<SiteHeader />, { wrapper: MemoryRouter });
 
-    expect(screen.queryByRole('button', { name: 'Se connecter' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Se connecter' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Mes titres' })).not.toBeInTheDocument();
   });
 
