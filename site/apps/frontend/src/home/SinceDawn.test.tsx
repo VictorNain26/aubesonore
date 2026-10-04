@@ -18,13 +18,15 @@ function rows(count: number): ThreadRow[] {
 }
 
 describe('SinceDawnView', () => {
-  it('shows ten tracks, then ten more on "Remonter le fil"', async () => {
+  it('shows ten tracks, then ten more on "Plus tôt dans la journée"', async () => {
     render(<SinceDawnView rows={rows(15)} status="ready" onToggleKeep={vi.fn()} />);
 
     expect(screen.getAllByRole('listitem')).toHaveLength(10);
-    await userEvent.click(screen.getByRole('button', { name: 'Remonter le fil' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Plus tôt dans la journée' }));
     expect(screen.getAllByRole('listitem')).toHaveLength(15);
-    expect(screen.queryByRole('button', { name: 'Remonter le fil' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Plus tôt dans la journée' })
+    ).not.toBeInTheDocument();
   });
 
   it('marks the track on air', () => {
