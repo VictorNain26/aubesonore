@@ -15,6 +15,7 @@ import { Header, Section } from '../artist/ArtistPageView';
 import { TEXT_ACTION } from '../home/styles';
 import { artistPath } from '../lib/artistProfile';
 import { musilogyPath } from '../lib/musilogy';
+import { MusilogyMap } from './MusilogyMap';
 
 export type MusilogyState =
   | { status: 'loading' }
@@ -190,7 +191,7 @@ function Links({ links }: { links: readonly MusilogyLink[] }) {
   );
 }
 
-function ArtistView({ artist }: { artist: MusilogyArtist }) {
+function ArtistView({ artist, thisYear }: { artist: MusilogyArtist; thisYear: number }) {
   const { card, neighbours, influences, links } = artist;
   const line = cardLine(card);
   return (
@@ -213,7 +214,12 @@ function ArtistView({ artist }: { artist: MusilogyArtist }) {
       </div>
 
       <div className="px-page flex flex-col gap-16 py-12 md:gap-28 md:py-20">
-        <p className="text-intro text-text-muted m-0 max-w-prose">{m.musilogy_neighbours_note()}</p>
+        <div className="flex flex-col gap-6">
+          <p className="text-intro text-text-muted m-0 max-w-prose">
+            {m.musilogy_neighbours_note()}
+          </p>
+          <MusilogyMap artist={artist} thisYear={thisYear} />
+        </div>
         <NeighbourSection
           id="before"
           title={m.musilogy_before_title()}
@@ -283,7 +289,14 @@ function Message({ title, body }: { title: string; body: string }) {
 }
 
 /** An artist's place in the history of its music: before, alongside, after, and its bands. */
-export function MusilogyArtistView({ state }: { state: MusilogyState }) {
+export function MusilogyArtistView({
+  state,
+  thisYear = new Date().getFullYear(),
+}: {
+  state: MusilogyState;
+  /** Where an active artist's span ends on the map. */
+  thisYear?: number;
+}) {
   return (
     <main id="main" className="min-h-dvh">
       <Header />
@@ -299,7 +312,7 @@ export function MusilogyArtistView({ state }: { state: MusilogyState }) {
       ) : state.status === 'error' ? (
         <Message title={m.musilogy_error_title()} body={m.musilogy_error_body()} />
       ) : (
-        <ArtistView artist={state.artist} />
+        <ArtistView artist={state.artist} thisYear={thisYear} />
       )}
     </main>
   );
