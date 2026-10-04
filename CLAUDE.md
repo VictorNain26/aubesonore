@@ -65,7 +65,7 @@ AzuraCast is the hub. The other two never talk to each other.
 - musilogy is **offline reference data**, outside the radio: it turns MusicBrainz dumps and a
   ListenBrainz snapshot into eight Parquet tables. `musilogy load` copies them into a `musilogy`
   schema of the site's database, and the site reads them only through musilogy's SQL functions
-  (artist page, frieze) — never by calling musilogy at runtime (`docs/vision.md` §4.3).
+  — never by calling musilogy at runtime (`docs/vision.md` §4.3).
 
 ## Documentation drifts faster than the system
 

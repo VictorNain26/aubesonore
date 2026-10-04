@@ -118,26 +118,15 @@ describe('getArtistProfile', () => {
       playedOnRadio: [
         { title: 'Around the World', artist: 'Daft Punk', playedAt: '2026-07-27T10:00:00.000Z' },
       ],
-      mbid: 'mb-1',
     });
     expect(spies.mbid).toHaveBeenCalledWith('27');
     expect(spies.summary).toHaveBeenCalledWith('Q185828', 'en');
   });
 
-  it('keeps the MBID it found, the bridge to the frieze', async () => {
+  it('keeps the MBID it found, the bridge to Musilogy', async () => {
     await getArtistProfile('artist-1', 'fr');
 
     expect(mbidWrites).toEqual([{ mbid: 'mb-1' }]);
-  });
-
-  it('still gives the stored MBID when MusicBrainz is down', async () => {
-    rows = [{ ...baseRow, mbid: 'mb-1' }];
-    spies.musicbrainz.mockResolvedValueOnce({ status: 'failed' });
-
-    const profile = await getArtistProfile('artist-1', 'fr');
-
-    expect(profile?.facts).toBeNull();
-    expect(profile?.mbid).toBe('mb-1');
   });
 
   it('reads a stored MBID instead of looking it up again', async () => {

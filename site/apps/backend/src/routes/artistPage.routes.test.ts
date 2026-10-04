@@ -46,7 +46,6 @@ const profileSpy = spyOn(profileService, 'getArtistProfile').mockImplementation(
           },
           links: [],
           playedOnRadio: [],
-          mbid: null,
         }
       : null
   )

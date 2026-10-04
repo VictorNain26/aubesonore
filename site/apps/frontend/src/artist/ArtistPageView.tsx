@@ -5,11 +5,7 @@ import type {
   ArtistPlatform,
   ArtistProfile,
   ArtistSummary,
-  FriezeArtist,
-  FriezeArtistRef,
-  FriezeLineage,
 } from '@aubesonore/shared-types/client';
-import { artistPath } from '../lib/artistProfile';
 import { getLocale, localizeHref } from '@/paraglide/runtime.js';
 import { Cover } from '../home/Cover';
 import { TEXT_ACTION } from '../home/styles';
@@ -20,32 +16,6 @@ export type ArtistPageState =
   | { status: 'missing' }
   | { status: 'error' }
   | { status: 'ready'; profile: ArtistProfile };
-
-/** musilogy's view of the artist, keyed by its MBID: nothing to state without one. */
-export type LineageState =
-  | { status: 'none' }
-  | { status: 'loading' }
-  | { status: 'error' }
-  | { status: 'ready'; artist: FriezeArtist | null };
-
-// The role of the other artist, in the source's own terms: a teacher is not an
-// influence. A source the client does not know yet shows its own name.
-const ROLES: Record<FriezeLineage['side'], Record<string, () => string>> = {
-  inspiration: {
-    mb_teacher: () => m.artist_role_teacher(),
-    mb_tribute: () => m.artist_role_honoured(),
-    mb_named_after: () => m.artist_role_name_taken(),
-  },
-  descendant: {
-    mb_teacher: () => m.artist_role_pupil(),
-    mb_tribute: () => m.artist_role_tribute(),
-    mb_named_after: () => m.artist_role_named_after(),
-  },
-};
-
-// Tribute bands crowd the legacy of famous artists: a list shows its first
-// rows, in musilogy's order, and says how many remain.
-const SHOWN = 12;
 
 const PLATFORM_LABELS: Record<ArtistPlatform, () => string> = {
   deezer: () => 'Deezer',
@@ -170,125 +140,7 @@ function Summary({ summary }: { summary: ArtistSummary }) {
   );
 }
 
-function years(from: number | null, to: number | null): string {
-  if (from === null) return '';
-  return to === null || to === from ? String(from) : `${from} – ${to}`;
-}
-
-function ArtistName({ artist }: { artist: FriezeArtistRef }) {
-  return artist.played ? (
-    <Link to={artistPath(artist.played)} className={`${TEXT_ACTION} text-row truncate`}>
-      {artist.name}
-    </Link>
-  ) : (
-    <span className="text-row truncate">{artist.name}</span>
-  );
-}
-
-function ArtistRow({
-  artist,
-  detail,
-  when,
-}: {
-  artist: FriezeArtistRef;
-  detail: string;
-  when: string;
-}) {
-  return (
-    <li className="border-border reveal grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1">
-      <span className="flex min-w-0 flex-col">
-        <ArtistName artist={artist} />
-        {/* MusicBrainz's disambiguation tells homonyms apart, under the name. */}
-        <span className="text-ui text-text-muted truncate">
-          {artist.disambiguation ? `${artist.disambiguation} · ${detail}` : detail}
-        </span>
-      </span>
-      <span className="text-ui text-text-muted font-mono whitespace-nowrap tabular-nums">
-        {when}
-      </span>
-    </li>
-  );
-}
-
-function ArtistList({ total, children }: { total: number; children: ReactNode[] }) {
-  if (total === 0) {
-    return (
-      <p className="text-text-muted border-accent m-0 border-t pt-4">{m.artist_lineage_none()}</p>
-    );
-  }
-  return (
-    <>
-      <ul className="border-accent m-0 list-none border-t p-0">{children.slice(0, SHOWN)}</ul>
-      {total > Math.min(children.length, SHOWN) ? (
-        <p className="text-text-muted m-0 pt-4">
-          {m.artist_lineage_more({ count: total - Math.min(children.length, SHOWN) })}
-        </p>
-      ) : null}
-    </>
-  );
-}
-
-function LineageSide({ rows, side }: { rows: FriezeLineage[]; side: FriezeLineage['side'] }) {
-  const items = rows.filter((row) => row.side === side);
-  // Tribute acts crowd the legacy of famous artists: they are counted under
-  // their own label rather than mixed with the heirs (frieze spec, lineage).
-  const tributes = side === 'descendant' ? items.filter((r) => r.source === 'mb_tribute') : [];
-  const heirs = side === 'descendant' ? items.filter((r) => r.source !== 'mb_tribute') : items;
-  return (
-    <>
-      {heirs.length > 0 || tributes.length === 0 ? (
-        <ArtistList total={heirs.length}>
-          {heirs.map((row) => (
-            <ArtistRow
-              key={`${row.source}-${row.artist.mbid}`}
-              artist={row.artist}
-              detail={ROLES[side][row.source]?.() ?? row.source}
-              when={years(row.artist.y0, row.artist.yEnd)}
-            />
-          ))}
-        </ArtistList>
-      ) : null}
-      {tributes.length > 0 ? (
-        <p
-          className={`text-text-muted m-0 pt-4 ${heirs.length === 0 ? 'border-accent border-t' : ''}`}
-        >
-          {m.artist_tributes({ count: tributes.length })}
-        </p>
-      ) : null}
-    </>
-  );
-}
-
-/** Where the artist comes from and who played beside them, from musilogy. */
-function Lineage({ artist }: { artist: FriezeArtist }) {
-  const { contemporaries } = artist;
-  return (
-    <>
-      <Section id="models" title={m.artist_models_title()} body={m.artist_models_body()}>
-        <LineageSide rows={artist.lineage} side="inspiration" />
-      </Section>
-      <Section id="heirs" title={m.artist_heirs_title()} body={m.artist_heirs_body()}>
-        <LineageSide rows={artist.lineage} side="descendant" />
-      </Section>
-      <Section id="peers" title={m.artist_peers_title()} body={m.artist_peers_body()}>
-        <ArtistList total={contemporaries.total}>
-          {contemporaries.items.map((peer) => (
-            <ArtistRow
-              key={peer.artist.mbid}
-              artist={peer.artist}
-              detail={`${peer.sharedGenres.join(', ')} · ${
-                peer.scene === 'begin_area' ? m.artist_scene_place() : m.artist_scene_country()
-              }`}
-              when={years(peer.artist.y0, peer.artist.yPresenceEnd)}
-            />
-          ))}
-        </ArtistList>
-      </Section>
-    </>
-  );
-}
-
-function Profile({ profile, lineage }: { profile: ArtistProfile; lineage: LineageState }) {
+function Profile({ profile }: { profile: ArtistProfile }) {
   const facts = profile.facts ? factsLine(profile.facts) : null;
 
   return (
@@ -331,8 +183,6 @@ function Profile({ profile, lineage }: { profile: ArtistProfile; lineage: Lineag
           )}
         </Section>
 
-        {lineage.status === 'ready' && lineage.artist ? <Lineage artist={lineage.artist} /> : null}
-
         {profile.links.length > 0 ? (
           <Section id="listen" title={m.artist_listen_title()} body={m.artist_listen_body()}>
             <ul className="border-accent m-0 flex list-none flex-wrap gap-x-8 border-t p-0 pt-2">
@@ -352,13 +202,7 @@ function Profile({ profile, lineage }: { profile: ArtistProfile; lineage: Lineag
 }
 
 /** An artist heard on the antenna: who they are, what the radio played, where to hear more. */
-export function ArtistPageView({
-  state,
-  lineage = { status: 'none' },
-}: {
-  state: ArtistPageState;
-  lineage?: LineageState;
-}) {
+export function ArtistPageView({ state }: { state: ArtistPageState }) {
   return (
     <main id="main" className="min-h-dvh">
       <Header />
@@ -372,7 +216,7 @@ export function ArtistPageView({
       ) : state.status === 'error' ? (
         <Message title={m.artist_error_title()} body={m.artist_error_body()} />
       ) : (
-        <Profile profile={state.profile} lineage={lineage} />
+        <Profile profile={state.profile} />
       )}
     </main>
   );

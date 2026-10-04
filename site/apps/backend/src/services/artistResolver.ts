@@ -53,8 +53,8 @@ function isUniqueViolation(err: unknown): boolean {
 }
 
 /**
- * The artist's MBID, the pivot to musilogy and the frieze (docs/vision.md
- * §3.4), found through the Deezer link MusicBrainz declares and written once
+ * The artist's MBID, the pivot to Musilogy (docs/vision.md
+ * §4.4), found through the Deezer link MusicBrainz declares and written once
  * found. Nothing found, or MusicBrainz failing, writes nothing: the next call
  * tries again.
  */
