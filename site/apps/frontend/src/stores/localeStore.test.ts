@@ -32,14 +32,18 @@ describe('localeStore', () => {
     expect(window.history.state).toEqual({ idx: 3, key: 'k' });
   });
 
-  it('swaps an artist page for its path in the other language, keeping the slug', () => {
-    window.history.replaceState(null, '', '/artiste/hania-rani');
+  it.each([
+    ['/artiste/hania-rani', '/en/artist/hania-rani'],
+    ['/connexion', '/en/sign-in'],
+    ['/mentions-legales/', '/en/legal/'],
+  ])('swaps %s for its path in English, %s, and back', (french, english) => {
+    window.history.replaceState(null, '', french);
 
     useLocaleStore.getState().setLocale('en');
-    expect(window.location.pathname).toBe('/en/artist/hania-rani');
+    expect(window.location.pathname).toBe(english);
 
     useLocaleStore.getState().setLocale('fr');
-    expect(window.location.pathname).toBe('/artiste/hania-rani');
+    expect(window.location.pathname).toBe(french);
   });
 
   it('follows the URL when Back lands on the other language', () => {
