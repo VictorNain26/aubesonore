@@ -131,9 +131,17 @@ export const likedTracks = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
+    // The artist the resolver gives, set once the track is tied to a play;
+    // null for a track the antenna is not known to have played.
+    artistId: text('artist_id').references(() => artist.id, { onDelete: 'set null' }),
   },
   (table) => ({
     likedTracksUserIdIdx: index('liked_tracks_user_id_idx').on(table.userId),
+    // Backs "who kept this artist" (alerts) and "what I kept of them" (artist page).
+    likedTracksArtistUserIdx: index('liked_tracks_artist_user_idx').on(
+      table.artistId,
+      table.userId
+    ),
     // Unique to eliminate the select+insert race on concurrent likes.
     // Doubles as the lookup index for "is this track liked?" queries.
     likedTracksUserTitleArtistUnique: uniqueIndex('liked_tracks_user_title_artist_unique').on(

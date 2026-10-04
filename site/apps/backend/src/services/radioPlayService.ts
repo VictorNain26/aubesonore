@@ -62,3 +62,21 @@ export async function getPlaysByArtist(normalizedName: string, limit = 20): Prom
     playedAt: row.playedAt.toISOString(),
   }));
 }
+
+/**
+ * The latest play of this title by this artist, both compared once
+ * normalised: a kept track names what the listener saw on air.
+ */
+export async function findPlay(
+  title: string,
+  artist: string
+): Promise<{ title: string; isrc: string | null } | null> {
+  const wanted = normalizeArtistName(title);
+  const rows = await db
+    .select({ title: radioPlay.title, isrc: radioPlay.isrc })
+    .from(radioPlay)
+    .where(eq(radioPlay.artistNormalized, normalizeArtistName(primaryArtistName(artist))))
+    .orderBy(desc(radioPlay.playedAt))
+    .limit(200);
+  return rows.find((row) => normalizeArtistName(row.title) === wanted) ?? null;
+}

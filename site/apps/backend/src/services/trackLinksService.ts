@@ -111,7 +111,7 @@ interface DeezerSearchResponse {
  * Deezer's advanced filter (`artist:"…"`) is broken: plain text, then the
  * strict title and artist match decides.
  */
-async function searchDeezer(
+export async function searchDeezer(
   title: string,
   artist: string
 ): Promise<{ link: string; isrc: string | null } | null> {

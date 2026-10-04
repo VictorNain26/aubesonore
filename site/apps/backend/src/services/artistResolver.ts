@@ -90,7 +90,7 @@ export async function ensureMbid(row: Identity): Promise<string | null> {
   return found.value;
 }
 
-type Played = { title: string; isrc: string | null };
+export type Played = { title: string; isrc: string | null };
 
 /**
  * A track the antenna played by this artist, one with an ISRC when there is
@@ -174,21 +174,37 @@ async function reidentify(row: Row, identified: Identified): Promise<void> {
   }
 }
 
-export async function resolveArtist(rawName: string): Promise<Resolved | null> {
+export function resolveArtist(rawName: string): Promise<Resolved | null> {
+  return resolveOn(rawName, playedTrack);
+}
+
+/**
+ * For a track a listener kept before plays were recorded (`artists:resolve`):
+ * the kept track, whose ISRC comes from its exact Deezer match, stands for the
+ * play. Never reachable from a route, where any name could be typed.
+ */
+export function resolveKeptArtist(rawName: string, kept: Played): Promise<Resolved | null> {
+  return resolveOn(rawName, () => Promise.resolve(kept));
+}
+
+async function resolveOn(
+  rawName: string,
+  evidence: (normalizedName: string) => Promise<Played | null>
+): Promise<Resolved | null> {
   const primary = primaryArtistName(rawName);
   const normalizedName = normalizeArtistName(primary);
   if (!normalizedName) return null;
 
   const existing = await findBy(normalizedName);
   if (existing) {
-    const played = existing.identifiedBy === 'name' ? await playedTrack(normalizedName) : null;
+    const played = existing.identifiedBy === 'name' ? await evidence(normalizedName) : null;
     const identified = played?.isrc ? await identifyByIsrc(played.isrc) : null;
     if (identified && identified !== 'failed') await reidentify(existing, identified);
     else await ensureMbid(existing);
     return { id: existing.id, slug: existing.slug };
   }
 
-  const played = await playedTrack(normalizedName);
+  const played = await evidence(normalizedName);
   if (played === null) return null;
 
   const identified = played.isrc ? await identifyByIsrc(played.isrc) : null;

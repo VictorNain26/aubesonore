@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db, schema } from '../db/index';
 import { logger } from '../lib/logger';
 import { isPushEnabled, sendToUsers } from './pushService';
@@ -8,10 +8,10 @@ import { fetchNowPlaying, type NowPlayingTrack } from './nowPlaying';
 
 export interface WatcherDeps {
   fetchNowPlaying: () => Promise<NowPlayingTrack | null>;
-  findUserIdsByArtist: (artistLower: string) => Promise<string[]>;
+  findUserIdsByArtist: (artistId: string) => Promise<string[]>;
   send: (userIds: string[], title: string, body: string, url: string) => Promise<unknown>;
   recordPlay: (shId: number, title: string, artist: string, isrc: string | null) => Promise<void>;
-  resolveArtist: (artist: string) => Promise<unknown>;
+  resolveArtist: (artist: string) => Promise<{ id: string } | null>;
   now?: () => number;
 }
 
@@ -29,8 +29,7 @@ export function createLikedArtistNotifier(deps: WatcherDeps): () => Promise<void
     if (!track || track.sh_id === lastShId) return;
     lastShId = track.sh_id;
 
-    const artistLower = track.artist.trim().toLowerCase();
-    if (!artistLower) return;
+    if (!track.artist.trim()) return;
 
     // Recorded for every new track, whether or not anyone is notified — this
     // is the artist page's floor. A write failure must not silence the push.
@@ -46,19 +45,24 @@ export function createLikedArtistNotifier(deps: WatcherDeps): () => Promise<void
     // Every artist the antenna plays gets its identity, MBID included, at its
     // first play rather than when a listener opens its page: that is what
     // links the antenna to Musilogy (docs/vision.md §4.4). The play is recorded
-    // first, so the resolver finds its ISRC. Not awaited, so a slow lookup
-    // never delays the notification.
-    deps.resolveArtist(track.artist).catch((err: unknown) => {
+    // first, so the resolver finds its ISRC. The alert waits for it: whoever
+    // kept this artist is found by that identity, as the rest of the site does.
+    let resolved: { id: string } | null = null;
+    try {
+      resolved = await deps.resolveArtist(track.artist);
+    } catch (err) {
       logger.warn('artist.resolve_failed', {
         artist: track.artist,
         message: err instanceof Error ? err.message : String(err),
       });
-    });
+    }
+    if (!resolved) return;
+    const artistId = resolved.id;
 
-    const userIds = await deps.findUserIdsByArtist(artistLower);
+    const userIds = await deps.findUserIdsByArtist(artistId);
     const cutoff = now() - DEDUPE_MS;
     const toNotify = userIds.filter((userId) => {
-      const last = lastNotified.get(`${userId}:${artistLower}`);
+      const last = lastNotified.get(`${userId}:${artistId}`);
       return last === undefined || last < cutoff;
     });
     if (toNotify.length === 0) return;
@@ -72,7 +76,7 @@ export function createLikedArtistNotifier(deps: WatcherDeps): () => Promise<void
 
     const notifiedAt = now();
     for (const userId of toNotify) {
-      lastNotified.set(`${userId}:${artistLower}`, notifiedAt);
+      lastNotified.set(`${userId}:${artistId}`, notifiedAt);
     }
     for (const [key, ts] of lastNotified) {
       if (ts < cutoff) lastNotified.delete(key);
@@ -80,11 +84,11 @@ export function createLikedArtistNotifier(deps: WatcherDeps): () => Promise<void
   };
 }
 
-async function findUserIdsByArtist(artistLower: string): Promise<string[]> {
+async function findUserIdsByArtist(artistId: string): Promise<string[]> {
   const rows = await db
     .selectDistinct({ userId: schema.likedTracks.userId })
     .from(schema.likedTracks)
-    .where(sql`lower(${schema.likedTracks.artist}) = ${artistLower}`);
+    .where(eq(schema.likedTracks.artistId, artistId));
   return rows.map((row) => row.userId);
 }
 
