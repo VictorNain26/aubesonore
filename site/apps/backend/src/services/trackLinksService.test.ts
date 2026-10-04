@@ -107,6 +107,23 @@ describe('findTrackLinks', () => {
     expect(await findTrackLinks('In Flight', 'Sunflower Bean')).toBeNull();
   });
 
+  it('does not cache a Deezer search that answered a quota error with HTTP 200', async () => {
+    platforms();
+    const answer = globalThis.fetch;
+    globalThis.fetch = ((url: string) =>
+      url.startsWith('https://api.deezer.com/search')
+        ? json({ error: { type: 'Exception', message: 'Quota limit exceeded', code: 4 } })
+        : answer(url)) as unknown as typeof fetch;
+    expect((await findTrackLinks('In Flight', 'Sunflower Bean'))?.platformLinks.deezer).toBe(
+      undefined
+    );
+
+    platforms();
+    expect((await findTrackLinks('In Flight', 'Sunflower Bean'))?.platformLinks.deezer).toBe(
+      'https://www.deezer.com/track/1616626132'
+    );
+  });
+
   it('does not cache an answer cut short by a network failure', async () => {
     globalThis.fetch = (() => Promise.reject(new Error('ECONNRESET'))) as unknown as typeof fetch;
     expect(await findTrackLinks('In Flight', 'Sunflower Bean')).toBeNull();

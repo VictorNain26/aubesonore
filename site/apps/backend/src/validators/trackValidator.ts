@@ -1,4 +1,5 @@
 import { object, string, url, minLength, pipe, optional, check } from 'valibot';
+import { toIsrc } from '../lib/isrc';
 
 // Whitelist YouTube domains. Anything else stored here would be served back
 // to the client as a clickable "play on YouTube" link — an open redirect vector.
@@ -27,7 +28,13 @@ export const likeTrackSchema = object({
   album: optional(string()),
   artworkUrl: optional(httpsImageUrl),
   youtubeUrl,
-  isrc: optional(string()),
+  // Sent to Deezer and Spotify, and kept for every later refresh: ISO 3901 or nothing.
+  isrc: optional(
+    pipe(
+      string(),
+      check((value) => toIsrc(value) !== null, 'ISRC invalide')
+    )
+  ),
 });
 
 export const checkLikedSchema = object({

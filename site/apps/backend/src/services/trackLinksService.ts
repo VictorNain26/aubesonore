@@ -114,15 +114,21 @@ interface DeezerSearchResponse {
 // definitive miss. Any other error code is a failure, as in deezerService.
 const DEEZER_NO_DATA = 800;
 
+type DeezerBody = { error?: { code?: unknown } } | null;
+
+/** True for Deezer's "no data"; throws on any other error body, so a quota is never cached. */
+function deezerMiss(data: DeezerBody, path: string): boolean {
+  if (!data?.error) return false;
+  if (data.error.code === DEEZER_NO_DATA) return true;
+  throw new TransientError(`Deezer error ${String(data.error.code)}: ${path}`);
+}
+
 /** The Deezer track of this very recording, or null when Deezer does not know the ISRC. */
 async function deezerByIsrc(isrc: string): Promise<{ link: string; isrc: string } | null> {
   const data = await getJson<{ link?: string; error?: { code?: unknown } }>(
     `https://api.deezer.com/track/isrc:${encodeURIComponent(isrc)}`
   );
-  if (data?.error) {
-    if (data.error.code === DEEZER_NO_DATA) return null;
-    throw new TransientError(`Deezer error ${String(data.error.code)}: /track/isrc`);
-  }
+  if (deezerMiss(data, '/track/isrc')) return null;
   return data?.link ? { link: data.link, isrc } : null;
 }
 
@@ -145,15 +151,19 @@ export async function searchDeezer(
   artist: string
 ): Promise<{ link: string; isrc: string | null } | null> {
   const query = encodeURIComponent(`${artist} ${title}`);
-  const data = await getJson<DeezerSearchResponse>(
+  const data = await getJson<Partial<DeezerSearchResponse> & { error?: { code?: unknown } }>(
     `https://api.deezer.com/search?q=${query}&limit=10`
   );
+  if (deezerMiss(data, '/search')) return null;
   const pick = (data?.data ?? []).find((c) =>
     songMatch({ title, artist }, { title: c.title, artist: c.artist.name })
   );
   if (!pick) return null;
-  const track = await getJson<{ isrc?: string }>(`https://api.deezer.com/track/${pick.id}`);
-  return { link: pick.link, isrc: track?.isrc ?? null };
+  const track = await getJson<{ isrc?: string; error?: { code?: unknown } }>(
+    `https://api.deezer.com/track/${pick.id}`
+  );
+  const known = !deezerMiss(track, '/track');
+  return { link: pick.link, isrc: (known && track?.isrc) || null };
 }
 
 // ── Spotify ──────────────────────────────────
