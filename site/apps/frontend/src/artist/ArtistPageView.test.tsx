@@ -3,10 +3,17 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { makeArtistProfile } from '../mocks/handlers';
-import { ArtistPageView, factsLine, type ArtistPageState } from './ArtistPageView';
+import {
+  ArtistPageView,
+  factsLine,
+  portraitSentence,
+  type ArtistPageState,
+} from './ArtistPageView';
 
-function show(state: ArtistPageState) {
-  return render(<ArtistPageView state={state} />, { wrapper: MemoryRouter });
+type Kept = NonNullable<Parameters<typeof ArtistPageView>[0]['kept']>;
+
+function show(state: ArtistPageState, kept: Kept = []) {
+  return render(<ArtistPageView state={state} kept={kept} />, { wrapper: MemoryRouter });
 }
 
 const SUMMARY = {
@@ -17,12 +24,30 @@ const SUMMARY = {
 
 describe('ArtistPageView', () => {
   it('says who the artist is, then what the antenna played', () => {
-    show({ status: 'ready', profile: makeArtistProfile() });
+    show({ status: 'ready', profile: makeArtistProfile({ summary: SUMMARY }) });
 
     expect(screen.getByRole('heading', { level: 1, name: 'Hania Rani' })).toBeInTheDocument();
     expect(screen.getByText('Artiste · Pologne')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Passé sur AubeSonore' })).toBeInTheDocument();
     expect(screen.getByText('F Major')).toBeInTheDocument();
+  });
+
+  it('says the facts in a sentence when Wikipedia has no article', () => {
+    show({ status: 'ready', profile: makeArtistProfile() });
+
+    expect(screen.getByText('Artiste originaire de Pologne.')).toBeInTheDocument();
+    expect(screen.getByText('MusicBrainz')).toBeInTheDocument();
+    expect(screen.queryByText('Artiste · Pologne')).not.toBeInTheDocument();
+  });
+
+  it("shows what the listener kept of the artist instead of the antenna's plays", () => {
+    show({ status: 'ready', profile: makeArtistProfile() }, [
+      { id: 'k-1', title: 'Glass', createdAt: '2026-09-12T08:00:00.000Z' },
+    ]);
+
+    expect(screen.getByRole('heading', { name: 'Vos titres gardés' })).toBeInTheDocument();
+    expect(screen.getByText('Glass')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Passé sur AubeSonore' })).not.toBeInTheDocument();
   });
 
   it('quotes the Wikipedia summary with its source and licence', () => {
@@ -118,6 +143,42 @@ describe('factsLine', () => {
   it('says nothing when MusicBrainz states nothing', () => {
     expect(
       factsLine({
+        kind: null,
+        place: null,
+        country: null,
+        formed: null,
+        ended: null,
+        active: false,
+      })
+    ).toBeNull();
+  });
+});
+
+describe('portraitSentence', () => {
+  const group = {
+    kind: 'group' as const,
+    place: 'Paris',
+    country: 'FR',
+    formed: 1993,
+    ended: 2021,
+    active: false,
+  };
+
+  it('says where and when a group formed, and until when it played', () => {
+    expect(portraitSentence(group)).toBe(
+      "Groupe originaire de Paris, France, formé en 1993. Actif jusqu'en 2021."
+    );
+    expect(portraitSentence({ ...group, ended: null, active: true })).toBe(
+      'Groupe originaire de Paris, France, formé en 1993. Toujours en activité.'
+    );
+  });
+
+  it('says what it knows, and nothing when it knows nothing', () => {
+    expect(portraitSentence({ ...group, place: null, country: null, ended: null })).toBe(
+      'Groupe formé en 1993.'
+    );
+    expect(
+      portraitSentence({
         kind: null,
         place: null,
         country: null,

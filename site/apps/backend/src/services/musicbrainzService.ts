@@ -1,5 +1,6 @@
 import type { ArtistFacts, ArtistLink, ArtistPlatform } from '@aubesonore/shared-types/client';
 import { env } from '../config/env';
+import type { Lookup } from '../lib/lookup';
 import { TtlCache } from '../lib/cache/ttlCache';
 import { createSingleFlight } from '../lib/singleFlight';
 import { logger } from '../lib/logger';
@@ -12,8 +13,6 @@ export interface MusicBrainzArtist {
   /** The Deezer artist the MusicBrainz page declares, when it declares exactly one. */
   deezerId: string | null;
 }
-
-export type Lookup<V> = { status: 'found'; value: V } | { status: 'none' } | { status: 'failed' };
 
 const MUSICBRAINZ_API = 'https://musicbrainz.org/ws/2';
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;

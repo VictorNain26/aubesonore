@@ -172,8 +172,8 @@ describe('getArtist', () => {
       json({ error: { type: 'DataException', message: 'no data', code: 800 } })
     );
 
-    expect(await getArtist('999999999999')).toBeNull();
-    expect(await getArtist('999999999999')).toBeNull();
+    expect(await getArtist('999999999999')).toEqual({ status: 'none' });
+    expect(await getArtist('999999999999')).toEqual({ status: 'none' });
     expect(fetchSpy.mock.calls.length).toBe(1);
   });
 
@@ -183,8 +183,8 @@ describe('getArtist', () => {
         json({ error: { type: 'Exception', message: 'Quota limit exceeded', code: 4 } })
       )) as unknown as typeof fetch);
 
-    expect(await getArtist('27')).toBeNull();
-    expect(await getArtist('27')).toBeNull();
+    expect(await getArtist('27')).toEqual({ status: 'failed' });
+    expect(await getArtist('27')).toEqual({ status: 'failed' });
     expect(fetchSpy.mock.calls.length).toBe(2);
   });
 });

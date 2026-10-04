@@ -59,6 +59,8 @@ export interface ClientLikedTrack {
   platformLinks?: PlatformLinks | null;
   createdAt: string;
   userId: string;
+  /** The artist of the play the track was kept from; null when no play is known. */
+  artistId: string | null;
 }
 
 export interface UserPreferences {

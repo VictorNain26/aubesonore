@@ -63,7 +63,10 @@ Env vars are read only in `apps/backend/src/config/env.ts`; never read `process.
 
 ## Working with artist enrichment
 
-The artist profile (`GET /api/artist/:id`, document route `/artist/:id/:slug`) answers who the artist is in a few words, and nothing more: a portrait, one line of facts, the opening of a Wikipedia article, what the antenna played, where to listen. Each source is isolated, cached, and allowed to fail on its own.
+The artist profile (`GET /api/artist/:id`, document route `/artist/:id/:slug`) answers who the artist is in a few words, and nothing more: a portrait, one line of facts, the opening of a Wikipedia article or, without one, the facts said in a sentence (`portraitSentence`), what the listener kept of the artist or else what the antenna played, where to listen. Each source is isolated, cached, and allowed to fail on its own.
+
+- **The page always answers** (`docs/vision.md` §4.6). `artist_profile` stores the last answer of each source. The first view of an artist waits for the sources (6 s each at most); later views read the stored profile, and one older than 7 days is served as it is while `refresh` asks again behind the answer (single-flight per artist). Sources return a `Lookup` (`lib/lookup.ts`): a definitive miss clears its section, a failure or a timeout keeps the stored one and leaves the profile's `refreshed_at` as it was, so the next view retries. A restart or a deploy no longer sends a cold page to Deezer, MusicBrainz and Wikipedia.
+- **What the listener kept** comes from the liked tracks the frontend already loads at sign-in, filtered on `artistId`; no extra route.
 
 - **Identity first.** `artistResolver.resolveArtist` turns a messy AzuraCast string into a canonical id persisted in the `artist` table, so URLs stay stable across restarts. It strips `feat.`/`ft.`/`featuring` only — **never split on `&`, `+` or `,`**, that destroys "Simon & Garfunkel" and "Earth, Wind & Fire". The key is `normalizeArtistName` (letters and digits of every script, so "Кино" has a page).
 - **Pages exist only for what the antenna played** (`radio_play`, or the track on air): `/api/artist/resolve` is public, and a page for any typed name would let anyone publish text under aubesonore.fr.
