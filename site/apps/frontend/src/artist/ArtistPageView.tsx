@@ -37,9 +37,10 @@ const KIND_LABELS: Record<NonNullable<ArtistFacts['kind']>, () => string> = {
   choir: () => m.artist_kind_choir(),
 };
 
-// Wikipedia text is CC BY-SA: the article and the licence are both linked.
-// https://en.wikipedia.org/wiki/Wikipedia:Reusing_Wikipedia_content
-const LICENSE_URL = 'https://creativecommons.org/licenses/by-sa/4.0/';
+// Wikipedia text is CC BY-SA 4.0: the excerpt links its article, which names
+// its authors and licence, and the legal page credits the licence. A link to a
+// resource holding the attribution is a reasonable manner (CC BY-SA 4.0 §3(a)(2)).
+// No source or licence is named on the page itself: it speaks to listeners.
 
 /** "Groupe · Paris, France · 1993 – 2021": what MusicBrainz states, nothing more. */
 export function factsLine(facts: ArtistFacts): string | null {
@@ -229,15 +230,11 @@ function Summary({ summary }: { summary: ArtistSummary }) {
       <blockquote cite={summary.url} lang={summary.lang} className="m-0">
         <p className="text-intro m-0 max-w-prose">{summary.text}</p>
       </blockquote>
-      <figcaption className="text-label text-text-muted flex items-center gap-3 font-mono uppercase">
+      <figcaption>
         <a href={summary.url} {...OUTSIDE_LINK} className={TEXT_ACTION}>
           {summary.lang === getLocale()
             ? m.artist_summary_source()
             : m.artist_summary_source_other()}
-        </a>
-        <span aria-hidden="true">·</span>
-        <a href={LICENSE_URL} {...OUTSIDE_LINK} className={TEXT_ACTION}>
-          CC BY-SA 4.0
         </a>
       </figcaption>
     </figure>
@@ -246,12 +243,9 @@ function Summary({ summary }: { summary: ArtistSummary }) {
 
 function Portrait({ text }: { text: string }) {
   return (
-    <figure className="m-0 flex flex-col gap-3 md:col-span-8 md:col-start-5 lg:col-span-7 lg:col-start-4">
-      <p className="text-intro m-0 max-w-prose">{text}</p>
-      <figcaption className="text-label text-text-muted font-mono uppercase">
-        {m.artist_portrait_source()}
-      </figcaption>
-    </figure>
+    <p className="text-intro m-0 max-w-prose md:col-span-8 md:col-start-5 lg:col-span-7 lg:col-start-4">
+      {text}
+    </p>
   );
 }
 

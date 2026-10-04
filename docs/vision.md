@@ -43,6 +43,12 @@ leur page artiste.
   une plateforme par un lien réel, jamais par une recherche déguisée.
 - **Pas une affirmation sans preuve.** Une proximité calculée n'est jamais présentée comme une
   influence (§2.2), une absence reste une absence.
+- **Pas de technique à l'écran.** Les pages parlent à des auditeurs : aucune source de données,
+  licence ni outil n'y est nommé ou lié (ni ListenBrainz, ni MusicBrainz, ni Wikidata), aucun
+  jargon. La distinction entre une proximité et une influence se dit avec des mots d'auditeur.
+  Les sources et leurs licences sont créditées dans les Mentions légales, la provenance reste dans
+  les données. Seule exception, exigée par sa licence : un extrait de Wikipédia renvoie à son
+  article (« Lire la suite sur Wikipédia »).
 - **Pas une boucle de goût.** Ce que les auditeurs gardent ne nourrit pas l'antenne : la radio
   est dans la couleur de Victor, pas dans celle de son audience.
 - **Pas une page artiste pour n'importe quel nom.** Une page artiste n'existe que pour un artiste
@@ -62,7 +68,7 @@ marchant d'un artiste à l'autre.
 | Couche | Source | Couverture mesurée | Ce que le site en dit |
 |---|---|---|---|
 | **Proximité × temps** | artistes proches selon ListenBrainz (co-écoute), rangés par leurs dates MusicBrainz | 15 des 16 artistes joués échantillonnés ont 100 voisins, des plus confidentiels (1 045 auditeurs) aux plus connus (2026-10-04) | « avant lui, en même temps, après lui, dans la même veine » — jamais « influencé par » |
-| **Influences déclarées** | Wikidata (P737), puis citations extraites de Wikipédia avec leur phrase | 61 des 288 artistes joués via Wikidata (2026-10-04) | « a cité X comme influence », avec la source |
+| **Influences déclarées** | Wikidata (P737), puis citations extraites de Wikipédia avec leur phrase | 61 des 288 artistes joués via Wikidata (2026-10-04) | « a cité X comme influence » ; la déclaration reste en base, sans lien à l'écran (§1.2) |
 | **Liens de groupe** | relations entre artistes de MusicBrainz | 75 % des artistes joués ont au moins un autre projet à deux pas, médiane 2 (2026-10-04) | « membre de », « autre projet de » |
 
 La proximité seule ne dit pas qui a inspiré qui ; le temps lui donne un sens (avant, pendant,
@@ -75,7 +81,8 @@ d'une couche est un calcul nommé, documenté, jamais un jugement.
   artistes proches posés à leur année de début, d'autant plus près de l'axe qu'ils sont proches ;
   les influences déclarées et les liens de groupe dessinés par-dessus. Un clic recentre. La
   disposition est fixée par les dates, pas par une simulation de forces : elle reste lisible.
-- **Le texte** : sous la carte, la même chose en phrases et en listes, avec les sources. C'est ce
+- **Le texte** : sous la carte, la même chose en phrases et en listes (les sources sont créditées
+  dans les Mentions légales, §1.2). C'est ce
   que lisent les lecteurs d'écran et les moteurs de recherche.
 - **Indexée quand elle est riche** : une page Musilogy est proposée aux moteurs de recherche
   au-delà d'un seuil de contenu à mesurer ; en deçà, elle existe mais n'est pas listée.
@@ -186,7 +193,7 @@ artistes : la page est celle de l'artiste principal, chaque crédité est relié
 | proximités, influences, liens de groupe, dates (Musilogy) | musilogy, datés de leurs relevés | reproductibles, avec leur provenance |
 
 La page artiste et Musilogy peuvent donner deux années différentes pour un même artiste : chacune
-affiche la source de ce qu'elle montre, aucune ne recopie l'autre.
+garde la source de ce qu'elle montre, aucune ne recopie l'autre.
 
 ### 4.6 Une page artiste qui répond toujours
 
@@ -240,7 +247,7 @@ alertes « artiste aimé » sont résolus par les étapes 2 à 4, dans l'histori
    avance à ~0,55 artiste par seconde, pannes du service comprises ; tant qu'il n'est pas
    épinglé et chargé, Musilogy dit « pas encore relevées » et la carte ne s'affiche pas.
 2. **Licence de la similarité ListenBrainz** : le service n'en publie pas ; les données dont il
-   dérive sont en CC0. Le site crédite ListenBrainz sans licence (§2.4).
+   dérive sont en CC0. Le site crédite ListenBrainz sans licence, dans les Mentions légales (§1.2).
 3. **Identité incomplète** : 39 des 332 artistes joués n'ont pas de MBID (MusicBrainz ne les
    connaît pas, ou sans lien vérifiable) ; 22 des 91 titres gardés, gardés avant que les
    passages soient enregistrés, ne retrouvent ni leur passage ni leur titre exact chez Deezer.

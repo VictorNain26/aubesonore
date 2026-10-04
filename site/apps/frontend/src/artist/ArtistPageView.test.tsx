@@ -37,7 +37,7 @@ describe('ArtistPageView', () => {
     show({ status: 'ready', profile: makeArtistProfile() });
 
     expect(screen.getByText('Artiste originaire de Pologne.')).toBeInTheDocument();
-    expect(screen.getByText('MusicBrainz')).toBeInTheDocument();
+    expect(screen.queryByText('MusicBrainz')).not.toBeInTheDocument();
     expect(screen.queryByText('Artiste · Pologne')).not.toBeInTheDocument();
   });
 
@@ -96,16 +96,16 @@ describe('ArtistPageView', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('quotes the Wikipedia summary with its source and licence', () => {
+  it('quotes the Wikipedia summary and links its article, naming no licence on the page', () => {
     show({ status: 'ready', profile: makeArtistProfile({ summary: SUMMARY }) });
 
     expect(screen.getByRole('blockquote')).toHaveTextContent(SUMMARY.text);
     expect(screen.getByRole('blockquote')).toHaveAttribute('lang', 'fr');
-    expect(screen.getByRole('link', { name: 'Wikipédia' })).toHaveAttribute('href', SUMMARY.url);
-    expect(screen.getByRole('link', { name: 'CC BY-SA 4.0' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Lire la suite sur Wikipédia' })).toHaveAttribute(
       'href',
-      'https://creativecommons.org/licenses/by-sa/4.0/'
+      SUMMARY.url
     );
+    expect(screen.queryByText(/CC BY/)).not.toBeInTheDocument();
   });
 
   it('says when the summary is in the other language', () => {
@@ -115,7 +115,9 @@ describe('ArtistPageView', () => {
     });
 
     expect(screen.getByRole('blockquote')).toHaveAttribute('lang', 'en');
-    expect(screen.getByRole('link', { name: 'Wikipédia, en anglais' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Lire la suite sur Wikipédia, en anglais' })
+    ).toBeInTheDocument();
   });
 
   it('says so when no play is recorded yet', () => {

@@ -75,6 +75,8 @@ describe('HomePage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'À propos' }));
 
-    expect(await screen.findByText(/Music Technology Group/)).toBeInTheDocument();
+    const about = await screen.findByRole('dialog', { name: 'AubeSonore' });
+    expect(about).toHaveTextContent(/discothèque de référence/);
+    expect(about).not.toHaveTextContent(/Music Technology Group/);
   });
 });
