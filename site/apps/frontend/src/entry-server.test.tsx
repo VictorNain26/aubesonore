@@ -22,7 +22,7 @@ describe('entry-server', () => {
     expect(fr).toContain('Mentions légales et confidentialité');
     expect(fr).toContain('Victor Lenain');
     expect(fr).toContain('contact@aubesonore.fr');
-    expect(fr).toContain('Le direct');
+    expect(fr).toContain('aria-label="Navigation principale"');
     expect(await pageHtml('en', '/en/legal/')).toContain('Legal notice and privacy');
   });
 

@@ -167,7 +167,7 @@ describe('ArtistPageView', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole('link', { name: 'Le direct' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: /aubesonore/ })).toHaveAttribute('href', '/');
   });
 });
 
