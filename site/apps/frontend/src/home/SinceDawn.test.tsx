@@ -35,8 +35,9 @@ describe('SinceDawnView', () => {
     render(<SinceDawnView rows={rows(2)} status="ready" onToggleKeep={vi.fn()} />);
 
     const [first, second] = screen.getAllByRole('listitem');
-    expect(first).toHaveTextContent("● À l'antenne : 17:00");
-    expect(second).not.toHaveTextContent('●');
+    expect(first).toHaveTextContent("À l'antenne : 17:00");
+    expect(first).not.toHaveTextContent('●');
+    expect(second).not.toHaveTextContent("À l'antenne");
   });
 
   it('keeps a track by its id', async () => {

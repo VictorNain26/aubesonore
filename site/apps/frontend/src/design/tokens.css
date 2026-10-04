@@ -128,7 +128,6 @@
 
   /* La lumière respire, le point « maintenant » bat, les blocs se dévoilent au défilement. */
   --animate-breathe: breathe 14s ease-in-out infinite;
-  --animate-live: live 2.4s ease-in-out infinite;
 
   /* Mesures de lecture : l'accroche tient sur trois lignes, une légende sur deux. */
   --container-hero: 13ch;
@@ -245,12 +244,6 @@
     from {
       opacity: 0;
       translate: 0 0.75rem;
-    }
-  }
-
-  @keyframes live {
-    50% {
-      opacity: 0.3;
     }
   }
 
