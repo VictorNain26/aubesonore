@@ -32,7 +32,7 @@ describe('entry-server', () => {
   });
 
   it('gives each language its own title and description', () => {
-    expect(meta('fr').title).toBe("AubeSonore — des titres à l'aube de vous plaire");
+    expect(meta('fr').title).toBe('AubeSonore');
     expect(meta('en').description).toMatch(/^A discovery radio/);
   });
 });

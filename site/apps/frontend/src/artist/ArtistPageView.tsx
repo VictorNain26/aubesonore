@@ -49,7 +49,7 @@ export function factsLine(facts: ArtistFacts): string | null {
   const when = !formed
     ? ''
     : facts.ended
-      ? `${formed} – ${facts.ended}`
+      ? m.years_range({ from: formed, to: String(facts.ended) })
       : facts.active
         ? m.artist_since({ year: formed })
         : m.artist_formed({ year: formed });

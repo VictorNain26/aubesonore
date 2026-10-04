@@ -74,7 +74,7 @@ describe('GET /t', () => {
     const html = await res.text();
     expect(html).toContain('<h1>Balance Act</h1>');
     expect(html).toContain('Psychic Lines');
-    expect(html).toContain('content="« Balance Act — Psychic Lines »"');
+    expect(html).toContain('content="« Balance Act », Psychic Lines"');
     expect(html).toContain('https://is1-ssl.mzstatic.com/image/thumb/600x600bb.jpg');
     expect(html).toContain('Écouter sur Spotify');
   });

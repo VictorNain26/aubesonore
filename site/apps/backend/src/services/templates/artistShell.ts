@@ -31,7 +31,7 @@ export function renderArtistShell(
   pageUrl: string,
   locale: SiteLocale
 ): Promise<string> {
-  const title = `${profile.name} — AubeSonore`;
+  const title = `${profile.name} · AubeSonore`;
   const description = profile.summary
     ? truncate(profile.summary.text, OG_DESCRIPTION_MAX)
     : locale === 'en'

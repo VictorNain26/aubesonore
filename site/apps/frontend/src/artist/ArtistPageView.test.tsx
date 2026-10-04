@@ -178,7 +178,7 @@ describe('factsLine', () => {
   };
 
   it('names a group, where and when it played', () => {
-    expect(factsLine(group)).toBe('Groupe · Paris, France · 1993 – 2021');
+    expect(factsLine(group)).toBe('Groupe · Paris, France · de 1993 à 2021');
     expect(factsLine({ ...group, ended: null, active: true })).toBe(
       'Groupe · Paris, France · depuis 1993'
     );

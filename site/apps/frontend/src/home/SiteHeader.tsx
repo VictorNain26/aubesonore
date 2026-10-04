@@ -56,7 +56,7 @@ export function SiteHeader() {
     <header className="px-page relative z-10 flex items-start justify-between gap-6 pt-5 md:pt-7">
       <h1 className="m-0 flex flex-col gap-1.5">
         <span className="text-mark condensed">aubesonore</span>
-        <span className="sr-only"> — </span>
+        <span className="sr-only">, </span>
         <span className="text-sub text-text-muted font-normal text-balance">{m.hero_title()}</span>
       </h1>
       <nav aria-label={m.nav_label()} className="flex shrink-0 items-center gap-7">

@@ -84,7 +84,7 @@ export function cardLine(card: MusilogyCard): string {
           .filter(Boolean)
           .join(', ')
       : end
-        ? `${card.y0} – ${end}`
+        ? m.years_range({ from: String(card.y0), to: end })
         : String(card.y0);
   return [kind, where, when].filter(Boolean).join(' · ');
 }
@@ -120,10 +120,13 @@ function ArtistRow({ artist, years }: { artist: MusilogyArtistRef; years?: strin
   );
 }
 
-/** A link's years in the group: "1971 – 1975", or the end it is open on. */
+/** A link's years in the group: "de 1971 à 1975", "depuis 1971" or "jusqu'en 1975". */
 export function linkYears(link: MusilogyLink): string | null {
-  if (!link.yBegin && !link.yEnd) return null;
-  return `${link.yBegin ?? ''} – ${link.yEnd ?? ''}`.trim();
+  if (link.yBegin && link.yEnd)
+    return m.years_range({ from: String(link.yBegin), to: String(link.yEnd) });
+  if (link.yBegin) return m.artist_since({ year: String(link.yBegin) });
+  if (link.yEnd) return m.musilogy_until({ year: String(link.yEnd) });
+  return null;
 }
 
 function ArtistList<T extends MusilogyArtistRef>({
