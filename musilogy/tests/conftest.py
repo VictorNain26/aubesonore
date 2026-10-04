@@ -6,7 +6,7 @@ from typing import Any
 import duckdb
 import pytest
 
-from musilogy import REFERENCE_DUMP, REFERENCE_POPULARITY
+from musilogy import REFERENCE_DUMP, REFERENCE_INFLUENCES, REFERENCE_POPULARITY
 from musilogy.build import build
 from musilogy.load import load
 from musilogy.paths import SQL_DIR
@@ -27,6 +27,8 @@ def con():
         None,
         popularity=FIX / "popularity.jsonl",
         popularity_snapshot=REFERENCE_POPULARITY,
+        influences=FIX / "influences.jsonl",
+        influences_snapshot=REFERENCE_INFLUENCES,
     )
     return c
 
@@ -103,13 +105,25 @@ def pg():
     return conninfo
 
 
-def published(tmp_path, artists, popularity=None):
+def influences_file(path, rows):
+    """A synthetic Wikidata snapshot: (artist, influence, statement) rows."""
+    path.write_text(
+        "".join(
+            json.dumps({"artist_mbid": a, "influence_mbid": i, "statement": s}) + "\n"
+            for a, i, s in rows
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def published(tmp_path, artists, popularity=None, influences=None):
     """A synthetic build, published as a delivery. `popularity` maps an mbid
     to its listen count; every other artist gets the null row ListenBrainz
     sends for an artist it has no listen of, as a real snapshot asks about
-    everyone."""
+    everyone. `influences` lists (artist, influence, statement) rows."""
     tmp_path.mkdir(exist_ok=True)
-    kwargs = {}
+    kwargs: dict[str, Any] = {}
     if popularity is not None:
         path = tmp_path / "popularity.jsonl"
         path.write_text(
@@ -127,6 +141,9 @@ def published(tmp_path, artists, popularity=None):
             encoding="utf-8",
         )
         kwargs = {"popularity": path, "popularity_snapshot": REFERENCE_POPULARITY}
+    if influences is not None:
+        kwargs["influences"] = influences_file(tmp_path / "influences.jsonl", influences)
+        kwargs["influences_snapshot"] = REFERENCE_INFLUENCES
     out = tmp_path / "out"
     publish(build_synthetic(tmp_path, artists, **kwargs), out, REFERENCE_DUMP, None)
     return out
@@ -140,6 +157,6 @@ def pg_query(conninfo, sql):
     return con.execute("SELECT * FROM postgres_query('pg', ?)", [sql]).fetchall()
 
 
-def loaded(tmp_path, conninfo, artists, popularity=None):
-    load(published(tmp_path, artists, popularity), conninfo)
+def loaded(tmp_path, conninfo, artists, popularity=None, influences=None):
+    load(published(tmp_path, artists, popularity, influences), conninfo)
     return conninfo

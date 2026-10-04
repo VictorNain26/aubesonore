@@ -14,7 +14,7 @@ from musilogy.paths import PG_DIR
 
 SCHEMA = "musilogy"
 STAGING = "musilogy_next"
-TABLES = ("artists", "genres", "links", "popularity")
+TABLES = ("artists", "genres", "links", "popularity", "influences")
 # Postgres has no anonymous composite type: a list of genre structs travels as
 # JSON.
 PROJECTIONS = {
@@ -82,13 +82,14 @@ def load(published: Path, conninfo: str = "") -> dict[str, int]:
             f"SELECT {PROJECTIONS.get(table, '*')} FROM read_parquet(?)",
             [(published / f"{table}.parquet").as_posix()],
         )
-    popularity = manifest["popularity"]
+    popularity, influences = manifest["popularity"], manifest["influences"]
     con.execute(
-        f"INSERT INTO site.{STAGING}.manifest (dump, popularity_snapshot, git_sha) "
-        "VALUES (?, ?, ?)",
+        f"INSERT INTO site.{STAGING}.manifest "
+        "(dump, popularity_snapshot, influences_snapshot, git_sha) VALUES (?, ?, ?, ?)",
         [
             manifest["dump"],
             popularity["snapshot"] if isinstance(popularity, dict) else None,
+            influences["snapshot"] if isinstance(influences, dict) else None,
             manifest["git_sha"],
         ],
     )

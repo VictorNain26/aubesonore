@@ -2,7 +2,7 @@
 
 Les données de Musilogy (`docs/vision.md` à la racine, §2), produites hors
 ligne depuis des sources épinglées et datées : un dump JSON MusicBrainz et des
-relevés ListenBrainz transformés en tables Parquet reproductibles, que
+relevés ListenBrainz et Wikidata transformés en tables Parquet reproductibles, que
 `musilogy load` copie dans le schéma `musilogy` de la base du site. La
 conception en vigueur, dont le contrat des fonctions SQL que le site appelle,
 est `docs/conception.md` ; les règles métier et les chiffres sont dans le
@@ -82,7 +82,8 @@ uv run pytest                 # suite rapide, sur les témoins
 uv run pytest -m slow         # ligne de base sur le dump réel, exige data/work/
 uv run musilogy run           # fetch → extract → transform → validate → publish
 uv run musilogy snapshot-popularity  # relevé ListenBrainz daté, à épingler
-uv run musilogy snapshot-proximity   # voisins ListenBrainz, ~31 h, reprenable
+uv run musilogy snapshot-proximity   # voisins ListenBrainz, plusieurs jours, reprenable
+uv run musilogy snapshot-influences  # influences Wikidata, quelques secondes, à épingler
 uv run musilogy make-fixtures
 uv run musilogy load          # charge data/out/ dans la base du site (environnement libpq)
 MUSILOGY_TEST_PG='host=… dbname=…' uv run pytest  # tests Postgres compris : un Postgres jetable, jamais celui du site
@@ -102,18 +103,19 @@ PGPASSWORD="$(grep '^POSTGRES_PASSWORD=' ~/aubesonore/site/.env | cut -d= -f2-)"
 PGHOST=localhost PGPORT=5433 PGUSER=aubesonore PGDATABASE=aubesonore \
 PGSSLMODE=verify-full PGSSLROOTCERT=~/aubesonore/site/certs/ca.crt \
 systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=0 \
-  nice -n 10 uv run musilogy load   # ~3 min sur le dump de référence
+  nice -n 10 uv run musilogy load   # ~7 min sur un Postgres jetable (2026-10-04)
 ```
 
 Sur victorserv, `pytest -m slow` et `musilogy run` partent dans un scope
 plafonné : `build.connect()` borne DuckDB (2 Go, 2 threads, 10 Go de
 débordement dans `data/tmp/`), mais pas le cache disque ni Python, et les
 services de la machine occupent déjà la moitié de ses 16 Go. Le 2026-10-02,
-une requête sans borne l'a gelée.
+une requête sans borne l'a gelée. Construire, publier et charger le dump de
+référence culmine à 2,1 Go de mémoire résidente (2026-10-04).
 
 ```bash
 systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=0 \
-  nice -n 10 uv run pytest -m slow   # ~10 min, pic mesuré à 3 Go
+  nice -n 10 uv run pytest -m slow   # ~5 min
 ```
 
 ## Licence

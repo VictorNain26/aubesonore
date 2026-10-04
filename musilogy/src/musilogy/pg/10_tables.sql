@@ -47,9 +47,17 @@ CREATE TABLE popularity (
   snapshot date NOT NULL
 );
 
+CREATE TABLE influences (
+  artist_mbid text COLLATE "C" NOT NULL,
+  influence_mbid text COLLATE "C" NOT NULL,
+  statement text NOT NULL,
+  PRIMARY KEY (artist_mbid, influence_mbid)
+);
+
 CREATE TABLE manifest (
   dump text NOT NULL,
   popularity_snapshot date,
+  influences_snapshot date,
   git_sha text NOT NULL,
   loaded_at timestamptz NOT NULL DEFAULT now()
 );

@@ -66,6 +66,7 @@ def test_run_refuses_to_publish_when_the_extraction_disagrees(tmp_path, monkeypa
     monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
     monkeypatch.setattr(cli, "WORK_DIR", tmp_path)
     monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
+    monkeypatch.setattr(cli, "verified_influences", lambda: FIX / "influences.jsonl")
 
     def record_publish(*args):
         # Returns a plausible manifest on purpose: a double returning None
@@ -107,4 +108,26 @@ def test_a_snapshot_already_taken_today_is_never_taken_again(tmp_path, monkeypat
     monkeypatch.setattr(cli, "fetch_popularity", lambda *_: pytest.fail("asked ListenBrainz"))
     with pytest.raises(SystemExit) as raised:
         cli.snapshot_popularity()
+    assert "never taken again" in str(raised.value)
+
+
+def test_run_stops_when_the_pinned_influences_are_missing(tmp_path, monkeypatch):
+    # Same contract as the ListenBrainz snapshot: Wikidata moves every day, so
+    # a run neither asks it again nor builds without it.
+    monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
+    monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
+    monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
+    monkeypatch.setattr(cli, "INFLUENCES_JSONL", tmp_path / "influences.jsonl")
+    with pytest.raises(SystemExit) as raised:
+        cli.run()
+    assert "cannot be taken again" in str(raised.value)
+
+
+def test_influences_taken_today_are_never_taken_again(tmp_path, monkeypatch):
+    taken = tmp_path / "influences.jsonl"
+    taken.write_text("", encoding="utf-8")
+    monkeypatch.setattr(cli, "influences_snapshot", lambda _date: taken)
+    monkeypatch.setattr(cli, "fetch_influences", lambda *_: pytest.fail("asked Wikidata"))
+    with pytest.raises(SystemExit) as raised:
+        cli.snapshot_influences()
     assert "never taken again" in str(raised.value)

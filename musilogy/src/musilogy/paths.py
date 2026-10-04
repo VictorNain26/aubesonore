@@ -42,3 +42,11 @@ def proximity_snapshot(date: str) -> Path:
 
 def proximity_sums(date: str) -> Path:
     return REFERENCE_DIR / f"listenbrainz-similar-{date}.SHA256SUMS"
+
+
+def influences_snapshot(date: str) -> Path:
+    return RAW_DIR / "wikidata" / date / "influences.jsonl"
+
+
+def influences_sums(date: str) -> Path:
+    return REFERENCE_DIR / f"wikidata-influences-{date}.SHA256SUMS"

@@ -212,3 +212,25 @@ CREATE OR REPLACE VIEW popularity_unrequested AS
   SELECT a.mbid FROM artists a
   WHERE getvariable('popularity_snapshot') IS NOT NULL
     AND NOT EXISTS (SELECT 1 FROM raw_popularity p WHERE p.artist_mbid = a.mbid);
+-- 88_influences.sql: one statement per pair of MBIDs.
+CREATE OR REPLACE VIEW duplicate_influence AS
+  SELECT artist_mbid, influence_mbid FROM influences GROUP BY ALL HAVING count(*) > 1;
+-- An MBID is a lowercase UUID, as MusicBrainz writes it and `artists` keys
+-- it: anything else on Wikidata would join nothing, in silence. A statement
+-- id names its item, then the statement: without it, nothing can be cited.
+CREATE OR REPLACE VIEW influence_malformed AS
+  SELECT artist_mbid, influence_mbid FROM influences
+  WHERE NOT coalesce(regexp_full_match(
+          artist_mbid, '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'), false)
+     OR NOT coalesce(regexp_full_match(
+          influence_mbid, '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'), false)
+     OR NOT coalesce(regexp_full_match(statement, '[Qq][0-9]+\$.+'), false);
+-- The orientation, restated against the snapshot: a published row must be the
+-- pair its statement declares, read the same way. A swapped column in the rule
+-- publishes every influence reversed, which the two views above do not see.
+CREATE OR REPLACE VIEW influence_unsourced AS
+  SELECT i.artist_mbid, i.influence_mbid FROM influences i
+  WHERE NOT EXISTS (
+    SELECT 1 FROM raw_influences r
+    WHERE r.artist_mbid = i.artist_mbid AND r.influence_mbid = i.influence_mbid
+      AND r.statement = i.statement);
