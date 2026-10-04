@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import type { ReactElement } from 'react';
-import { render as rtlRender, screen } from '@testing-library/react';
+import { render as rtlRender, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
 import { NowPlayingView, type NowPlayingViewProps } from './NowPlaying';
@@ -44,22 +44,31 @@ describe('NowPlayingView', () => {
     expect(screen.getAllByText(/four to the floor/i)).toHaveLength(1);
   });
 
-  it('puts Écouter under the title and shows the connecting and listening states', async () => {
+  it('puts Écouter under the title and names the action, not the waiting', async () => {
     const onToggleListen = vi.fn();
+    const button = () => screen.getByRole('button', { name: /écouter le direct|mettre en pause/i });
+    const shows = (word: string, other: string) => {
+      expect(within(button()).getByText(word)).not.toHaveAttribute('aria-hidden');
+      expect(within(button()).getByText(other)).toHaveAttribute('aria-hidden', 'true');
+    };
     const { rerender } = render(<NowPlayingView {...props({ onToggleListen })} />);
+    shows('Écouter', 'Pause');
 
     await userEvent.click(screen.getByRole('button', { name: 'Écouter le direct' }));
     expect(onToggleListen).toHaveBeenCalledOnce();
 
+    // Breaks if the label changes while the stream connects: a third word ("Un instant…") made
+    // the button change width and pushed its neighbours. The ring alone tells the waiting.
     rerender(<NowPlayingView {...props({ listen: 'connecting' })} />);
-    expect(screen.getByText('Un instant…')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Mettre en pause' })).toHaveAttribute(
       'aria-busy',
       'true'
     );
+    shows('Pause', 'Écouter');
 
+    // Both words stay in the button: its width is the longer one's, whatever the state.
     rerender(<NowPlayingView {...props({ listen: 'playing' })} />);
-    expect(screen.getByText('Pause')).toBeInTheDocument();
+    shows('Pause', 'Écouter');
   });
 
   it('keeps a constant label and carries the kept state in aria-pressed', async () => {
