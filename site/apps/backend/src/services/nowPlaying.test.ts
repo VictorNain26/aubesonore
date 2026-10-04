@@ -24,7 +24,21 @@ describe('fetchNowPlaying', () => {
       sh_id: 4242,
       title: 'F Major',
       artist: 'Hania Rani',
+      isrc: null,
     });
+  });
+
+  it('keeps a well-formed ISRC and drops a malformed one', async () => {
+    const onAir = (isrc: string) =>
+      json({ now_playing: { sh_id: 1, song: { title: 'T', artist: 'A', isrc } } });
+    spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(onAir('GBAYE6500165'))
+      .mockResolvedValueOnce(onAir(''))
+      .mockResolvedValueOnce(onAir('gb-aye-65-00165'));
+
+    expect((await fetchNowPlaying())?.isrc).toBe('GBAYE6500165');
+    expect((await fetchNowPlaying())?.isrc).toBeNull();
+    expect((await fetchNowPlaying())?.isrc).toBeNull();
   });
 
   it('returns null when nothing is on air', async () => {

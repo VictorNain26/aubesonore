@@ -15,20 +15,34 @@ const RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
 export function buildPlayRow(
   shId: number,
   title: string,
-  artist: string
-): { id: string; shId: number; title: string; artist: string; artistNormalized: string } {
+  artist: string,
+  isrc: string | null
+): {
+  id: string;
+  shId: number;
+  title: string;
+  artist: string;
+  artistNormalized: string;
+  isrc: string | null;
+} {
   return {
     id: randomUUID(),
     shId,
     title,
     artist,
     artistNormalized: normalizeArtistName(primaryArtistName(artist)),
+    isrc,
   };
 }
 
 /** Idempotent on AzuraCast's song-history id: a restart sees the current track again. */
-export async function recordPlay(shId: number, title: string, artist: string): Promise<void> {
-  const row = buildPlayRow(shId, title, artist);
+export async function recordPlay(
+  shId: number,
+  title: string,
+  artist: string,
+  isrc: string | null
+): Promise<void> {
+  const row = buildPlayRow(shId, title, artist, isrc);
   if (!row.artistNormalized) return;
   await db.insert(radioPlay).values(row).onConflictDoNothing({ target: radioPlay.shId });
 }

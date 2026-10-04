@@ -72,6 +72,7 @@ const spies = {
       facts,
       links: [{ platform: 'official', url: 'https://daftpunk.com/' }],
       wikidataId: 'Q185828',
+      deezerId: '27',
     },
   }),
   summary: spyOn(wikipedia, 'getSummary').mockResolvedValue({

@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { and, DrizzleQueryError, eq, isNull } from 'drizzle-orm';
+import { and, desc, DrizzleQueryError, eq, isNull, or, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { artist, radioPlay } from '../db/schema';
 import { logger } from '../lib/logger';
-import { searchArtist } from './deezerService';
-import { findMbidByDeezerId } from './musicbrainzService';
+import { findArtistByIsrc, searchArtist } from './deezerService';
+import { findMbidByDeezerId, findMbidByIsrc, getArtistByMbid } from './musicbrainzService';
 import { fetchNowPlaying } from './nowPlaying';
 
 // Only explicit featuring markers. Splitting on `&`, `+`, `x` or `,` would
@@ -35,10 +35,19 @@ export function slugify(name: string): string {
 
 type Resolved = { id: string; slug: string };
 type Identity = { id: string; deezerId: string | null; mbid: string | null };
+type Row = Resolved & Identity & { identifiedBy: 'isrc' | 'name' };
 
-async function findBy(normalizedName: string): Promise<(Resolved & Identity) | null> {
+const ROW = {
+  id: artist.id,
+  slug: artist.slug,
+  deezerId: artist.deezerId,
+  mbid: artist.mbid,
+  identifiedBy: artist.identifiedBy,
+};
+
+async function findBy(normalizedName: string): Promise<Row | null> {
   const rows = await db
-    .select({ id: artist.id, slug: artist.slug, deezerId: artist.deezerId, mbid: artist.mbid })
+    .select(ROW)
     .from(artist)
     .where(eq(artist.normalizedName, normalizedName))
     .limit(1);
@@ -81,25 +90,88 @@ export async function ensureMbid(row: Identity): Promise<string | null> {
   return found.value;
 }
 
+type Played = { title: string; isrc: string | null };
+
 /**
- * A title the antenna played by this artist, or null when it never played
- * them: pages exist for what the antenna played, never for a name typed into
- * the API. The title is also what tells homonyms apart on Deezer.
+ * A track the antenna played by this artist, one with an ISRC when there is
+ * one, or null when it never played them: pages exist for what the antenna
+ * played, never for a name typed into the API. Both sources are the server's
+ * own, so a caller cannot slip another recording's ISRC in.
  */
-async function playedTitle(normalizedName: string): Promise<string | null> {
+async function playedTrack(normalizedName: string): Promise<Played | null> {
   const rows = await db
-    .select({ title: radioPlay.title })
+    .select({ title: radioPlay.title, isrc: radioPlay.isrc })
     .from(radioPlay)
     .where(eq(radioPlay.artistNormalized, normalizedName))
+    .orderBy(sql`${radioPlay.isrc} IS NULL`, desc(radioPlay.playedAt))
     .limit(1);
-  if (rows[0]) return rows[0].title;
+  if (rows[0]) return rows[0];
 
   // The watcher records a track up to a minute after it starts.
   const current = await fetchNowPlaying().catch(() => null);
   return current !== null &&
     normalizeArtistName(primaryArtistName(current.artist)) === normalizedName
-    ? current.title
+    ? { title: current.title, isrc: current.isrc }
     : null;
+}
+
+type Identified = { deezerId: string | null; mbid: string | null };
+
+/**
+ * The identity a played track's ISRC gives (docs/vision.md §4.4): the
+ * MusicBrainz artist of the recording, the Deezer link that artist declares,
+ * else Deezer's own ISRC lookup, else the MusicBrainz artist of that Deezer
+ * link. Null when no source knows the code; 'failed' when one could not
+ * answer, so the next play retries rather than settle for a name.
+ */
+async function identifyByIsrc(isrc: string): Promise<Identified | null | 'failed'> {
+  const recording = await findMbidByIsrc(isrc);
+  if (recording.status === 'failed') return 'failed';
+  let mbid = recording.status === 'found' ? recording.value : null;
+
+  let deezerId: string | null = null;
+  if (mbid) {
+    const page = await getArtistByMbid(mbid);
+    if (page.status === 'failed') return 'failed';
+    deezerId = page.status === 'found' ? page.value.deezerId : null;
+  }
+  if (!deezerId) {
+    const track = await findArtistByIsrc(isrc);
+    if (track.status === 'failed') return 'failed';
+    deezerId = track.status === 'match' ? track.artist.id : null;
+  }
+  if (!mbid && deezerId) {
+    const linked = await findMbidByDeezerId(deezerId);
+    if (linked.status === 'failed') return 'failed';
+    mbid = linked.status === 'found' ? linked.value : null;
+  }
+  return mbid || deezerId ? { deezerId, mbid } : null;
+}
+
+/**
+ * A row first bound by its name takes the identity its ISRC gives, which wins
+ * over the name: the code designates the recording, a name can be a homonym's.
+ */
+async function reidentify(row: Row, identified: Identified): Promise<void> {
+  try {
+    await db
+      .update(artist)
+      .set({
+        deezerId: identified.deezerId ?? row.deezerId,
+        mbid: identified.mbid ?? row.mbid,
+        identifiedBy: 'isrc',
+      })
+      .where(eq(artist.id, row.id));
+  } catch (err) {
+    // Another row holds that identity: two spellings of one artist. The row
+    // keeps its name-bound identity; any other failure propagates.
+    if (!isUniqueViolation(err)) throw err;
+    logger.warn('artist.identity_not_written', {
+      id: row.id,
+      ...identified,
+      message: (err as Error).message,
+    });
+  }
 }
 
 export async function resolveArtist(rawName: string): Promise<Resolved | null> {
@@ -109,35 +181,73 @@ export async function resolveArtist(rawName: string): Promise<Resolved | null> {
 
   const existing = await findBy(normalizedName);
   if (existing) {
-    await ensureMbid(existing);
+    const played = existing.identifiedBy === 'name' ? await playedTrack(normalizedName) : null;
+    const identified = played?.isrc ? await identifyByIsrc(played.isrc) : null;
+    if (identified && identified !== 'failed') await reidentify(existing, identified);
+    else await ensureMbid(existing);
     return { id: existing.id, slug: existing.slug };
   }
 
-  const title = await playedTitle(normalizedName);
-  if (title === null) return null;
+  const played = await playedTrack(normalizedName);
+  if (played === null) return null;
 
-  const search = await searchArtist(primary, title, normalizeArtistName);
-  // Deezer down: resolve again next time rather than persist a false "unknown".
-  if (search.status === 'failed') return null;
+  const identified = played.isrc ? await identifyByIsrc(played.isrc) : null;
+  // A source down: resolve again next time rather than persist a name guess.
+  if (identified === 'failed') return null;
 
-  const match = search.status === 'match' ? search.artist : null;
-  const displayName = match?.name ?? primary;
+  let identity: Identified & { displayName: string; identifiedBy: 'isrc' | 'name' };
+  if (identified) {
+    identity = { ...identified, displayName: primary, identifiedBy: 'isrc' };
+  } else {
+    const search = await searchArtist(primary, played.title, normalizeArtistName);
+    // Deezer down: resolve again next time rather than persist a false "unknown".
+    if (search.status === 'failed') return null;
+    const match = search.status === 'match' ? search.artist : null;
+    identity = {
+      deezerId: match?.id ?? null,
+      mbid: null,
+      displayName: match?.name ?? primary,
+      identifiedBy: 'name',
+    };
+  }
+
   const inserted = await db
     .insert(artist)
     .values({
       id: randomUUID(),
       normalizedName,
-      displayName,
-      slug: slugify(displayName),
-      deezerId: match?.id ?? null,
-      mbid: null,
+      displayName: identity.displayName,
+      slug: slugify(identity.displayName),
+      deezerId: identity.deezerId,
+      mbid: identity.mbid,
+      identifiedBy: identity.identifiedBy,
     })
     .onConflictDoNothing()
     .returning({ id: artist.id, slug: artist.slug });
-  // Lost the insert race against a concurrent resolution: read the winner. A
-  // Deezer match needs an equal normalized name, so two rows never share one.
-  const row = inserted[0] ?? (await findBy(normalizedName));
+  // Nothing inserted: a concurrent resolution of this name won the race, or
+  // another spelling of the same artist already holds this identity, and its
+  // page is this artist's page.
+  const row =
+    inserted[0] ??
+    (await findBy(normalizedName)) ??
+    (await findByIdentity(identity.deezerId, identity.mbid));
   if (!row) return null;
-  await ensureMbid({ id: row.id, deezerId: match?.id ?? null, mbid: null });
+  if (identity.identifiedBy === 'name') {
+    await ensureMbid({ id: row.id, deezerId: identity.deezerId, mbid: null });
+  }
   return { id: row.id, slug: row.slug };
+}
+
+async function findByIdentity(deezerId: string | null, mbid: string | null): Promise<Row | null> {
+  const keys = [
+    ...(deezerId ? [eq(artist.deezerId, deezerId)] : []),
+    ...(mbid ? [eq(artist.mbid, mbid)] : []),
+  ];
+  if (keys.length === 0) return null;
+  const rows = await db
+    .select(ROW)
+    .from(artist)
+    .where(or(...keys))
+    .limit(1);
+  return rows[0] ?? null;
 }

@@ -1,0 +1,19 @@
+{
+  "isrc": "GBAYE6500165",
+  "recordings": [
+    {
+      "id": "d83e996f-f9f0-46b8-a706-3f0e46a21b28",
+      "title": "Since I Don’t Have You",
+      "artist-credit": [
+        {
+          "name": "Manfred Mann",
+          "joinphrase": "",
+          "artist": {
+            "id": "06b6f280-8787-4a3d-8ab6-c6487b465320",
+            "name": "Manfred Mann"
+          }
+        }
+      ]
+    }
+  ]
+}

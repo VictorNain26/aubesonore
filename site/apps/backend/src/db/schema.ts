@@ -227,6 +227,9 @@ export const artist = pgTable(
     slug: text('slug').notNull(),
     deezerId: text('deezer_id'),
     mbid: text('mbid'),
+    // 'isrc' when a played track's ISRC gave the identity, 'name' when only the
+    // name did: a name-bound row is re-identified once an ISRC is known.
+    identifiedBy: text('identified_by').$type<'isrc' | 'name'>().notNull().default('name'),
     firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
@@ -254,6 +257,7 @@ export const radioPlay = pgTable(
     artist: text('artist').notNull(),
     // Denormalised so the artist page filters without recomputing per row.
     artistNormalized: text('artist_normalized').notNull(),
+    isrc: text('isrc'),
     playedAt: timestamp('played_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({

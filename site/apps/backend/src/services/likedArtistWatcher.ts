@@ -10,7 +10,7 @@ export interface WatcherDeps {
   fetchNowPlaying: () => Promise<NowPlayingTrack | null>;
   findUserIdsByArtist: (artistLower: string) => Promise<string[]>;
   send: (userIds: string[], title: string, body: string, url: string) => Promise<unknown>;
-  recordPlay: (shId: number, title: string, artist: string) => Promise<void>;
+  recordPlay: (shId: number, title: string, artist: string, isrc: string | null) => Promise<void>;
   resolveArtist: (artist: string) => Promise<unknown>;
   now?: () => number;
 }
@@ -35,7 +35,7 @@ export function createLikedArtistNotifier(deps: WatcherDeps): () => Promise<void
     // Recorded for every new track, whether or not anyone is notified — this
     // is the artist page's floor. A write failure must not silence the push.
     try {
-      await deps.recordPlay(track.sh_id, track.title, track.artist);
+      await deps.recordPlay(track.sh_id, track.title, track.artist, track.isrc);
     } catch (err) {
       logger.warn('radioPlay.record_failed', {
         artist: track.artist,
@@ -45,8 +45,9 @@ export function createLikedArtistNotifier(deps: WatcherDeps): () => Promise<void
 
     // Every artist the antenna plays gets its identity, MBID included, at its
     // first play rather than when a listener opens its page: that is what
-    // links the antenna to Musilogy (docs/vision.md §4.4). Not awaited, so a
-    // slow lookup never delays the notification.
+    // links the antenna to Musilogy (docs/vision.md §4.4). The play is recorded
+    // first, so the resolver finds its ISRC. Not awaited, so a slow lookup
+    // never delays the notification.
     deps.resolveArtist(track.artist).catch((err: unknown) => {
       logger.warn('artist.resolve_failed', {
         artist: track.artist,
