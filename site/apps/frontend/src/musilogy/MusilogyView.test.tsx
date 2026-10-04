@@ -98,8 +98,8 @@ describe('MusilogyArtistView', () => {
   it('says a section is not loaded yet rather than empty', () => {
     show({ status: 'ready', artist: artist({ neighbours: null, influences: null }) });
 
-    expect(screen.getAllByText('Les proximités ne sont pas encore relevées.')).toHaveLength(3);
-    expect(screen.getByText('Les influences ne sont pas encore chargées.')).toBeInTheDocument();
+    expect(screen.getAllByText("Pas encore d'artistes proches à montrer.")).toHaveLength(3);
+    expect(screen.getByText("Pas encore d'influences à montrer.")).toBeInTheDocument();
   });
 
   it('shows the closest first and opens the rest on demand', async () => {
