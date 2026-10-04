@@ -38,11 +38,14 @@ describe('getSummary', () => {
     });
 
     expect(await getSummary('Q6107266', 'fr')).toEqual({
-      text:
-        'Joshua Michael Tillman, aussi connu sous le nom de J. Tillman ou Father John Misty, ' +
-        'est un chanteur, guitariste, compositeur et batteur américain.',
-      lang: 'fr',
-      url: 'https://fr.wikipedia.org/wiki/Joshua_Tillman',
+      status: 'found',
+      value: {
+        text:
+          'Joshua Michael Tillman, aussi connu sous le nom de J. Tillman ou Father John Misty, ' +
+          'est un chanteur, guitariste, compositeur et batteur américain.',
+        lang: 'fr',
+        url: 'https://fr.wikipedia.org/wiki/Joshua_Tillman',
+      },
     });
     const init = fetchSpy.mock.calls[0]?.[1] as RequestInit;
     expect(new Headers(init.headers).get('user-agent')).toContain('AubeSonore');
@@ -54,7 +57,8 @@ describe('getSummary', () => {
       'https://en.wikipedia.org/api/rest_v1/page/summary/Velocity_Girl': summaryEn,
     });
 
-    const summary = await getSummary('Q7919286', 'fr');
+    const found = await getSummary('Q7919286', 'fr');
+    const summary = found.status === 'found' ? found.value : null;
 
     expect(summary?.lang).toBe('en');
     expect(summary?.text).toBe(
@@ -70,7 +74,7 @@ describe('getSummary', () => {
       'https://en.wikipedia.org/api/rest_v1/page/summary/Velocity_Girl': disambiguation,
     });
 
-    expect(await getSummary('Q7919286', 'en')).toBeNull();
+    expect(await getSummary('Q7919286', 'en')).toEqual({ status: 'none' });
   });
 
   it('never caches a failure as "no article"', async () => {
@@ -78,14 +82,17 @@ describe('getSummary', () => {
       new Response(null, { status: 503 })
     );
 
-    expect(await getSummary('Q7919286', 'en')).toBeNull();
+    expect(await getSummary('Q7919286', 'en')).toEqual({ status: 'failed' });
 
     fetchSpy.mockRestore();
     serve({
       [WIKIDATA]: sitelinksEnOnly,
       'https://en.wikipedia.org/api/rest_v1/page/summary/Velocity_Girl': summaryEn,
     });
-    expect((await getSummary('Q7919286', 'en'))?.lang).toBe('en');
+    expect(await getSummary('Q7919286', 'en')).toMatchObject({
+      status: 'found',
+      value: { lang: 'en' },
+    });
   });
 });
 

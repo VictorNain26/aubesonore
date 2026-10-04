@@ -37,6 +37,7 @@ export const handlers = [
         isrc: null,
         songlinkUrl: null,
         platformLinks: null,
+        artistId: null,
         createdAt: new Date().toISOString(),
       },
     });

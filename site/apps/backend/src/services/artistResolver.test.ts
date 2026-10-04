@@ -1,6 +1,7 @@
 import { describe, it, expect, mock, spyOn, afterAll, beforeEach } from 'bun:test';
 import type { ArtistSearch } from './deezerService';
-import type { Lookup, MusicBrainzArtist } from './musicbrainzService';
+import type { Lookup } from '../lib/lookup';
+import type { MusicBrainzArtist } from './musicbrainzService';
 import { DrizzleQueryError } from 'drizzle-orm';
 import type { NowPlayingTrack } from './nowPlaying';
 

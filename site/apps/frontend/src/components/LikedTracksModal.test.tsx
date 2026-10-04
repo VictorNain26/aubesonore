@@ -22,6 +22,7 @@ function makeTrack(index: number): LikedTrack {
     isrc: null,
     songlinkUrl: null,
     platformLinks: null,
+    artistId: null,
     createdAt: new Date(2024, 0, index + 1).toISOString(),
   };
 }

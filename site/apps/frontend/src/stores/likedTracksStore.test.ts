@@ -59,6 +59,7 @@ describe('likedTracksStore', () => {
           isrc: null,
           songlinkUrl: null,
           platformLinks: null,
+          artistId: null,
           createdAt: '2026-01-01T00:00:00Z',
         },
       ],
@@ -92,6 +93,7 @@ describe('likedTracksStore', () => {
         isrc: null,
         songlinkUrl: null,
         platformLinks: null,
+        artistId: null,
         createdAt: '2026-01-01T00:00:00Z',
       },
     ];
@@ -116,6 +118,7 @@ describe('likedTracksStore', () => {
         isrc: null,
         songlinkUrl: null,
         platformLinks: null,
+        artistId: null,
         createdAt: '2026-01-01T00:00:00Z',
       },
     ];
@@ -138,6 +141,7 @@ describe('likedTracksStore', () => {
           isrc: null,
           songlinkUrl: null,
           platformLinks: null,
+          artistId: null,
           createdAt: '2026-01-01T00:00:00Z',
         },
       ],

@@ -3,6 +3,7 @@ import { env } from '../config/env';
 import { TtlCache } from '../lib/cache/ttlCache';
 import { createSingleFlight } from '../lib/singleFlight';
 import { logger } from '../lib/logger';
+import type { Lookup } from '../lib/lookup';
 
 const TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const NEGATIVE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -82,10 +83,10 @@ async function summaryOf(lang: SiteLocale, title: string): Promise<ArtistSummary
 export async function getSummary(
   wikidataId: string,
   locale: SiteLocale
-): Promise<ArtistSummary | null> {
+): Promise<Lookup<ArtistSummary>> {
   const key = `${wikidataId}:${locale}`;
   const cached = wikipediaCache.get(key);
-  if (cached !== undefined) return cached;
+  if (cached !== undefined) return cached ? { status: 'found', value: cached } : { status: 'none' };
 
   const result = await flight(key, async () => {
     try {
@@ -101,5 +102,6 @@ export async function getSummary(
       return 'failed';
     }
   });
-  return result === 'failed' ? null : result;
+  if (result === 'failed') return { status: 'failed' };
+  return result ? { status: 'found', value: result } : { status: 'none' };
 }

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import { ArtistPageView, type ArtistPageState } from '../artist/ArtistPageView';
 import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../home/SiteFooter';
 import { fetchArtistProfile } from '../lib/artistProfile';
+import { useLikedTracksStore } from '../stores/likedTracksStore';
 import { useLocaleStore } from '../stores/localeStore';
 
 export default function ArtistPage() {
@@ -15,6 +16,15 @@ export default function ArtistPage() {
   } | null>(null);
   const key = `${id}:${locale}`;
   const setListenVisible = useHeroListenVisible((s) => s.setVisible);
+  // The listener's kept tracks, loaded at sign-in: this artist's, newest first.
+  const tracks = useLikedTracksStore((s) => s.tracks);
+  const kept = useMemo(
+    () =>
+      tracks
+        .filter((track) => track.artistId === id)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [tracks, id]
+  );
 
   // No hero here: the player bar is the only way to listen.
   useEffect(() => setListenVisible(false), [setListenVisible]);
@@ -58,7 +68,7 @@ export default function ArtistPage() {
 
   return (
     <>
-      <ArtistPageView state={state} />
+      <ArtistPageView state={state} kept={kept} />
       <SiteFooter />
     </>
   );

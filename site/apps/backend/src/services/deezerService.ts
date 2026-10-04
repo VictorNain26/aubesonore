@@ -1,4 +1,5 @@
 import { TtlCache } from '../lib/cache/ttlCache';
+import type { Lookup } from '../lib/lookup';
 import { createSingleFlight } from '../lib/singleFlight';
 import { logger } from '../lib/logger';
 
@@ -171,19 +172,22 @@ export async function findArtistByIsrc(isrc: string): Promise<ArtistSearch> {
   })) as ArtistSearch;
 }
 
-export async function getArtist(id: string): Promise<DeezerArtist | null> {
+export async function getArtist(id: string): Promise<Lookup<DeezerArtist>> {
   const key = `artist:${id}`;
   const cached = deezerCache.get(key);
-  if (cached !== undefined) return cached as DeezerArtist | null;
+  if (cached !== undefined) return cached as Lookup<DeezerArtist>;
 
   return (await flight(key, async () => {
     const fetched = await getJson<RawArtist>(`/artist/${encodeURIComponent(id)}`);
-    if (fetched.status === 'failed') return null;
+    if (fetched.status === 'failed') return { status: 'failed' };
 
     const artist = fetched.status === 'ok' ? toArtist(fetched.body) : null;
-    deezerCache.set(key, artist, artist ? undefined : NEGATIVE_TTL_MS);
-    return artist;
-  })) as DeezerArtist | null;
+    const result: Lookup<DeezerArtist> = artist
+      ? { status: 'found', value: artist }
+      : { status: 'none' };
+    deezerCache.set(key, result, artist ? undefined : NEGATIVE_TTL_MS);
+    return result;
+  })) as Lookup<DeezerArtist>;
 }
 
 /** Test seam: the breaker is module state and would leak between test files. */

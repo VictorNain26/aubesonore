@@ -11,7 +11,13 @@ import {
   customType,
 } from 'drizzle-orm/pg-core';
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
-import type { PlatformLinks, PreferredPlatform } from '@aubesonore/shared-types/client';
+import type {
+  ArtistFacts,
+  ArtistLink,
+  ArtistSummary,
+  PlatformLinks,
+  PreferredPlatform,
+} from '@aubesonore/shared-types/client';
 import type { StatsState } from '@aubesonore/shared-types/stats';
 
 // Re-export so existing imports (`from '../db/schema'`) keep working.
@@ -251,6 +257,25 @@ export const artist = pgTable(
     artistMbidUnique: uniqueIndex('artist_mbid_unique').on(table.mbid),
   })
 );
+
+// ─────────────────────────────────────────────
+// ARTIST_PROFILE TABLE — the last known answer of each source
+// ─────────────────────────────────────────────
+// A restart or a deploy keeps every page answering at once; a source that
+// fails during a refresh leaves its stored section as it was.
+export const artistProfile = pgTable('artist_profile', {
+  artistId: text('artist_id')
+    .primaryKey()
+    .references(() => artist.id, { onDelete: 'cascade' }),
+  image: text('image'),
+  facts: jsonb('facts').$type<ArtistFacts>(),
+  links: jsonb('links').$type<ArtistLink[]>().notNull().default([]),
+  wikidataId: text('wikidata_id'),
+  summaryFr: jsonb('summary_fr').$type<ArtistSummary>(),
+  summaryEn: jsonb('summary_en').$type<ArtistSummary>(),
+  // When every source last answered; a refresh cut short keeps the old date.
+  refreshedAt: timestamp('refreshed_at', { withTimezone: true }).notNull(),
+});
 
 // ─────────────────────────────────────────────
 // RADIO_PLAY TABLE — what the antenna actually played

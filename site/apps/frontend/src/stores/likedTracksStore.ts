@@ -82,6 +82,7 @@ export const useLikedTracksStore = create<LikedTracksStore>((set, get) => ({
       isrc: null,
       songlinkUrl: null,
       platformLinks: null,
+      artistId: null,
       createdAt: new Date().toISOString(),
     };
 

@@ -5,6 +5,7 @@ import type {
   ArtistPlatform,
   ArtistProfile,
   ArtistSummary,
+  ClientLikedTrack,
 } from '@aubesonore/shared-types/client';
 import { getLocale, localizeHref } from '@/paraglide/runtime.js';
 import { Cover } from '../home/Cover';
@@ -39,10 +40,7 @@ const LICENSE_URL = 'https://creativecommons.org/licenses/by-sa/4.0/';
 
 /** "Groupe · Paris, France · 1993 – 2021": what MusicBrainz states, nothing more. */
 export function factsLine(facts: ArtistFacts): string | null {
-  const country = facts.country
-    ? new Intl.DisplayNames([getLocale()], { type: 'region' }).of(facts.country)
-    : undefined;
-  const where = [facts.place, country].filter(Boolean).join(', ');
+  const where = whereOf(facts);
   const formed = facts.formed ? String(facts.formed) : null;
   const when = !formed
     ? ''
@@ -53,6 +51,46 @@ export function factsLine(facts: ArtistFacts): string | null {
         : m.artist_formed({ year: formed });
   const parts = [facts.kind ? KIND_LABELS[facts.kind]() : '', where, when].filter(Boolean);
   return parts.length > 0 ? parts.join(' · ') : null;
+}
+
+function whereOf(facts: ArtistFacts): string {
+  const country = facts.country
+    ? new Intl.DisplayNames([getLocale()], { type: 'region' }).of(facts.country)
+    : undefined;
+  return [facts.place, country].filter(Boolean).join(', ');
+}
+
+/**
+ * The same facts in a sentence, for an artist without a Wikipedia article:
+ * "Groupe originaire de Paris, France, formé en 1993. Actif jusqu'en 2021."
+ */
+export function portraitSentence(facts: ArtistFacts): string | null {
+  const kind = facts.kind ? KIND_LABELS[facts.kind]() : KIND_LABELS.person();
+  const where = whereOf(facts);
+  const year = facts.formed ? String(facts.formed) : null;
+  const origin =
+    where && year
+      ? m.artist_portrait_from_formed({ kind, where, year })
+      : where
+        ? m.artist_portrait_from({ kind, where })
+        : year
+          ? m.artist_portrait_formed({ kind, year })
+          : null;
+  if (!origin) return null;
+  const end = facts.ended
+    ? m.artist_portrait_until({ year: String(facts.ended) })
+    : facts.active
+      ? m.artist_portrait_active()
+      : null;
+  return end ? `${origin} ${end}` : origin;
+}
+
+function formatKeptAt(iso: string): string {
+  return new Intl.DateTimeFormat(getLocale(), {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(iso));
 }
 
 function formatPlayedAt(iso: string): string {
@@ -140,8 +178,23 @@ function Summary({ summary }: { summary: ArtistSummary }) {
   );
 }
 
-function Profile({ profile }: { profile: ArtistProfile }) {
-  const facts = profile.facts ? factsLine(profile.facts) : null;
+function Portrait({ text }: { text: string }) {
+  return (
+    <figure className="m-0 flex flex-col gap-3 md:col-span-8 md:col-start-5 lg:col-span-7 lg:col-start-4">
+      <p className="text-intro m-0 max-w-prose">{text}</p>
+      <figcaption className="text-label text-text-muted font-mono uppercase">
+        {m.artist_portrait_source()}
+      </figcaption>
+    </figure>
+  );
+}
+
+type KeptTrack = Pick<ClientLikedTrack, 'id' | 'title' | 'createdAt'>;
+
+function Profile({ profile, kept }: { profile: ArtistProfile; kept: readonly KeptTrack[] }) {
+  // Without a Wikipedia article, the facts are said in a sentence rather than listed.
+  const portrait = !profile.summary && profile.facts ? portraitSentence(profile.facts) : null;
+  const facts = profile.facts && !portrait ? factsLine(profile.facts) : null;
 
   return (
     <>
@@ -158,30 +211,49 @@ function Profile({ profile }: { profile: ArtistProfile }) {
           {facts ? <p className="text-sub text-text-muted m-0">{facts}</p> : null}
         </div>
         {profile.summary ? <Summary summary={profile.summary} /> : null}
+        {portrait ? <Portrait text={portrait} /> : null}
       </div>
 
       <div className="px-page flex flex-col gap-16 py-12 md:gap-28 md:py-20">
-        <Section id="played" title={m.artist_played_title()} body={m.artist_played_body()}>
-          {profile.playedOnRadio.length > 0 ? (
+        {kept.length > 0 ? (
+          <Section id="kept" title={m.artist_kept_title()} body={m.artist_kept_body()}>
             <ol className="border-accent m-0 list-none border-t p-0">
-              {profile.playedOnRadio.map((play) => (
+              {kept.map((track) => (
                 <li
-                  key={`${play.playedAt}-${play.title}`}
+                  key={track.id}
                   className="border-border reveal grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1"
                 >
-                  <span className="text-row truncate">{play.title}</span>
+                  <span className="text-row truncate">{track.title}</span>
                   <span className="text-ui text-text-muted font-mono whitespace-nowrap tabular-nums">
-                    {formatPlayedAt(play.playedAt)}
+                    {formatKeptAt(track.createdAt)}
                   </span>
                 </li>
               ))}
             </ol>
-          ) : (
-            <p className="text-text-muted border-accent m-0 border-t pt-4">
-              {m.artist_played_empty()}
-            </p>
-          )}
-        </Section>
+          </Section>
+        ) : (
+          <Section id="played" title={m.artist_played_title()} body={m.artist_played_body()}>
+            {profile.playedOnRadio.length > 0 ? (
+              <ol className="border-accent m-0 list-none border-t p-0">
+                {profile.playedOnRadio.map((play) => (
+                  <li
+                    key={`${play.playedAt}-${play.title}`}
+                    className="border-border reveal grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1"
+                  >
+                    <span className="text-row truncate">{play.title}</span>
+                    <span className="text-ui text-text-muted font-mono whitespace-nowrap tabular-nums">
+                      {formatPlayedAt(play.playedAt)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="text-text-muted border-accent m-0 border-t pt-4">
+                {m.artist_played_empty()}
+              </p>
+            )}
+          </Section>
+        )}
 
         {profile.links.length > 0 ? (
           <Section id="listen" title={m.artist_listen_title()} body={m.artist_listen_body()}>
@@ -201,8 +273,17 @@ function Profile({ profile }: { profile: ArtistProfile }) {
   );
 }
 
-/** An artist heard on the antenna: who they are, what the radio played, where to hear more. */
-export function ArtistPageView({ state }: { state: ArtistPageState }) {
+/**
+ * An artist heard on the antenna: who they are, what the listener kept of them
+ * or else what the radio played, where to hear more.
+ */
+export function ArtistPageView({
+  state,
+  kept = [],
+}: {
+  state: ArtistPageState;
+  kept?: readonly KeptTrack[];
+}) {
   return (
     <main id="main" className="min-h-dvh">
       <Header />
@@ -216,7 +297,7 @@ export function ArtistPageView({ state }: { state: ArtistPageState }) {
       ) : state.status === 'error' ? (
         <Message title={m.artist_error_title()} body={m.artist_error_body()} />
       ) : (
-        <Profile profile={state.profile} />
+        <Profile profile={state.profile} kept={kept} />
       )}
     </main>
   );
