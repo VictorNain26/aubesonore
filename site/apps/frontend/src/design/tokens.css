@@ -126,7 +126,7 @@
   --shadow-lift: 0 22px 40px -22px oklch(0.3 0.04 330 / 0.55);
   --shadow-bar: 0 16px 40px -12px oklch(0.204 0.012 293 / 0.5);
 
-  /* La lumière respire, le point « maintenant » bat, les blocs apparaissent en fondu au défilement. */
+  /* La lumière respire, le point « maintenant » bat, les blocs se dévoilent au défilement. */
   --animate-breathe: breathe 14s ease-in-out infinite;
   --animate-live: live 2.4s ease-in-out infinite;
 
@@ -206,9 +206,10 @@
     }
   }
 
-  @keyframes fade {
+  @keyframes focus-in {
     from {
       opacity: 0;
+      filter: blur(6px);
     }
   }
 
@@ -391,13 +392,14 @@
   font-stretch: 75%;
 }
 
-/* Each block fades in as it enters the screen, and back out when the scroll
-   takes it away (animation-timeline: view(): Chrome 115, Safari 26; elsewhere
-   it just shows). Opacity only: a block that moved would open gaps in the lists. */
+/* Each block comes into focus as it enters the screen, a fade out of a light
+   blur, and goes back out when the scroll takes it away (animation-timeline:
+   view(): Chrome 115, Safari 26; elsewhere it just shows). Opacity and blur only:
+   a block that moved would open gaps in the lists. */
 @utility reveal {
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
-      animation: fade linear both;
+      animation: focus-in linear both;
       animation-timeline: view();
       animation-range: entry 0% entry 100%;
     }
