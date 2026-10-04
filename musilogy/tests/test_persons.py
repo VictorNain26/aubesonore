@@ -1,10 +1,4 @@
-from conftest import (
-    BAND_CLEAN,
-    build_synthetic,
-    synthetic_artist,
-    synthetic_release_group,
-    unreliable_genre_records,
-)
+from conftest import build_synthetic, synthetic_artist, synthetic_release_group
 
 BJORK = "87c5dedd-371d-4a53-9f7f-80522fb7f3cb"
 BOWIE = "5441c29d-3602-4898-b1a1-b77fa23b8e50"
@@ -12,6 +6,7 @@ BACH = "24f1766e-9635-4d58-a4d4-9413f9f98a4c"
 SUMNER = "6fa2e161-200e-475a-8492-3755594581f9"
 JOY_DIVISION = "9a58fda3-f4ed-4080-a3a5-f457aac9fcdd"
 NEW_ORDER = "f1106b17-dcbb-45f6-b938-199ccfab50cc"
+ARTIST = "00000000-0000-4000-8000-000000000004"
 
 
 def edges(con, mbid):
@@ -64,10 +59,10 @@ def test_a_group_ended_before_min_year_takes_no_date_from_albums_either(tmp_path
     # below the floor gets no edge from albums released after it.
     c = build_synthetic(
         tmp_path,
-        [synthetic_artist(BAND_CLEAN, None, "1840")],
-        [synthetic_release_group("rg-1", BAND_CLEAN, "1990")],
+        [synthetic_artist(ARTIST, None, "1840")],
+        [synthetic_release_group("rg-1", ARTIST, "1990")],
     )
-    assert c.execute("SELECT y0, y_end FROM artists WHERE mbid = ?", [BAND_CLEAN]).fetchone() == (
+    assert c.execute("SELECT y0, y_end FROM artists WHERE mbid = ?", [ARTIST]).fetchone() == (
         None,
         None,
     )
@@ -76,49 +71,13 @@ def test_a_group_ended_before_min_year_takes_no_date_from_albums_either(tmp_path
     ).fetchone() == (1,)
 
 
-def test_persons_stay_out_of_the_genre_reliability_measurement(tmp_path):
-    # A person carrying g-person loses all 250 of its candidates to the
-    # multi-artist rule; measured, that would exclude the genre from a density
-    # that never counts persons.
-    genre = [{"mbid": "g-person", "name": "person", "votes": 1}]
-    c = build_synthetic(
-        tmp_path,
-        [synthetic_artist(BAND_CLEAN, "1950", None, genres=genre, kind="Person")],
-        [
-            synthetic_release_group(f"rg-{i}", BAND_CLEAN, "2000", co_artists=["guest"])
-            for i in range(250)
-        ],
-    )
-    assert c.execute(
-        "SELECT n_candidate_credits, multi_artist_drop_pct, density_eligible FROM genres "
-        "WHERE genre_mbid = 'g-person'"
-    ).fetchone() == (0, None, True)
-
-
-def test_the_exclusion_counter_leaves_out_the_persons_density_never_counted(tmp_path):
-    # g-excluded is excluded through its two bands; a person carrying it loses
-    # nothing to the rule, since density never counted persons.
-    artists, release_groups = unreliable_genre_records()
-    composer = synthetic_artist(
-        "00000000-0000-4000-8000-000000000009",
-        "1900",
-        None,
-        genres=[{"mbid": "g-excluded", "name": "excluded", "votes": 1}],
-        kind="Person",
-    )
-    c = build_synthetic(tmp_path, [*artists, composer], release_groups)
-    assert c.execute("SELECT * FROM density_exclusions").fetchone() == (1, 2)
-
-
 def person_edges(tmp_path, begin, end, album_years):
     c = build_synthetic(
         tmp_path,
-        [synthetic_artist(BAND_CLEAN, begin, end, kind="Person")],
-        [synthetic_release_group(f"rg-{y}", BAND_CLEAN, str(y)) for y in album_years],
+        [synthetic_artist(ARTIST, begin, end, kind="Person")],
+        [synthetic_release_group(f"rg-{y}", ARTIST, str(y)) for y in album_years],
     )
-    row = c.execute(
-        "SELECT y_birth, y0, y_end FROM artists WHERE mbid = ?", [BAND_CLEAN]
-    ).fetchone()
+    row = c.execute("SELECT y_birth, y0, y_end FROM artists WHERE mbid = ?", [ARTIST]).fetchone()
     result = c.execute("SELECT * FROM neutralised_inferences")
     counters = dict(zip([d[0] for d in result.description], result.fetchone(), strict=True))
     return row, counters

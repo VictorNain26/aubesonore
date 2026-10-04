@@ -1,3 +1,4 @@
+import pytest
 from conftest import build_synthetic, synthetic_artist, synthetic_release_group
 
 
@@ -131,3 +132,27 @@ def test_y0_and_y_end_are_both_null_without_any_evidence(tmp_path):
         "SELECT y0, y0_source, y_end, y_end_source FROM artists WHERE mbid = ?", [mbid]
     ).fetchone()
     assert row == (None, None, None, None)
+
+
+@pytest.mark.parametrize(
+    ("mbid", "expected"),
+    [
+        # Cardiacs: declared end 2020, an album retained in 2025. The declared
+        # end wins.
+        ("f7338f2a-136b-4d5e-b099-5504cf997f58", (1977, 2020, "declared")),
+        # U2: no declared end, last album 2025.
+        ("a3cb23fc-acd3-4ce0-8f36-1e5aa6a18432", (1976, 2025, "last_album")),
+        # ROD: formed in 1996, no album retained, no end: none is invented.
+        ("3cb86073-22d7-43d5-8f22-422b1e54988e", (1996, None, None)),
+        # Polska Radio One, the witness of the 265-row defect: formed 2015, its
+        # last album (2014) predates the begin and says nothing about an end.
+        # y_end used to be published as 2015 — the declared begin — labelled
+        # 'last_album'.
+        ("703c4c92-43f7-4268-9f85-0ca6f0cd1a22", (2015, None, None)),
+    ],
+)
+def test_the_witnesses_end_where_their_evidence_says(con, mbid, expected):
+    assert (
+        con.execute("SELECT y0, y_end, y_end_source FROM artists WHERE mbid = ?", [mbid]).fetchone()
+        == expected
+    )

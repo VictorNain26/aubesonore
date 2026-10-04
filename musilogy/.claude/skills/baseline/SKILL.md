@@ -43,7 +43,7 @@ Pour chaque chiffre qui bouge, dans l'ordre :
    écart absolu et relatif.
 2. **Trouver la règle responsable.** `git diff` sur `src/musilogy/sql/` depuis
    le dernier passage vert dit quels paliers ont changé. La numérotation est
-   topologique : une variation sur `density` vient de `60_density.sql` ou
+   topologique : une variation sur `links` vient de `80_links.sql` ou
    d'un fichier de numéro inférieur.
 3. **Mesurer le coût de la règle, ne pas le supposer.** Le pipeline est
    déterministe, donc le contrefactuel est toujours disponible : interroger les

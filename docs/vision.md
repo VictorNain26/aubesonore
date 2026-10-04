@@ -270,7 +270,7 @@ qu'un compte de stockage existe, le test du disque de sauvegarde sur un port USB
 
 ## 8. Ce qui est remplacé
 
-- `musilogy/docs/superpowers/specs/2026-10-02-frieze-lineage-design.md` décrit la frise et la
-  filiation abandonnées ; il reste en vigueur pour ce qui est construit jusqu'à l'étape 5, qui le
-  remplace.
+- La spec de la frise et de la filiation abandonnées (`musilogy/docs/superpowers/specs/`,
+  2026-10-02) est remplacée par `musilogy/docs/conception.md` (étape 5) ; son texte reste dans
+  l'historique git.
 - La version du 2026-10-03 de ce document reste dans l'historique git.
