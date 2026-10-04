@@ -20,7 +20,7 @@ aubesonore/
 
 - **Écouter** : le flux AzuraCast, le titre en cours, ce qui est passé depuis l'aube et les titres les plus gardés.
 - **Garder** : un auditeur connecté garde un titre ; ses liens d'écoute viennent des API d'iTunes, de Deezer et de Spotify (par ISRC). Chaque titre gardé est relié à sa diffusion et à son artiste.
-- **Page artiste** (artistes joués seulement) : portrait Deezer, faits MusicBrainz, ouverture de l'article Wikipédia ou, sans article, les faits dits en une phrase ; vos titres gardés de l'artiste, sinon ce que l'antenne en a joué ; où l'écouter. L'artiste est identifié par l'ISRC du titre joué, vérifié contre le titre et le nom.
+- **Page artiste** (artistes joués seulement) : portrait Deezer, faits MusicBrainz, ouverture de l'article Wikipédia ou, sans article, les faits dits en une phrase ; vos titres gardés de l'artiste ; où l'écouter ; les sections de Musilogy qui ont du contenu. L'artiste est identifié par l'ISRC du titre joué, vérifié contre le titre et le nom.
 - **Musilogy** : pour tout artiste de MusicBrainz, qui faisait cette musique avant lui, en même temps, après lui (proximité ListenBrainz rangée par les dates), ses influences déclarées (Wikidata) et ses groupes (MusicBrainz), en carte et en listes ; recherche par nom.
 - **Alertes** (Web Push / VAPID) quand un artiste gardé repasse à l'antenne.
 - **Pochettes** : à l'enrichissement, la pochette iTunes est retenue quand l'artiste correspond ; à défaut, un visuel « onde » déterministe est généré côté client.
@@ -85,9 +85,7 @@ Détails par app : [backend](apps/backend/README.md) · [frontend](apps/frontend
 
 ## Dépendances
 
-Les PR de dépendances viennent des **mises à jour de sécurité Dependabot** (alertes et correctifs automatiques activés dans les réglages du dépôt, sans `.github/dependabot.yml`, donc sans mises à jour de version planifiées). Elles passent la CI et sont mergées **à la main** : aucune n'est auto-mergée. Les autres montées de version se font manuellement.
-
-`renovate.json` décrit une policy Renovate (auto-merge des updates sûres, revue manuelle des majors), mais Renovate n'a jamais ouvert de PR ni de _Dependency Dashboard_ sur ce dépôt : cette configuration n'est pas active.
+Renovate ouvre les PR de dépendances (pnpm, uv, GitHub Actions, images Docker), le lundi avant 6 h, et les liste dans l'issue _Dependency Dashboard_. Il fusionne seul, une fois la CI verte, les mises à jour sûres : épinglages, devDependencies mineures et correctifs, correctifs des dépendances stables, Actions mineures. Les majeures et les images Docker passent en revue manuelle. La politique est dans [`renovate.json`](../renovate.json) à la racine. Dependabot ne sert plus qu'aux alertes de sécurité.
 
 ## Déploiement
 
@@ -120,7 +118,7 @@ journalctl --user -u aubesonore-deploy # logs
 
 Les variables `VITE_*` sont inlinées **au build** (ce ne sont pas des secrets) : changer l'URL de l'API impose un `--build`, pas un simple restart.
 
-`master` est protégée : une PR ne merge que si les 3 checks CI passent (Quality, Backend tests, Build all). Voir [`CLAUDE.md`](CLAUDE.md) pour les conventions et le workflow.
+`master` est protégée : une PR ne merge que si les 5 checks CI requis passent (Quality, Backend tests et Build all pour le site, plus les checks de `pipeline/` et `musilogy/`, lancés sur toute PR). Voir [`CLAUDE.md`](CLAUDE.md) pour les conventions et le workflow.
 
 ## Licence
 
