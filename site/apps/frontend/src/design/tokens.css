@@ -284,9 +284,14 @@
     );
   filter: blur(8px);
   /* The band overhangs the hero by --sink, and the horizon line sits --sink above the hero's
-     foot: the light is full on the line and dies out at the foot, never cut straight. */
+     foot: the light is full on the line and dies out at the foot, never cut straight. The
+     extra 0.5rem covers the 8px the band sinks while it breathes. */
   --sink: 2.5rem;
-  mask-image: linear-gradient(to top, transparent var(--sink), black calc(var(--sink) * 2));
+  mask-image: linear-gradient(
+    to top,
+    transparent calc(var(--sink) + 0.5rem),
+    black calc(var(--sink) * 2)
+  );
 
   @media (width >= 48rem) {
     inset-inline: -15%;

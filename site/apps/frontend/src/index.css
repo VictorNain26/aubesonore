@@ -67,7 +67,7 @@
     cursor: progress;
   }
 
-  /* Anchors (« Tout le fil », « Les plus gardés ») glide instead of jumping. */
+  /* Anchors (« Les plus gardés ») glide instead of jumping. */
   @media (prefers-reduced-motion: no-preference) {
     html {
       scroll-behavior: smooth;
