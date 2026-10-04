@@ -26,12 +26,12 @@ sans compte ; le compte personnalise, il ne débloque rien.
 
 ### 1.1 Le parcours
 
-| Geste | Question | Surface | Ce qui y répond |
-|---|---|---|---|
-| **Écouter** | « Qu'est-ce qui passe ? » | accueil | le direct, ce qui vient de passer, les plus gardés |
-| **Garder** | « Je ne veux pas le perdre » | bibliothèque, compte | aimer, retrouver, être prévenu quand l'artiste repasse |
-| **Savoir** | « Qui est-ce ? » | page artiste | portrait, ouverture de Wikipédia ou portrait factuel, vos titres gardés de l'artiste (sinon ce que l'antenne en a joué), où l'écouter, le lien vers Musilogy |
-| **Comprendre** | « D'où vient cette musique ? » | Musilogy | la carte de l'artiste : avant, pendant, après, influences déclarées, liens de groupe |
+| Geste          | Question                       | Surface              | Ce qui y répond                                                                                                                                              |
+| -------------- | ------------------------------ | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Écouter**    | « Qu'est-ce qui passe ? »      | accueil              | le direct, ce qui vient de passer, les plus gardés                                                                                                           |
+| **Garder**     | « Je ne veux pas le perdre »   | bibliothèque, compte | aimer, retrouver, être prévenu quand l'artiste repasse                                                                                                       |
+| **Savoir**     | « Qui est-ce ? »               | page artiste         | portrait, ouverture de Wikipédia ou portrait factuel, vos titres gardés de l'artiste (sinon ce que l'antenne en a joué), où l'écouter, le lien vers Musilogy |
+| **Comprendre** | « D'où vient cette musique ? » | Musilogy             | la carte de l'artiste : avant, pendant, après, influences déclarées, liens de groupe                                                                         |
 
 Les gestes se bouclent : le titre en cours mène à sa page artiste et à sa carte Musilogy ; chaque
 page Musilogy garde le lecteur du direct, signale les artistes passés sur AubeSonore et mène à
@@ -59,11 +59,11 @@ marchant d'un artiste à l'autre.
 
 ### 2.2 Trois couches, trois niveaux de preuve
 
-| Couche | Source | Couverture mesurée | Ce que le site en dit |
-|---|---|---|---|
-| **Proximité × temps** | artistes proches selon ListenBrainz (co-écoute), rangés par leurs dates MusicBrainz | 15 des 16 artistes joués échantillonnés ont 100 voisins, des plus confidentiels (1 045 auditeurs) aux plus connus (2026-10-04) | « avant lui, en même temps, après lui, dans la même veine » — jamais « influencé par » |
-| **Influences déclarées** | Wikidata (P737), puis citations extraites de Wikipédia avec leur phrase | 13 des 147 artistes joués via Wikidata (2026-10-03) | « a cité X comme influence », avec la source |
-| **Liens de groupe** | relations entre artistes de MusicBrainz | 75 % des artistes joués ont au moins un autre projet à deux pas, médiane 2 (2026-10-04) | « membre de », « autre projet de » |
+| Couche                   | Source                                                                              | Couverture mesurée                                                                                                             | Ce que le site en dit                                                                  |
+| ------------------------ | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| **Proximité × temps**    | artistes proches selon ListenBrainz (co-écoute), rangés par leurs dates MusicBrainz | 15 des 16 artistes joués échantillonnés ont 100 voisins, des plus confidentiels (1 045 auditeurs) aux plus connus (2026-10-04) | « avant lui, en même temps, après lui, dans la même veine » — jamais « influencé par » |
+| **Influences déclarées** | Wikidata (P737), puis citations extraites de Wikipédia avec leur phrase             | 13 des 147 artistes joués via Wikidata (2026-10-03)                                                                            | « a cité X comme influence », avec la source                                           |
+| **Liens de groupe**      | relations entre artistes de MusicBrainz                                             | 75 % des artistes joués ont au moins un autre projet à deux pas, médiane 2 (2026-10-04)                                        | « membre de », « autre projet de »                                                     |
 
 La proximité seule ne dit pas qui a inspiré qui ; le temps lui donne un sens (avant, pendant,
 après), et l'influence déclarée, quand elle existe, prime sur elle et se voit. Le classement
@@ -109,12 +109,12 @@ d'une couche est un calcul nommé, documenté, jamais un jugement.
 
 ### 4.1 Les pièces et ce qu'elles possèdent
 
-| Pièce | Rôle | Possède (seule à écrire) | Lit |
-|---|---|---|---|
-| `azuracast/` | diffuser | l'antenne : médias et leurs métadonnées, playlists, historique de diffusion | — |
-| `pipeline/` | choisir ce qui passe | le goût (modèle, votes, candidats) et la bibliothèque d'antenne, qu'il publie par l'API d'AzuraCast avec l'ISRC de chaque titre | Plex (lecture seule), Deezer, Last.fm, Hype Machine, Soulseek |
-| `site/` | l'expérience de l'auditeur | comptes, titres gardés, identité et profil des artistes joués, journal de diffusion | AzuraCast (lecture seule), Deezer, MusicBrainz, Wikidata, Wikipédia, le schéma `musilogy` |
-| `musilogy/` | les données de Musilogy | ses tables, produites hors ligne depuis des sources épinglées et datées, et le schéma `musilogy` de la base du site, qu'il remplace en bloc à chaque `musilogy load` | dumps MusicBrainz, relevés ListenBrainz (popularité, proximité), Wikidata |
+| Pièce        | Rôle                       | Possède (seule à écrire)                                                                                                                                             | Lit                                                                                       |
+| ------------ | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `azuracast/` | diffuser                   | l'antenne : médias et leurs métadonnées, playlists, historique de diffusion                                                                                          | —                                                                                         |
+| `pipeline/`  | choisir ce qui passe       | le goût (modèle, votes, candidats) et la bibliothèque d'antenne, qu'il publie par l'API d'AzuraCast avec l'ISRC de chaque titre                                      | Plex (lecture seule), Deezer, Last.fm, Hype Machine, Soulseek                             |
+| `site/`      | l'expérience de l'auditeur | comptes, titres gardés, identité et profil des artistes joués, journal de diffusion                                                                                  | AzuraCast (lecture seule), Deezer, MusicBrainz, Wikidata, Wikipédia, le schéma `musilogy` |
+| `musilogy/`  | les données de Musilogy    | ses tables, produites hors ligne depuis des sources épinglées et datées, et le schéma `musilogy` de la base du site, qu'il remplace en bloc à chaque `musilogy load` | dumps MusicBrainz, relevés ListenBrainz (popularité, proximité), Wikidata                 |
 
 ### 4.2 Les flux
 
@@ -130,12 +130,12 @@ d'une couche est un calcul nommé, documenté, jamais un jugement.
 
 ### 4.3 Les contrats
 
-| Entre | Contrat | Où il est écrit |
-|---|---|---|
-| pipeline → AzuraCast | API AzuraCast, dossier `antenne/` ; l'ISRC de chaque titre écrit dans le fichier en trame ID3 `TSRC`, qu'AzuraCast range dans le champ `isrc` du média ; jamais de `PUT /file/{id}`, qui réécrit et supprime les balises | `pipeline/docs/vision.md` §6 et §7.2 |
-| site ← AzuraCast | now-playing et historique en lecture, dont `song.isrc` | `site/CLAUDE.md` |
-| site ← musilogy | les fonctions SQL de `musilogy/src/musilogy/pg/90_*.sql` : le site n'appelle qu'elles, jamais les tables | conception de musilogy |
-| site ← Deezer, MusicBrainz, Wikidata, Wikipédia | chacun isolé, autorisé à tomber seul, son dernier résultat gardé en base (§4.6) | `site/CLAUDE.md` |
+| Entre                                           | Contrat                                                                                                                                                                                                                  | Où il est écrit                      |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
+| pipeline → AzuraCast                            | API AzuraCast, dossier `antenne/` ; l'ISRC de chaque titre écrit dans le fichier en trame ID3 `TSRC`, qu'AzuraCast range dans le champ `isrc` du média ; jamais de `PUT /file/{id}`, qui réécrit et supprime les balises | `pipeline/docs/vision.md` §6 et §7.2 |
+| site ← AzuraCast                                | now-playing et historique en lecture, dont `song.isrc`                                                                                                                                                                   | `site/CLAUDE.md`                     |
+| site ← musilogy                                 | les fonctions SQL de `musilogy/src/musilogy/pg/90_*.sql` : le site n'appelle qu'elles, jamais les tables                                                                                                                 | conception de musilogy               |
+| site ← Deezer, MusicBrainz, Wikidata, Wikipédia | chacun isolé, autorisé à tomber seul, son dernier résultat gardé en base (§4.6)                                                                                                                                          | `site/CLAUDE.md`                     |
 
 **Couplages interdits**, et pourquoi :
 
@@ -153,12 +153,22 @@ Deezer de chaque titre qu'il publie ; il en tire l'ISRC et l'écrit dans le fich
 AzuraCast le lit. Le site résout
 ensuite, dans cet ordre :
 
-1. **ISRC → MusicBrainz** (`/ws/2/isrc/{isrc}?inc=artist-credits`) : le MBID de chaque artiste
-   crédité. 32 des 40 titres de l'antenne tirés au hasard y sont reconnus (2026-10-04).
-2. **ISRC → Deezer** : l'artiste Deezer exact du titre, sans recherche par nom.
-3. **Lien Deezer déclaré dans MusicBrainz** : pour les titres que l'ISRC ne relie pas.
-4. **Rien d'autre.** Un artiste non identifié a sa page avec ce que l'antenne en sait, sans faits
+1. **ISRC → MusicBrainz** (`/ws/2/isrc/{isrc}?inc=artist-credits`) : l'artiste crédité qui porte
+   le nom joué, sur un enregistrement du titre joué. 32 des 40 titres de l'antenne tirés au
+   hasard y sont reconnus (2026-10-04).
+2. **ISRC → Deezer** : l'artiste Deezer du titre portant cet ISRC, sous les mêmes conditions.
+3. **Lien Deezer déclaré dans MusicBrainz**, pour compléter l'une des deux identités par l'autre.
+4. **Le nom, en dernier recours**, seulement lié à un titre joué (la recherche Deezer garde
+   l'artiste du titre joué dont le nom est le même une fois normalisé, et seulement s'il n'a
+   pas d'homonyme exact), puis le lien Deezer que MusicBrainz déclare.
+5. **Rien d'autre.** Un artiste non identifié a sa page avec ce que l'antenne en sait, sans faits
    ni Musilogy ; l'absence se corrige à la source (MusicBrainz), pas par une devinette.
+
+**Un ISRC ne suffit pas seul** : un code peut être déposé sur un autre enregistrement ou crédité
+à un autre artiste. Mesuré en production le 2026-10-04, avant cette vérification : le titre de
+Paul McCartney crédité à Wings, celui de Daniel Avery déposé sur un titre d'ANNA, celui des
+Pirouettes rendu par un autre titre Deezer. Une réponse ISRC n'est donc retenue que si le titre
+et l'un des noms crédités sont ceux joués, une fois normalisés.
 
 Un titre gardé enregistre son ISRC et l'artiste qu'il désigne, au moment où il est gardé : c'est
 ce qui permet à la page artiste de montrer « vos titres gardés ». Un featuring crédite plusieurs
@@ -166,14 +176,14 @@ artistes : la page est celle de l'artiste principal, chaque crédité est relié
 
 ### 4.5 Un fait, une source
 
-| Fait | Source | Pourquoi |
-|---|---|---|
-| ce que l'antenne a joué | `radio_play` (site) | aucune source externe ne le sait |
-| ce que l'auditeur a gardé | `liked_tracks` (site) | idem |
-| portrait | Deezer | l'image de l'artiste exact du titre |
-| faits de la page artiste (type, lieu, années) | MusicBrainz, rafraîchis | à jour pour les nouveautés que le dump épinglé ne connaît pas |
-| ouverture de l'article | Wikipédia (CC BY-SA), via Wikidata | — |
-| proximités, influences, liens de groupe, dates (Musilogy) | musilogy, datés de leurs relevés | reproductibles, avec leur provenance |
+| Fait                                                      | Source                             | Pourquoi                                                      |
+| --------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------- |
+| ce que l'antenne a joué                                   | `radio_play` (site)                | aucune source externe ne le sait                              |
+| ce que l'auditeur a gardé                                 | `liked_tracks` (site)              | idem                                                          |
+| portrait                                                  | Deezer                             | l'image de l'artiste exact du titre                           |
+| faits de la page artiste (type, lieu, années)             | MusicBrainz, rafraîchis            | à jour pour les nouveautés que le dump épinglé ne connaît pas |
+| ouverture de l'article                                    | Wikipédia (CC BY-SA), via Wikidata | —                                                             |
+| proximités, influences, liens de groupe, dates (Musilogy) | musilogy, datés de leurs relevés   | reproductibles, avec leur provenance                          |
 
 La page artiste et Musilogy peuvent donner deux années différentes pour un même artiste : chacune
 affiche la source de ce qu'elle montre, aucune ne recopie l'autre.
@@ -203,20 +213,20 @@ un choix assumé, pas une étape provisoire, et il impose :
 
 Risques connus, acceptés tant que leur déclencheur ne s'est pas produit :
 
-| Risque | Déclencheur de révision |
-|---|---|
-| le flux passe par Cloudflare Tunnel, contre ses conditions CDN (audio « disproportionné », conditions du 2026-09-28) | un avis de Cloudflare, ou le palier P1 de `site/docs/scaling-roadmap.md` |
-| aucune copie hors de la maison | dès qu'un stockage gratuit (B2 ou R2, 10 Go) est ouvert |
-| une seule machine : si elle tombe, la radio se tait | un budget d'hébergement (CX33 + Storage Box ≈ 12 € HT/mois au 2026-10-03) |
+| Risque                                                                                                               | Déclencheur de révision                                                   |
+| -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| le flux passe par Cloudflare Tunnel, contre ses conditions CDN (audio « disproportionné », conditions du 2026-09-28) | un avis de Cloudflare, ou le palier P1 de `site/docs/scaling-roadmap.md`  |
+| aucune copie hors de la maison                                                                                       | dès qu'un stockage gratuit (B2 ou R2, 10 Go) est ouvert                   |
+| une seule machine : si elle tombe, la radio se tait                                                                  | un budget d'hébergement (CX33 + Storage Box ≈ 12 € HT/mois au 2026-10-03) |
 
 ## 5. Les surfaces
 
-| Surface | Route | Indexée | Geste |
-|---|---|---|---|
-| Accueil | `/`, `/en` | oui, pré-rendue | Écouter |
-| Page artiste | `/artist/:id/:slug` | oui | Savoir |
-| Musilogy | `/musilogy`, `/musilogy/:mbid/:slug` (et `/en/…`) | au-delà d'un seuil de contenu (§2.3) | Comprendre |
-| Bibliothèque, compte | fenêtres de l'accueil | non | Garder |
+| Surface              | Route                                             | Indexée                              | Geste      |
+| -------------------- | ------------------------------------------------- | ------------------------------------ | ---------- |
+| Accueil              | `/`, `/en`                                        | oui, pré-rendue                      | Écouter    |
+| Page artiste         | `/artist/:id/:slug`                               | oui                                  | Savoir     |
+| Musilogy             | `/musilogy`, `/musilogy/:mbid/:slug` (et `/en/…`) | au-delà d'un seuil de contenu (§2.3) | Comprendre |
+| Bibliothèque, compte | fenêtres de l'accueil                             | non                                  | Garder     |
 
 `/frieze` disparaît.
 

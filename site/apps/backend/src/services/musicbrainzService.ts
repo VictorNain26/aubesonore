@@ -127,30 +127,54 @@ export function findMbidByDeezerId(deezerId: string): Promise<Lookup<string>> {
 }
 
 interface RawIsrc {
-  recordings?: Array<{ 'artist-credit'?: Array<{ artist?: { id?: string } }> }>;
+  recordings?: Array<{
+    title?: string;
+    'artist-credit'?: Array<{ name?: string; artist?: { id?: string; name?: string } }>;
+  }>;
+}
+
+/** A recording an ISRC designates, with every artist credited on it. */
+export interface IsrcRecording {
+  title: string;
+  /** Each credited artist: its MBID, the name it is credited as and its own name. */
+  credits: Array<{ mbid: string; names: string[] }>;
 }
 
 /**
- * The artist credited first on the recordings MusicBrainz attaches to this
- * ISRC. An ISRC is the recording's own code: it binds a played track to its
- * artist without a name. Recordings that disagree on that artist (an ISRC
- * reused by mistake) bind none.
+ * The recordings MusicBrainz attaches to an ISRC. The code alone does not
+ * prove whose track was played: an ISRC can be filed on another recording
+ * (Daniel Avery's « Illusion Of Time » under ANNA's « Dissolution »), so the
+ * resolver checks title and credited name before trusting it.
  */
-export function findMbidByIsrc(isrc: string): Promise<Lookup<string>> {
+export function findRecordingsByIsrc(isrc: string): Promise<Lookup<IsrcRecording[]>> {
   return cached(`isrc:${isrc}`, async () => {
     const fetched = await fetchJson<RawIsrc>(
       `/isrc/${encodeURIComponent(isrc)}?inc=artist-credits&fmt=json`
     );
     if (fetched.status !== 'found') return fetched;
 
-    const ids = new Set(
-      (fetched.value.recordings ?? []).flatMap((recording) => {
-        const id = recording['artist-credit']?.[0]?.artist?.id;
-        return id ? [id] : [];
-      })
+    const recordings = (fetched.value.recordings ?? []).flatMap((recording) =>
+      recording.title
+        ? [
+            {
+              title: recording.title,
+              credits: (recording['artist-credit'] ?? []).flatMap((credit) =>
+                credit.artist?.id
+                  ? [
+                      {
+                        mbid: credit.artist.id,
+                        names: [credit.name, credit.artist.name].filter((name): name is string =>
+                          Boolean(name)
+                        ),
+                      },
+                    ]
+                  : []
+              ),
+            },
+          ]
+        : []
     );
-    const [only] = ids;
-    return ids.size === 1 && only ? { status: 'found', value: only } : { status: 'none' };
+    return recordings.length > 0 ? { status: 'found', value: recordings } : { status: 'none' };
   });
 }
 

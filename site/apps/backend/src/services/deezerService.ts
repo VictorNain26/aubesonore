@@ -148,28 +148,45 @@ export async function searchArtist(
   })) as ArtistSearch;
 }
 
+export interface DeezerIsrcTrack {
+  title: string;
+  /** The track's main artist, then its other contributors. */
+  artists: DeezerArtist[];
+}
+
+interface RawIsrcTrack extends RawTrack {
+  contributors?: RawArtist[];
+}
+
 /**
- * The artist of the Deezer track with this ISRC. `GET /track/isrc:<code>` is
- * not in Deezer's public documentation as far as could be read (its portal
- * renders nothing without JavaScript); its answers were measured on
- * 2026-10-04. The resolver asks it only when MusicBrainz declares no Deezer
- * link for the artist.
+ * The Deezer track with this ISRC. `GET /track/isrc:<code>` is not in
+ * Deezer's public documentation as far as could be read (its portal renders
+ * nothing without JavaScript); its answers were measured on 2026-10-04. Like
+ * MusicBrainz, it can answer another recording (« Lirik Banzay » for The
+ * Pirouettes' « Un mec en or »): the resolver checks title and name.
  */
-export async function findArtistByIsrc(isrc: string): Promise<ArtistSearch> {
+export async function findTrackByIsrc(isrc: string): Promise<Lookup<DeezerIsrcTrack>> {
   const key = `isrc:${isrc}`;
   const cached = deezerCache.get(key);
-  if (cached !== undefined) return cached as ArtistSearch;
+  if (cached !== undefined) return cached as Lookup<DeezerIsrcTrack>;
 
   return (await flight(key, async () => {
-    const fetched = await getJson<RawTrack>(`/track/isrc:${encodeURIComponent(isrc)}`);
+    const fetched = await getJson<RawIsrcTrack>(`/track/isrc:${encodeURIComponent(isrc)}`);
     if (fetched.status === 'failed') return { status: 'failed' };
 
-    const artist =
-      fetched.status === 'ok' && fetched.body.artist ? toArtist(fetched.body.artist) : null;
-    const result: ArtistSearch = artist ? { status: 'match', artist } : { status: 'none' };
-    deezerCache.set(key, result, artist ? undefined : NEGATIVE_TTL_MS);
+    const body = fetched.status === 'ok' ? fetched.body : null;
+    const artists = new Map<string, DeezerArtist>();
+    for (const raw of [body?.artist, ...(body?.contributors ?? [])]) {
+      const found = raw ? toArtist(raw) : null;
+      if (found && !artists.has(found.id)) artists.set(found.id, found);
+    }
+    const result: Lookup<DeezerIsrcTrack> =
+      body?.title && artists.size > 0
+        ? { status: 'found', value: { title: body.title, artists: [...artists.values()] } }
+        : { status: 'none' };
+    deezerCache.set(key, result, result.status === 'none' ? NEGATIVE_TTL_MS : undefined);
     return result;
-  })) as ArtistSearch;
+  })) as Lookup<DeezerIsrcTrack>;
 }
 
 export async function getArtist(id: string): Promise<Lookup<DeezerArtist>> {

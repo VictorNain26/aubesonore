@@ -7,7 +7,7 @@ import isrcAnswer from './__fixtures__/musicbrainz-isrc.json';
 
 const {
   findMbidByDeezerId,
-  findMbidByIsrc,
+  findRecordingsByIsrc,
   getArtistByMbid,
   musicbrainzCache,
   __resetMusicbrainzThrottle,
@@ -208,35 +208,31 @@ describe('getArtistByMbid', () => {
   });
 });
 
-describe('findMbidByIsrc', () => {
-  it('returns the artist credited first on the recording', async () => {
+describe('findRecordingsByIsrc', () => {
+  it('returns each recording with every artist credited on it', async () => {
     const fetchSpy = spyOn(globalThis, 'fetch').mockResolvedValueOnce(json(isrcAnswer));
 
-    expect(await findMbidByIsrc('GBAYE6500165')).toEqual({
+    expect(await findRecordingsByIsrc('GBAYE6500165')).toEqual({
       status: 'found',
-      value: '06b6f280-8787-4a3d-8ab6-c6487b465320',
+      value: [
+        {
+          title: 'Since I Don’t Have You',
+          credits: [
+            {
+              mbid: '06b6f280-8787-4a3d-8ab6-c6487b465320',
+              names: ['Manfred Mann', 'Manfred Mann'],
+            },
+          ],
+        },
+      ],
     });
     const [url] = fetchSpy.mock.calls[0] as [string];
     expect(url).toBe('https://musicbrainz.org/ws/2/isrc/GBAYE6500165?inc=artist-credits&fmt=json');
   });
 
-  it('binds none when the recordings disagree on their artist', async () => {
-    const [recording] = isrcAnswer.recordings;
-    if (!recording) throw new Error('fixture without recording');
-    const other = {
-      ...recording,
-      'artist-credit': [{ name: 'X', joinphrase: '', artist: { id: 'other', name: 'X' } }],
-    };
-    spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      json({ ...isrcAnswer, recordings: [recording, other] })
-    );
-
-    expect(await findMbidByIsrc('GBAYE6500165')).toEqual({ status: 'none' });
-  });
-
   it('reads an unknown ISRC as a definitive miss', async () => {
     spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ error: 'Not Found' }, 404));
 
-    expect(await findMbidByIsrc('ZZZ000000000')).toEqual({ status: 'none' });
+    expect(await findRecordingsByIsrc('ZZZ000000000')).toEqual({ status: 'none' });
   });
 });
