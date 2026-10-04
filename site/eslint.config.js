@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import reactPlugin from 'eslint-plugin-react';
@@ -105,7 +106,9 @@ export default tseslint.config(
     plugins: { 'better-tailwindcss': betterTailwindcss },
     settings: {
       'better-tailwindcss': {
-        entryPoint: 'apps/frontend/src/index.css',
+        // Absolute: the plugin resolves a relative entryPoint from ESLint's working
+        // directory, which is apps/frontend when the frontend's own lint script runs.
+        entryPoint: fileURLToPath(new URL('./apps/frontend/src/index.css', import.meta.url)),
       },
     },
     rules: {

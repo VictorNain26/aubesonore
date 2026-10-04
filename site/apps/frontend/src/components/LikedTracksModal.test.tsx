@@ -142,7 +142,7 @@ describe('LikedTracksModal', () => {
       'href',
       'https://www.deezer.com/track/y'
     );
-    expect(screen.getByText('gardé le 1 janvier · sur Deezer')).toBeInTheDocument();
+    expect(screen.getByText("gardé le 1 janvier · s'ouvre sur Deezer")).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Ne plus garder « Track 0 »' })).toHaveTextContent(
       'Retirer'
     );
@@ -161,7 +161,7 @@ describe('LikedTracksModal', () => {
     await waitFor(() =>
       expect(
         screen.getByRole('switch', {
-          name: "Me prévenir quand un artiste gardé repasse à l'antenne",
+          name: "Me prévenir quand un de vos artistes repasse à l'antenne",
         })
       ).toBeDisabled()
     );

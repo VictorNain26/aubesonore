@@ -35,6 +35,29 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
 
 const apiClient: ApiClient = { fetch: fetchApi };
 
+// Better Auth's error codes (@better-auth/core, dist/error/codes.mjs). Its
+// messages are English ("Invalid email or password"): they never reach the
+// page, a known code gets its own words and any other the caller's fallback.
+const AUTH_ERRORS: Record<string, () => string> = {
+  INVALID_EMAIL_OR_PASSWORD: m.auth_error_credentials,
+  EMAIL_NOT_VERIFIED: m.auth_error_not_verified,
+  USER_ALREADY_EXISTS: m.auth_error_exists,
+  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: m.auth_error_exists,
+  INVALID_EMAIL: m.auth_error_email_invalid,
+  PASSWORD_TOO_SHORT: m.auth_error_password_length,
+  PASSWORD_TOO_LONG: m.auth_error_password_long,
+  INVALID_TOKEN: m.error_link_invalid,
+  TOKEN_EXPIRED: m.error_link_invalid,
+};
+
+async function authError(response: Response, fallback: () => string): Promise<Error> {
+  // The rate limiter answers 429 with a message and no code.
+  if (response.status === 429) return new Error(m.auth_error_rate_limited());
+  const body = (await response.json().catch(() => ({}))) as { code?: unknown };
+  const known = typeof body.code === 'string' ? AUTH_ERRORS[body.code] : undefined;
+  return new Error((known ?? fallback)());
+}
+
 export const trackApi = createTrackApi(apiClient);
 export const preferencesApi = createPreferencesApi(apiClient);
 
@@ -60,12 +83,7 @@ export const authApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, name }),
     });
-    if (!response.ok) {
-      const error = (await response.json().catch(() => ({ message: m.error_signup_failed() }))) as {
-        message?: string;
-      };
-      throw new Error(error.message || m.error_signup_failed());
-    }
+    if (!response.ok) throw await authError(response, m.error_signup_failed);
     return response.json() as Promise<AuthResponse>;
   },
 
@@ -76,12 +94,7 @@ export const authApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    if (!response.ok) {
-      const error = (await response.json().catch(() => ({ message: m.error_signin_failed() }))) as {
-        message?: string;
-      };
-      throw new Error(error.message || m.error_signin_failed());
-    }
+    if (!response.ok) throw await authError(response, m.error_signin_failed);
     return response.json() as Promise<AuthResponse>;
   },
 
@@ -106,10 +119,7 @@ export const authApi = {
     if (!response.ok && response.status !== 404) {
       // 404 is returned when the email isn't registered — treat as success to
       // avoid email enumeration. Other errors bubble up.
-      const error = (await response.json().catch(() => ({ message: m.error_network() }))) as {
-        message?: string;
-      };
-      throw new Error(error.message || m.error_request_failed());
+      throw await authError(response, m.error_request_failed);
     }
   },
 
@@ -120,12 +130,7 @@ export const authApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token, newPassword }),
     });
-    if (!response.ok) {
-      const error = (await response.json().catch(() => ({ message: m.error_link_invalid() }))) as {
-        message?: string;
-      };
-      throw new Error(error.message || m.error_reset_failed());
-    }
+    if (!response.ok) throw await authError(response, m.error_reset_failed);
   },
 
   // Better Auth's /sign-in/social is POST-only: POST {provider, callbackURL},
@@ -137,12 +142,7 @@ export const authApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ provider, callbackURL: window.location.href }),
     });
-    if (!response.ok) {
-      const error = (await response.json().catch(() => ({ message: m.error_signin_failed() }))) as {
-        message?: string;
-      };
-      throw new Error(error.message || m.error_oauth_failed());
-    }
+    if (!response.ok) throw await authError(response, m.error_oauth_failed);
     const data = (await response.json()) as { url?: string };
     if (!data.url) throw new Error(m.error_redirect_missing());
     window.location.href = data.url;

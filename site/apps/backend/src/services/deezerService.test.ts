@@ -1,6 +1,6 @@
 import { describe, it, expect, spyOn, afterEach } from 'bun:test';
 
-const { searchArtist, getArtist, findArtistByIsrc, deezerCache, __resetDeezerCircuit } =
+const { searchArtist, getArtist, findTrackByIsrc, deezerCache, __resetDeezerCircuit } =
   await import('./deezerService');
 
 const norm = (value: string): string =>
@@ -189,31 +189,42 @@ describe('getArtist', () => {
   });
 });
 
-describe('findArtistByIsrc', () => {
-  it('returns the artist of the track with that ISRC', async () => {
+describe('findTrackByIsrc', () => {
+  it('returns the track with that ISRC, its artist then its other contributors', async () => {
     // Measured on 2026-10-04, trimmed to the fields read.
     const fetchSpy = spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       json({
         id: 17590811,
+        title: "Since I Don't Have You (Mono)",
         isrc: 'GBAYE6500165',
         artist: { id: 1887, name: 'Manfred Mann', picture_xl: null },
+        contributors: [
+          { id: 1887, name: 'Manfred Mann', picture_xl: null },
+          { id: 99, name: 'Guest', picture_xl: null },
+        ],
       })
     );
 
-    expect(await findArtistByIsrc('GBAYE6500165')).toEqual({
-      status: 'match',
-      artist: { id: '1887', name: 'Manfred Mann', picture: null },
+    expect(await findTrackByIsrc('GBAYE6500165')).toEqual({
+      status: 'found',
+      value: {
+        title: "Since I Don't Have You (Mono)",
+        artists: [
+          { id: '1887', name: 'Manfred Mann', picture: null },
+          { id: '99', name: 'Guest', picture: null },
+        ],
+      },
     });
     const [url] = fetchSpy.mock.calls[0] as [string];
     expect(url).toBe('https://api.deezer.com/track/isrc:GBAYE6500165');
   });
 
-  it('reads "no data" as no artist, and a failure as a failure', async () => {
+  it('reads "no data" as no track, and a failure as a failure', async () => {
     spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(json({ error: { type: 'DataException', code: 800 } }))
       .mockResolvedValueOnce(new Response(null, { status: 503 }));
 
-    expect(await findArtistByIsrc('ZZZ000000000')).toEqual({ status: 'none' });
-    expect(await findArtistByIsrc('ZZZ000000001')).toEqual({ status: 'failed' });
+    expect(await findTrackByIsrc('ZZZ000000000')).toEqual({ status: 'none' });
+    expect(await findTrackByIsrc('ZZZ000000001')).toEqual({ status: 'failed' });
   });
 });

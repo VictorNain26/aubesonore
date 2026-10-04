@@ -72,18 +72,18 @@ describe('authApi.signInWithProvider', () => {
       http.post('http://localhost:3000/api/auth/sign-in/social', () => HttpResponse.json({}))
     );
     await expect(authApi.signInWithProvider('google')).rejects.toThrow(
-      'URL de redirection manquante'
+      "La connexion avec Google n'a pas pu démarrer. Réessayez."
     );
     expect(location.href).toBe('http://localhost:3000/en/');
   });
 
-  it('surfaces the server error message on failure', async () => {
+  it("never shows the server's English message, only the page's own words", async () => {
     server.use(
       http.post('http://localhost:3000/api/auth/sign-in/social', () =>
         HttpResponse.json({ message: 'Provider not configured' }, { status: 400 })
       )
     );
-    await expect(authApi.signInWithProvider('google')).rejects.toThrow('Provider not configured');
+    await expect(authApi.signInWithProvider('google')).rejects.toThrow('Connexion impossible');
   });
 
   it('falls back to a default message when the error body is not JSON', async () => {
@@ -93,6 +93,50 @@ describe('authApi.signInWithProvider', () => {
         () => new HttpResponse('upstream down', { status: 502 })
       )
     );
-    await expect(authApi.signInWithProvider('google')).rejects.toThrow('Erreur connexion');
+    await expect(authApi.signInWithProvider('google')).rejects.toThrow('Connexion impossible');
+  });
+});
+
+describe('authApi errors', () => {
+  const answer = (path: string, status: number, body: Record<string, string>) =>
+    server.use(
+      http.post(`http://localhost:3000/api/auth/${path}`, () => HttpResponse.json(body, { status }))
+    );
+
+  it("says a wrong email or password in French, not Better Auth's English", async () => {
+    answer('sign-in/email', 401, {
+      message: 'Invalid email or password',
+      code: 'INVALID_EMAIL_OR_PASSWORD',
+    });
+    await expect(authApi.signIn('a@b.fr', 'wrong-pass')).rejects.toThrow(
+      'E-mail ou mot de passe incorrect.'
+    );
+  });
+
+  it('tells an unconfirmed address and an address already registered apart', async () => {
+    answer('sign-in/email', 403, { message: 'Email not verified', code: 'EMAIL_NOT_VERIFIED' });
+    await expect(authApi.signIn('a@b.fr', 'secret-pass')).rejects.toThrow(
+      'Adresse e-mail pas encore confirmée : ouvrez le lien reçu par e-mail.'
+    );
+
+    answer('sign-up/email', 422, {
+      message: 'User already exists. Use another email.',
+      code: 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL',
+    });
+    await expect(authApi.signUp('a@b.fr', 'secret-pass', 'A')).rejects.toThrow(
+      'Un compte existe déjà avec cette adresse. Connectez-vous.'
+    );
+  });
+
+  it('says to wait when the rate limit answers, and falls back on an unknown code', async () => {
+    answer('sign-in/email', 429, { message: 'Too many requests. Please try again later.' });
+    await expect(authApi.signIn('a@b.fr', 'secret-pass')).rejects.toThrow(
+      'Trop de tentatives. Réessayez dans une minute.'
+    );
+
+    answer('sign-in/email', 400, { message: 'Validation Error', code: 'VALIDATION_ERROR' });
+    await expect(authApi.signIn('a@b.fr', 'secret-pass')).rejects.toThrow(
+      'Connexion impossible pour le moment. Réessayez dans un instant.'
+    );
   });
 });
