@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import subprocess
-from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +12,7 @@ import duckdb
 from musilogy.fetch import expected_sums, sha256_file
 from musilogy.paths import PACKAGE_DIR, REFERENCE_DIR, popularity_sums
 
-TABLES = ("artists", "albums", "genres", "density", "activity", "links", "lineage", "popularity")
+TABLES = ("artists", "albums", "genres", "links", "popularity")
 # A delivery has to come out in a fixed order, or the same code on the same
 # extraction writes different bytes: the tables are built by parallel joins and
 # aggregates, so their insertion order is whatever the threads produced. Each
@@ -25,10 +24,7 @@ ORDER_BY = {
     "artists": "mbid",
     "albums": "rg_mbid",
     "genres": "genre_mbid",
-    "density": "genre_mbid, year",
-    "activity": "year",
     "links": "src_mbid, dst_mbid, type, y_begin NULLS LAST, y_end NULLS LAST",
-    "lineage": "artist_mbid, model_mbid, source",
     "popularity": "mbid",
 }
 
@@ -116,7 +112,7 @@ def extraction_matches_rows_loaded(
     return _extraction_matches_rows_loaded(_extraction(extraction), input_rows_loaded(con))
 
 
-PARAMETERS = ("dump_year", "min_year", "multi_artist_drop_limit", "min_candidate_credits")
+PARAMETERS = ("dump_year", "min_year")
 
 
 def _parameters(con: duckdb.DuckDBPyConnection) -> dict[str, Any]:
@@ -126,10 +122,7 @@ def _parameters(con: duckdb.DuckDBPyConnection) -> dict[str, Any]:
         "SELECT " + ", ".join(f"getvariable('{name}')" for name in PARAMETERS)
     ).fetchone()
     assert row is not None  # a single-row projection always returns one row
-    # DuckDB reads a float session variable back as a Decimal; the manifest is
-    # JSON, which has no Decimal type, so it travels as a float instead.
-    values = (float(v) if isinstance(v, Decimal) else v for v in row)
-    return dict(zip(PARAMETERS, values, strict=True))
+    return dict(zip(PARAMETERS, row, strict=True))
 
 
 def _popularity(con: duckdb.DuckDBPyConnection) -> dict[str, Any] | None:
@@ -202,7 +195,6 @@ def publish(
         },
         "r2_anomalies": _counters(con, "r2_anomalies"),
         "neutralised_inferences": _counters(con, "neutralised_inferences"),
-        "density_exclusions": _counters(con, "density_exclusions"),
         "link_exclusions": _counters(con, "link_exclusions"),
         "git_sha": _git_sha(),
         "corrections_sha256": sha256_file(corrections) if corrections else None,

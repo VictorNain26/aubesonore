@@ -126,125 +126,6 @@ CREATE OR REPLACE VIEW genre_n_artists_mismatch AS
   WHERE g.n_artists <> (
     SELECT count(*) FROM artists b, UNNEST(b.genres) AS t(x) WHERE t.x.mbid = g.genre_mbid
   );
--- Independent restatement of the presence rule: presence only ever exists for
--- a band with a non-NULL y0 (the join guarantees it), and its end is the
--- band's end clamped to the dump year. The three cases are enumerated rather
--- than composed back into least(dump_year, coalesce(...)): copying
--- 40_presence.sql's expression would compare the value to itself. 2026
--- hardcoded at both ends, same reasoning as artist_out_of_window above.
-CREATE OR REPLACE VIEW presence_out_of_range AS
-  SELECT p.mbid FROM presence p JOIN artists b USING (mbid)
-  WHERE p.y_presence_end < p.y0 OR p.y_presence_end > 2026
-     OR p.y_presence_end <> CASE
-          WHEN b.y_end IS NULL THEN least(p.y0, 2026)
-          WHEN b.y_end > 2026 THEN 2026
-          ELSE b.y_end
-        END;
--- Same idiom as 20_albums.sql/last_album_mismatch, for its twin
--- 40_presence.sql: artists.y_presence_end must stay identical to
--- presence.y_presence_end (from which density derives), otherwise the two
--- published tables could diverge.
-CREATE OR REPLACE VIEW presence_end_mismatch AS
-  SELECT b.mbid FROM artists b JOIN presence p USING (mbid)
-  WHERE b.y_presence_end IS DISTINCT FROM p.y_presence_end;
--- [1850, 2026] hardcoded on purpose, same reasoning as artist_out_of_window.
-CREATE OR REPLACE VIEW density_out_of_range AS
-  SELECT genre_mbid FROM density WHERE year > 2026 OR year < 1850;
--- LEFT JOIN: a genre_mbid absent from the vocabulary must not make the
--- density row disappear from its own check.
-CREATE OR REPLACE VIEW density_above_band_count AS
-  SELECT d.genre_mbid FROM density d LEFT JOIN genres g USING (genre_mbid)
-  WHERE g.genre_mbid IS NULL OR d.present > g.n_artists;
--- Independent recomputation of density's own eligibility rule (same idiom as
--- last_album_mismatch): only a band of type Group, with a non-NULL y0, that
--- carries the genre in question, may be counted for that genre and year.
--- activity, recounted from artists rather than from density_memberships: a
--- year whose distinct groups differ from the table is a broken denominator.
--- Each group is unrolled into its years, so the recount meets the table on
--- an equality: a range join here is the shape that froze the server on
--- 2026-10-02 (see test_no_invariant_joins_without_an_equality).
--- [1850, 2026] hardcoded on purpose, same reasoning as artist_out_of_window.
-CREATE OR REPLACE VIEW activity_mismatch AS
-  WITH recount AS (
-    SELECT y.year, count(DISTINCT b.mbid) AS groups
-    FROM artists b, UNNEST(range(b.y0, b.y_presence_end + 1)) AS y(year)
-    WHERE b.type = 'Group' AND b.y0 IS NOT NULL
-      AND EXISTS (
-        SELECT 1 FROM UNNEST(b.genres) AS t(g)
-        JOIN genres gx ON gx.genre_mbid = t.g.mbid
-        WHERE gx.density_eligible
-      )
-    GROUP BY y.year
-  )
-  SELECT coalesce(a.year, r.year) AS year
-  FROM activity a FULL JOIN recount r USING (year)
-  WHERE a.groups IS DISTINCT FROM r.groups
-     OR coalesce(a.year, r.year) NOT BETWEEN 1850 AND 2026;
--- No genre can hold more groups in a year than the year holds, and no year of
--- density can be missing its denominator.
-CREATE OR REPLACE VIEW activity_below_density AS
-  SELECT d.genre_mbid, d.year FROM density d
-  LEFT JOIN activity a USING (year)
-  WHERE a.year IS NULL OR d.present > a.groups;
-CREATE OR REPLACE VIEW density_population_mismatch AS
-  SELECT d.genre_mbid, d.year FROM density d
-  WHERE d.present <> (
-    SELECT count(*) FROM artists b, UNNEST(b.genres) AS t(g)
-    WHERE b.type = 'Group' AND b.y0 IS NOT NULL
-      AND t.g.mbid = d.genre_mbid
-      AND d.year BETWEEN b.y0 AND b.y_presence_end
-  );
--- The multi-artist unreliability, recomputed from raw_release_groups and
--- artists, never from genres.n_candidate_credits / genres.multi_artist_drop_pct:
--- reading back the published measurement would compare it to itself and stay
--- silent if the measurement itself were wrong. 50 and 200 hardcoded, like
--- [1850, 2026] above and for the same reason — these views re-assert the
--- contractual rule instead of reading back the session variables the
--- production rules depend on. Not an invariant: it legitimately returns rows,
--- and density_excluded_genre_present / density_missing_cell both read it.
--- It still shares 55_genre_reliability.sql's secondary-type filter and raw
--- inputs, so it only catches a drift in the 50/200 bounds or in this
--- recomputation itself, never an error already present in the shared formula
--- — a wrong secondary-type filter applied identically on both sides would
--- stay silent here too.
-CREATE OR REPLACE VIEW genre_unreliable_recomputed AS
-  WITH credits AS (
-    SELECT unnest(list_distinct(artists)) AS artist_mbid,
-           len(list_distinct(artists)) > 1 AS multi
-    FROM raw_release_groups
-    WHERE yr(date) BETWEEN 1850 AND 2026
-      AND len(list_filter(coalesce(secondary, []), s -> s NOT IN ('Soundtrack', 'Demo'))) = 0
-  )
-  -- genres_declared, like the rule: album genres would bias the rate down.
-  SELECT t.g.mbid AS genre_mbid
-  FROM credits c JOIN artists b ON b.mbid = c.artist_mbid AND b.type <> 'Person',
-       UNNEST(b.genres_declared) AS t(g)
-  GROUP BY t.g.mbid
-  HAVING count(*) >= 200
-     AND round(100.0 * sum(c.multi::INTEGER) / count(*), 1) >= 50;
--- 60_density.sql excludes the genres the multi-artist rule makes unreliable;
--- none of them may keep a single density row.
-CREATE OR REPLACE VIEW density_excluded_genre_present AS
-  SELECT DISTINCT d.genre_mbid FROM density d
-  WHERE EXISTS (SELECT 1 FROM genre_unreliable_recomputed u WHERE u.genre_mbid = d.genre_mbid);
--- The twin density_population_mismatch does not have: that view iterates over
--- the rows that exist and says nothing about the ones that vanished. This one
--- enumerates the cells the population implies and reports those density does
--- not carry. Same [1850, 2026] literals, same reason.
-CREATE OR REPLACE VIEW density_missing_cell AS
-  SELECT DISTINCT t.g.mbid AS genre_mbid, y.year
-  FROM artists b,
-       UNNEST(b.genres) AS t(g),
-       range(1850, 2027) AS y(year)
-  WHERE b.type = 'Group'
-    AND b.y0 IS NOT NULL
-    AND y.year BETWEEN b.y0 AND b.y_presence_end
-    AND NOT EXISTS (
-      SELECT 1 FROM genre_unreliable_recomputed u WHERE u.genre_mbid = t.g.mbid
-    )
-    AND NOT EXISTS (
-      SELECT 1 FROM density d WHERE d.genre_mbid = t.g.mbid AND d.year = y.year
-    );
 -- 80_links.sql. Both ends must be artists of this pipeline.
 -- NOT EXISTS, not NOT IN: see album_without_artist above, same NULL trap.
 CREATE OR REPLACE VIEW link_endpoint_missing AS
@@ -276,43 +157,6 @@ CREATE OR REPLACE VIEW link_misoriented AS
       SELECT 1 FROM raw_artists r, UNNEST(r.relations) AS t(x)
       WHERE r.mbid = l.dst_mbid AND t.x.mbid = l.src_mbid
         AND t.x.type = l.type AND t.x.direction = 'backward');
--- 85_lineage.sql, checked against raw_artists and not against links: each
--- source is restated with the MusicBrainz type it reads and the end that
--- carries the relation forward — the model for a teacher, the artist for a
--- tribute or a name. A swapped CASE in the rule turns every pupil into the
--- teacher and fails here; so does a source name this list does not know.
--- Every raw relation is restated as a row first, then matched on equalities
--- only: an OR between the two directions inside the NOT EXISTS stops DuckDB
--- from hashing the join, and the cross product of lineage with every raw
--- relation spilled tens of GB on the reference dump without ever finishing.
-CREATE OR REPLACE VIEW lineage_misoriented AS
-  WITH expected(source, mb_type, forward_on_model) AS (
-    VALUES ('mb_teacher', 'teacher', true),
-           ('mb_tribute', 'tribute', false),
-           ('mb_named_after', 'named after artist', false)
-  ),
-  asserted AS (
-    SELECT e.source,
-           CASE WHEN (t.x.direction = 'forward') = e.forward_on_model
-                THEN t.x.mbid ELSE r.mbid END AS artist_mbid,
-           CASE WHEN (t.x.direction = 'forward') = e.forward_on_model
-                THEN r.mbid ELSE t.x.mbid END AS model_mbid
-    FROM raw_artists r, UNNEST(r.relations) AS t(x)
-    JOIN expected e ON e.mb_type = t.x.type
-    WHERE t.x.direction IN ('forward', 'backward')
-  )
-  SELECT l.artist_mbid, l.model_mbid, l.source FROM lineage l
-  WHERE NOT EXISTS (
-    SELECT 1 FROM asserted a
-    WHERE a.source = l.source AND a.artist_mbid = l.artist_mbid
-      AND a.model_mbid = l.model_mbid);
-CREATE OR REPLACE VIEW lineage_endpoint_missing AS
-  SELECT artist_mbid, model_mbid, source FROM lineage l
-  WHERE NOT EXISTS (SELECT 1 FROM artists a WHERE a.mbid = l.artist_mbid)
-     OR NOT EXISTS (SELECT 1 FROM artists a WHERE a.mbid = l.model_mbid);
-CREATE OR REPLACE VIEW duplicate_lineage AS
-  SELECT artist_mbid, model_mbid, source FROM lineage
-  GROUP BY ALL HAVING count(*) > 1;
 -- corrections.csv holds at most 50 rows; materialized even empty
 -- by apply_corrections, so available without depending on the dump.
 CREATE OR REPLACE VIEW corrections_file_too_large AS
@@ -327,11 +171,10 @@ CREATE OR REPLACE VIEW corrections_invalid AS
   SELECT c.mbid, c.field FROM corrections c
   WHERE c.field NOT IN ('begin', 'end')
      OR NOT EXISTS (SELECT 1 FROM raw_artists r WHERE r.mbid = c.mbid);
--- extract.py projects {Group, Orchestra, Choir, Person} and nothing else; 60_density.sql
--- narrows further to Group. Neither is stated in SQL, so a change to KEPT_TYPES
--- moved the population and the projection at once, in silence. Hardcoded here
--- like every other contractual bound: widening the population must be a
--- deliberate edit of this literal.
+-- extract.py projects {Group, Orchestra, Choir, Person} and nothing else, and
+-- nothing states it in SQL: a change to KEPT_TYPES would move the population in
+-- silence. Hardcoded here like every other contractual bound: widening the
+-- population must be a deliberate edit of this literal.
 CREATE OR REPLACE VIEW artist_unexpected_type AS
   SELECT mbid FROM artists
   WHERE type IS NULL OR type NOT IN ('Group', 'Orchestra', 'Choir', 'Person');
@@ -362,7 +205,7 @@ CREATE OR REPLACE VIEW popularity_out_of_range AS
   WHERE listen_count IS NULL OR user_count IS NULL
      OR user_count < 1 OR user_count > listen_count;
 -- An artist the snapshot never asked about: a snapshot taken on another
--- extraction, or truncated. Without this, the frieze would rank that artist
+-- extraction, or truncated. Without this, a search would rank that artist
 -- as unknown to ListenBrainz when nobody asked. A build without a snapshot
 -- (synthetic builds) asks about no one, hence the guard on the variable.
 CREATE OR REPLACE VIEW popularity_unrequested AS

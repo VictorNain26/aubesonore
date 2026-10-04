@@ -115,8 +115,6 @@ def build(
     corrections: Path | None,
     dump_year: int = 2026,
     min_year: int = 1850,
-    multi_artist_drop_limit: float = 50.0,
-    min_candidate_credits: int = 200,
     popularity: Path | None = None,
     popularity_snapshot: str | None = None,
 ) -> None:
@@ -125,12 +123,6 @@ def build(
     load_popularity(con, popularity, popularity_snapshot)
     con.execute(f"SET VARIABLE dump_year = {dump_year}")
     con.execute(f"SET VARIABLE min_year = {min_year}")
-    # The two bounds of density's exclusion rule (55_genre_reliability.sql,
-    # 60_density.sql) travel as session variables, like the calendar window:
-    # a rule that removes data must be readable and overridable from here,
-    # not buried in a literal inside the SQL that applies it.
-    con.execute(f"SET VARIABLE multi_artist_drop_limit = {multi_artist_drop_limit}")
-    con.execute(f"SET VARIABLE min_candidate_credits = {min_candidate_credits}")
     for path in sorted(sql_dir.glob("*.sql")):
         if path.name.startswith("90_"):
             continue
@@ -158,22 +150,10 @@ INVARIANTS = (
     "genres_from_albums_mismatch",
     "unknown_genre",
     "genre_n_artists_mismatch",
-    "presence_out_of_range",
-    "presence_end_mismatch",
-    "density_out_of_range",
-    "density_above_band_count",
-    "density_population_mismatch",
-    "density_missing_cell",
-    "density_excluded_genre_present",
-    "activity_mismatch",
-    "activity_below_density",
     "link_endpoint_missing",
     "link_incomplete",
     "duplicate_link",
     "link_misoriented",
-    "lineage_misoriented",
-    "lineage_endpoint_missing",
-    "duplicate_lineage",
     "duplicate_popularity",
     "popularity_out_of_range",
     "popularity_unrequested",
