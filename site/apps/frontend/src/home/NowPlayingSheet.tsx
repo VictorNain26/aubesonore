@@ -50,8 +50,8 @@ export function NowPlayingSheet({
         {children}
       </Drawer.Trigger>
       <Drawer.Portal>
-        <Drawer.Backdrop className="sheet-backdrop bg-accent fixed inset-0 min-h-dvh" />
-        <Drawer.Viewport className="fixed inset-0 flex items-end justify-center">
+        <Drawer.Backdrop className="sheet-backdrop bg-accent fixed inset-0 z-50 min-h-dvh" />
+        <Drawer.Viewport className="fixed inset-0 z-50 flex items-end justify-center">
           <Drawer.Popup className="sheet-popup bg-surface text-text shadow-lift w-full rounded-t-md px-6 pt-3 outline-none">
             <span
               aria-hidden="true"
