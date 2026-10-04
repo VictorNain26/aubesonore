@@ -5,11 +5,17 @@ type AudioListener = (e?: Event) => void;
 
 class MockAudio {
   src = '';
+  paused = true;
   volume = 1;
   preload = 'none';
   crossOrigin = 'anonymous';
-  play = vi.fn().mockResolvedValue(undefined);
-  pause = vi.fn();
+  play = vi.fn(() => {
+    this.paused = false;
+    return Promise.resolve();
+  });
+  pause = vi.fn(() => {
+    this.paused = true;
+  });
   load = vi.fn();
   setAttribute = vi.fn();
   private listeners: Record<string, AudioListener[]> = {};
@@ -32,6 +38,17 @@ class MockAudioContext {
     getByteFrequencyData: vi.fn(),
   };
   sourceNode = { connect: vi.fn() };
+  currentTime = 0;
+  gain = {
+    gain: {
+      value: 1,
+      cancelScheduledValues: vi.fn(),
+      setValueAtTime: vi.fn(),
+      linearRampToValueAtTime: vi.fn(),
+    },
+    connect: vi.fn(),
+  };
+  createGain = vi.fn(() => this.gain);
   createAnalyser = vi.fn(() => this.analyser);
   createMediaElementSource = vi.fn(() => this.sourceNode);
   resume = vi.fn().mockResolvedValue(undefined);
@@ -178,6 +195,40 @@ describe('player store', () => {
     usePlayer.getState().stop();
     expect(usePlayer.getState().isPlaying).toBe(false);
     expect(usePlayer.getState().playError).toBeNull();
+  });
+
+  it('fades the sound in on play, and out before cutting the stream on stop', async () => {
+    const context = new MockAudioContext();
+    vi.stubGlobal(
+      'AudioContext',
+      vi.fn().mockImplementation(function () {
+        return context;
+      })
+    );
+    vi.useFakeTimers();
+    const { usePlayer } = await import('./player');
+    await usePlayer.getState().play();
+    expect(context.gain.gain.linearRampToValueAtTime).toHaveBeenLastCalledWith(1, 0.6);
+
+    usePlayer.getState().stop();
+    expect(usePlayer.getState().isPlaying).toBe(false);
+    expect(context.gain.gain.linearRampToValueAtTime).toHaveBeenLastCalledWith(0, 0.4);
+    expect(mockAudioInstance.pause).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(400);
+    expect(mockAudioInstance.pause).toHaveBeenCalledOnce();
+    expect(mockAudioInstance.src).toBe('');
+  });
+
+  it('keeps the stream when play comes back during the fade-out', async () => {
+    vi.useFakeTimers();
+    const { usePlayer } = await import('./player');
+    await usePlayer.getState().play();
+    usePlayer.getState().stop();
+    await usePlayer.getState().play();
+    vi.advanceTimersByTime(400);
+    expect(mockAudioInstance.pause).not.toHaveBeenCalled();
+    expect(usePlayer.getState().isPlaying).toBe(true);
   });
 
   it('setVolume clamps to [0, 1]', async () => {

@@ -71,6 +71,15 @@ export function getAudioElement(): HTMLAudioElement {
 let audioContext: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
 let sourceNode: MediaElementAudioSourceNode | null = null;
+// Fades the sound in on play and out on stop, as SoundCloud does, apart from the listener's
+// volume (audio.volume). Before the analyser, so the horizon line calms down with the sound.
+// None on iOS: the stream stays off Web Audio there (above), a gain on a media element has no
+// effect there anyway (WebKit #151589) and the page cannot set the volume (Apple's Safari
+// audio guide, iOS-Specific Considerations): the sound cuts.
+let fader: GainNode | null = null;
+let stopTimer: ReturnType<typeof setTimeout> | null = null;
+const FADE_IN_S = 0.6;
+const FADE_OUT_S = 0.4;
 // Tracks if a stop() is in progress so the resulting audio error event
 // is not surfaced as a playError to the user.
 let isStopping = false;
@@ -96,10 +105,24 @@ const initAudioContext = (audio: HTMLAudioElement) => {
   analyser = audioContext.createAnalyser();
   analyser.fftSize = 512;
   analyser.smoothingTimeConstant = 0.8;
+  fader = audioContext.createGain();
   sourceNode = audioContext.createMediaElementSource(audio);
-  sourceNode.connect(analyser);
+  sourceNode.connect(fader);
+  fader.connect(analyser);
   analyser.connect(audioContext.destination);
 };
+
+/**
+ * Ramps the fader from where it is to `value` in `seconds`. A ramp starts at the previous
+ * scheduled event, hence the value set now; cancelAndHoldAtTime would do both, but Firefox lacks it.
+ */
+function fadeTo(value: number, seconds: number): void {
+  if (!fader || !audioContext) return;
+  const now = audioContext.currentTime;
+  fader.gain.cancelScheduledValues(now);
+  fader.gain.setValueAtTime(fader.gain.value, now);
+  fader.gain.linearRampToValueAtTime(value, now + seconds);
+}
 
 export const getAnalyser = (): AnalyserNode | null => analyser;
 
@@ -160,6 +183,11 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
 
   play: async () => {
     const attempt = ++playAttempt;
+    // A play during the stop's fade-out keeps the stream it was about to cut.
+    if (stopTimer) {
+      clearTimeout(stopTimer);
+      stopTimer = null;
+    }
     set({ playError: null, isConnecting: true });
     wantsPlayback = true;
     reconnectAttempts = 0;
@@ -169,10 +197,12 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
       if (audioContext?.state === 'suspended') {
         await audioContext.resume();
       }
+      fadeTo(0, 0);
       audio.src = STREAM_URL;
       audio.load();
       await audio.play();
       if (attempt !== playAttempt) return;
+      fadeTo(1, FADE_IN_S);
       set({ isPlaying: true, isConnecting: false });
     } catch (error) {
       if (attempt !== playAttempt) return;
@@ -188,14 +218,24 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
     wantsPlayback = false;
     clearStallTimer();
     reconnectAttempts = 0;
-    isStopping = true;
     const audio = getAudioElement();
-    audio.pause();
-    audio.src = '';
+    // The button says Écouter at once; the sound fades out, then the stream is cut.
     set({ isPlaying: false, isConnecting: false, playError: null });
-    queueMicrotask(() => {
-      isStopping = false;
-    });
+    const cut = () => {
+      stopTimer = null;
+      isStopping = true;
+      audio.pause();
+      audio.src = '';
+      queueMicrotask(() => {
+        isStopping = false;
+      });
+    };
+    if (fader && !audio.paused) {
+      fadeTo(0, FADE_OUT_S);
+      stopTimer = setTimeout(cut, FADE_OUT_S * 1000);
+    } else {
+      cut();
+    }
   },
 
   toggle: () => {
