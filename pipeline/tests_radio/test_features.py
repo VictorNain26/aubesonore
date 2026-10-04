@@ -8,11 +8,13 @@ import pytest
 from radio.acquire.audio import Cue
 from radio.core.db import connect
 from radio.signals.features import (
+    FEATURES_TAG,
     MODELS,
     Features,
     ModelError,
     check_models,
     measure_antenna,
+    played,
     summarize,
 )
 
@@ -114,3 +116,35 @@ def test_models_are_pinned(tmp_path: Path) -> None:
         (tmp_path / name).write_bytes(b"pas le modele officiel")
     with pytest.raises(ModelError, match="somme de contrôle"):
         check_models(tmp_path)
+
+
+def test_the_part_that_plays_is_measured() -> None:
+    audio = np.arange(10 * 100, dtype=np.float32)  # 10 s à 100 Hz
+    assert played(audio, 100, None) is audio
+    cut = played(audio, 100, Cue(1.5, 8.0))
+    assert cut.size == 650 and cut[0] == 150 and cut[-1] == 799
+
+
+@pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")), reason="ffmpeg")
+def test_a_measure_of_another_model_is_replaced_in_place(tmp_path: Path) -> None:
+    # Breaks if an old measure is erased before its replacement: the grid would plan the titles
+    # as unmeasured, neutral, until `radio mesures` comes by.
+    conn = connect(tmp_path / "radio.db")
+    media = tmp_path / "media"
+    (media / "antenne").mkdir(parents=True)
+    for tid in (1, 2):
+        _mp3(media / "antenne" / f"{tid}.mp3")
+    conn.executemany(
+        "INSERT INTO antenne VALUES (?, 'decouverte', 'decouvertes', ?, ?, ?, 'd', 'd')",
+        [(1, 1, "s1", "antenne/1.mp3"), (2, 2, "s2", "antenne/2.mp3")],
+    )
+    conn.executemany(
+        "INSERT INTO track_features VALUES (?, 'ok', ?, 'd', 300.0, " + ", ".join("?" * 12) + ")",
+        [(1, "", *([0.1] * 12)), (2, FEATURES_TAG, *([0.1] * 12))],
+    )
+    conn.commit()
+    fake = FakeExtractor(set())
+    rep = measure_antenna(conn, media, fake, NOW)
+    assert (rep.n_todo, fake.seen) == (1, ["1.mp3"])
+    rows = dict(conn.execute("SELECT deezer_track_id, duration_s FROM track_features"))
+    assert rows == {1: 200.0, 2: 300.0}

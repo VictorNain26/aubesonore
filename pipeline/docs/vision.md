@@ -227,10 +227,13 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
   trame à plus de la sonie intégrée − 34 dB, fin après la dernière à plus de − 42 dB. Comparé
   à Liquidsoap lancé dans le conteneur sur 12 titres de l'antenne : débuts identiques, fins
   identiques sauf quand Liquidsoap raccourcit une fin douce pour son fondu (`max_overlap`),
-  qu'on garde ici ; un silence numérique est coupé, ce que son AutoCue ne fait pas (sonie `nan`
-  sautée). AutoCue reste coupé dans AzuraCast : il calcule ses points à la lecture et ne les
-  donne pas à la file, qui prendrait de l'avance sur la grille. Les titres publiés avant le
-  2026-10-04 se rattrapent par `radio antenne-cues`, puis `radio mesures`.
+  qu'on garde ici. AutoCue reste coupé dans AzuraCast : il calcule ses points à la lecture et ne
+  les donne pas à la file, qui prendrait de l'avance sur la grille. Avec des points de coupe,
+  AzuraCast donne à Liquidsoap un fondu égal au réglage `crossfade`, 2 s, quand sa file compte
+  `crossfade` × 1,5, 3 s (`Annotations.php`, `Queue::addDurationToTime`, 0.23.8) : la grille suit
+  la file, qui choisit l'heure de chaque titre, et une heure joue ~14 s de plus que prévu, ce
+  que ses titres de fin absorbent. Les titres publiés avant le 2026-10-04 se rattrapent par
+  `radio antenne-cues`, puis `radio mesures`, qui remplace leurs mesures une à une.
 - **Balises** (ffmpeg, qui remplace toutes les balises d'origine) : artiste et titre Deezer,
   commentaire `deezer:<id>`, ISRC, album et pochette (`album.cover_xl`, 1000 × 1000) lus sur
   `/track/<id>` : l'id exact donne le bon album, là où la recherche native d'AzuraCast

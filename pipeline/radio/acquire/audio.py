@@ -86,11 +86,7 @@ class Cue:
 
 def cue_points(path: Path) -> Cue | None:
     """Comme l'AutoCue de Liquidsoap : sonie momentanée EBU R128 par trame de 100 ms (filtre
-    `ebur128` de ffmpeg) ; le son commence à la trame qui précède la première au-dessus de la
-    sonie intégrée + `CUE_IN_DB`, et finit à la trame qui suit la dernière au-dessus de la sonie
-    intégrée + `CUE_OUT_DB`. Un silence numérique (sonie `nan`) compte comme silence : Liquidsoap
-    saute ces trames sans avancer son horloge et ne coupe alors pas la fin. None si aucune trame
-    n'atteint les seuils."""
+    `ebur128` de ffmpeg), puis `cue_from_frames`. None si aucune trame n'atteint les seuils."""
     out = _run(
         [
             "ffmpeg",
@@ -118,6 +114,13 @@ def cue_points(path: Path) -> Cue | None:
             frames[-1] = (frames[-1][0], frames[-1][1], float(line.split("=", 1)[1]))
     if len(frames) < 2:
         return None
+    return cue_from_frames(frames, probe(path).duration_s)
+
+
+def cue_from_frames(frames: list[tuple[float, float, float]], duration_s: float) -> Cue | None:
+    """Trames (début, sonie momentanée, sonie intégrée) : le son commence à la trame qui précède
+    la première au-dessus de la sonie intégrée + `CUE_IN_DB`, et finit à la trame qui suit la
+    dernière au-dessus de la sonie intégrée + `CUE_OUT_DB`."""
     # Liquidsoap lit la sonie intégrée sur l'avant-dernière trame, la dernière étant incomplète.
     lufs = frames[-2][2]
     loud_in = [i for i, f in enumerate(frames) if f[1] > lufs + CUE_IN_DB]
@@ -131,7 +134,7 @@ def cue_points(path: Path) -> Cue | None:
     cue_in = (frames[first - 1][0] if first > 0 else 0.0) - 0.1
     if cue_in > 0.2:
         cue_in -= 0.2
-    cue_out = frames[last + 1][0] if last + 1 < len(frames) else probe(path).duration_s
+    cue_out = frames[last + 1][0] if last + 1 < len(frames) else duration_s
     return Cue(cue_in if cue_in > 0.2 else 0.0, cue_out)
 
 

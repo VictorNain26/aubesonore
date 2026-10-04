@@ -585,9 +585,9 @@ def test_cue_backfill_cuts_each_file_once_and_has_it_measured_again(tmp_path: Pa
     cue = cue_of(written)
     assert cue is not None and 0.5 <= cue.cue_in <= 1.0 and 2.9 <= cue.cue_out <= 3.5
     assert isrc_of(written) == ISRC  # les autres balises restent
-    # Le titre coupé sera mesuré de nouveau, sur sa partie jouée ; l'autre garde sa mesure.
-    measured = {r[0] for r in conn.execute("SELECT deezer_track_id FROM track_features")}
-    assert measured == {2}
+    # Le titre coupé sera mesuré de nouveau, sur sa partie jouée ; d'ici là, sa mesure reste.
+    models = dict(conn.execute("SELECT deezer_track_id, model FROM track_features"))
+    assert models == {1: "", 2: "m"}
 
     again = CueReport()
     cue_backfill(conn, station, again)

@@ -12,6 +12,7 @@ from radio.acquire.audio import (
     Tags,
     ToolError,
     check,
+    cue_from_frames,
     cue_of,
     cue_points,
     fingerprint,
@@ -292,3 +293,36 @@ def test_cue_tags_are_added_without_touching_anything_else(tmp_path: Path) -> No
     before, after = _tags(src), _tags(dest)
     assert before["REPLAYGAIN_TRACK_GAIN"] == after["REPLAYGAIN_TRACK_GAIN"]
     assert probe(dest).duration_s == probe(src).duration_s
+
+
+def _frames(*m: float, integrated: float = -10.0) -> list[tuple[float, float, float]]:
+    return [(i / 10, v, integrated) for i, v in enumerate(m)]
+
+
+def test_the_sound_ends_after_its_last_loud_frame() -> None:
+    # Seuil de fin : - 10 - 42 = - 52. La dernière trame au-dessus commence à 0,4 s : la fin est
+    # le début de la suivante, 0,5 s, la fin de cette trame.
+    frames = _frames(-200, -20, -20, -20, -50, -60, -70)
+    assert cue_from_frames(frames, 0.7) == Cue(0.0, 0.5)
+
+
+def test_a_sound_loud_to_the_last_frame_ends_with_the_file() -> None:
+    assert cue_from_frames(_frames(-200, -20, -20, -20), 0.43) == Cue(0.0, 0.43)
+
+
+def test_the_integrated_loudness_is_read_on_the_last_complete_frame() -> None:
+    # La dernière trame, incomplète, porte une sonie intégrée fausse (- 80) : seuils - 52 et non
+    # - 122, et la trame à - 60 est du silence.
+    frames = _frames(-20, -20, -20, -60, -60)
+    frames[-1] = (frames[-1][0], -60, -80.0)
+    assert cue_from_frames(frames, 0.5) == Cue(0.0, 0.3)
+
+
+def test_the_start_takes_liquidsoap_margin_and_ignores_a_tiny_cut() -> None:
+    # Première trame forte à 3,0 s : 2,9 (la précédente), - 0,1, - 0,2 = 2,6.
+    late = _frames(*([-200] * 30), -20, -20, -20)
+    cue = cue_from_frames(late, 3.3)
+    assert cue is not None and round(cue.cue_in, 3) == 2.6
+    # Première trame forte à 0,3 s : 0,2 - 0,1 = 0,1, sous 0,2 : pas de coupe.
+    early = cue_from_frames(_frames(-200, -200, -200, -20, -20, -20), 0.6)
+    assert early is not None and early.cue_in == 0.0
