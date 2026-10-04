@@ -217,6 +217,20 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
   vérifiée ; la CI installe la même. Sans ces balises,
   Liquidsoap recalcule le gain à chaque titre, ce qui coûte beaucoup de CPU (doc AzuraCast,
   « optimizing »).
+- **Points de coupe.** Mesuré le 2026-10-04 : 15 titres sur 40 finissaient sur plus de 3 s de
+  quasi-silence (jusqu'à 7 s), où le fondu de 3 s d'AzuraCast tombait, d'où des blancs entre
+  les titres. Chaque fichier reçoit les balises `cue_in` et `cue_out`, qu'AzuraCast lit (ses
+  balises inconnues vont dans `extra_metadata`), passe à Liquidsoap et retire de la durée du
+  titre (`StationMedia::getCalculatedLength`, 0.23.8) : la file et la grille comptent la partie
+  jouée. Le calcul est celui de l'AutoCue de Liquidsoap 2.4.5 (`autocue.liq`) : sonie
+  momentanée EBU R128 par trame de 100 ms (filtre `ebur128` de ffmpeg), début avant la première
+  trame à plus de la sonie intégrée − 34 dB, fin après la dernière à plus de − 42 dB. Comparé
+  à Liquidsoap lancé dans le conteneur sur 12 titres de l'antenne : débuts identiques, fins
+  identiques sauf quand Liquidsoap raccourcit une fin douce pour son fondu (`max_overlap`),
+  qu'on garde ici ; un silence numérique est coupé, ce que son AutoCue ne fait pas (sonie `nan`
+  sautée). AutoCue reste coupé dans AzuraCast : il calcule ses points à la lecture et ne les
+  donne pas à la file, qui prendrait de l'avance sur la grille. Les titres publiés avant le
+  2026-10-04 se rattrapent par `radio antenne-cues`, puis `radio mesures`.
 - **Balises** (ffmpeg, qui remplace toutes les balises d'origine) : artiste et titre Deezer,
   commentaire `deezer:<id>`, ISRC, album et pochette (`album.cover_xl`, 1000 × 1000) lus sur
   `/track/<id>` : l'id exact donne le bon album, là où la recherche native d'AzuraCast
@@ -385,7 +399,8 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
 **Mesures par titre** (`radio mesures`, depuis le 2026-10-02 ;
 `recherches/2026-10-02-mesures-titres.md`). Chaque titre de la table `antenne`, au repos compris
 (il reviendra au fond), est mesuré une fois sur son fichier du dossier média d'AzuraCast
-(`AZURACAST_MEDIA_DIR`, lu, jamais écrit), dans la table `track_features` :
+(`AZURACAST_MEDIA_DIR`, lu, jamais écrit), dans la table `track_features`, sur la partie jouée,
+entre ses points de coupe, dont la durée est celle que la grille compte :
 
 - dansabilité (`danceability-msd-musicnn-1`), arousal et valence DEAM sur [1, 9]
   (`deam-msd-musicnn-2`), sur un seul réseau d'embedding, MSD-MusiCNN ; l'arousal tient lieu

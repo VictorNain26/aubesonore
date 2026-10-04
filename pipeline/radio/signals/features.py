@@ -5,7 +5,8 @@ Chaîne officielle MTG, un seul réseau d'embedding : MSD-MusiCNN, puis les têt
 DEAM (valence, arousal), moyennées par patch ; tempo par TempoCNN (vote majoritaire, recommandé
 pour un tempo constant). Chaque valeur est donnée sur le titre entier, sur ses `EDGE_S` premières
 et sur ses `EDGE_S` dernières secondes : une transition se joue entre la fin d'un titre et le
-début du suivant. Le fichier d'antenne est lu, jamais écrit.
+début du suivant. Le titre, c'est ce qui passe à l'antenne : entre ses points de coupe quand le
+fichier en porte, et sa durée en découle. Le fichier d'antenne est lu, jamais écrit.
 """
 
 import hashlib
@@ -20,6 +21,8 @@ from typing import Any, Protocol
 
 import numpy as np
 import numpy.typing as npt
+
+from radio.acquire.audio import Cue, ToolError, cue_of
 
 logger = logging.getLogger(__name__)
 
@@ -174,12 +177,17 @@ class FeatureExtractor:
             return None
         return audio if audio.size else None
 
-    def measure(self, path: Path) -> Features | None:
+    def measure(self, path: Path, cue: Cue | None) -> Features | None:
         """None si l'audio est illisible ou trop court pour un patch."""
         a16 = self._load(path, 16000)
         a11 = self._load(path, 11025)
         if a16 is None or a11 is None:
             return None
+        if cue is not None:
+            a16 = a16[int(cue.cue_in * 16000) : int(cue.cue_out * 16000)]
+            a11 = a11[int(cue.cue_in * 11025) : int(cue.cue_out * 11025)]
+            if not a16.size or not a11.size:
+                return None
         try:
             emb = np.asarray(self._embed(a16), dtype=np.float32)
             if emb.ndim != 2 or emb.shape[0] == 0:
@@ -202,7 +210,7 @@ class FeatureExtractor:
 
 
 class Extractor(Protocol):
-    def measure(self, path: Path) -> Features | None: ...
+    def measure(self, path: Path, cue: Cue | None) -> Features | None: ...
 
 
 @dataclass
@@ -241,7 +249,13 @@ def measure_antenna(
         if not path.is_file():
             rep.missing.append(str(rel))
             continue
-        feats = extractor.measure(path)
+        try:
+            cue = cue_of(path)
+        except ToolError:
+            rep.n_failed += 1
+            rows.append((tid, "audio_failed", FEATURES_TAG, now, *([None] * 13)))
+            continue
+        feats = extractor.measure(path, cue)
         if feats is None:
             rep.n_failed += 1
             rows.append((tid, "audio_failed", FEATURES_TAG, now, *([None] * 13)))

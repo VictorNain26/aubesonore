@@ -21,7 +21,16 @@ from typing import Protocol
 
 import numpy as np
 
-from radio.acquire.audio import ToolError, isrc_of, prepare, probe, with_isrc
+from radio.acquire.audio import (
+    ToolError,
+    cue_of,
+    cue_points,
+    isrc_of,
+    prepare,
+    probe,
+    with_cue,
+    with_isrc,
+)
 from radio.acquire.run import tags_for
 from radio.core.config import AntenneConfig, GrilleConfig
 from radio.library.weights import play_weight
@@ -472,4 +481,54 @@ def isrc_backfill(
                     "UPDATE antenne SET media_id = ?, song_id = ? WHERE deezer_track_id = ?",
                     (m.id, m.song_id, tid),
                 )
+            rep.n_tagged += 1
+
+
+@dataclass
+class CueReport:
+    n_tagged: int = 0
+    n_already: int = 0
+    n_silent: int = 0
+    n_busy: int = 0
+    errors: list[str] = field(default_factory=list)
+
+
+def cue_backfill(conn: sqlite3.Connection, station: Station, rep: CueReport) -> None:
+    """Rattrapage des titres publiés avant les points de coupe : chaque fichier est relu dans
+    AzuraCast, reçoit ses balises `cue_in` et `cue_out` et est redéposé sur son chemin, ce qui
+    remplace le média en place, playlists comprises (`MediaProcessor::processAndUpload`, 0.23.8).
+    Sa mesure est effacée : `radio mesures` la refait sur la partie jouée. Le titre en cours et
+    la file attendent un nouveau passage ; un titre déjà coupé n'est pas redéposé, la commande se
+    relance sans effet."""
+    busy = station.busy_song_ids()
+    rows = conn.execute(
+        "SELECT deezer_track_id, media_id, song_id, path FROM antenne ORDER BY deezer_track_id"
+    ).fetchall()
+    with tempfile.TemporaryDirectory() as tmp:
+        src, dest = Path(tmp) / "src.mp3", Path(tmp) / "dest.mp3"
+        for tid, media_id, song_id, path in rows:
+            if song_id in busy:
+                rep.n_busy += 1
+                continue
+            try:
+                src.write_bytes(station.download(media_id))
+                if cue_of(src) is not None:
+                    rep.n_already += 1
+                    continue
+                cue = cue_points(src)
+                if cue is None:
+                    rep.n_silent += 1
+                    rep.errors.append(f"{tid} : aucun son au-dessus des seuils")
+                    continue
+                with_cue(src, dest, cue)
+                m = station.upload(path, dest.read_bytes())
+            except (AzuracastError, ToolError) as e:
+                rep.errors.append(f"{tid} : {e}")
+                continue
+            with conn:
+                conn.execute(
+                    "UPDATE antenne SET media_id = ?, song_id = ? WHERE deezer_track_id = ?",
+                    (m.id, m.song_id, tid),
+                )
+                conn.execute("DELETE FROM track_features WHERE deezer_track_id = ?", (tid,))
             rep.n_tagged += 1
