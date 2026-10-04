@@ -70,7 +70,7 @@
   --text-title--line-height: 1.15;
   --text-title--font-weight: 600;
   /* Échelle de l'accueil v4. */
-  --text-hero: clamp(2.375rem, 1.5rem + 3.6vw, 5rem);
+  --text-hero: clamp(2.375rem, 1.5rem + 3.6vw, 6.25rem);
   --text-hero--line-height: 0.98;
   --text-hero--font-weight: 520;
   --text-hero--letter-spacing: -0.032em;
@@ -126,7 +126,7 @@
   --shadow-lift: 0 22px 40px -22px oklch(0.3 0.04 330 / 0.55);
   --shadow-bar: 0 16px 40px -12px oklch(0.204 0.012 293 / 0.5);
 
-  /* La lumière respire, le point « maintenant » bat, les sections montent au défilement. */
+  /* La lumière respire, le point « maintenant » bat, les blocs se dévoilent au défilement. */
   --animate-breathe: breathe 14s ease-in-out infinite;
   --animate-live: live 2.4s ease-in-out infinite;
 
@@ -137,8 +137,8 @@
   --container-drawer: 32.5rem;
   --container-aside: 34rem;
   --container-bar: 42rem;
-  /* Largeur du contenu : identique jusqu'à 1440 px, centrée au-delà. */
-  --container-page: 85rem;
+  /* Largeur du contenu : identique jusqu'à 1680 px, centrée au-delà. */
+  --container-page: 100rem;
 
   @keyframes breathe {
     0%,
@@ -206,18 +206,10 @@
     }
   }
 
-  @keyframes rise {
-    from {
-      transform: translateY(2.5rem);
-    }
-    to {
-      transform: none;
-    }
-  }
-
-  @keyframes fade {
+  @keyframes focus-in {
     from {
       opacity: 0;
+      scale: 0.98;
     }
   }
 
@@ -383,11 +375,11 @@
     var(--surface);
 }
 
-/* L'écran d'ouverture remplit la fenêtre sans dépasser 50rem sur les grands écrans ; sur
-   tablette en portrait, il suit son contenu au lieu de le laisser flotter. */
+/* L'écran d'ouverture remplit toute la fenêtre : la page suivante commence sous le pli, jamais
+   coupée en bas du premier écran. Sur tablette en portrait, il suit son contenu. */
 @utility hero-height {
   @media (width >= 64rem) {
-    min-height: min(100svh, 50rem);
+    min-height: 100svh;
   }
 }
 
@@ -400,29 +392,15 @@
   font-stretch: 75%;
 }
 
-/* Each block rises and lights up as it enters the screen, tied to the scroll
-   (animation-timeline: view(): Chrome 115, Safari 26; elsewhere it just shows).
-   It ends once the block is wholly on screen, so nothing stays half-faded,
-   not even the footer at the very end of the page. */
+/* Each block comes forward as it enters the screen, fading in from 98% of its
+   size, and goes back when the scroll takes it away (animation-timeline: view():
+   Chrome 115, Safari 26; elsewhere it just shows). It never moves: a shift would
+   open gaps in the lists (2.5rem did, 40px), and a blur dropped frames on wide
+   screens. A 61px row shrinks by just over half a pixel each side. */
 @utility reveal {
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
-      animation:
-        rise linear both,
-        fade linear both;
-      animation-timeline: view();
-      animation-range: entry 0% entry 100%;
-    }
-  }
-}
-
-/* A section's title rises without the fade: the page can rest with it
-   half-entered at the foot of the screen, under the hero, and it must read at
-   full contrast there. */
-@utility reveal-heading {
-  @supports (animation-timeline: view()) {
-    @media (prefers-reduced-motion: no-preference) {
-      animation: rise linear both;
+      animation: focus-in linear both;
       animation-timeline: view();
       animation-range: entry 0% entry 100%;
     }
@@ -496,11 +474,13 @@
 }
 
 /* Mobile: the full width, unless Écouter would fall below the fold of a small phone. */
+/* The cover fills its column, the same 4 parts of 12 as a section's title column, as long as
+   the first screen still holds the title and the horizon. */
 @utility artwork-size {
   width: min(100%, 46dvh);
 
   @media (width >= 64rem) {
-    width: min(24rem, 42dvh);
+    width: min(100%, 60svh);
   }
 }
 

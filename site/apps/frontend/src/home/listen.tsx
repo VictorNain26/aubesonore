@@ -14,9 +14,27 @@ export function listenState(isPlaying: boolean, isConnecting: boolean): ListenSt
   return isPlaying ? 'playing' : 'idle';
 }
 
+/** The action the button does now: from the click on it pauses, the ring tells the waiting. */
 export function listenLabel(state: ListenState): string {
-  if (state === 'connecting') return m.player_connecting();
-  return state === 'playing' ? m.player_listening() : m.player_listen();
+  return state === 'idle' ? m.player_listen() : m.player_listening();
+}
+
+/** Both words share one grid cell, so the button keeps the width of the longer one. */
+export function ListenLabel({ state, className }: { state: ListenState; className?: string }) {
+  const shown = listenLabel(state);
+  return (
+    <span className={cn('grid', className)}>
+      {[m.player_listen(), m.player_listening()].map((word) => (
+        <span
+          key={word}
+          aria-hidden={word !== shown || undefined}
+          className={cn('col-start-1 row-start-1', word !== shown && 'invisible')}
+        >
+          {word}
+        </span>
+      ))}
+    </span>
+  );
 }
 
 export function listenAria(state: ListenState): string {

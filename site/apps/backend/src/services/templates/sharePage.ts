@@ -28,21 +28,21 @@ const COPY: Record<
 > = {
   fr: {
     lang: 'fr',
-    ogDescription: 'Entendu sur AubeSonore — écoutez le direct',
+    ogDescription: 'Entendu sur AubeSonore. Écoutez le direct.',
     coverAlt: (title) => `Pochette de ${title}`,
     heardOn: 'Entendu sur AubeSonore',
     listenLive: 'Écouter le direct',
     listenOn: (platform) => `Écouter sur ${platform}`,
-    footer: 'AubeSonore — radio de découverte musicale',
+    footer: 'AubeSonore, radio de découverte musicale',
   },
   en: {
     lang: 'en',
-    ogDescription: 'Heard on AubeSonore — listen live',
+    ogDescription: 'Heard on AubeSonore. Listen live.',
     coverAlt: (title) => `Album art for ${title}`,
     heardOn: 'Heard on AubeSonore',
     listenLive: 'Listen live',
     listenOn: (platform) => `Listen on ${platform}`,
-    footer: 'AubeSonore — an emerging-music webradio',
+    footer: 'AubeSonore, a music discovery radio',
   },
 };
 
@@ -94,8 +94,8 @@ export function renderSharePage({
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${escapeHtml(title)} — ${escapeHtml(artist)} | AubeSonore</title>
-    <meta property="og:title" content="« ${escapeHtml(title)} — ${escapeHtml(artist)} »" />
+    <title>${escapeHtml(title)}, ${escapeHtml(artist)} · AubeSonore</title>
+    <meta property="og:title" content="« ${escapeHtml(title)} », ${escapeHtml(artist)}" />
     <meta property="og:description" content="${copy.ogDescription}" />
     <meta property="og:type" content="music.song" />
     <meta property="og:url" content="${escapeHtml(shareUrl)}" />

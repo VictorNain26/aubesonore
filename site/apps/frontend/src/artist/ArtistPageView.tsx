@@ -1,19 +1,19 @@
-import type { ReactNode } from 'react';
-import { Link } from 'react-router';
 import type {
   ArtistFacts,
   ArtistPlatform,
   ArtistProfile,
-  ArtistRadioTitle,
   ArtistSummary,
   ClientLikedTrack,
+  MusilogyArtist,
 } from '@aubesonore/shared-types/client';
-import { getLocale, localizeHref } from '@/paraglide/runtime.js';
+import { getLocale } from '@/paraglide/runtime.js';
+import { cn } from '@/lib/utils';
 import { Cover } from '../home/Cover';
-import { KeepHeart } from '../home/KeepHeart';
-import { musilogyPath } from '../lib/musilogy';
-import { ARTIST_LINK, TEXT_ACTION } from '../home/styles';
+import { ARTIST_LINK } from '../home/styles';
 import * as m from '@/paraglide/messages.js';
+import { SiteHeader } from '../home/SiteHeader';
+import { Section } from '../design/molecules/Section';
+import { MusilogySections } from '../musilogy/MusilogyView';
 
 export type ArtistPageState =
   | { status: 'loading' }
@@ -49,7 +49,7 @@ export function factsLine(facts: ArtistFacts): string | null {
   const when = !formed
     ? ''
     : facts.ended
-      ? `${formed} – ${facts.ended}`
+      ? m.years_range({ from: formed, to: String(facts.ended) })
       : facts.active
         ? m.artist_since({ year: formed })
         : m.artist_formed({ year: formed });
@@ -98,121 +98,6 @@ function formatKeptAt(iso: string): string {
 }
 
 /** The day of a play: the year only when it is not this one. */
-function formatPlayedDay(iso: string): string {
-  const date = new Date(iso);
-  return new Intl.DateTimeFormat(getLocale(), {
-    day: 'numeric',
-    month: 'short',
-    ...(date.getFullYear() === new Date().getFullYear() ? {} : { year: 'numeric' }),
-  }).format(date);
-}
-
-/** Garder on a played title; the container brings the store. */
-export interface KeepOnPage {
-  isKept: (title: string, artist: string) => boolean;
-  isKeeping: (title: string, artist: string) => boolean;
-  onToggle: (played: ArtistRadioTitle) => void;
-}
-
-const KEEP_BUTTON =
-  'group ease-out-quart focus-visible:outline-accent flex size-11 items-center justify-center rounded-full transition-[scale] duration-150 focus-visible:outline-2 active:scale-90 disabled:opacity-50';
-
-/** One title the antenna plays: what it is (on Deezer, when known), how often, then keep it. */
-function PlayedRow({ played, keep }: { played: ArtistRadioTitle; keep: KeepOnPage | null }) {
-  const day = formatPlayedDay(played.lastPlayedAt);
-  return (
-    <li className="border-border reveal grid min-h-16 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-x-3 border-b py-2 md:gap-x-6 md:px-1">
-      <Cover
-        src={played.deezer?.cover}
-        alt=""
-        seed={`${played.artist}|${played.title}`}
-        className="size-11"
-      />
-      <span className="flex min-w-0 flex-col">
-        {played.deezer ? (
-          // Negative margins grow the tap target to 44px without moving the row.
-          <a
-            href={played.deezer.link}
-            {...OUTSIDE_LINK}
-            aria-label={m.artist_listen_on_deezer({ title: played.title })}
-            className={`${ARTIST_LINK} text-row -my-3 truncate py-3 underline-offset-4`}
-          >
-            {played.title}
-          </a>
-        ) : (
-          <span className="text-row truncate">{played.title}</span>
-        )}
-        <span className="text-sub text-text-muted truncate">
-          {played.plays > 1
-            ? m.artist_played_many({ count: played.plays, date: day })
-            : m.artist_played_once({ date: day })}
-        </span>
-      </span>
-      {keep ? (
-        <button
-          type="button"
-          onClick={() => keep.onToggle(played)}
-          disabled={keep.isKeeping(played.title, played.artist)}
-          aria-pressed={keep.isKept(played.title, played.artist)}
-          aria-label={m.track_keep_aria({ title: played.title })}
-          className={KEEP_BUTTON}
-        >
-          <KeepHeart
-            isKept={keep.isKept(played.title, played.artist)}
-            className="ease-spring size-4.5 transition-transform duration-250 group-hover:scale-118"
-            strokeWidth={1.5}
-          />
-        </button>
-      ) : (
-        <span aria-hidden="true" />
-      )}
-    </li>
-  );
-}
-
-export function Section({
-  id,
-  title,
-  body,
-  children,
-}: {
-  id: string;
-  title: string;
-  body?: string;
-  children: ReactNode;
-}) {
-  return (
-    <section
-      aria-labelledby={`${id}-title`}
-      className="grid gap-6 md:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] md:gap-16"
-    >
-      <div className="reveal-heading flex flex-col gap-2 self-start md:gap-3">
-        <h2 id={`${id}-title`} className="text-section m-0">
-          {title}
-        </h2>
-        {body ? <p className="text-intro text-text-muted max-w-blurb m-0">{body}</p> : null}
-      </div>
-      <div className="flex min-w-0 flex-col">{children}</div>
-    </section>
-  );
-}
-
-export function Header() {
-  return (
-    <header className="px-page flex items-center justify-between gap-6 pt-5 md:pt-7">
-      <Link
-        to={localizeHref('/')}
-        className="text-mark condensed ease-out-quart focus-visible:outline-accent inline-flex min-h-11 items-center rounded-sm transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4"
-      >
-        aubesonore
-      </Link>
-      <Link to={localizeHref('/')} className={TEXT_ACTION}>
-        {m.artist_back()}
-      </Link>
-    </header>
-  );
-}
-
 function Message({ title, body }: { title: string; body: string }) {
   return (
     <div className="lift-in px-page flex flex-col gap-4 py-24">
@@ -226,12 +111,16 @@ const OUTSIDE_LINK = { rel: 'noopener noreferrer', target: '_blank' } as const;
 
 function Summary({ summary }: { summary: ArtistSummary }) {
   return (
-    <figure className="m-0 flex flex-col gap-3 md:col-span-8 md:col-start-5 lg:col-span-7 lg:col-start-4">
+    <figure className="m-0 flex flex-col gap-2">
       <blockquote cite={summary.url} lang={summary.lang} className="m-0">
         <p className="text-intro m-0 max-w-prose">{summary.text}</p>
       </blockquote>
       <figcaption>
-        <a href={summary.url} {...OUTSIDE_LINK} className={TEXT_ACTION}>
+        <a
+          href={summary.url}
+          {...OUTSIDE_LINK}
+          className={cn(ARTIST_LINK, 'text-ui -my-3 inline-block py-3 underline-offset-4')}
+        >
           {summary.lang === getLocale()
             ? m.artist_summary_source()
             : m.artist_summary_source_other()}
@@ -242,11 +131,7 @@ function Summary({ summary }: { summary: ArtistSummary }) {
 }
 
 function Portrait({ text }: { text: string }) {
-  return (
-    <p className="text-intro m-0 max-w-prose md:col-span-8 md:col-start-5 lg:col-span-7 lg:col-start-4">
-      {text}
-    </p>
-  );
+  return <p className="text-intro m-0 max-w-prose">{text}</p>;
 }
 
 type KeptTrack = Pick<ClientLikedTrack, 'id' | 'title' | 'createdAt'>;
@@ -254,11 +139,13 @@ type KeptTrack = Pick<ClientLikedTrack, 'id' | 'title' | 'createdAt'>;
 function Profile({
   profile,
   kept,
-  keep,
+  musilogy,
+  thisYear,
 }: {
   profile: ArtistProfile;
   kept: readonly KeptTrack[];
-  keep: KeepOnPage | null;
+  musilogy: MusilogyArtist | null;
+  thisYear: number;
 }) {
   // Without a Wikipedia article, the facts are said in a sentence rather than listed.
   const portrait = !profile.summary && profile.facts ? portraitSentence(profile.facts) : null;
@@ -266,31 +153,26 @@ function Profile({
 
   return (
     <>
-      <div className="lift-in px-page grid gap-6 pt-10 md:grid-cols-12 md:items-end md:gap-x-10 md:gap-y-12 md:pt-16">
+      {/* The sections' 4/8 grid: the portrait in the title column, who they are beside it. */}
+      <div className="lift-in px-page grid gap-6 pt-10 md:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] md:gap-16 md:pt-16">
         <Cover
           src={profile.image}
           alt={m.artist_portrait_alt({ name: profile.name })}
           seed={profile.name}
           priority
-          className="aspect-square w-40 md:col-span-4 md:w-full lg:col-span-3"
+          className="aspect-square w-40 md:w-full"
         />
-        <div className="flex min-w-0 flex-col gap-3 md:col-span-8 lg:col-span-9">
+        <div className="flex min-w-0 flex-col gap-3 md:justify-end">
           <h1 className="text-hero m-0 break-words">{profile.name}</h1>
           {facts ? <p className="text-sub text-text-muted m-0">{facts}</p> : null}
+          <div className="mt-3 flex flex-col gap-3">
+            {profile.summary ? <Summary summary={profile.summary} /> : null}
+            {portrait ? <Portrait text={portrait} /> : null}
+          </div>
         </div>
-        {profile.summary ? <Summary summary={profile.summary} /> : null}
-        {portrait ? <Portrait text={portrait} /> : null}
-        {profile.mbid ? (
-          <Link
-            to={musilogyPath({ mbid: profile.mbid, name: profile.name })}
-            className={`${TEXT_ACTION} md:col-span-8 md:col-start-5 lg:col-span-7 lg:col-start-4`}
-          >
-            {m.artist_musilogy_link()}
-          </Link>
-        ) : null}
       </div>
 
-      <div className="px-page flex flex-col gap-16 py-12 md:gap-28 md:py-20">
+      <div className="px-page flex flex-col gap-16 py-16 md:gap-28 md:py-28">
         {kept.length > 0 ? (
           <Section id="kept" title={m.artist_kept_title()} body={m.artist_kept_body()}>
             <ol className="m-0 list-none p-0">
@@ -307,26 +189,21 @@ function Profile({
               ))}
             </ol>
           </Section>
-        ) : (
-          <Section id="played" title={m.artist_played_title()} body={m.artist_played_body()}>
-            {profile.playedOnRadio.length > 0 ? (
-              <ol className="m-0 list-none p-0">
-                {profile.playedOnRadio.map((played) => (
-                  <PlayedRow key={played.title} played={played} keep={keep} />
-                ))}
-              </ol>
-            ) : (
-              <p className="text-text-muted m-0">{m.artist_played_empty()}</p>
-            )}
-          </Section>
-        )}
+        ) : null}
 
         {profile.links.length > 0 ? (
           <Section id="listen" title={m.artist_listen_title()} body={m.artist_listen_body()}>
-            <ul className="m-0 flex list-none flex-wrap gap-x-8 p-0">
+            <ul className="m-0 flex list-none flex-wrap gap-x-8 gap-y-2 p-0">
               {profile.links.map((link) => (
                 <li key={link.url} className="reveal">
-                  <a href={link.url} {...OUTSIDE_LINK} className={TEXT_ACTION}>
+                  <a
+                    href={link.url}
+                    {...OUTSIDE_LINK}
+                    className={cn(
+                      ARTIST_LINK,
+                      'text-ui inline-flex min-h-11 items-center underline-offset-4'
+                    )}
+                  >
                     {PLATFORM_LABELS[link.platform]()}
                   </a>
                 </li>
@@ -334,27 +211,33 @@ function Profile({
             </ul>
           </Section>
         ) : null}
+
+        {musilogy ? <MusilogySections artist={musilogy} thisYear={thisYear} /> : null}
       </div>
     </>
   );
 }
 
 /**
- * An artist heard on the antenna: who they are, what the listener kept of them
- * or else what the radio played, where to hear more.
+ * An artist heard on the antenna, on one page: who they are, what the listener kept of them, where
+ * to hear more, then what Musilogy holds of them (their place in time, the influences they
+ * declared, their bands), each section only when it has something.
  */
 export function ArtistPageView({
   state,
   kept = [],
-  keep = null,
+  musilogy = null,
+  thisYear = new Date().getFullYear(),
 }: {
   state: ArtistPageState;
   kept?: readonly KeptTrack[];
-  keep?: KeepOnPage | null;
+  musilogy?: MusilogyArtist | null;
+  /** Where an active artist's span ends on the map. */
+  thisYear?: number;
 }) {
   return (
     <main id="main" className="min-h-dvh">
-      <Header />
+      <SiteHeader />
       {state.status === 'loading' ? (
         <div aria-busy="true" className="px-page flex flex-col gap-6 pt-10 md:pt-16">
           <span className="bg-surface-raised aspect-square w-40 rounded-sm md:w-60" />
@@ -365,7 +248,7 @@ export function ArtistPageView({
       ) : state.status === 'error' ? (
         <Message title={m.artist_error_title()} body={m.artist_error_body()} />
       ) : (
-        <Profile profile={state.profile} kept={kept} keep={keep} />
+        <Profile profile={state.profile} kept={kept} musilogy={musilogy} thisYear={thisYear} />
       )}
     </main>
   );

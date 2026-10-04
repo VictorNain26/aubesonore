@@ -1,23 +1,17 @@
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import { localizeHref } from '@/paraglide/runtime.js';
 import { usePlayer } from '../lib/player';
-import { useState, useRef } from 'react';
+import type { SignInState } from '../lib/signIn';
+import { takePendingKeep } from '../lib/pendingKeep';
+import { SiteHeader } from '../home/SiteHeader';
+import { SiteFooter } from '../home/SiteFooter';
 import { useAuthStore } from '../stores/authStore';
 import { authApi } from '../lib/api';
 import { toast } from 'sonner';
 import { toastError } from '../lib/appToast';
-import { AuthModalView, type AuthMode } from '../design/organisms/AuthModalView';
+import { AuthView, type AuthMode } from '../design/organisms/AuthView';
 import * as m from '@/paraglide/messages.js';
-
-interface AuthModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  defaultMode?: 'signin' | 'signup';
-  // Layout hands us a reset-password token when the URL carries
-  // a token. Layout extracts it and passes it down to switch the modal into
-  // the reset flow on mount.
-  resetToken?: string;
-  /** Title the listener tried to keep before signing in. */
-  keepTitle?: string;
-}
 
 function validateEmailFormat(value: string): string | undefined {
   if (!value) return undefined;
@@ -34,15 +28,43 @@ function validatePasswordMatch(password: string, confirm: string): string | unde
   return confirm === password ? undefined : m.auth_error_password_mismatch();
 }
 
-export function AuthModal({
-  isOpen,
-  onClose,
-  defaultMode = 'signin',
-  resetToken,
-  keepTitle,
-}: AuthModalProps) {
+/**
+ * Sign in, sign up, a forgotten password and a new one, on a page of the site (/connexion,
+ * /en/sign-in, and Better Auth's /reset-password?token= link). Opened with a SignInState: its first
+ * form, the track the listener wanted to keep, the page to go back to once signed in.
+ */
+export default function AuthPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+  const opened = (location.state ?? {}) as SignInState;
+  const resetToken = location.pathname === '/reset-password' ? params.get('token') : null;
+  const resetLinkInvalid = params.get('error') === 'INVALID_TOKEN';
+  const defaultMode = opened.mode ?? 'signin';
+  const keepTitle = opened.keepTitle;
+  const backTo = opened.from ?? localizeHref('/');
   const isListening = usePlayer((s) => s.isPlaying);
   const [mode, setMode] = useState<AuthMode>(resetToken ? 'reset-password' : defaultMode);
+
+  useEffect(() => {
+    document.title = `${m.auth_signin_title()} · AubeSonore`;
+    if (resetLinkInvalid) toastError(m.toast_reset_link_invalid());
+  }, [resetLinkInvalid]);
+
+  // Already signed in (back from Google, or the page reopened): nothing to do here.
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  useEffect(() => {
+    if (isAuthenticated && mode !== 'verification-sent') void navigate(backTo, { replace: true });
+  }, [isAuthenticated, mode, backTo, navigate]);
+
+  // Left without signing in: forget the track they wanted to keep. A redirect to Google unloads
+  // the page without unmounting it, so the track survives the round trip.
+  useEffect(
+    () => () => {
+      if (!useAuthStore.getState().isAuthenticated) takePendingKeep();
+    },
+    []
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -77,12 +99,6 @@ export function AuthModal({
     setName('');
     setShowPassword(false);
     setErrors({});
-  };
-
-  const handleClose = () => {
-    onClose();
-    resetForm();
-    setMode(defaultMode);
   };
 
   const validate = (): boolean => {
@@ -130,7 +146,7 @@ export function AuthModal({
       if (mode === 'signin') {
         await signIn(email, password);
         toast.success(m.toast_signin_success());
-        handleClose();
+        void navigate(backTo, { replace: true });
       } else if (mode === 'signup') {
         await signUp(email, password, name);
         // requireEmailVerification: true on the backend → show the verify
@@ -159,7 +175,8 @@ export function AuthModal({
   const handleOAuth = async (provider: 'google') => {
     setIsLoading(true);
     try {
-      await authApi.signInWithProvider(provider);
+      // Back to the page the listener came from, not to the sign-in page.
+      await authApi.signInWithProvider(provider, `${window.location.origin}${backTo}`);
       // On success the browser navigates to the provider; keep loading state.
     } catch (err) {
       toastError(err instanceof Error ? err.message : m.error_oauth_failed());
@@ -173,54 +190,57 @@ export function AuthModal({
   };
 
   return (
-    <AuthModalView
-      keepTitle={keepTitle}
-      isListening={isListening}
-      mode={mode}
-      isOpen={isOpen}
-      isLoading={isLoading}
-      email={email}
-      password={password}
-      passwordConfirm={passwordConfirm}
-      name={name}
-      showPassword={showPassword}
-      pendingEmail={pendingEmail}
-      errors={errors}
-      emailRef={emailRef}
-      passwordRef={passwordRef}
-      passwordConfirmRef={passwordConfirmRef}
-      onClose={handleClose}
-      onSubmit={(e) => {
-        void handleSubmit(e);
-      }}
-      onOAuthGoogle={() => void handleOAuth('google')}
-      onToggleShowPassword={() => setShowPassword((s) => !s)}
-      onNameChange={(value) => setName(value)}
-      onEmailChange={(value) => {
-        setEmail(value);
-        if (errors.email) setFieldError('email', validateEmailFormat(value));
-      }}
-      onEmailBlur={() => setFieldError('email', validateEmailFormat(email))}
-      onPasswordChange={(value) => {
-        setPassword(value);
-        if (errors.password) {
-          setFieldError('password', validatePasswordLength(value));
+    <>
+      <SiteHeader />
+      <AuthView
+        keepTitle={keepTitle}
+        isListening={isListening}
+        mode={mode}
+        isLoading={isLoading}
+        email={email}
+        password={password}
+        passwordConfirm={passwordConfirm}
+        name={name}
+        showPassword={showPassword}
+        pendingEmail={pendingEmail}
+        errors={errors}
+        emailRef={emailRef}
+        passwordRef={passwordRef}
+        passwordConfirmRef={passwordConfirmRef}
+        onDone={() => void navigate(backTo, { replace: true })}
+        onSubmit={(e) => {
+          void handleSubmit(e);
+        }}
+        onOAuthGoogle={() => void handleOAuth('google')}
+        onToggleShowPassword={() => setShowPassword((s) => !s)}
+        onNameChange={(value) => setName(value)}
+        onEmailChange={(value) => {
+          setEmail(value);
+          if (errors.email) setFieldError('email', validateEmailFormat(value));
+        }}
+        onEmailBlur={() => setFieldError('email', validateEmailFormat(email))}
+        onPasswordChange={(value) => {
+          setPassword(value);
+          if (errors.password) {
+            setFieldError('password', validatePasswordLength(value));
+          }
+          if (errors.passwordConfirm) {
+            setFieldError('passwordConfirm', validatePasswordMatch(value, passwordConfirm));
+          }
+        }}
+        onPasswordBlur={() => setFieldError('password', validatePasswordLength(password))}
+        onPasswordConfirmChange={(value) => {
+          setPasswordConfirm(value);
+          if (errors.passwordConfirm) {
+            setFieldError('passwordConfirm', validatePasswordMatch(password, value));
+          }
+        }}
+        onPasswordConfirmBlur={() =>
+          setFieldError('passwordConfirm', validatePasswordMatch(password, passwordConfirm))
         }
-        if (errors.passwordConfirm) {
-          setFieldError('passwordConfirm', validatePasswordMatch(value, passwordConfirm));
-        }
-      }}
-      onPasswordBlur={() => setFieldError('password', validatePasswordLength(password))}
-      onPasswordConfirmChange={(value) => {
-        setPasswordConfirm(value);
-        if (errors.passwordConfirm) {
-          setFieldError('passwordConfirm', validatePasswordMatch(password, value));
-        }
-      }}
-      onPasswordConfirmBlur={() =>
-        setFieldError('passwordConfirm', validatePasswordMatch(password, passwordConfirm))
-      }
-      onSwitchMode={switchTo}
-    />
+        onSwitchMode={switchTo}
+      />
+      <SiteFooter />
+    </>
   );
 }

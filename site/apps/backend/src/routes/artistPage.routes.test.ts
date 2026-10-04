@@ -95,10 +95,10 @@ describe('GET /artist/:id', () => {
     expect(shellUrl).toEndWith('/app.html');
     const html = await res.text();
     const pageUrl = `${env.FRONTEND_BASE_URL}/artist/${VALID_ID}/daft-punk`;
-    expect(html).toContain('<title>Daft Punk — AubeSonore</title>');
+    expect(html).toContain('<title>Daft Punk · AubeSonore</title>');
     expect(html).toContain(`<link rel="canonical" href="${pageUrl}" />`);
     expect(html).toContain(`<meta property="og:url" content="${pageUrl}" />`);
-    expect(html).toContain('<meta property="og:title" content="Daft Punk — AubeSonore" />');
+    expect(html).toContain('<meta property="og:title" content="Daft Punk · AubeSonore" />');
     expect(html).toContain('<meta name="description" content="Un duo français." />');
     expect(html).toContain(
       '<meta property="og:image" content="https://cdn-images.dzcdn.net/images/artist/dp.jpg" />'
@@ -129,10 +129,10 @@ describe('GET /artist/:id', () => {
     const html = await res.text();
     expect(html).not.toContain('"><script>');
     expect(html).toContain(
-      '<meta property="og:title" content="AT&amp;T &quot;><script>alert(1)</script> — AubeSonore" />'
+      '<meta property="og:title" content="AT&amp;T &quot;><script>alert(1)</script> · AubeSonore" />'
     );
     expect(html).toContain(
-      '<title>AT&amp;T "&gt;&lt;script&gt;alert(1)&lt;/script&gt; — AubeSonore</title>'
+      '<title>AT&amp;T "&gt;&lt;script&gt;alert(1)&lt;/script&gt; · AubeSonore</title>'
     );
   });
 
@@ -222,7 +222,7 @@ describe('GET /artist/:id', () => {
     const res = await app.handle(new Request(`http://localhost/artist/${VALID_ID}`));
 
     expect(seen).toEqual([null, '"v1"']);
-    expect(await res.text()).toContain('Daft Punk — AubeSonore');
+    expect(await res.text()).toContain('Daft Punk · AubeSonore');
   });
 
   it('serves the new shell as soon as a deploy changes it', async () => {

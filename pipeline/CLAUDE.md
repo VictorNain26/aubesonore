@@ -16,7 +16,7 @@ uv sync                                  # dépendances (.venv)
 .venv/bin/mypy                           # strict
 .venv/bin/radio --help                   # library-sync, discover, nouveautes, favoris, negatives-sync,
                                          # signals, train, votes-select, acquire, antenne,
-                                         # antenne-isrc (rattrapage ponctuel),
+                                         # antenne-isrc, antenne-cues (rattrapages ponctuels),
                                          # mesures, check, report, backup, votes-serve,
                                          # votes-remind
 ```
