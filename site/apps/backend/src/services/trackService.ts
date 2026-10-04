@@ -4,6 +4,9 @@ import { randomUUID } from 'crypto';
 import type { User, LikedTrack } from '../db/schema';
 import { findTrackLinks } from './trackLinksService';
 import { keepCover } from './coverService';
+import { resolveArtist } from './artistResolver';
+import { findPlay } from './radioPlayService';
+import { logger } from '../lib/logger';
 
 // Hard cap on the liked-tracks listing payload. Power users with thousands
 // of tracks would otherwise stream the entire library on every page load.
@@ -73,11 +76,30 @@ export async function likeTrack({
   void enrichTrackInBackground(trackId, title, artist).catch((err: unknown) => {
     console.error(`[enrichTrackInBackground] Error for track ${trackId}:`, err);
   });
+  void linkKeptTrack(trackId, title, artist).catch((err: unknown) => {
+    logger.warn('keptTrack.link_failed', { trackId, message: (err as Error).message });
+  });
 
   return {
     message: 'Morceau liké avec succès',
     track: likedTrack,
   };
+}
+
+/**
+ * Ties a kept track to the play it was kept from and to that play's artist
+ * (docs/vision.md §4.4), so the artist page shows what a listener kept and the
+ * alerts know who kept an artist. A track the antenna is not known to have
+ * played stays untied: a like can name anything.
+ */
+export async function linkKeptTrack(trackId: string, title: string, artist: string): Promise<void> {
+  const play = await findPlay(title, artist);
+  if (!play) return;
+  const resolved = await resolveArtist(artist);
+  await db
+    .update(schema.likedTracks)
+    .set({ artistId: resolved?.id ?? null, ...(play.isrc ? { isrc: play.isrc } : {}) })
+    .where(eq(schema.likedTracks.id, trackId));
 }
 
 async function enrichTrackInBackground(

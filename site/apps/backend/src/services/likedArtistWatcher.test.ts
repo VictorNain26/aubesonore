@@ -43,7 +43,7 @@ function makeDeps(overrides: Partial<WatcherDeps> = {}) {
     },
     resolveArtist: (artist) => {
       resolved.push(artist);
-      return Promise.resolve(null);
+      return Promise.resolve({ id: `id:${artist}` });
     },
     now: () => currentTime,
     ...overrides,
@@ -62,14 +62,32 @@ describe('createLikedArtistNotifier', () => {
     expect(resolved).toEqual(['Hania Rani']);
   });
 
-  it('still notifies when resolving the artist fails', async () => {
-    const { deps, sent } = makeDeps({
-      resolveArtist: () => Promise.reject(new Error('musicbrainz down')),
+  it('finds who kept the artist by its identity, not its spelling', async () => {
+    const asked: string[] = [];
+    const { deps } = makeDeps({
+      fetchNowPlaying: () => Promise.resolve(track(1, 'Beyonce')),
+      resolveArtist: () => Promise.resolve({ id: 'artist-beyonce' }),
+      findUserIdsByArtist: (artistId) => {
+        asked.push(artistId);
+        return Promise.resolve([]);
+      },
     });
 
     await createLikedArtistNotifier(deps)();
 
-    expect(sent).toHaveLength(1);
+    expect(asked).toEqual(['artist-beyonce']);
+  });
+
+  it.each([
+    ['cannot be identified', () => Promise.resolve(null)],
+    ['fails to resolve', () => Promise.reject(new Error('musicbrainz down'))],
+  ])('notifies no one when the artist %s, and still records the play', async (_, resolve) => {
+    const { deps, sent, played } = makeDeps({ resolveArtist: resolve });
+
+    await createLikedArtistNotifier(deps)();
+
+    expect(sent).toHaveLength(0);
+    expect(played).toHaveLength(1);
   });
 
   it('sends to users who liked the artist when a new track starts', async () => {

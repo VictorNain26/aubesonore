@@ -21,6 +21,7 @@ function makeRow(values: Partial<Row>): Row {
     platformLinks: values.platformLinks ?? null,
     createdAt: values.createdAt ?? new Date(),
     userId: values.userId ?? 'user-1',
+    artistId: values.artistId ?? null,
   };
 }
 
@@ -84,12 +85,20 @@ void mock.module('../db/index', () => ({ db: fakeDb, schema: realSchema }));
 // even with --isolate, and trackLinksService.test needs the real one.
 const trackLinks = await import('./trackLinksService');
 const findTrackLinksMock = spyOn(trackLinks, 'findTrackLinks').mockResolvedValue(null);
+const radioPlays = await import('./radioPlayService');
+const findPlayMock = spyOn(radioPlays, 'findPlay').mockResolvedValue(null);
+const resolver = await import('./artistResolver');
+const resolveArtistMock = spyOn(resolver, 'resolveArtist').mockResolvedValue({
+  id: 'artist-1',
+  slug: 'artist',
+});
 
 const originalFetch = globalThis.fetch;
 const fetchMock = mock((): Promise<Response> => Promise.reject(new Error('no network in tests')));
 globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-const { likeTrack, refreshTrackLinks, refreshAllLinks } = await import('./trackService');
+const { likeTrack, linkKeptTrack, refreshTrackLinks, refreshAllLinks } =
+  await import('./trackService');
 
 const fakeUser: User = {
   id: 'user-1',
@@ -120,6 +129,8 @@ beforeEach(() => {
 
 afterAll(() => {
   findTrackLinksMock.mockRestore();
+  findPlayMock.mockRestore();
+  resolveArtistMock.mockRestore();
   globalThis.fetch = originalFetch;
 });
 
@@ -224,6 +235,26 @@ describe('likeTrack → background enrichment', () => {
     await flushBackgroundWork();
 
     expect(rows[0]?.artworkUrl).toBeNull();
+  });
+});
+
+describe('linkKeptTrack', () => {
+  it("ties a kept track to its play: the play's ISRC and the resolved artist", async () => {
+    rows = [makeRow({ id: 'track-1', title: 'F Major', artist: 'Hania Rani' })];
+    findPlayMock.mockResolvedValueOnce({ title: 'F Major', isrc: 'DEN271800071' });
+
+    await linkKeptTrack('track-1', 'F Major', 'Hania Rani');
+
+    expect(rows[0]).toMatchObject({ artistId: 'artist-1', isrc: 'DEN271800071' });
+  });
+
+  it('leaves a track the antenna is not known to have played untied', async () => {
+    rows = [makeRow({ id: 'track-1' })];
+
+    await linkKeptTrack('track-1', 'Anything', 'Typed By Hand');
+
+    expect(rows[0]?.artistId).toBeNull();
+    expect(resolveArtistMock).not.toHaveBeenCalledWith('Typed By Hand');
   });
 });
 
