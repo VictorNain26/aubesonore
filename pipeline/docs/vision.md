@@ -338,13 +338,20 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
     2026-10-04, la passe du dimanche les comptait encore ; elle a bloqué jusqu'au soir les titres
     et les artistes de la grille de la nuit, et de midi à 23 h chaque heure n'avait que 4 à 6
     titres sur 16 (121 créneaux vides).
+  - **La file d'attente d'AzuraCast compte aussi** : environ 4 titres, 15 à 20 min d'avance
+    (mesuré le 2026-10-04). Vider une playlist retire de la file ses titres pas encore remis à
+    Liquidsoap, pas les autres (`emptyPlaylist` puis `clearForPlaylist`, 0.23.8) : un titre en
+    file compte comme joué à l'heure prévue de son passage (`played_at`, ou `cued_at` tant
+    qu'elle n'est pas estimée), le pire cas. Sans cela, une passe finie peu avant une heure
+    replaçait dans la journée un titre déjà en file.
   - Un titre placé repart en fin de rotation. Le rapport donne le tour de chaque catégorie, les
     créneaux vides, les titres pas joués depuis plus de deux tours (doit être nul) et le plus
     grand nombre de titres d'un même artiste à l'antenne (doit rester à 2).
-  - **Un créneau vide fait échouer la commande**, après la publication : le secours le joue à
-    la place de la grille (§1), et Gatus alerte (§8.2). Vérifié sur l'antenne du 2026-10-04
-    (532 titres) : la grille de chaque soir et la passe du dimanche, simulées sur huit jours,
-    n'en laissent aucun.
+  - **Un créneau vide fait échouer la commande**, après la publication : une heure prévoit un
+    titre de plus qu'elle n'en joue, un créneau vide entame cette marge, et au-delà le secours
+    joue à la place de la grille (§1). La grille publiée est gardée, et Gatus alerte (§8.2).
+    Vérifié sur l'antenne du 2026-10-04 (532 titres) : la grille de chaque soir et la passe du
+    dimanche, simulées sur huit jours, n'en laissent aucun.
 - **Vérifié par simulation** (14 jours sur l'antenne du 2026-10-02, 273 découvertes et 68
   repères, en ne jouant que les ~14,6 premiers titres de chaque heure) : aucun titre sans passage,
   aucun créneau vide, au moins 3 passages par semaine pour chaque découverte. Entre deux passages

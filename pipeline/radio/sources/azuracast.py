@@ -79,6 +79,16 @@ class AzuracastClient:
             out[song] = max(out.get(song, 0.0), float(h["played_at"]))
         return out
 
+    def queued(self) -> dict[str, float]:
+        """Heure où chaque titre en file d'attente doit passer (`GET /station/{id}/queue`) :
+        `played_at`, ou `cued_at` tant qu'AzuraCast ne l'a pas estimée (`StationQueue`, 0.23.8)."""
+        out: dict[str, float] = {}
+        for q in self._call("GET", self._at("/queue")):
+            song = str(q["song"]["id"])
+            at = float(q["cued_at"] if q["played_at"] is None else q["played_at"])
+            out[song] = max(out.get(song, at), at)
+        return out
+
     def timezone(self) -> str:
         return str(self._call("GET", f"/station/{self._station}")["timezone"])
 

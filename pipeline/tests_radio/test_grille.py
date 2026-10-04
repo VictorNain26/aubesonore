@@ -1,4 +1,6 @@
 import json
+import sqlite3
+from collections.abc import Iterable
 from datetime import date
 from pathlib import Path
 
@@ -348,12 +350,32 @@ def test_client_hour_playlists_history_and_import() -> None:
     assert c.timezone() == "Europe/Paris"
 
 
+@responses.activate
+def test_client_reads_when_each_queued_title_will_play() -> None:
+    responses.get(
+        API + "/queue",
+        json=[
+            {"song": {"id": "a"}, "cued_at": 100, "played_at": 400},
+            {"song": {"id": "b"}, "cued_at": 200, "played_at": None},  # pas encore estimé
+        ],
+    )
+    c = AzuracastClient("http://127.0.0.1:8080", "k")
+    assert c.queued() == {"a": 400.0, "b": 200.0}
+
+
 class FakeAzuracast(FakeStation):
+    def __init__(self) -> None:
+        super().__init__()
+        self.queue: dict[str, float] = {}
+
     def timezone(self) -> str:
         return "Europe/Paris"
 
     def last_played(self, start: str, end: str) -> dict[str, float]:
-        return {}
+        return {"s2": 50.0}
+
+    def queued(self) -> dict[str, float]:
+        return self.queue
 
 
 @pytest.fixture
@@ -394,8 +416,8 @@ def test_grille_command_writes_a_full_day(tmp_path: Path, grille_env: FakeAzurac
 def test_an_empty_slot_is_published_then_fails_the_grid(
     tmp_path: Path, grille_env: FakeAzuracast
 ) -> None:
-    # Breaks if an empty slot passes in silence: the fallback plays in its place (vision §1),
-    # and only a failed command makes Gatus alert.
+    # Breaks if an empty slot passes in silence: it eats the hour's margin of one title, beyond
+    # which the fallback plays (vision §1), and only a failed command makes Gatus alert.
     _on_air(tmp_path, 10)
     res = CliRunner().invoke(cli.app, ["grille"])
     assert res.exit_code == 1
@@ -406,4 +428,30 @@ def test_an_empty_slot_is_published_then_fails_the_grid(
     assert n_rows == 1 and not stages[0][2]
     empty = stages[0][3]["créneaux vides"]
     assert isinstance(empty, int) and empty > 0
-    assert f"{empty} créneaux vides, joués par le secours" in res.output
+    assert f"{empty} créneaux vides : le secours peut jouer" in res.output
+
+
+def test_the_grid_counts_what_azuracast_has_already_queued(
+    tmp_path: Path, grille_env: FakeAzuracast, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Breaks if the queue is ignored: AzuraCast queues ~20 min ahead, and a title already handed
+    # to Liquidsoap plays even when its hour is rewritten; placed again, it would play twice.
+    _on_air(tmp_path, 400)
+    grille_env.queue = {"s1": 1_791_130_000.0}
+    seen: list[dict[str, float]] = []
+    real = cli.grille_mod.with_published
+
+    def spy(
+        conn: sqlite3.Connection,
+        played: dict[str, float],
+        now: float,
+        midnight: float,
+        hours: Iterable[int],
+    ) -> dict[str, float]:
+        seen.append(played)
+        return real(conn, played, now, midnight, hours)
+
+    monkeypatch.setattr(cli.grille_mod, "with_published", spy)
+    res = CliRunner().invoke(cli.app, ["grille"])
+    assert res.exit_code == 0, res.output
+    assert seen == [{"s2": 50.0, "s1": 1_791_130_000.0}]
