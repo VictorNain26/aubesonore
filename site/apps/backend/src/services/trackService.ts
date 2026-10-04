@@ -73,7 +73,7 @@ export async function likeTrack({
   }
 
   // Background enrichment — non-blocking Songlink lookup.
-  void enrichTrackInBackground(trackId, title, artist).catch((err: unknown) => {
+  void enrichTrackInBackground(trackId, title, artist, isrc ?? null).catch((err: unknown) => {
     console.error(`[enrichTrackInBackground] Error for track ${trackId}:`, err);
   });
   void linkKeptTrack(trackId, title, artist).catch((err: unknown) => {
@@ -105,15 +105,21 @@ export async function linkKeptTrack(trackId: string, title: string, artist: stri
 async function enrichTrackInBackground(
   trackId: string,
   title: string,
-  artist: string
+  artist: string,
+  bodyIsrc: string | null
 ): Promise<void> {
+  // The play's ISRC, as linkKeptTrack stores it: it runs alongside, so the
+  // stored column may not be written yet. The client's own ISRC comes second.
+  const play = await findPlay(title, artist);
+  const isrc = play?.isrc ?? bodyIsrc;
+
   const [track] = await db
     .select({ artworkUrl: schema.likedTracks.artworkUrl })
     .from(schema.likedTracks)
     .where(eq(schema.likedTracks.id, trackId))
     .limit(1);
 
-  const songlinkData = await findTrackLinks(title, artist);
+  const songlinkData = await findTrackLinks(title, artist, isrc);
 
   // Prefer the artist-verified iTunes cover when Songlink found one, else
   // our own copy of the AzuraCast art, which dies with its media.
@@ -238,6 +244,7 @@ export async function refreshAllLinks({
       title: schema.likedTracks.title,
       artist: schema.likedTracks.artist,
       artworkUrl: schema.likedTracks.artworkUrl,
+      isrc: schema.likedTracks.isrc,
     })
     .from(schema.likedTracks)
     .where(eq(schema.likedTracks.userId, user.id));
@@ -248,7 +255,7 @@ export async function refreshAllLinks({
     const chunk = tracks.slice(i, i + REFRESH_CHUNK_SIZE);
     const results = await Promise.allSettled(
       chunk.map(async (track) => {
-        const songlinkData = await findTrackLinks(track.title, track.artist);
+        const songlinkData = await findTrackLinks(track.title, track.artist, track.isrc);
         if (!songlinkData) return false;
         const verifiedArt = songlinkData.artworkUrl ?? null;
         const existingAzuracastUrl = track.artworkUrl ?? null;
@@ -300,7 +307,7 @@ export async function refreshTrackLinks({
     return { status: 404, error: 'Morceau non trouvé' };
   }
 
-  const songlinkData = await findTrackLinks(track.title, track.artist);
+  const songlinkData = await findTrackLinks(track.title, track.artist, track.isrc);
   if (!songlinkData) {
     return { status: 400, error: 'Impossible de récupérer les liens pour ce morceau' };
   }

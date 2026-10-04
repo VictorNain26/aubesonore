@@ -238,6 +238,44 @@ describe('likeTrack → background enrichment', () => {
   });
 });
 
+describe('likeTrack → links of the very recording', () => {
+  it("asks the links with the play's ISRC, not the one the client sent", async () => {
+    // Both background tasks look the play up: the enrichment, then linkKeptTrack.
+    findPlayMock
+      .mockResolvedValueOnce({ title: 'F Major', isrc: 'DEN271800071' })
+      .mockResolvedValueOnce({ title: 'F Major', isrc: 'DEN271800071' });
+
+    await likeTrack({
+      user: fakeUser,
+      body: {
+        title: 'F Major',
+        artist: 'Hania Rani',
+        youtubeUrl: 'https://youtube.example.com/watch?v=f',
+        isrc: 'XX0000000000',
+      },
+    });
+    await flushBackgroundWork();
+
+    expect(findTrackLinksMock).toHaveBeenCalledWith('F Major', 'Hania Rani', 'DEN271800071');
+  });
+});
+
+describe('refresh → links of the very recording', () => {
+  it('refreshes a kept track with its stored ISRC', async () => {
+    rows = [
+      makeRow({ id: 'track-5', title: 'F Major', artist: 'Hania Rani', isrc: 'DEN271800071' }),
+    ];
+
+    await refreshTrackLinks({ user: fakeUser, id: 'track-5' });
+    await refreshAllLinks({ user: { ...fakeUser, id: 'user-isrc' } });
+
+    expect(findTrackLinksMock.mock.calls).toEqual([
+      ['F Major', 'Hania Rani', 'DEN271800071'],
+      ['F Major', 'Hania Rani', 'DEN271800071'],
+    ]);
+  });
+});
+
 describe('linkKeptTrack', () => {
   it("ties a kept track to its play: the play's ISRC and the resolved artist", async () => {
     rows = [makeRow({ id: 'track-1', title: 'F Major', artist: 'Hania Rani' })];
