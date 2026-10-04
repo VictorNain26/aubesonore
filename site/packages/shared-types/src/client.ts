@@ -173,7 +173,7 @@ export interface ArtistPageRef {
  * MusicBrainz (genres CC-BY-NC-SA 3.0) and ListenBrainz listen counts (CC0).
  * Every derived value travels with its provenance, and an absence stays null.
  * Artists are keyed by MBID; `played` links to the artist page when the
- * antenna played them (docs/vision.md §3.4).
+ * antenna played them (docs/vision.md §4.4).
  */
 export interface FriezeGenre {
   mbid: string;

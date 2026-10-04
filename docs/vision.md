@@ -1,139 +1,193 @@
 # AubeSonore — vision produit et architecture
 
-Proposition du 2026-10-03, à valider par Victor. Validé, ce document fait autorité sur ce qui
-traverse les pièces : le produit, qui possède quoi, comment les pièces se parlent. Chaque pièce
-garde sa conception propre — `pipeline/docs/vision.md` (l'antenne),
-`musilogy/docs/superpowers/specs/2026-10-02-frieze-lineage-design.md` (la frise),
-`site/CLAUDE.md` (le site), `azuracast/RUNBOOK.md` (la diffusion) — et ne doit pas le contredire.
-Quand le système réel le contredit, le système a raison et ce document se corrige.
+Refonte du 2026-10-04, à valider par Victor. Elle remplace la version du 2026-10-03, dont le
+geste « Explorer » (frise des genres, filiation tirée de MusicBrainz, contemporains par lieu de
+début) ne répondait pas à la question posée et reposait sur des données qui ne la remplissaient
+pas. Validé, ce document fait autorité sur ce qui traverse les pièces : les produits, qui possède
+quoi, comment les pièces se parlent. Chaque pièce garde sa conception propre —
+`pipeline/docs/vision.md` (l'antenne), `site/CLAUDE.md` (le site), `azuracast/RUNBOOK.md` (la
+diffusion), `musilogy/` (à réécrire, §8) — et ne doit pas le contredire. Quand le système réel le
+contredit, le système a raison et ce document se corrige.
 
-## 1. Le produit
+## 1. Deux produits, une radio
 
-AubeSonore est une webradio de découverte dans la couleur de Victor : des titres qu'on ne
-connaît pas, qu'il aurait pu choisir, enchaînés selon le moment de la journée. Elle a deux
-publics :
+**AubeSonore** est une webradio de découverte dans la couleur de Victor : des titres qu'on ne
+connaît pas, qu'il aurait pu choisir. Son goût (Plex) et ses votes (page privée) décident de ce
+qui passe ; les auditeurs écoutent, gardent, apprennent qui joue.
 
-- **l'auditeur**, sur le site public, en français et en anglais ;
-- **Victor**, qui la nourrit : son goût (Plex) et ses votes (page de vote privée) décident de ce
-  qui passe à l'antenne.
+**Musilogy** fait comprendre d'où vient une musique : pour n'importe quel artiste, ce qui l'a
+précédé dans la même veine, ce qui jouait à côté de lui, ce qui l'a suivi, et les liens de ses
+membres. C'est un produit à part, avec sa propre promesse (§2), relié à la radio dans les deux
+sens : Musilogy amène des auditeurs à l'antenne, l'antenne amène à Musilogy.
 
-### 1.1 Le parcours de l'auditeur
+**L'objectif du moment est d'attirer des auditeurs.** Au 2026-10-04, la radio n'a pas
+d'auditeur régulier : 3 comptes, un seul qui garde des titres (89). Tout doit donc fonctionner
+sans compte ; le compte personnalise, il ne débloque rien.
 
-Quatre gestes, chacun menant au suivant, et le dernier ramenant au premier :
+### 1.1 Le parcours
 
-| Geste | Question de l'auditeur | Surface | Ce qui y répond |
+| Geste | Question | Surface | Ce qui y répond |
 |---|---|---|---|
 | **Écouter** | « Qu'est-ce qui passe ? » | accueil | le direct, ce qui vient de passer, les plus gardés |
-| **Savoir** | « Qui est-ce ? » | page artiste | portrait, quelques faits, l'ouverture de Wikipédia, ce que l'antenne en a joué, où l'écouter |
-| **Garder** | « Je ne veux pas le perdre » | bibliothèque, compte | aimer, retrouver, partager, être prévenu quand l'artiste repasse |
-| **Explorer** | « D'où vient-il, qui jouait à côté ? » | frise | sa ligne de vie parmi les autres, ses inspirations, sa descendance, ses contemporains |
+| **Garder** | « Je ne veux pas le perdre » | bibliothèque, compte | aimer, retrouver, être prévenu quand l'artiste repasse |
+| **Savoir** | « Qui est-ce ? » | page artiste | portrait, ouverture de Wikipédia ou portrait factuel, vos titres gardés de l'artiste (sinon ce que l'antenne en a joué), où l'écouter, le lien vers Musilogy |
+| **Comprendre** | « D'où vient cette musique ? » | Musilogy | la carte de l'artiste : avant, pendant, après, influences déclarées, liens de groupe |
 
-Explorer ramène à Écouter : chaque artiste de la frise mène à sa page quand l'antenne l'a joué,
-et à une écoute ailleurs sinon. C'est ce qui distingue AubeSonore d'une radio qu'on subit et d'une
-encyclopédie qu'on consulte : la radio donne l'envie, la frise donne le chemin.
+Les gestes se bouclent : le titre en cours mène à sa page artiste et à sa carte Musilogy ; chaque
+page Musilogy garde le lecteur du direct, signale les artistes passés sur AubeSonore et mène à
+leur page artiste.
 
-### 1.2 Ce que le produit n'est pas
+### 1.2 Ce que les produits ne sont pas
 
-- **Pas un service à la demande.** On écoute le direct ; pour un titre précis, on va sur une
-  plateforme, et le site y mène par un lien réel, jamais par une recherche déguisée.
-- **Pas un classement.** La popularité ordonne ce qu'on voit d'abord sur la frise, elle n'exclut
-  personne et ne choisit jamais ce qui passe à l'antenne.
-- **Pas une recommandation par co-écoute.** Les liens montrés sont des faits sourcés
-  (MusicBrainz, Wikidata, Wikipédia cité) ou des calculs nommés (contemporains), jamais « les
-  gens qui écoutent X écoutent aussi Y ».
-- **Pas une page pour n'importe quel nom.** Une page artiste n'existe que pour un artiste que
-  l'antenne a joué ; la frise ne montre que ce que MusicBrainz porte, sous son identifiant.
+- **Pas un service à la demande.** On écoute le direct ; pour un titre précis, le site mène à
+  une plateforme par un lien réel, jamais par une recherche déguisée.
+- **Pas une affirmation sans preuve.** Une proximité calculée n'est jamais présentée comme une
+  influence (§2.2), une absence reste une absence.
+- **Pas une boucle de goût.** Ce que les auditeurs gardent ne nourrit pas l'antenne : la radio
+  est dans la couleur de Victor, pas dans celle de son audience.
+- **Pas une page artiste pour n'importe quel nom.** Une page artiste n'existe que pour un artiste
+  que l'antenne a joué ; Musilogy couvre tout artiste qui a un MBID.
 
-## 2. Principes communs
+## 2. Musilogy
+
+### 2.1 La promesse
+
+Ouvrir un artiste et voir sa place dans l'histoire : qui faisait déjà cette musique avant lui,
+qui la faisait en même temps, qui l'a reprise après ; qui il a cité comme influence ; dans quels
+groupes ses membres ont joué. Chaque lien se suit, et la carte se recentre : on apprend en
+marchant d'un artiste à l'autre.
+
+### 2.2 Trois couches, trois niveaux de preuve
+
+| Couche | Source | Couverture mesurée | Ce que le site en dit |
+|---|---|---|---|
+| **Proximité × temps** | artistes proches selon ListenBrainz (co-écoute), rangés par leurs dates MusicBrainz | 15 des 16 artistes joués échantillonnés ont 100 voisins, des plus confidentiels (1 045 auditeurs) aux plus connus (2026-10-04) | « avant lui, en même temps, après lui, dans la même veine » — jamais « influencé par » |
+| **Influences déclarées** | Wikidata (P737), puis citations extraites de Wikipédia avec leur phrase | 13 des 147 artistes joués via Wikidata (2026-10-03) | « a cité X comme influence », avec la source |
+| **Liens de groupe** | relations entre artistes de MusicBrainz | 75 % des artistes joués ont au moins un autre projet à deux pas, médiane 2 (2026-10-04) | « membre de », « autre projet de » |
+
+La proximité seule ne dit pas qui a inspiré qui ; le temps lui donne un sens (avant, pendant,
+après), et l'influence déclarée, quand elle existe, prime sur elle et se voit. Le classement
+d'une couche est un calcul nommé, documenté, jamais un jugement.
+
+### 2.3 La carte et le texte
+
+- **La carte** : le temps de gauche à droite, l'artiste au centre sur ses années d'activité ; les
+  artistes proches posés à leur année de début, d'autant plus près de l'axe qu'ils sont proches ;
+  les influences déclarées et les liens de groupe dessinés par-dessus. Un clic recentre. La
+  disposition est fixée par les dates, pas par une simulation de forces : elle reste lisible.
+- **Le texte** : sous la carte, la même chose en phrases et en listes, avec les sources. C'est ce
+  que lisent les lecteurs d'écran et les moteurs de recherche.
+- **Indexée quand elle est riche** : une page Musilogy est proposée aux moteurs de recherche
+  au-delà d'un seuil de contenu à mesurer ; en deçà, elle existe mais n'est pas listée.
+
+### 2.4 Conditions préalables
+
+- **Licence de la similarité ListenBrainz** : le service (`labs.api.listenbrainz.org`) ne la
+  publie pas sur sa page ; MetaBrainz publie ses jeux de données en CC0. À confirmer avant de
+  publier quoi que ce soit qui en dérive.
+- **Service expérimental** : musilogy en fait des relevés datés, stockés chez nous comme la
+  popularité ; le site ne l'appelle jamais à chaud.
+
+## 3. Principes communs
 
 1. **Le flux d'abord.** Rien — tâche lourde, déploiement, sauvegarde — ne doit couper l'antenne ;
    AzuraCast est prioritaire sur le CPU (`cpu_shares`), et chaque conteneur a un plafond de
    mémoire.
 2. **Rien n'est affirmé sans source.** Une valeur dérivée voyage avec sa provenance, une absence
    reste une absence (`null`, jamais zéro), et le texte du site ne promet rien que le système ne
-   fasse (pas « enchaînés avec soin » tant que l'enchaînement n'est pas mesuré).
-3. **Une donnée, un propriétaire ; un fait, une source** (§3.1 et §3.5).
-4. **Rien d'inventé.** Un outil existant, maintenu, vérifié le jour du choix ; le code maison est
+   fasse.
+3. **Identifier, ne pas deviner.** Un titre et un artiste se reconnaissent par un identifiant
+   standard (ISRC, MBID, identifiant Deezer), jamais par la seule ressemblance d'un nom (§4.4).
+4. **Une donnée, un propriétaire ; un fait, une source** (§4.1 et §4.5).
+5. **Rien d'inventé.** Un outil existant, maintenu, vérifié le jour du choix ; le code maison est
    la colle. Un mécanisme qui ne prouve pas son utilité est retiré.
-5. **Mesurer avant de décider**, et écrire la mesure là où la décision est prise.
-6. **Un seul style**, sobre et doux, en français et en anglais ; aucune interface expliquée par
+6. **Mesurer avant de décider**, et écrire la mesure là où la décision est prise.
+7. **Un seul style**, sobre et doux, en français et en anglais ; aucune interface expliquée par
    une légende.
 
-## 3. Architecture
+## 4. Architecture
 
-### 3.1 Les pièces et ce qu'elles possèdent
+### 4.1 Les pièces et ce qu'elles possèdent
 
 | Pièce | Rôle | Possède (seule à écrire) | Lit |
 |---|---|---|---|
-| `azuracast/` | diffuser | l'antenne : médias, playlists, historique de diffusion | — |
-| `pipeline/` | choisir ce qui passe | le goût (modèle, votes, candidats) et la bibliothèque d'antenne, qu'il publie par l'API d'AzuraCast | Plex (lecture seule), Deezer, Last.fm, Hype Machine, Soulseek |
-| `site/` | l'expérience de l'auditeur | comptes, titres gardés, identité des artistes joués (`artist`), journal de diffusion (`radio_play`) | AzuraCast (lecture seule), Deezer, MusicBrainz, Wikipédia, le schéma `musilogy` |
-| `musilogy/` | la carte du terrain musical | ses tables, produites hors ligne depuis des dumps épinglés, et le schéma `musilogy` de la base du site, qu'il remplace en bloc à chaque `musilogy load` | dumps MusicBrainz, relevé ListenBrainz |
+| `azuracast/` | diffuser | l'antenne : médias et leurs métadonnées, playlists, historique de diffusion | — |
+| `pipeline/` | choisir ce qui passe | le goût (modèle, votes, candidats) et la bibliothèque d'antenne, qu'il publie par l'API d'AzuraCast avec l'ISRC de chaque titre | Plex (lecture seule), Deezer, Last.fm, Hype Machine, Soulseek |
+| `site/` | l'expérience de l'auditeur | comptes, titres gardés, identité et profil des artistes joués, journal de diffusion | AzuraCast (lecture seule), Deezer, MusicBrainz, Wikidata, Wikipédia, le schéma `musilogy` |
+| `musilogy/` | les données de Musilogy | ses tables, produites hors ligne depuis des sources épinglées et datées, et le schéma `musilogy` de la base du site, qu'il remplace en bloc à chaque `musilogy load` | dumps MusicBrainz, relevés ListenBrainz (popularité, proximité), Wikidata |
 
-### 3.2 Les flux
+### 4.2 Les flux
 
 ```
- Plex ──lecture──► pipeline ──API (dépôt, déplacement)──► AzuraCast ──flux MP3──► auditeur
-                       ▲                                       │
-         votes de Victor (page privée)                  now-playing, historique
-                                                               ▼
- dumps MusicBrainz,                                          site ◄──── auditeur
- relevé ListenBrainz ──► musilogy ──musilogy load──► schéma `musilogy` (base du site)
+ Plex ──lecture──► pipeline ──API : fichier + ISRC──► AzuraCast ──flux MP3──► auditeur
+                       ▲                                   │
+         votes de Victor (page privée)       now-playing (ISRC compris), historique
+                                                           ▼
+ dumps MusicBrainz,                                      site ◄──── auditeur
+ relevés ListenBrainz, ──► musilogy ──musilogy load──► schéma `musilogy` (base du site)
+ Wikidata
 ```
 
-### 3.3 Les contrats
-
-Chaque frontière a un contrat écrit, et un seul :
+### 4.3 Les contrats
 
 | Entre | Contrat | Où il est écrit |
 |---|---|---|
-| pipeline → AzuraCast | API AzuraCast, dossier `antenne/`, jamais de réécriture de balises | `pipeline/docs/vision.md` §7.2 |
-| site ← AzuraCast | now-playing statique et historique, en lecture | `site/CLAUDE.md` |
-| site ← musilogy | les fonctions SQL de `musilogy/src/musilogy/pg/90_*.sql` : le site n'appelle qu'elles, jamais les tables, et elles sont testées contre Postgres côté musilogy | spec de la frise, « Intégration dans le site » |
-| site ← Deezer, MusicBrainz, Wikipédia | à chaud, caché, chacun isolé et autorisé à tomber seul | `site/CLAUDE.md` |
+| pipeline → AzuraCast | API AzuraCast, dossier `antenne/`, l'ISRC de chaque titre dans le champ `isrc` du fichier (`PUT /station/{station_id}/file/{id}`, schéma `Api_StationMedia`), jamais de réécriture de balises | `pipeline/docs/vision.md` §7.2 |
+| site ← AzuraCast | now-playing et historique en lecture, dont `song.isrc` | `site/CLAUDE.md` |
+| site ← musilogy | les fonctions SQL de `musilogy/src/musilogy/pg/90_*.sql` : le site n'appelle qu'elles, jamais les tables | conception de musilogy |
+| site ← Deezer, MusicBrainz, Wikidata, Wikipédia | chacun isolé, autorisé à tomber seul, son dernier résultat gardé en base (§4.6) | `site/CLAUDE.md` |
 
 **Couplages interdits**, et pourquoi :
 
 - **pipeline ↔ site** : l'antenne ne dépend pas du site, le site ne pilote pas l'antenne ; tout
-  passe par AzuraCast. Les titres gardés par les auditeurs ne deviennent pas un signal de goût :
-  la radio est dans la couleur de Victor, pas dans celle de son audience.
+  passe par AzuraCast, ISRC compris.
 - **site → musilogy à l'exécution** : le site lit une copie chargée, jamais le pipeline de
-  données ; musilogy peut être en panne, en travaux ou absent sans que le site tombe.
+  données ; musilogy peut être en panne, en travaux ou absent sans que le site tombe — Musilogy
+  affiche alors son indisponibilité, la page artiste n'en dépend pas.
 
-### 3.4 L'identité d'un artiste
+### 4.4 L'identité d'un titre et d'un artiste
 
-Un artiste a trois identités, et chacune a son rôle :
+Le titre se reconnaît par son **ISRC**, l'artiste par son **MBID** (le pivot vers Musilogy) et
+par son **identifiant Deezer** (portrait, liens d'écoute). Le pipeline connaît l'identifiant
+Deezer de chaque titre qu'il publie ; il en tire l'ISRC et l'écrit dans AzuraCast. Le site résout
+ensuite, dans cet ordre :
 
-| Identité | Portée | Rôle |
-|---|---|---|
-| le texte crédité par AzuraCast | ce qui passe | ce que l'auditeur entend annoncer |
-| `artist.id` (site) | les artistes joués | l'URL stable de la page artiste |
-| le MBID (MusicBrainz) | 2,3 M d'artistes | **le pivot** : la clé de musilogy, donc de la frise, de la filiation et des contemporains |
+1. **ISRC → MusicBrainz** (`/ws/2/isrc/{isrc}?inc=artist-credits`) : le MBID de chaque artiste
+   crédité. 32 des 40 titres de l'antenne tirés au hasard y sont reconnus (2026-10-04).
+2. **ISRC → Deezer** : l'artiste Deezer exact du titre, sans recherche par nom.
+3. **Lien Deezer déclaré dans MusicBrainz** : pour les titres que l'ISRC ne relie pas.
+4. **Rien d'autre.** Un artiste non identifié a sa page avec ce que l'antenne en sait, sans faits
+   ni Musilogy ; l'absence se corrige à la source (MusicBrainz), pas par une devinette.
 
-Le site passe du texte à `artist.id` (`artistResolver`), puis de Deezer au MBID par le lien
-Deezer que MusicBrainz déclare. **Ce MBID est enregistré dans `artist.mbid` dès qu'il est
-trouvé** : c'est le pont entre l'antenne et la frise. Chaque artiste joué est résolu à son premier
-passage, pas quand un auditeur ouvre sa page.
+Un titre gardé enregistre son ISRC et l'artiste qu'il désigne, au moment où il est gardé : c'est
+ce qui permet à la page artiste de montrer « vos titres gardés ». Un featuring crédite plusieurs
+artistes : la page est celle de l'artiste principal, chaque crédité est relié.
 
-Quand musilogy extraira les relations URL (étape 4 de sa spec), le passage Deezer → MBID se fera
-hors ligne, pour tous les artistes joués, sans appel à MusicBrainz.
-
-### 3.5 Un fait, une source
+### 4.5 Un fait, une source
 
 | Fait | Source | Pourquoi |
 |---|---|---|
 | ce que l'antenne a joué | `radio_play` (site) | aucune source externe ne le sait |
-| portrait | Deezer, à chaud, lié par un titre joué | l'image la plus juste pour un artiste joué |
-| faits de la page artiste (type, lieu, années) | MusicBrainz, à chaud | à jour pour les nouveautés, que le dump épinglé ne connaît pas encore |
-| ouverture de l'article | Wikipédia, à chaud, CC BY-SA | — |
-| ligne de vie, genres, filiation, contemporains, popularité (frise) | musilogy, datés du dump et du relevé | reproductibles, avec leur provenance ; c'est ce qui se dessine |
+| ce que l'auditeur a gardé | `liked_tracks` (site) | idem |
+| portrait | Deezer | l'image de l'artiste exact du titre |
+| faits de la page artiste (type, lieu, années) | MusicBrainz, rafraîchis | à jour pour les nouveautés que le dump épinglé ne connaît pas |
+| ouverture de l'article | Wikipédia (CC BY-SA), via Wikidata | — |
+| proximités, influences, liens de groupe, dates (Musilogy) | musilogy, datés de leurs relevés | reproductibles, avec leur provenance |
 
-La page artiste et la frise peuvent donc donner deux années de début différentes pour un même
-artiste : la page montre la date déclarée aujourd'hui, la frise la ligne de vie du dump, avec sa
-provenance (déclarée, ou déduite du premier album). Chaque surface affiche la source de ce
-qu'elle montre ; aucune ne recopie l'autre.
+La page artiste et Musilogy peuvent donner deux années différentes pour un même artiste : chacune
+affiche la source de ce qu'elle montre, aucune ne recopie l'autre.
 
-### 3.6 L'exécution
+### 4.6 Une page artiste qui répond toujours
+
+- **Chaque source tombe seule** : une panne de Deezer, de MusicBrainz ou de Wikipédia vide sa
+  section, jamais la page.
+- **Le dernier état connu est gardé en base**, pas en mémoire : un redémarrage ou un déploiement
+  ne fait pas tout réinterroger, et la page sert le profil connu pendant qu'il se rafraîchit.
+- **Jamais de page vide** : l'ouverture de Wikipédia quand l'article existe (FR ou EN : 136 des
+  149 artistes joués identifiés, 2026-10-04) ; sinon un portrait factuel en phrases tiré de
+  MusicBrainz ; sinon le nom et ce que l'antenne en a joué.
+
+### 4.7 L'exécution
 
 Une seule machine, partagée avec d'autres services (victorserv, 16 Go). Faute de budget, c'est
 un choix assumé, pas une étape provisoire, et il impose :
@@ -143,8 +197,7 @@ un choix assumé, pas une étape provisoire, et il impose :
 - **les tâches lourdes plafonnées** (`systemd-run --scope`, `musilogy/CLAUDE.md`) ;
 - **le déploiement par fusion sur `master`**, tiré par un timer, jamais pendant la passe
   hebdomadaire ;
-- **des sauvegardes sur un disque distinct**, dont les médias de l'antenne (restic, quotidien) :
-  ils ne se retéléchargent pas à l'identique, et les votes et l'historique y sont attachés ;
+- **des sauvegardes sur un disque distinct**, dont les médias de l'antenne (restic, quotidien) ;
 - **une surveillance par Gatus**, chaque tâche planifiée envoyant son battement de cœur.
 
 Risques connus, acceptés tant que leur déclencheur ne s'est pas produit :
@@ -155,60 +208,68 @@ Risques connus, acceptés tant que leur déclencheur ne s'est pas produit :
 | aucune copie hors de la maison | dès qu'un stockage gratuit (B2 ou R2, 10 Go) est ouvert |
 | une seule machine : si elle tombe, la radio se tait | un budget d'hébergement (CX33 + Storage Box ≈ 12 € HT/mois au 2026-10-03) |
 
-## 4. Les surfaces du site
+## 5. Les surfaces
 
-| Surface | Route | Indexée | Rôle |
+| Surface | Route | Indexée | Geste |
 |---|---|---|---|
 | Accueil | `/`, `/en` | oui, pré-rendue | Écouter |
-| Page artiste | `/artist/:id/:slug` | oui | Savoir, pour un artiste joué ; section « filiation et contemporains » et lien « voir sur la frise » quand son MBID est connu |
-| Frise | `/frieze`, `/en/frieze` (sur le modèle de `/artist`) | non tant qu'elle est un prototype | Explorer ; la fiche d'un artiste joué signale qu'il est passé à l'antenne et mène à sa page |
+| Page artiste | `/artist/:id/:slug` | oui | Savoir |
+| Musilogy | `/musilogy`, `/musilogy/:mbid/:slug` (et `/en/…`) | au-delà d'un seuil de contenu (§2.3) | Comprendre |
 | Bibliothèque, compte | fenêtres de l'accueil | non | Garder |
 
-La frise reste non listée tant que les seuils de zoom ne sont pas mesurés et que les trois
-listes (inspirations, descendance, contemporains) n'ont pas été jugées sur des artistes connus.
+`/frieze` disparaît.
 
-## 5. Écarts actuels
+## 6. Écarts actuels
 
-Ce qui ne s'emboîte pas encore, mesuré le 2026-10-03 :
+Ce qui ne s'emboîte pas encore, mesuré les 2026-10-03 et 2026-10-04 :
 
-1. **Les alertes « artiste aimé » ne reconnaissent pas l'artiste comme le reste du site** : elles
+1. **Le site porte ce que cette vision abandonne** : la frise des genres (`/frieze`, #266), son
+   API (`/api/frieze`, #262), la section filiation et contemporains de la page artiste (#264) ;
+   côté musilogy, les tables et fonctions qui les servent (densité, activité, scènes, filiation,
+   contemporains).
+2. **L'identité est devinée** : l'artiste se trouve par une recherche Deezer sur le nom et un
+   titre joué, le MBID seulement par le lien Deezer que MusicBrainz déclare ; 21 des 168 artistes
+   joués n'ont pas de MBID, et Can est rattaché à une mauvaise page Deezer. Le champ `isrc`
+   d'AzuraCast est vide pour tous les titres.
+3. **Les titres gardés ne sont reliés à rien** : `liked_tracks` ne garde que le nom de l'artiste
+   en texte, `isrc` est vide pour les 91 titres, `songlink_url` pointe vers un service fermé ;
+   12 des 88 artistes gardés correspondent à un artiste connu du site.
+4. **La page artiste dépend de caches en mémoire** : chaque déploiement les vide, et une page
+   froide enchaîne Deezer, MusicBrainz, Wikidata et Wikipédia à chaud.
+5. **Les alertes « artiste aimé » ne reconnaissent pas l'artiste comme le reste du site** : elles
    comparent le nom en minuscules brutes (`likedArtistWatcher`), là où l'identité utilise le nom
-   normalisé (`normalizeArtistName`) ; « Beyoncé » aimé ne déclenche rien quand « Beyonce » passe.
-2. **La frise n'a pas d'API côté site.** Les fonctions SQL sont prêtes (PR #257) ; l'API et le
-   front restent à faire, sur des types partagés qui réutilisent la même référence d'artiste que
-   la page artiste.
-3. **Documents qui se contredisent** :
-   - `pipeline/docs/vision.md` se titre « AubeSonore — vision » alors qu'il conçoit le pipeline ;
-     son §11 dit que le site « a son propre dépôt » (faux depuis le monorepo) et que les médias
-     ne se sauvegardent pas (faux depuis le 2026-10-03) ;
-   - le `CLAUDE.md` racine dit que le contrôle avant push du site ne tourne que si `site/`
-     change, alors qu'il a rejoué tout le CI du site sur un changement de `musilogy/` seul ;
-   - `site/apps/backend/src/db/index.ts` justifie son réglage TLS par des hébergeurs gérés
-     (Railway, Supabase) que le site n'utilise plus ;
-   - `site/docs/scaling-roadmap.md` ne fait passer Cloudflare devant la radio qu'au palier P2,
-     alors que le flux passe déjà par le Tunnel.
-4. **Le README du site décrit un site qui n'existe plus** : liens par Songlink/Odesli (fermé le
-   2026-07-31), « identité jour/nuit » et « fil-journée » (retirés au profit d'un seul style).
-5. **La migration `0006_timestamptz` avale toute erreur** (`EXCEPTION WHEN OTHERS THEN NULL`) :
-   déjà appliquée en production, elle ne refait rien, mais un échec y passerait inaperçu.
-6. **Aucune copie hors de la maison** (§3.6).
+   normalisé.
+6. **Le README du site décrit un site qui n'existe plus** : Songlink/Odesli (fermé le
+   2026-07-31), identité jour/nuit, fil-journée.
+7. **La migration `0006_timestamptz` avale toute erreur** (`EXCEPTION WHEN OTHERS THEN NULL`).
+8. **Aucune copie hors de la maison** (§4.7).
 
-## 6. Feuille de route
+## 7. Feuille de route
 
-Dans cet ordre ; chaque étape est une PR courte, fusionnée avant la suivante.
+Dans cet ordre ; chaque étape est une ou plusieurs PR courtes, fusionnées avant la suivante.
 
-1. **Ce document**, validé, et les écarts documentaires du §5.3 corrigés.
-2. **Fonctions SQL de la frise** (PR #257), puis `musilogy load` en production.
-3. **Le pont** : `artist.mbid` enregistré dès qu'il est trouvé, chaque artiste joué résolu à son
-   premier passage, et les artistes déjà joués rattrapés.
-4. **L'API** : `/api/frieze/*` (vue d'ensemble, fenêtre, fiche) et les types partagés, dont une
-   référence d'artiste commune à la page artiste et à la frise.
-5. **La page artiste** : section filiation et contemporains, lien vers la frise.
-6. **La frise**, non listée : mesure des seuils de zoom, jugement des listes, puis lien depuis
-   le site.
-7. **musilogy, étape 4** : relations URL (Deezer → MBID hors ligne, liens d'écoute) et genres
-   Discogs.
-8. **musilogy, étapes 5 et 6** : graphe des genres, Wikidata, Wikipédia.
+1. **Cette vision**, validée.
+2. **Retraits** : la frise, son API et la section filiation de la page artiste quittent le site,
+   avec leurs types, messages et documents (écart 1, côté site).
+3. **Identité exacte** : le pipeline écrit l'ISRC de chaque titre dans AzuraCast, rattrapage des
+   titres déjà publiés compris ; le site résout par l'ISRC (§4.4) ; un titre gardé enregistre son
+   ISRC et son artiste, et les 91 titres gardés sont rattrapés (écarts 2, 3 et 5).
+4. **Page artiste** : profil gardé en base, portrait factuel, vos titres gardés ou ce que
+   l'antenne a joué, lien vers Musilogy (écart 4).
+5. **musilogy refondu** : retrait de ce qui servait la frise et la filiation ; relevé daté des
+   proximités ListenBrainz, influences Wikidata, liens de groupe ; une nouvelle conception écrite
+   dans `musilogy/` (écart 1, côté musilogy).
+6. **Musilogy, le produit** : la page texte d'un artiste d'abord, puis la carte, puis le seuil
+   d'indexation mesuré.
+7. **Influences tirées de Wikipédia**, chaque citation avec sa phrase, après mesure du coût.
+8. **Liens d'œuvre** : featurings, remixes, producteurs, tirés du dump MusicBrainz.
 
-En parallèle, côté exploitation : copie hors site dès qu'un compte de stockage existe, et test
-du disque de sauvegarde sur un port USB natif.
+En parallèle : le README du site et la migration 0006 (écarts 6 et 7), la copie hors site dès
+qu'un compte de stockage existe, le test du disque de sauvegarde sur un port USB natif.
+
+## 8. Ce qui est remplacé
+
+- `musilogy/docs/superpowers/specs/2026-10-02-frieze-lineage-design.md` décrit la frise et la
+  filiation abandonnées ; il reste en vigueur pour ce qui est construit jusqu'à l'étape 5, qui le
+  remplace.
+- La version du 2026-10-03 de ce document reste dans l'historique git.
