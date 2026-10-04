@@ -135,23 +135,29 @@ export function LikedTracksModalView({
       {totalCount > 0 ? (
         <div className="border-border text-ui text-text-muted flex items-center justify-between border-b px-6 py-1.5 font-normal md:px-8">
           <span>{m.library_open_with()}</span>
-          <Menu
-            trigger={
-              <button
-                type="button"
-                aria-label={m.library_platform_picker()}
-                className="text-text focus-visible:outline-accent flex min-h-11 items-center gap-1.5 rounded-sm font-semibold focus-visible:outline-2 [&[data-popup-open]>svg]:rotate-180"
-              >
-                {platformName}
-                <ChevronDown className="ease-out-quart size-3.5 transition-transform duration-150" />
-              </button>
-            }
-            items={platforms.map((platform) => ({
-              label: platform.name,
-              onSelect: () => onSelectPlatform(platform.id),
-              selected: platform.id === selectedPlatformId,
-            }))}
-          />
+          {platforms.length < 2 ? (
+            <span className="text-text flex min-h-11 items-center font-semibold">
+              {platformName}
+            </span>
+          ) : (
+            <Menu
+              trigger={
+                <button
+                  type="button"
+                  aria-label={m.library_platform_picker()}
+                  className="text-text focus-visible:outline-accent flex min-h-11 items-center gap-1.5 rounded-sm font-semibold focus-visible:outline-2 [&[data-popup-open]>svg]:rotate-180"
+                >
+                  {platformName}
+                  <ChevronDown className="ease-out-quart size-3.5 transition-transform duration-150" />
+                </button>
+              }
+              items={platforms.map((platform) => ({
+                label: platform.name,
+                onSelect: () => onSelectPlatform(platform.id),
+                selected: platform.id === selectedPlatformId,
+              }))}
+            />
+          )}
         </div>
       ) : null}
 
