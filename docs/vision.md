@@ -132,7 +132,7 @@ d'une couche est un calcul nommé, documenté, jamais un jugement.
 
 | Entre | Contrat | Où il est écrit |
 |---|---|---|
-| pipeline → AzuraCast | API AzuraCast, dossier `antenne/`, l'ISRC de chaque titre dans le champ `isrc` du fichier (`PUT /station/{station_id}/file/{id}`, schéma `Api_StationMedia`), jamais de réécriture de balises | `pipeline/docs/vision.md` §7.2 |
+| pipeline → AzuraCast | API AzuraCast, dossier `antenne/` ; l'ISRC de chaque titre écrit dans le fichier en trame ID3 `TSRC`, qu'AzuraCast range dans le champ `isrc` du média ; jamais de `PUT /file/{id}`, qui réécrit et supprime les balises | `pipeline/docs/vision.md` §6 et §7.2 |
 | site ← AzuraCast | now-playing et historique en lecture, dont `song.isrc` | `site/CLAUDE.md` |
 | site ← musilogy | les fonctions SQL de `musilogy/src/musilogy/pg/90_*.sql` : le site n'appelle qu'elles, jamais les tables | conception de musilogy |
 | site ← Deezer, MusicBrainz, Wikidata, Wikipédia | chacun isolé, autorisé à tomber seul, son dernier résultat gardé en base (§4.6) | `site/CLAUDE.md` |
@@ -149,7 +149,8 @@ d'une couche est un calcul nommé, documenté, jamais un jugement.
 
 Le titre se reconnaît par son **ISRC**, l'artiste par son **MBID** (le pivot vers Musilogy) et
 par son **identifiant Deezer** (portrait, liens d'écoute). Le pipeline connaît l'identifiant
-Deezer de chaque titre qu'il publie ; il en tire l'ISRC et l'écrit dans AzuraCast. Le site résout
+Deezer de chaque titre qu'il publie ; il en tire l'ISRC et l'écrit dans le fichier, où
+AzuraCast le lit. Le site résout
 ensuite, dans cet ordre :
 
 1. **ISRC → MusicBrainz** (`/ws/2/isrc/{isrc}?inc=artist-credits`) : le MBID de chaque artiste

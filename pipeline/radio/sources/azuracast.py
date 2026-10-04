@@ -51,6 +51,10 @@ class AzuracastClient:
         )
         return Media(int(m["id"]), str(m["song_id"]), str(m["path"]))
 
+    def download(self, media_id: int) -> bytes:
+        """Le fichier tel qu'AzuraCast le sert (`GET /file/{id}/play`)."""
+        return self._request("GET", self._at(f"/file/{media_id}/play")).content
+
     def delete(self, paths: list[str]) -> list[str]:
         """Supprime des fichiers ; renvoie les erreurs signalées par AzuraCast."""
         r = self._call("PUT", self._at("/files/batch"), json={"do": "delete", "files": paths})
@@ -134,8 +138,11 @@ class AzuracastClient:
     def _at(self, path: str) -> str:
         return f"/station/{self._station}{path}"
 
-    @stamina.retry(on=AzuracastUnavailable, attempts=5, wait_initial=1.0, wait_max=30.0)
     def _call(self, method: str, path: str, **kw: Any) -> Any:
+        return self._request(method, path, **kw).json()
+
+    @stamina.retry(on=AzuracastUnavailable, attempts=5, wait_initial=1.0, wait_max=30.0)
+    def _request(self, method: str, path: str, **kw: Any) -> requests.Response:
         try:
             r = self._session.request(
                 method, self._api + path, headers=self._headers, timeout=120, **kw
@@ -146,4 +153,4 @@ class AzuracastClient:
             raise AzuracastUnavailable(f"HTTP {r.status_code}")
         if r.status_code >= 400:
             raise AzuracastError(f"HTTP {r.status_code}")
-        return r.json()
+        return r

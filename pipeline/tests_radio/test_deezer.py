@@ -187,6 +187,16 @@ def test_track_page_carries_preview_and_album_in_one_request() -> None:
 
 
 @responses.activate
+def test_track_page_keeps_only_a_well_formed_isrc() -> None:
+    responses.get(API + "/track/1", json=item(id=1, isrc="FRZ039800212"))
+    responses.get(API + "/track/2", json=item(id=2, isrc=""))
+    responses.get(API + "/track/3", json=item(id=3, isrc="FR-Z03-98-00212"))
+    responses.get(API + "/track/4", json=item(id=4))
+    isrcs = [p.isrc if (p := client().track_page(t)) else "?" for t in (1, 2, 3, 4)]
+    assert isrcs == ["FRZ039800212", None, None, None]
+
+
+@responses.activate
 def test_download() -> None:
     responses.get(PREVIEW, body=b"ID3data")
     assert client().download(PREVIEW) == b"ID3data"

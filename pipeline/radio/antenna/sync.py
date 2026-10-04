@@ -21,7 +21,7 @@ from typing import Protocol
 
 import numpy as np
 
-from radio.acquire.audio import ToolError, prepare, probe
+from radio.acquire.audio import ToolError, isrc_of, prepare, probe, with_isrc
 from radio.acquire.run import tags_for
 from radio.core.config import AntenneConfig, GrilleConfig
 from radio.library.weights import play_weight
@@ -41,6 +41,8 @@ class Station(Protocol):
     def files(self) -> list[Media]: ...
 
     def upload(self, path: str, data: bytes) -> Media: ...
+
+    def download(self, media_id: int) -> bytes: ...
 
     def delete(self, paths: list[str]) -> list[str]: ...
 
@@ -377,7 +379,7 @@ def rotate_references(
                     rep.skipped_references.append(f"repère {tid} : disparu de Deezer")
                     continue
                 p = probe(Path(file))
-                tags = tags_for(deezer, tid, artist, title, page.album)
+                tags = tags_for(deezer, tid, artist, title, page)
                 prepare(Path(file), dest, p.codec, tags, rsgain)
             except (ToolError, DeezerError) as e:
                 rep.skipped_references.append(f"repère {tid} : {e}")
@@ -415,3 +417,59 @@ def antenne_pass(
         "SELECT COUNT(*) FROM antenne WHERE categorie != 'repos'"
     ).fetchone()[0]
     return rep
+
+
+@dataclass
+class IsrcReport:
+    n_tagged: int = 0
+    n_already: int = 0
+    n_no_isrc: int = 0
+    n_gone: int = 0
+    n_busy: int = 0
+    errors: list[str] = field(default_factory=list)
+
+
+def isrc_backfill(
+    conn: sqlite3.Connection, station: Station, deezer: DeezerClient, rep: IsrcReport
+) -> None:
+    """Rattrapage des titres publiés avant l'ISRC : chaque fichier est relu dans AzuraCast,
+    reçoit sa trame TSRC et est redéposé sur son chemin, ce qui remplace le média en place
+    (§7.2). Le titre en cours et la file attendent un nouveau passage ; un titre déjà
+    étiqueté n'est pas redéposé, la commande se relance sans effet."""
+    busy = station.busy_song_ids()
+    rows = conn.execute(
+        "SELECT deezer_track_id, media_id, song_id, path FROM antenne ORDER BY deezer_track_id"
+    ).fetchall()
+    with tempfile.TemporaryDirectory() as tmp:
+        src, dest = Path(tmp) / "src.mp3", Path(tmp) / "dest.mp3"
+        for tid, media_id, song_id, path in rows:
+            if song_id in busy:
+                rep.n_busy += 1
+                continue
+            try:
+                page = deezer.track_page(tid)
+            except DeezerError as e:
+                rep.errors.append(f"{tid} : Deezer {e}")
+                continue
+            if page is None:
+                rep.n_gone += 1
+                continue
+            if page.isrc is None:
+                rep.n_no_isrc += 1
+                continue
+            try:
+                src.write_bytes(station.download(media_id))
+                if isrc_of(src) == page.isrc:
+                    rep.n_already += 1
+                    continue
+                with_isrc(src, dest, page.isrc)
+                m = station.upload(path, dest.read_bytes())
+            except (AzuracastError, ToolError) as e:
+                rep.errors.append(f"{tid} : {e}")
+                continue
+            with conn:
+                conn.execute(
+                    "UPDATE antenne SET media_id = ?, song_id = ? WHERE deezer_track_id = ?",
+                    (m.id, m.song_id, tid),
+                )
+            rep.n_tagged += 1

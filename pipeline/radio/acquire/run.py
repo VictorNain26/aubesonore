@@ -21,7 +21,7 @@ from typing import NamedTuple
 from radio.acquire.audio import Tags, ToolError, check, fingerprint, prepare, probe, similarity
 from radio.acquire.sockseek import Runner, Wanted, download, run_command
 from radio.core.config import AcquisitionConfig
-from radio.sources.deezer import DeezerAlbum, DeezerClient, DeezerError
+from radio.sources.deezer import DeezerClient, DeezerError, TrackPage
 
 logger = logging.getLogger(__name__)
 
@@ -105,18 +105,17 @@ def _save(
         )
 
 
-def tags_for(
-    deezer: DeezerClient, tid: int, artist: str, title: str, album: DeezerAlbum | None
-) -> Tags:
-    """Balises d'antenne : l'album et sa pochette viennent de `GET /track` par l'id exact du
-    titre. Une pochette refusée par Deezer laisse le fichier sans pochette."""
+def tags_for(deezer: DeezerClient, tid: int, artist: str, title: str, page: TrackPage) -> Tags:
+    """Balises d'antenne : l'album, sa pochette et l'ISRC viennent de `GET /track` par l'id exact
+    du titre. Une pochette refusée par Deezer laisse le fichier sans pochette."""
+    album = page.album
     cover = None
     if album is not None and album.cover_url:
         try:
             cover = deezer.download(album.cover_url)
         except DeezerError as e:
             logger.warning("pochette de %d refusée par Deezer : %s", tid, e)
-    return Tags(artist, title, tid, album.title if album else "", cover)
+    return Tags(artist, title, tid, album.title if album else "", cover, page.isrc)
 
 
 def _verify_and_prepare(
@@ -142,7 +141,7 @@ def _verify_and_prepare(
     if score < cfg.identity_threshold:
         return None, "identité", None
     dest = ready_dir / f"{want.deezer_track_id}.mp3"
-    tags = tags_for(deezer, want.deezer_track_id, want.artist, want.title, page.album)
+    tags = tags_for(deezer, want.deezer_track_id, want.artist, want.title, page)
     prepare(file, dest, p.codec, tags, rsgain)
     return dest, None, tags
 

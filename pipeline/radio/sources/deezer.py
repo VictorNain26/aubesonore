@@ -3,6 +3,7 @@
 Quota documenté : 50 requêtes / 5 s par IP ; on vise 40 / 5 s.
 """
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -15,6 +16,8 @@ import radio.core.http  # noqa: F401  (enregistre le hook de relance)
 API = "https://api.deezer.com"
 _TRANSIENT_CODES = frozenset({4, 700})
 _NO_DATA = 800
+# ISO 3901 : pays (2 lettres), déclarant (3), année (2), numéro (5).
+_ISRC = re.compile(r"[A-Z]{2}[A-Z0-9]{3}[0-9]{7}")
 
 
 class DeezerError(Exception):
@@ -49,6 +52,8 @@ class TrackPage:
     # Signée et expirante : jamais stockée, journalisée ni affichée.
     preview_url: str | None = field(repr=False)
     album: DeezerAlbum | None
+    # Absent de la recherche, seulement dans `GET /track` ; None quand Deezer n'en a pas.
+    isrc: str | None = None
 
 
 @dataclass(frozen=True)
@@ -71,6 +76,11 @@ def _track(d: Any) -> DeezerTrack:
         )
     except (KeyError, TypeError, ValueError):
         raise DeezerError("malformed track") from None
+
+
+def _isrc(value: Any) -> str | None:
+    """Un ISRC mal formé vaut absence : il ne désignerait aucun enregistrement."""
+    return value if isinstance(value, str) and _ISRC.fullmatch(value) else None
 
 
 def _artist(d: Any) -> DeezerArtist:
@@ -118,8 +128,8 @@ class DeezerClient:
         return None if page is None else (page.track, page.preview_url)
 
     def track_page(self, track_id: int) -> TrackPage | None:
-        """`GET /track` en entier : le titre, une URL d'extrait fraîche et l'album avec sa
-        pochette, en une seule requête."""
+        """`GET /track` en entier : le titre, une URL d'extrait fraîche, l'album avec sa
+        pochette et l'ISRC, en une seule requête."""
         body = self._get(f"/track/{track_id}", {})
         if "id" not in body:
             return None
@@ -128,7 +138,9 @@ class DeezerClient:
         if isinstance(album, dict):
             cover = album.get("cover_xl")
             info = DeezerAlbum(str(album.get("title") or ""), str(cover) if cover else None)
-        return TrackPage(_track(body), str(preview) if preview else None, info)
+        return TrackPage(
+            _track(body), str(preview) if preview else None, info, _isrc(body.get("isrc"))
+        )
 
     @stamina.retry(on=DeezerUnavailable, attempts=5, wait_initial=1.0, wait_max=30.0)
     def download(self, url: str) -> bytes:
