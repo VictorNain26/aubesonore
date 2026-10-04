@@ -25,7 +25,7 @@ import sqlite3
 from collections import Counter
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import UTC, date, datetime, time, timedelta, tzinfo
 from typing import Protocol
 
 import numpy as np
@@ -73,10 +73,14 @@ class Titre:
     since: float
 
 
+Span = tuple[float, float]
+
+
 @dataclass
 class Plan:
     day: date
     hours: dict[int, list[Titre]]
+    spans: dict[int, Span] = field(default_factory=dict)
     slots: dict[str, int] = field(default_factory=dict)
     empty_slots: int = 0
     unmeasured: int = 0
@@ -155,23 +159,47 @@ def slot_sequence(weights: dict[Categorie, float], n: int) -> list[Categorie]:
     return out
 
 
+def hour_spans(day: date, hours: Iterable[int], tz: tzinfo) -> dict[int, Span]:
+    """Début et fin (horodatages UNIX) de chaque heure murale du jour, dans le fuseau de la
+    station. `minuit + h * 3600` se décale d'une heure les jours de changement d'heure, deux
+    dimanches, jour de la passe. AzuraCast programme une playlist horaire sur l'heure murale
+    (`Scheduler::shouldPlayInSchedulePeriod`, 0.23.8) : une heure qui n'existe pas (2 h, au
+    passage à l'heure d'été) ne joue jamais et est omise ; celle qui se répète (2 h, au passage à
+    l'heure d'hiver) dure deux heures."""
+
+    def start(d: date, h: int) -> datetime | None:
+        t = datetime.combine(d, time(h), tzinfo=tz)
+        return t if t.astimezone(UTC).astimezone(tz).hour == h else None
+
+    out: dict[int, Span] = {}
+    for h in hours:
+        begin = start(day, h)
+        if begin is None:
+            continue
+        later = (t for t in (start(day, k) for k in range(h + 1, 24)) if t is not None)
+        end = next(later, datetime.combine(day + timedelta(days=1), time(0), tzinfo=tz))
+        out[h] = (begin.timestamp(), end.timestamp())
+    return out
+
+
 def plan_day(
     titres: list[Titre],
     last_played: dict[str, float],
     grille: GrilleConfig,
     day: date,
-    hours: list[int],
+    spans: dict[int, Span],
     midnight: float,
     previous: Titre | None = None,
 ) -> Plan:
-    """`midnight` : minuit du jour, horodatage UNIX dans le fuseau de la station ; `last_played`
-    : dernier passage de chaque titre (song_id), même horloge."""
-    plan = Plan(day, {h: [] for h in hours}, unmeasured=sum(not t.measured for t in titres))
+    """`spans` : début et fin de chaque heure à planifier (`hour_spans`) ; `midnight` : minuit du
+    jour ; `last_played` : dernier passage de chaque titre (song_id). Tous en horodatages UNIX."""
+    plan = Plan(
+        day, {h: [] for h in spans}, spans=spans, unmeasured=sum(not t.measured for t in titres)
+    )
     weights = {c: w for c, w in shares(titres, grille).items() if w > 0}
-    if not weights or not hours:
+    if not weights or not spans:
         return plan
     per_hour = math.ceil(grille.titres_par_heure) + 1
-    hour_slots = slot_sequence(weights, per_hour)
     iso = day.isoweekday()
     # Rotation : dernier passage connu, puis chaque titre placé prend l'heure de son créneau.
     clock: dict[int, float | None] = {t.tid: last_played.get(t.song_id) for t in titres}
@@ -207,11 +235,11 @@ def plan_day(
     # Un titre pas joué depuis plus de `force` tours : la rotation ne tient pas, à surveiller.
     plan.late = sum(overdue(t, midnight) > grille.force for c in weights for t in by_cat[c])
 
-    for h in hours:
+    for h, (hour_start, hour_end) in spans.items():
         target = _target(grille, iso, h)
-        hour_start = midnight + h * 3600
-        for k, c in enumerate(hour_slots):
-            now = hour_start + k * 3600 / per_hour
+        n_slots = round(per_hour * (hour_end - hour_start) / 3600)
+        for k, c in enumerate(slot_sequence(weights, n_slots)):
+            now = hour_start + k * (hour_end - hour_start) / n_slots
             rotation = sorted(by_cat[c], key=lambda t: (clock[t.tid] or -math.inf, t.tid))
             eligible = [t for t in rotation if allowed(t, now, hour_start)][: window[c]]
             if not eligible:
@@ -226,11 +254,11 @@ def plan_day(
             clock[t.tid] = now
             # Le fil qui dérive réordonne l'heure : l'artiste peut y passer jusqu'à sa fin, et la
             # séparation se compte de là jusqu'au début de l'heure suivante qui le reprend.
-            artist_clock[t.artist] = hour_start + 3600
+            artist_clock[t.artist] = hour_end
             plan.hours[h].append(t)
             plan.slots[c] = plan.slots.get(c, 0) + 1
     last = previous
-    for h in hours:
+    for h in spans:
         plan.hours[h] = _drift(plan.hours[h], last, _target(grille, iso, h))
         if plan.hours[h]:
             last = plan.hours[h][-1]
@@ -255,33 +283,34 @@ def _drift(titres: list[Titre], previous: Titre | None, target: Vector) -> list[
     return out
 
 
-def record(conn: sqlite3.Connection, plan: Plan, midnight: float) -> None:
+def record(conn: sqlite3.Connection, plan: Plan) -> None:
     """Garde la grille publiée heure par heure ; oublie ce qui a plus d'un jour."""
-    starts = [(midnight + h * 3600,) for h in plan.hours]
+    if not plan.spans:
+        return
+    starts = {h: begin for h, (begin, _) in plan.spans.items()}
     with conn:
-        conn.executemany("DELETE FROM grille WHERE hour_start = ?", starts)
+        conn.executemany("DELETE FROM grille WHERE hour_start = ?", [(b,) for b in starts.values()])
         conn.executemany(
             "INSERT INTO grille VALUES (?, ?)",
-            [(midnight + h * 3600, t.song_id) for h, ts in plan.hours.items() for t in ts],
+            [(starts[h], t.song_id) for h, ts in plan.hours.items() for t in ts],
         )
-        conn.execute("DELETE FROM grille WHERE hour_start < ?", (midnight - 86400,))
+        conn.execute("DELETE FROM grille WHERE hour_start < ?", (min(starts.values()) - 86400,))
 
 
 def with_published(
     conn: sqlite3.Connection,
     played: dict[str, float],
     now: float,
-    midnight: float,
-    hours: Iterable[int],
+    rewritten: Iterable[float],
 ) -> dict[str, float]:
     """Le dernier passage de chaque titre, en comptant ce que la grille publiée jouera encore :
     un titre publié, pas encore joué, compte comme joué à la fin de son heure. Sans cela, la grille
     écrite à 23:00 replace à minuit les titres et les artistes de 23 h. Les heures que le plan
-    réécrit (`hours` du jour de `midnight`) ne joueront pas ce qu'elles avaient : les compter
+    réécrit (`rewritten`, leurs débuts) ne joueront pas ce qu'elles avaient : les compter
     bloquerait jusqu'au soir chaque titre et chaque artiste qu'elles remplacent, quand la passe du
     dimanche réécrit le reste de la journée. Le titre de trop d'une heure, jamais joué, n'y perd
     qu'un jour de rotation."""
-    rewritten = {midnight + h * 3600 for h in hours}
+    rewritten = set(rewritten)
     out = dict(played)
     for start, song in conn.execute(
         "SELECT hour_start, song_id FROM grille WHERE hour_start + 3600 > ?", (now,)
