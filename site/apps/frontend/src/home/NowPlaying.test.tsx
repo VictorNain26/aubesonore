@@ -35,7 +35,10 @@ describe('NowPlayingView', () => {
 
     expect(screen.getByRole('heading', { name: 'Mimoun' })).toBeInTheDocument();
     expect(screen.getByText('Mickey 3D')).toBeInTheDocument();
-    expect(screen.getByText('Tu vas pas mourir de rire')).toBeInTheDocument();
+    expect(screen.getByText('Tu vas pas mourir de rire', { selector: 'cite' })).toBeInTheDocument();
+    expect(screen.getByText(/^extrait de/)).toHaveTextContent(
+      'extrait de Tu vas pas mourir de rire'
+    );
   });
 
   it("leaves out a single's album, which only repeats the title", () => {

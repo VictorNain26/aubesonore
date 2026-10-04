@@ -80,6 +80,7 @@
   "player_listen_aria": "Listen live",
   "player_pause_aria": "Pause",
   "player_label": "Live player",
+  "now_album_from": "from",
   "now_cover_alt": "Cover of {title}, {artist}",
   "track_keep": "Keep",
   "track_kept": "Kept",

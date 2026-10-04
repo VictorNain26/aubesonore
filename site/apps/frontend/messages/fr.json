@@ -80,6 +80,7 @@
   "player_listen_aria": "Écouter le direct",
   "player_pause_aria": "Mettre en pause",
   "player_label": "Lecteur du direct",
+  "now_album_from": "extrait de",
   "now_cover_alt": "Pochette de {title}, {artist}",
   "track_keep": "Garder",
   "track_kept": "Gardé",
