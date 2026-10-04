@@ -10,8 +10,10 @@ import { similarity, artistMatch, songMatch } from '../lib/text/matchScore';
 // Odesli (song.link) closed its keyless API on 2026-07-31 (every call answers
 // 401 PUBLIC_API_ACCESS_DEPRECATED) and no longer issues keys. So:
 // - Apple Music: iTunes Search, which also gives the cover;
-// - Deezer: its public search, then the track for its ISRC;
-// - Spotify: search by that ISRC (an exact recording match), with the app's
+// - Deezer: the track of the kept track's ISRC when it is known, an exact
+//   recording (the pipeline acquires every track from its Deezer page and
+//   writes that page's ISRC); else its public search, then that track's ISRC;
+// - Spotify: search by the ISRC (an exact recording match), with the app's
 //   client credentials. Since February 2026 a development-mode app answers 403
 //   unless its owner holds Premium: that is logged and retried, never cached;
 // - every other platform: the song.link landing page, which resolves itself.
@@ -107,6 +109,33 @@ interface DeezerSearchResponse {
   data: Array<{ id: number; title: string; link: string; artist: { name: string } }>;
 }
 
+// Deezer answers an unknown ISRC with HTTP 200 and the error body
+// {"error":{"code":800,"message":"no data"}} (measured on /track/isrc:): a
+// definitive miss. Any other error code is a failure, as in deezerService.
+const DEEZER_NO_DATA = 800;
+
+/** The Deezer track of this very recording, or null when Deezer does not know the ISRC. */
+async function deezerByIsrc(isrc: string): Promise<{ link: string; isrc: string } | null> {
+  const data = await getJson<{ link?: string; error?: { code?: unknown } }>(
+    `https://api.deezer.com/track/isrc:${encodeURIComponent(isrc)}`
+  );
+  if (data?.error) {
+    if (data.error.code === DEEZER_NO_DATA) return null;
+    throw new TransientError(`Deezer error ${String(data.error.code)}: /track/isrc`);
+  }
+  return data?.link ? { link: data.link, isrc } : null;
+}
+
+/** By the ISRC when it is known; the text search only when Deezer does not know it. */
+async function findDeezer(
+  title: string,
+  artist: string,
+  isrc: string | null
+): Promise<{ link: string; isrc: string | null } | null> {
+  const exact = isrc ? await deezerByIsrc(isrc) : null;
+  return exact ?? searchDeezer(title, artist);
+}
+
 /**
  * Deezer's advanced filter (`artist:"…"`) is broken: plain text, then the
  * strict title and artist match decides.
@@ -186,22 +215,30 @@ async function settle<T>(
 }
 
 /**
- * The links and cover of a track. A complete answer (found or not) is cached
- * 7 days; one with a failed lookup is not, so the next call retries it.
+ * The links and cover of a track. With its ISRC (the play's, stored on the
+ * kept track), Deezer and Spotify link that very recording. A complete answer
+ * (found or not) is cached 7 days; one with a failed lookup is not, so the
+ * next call retries it.
  */
-export async function findTrackLinks(title: string, artist: string): Promise<TrackLinks | null> {
-  const cacheKey = `${title.toLowerCase()}|${artist.toLowerCase()}`;
+export async function findTrackLinks(
+  title: string,
+  artist: string,
+  isrc: string | null = null
+): Promise<TrackLinks | null> {
+  // The ISRC can come from a like's body: it joins the key instead of replacing
+  // it, so one listener's ISRC never answers another title from the cache.
+  const cacheKey = `${isrc ?? ''}|${title.toLowerCase()}|${artist.toLowerCase()}`;
   const cached = linksCache.get(cacheKey);
   if (cached !== undefined) return cached;
 
   const context = { title, artist };
   const [itunes, deezer] = await Promise.all([
     settle('apple', searchItunes(title, artist), context),
-    settle('deezer', searchDeezer(title, artist), context),
+    settle('deezer', findDeezer(title, artist, isrc), context),
   ]);
-  const isrc = deezer.value?.isrc;
-  const spotify = isrc
-    ? await settle('spotify', searchSpotifyByIsrc(isrc), context)
+  const recording = isrc ?? deezer.value?.isrc;
+  const spotify = recording
+    ? await settle('spotify', searchSpotifyByIsrc(recording), context)
     : { value: null, transient: false };
 
   const platformLinks: PlatformLinks = {};

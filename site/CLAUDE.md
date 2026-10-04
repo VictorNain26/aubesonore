@@ -102,7 +102,7 @@ Musilogy (`/musilogy`, `/musilogy/:mbid/:slug`, and `/en/…`) places any artist
 
 - `refreshAllLinks` runs in parallel chunks of 5 with a 500ms inter-chunk delay. Don't revert to per-track sleeps.
 - `findTrackLinks` and `searchItunes` (`services/trackLinksService.ts`) are memoized in `lib/cache/ttlCache` with 7-day TTL; a result cut short by a failed lookup is not cached. Multi-instance deployments will need Redis.
-- Track links come from each platform's API (iTunes, Deezer, Spotify by ISRC): Odesli closed its keyless API on 2026-07-31. Spotify search needs the app owner to hold Premium (development mode, since February 2026), otherwise it answers 403 and the other links still land.
+- Track links come from each platform's API (iTunes, Deezer, Spotify by ISRC): Odesli closed its keyless API on 2026-07-31. A kept track's Deezer and Spotify links come from its ISRC (the play's, `radio_play.isrc`, else the stored one): the pipeline acquires every track from its Deezer page, so `/track/isrc:` finds the very recording the antenna plays (60/60 on 2026-10-04, where the title search picked another version for 16 of 59); the title search is only the fallback. Spotify search needs the app owner to hold Premium (development mode, since February 2026), otherwise it answers 403 and the other links still land.
 - `pushService.sendToAll` chunks of 50 in parallel + auto-prunes 410/404 subscriptions.
 
 ## What NOT to do

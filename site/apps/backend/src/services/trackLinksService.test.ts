@@ -117,3 +117,67 @@ describe('findTrackLinks', () => {
     );
   });
 });
+
+describe('findTrackLinks with the ISRC of the play', () => {
+  const EXACT = { id: 999, link: 'https://www.deezer.com/track/999', isrc: 'GBUM71029604' };
+
+  /** Deezer answers `byIsrc` for /track/isrc:, the other platforms as usual. */
+  function withIsrc(byIsrc: () => Promise<Response>): void {
+    globalThis.fetch = ((url: string) => {
+      calls.push(url);
+      if (url.startsWith('https://api.deezer.com/track/isrc:')) return byIsrc();
+      if (url.startsWith('https://itunes.apple.com/')) return json(ITUNES);
+      if (url.startsWith('https://api.deezer.com/search')) return json(DEEZER_SEARCH);
+      if (url.startsWith('https://api.deezer.com/track/')) return json({ isrc: 'USQE92100206' });
+      if (url.startsWith('https://accounts.spotify.com/'))
+        return json({ access_token: 't', expires_in: 3600 });
+      if (url.startsWith('https://api.spotify.com/v1/search'))
+        return json({
+          tracks: { items: [{ external_urls: { spotify: 'https://open.spotify.com/track/s1' } }] },
+        });
+      throw new Error(`unexpected ${url}`);
+    }) as unknown as typeof fetch;
+  }
+
+  it('links the very recording on Deezer and Spotify, without a text search', async () => {
+    withIsrc(() => json(EXACT));
+
+    const links = await findTrackLinks('In Flight', 'Sunflower Bean', 'GBUM71029604');
+
+    expect(links?.platformLinks.deezer).toBe('https://www.deezer.com/track/999');
+    expect(calls.some((u) => u.startsWith('https://api.deezer.com/search'))).toBe(false);
+    expect(calls.some((u) => u.includes(encodeURIComponent('isrc:GBUM71029604')))).toBe(true);
+  });
+
+  it('falls back to the text search when Deezer does not know the ISRC', async () => {
+    withIsrc(() => json({ error: { type: 'DataException', message: 'no data', code: 800 } }));
+
+    const links = await findTrackLinks('In Flight', 'Sunflower Bean', 'GBUM71029604');
+
+    expect(links?.platformLinks.deezer).toBe('https://www.deezer.com/track/1616626132');
+    // Spotify still looks up the play's recording, not the one the search found.
+    expect(calls.some((u) => u.includes(encodeURIComponent('isrc:GBUM71029604')))).toBe(true);
+    expect(calls.some((u) => u.includes(encodeURIComponent('isrc:USQE92100206')))).toBe(false);
+  });
+
+  it('does not cache an answer whose ISRC lookup failed', async () => {
+    withIsrc(() =>
+      json({ error: { type: 'Exception', message: 'Quota limit exceeded', code: 4 } })
+    );
+    const failed = await findTrackLinks('In Flight', 'Sunflower Bean', 'GBUM71029604');
+    expect(failed?.platformLinks.deezer).toBeUndefined();
+
+    withIsrc(() => json(EXACT));
+    const retried = await findTrackLinks('In Flight', 'Sunflower Bean', 'GBUM71029604');
+    expect(retried?.platformLinks.deezer).toBe('https://www.deezer.com/track/999');
+  });
+
+  it('never answers another title from the cache for the same ISRC', async () => {
+    withIsrc(() => json(EXACT));
+    await findTrackLinks('In Flight', 'Sunflower Bean', 'GBUM71029604');
+
+    calls = [];
+    await findTrackLinks('Something Else', 'Sunflower Bean', 'GBUM71029604');
+    expect(calls.length).toBeGreaterThan(0);
+  });
+});
