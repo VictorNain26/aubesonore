@@ -131,9 +131,10 @@ def snapshot_popularity() -> None:
 
 
 # The artists ListenBrainz relates to others: those with at least this many
-# listeners in the pinned popularity snapshot. 111 402 artists, about 31 hours
-# at one request a second, and 228 of the 235 played artists with an MBID
-# (2026-10-04); the 7 others have 132 listeners or more.
+# listeners in the pinned popularity snapshot. 111 402 artists, and 228 of the
+# 235 played artists with an MBID (2026-10-04); the 7 others have 132 listeners
+# or more. At most one request a second, but about 0.6 artist a second
+# measured with the service's outages (2026-10-04): several days.
 PROXIMITY_MIN_USERS = 500
 
 

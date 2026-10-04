@@ -42,13 +42,20 @@ genres), `albums` (non chargée : elle sert les dates), `genres` (vocabulaire),
 
 **Ajoutées** :
 
-- `proximity(artist_mbid, neighbour_mbid, score, rank)` : les voisins
-  ListenBrainz de chaque artiste relevé, `rank` de 1 à 100 dans l'ordre du
-  service. Un voisin absent du dump reste dans la table (il n'a pas de
-  fiche) ; un doublon de paire est une violation.
+- `proximity(artist_mbid, neighbour_mbid, score, rank)` *(à livrer, après
+  le relevé)* : les voisins ListenBrainz de chaque artiste relevé, `rank` de 1
+  à 100 dans l'ordre du service. Un voisin absent du dump reste dans la table
+  (il n'a pas de fiche). Le service répète parfois un voisin pour un même
+  artiste (5 des 1 039 premiers artistes du relevé, revue du 2026-10-04 ;
+  will.i.am deux fois, scores 45 et 35, chez `0145e155…`) : **un voisin répété garde sa meilleure
+  occurrence**, le rang le plus petit. C'est un dédoublonnage, compté dans le
+  manifeste, pas une violation ; un doublon de paire restant après lui en
+  serait une. Les artistes interrogés sont gardés à part, y compris ceux qui
+  n'ont aucun voisin : seuls ceux d'au moins 500 auditeurs le sont, et un
+  artiste non relevé n'est pas un artiste sans voisin.
 - `influences(artist_mbid, influence_mbid, statement)` : `artist_mbid` cite
   `influence_mbid` comme influence selon Wikidata ; `statement` est
-  l'identifiant de la déclaration (`Q…$…`), pour la citer. Les déclarations
+  l'identifiant complet de la déclaration (`Q123$GUID`), pour la citer. Les déclarations
   dépréciées sont écartées. Un élément Wikidata peut porter plusieurs MBID :
   une déclaration donne une ligne par paire de MBID, et la table garde une
   déclaration par paire (la plus petite si deux déclarations donnent la même
@@ -74,23 +81,38 @@ après) et à mesurer avant d'être changé.
 
 ## 4. Contrat avec le site
 
-Le site n'appelle que ces fonctions, testées ici contre Postgres. Toutes sont
-`STABLE`, en SQL, et rendent zéro ligne pour un MBID inconnu.
+Le site n'appelle que ces fonctions. Toutes sont `STABLE`, en SQL, et rendent
+zéro ligne pour un MBID inconnu. Une fonction **livrée** existe dans
+`src/musilogy/pg/90_*.sql` et est testée ici contre Postgres ; elle est en
+production après le premier `musilogy load` qui suit sa fusion. Une fonction
+**à livrer** n'existe encore nulle part : le site doit la traiter comme
+absente (code `42883`).
+
+| Fonction | État |
+|---|---|
+| `artist_card` | livrée ; `proximity_surveyed` ajoutée par #286 |
+| `artist_links` | livrée |
+| `artist_influences` | livrée par #286 |
+| `search_artists` | livrée par #286 |
+| `artist_neighbours` | à livrer, après le relevé de proximité (§5) |
 
 ```sql
--- Fiche (inchangée).
+-- Fiche. proximity_surveyed : vrai si l'artiste a été interrogé dans le
+-- relevé de proximité épinglé, faux sinon, NULL tant qu'aucun relevé n'est
+-- chargé (NULL partout aujourd'hui). Un artiste non relevé n'est pas un
+-- artiste sans voisin.
 musilogy.artist_card(artist text) RETURNS TABLE (
   mbid text, name text, disambiguation text, type text, country text,
   begin_area text, y_birth integer, y0 integer, y0_source text, y_end integer,
   y_end_source text, ended boolean, genres jsonb, genre_source text,
-  listen_count bigint, user_count bigint)
+  listen_count bigint, user_count bigint, proximity_surveyed boolean)
 
 -- Liens typés (inchangée) ; le site garde les types de groupe.
 musilogy.artist_links(artist text) RETURNS TABLE (
   type text, direction text, other_mbid text, other_name text,
   other_disambiguation text, other_y0 integer, y_begin integer, y_end integer)
 
--- Voisins ListenBrainz, rangés, avec leur côté dans le temps (§3).
+-- À livrer. Voisins ListenBrainz, rangés, avec leur côté dans le temps (§3).
 musilogy.artist_neighbours(artist text) RETURNS TABLE (
   mbid text, name text, disambiguation text, type text, y0 integer,
   y_end integer, ended boolean, score integer, rank integer, side text)
@@ -112,7 +134,16 @@ Un voisin ou une influence absents du dump n'apparaissent pas : la fonction
 joint `artists`, faute de nom à montrer.
 
 `artist_influences` rend chaque direction dans l'ordre du temps (`y0`, les
-artistes sans année en dernier, puis le MBID).
+artistes sans année en dernier, puis le MBID). `statement` est l'identifiant
+complet de la déclaration Wikidata, `Q123$GUID`, tel que Wikidata l'écrit (un
+« q » minuscule sur certaines déclarations anciennes). Le lien qui y mène est
+`https://www.wikidata.org/wiki/Q123#Q123$GUID` : la page de l'élément (son
+identifiant en majuscule ; `wiki/q19848` redirige vers `wiki/Q19848`), et pour
+ancre la déclaration telle quelle. Vérifié le 2026-10-04 sur la page de U2
+(`https://www.wikidata.org/wiki/Q396`), dont le HTML porte
+`<div id="Q396$f3eaf34b-4149-e380-038a-5141879aadff" class="wikibase-statementview …">`,
+et sur `Q19848`, où la déclaration ancienne garde son « q » :
+`id="q19848$bbc07573-44e4-3526-c337-998471c7f0d4"`.
 
 `search_artists` normalise la requête comme `name_key` l'est dans DuckDB
 (`strip_accents(lower(name))`), par une fonction Postgres interne,
@@ -127,8 +158,11 @@ moins de 4 ms pour un nom complet.
 
 ## 5. Exécution
 
-- Le relevé de proximité prend environ 31 heures (111 402 artistes, une
-  requête par seconde) : il tourne en service systemd transitoire plafonné
+- Le relevé de proximité prend plusieurs jours : 111 402 artistes, une
+  requête par seconde au plus, mais un débit réel mesuré d'environ 0,6
+  artiste par seconde (2026-10-04), pannes du service comprises, soit plus de
+  deux jours, davantage si les pannes s'allongent. Il tourne en service
+  systemd transitoire plafonné
   (`systemd-run --user --unit=musilogy-proximity -p MemoryMax=1G`), et reprend
   le relevé partiel s'il est interrompu.
 - La construction reste plafonnée comme avant (`musilogy/CLAUDE.md`).

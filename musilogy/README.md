@@ -74,7 +74,7 @@ Les corrections manuelles (`src/musilogy/corrections.csv`, colonnes `mbid, field
 
 ## Proximité ListenBrainz (relevé)
 
-`musilogy snapshot-proximity` relève, pour chaque artiste qu'au moins 500 auditeurs écoutent dans le relevé de popularité épinglé (111 402 artistes au 2026-10-04), ses 100 voisins selon ListenBrainz (`labs.api.listenbrainz.org/similar-artists`, algorithme épinglé dans `fetch.SIMILAR_ALGORITHM`) : une ligne par artiste, `{artist_mbid, similar: [{artist_mbid, score}]}`, dans `data/raw/listenbrainz/<date>/artist-similar.jsonl`, empreinte dans `reference/listenbrainz-similar-<date>.SHA256SUMS`. Le service prend un artiste par requête et n'annonce aucune limite : le relevé s'en tient à une requête par seconde, environ 31 heures. Interrompu, il reprend le relevé resté partiel, quel que soit le jour où il a commencé. Les données ListenBrainz sont publiées en CC0 (metabrainz.org/datasets/postgres-dumps) ; le service de similarité, qui en dérive, ne précise pas de licence. La table `proximity` et la fonction `artist_neighbours` (`docs/conception.md`, §2 à §4) viennent une fois le relevé épinglé.
+`musilogy snapshot-proximity` relève, pour chaque artiste qu'au moins 500 auditeurs écoutent dans le relevé de popularité épinglé (111 402 artistes au 2026-10-04), ses 100 voisins selon ListenBrainz (`labs.api.listenbrainz.org/similar-artists`, algorithme épinglé dans `fetch.SIMILAR_ALGORITHM`) : une ligne par artiste, `{artist_mbid, similar: [{artist_mbid, score}]}`, dans `data/raw/listenbrainz/<date>/artist-similar.jsonl`, empreinte dans `reference/listenbrainz-similar-<date>.SHA256SUMS`. Le service prend un artiste par requête et n'annonce aucune limite : le relevé s'en tient à une requête par seconde au plus. Le débit réel mesuré, pannes du service comprises, est d'environ 0,6 artiste par seconde (2026-10-04) : plusieurs jours pour le relevé entier. Interrompu, il reprend le relevé resté partiel, quel que soit le jour où il a commencé. Les données ListenBrainz sont publiées en CC0 (metabrainz.org/datasets/postgres-dumps) ; le service de similarité, qui en dérive, ne précise pas de licence. La table `proximity` et la fonction `artist_neighbours` (`docs/conception.md`, §2 à §4) viennent une fois le relevé épinglé.
 
 ## Influences Wikidata (relevé)
 
@@ -98,7 +98,7 @@ Cinq tables sont chargées — `artists`, `genres`, `links`, `popularity`, `infl
 
 **Ce que lit le site : des fonctions, pas des tables.** Il appelle les fonctions de `pg/90_*.sql`, testées ici contre Postgres, et dépend de leurs signatures, pas de la disposition des tables. Le contrat complet, fonctions à venir comprises, est `docs/conception.md` §4.
 
-- `artist_card(mbid)` donne la fiche, `artist_links(mbid)` chaque lien lu depuis l'artiste (`forward` s'il en est la source MusicBrainz).
+- `artist_card(mbid)` donne la fiche ; sa colonne `proximity_surveyed` dira si l'artiste a été interrogé dans le relevé de proximité épinglé, et vaut NULL tant qu'aucun relevé n'est chargé, c'est-à-dire partout aujourd'hui : un artiste non relevé n'est pas un artiste sans voisin. `artist_links(mbid)` chaque lien lu depuis l'artiste (`forward` s'il en est la source MusicBrainz).
 - `artist_influences(mbid)` donne les influences déclarées dans les deux sens, `cited` (l'artiste cite l'autre) puis `cited_by`, chacune dans l'ordre du temps et avec sa déclaration Wikidata. Un artiste absent du dump n'en a aucune, comme il n'a pas de fiche.
 - `search_artists(requête, taille)` cherche par préfixe du nom normalisé, les plus écoutés d'abord (`user_count`), ceux que ListenBrainz ne connaît pas en dernier, puis par nom et MBID. La requête est normalisée comme `name_key` (`strip_accents(lower(name))` dans DuckDB) par `musilogy.name_key(text)` : minuscules, décomposition canonique, retrait des marques combinantes — la catégorie Unicode M entière, 2 450 points, mesurée en interrogeant DuckDB sur chaque point de code —, recomposition. Sur le dump de référence, elle redonne le `name_key` de tous les noms sauf 6, des lettres cerclées (Ⓐ) que la libc du Postgres du site ne met pas en minuscule ; le seul bloc des diacritiques latins en manquait 12 987. Une requête vide ne trouve personne. Temps mesurés sur le Postgres jetable, cache chaud, médiane de 7 appels : « a » (157 112 noms) 78 ms, « the » 46 ms, « bjork », « radiohead » ou « sigur ros » moins de 4 ms ; le premier appel après le chargement, cache froid, a pris 1,8 s pour « a ». Lue directement dans `artists`, « a » prenait environ 1 s cache chaud.
 
@@ -147,7 +147,7 @@ La suite passe depuis n'importe quel répertoire : tous les chemins sont ancrés
 ```bash
 uv run musilogy run                 # fetch → extract → transform → validate → publish
 uv run musilogy snapshot-popularity # relevé ListenBrainz daté, à épingler (~1 h)
-uv run musilogy snapshot-proximity  # voisins ListenBrainz des artistes d'au moins 500 auditeurs (~31 h, reprenable)
+uv run musilogy snapshot-proximity  # voisins ListenBrainz des artistes d'au moins 500 auditeurs (plusieurs jours, reprenable)
 uv run musilogy snapshot-influences # relevé Wikidata daté des influences déclarées, à épingler (quelques secondes)
 uv run musilogy make-fixtures       # régénère les témoins depuis les extractions
 uv run musilogy load                # charge data/out/ dans la base du site (environnement libpq)

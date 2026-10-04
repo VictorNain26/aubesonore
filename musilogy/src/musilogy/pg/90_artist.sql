@@ -2,6 +2,12 @@
 -- the tables: the site depends on these signatures, not on how the tables are
 -- laid out, and every query it runs is tested here against Postgres.
 
+-- proximity_surveyed says whether the artist was asked about in the pinned
+-- proximity snapshot: only artists with 500 listeners or more are, so an
+-- artist not surveyed is not an artist without neighbours. NULL while no
+-- snapshot is loaded, which is the case until the proximity table lands
+-- (docs/conception.md, section 2): it will then read true or false from the
+-- artists the snapshot asked about.
 CREATE FUNCTION musilogy.artist_card(artist text)
 RETURNS TABLE (
   mbid text,
@@ -19,13 +25,14 @@ RETURNS TABLE (
   genres jsonb,
   genre_source text,
   listen_count bigint,
-  user_count bigint
+  user_count bigint,
+  proximity_surveyed boolean
 )
 LANGUAGE sql STABLE
 AS $$
   SELECT a.mbid, a.name, a.disambiguation, a.type, a.country, a.begin_area, a.y_birth,
          a.y0, a.y0_source, a.y_end, a.y_end_source, a.ended, a.genres, a.genre_source,
-         p.listen_count, p.user_count
+         p.listen_count, p.user_count, NULL::boolean
   FROM musilogy.artists a
   LEFT JOIN musilogy.popularity p USING (mbid)
   WHERE a.mbid = artist;

@@ -82,7 +82,7 @@ uv run pytest                 # suite rapide, sur les témoins
 uv run pytest -m slow         # ligne de base sur le dump réel, exige data/work/
 uv run musilogy run           # fetch → extract → transform → validate → publish
 uv run musilogy snapshot-popularity  # relevé ListenBrainz daté, à épingler
-uv run musilogy snapshot-proximity   # voisins ListenBrainz, ~31 h, reprenable
+uv run musilogy snapshot-proximity   # voisins ListenBrainz, plusieurs jours, reprenable
 uv run musilogy snapshot-influences  # influences Wikidata, quelques secondes, à épingler
 uv run musilogy make-fixtures
 uv run musilogy load          # charge data/out/ dans la base du site (environnement libpq)

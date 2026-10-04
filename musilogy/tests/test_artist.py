@@ -35,6 +35,24 @@ def test_an_artist_unknown_to_listenbrainz_has_no_count_rather_than_zero(tmp_pat
     assert [g["name"] for g in json.loads(cards[A][2])] == ["post-punk"]
 
 
+def test_no_artist_counts_as_surveyed_for_proximity_before_a_snapshot_is_loaded(tmp_path, pg):
+    # An artist not surveyed is not an artist without neighbours: with no
+    # proximity snapshot loaded, the card says it does not know, not false.
+    loaded(tmp_path, pg, [group(A)], popularity={A: 42})
+    assert pg_query(pg, f"SELECT proximity_surveyed FROM musilogy.artist_card('{A}')") == [(None,)]
+    # The signature is the contract the site reads (docs/conception.md §4).
+    assert pg_query(
+        pg, "SELECT pg_get_function_result('musilogy.artist_card(text)'::regprocedure)"
+    ) == [
+        (
+            "TABLE(mbid text, name text, disambiguation text, type text, country text, "
+            "begin_area text, y_birth integer, y0 integer, y0_source text, y_end integer, "
+            "y_end_source text, ended boolean, genres jsonb, genre_source text, "
+            "listen_count bigint, user_count bigint, proximity_surveyed boolean)",
+        )
+    ]
+
+
 def test_a_link_reads_forward_from_its_source_and_backward_from_its_target(tmp_path, pg):
     loaded(tmp_path, pg, [group(A, relations=[relation("member of band", B)]), group(B)])
     assert pg_query(

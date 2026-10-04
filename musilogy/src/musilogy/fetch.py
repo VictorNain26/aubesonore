@@ -237,8 +237,9 @@ def _resume(dest: Path, batches: Iterable[list[str]]) -> tuple[Path, int, Iterat
 
 def fetch_proximity(mbids: Iterable[str], dest: Path) -> int:
     """One line per artist asked, written as answered, aside then renamed like
-    the popularity snapshot: about 31 hours for the 111 402 artists with 500
-    listeners or more (2026-10-04), so a stopped run resumes where it was."""
+    the popularity snapshot: several days for the 111 402 artists with 500
+    listeners or more, at about 0.6 artist a second measured with the
+    service's outages (2026-10-04), so a stopped run resumes where it was."""
     partial, n, rest = _resume(dest, ([m] for m in mbids))
     with partial.open("a", encoding="utf-8") as out:
         for (mbid,) in rest:

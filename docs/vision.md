@@ -62,7 +62,7 @@ marchant d'un artiste à l'autre.
 | Couche | Source | Couverture mesurée | Ce que le site en dit |
 |---|---|---|---|
 | **Proximité × temps** | artistes proches selon ListenBrainz (co-écoute), rangés par leurs dates MusicBrainz | 15 des 16 artistes joués échantillonnés ont 100 voisins, des plus confidentiels (1 045 auditeurs) aux plus connus (2026-10-04) | « avant lui, en même temps, après lui, dans la même veine » — jamais « influencé par » |
-| **Influences déclarées** | Wikidata (P737), puis citations extraites de Wikipédia avec leur phrase | 13 des 147 artistes joués via Wikidata (2026-10-03) | « a cité X comme influence », avec la source |
+| **Influences déclarées** | Wikidata (P737), puis citations extraites de Wikipédia avec leur phrase | 61 des 288 artistes joués via Wikidata (2026-10-04) | « a cité X comme influence », avec la source |
 | **Liens de groupe** | relations entre artistes de MusicBrainz | 75 % des artistes joués ont au moins un autre projet à deux pas, médiane 2 (2026-10-04) | « membre de », « autre projet de » |
 
 La proximité seule ne dit pas qui a inspiré qui ; le temps lui donne un sens (avant, pendant,
