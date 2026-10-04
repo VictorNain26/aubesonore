@@ -18,9 +18,15 @@ const MUTE_BUTTON = {
   surface: 'focus-visible:outline-accent',
 };
 
+const PANEL = {
+  accent: 'bg-accent text-on-accent shadow-bar ring-1 ring-on-accent/15',
+  surface: 'bg-surface-raised text-text shadow-lift',
+};
+
 /**
- * Mute and a level always in view, for a mouse only: phones and tablets set
- * the volume with their own buttons (and iOS ignores it from the page). The
+ * One speaker button, for a mouse only: phones and tablets set the volume with
+ * their own buttons (and iOS ignores it from the page). A click mutes; hovering
+ * or tabbing onto it opens the level above it, so the bar keeps its width. The
  * level reads 0–100 so a screen reader says "60", not "0.6".
  */
 export function VolumeControl({
@@ -35,7 +41,7 @@ export function VolumeControl({
   const Icon = level === 0 ? VolumeX : level < 0.5 ? Volume1 : Volume2;
 
   return (
-    <div className={cn('hidden shrink-0 items-center gap-1 pointer-fine:flex', className)}>
+    <div className={cn('group relative hidden shrink-0 pointer-fine:flex', className)}>
       <button
         type="button"
         onClick={onToggleMute}
@@ -47,16 +53,29 @@ export function VolumeControl({
       >
         <Icon className="size-4" aria-hidden="true" />
       </button>
-      <div className="w-24">
-        <Slider
-          label={m.volume_slider()}
-          value={Math.round(level * 100)}
-          onValueChange={(value) => onVolumeChange(value / 100)}
-          min={0}
-          max={100}
-          step={5}
-          tone={tone}
-        />
+      {/* The bottom padding bridges the button and the panel, so the pointer can travel up. The
+          panel grows out of the button: it rises and scales up with a little spring. */}
+      <div className="invisible absolute bottom-full left-1/2 -translate-x-1/2 pb-3 opacity-0 transition-[opacity,visibility] duration-150 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+        <div
+          className={cn(
+            'ease-spring flex origin-bottom translate-y-2 scale-90 flex-col items-center gap-1 rounded-full px-0.5 pt-3 pb-1 transition-transform duration-300 group-focus-within:translate-y-0 group-focus-within:scale-100 group-hover:translate-y-0 group-hover:scale-100',
+            PANEL[tone]
+          )}
+        >
+          <span aria-hidden="true" className="text-caption font-mono tabular-nums">
+            {Math.round(level * 100)}
+          </span>
+          <Slider
+            label={m.volume_slider()}
+            value={Math.round(level * 100)}
+            onValueChange={(value) => onVolumeChange(value / 100)}
+            min={0}
+            max={100}
+            step={5}
+            orientation="vertical"
+            tone={tone}
+          />
+        </div>
       </div>
     </div>
   );
