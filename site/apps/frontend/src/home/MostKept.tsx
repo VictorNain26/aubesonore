@@ -59,7 +59,7 @@ export function MostKeptView({ trends, status }: MostKeptViewProps) {
     <section id="plus-gardes" aria-labelledby="most-kept-title" className="scroll-mt-10">
       <Tabs.Root defaultValue="week" className="flex flex-col gap-6 md:gap-10">
         <div className="flex flex-wrap items-end justify-between gap-6">
-          <div className="reveal flex flex-col gap-2 md:gap-3">
+          <div className="reveal-heading flex flex-col gap-2 md:gap-3">
             <h2 id="most-kept-title" className="text-section m-0">
               {m.most_kept_title()}
             </h2>
