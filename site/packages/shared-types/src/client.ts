@@ -199,6 +199,11 @@ export interface MusilogyCard extends MusilogyArtistRef {
   genres: string[];
   /** ListenBrainz listeners; null when it counts none, not zero. */
   listeners: number | null;
+  /**
+   * Whether the proximity snapshot asked about this artist (it asks only the
+   * artists with at least 500 listeners); null while no snapshot is loaded.
+   */
+  proximitySurveyed: boolean | null;
 }
 
 /** A neighbour by co-listening: close in sound, never said to be an influence. */

@@ -4,7 +4,13 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import type { MusilogyArtist, MusilogyNeighbour } from '@aubesonore/shared-types/client';
-import { cardLine, linkYears, MusilogyArtistView, MusilogyHomeView } from './MusilogyView';
+import {
+  cardLine,
+  linkYears,
+  MusilogyArtistView,
+  MusilogyHomeView,
+  statementUrl,
+} from './MusilogyView';
 
 const T_REX = 'c842d29f-a297-48cd-bb71-4f77fd672b16';
 
@@ -38,6 +44,7 @@ function artist(overrides: Partial<MusilogyArtist> = {}): MusilogyArtist {
       ended: true,
       genres: ['glam rock', 'rock'],
       listeners: 31415,
+      proximitySurveyed: true,
     },
     neighbours: {
       before: [neighbour(3, { name: 'The Kinks' })],
@@ -97,7 +104,7 @@ describe('MusilogyArtistView', () => {
   it('says a section is not loaded yet rather than empty', () => {
     show({ status: 'ready', artist: artist({ neighbours: null, influences: null }) });
 
-    expect(screen.getAllByText('Les proximités ne sont pas encore chargées.')).toHaveLength(3);
+    expect(screen.getAllByText('Les proximités ne sont pas encore relevées.')).toHaveLength(3);
     expect(screen.getByText('Les influences ne sont pas encore chargées.')).toBeInTheDocument();
   });
 
@@ -113,12 +120,52 @@ describe('MusilogyArtistView', () => {
     expect(screen.getByRole('link', { name: 'Artist 14' })).toBeInTheDocument();
   });
 
-  it('says when Musilogy is reloading, or the artist unknown', () => {
+  it('says when Musilogy is not available, or the artist missing from its snapshot', () => {
     const { rerender } = show({ status: 'unavailable' });
-    expect(screen.getByRole('heading', { name: 'Musilogy se recharge.' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: "Musilogy n'est pas disponible." })
+    ).toBeInTheDocument();
 
     rerender(<MusilogyArtistView state={{ status: 'missing' }} />);
-    expect(screen.getByRole('heading', { name: 'Artiste inconnu.' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Artiste absent.' })).toBeInTheDocument();
+  });
+
+  it('tells an artist the snapshot never asked about from one without neighbours', () => {
+    const none = { before: [], during: [], after: [], undated: [] };
+    const card = { ...artist().card, proximitySurveyed: false };
+    show({ status: 'ready', artist: artist({ card, neighbours: none }) });
+
+    expect(
+      screen.getAllByText('Trop peu écouté sur ListenBrainz pour avoir été relevé.')
+    ).toHaveLength(3);
+  });
+
+  it('lists the neighbours whose start is unknown', () => {
+    const undated = [neighbour(30, { name: 'Undated Band', y0: null })];
+    show({
+      status: 'ready',
+      artist: artist({ neighbours: { before: [], during: [], after: [], undated } }),
+    });
+
+    expect(screen.getByRole('heading', { name: 'Dates inconnues' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Undated Band' })).toBeInTheDocument();
+  });
+
+  it('links each declared influence to its Wikidata statement', () => {
+    show({
+      status: 'ready',
+      artist: artist({
+        influences: {
+          cites: [{ ...neighbour(40, { name: 'The Kinks' }), statement: 'Q1$abc' }],
+          citedBy: [],
+        },
+      }),
+    });
+
+    expect(screen.getByRole('link', { name: 'Wikidata' })).toHaveAttribute(
+      'href',
+      'https://www.wikidata.org/wiki/Q1#Q1$abc'
+    );
   });
 });
 
@@ -134,6 +181,22 @@ describe('linkYears', () => {
 describe('cardLine', () => {
   it('states the type, where and when', () => {
     expect(cardLine(artist().card)).toBe('Groupe · London, Royaume-Uni · 1967 – 1977');
+  });
+
+  it('shows no end it can only infer, and says a start comes from the first album', () => {
+    const card = { ...artist().card, y0Source: 'first_album', yEndSource: 'last_album' };
+    expect(cardLine(card)).toBe('Groupe · London, Royaume-Uni · premier album en 1967');
+    expect(cardLine({ ...card, yEndSource: 'declared' })).toBe(
+      "Groupe · London, Royaume-Uni · premier album en 1967, jusqu'en 1977"
+    );
+  });
+});
+
+describe('statementUrl', () => {
+  it('opens the item page on the statement', () => {
+    expect(statementUrl('q19848$bbc07573-aaaa')).toBe(
+      'https://www.wikidata.org/wiki/Q19848#q19848$bbc07573-aaaa'
+    );
   });
 });
 

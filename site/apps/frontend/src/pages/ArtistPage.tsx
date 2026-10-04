@@ -4,6 +4,7 @@ import { ArtistPageView, type ArtistPageState } from '../artist/ArtistPageView';
 import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../home/SiteFooter';
 import { fetchArtistProfile } from '../lib/artistProfile';
+import { useAuthStore } from '../stores/authStore';
 import { useLikedTracksStore } from '../stores/likedTracksStore';
 import { useLocaleStore } from '../stores/localeStore';
 
@@ -16,8 +17,14 @@ export default function ArtistPage() {
   } | null>(null);
   const key = `${id}:${locale}`;
   const setListenVisible = useHeroListenVisible((s) => s.setVisible);
-  // The listener's kept tracks, loaded at sign-in: this artist's, newest first.
+  // The listener's kept tracks: this artist's, newest first. Loaded again on
+  // each page, since a track kept a moment ago is tied to its artist after the
+  // like answered.
   const tracks = useLikedTracksStore((s) => s.tracks);
+  const signedIn = useAuthStore((s) => s.isAuthenticated);
+  useEffect(() => {
+    if (signedIn) void useLikedTracksStore.getState().refresh();
+  }, [id, signedIn]);
   const kept = useMemo(
     () =>
       tracks

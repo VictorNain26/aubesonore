@@ -64,6 +64,7 @@ const card = {
   genre_source: 'declared',
   listen_count: '1234567',
   user_count: '31415',
+  proximity_surveyed: true,
 };
 
 const neighbour = (mbid: string, name: string, y0: number | null, side: string | null) => ({
@@ -110,12 +111,23 @@ describe('GET /api/musilogy/artist/:mbid', () => {
 
     const res = await get(`/artist/${T_REX.toUpperCase()}`);
     const body = (await res.json()) as {
-      card: { name: string; genres: string[]; listeners: number; played: unknown };
+      card: {
+        name: string;
+        genres: string[];
+        listeners: number;
+        played: unknown;
+        proximitySurveyed: boolean;
+      };
       neighbours: Record<string, Array<{ name: string; played: unknown }>>;
     };
 
     expect(res.status).toBe(200);
-    expect(body.card).toMatchObject({ name: 'T. Rex', genres: ['glam rock'], listeners: 31415 });
+    expect(body.card).toMatchObject({
+      name: 'T. Rex',
+      genres: ['glam rock'],
+      listeners: 31415,
+      proximitySurveyed: true,
+    });
     expect(body.neighbours.before!.map((n) => n.name)).toEqual(['The Kinks']);
     expect(body.neighbours.during![0]).toMatchObject({
       name: 'David Bowie',
