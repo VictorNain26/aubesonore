@@ -18,13 +18,15 @@ function rows(count: number): ThreadRow[] {
 }
 
 describe('SinceDawnView', () => {
-  it('shows ten tracks, then ten more on "Remonter le fil"', async () => {
+  it('shows ten tracks, then ten more on "Plus tôt dans la journée"', async () => {
     render(<SinceDawnView rows={rows(15)} status="ready" onToggleKeep={vi.fn()} />);
 
     expect(screen.getAllByRole('listitem')).toHaveLength(10);
-    await userEvent.click(screen.getByRole('button', { name: 'Remonter le fil' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Plus tôt dans la journée' }));
     expect(screen.getAllByRole('listitem')).toHaveLength(15);
-    expect(screen.queryByRole('button', { name: 'Remonter le fil' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Plus tôt dans la journée' })
+    ).not.toBeInTheDocument();
   });
 
   it('marks the track on air', () => {
@@ -45,10 +47,12 @@ describe('SinceDawnView', () => {
 
   it('tells apart an empty day from an unavailable history', () => {
     const { rerender } = render(<SinceDawnView rows={[]} status="ready" onToggleKeep={vi.fn()} />);
-    expect(screen.getByText("Rien encore aujourd'hui.")).toBeInTheDocument();
+    expect(screen.getByText("Rien n'est encore passé aujourd'hui.")).toBeInTheDocument();
 
     rerender(<SinceDawnView rows={[]} status="error" onToggleKeep={vi.fn()} />);
-    expect(screen.getByText("Le fil est indisponible pour l'instant.")).toBeInTheDocument();
+    expect(
+      screen.getByText("L'historique du jour est indisponible pour l'instant.")
+    ).toBeInTheDocument();
   });
 
   it('lets a track that joins the thread slide in, but not the ones already there', () => {
