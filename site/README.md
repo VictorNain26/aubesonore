@@ -1,6 +1,6 @@
 # AubeSonore
 
-Webradio moderne : diffusion AzuraCast, likes multi-plateformes, et une identité visuelle qui suit le moment de la journée. Monorepo pnpm + Turbo (backend Bun/Elysia, frontend Vite/React).
+Le site de la webradio AubeSonore : l'écoute du direct, les titres gardés, une page par artiste joué et Musilogy (`docs/vision.md` à la racine). Monorepo pnpm + Turbo (backend Bun/Elysia, frontend Vite/React).
 
 ## Architecture
 
@@ -18,12 +18,12 @@ aubesonore/
 
 ## Fonctionnalités
 
-- **Écoute** : flux AzuraCast avec « en train de jouer » en temps réel.
-- **Like & liens multi-plateformes** : likez un morceau, ses liens Spotify / Apple Music / Deezer / YouTube Music / Tidal / Amazon / SoundCloud sont résolus automatiquement via Songlink/Odesli.
+- **Écouter** : le flux AzuraCast, le titre en cours, ce qui est passé depuis l'aube et les titres les plus gardés.
+- **Garder** : un auditeur connecté garde un titre ; ses liens d'écoute viennent des API d'iTunes, de Deezer et de Spotify (par ISRC). Chaque titre gardé est relié à sa diffusion et à son artiste.
+- **Page artiste** (artistes joués seulement) : portrait Deezer, faits MusicBrainz, ouverture de l'article Wikipédia ou, sans article, les faits dits en une phrase ; vos titres gardés de l'artiste, sinon ce que l'antenne en a joué ; où l'écouter. L'artiste est identifié par l'ISRC du titre joué, vérifié contre le titre et le nom.
+- **Musilogy** : pour tout artiste de MusicBrainz, qui faisait cette musique avant lui, en même temps, après lui (proximité ListenBrainz rangée par les dates), ses influences déclarées (Wikidata) et ses groupes (MusicBrainz), en carte et en listes ; recherche par nom.
+- **Alertes** (Web Push / VAPID) quand un artiste gardé repasse à l'antenne.
 - **Pochettes** : à l'enrichissement, la pochette iTunes est retenue quand l'artiste correspond ; à défaut, un visuel « onde » déterministe est généré côté client.
-- **Identité jour/nuit** : l'ambiance visuelle suit le moment (aube, jour, crépuscule, nuit).
-- **Fil-journée** : historique d'écoute regroupé par moment de la journée.
-- **Notifications push** (Web Push / VAPID) et **statistiques d'écoute**.
 - **PWA** installable.
 
 ## Stack
@@ -34,7 +34,7 @@ aubesonore/
 | Frontend  | React 19, Vite 8, Tailwind CSS 4, Zustand                   |
 | Outillage | pnpm 10, Turbo, ESLint 9 (flat), Vitest + bun test          |
 
-Auth : Better Auth (email vérifié + OAuth Google/Spotify). Liens multi-plateformes : Songlink/Odesli. Pochettes : iTunes vérifiée (artiste) ou visuel « onde » généré côté client.
+Auth : Better Auth (email vérifié + OAuth Google/Spotify). Liens d'écoute : API iTunes, Deezer et Spotify (Songlink/Odesli a fermé son API le 2026-07-31). Pochettes : iTunes vérifiée (artiste) ou visuel « onde » généré côté client.
 
 ## Démarrage
 
