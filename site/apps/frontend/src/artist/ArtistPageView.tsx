@@ -9,6 +9,7 @@ import type {
 } from '@aubesonore/shared-types/client';
 import { getLocale, localizeHref } from '@/paraglide/runtime.js';
 import { Cover } from '../home/Cover';
+import { musilogyPath } from '../lib/musilogy';
 import { TEXT_ACTION } from '../home/styles';
 import * as m from '@/paraglide/messages.js';
 
@@ -103,7 +104,7 @@ function formatPlayedAt(iso: string): string {
   }).format(new Date(iso));
 }
 
-function Section({
+export function Section({
   id,
   title,
   body,
@@ -130,7 +131,7 @@ function Section({
   );
 }
 
-function Header() {
+export function Header() {
   return (
     <header className="px-page flex items-center justify-between gap-6 pt-5 md:pt-7">
       <Link
@@ -212,6 +213,14 @@ function Profile({ profile, kept }: { profile: ArtistProfile; kept: readonly Kep
         </div>
         {profile.summary ? <Summary summary={profile.summary} /> : null}
         {portrait ? <Portrait text={portrait} /> : null}
+        {profile.mbid ? (
+          <Link
+            to={musilogyPath({ mbid: profile.mbid, name: profile.name })}
+            className={`${TEXT_ACTION} md:col-span-8 md:col-start-5 lg:col-span-7 lg:col-start-4`}
+          >
+            {m.artist_musilogy_link()}
+          </Link>
+        ) : null}
       </div>
 
       <div className="px-page flex flex-col gap-16 py-12 md:gap-28 md:py-20">
