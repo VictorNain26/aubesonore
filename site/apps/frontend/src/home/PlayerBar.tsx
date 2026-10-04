@@ -12,6 +12,7 @@ import { useArtistPage } from '../hooks/useArtistPage';
 import { artistPath } from '../lib/artistProfile';
 import { Cover } from './Cover';
 import { VolumeControl } from './VolumeControl';
+import { NowPlayingSheet } from './NowPlayingSheet';
 import {
   ListenDisc,
   listenAria,
@@ -30,7 +31,13 @@ export interface PlayerBarViewProps {
   isHidden: boolean;
   listen: ListenState;
   onToggleListen: () => void;
-  track: { title: string; artist: string; art: string | undefined; playedAt: number } | null;
+  track: {
+    title: string;
+    artist: string;
+    album: string;
+    art: string | undefined;
+    playedAt: number;
+  } | null;
   isKept: boolean;
   onToggleKeep: () => void;
   volume: number;
@@ -103,18 +110,40 @@ export function PlayerBarView({
       </button>
 
       {track && isOnline ? (
-        artistHref ? (
-          <Link to={artistHref} title={`${track.title}, ${track.artist}`} className={TRACK_LINK}>
-            <TrackLine track={track} hasChanged={hasChanged} />
-          </Link>
-        ) : (
-          <span
-            title={`${track.title}, ${track.artist}`}
-            className="flex min-w-0 flex-1 items-center gap-3"
-          >
-            <TrackLine track={track} hasChanged={hasChanged} />
+        <>
+          {/* A phone opens the whole track in a sheet; a larger screen goes to the artist's page. */}
+          <span className="flex min-w-0 flex-1 md:hidden">
+            <NowPlayingSheet
+              track={track}
+              artistHref={artistHref}
+              listen={listen}
+              onToggleListen={onToggleListen}
+              isKept={isKept}
+              onToggleKeep={onToggleKeep}
+              airPlay={airPlay}
+            >
+              <TrackLine track={track} hasChanged={hasChanged} />
+            </NowPlayingSheet>
           </span>
-        )
+          <span className="hidden min-w-0 flex-1 md:flex">
+            {artistHref ? (
+              <Link
+                to={artistHref}
+                title={`${track.title}, ${track.artist}`}
+                className={TRACK_LINK}
+              >
+                <TrackLine track={track} hasChanged={hasChanged} />
+              </Link>
+            ) : (
+              <span
+                title={`${track.title}, ${track.artist}`}
+                className="flex min-w-0 flex-1 items-center gap-3"
+              >
+                <TrackLine track={track} hasChanged={hasChanged} />
+              </span>
+            )}
+          </span>
+        </>
       ) : (
         <span className="text-ui min-w-0 flex-1 truncate font-semibold">
           {isOnline ? listenLabel(listen) : m.off_air()}
@@ -185,10 +214,11 @@ function TrackLine({
 }
 
 export function PlayerBar() {
-  const { title, artist, art, playedAt, isOnline } = useNowPlayingStore(
+  const { title, artist, album, art, playedAt, isOnline } = useNowPlayingStore(
     useShallow((s) => ({
       title: s.data?.now_playing?.song.title,
       artist: s.data?.now_playing?.song.artist,
+      album: s.data?.now_playing?.song.album,
       art: s.data?.now_playing?.song.art,
       playedAt: s.data?.now_playing?.played_at,
       isOnline: s.data?.is_online ?? true,
@@ -233,7 +263,11 @@ export function PlayerBar() {
       isHidden={heroListenVisible}
       listen={listenState(player.isPlaying, player.isConnecting)}
       onToggleListen={player.toggle}
-      track={title && artist && playedAt !== undefined ? { title, artist, art, playedAt } : null}
+      track={
+        title && artist && playedAt !== undefined
+          ? { title, artist, album: album ?? '', art, playedAt }
+          : null
+      }
       isKept={isLiked}
       onToggleKeep={handleToggleLike}
       volume={player.volume}

@@ -397,6 +397,53 @@
   bottom: calc(1rem + env(safe-area-inset-bottom));
 }
 
+/* The track-on-air sheet of a phone, after Base UI's bottom-sheet example: it follows the finger
+   (--drawer-swipe-movement-y), slides 450ms on an iOS-like curve, and leaves faster the harder it
+   is flung. The 3rem bleed under it keeps paper under a sheet pulled up past its height. */
+@utility sheet-backdrop {
+  opacity: calc(0.5 * (1 - var(--drawer-swipe-progress)));
+  transition: opacity 450ms cubic-bezier(0.32, 0.72, 0, 1);
+
+  &[data-starting-style],
+  &[data-ending-style] {
+    opacity: 0;
+  }
+  &[data-swiping] {
+    transition-duration: 0ms;
+  }
+  &[data-ending-style] {
+    transition-duration: calc(var(--drawer-swipe-strength) * 400ms);
+  }
+  /* iOS 26: covers the whole visible viewport. */
+  @supports (-webkit-touch-callout: none) {
+    position: absolute;
+  }
+}
+
+@utility sheet-popup {
+  margin-bottom: -3rem;
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px) + 3rem);
+  max-height: calc(92dvh + 3rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transform: translateY(var(--drawer-swipe-movement-y));
+  transition: transform 450ms cubic-bezier(0.32, 0.72, 0, 1);
+
+  &[data-starting-style],
+  &[data-ending-style] {
+    transform: translateY(calc(100% - 3rem + 2px));
+  }
+  &[data-swiping] {
+    user-select: none;
+  }
+  &[data-ending-style] {
+    transition-duration: calc(var(--drawer-swipe-strength) * 400ms);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: 0ms;
+  }
+}
+
 /* The room every page keeps free at its foot for the player bar (3.75rem high, 1rem off the
    bottom, plus 1rem of air and the iPhone's gesture area), so the bar never covers content. */
 @utility pb-bar {
