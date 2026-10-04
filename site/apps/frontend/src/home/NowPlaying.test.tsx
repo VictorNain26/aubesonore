@@ -31,7 +31,7 @@ describe('NowPlayingView', () => {
   it('shows the start time, the title as a heading and the artist', () => {
     render(<NowPlayingView {...props()} />);
 
-    expect(screen.getByText("17:01 — à l'antenne")).toBeInTheDocument();
+    expect(screen.getByText("à l'antenne depuis 17:01")).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Mimoun' })).toBeInTheDocument();
     expect(screen.getByText('Mickey 3D')).toBeInTheDocument();
   });
@@ -51,7 +51,7 @@ describe('NowPlayingView', () => {
     );
 
     rerender(<NowPlayingView {...props({ listen: 'playing' })} />);
-    expect(screen.getByText('En écoute')).toBeInTheDocument();
+    expect(screen.getByText('Pause')).toBeInTheDocument();
   });
 
   it('shows the listener count only from two listeners upwards', () => {
