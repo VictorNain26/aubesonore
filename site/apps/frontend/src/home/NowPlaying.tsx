@@ -260,7 +260,7 @@ export function NowPlayingFallback({ resetErrorBoundary }: FallbackProps) {
         <button
           type="button"
           onClick={resetErrorBoundary}
-          className={cn(TEXT_ACTION, 'self-start')}
+          className={cn(TEXT_ACTION, 'self-start md:self-auto')}
         >
           {m.error_retry()}
         </button>
