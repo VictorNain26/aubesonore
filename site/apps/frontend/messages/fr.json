@@ -80,8 +80,6 @@
   "player_listen_aria": "Écouter le direct",
   "player_pause_aria": "Mettre en pause",
   "player_label": "Lecteur du direct",
-  "now_on_air": "à l'antenne depuis {time}",
-  "now_listeners": "{count} à l'écoute",
   "now_cover_alt": "Pochette de {title}, {artist}",
   "track_keep": "Garder",
   "track_kept": "Gardé",

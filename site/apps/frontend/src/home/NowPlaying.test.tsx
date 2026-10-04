@@ -9,13 +9,15 @@ import { NowPlayingView, type NowPlayingViewProps } from './NowPlaying';
 // The artist link is a router <Link>.
 const render = (ui: ReactElement) => rtlRender(ui, { wrapper: MemoryRouter });
 
-const playedAt = Math.floor(new Date(2026, 9, 1, 17, 1).getTime() / 1000);
-
 function props(overrides: Partial<NowPlayingViewProps> = {}): NowPlayingViewProps {
   return {
-    track: { title: 'Mimoun', artist: 'Mickey 3D', art: undefined, playedAt },
+    track: {
+      title: 'Mimoun',
+      artist: 'Mickey 3D',
+      album: 'Tu vas pas mourir de rire',
+      art: undefined,
+    },
     isOnline: true,
-    listeners: undefined,
     listen: 'idle',
     onToggleListen: vi.fn(),
     isKept: false,
@@ -28,12 +30,18 @@ function props(overrides: Partial<NowPlayingViewProps> = {}): NowPlayingViewProp
 }
 
 describe('NowPlayingView', () => {
-  it('shows the start time, the title as a heading and the artist', () => {
+  it('shows the title as a heading, then the artist and the album', () => {
     render(<NowPlayingView {...props()} />);
 
-    expect(screen.getByText("à l'antenne depuis 17:01")).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Mimoun' })).toBeInTheDocument();
     expect(screen.getByText('Mickey 3D')).toBeInTheDocument();
+    expect(screen.getByText('Tu vas pas mourir de rire')).toBeInTheDocument();
+  });
+
+  it("leaves out a single's album, which only repeats the title", () => {
+    const track = { title: 'Four to the Floor', artist: 'Starsailor', art: undefined };
+    render(<NowPlayingView {...props({ track: { ...track, album: 'Four To The Floor' } })} />);
+    expect(screen.getAllByText(/four to the floor/i)).toHaveLength(1);
   });
 
   it('puts Écouter under the title and shows the connecting and listening states', async () => {
@@ -52,14 +60,6 @@ describe('NowPlayingView', () => {
 
     rerender(<NowPlayingView {...props({ listen: 'playing' })} />);
     expect(screen.getByText('Pause')).toBeInTheDocument();
-  });
-
-  it('shows the listener count only from two listeners upwards', () => {
-    const { rerender } = render(<NowPlayingView {...props({ listeners: 1 })} />);
-    expect(screen.queryByText(/à l'écoute/)).not.toBeInTheDocument();
-
-    rerender(<NowPlayingView {...props({ listeners: 3 })} />);
-    expect(screen.getByText(/3 à l'écoute/)).toBeInTheDocument();
   });
 
   it('keeps a constant label and carries the kept state in aria-pressed', async () => {

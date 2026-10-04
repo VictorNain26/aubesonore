@@ -80,8 +80,6 @@
   "player_listen_aria": "Listen live",
   "player_pause_aria": "Pause",
   "player_label": "Live player",
-  "now_on_air": "on air since {time}",
-  "now_listeners": "{count} listening",
   "now_cover_alt": "Cover of {title}, {artist}",
   "track_keep": "Keep",
   "track_kept": "Kept",
