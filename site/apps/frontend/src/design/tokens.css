@@ -206,15 +206,6 @@
     }
   }
 
-  @keyframes rise {
-    from {
-      transform: translateY(2.5rem);
-    }
-    to {
-      transform: none;
-    }
-  }
-
   @keyframes fade {
     from {
       opacity: 0;
@@ -400,29 +391,13 @@
   font-stretch: 75%;
 }
 
-/* Each block rises and lights up as it enters the screen, tied to the scroll
-   (animation-timeline: view(): Chrome 115, Safari 26; elsewhere it just shows).
-   It ends once the block is wholly on screen, so nothing stays half-faded,
-   not even the footer at the very end of the page. */
+/* Each block fades in as it enters the screen, and back out when the scroll
+   takes it away (animation-timeline: view(): Chrome 115, Safari 26; elsewhere
+   it just shows). Opacity only: a block that moved would open gaps in the lists. */
 @utility reveal {
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
-      animation:
-        rise linear both,
-        fade linear both;
-      animation-timeline: view();
-      animation-range: entry 0% entry 100%;
-    }
-  }
-}
-
-/* A section's title rises without the fade: the page can rest with it
-   half-entered at the foot of the screen, under the hero, and it must read at
-   full contrast there. */
-@utility reveal-heading {
-  @supports (animation-timeline: view()) {
-    @media (prefers-reduced-motion: no-preference) {
-      animation: rise linear both;
+      animation: fade linear both;
       animation-timeline: view();
       animation-range: entry 0% entry 100%;
     }

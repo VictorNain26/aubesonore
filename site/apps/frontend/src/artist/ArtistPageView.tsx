@@ -186,7 +186,7 @@ export function Section({
       aria-labelledby={`${id}-title`}
       className="grid gap-6 md:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] md:gap-16"
     >
-      <div className="reveal-heading flex flex-col gap-2 self-start md:gap-3">
+      <div className="reveal flex flex-col gap-2 self-start md:gap-3">
         <h2 id={`${id}-title`} className="text-section m-0">
           {title}
         </h2>
