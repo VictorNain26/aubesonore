@@ -39,7 +39,9 @@ export function SiteHeader() {
     }))
   );
   const { pathname } = useLocation();
-  const isHome = ['/', '/en', '/en/', '/reset-password'].includes(pathname);
+  const isHome = ['/', '/en', '/en/'].includes(pathname);
+  // The sign-in page is where Se connecter leads: the header does not offer it twice.
+  const isSignInPage = [m.signin_href(), '/reset-password'].includes(pathname);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const closeLibrary = () => setIsLibraryOpen(false);
   // Kept mounted after the first opening, so closing it can animate.
@@ -95,7 +97,7 @@ export function SiteHeader() {
               items={[{ label: m.library_sign_out(), onSelect: () => void signOut() }]}
             />
           </span>
-        ) : (
+        ) : isSignInPage ? null : (
           <Link to={m.signin_href()} state={{ from: pathname }} className={OUTLINE_PILL}>
             {m.nav_sign_in()}
           </Link>
