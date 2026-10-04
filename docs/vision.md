@@ -260,8 +260,7 @@ alertes « artiste aimé » sont résolus par les étapes 2 à 4, dans l'histori
    servi.
 6. **Le README du site décrit un site qui n'existe plus** : Songlink/Odesli (fermé le
    2026-07-31), identité jour/nuit, fil-journée.
-7. **La migration `0006_timestamptz` avale toute erreur** (`EXCEPTION WHEN OTHERS THEN NULL`).
-8. **Aucune copie hors de la maison** (§4.7).
+7. **Aucune copie hors de la maison** (§4.7).
 
 ## 7. Feuille de route
 
@@ -280,7 +279,7 @@ Dans cet ordre ; chaque étape est une ou plusieurs PR courtes, fusionnées avan
 7. **Influences tirées de Wikipédia**, chaque citation avec sa phrase, après mesure du coût.
 8. **Liens d'œuvre** : featurings (écart 4), remixes, producteurs, tirés du dump MusicBrainz.
 
-En parallèle : le README du site et la migration 0006 (écarts 6 et 7), la copie hors site dès
+En parallèle : le README du site (écart 6), la copie hors site dès
 qu'un compte de stockage existe, le test du disque de sauvegarde sur un port USB natif.
 
 ## 8. Ce qui est remplacé
