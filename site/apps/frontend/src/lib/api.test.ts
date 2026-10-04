@@ -61,9 +61,12 @@ describe('authApi.signInWithProvider', () => {
       })
     );
 
-    await authApi.signInWithProvider('google');
+    await authApi.signInWithProvider('google', 'http://localhost:3000/artist/a-1/x');
 
-    expect(receivedBody).toEqual({ provider: 'google', callbackURL: 'http://localhost:3000/en/' });
+    expect(receivedBody).toEqual({
+      provider: 'google',
+      callbackURL: 'http://localhost:3000/artist/a-1/x',
+    });
     expect(location.href).toBe(authorizeUrl);
   });
 
@@ -71,7 +74,7 @@ describe('authApi.signInWithProvider', () => {
     server.use(
       http.post('http://localhost:3000/api/auth/sign-in/social', () => HttpResponse.json({}))
     );
-    await expect(authApi.signInWithProvider('google')).rejects.toThrow(
+    await expect(authApi.signInWithProvider('google', 'http://localhost:3000/')).rejects.toThrow(
       "La connexion avec Google n'a pas pu démarrer. Réessayez."
     );
     expect(location.href).toBe('http://localhost:3000/en/');
@@ -83,7 +86,9 @@ describe('authApi.signInWithProvider', () => {
         HttpResponse.json({ message: 'Provider not configured' }, { status: 400 })
       )
     );
-    await expect(authApi.signInWithProvider('google')).rejects.toThrow('Connexion impossible');
+    await expect(authApi.signInWithProvider('google', 'http://localhost:3000/')).rejects.toThrow(
+      'Connexion impossible'
+    );
   });
 
   it('falls back to a default message when the error body is not JSON', async () => {
@@ -93,7 +98,9 @@ describe('authApi.signInWithProvider', () => {
         () => new HttpResponse('upstream down', { status: 502 })
       )
     );
-    await expect(authApi.signInWithProvider('google')).rejects.toThrow('Connexion impossible');
+    await expect(authApi.signInWithProvider('google', 'http://localhost:3000/')).rejects.toThrow(
+      'Connexion impossible'
+    );
   });
 });
 

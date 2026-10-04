@@ -1,13 +1,21 @@
 import json
-from datetime import date
+import sqlite3
+from collections.abc import Iterable
+from dataclasses import replace
+from datetime import date, datetime, tzinfo
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import numpy as np
+import pytest
 import responses
+from typer.testing import CliRunner
 
+import radio.cli as cli
 from radio.antenna.grille import (
     Titre,
     bloc,
+    hour_spans,
     load_titres,
     m3u,
     plan_day,
@@ -18,7 +26,9 @@ from radio.antenna.grille import (
     slot_sequence,
     with_published,
 )
-from radio.core.config import Categorie, Creneau, GrilleConfig
+from radio.core.config import Categorie, Creneau, GrilleConfig, Settings
+from radio.core.db import connect
+from radio.core.report import last_stages
 from radio.sources.azuracast import AzuracastClient
 from tests_radio.model_factory import make_model_db
 
@@ -28,11 +38,34 @@ MIDNIGHT = 1_790_892_000.0  # 2026-10-02 00:00, Europe/Paris
 ENTERED = "2026-10-01T00:00:00+02:00"
 
 
+XF = 3.0  # avance du titre suivant, `crossfade` de 2 s * 1,5
+DUREE = 228.0  # 225 s d'antenne : 16 titres font une heure
+
+
 def _titre(tid: int, categorie: Categorie, q: float, artist: int | None = None) -> Titre:
     v = np.full(3, q)
     return Titre(
-        tid, artist or tid, categorie, f"antenne/{tid}.mp3", f"s{tid}", v, v, v, True, MIDNIGHT
+        tid,
+        artist or tid,
+        categorie,
+        f"antenne/{tid}.mp3",
+        f"s{tid}",
+        v,
+        v,
+        v,
+        True,
+        MIDNIGHT,
+        DUREE,
     )
+
+
+def _spans(hours: Iterable[int], midnight: float = MIDNIGHT) -> dict[int, tuple[float, float]]:
+    """Heures d'un jour sans changement d'heure."""
+    return {h: (midnight + h * 3600, midnight + (h + 1) * 3600) for h in hours}
+
+
+def _starts(hours: Iterable[int], midnight: float = MIDNIGHT) -> list[float]:
+    return [midnight + h * 3600 for h in hours]
 
 
 def _grille(**stocks: int) -> GrilleConfig:
@@ -93,9 +126,9 @@ def test_the_least_recently_played_pass_and_each_artist_once_a_day() -> None:
     titres = [_titre(i, "decouvertes", 0.5, artist=i // 2) for i in range(40)]
     played = {f"s{i}": 1000.0 + i for i in range(40)}
     played["s39"] = 0.0  # le plus ancien passage
-    plan = plan_day(titres, played, _grille(decouvertes=40), FRIDAY, [8], MIDNIGHT)
+    plan = plan_day(titres, played, _grille(decouvertes=40), FRIDAY, _spans([8]), MIDNIGHT, XF)
     chosen = plan.hours[8]
-    assert len(chosen) == 16  # ceil(14,6) + 1 créneaux
+    assert len(chosen) == 16  # 16 x 225 s d'antenne couvrent l'heure
     assert 39 in {t.tid for t in chosen}
     assert len({t.artist for t in chosen}) == len(chosen)
 
@@ -103,19 +136,22 @@ def test_the_least_recently_played_pass_and_each_artist_once_a_day() -> None:
 def test_each_title_goes_to_the_hour_that_resembles_it_and_the_hour_drifts() -> None:
     calm = [_titre(i, "decouvertes", 0.1 + i / 1000) for i in range(16)]
     lively = [_titre(100 + i, "decouvertes", 0.9 - i / 1000) for i in range(16)]
-    plan = plan_day(calm + lively, {}, _grille(decouvertes=32), FRIDAY, [3, 21], MIDNIGHT)
+    plan = plan_day(
+        calm + lively, {}, _grille(decouvertes=32), FRIDAY, _spans([3, 21]), MIDNIGHT, XF
+    )
     assert {t.tid for t in plan.hours[3]} == {t.tid for t in calm}  # nuit
     assert {t.tid for t in plan.hours[21]} == {t.tid for t in lively}  # fête du vendredi
-    # La nuit part de sa cible (0,25) : le plus proche d'abord, puis chaque fois le plus proche.
+    # La nuit part de sa cible (0,25) : le plus proche d'abord, puis chaque fois le plus proche ;
+    # le titre le moins pressé, que l'heure suivante peut couper, vient en dernier.
     order = [round(float(t.q[0]), 3) for t in plan.hours[3]]
-    assert order == sorted(order, reverse=True)
+    assert order[:-1] == sorted(order[:-1], reverse=True)
 
 
 def test_an_artist_waits_three_hours_and_a_title_goes_back_in_rotation() -> None:
     # 20 titres d'artistes distincts pour 16 créneaux par heure.
     titres = [_titre(i, "decouvertes", 0.5) for i in range(20)]
     hours = [8, 9, 10, 11, 12]
-    plan = plan_day(titres, {}, _grille(decouvertes=20), FRIDAY, hours, MIDNIGHT)
+    plan = plan_day(titres, {}, _grille(decouvertes=20), FRIDAY, _spans(hours), MIDNIGHT, XF)
     eight, nine, ten, eleven, noon = ({t.artist for t in plan.hours[h]} for h in hours)
     assert len(eight) == 16 and len(nine) == 4 and not eight & nine  # 4 artistes libres à 9 h
     # L'heure est réordonnée : placé à 8 h, un artiste peut passer jusqu'à 9 h, et revient à
@@ -133,7 +169,7 @@ def test_a_title_rests_whatever_its_mood() -> None:
     # autres ont joué 21 h avant : moins de deux tours, aucun passage forcé ne le masque.
     played = {f"s{i}": MIDNIGHT - 20 * 3600 for i in range(1, 200)} | {"s0": MIDNIGHT - 3 * 3600}
     grille = _grille(decouvertes=200).model_copy(update={"marge": 2.0})
-    plan = plan_day([near, *others], played, grille, FRIDAY, [1], MIDNIGHT)
+    plan = plan_day([near, *others], played, grille, FRIDAY, _spans([1]), MIDNIGHT, XF)
     # Tour : 200 titres pour 16 x 24 créneaux, ~12,5 h ; repos minimum ~7,5 h.
     assert 0 not in {t.tid for t in plan.hours[1]}
 
@@ -145,9 +181,14 @@ def test_a_starved_title_plays_whatever_its_mood_and_ahead_of_closer_ones() -> N
     far = _titre(0, "decouvertes", 1.0)
     close = [_titre(i, "decouvertes", 0.25) for i in range(1, 100)]
     played = {f"s{i}": MIDNIGHT - 7 * 3600 for i in range(1, 100)} | {"s0": MIDNIGHT - 13 * 3600}
-    plan = plan_day([far, *close], played, _grille(decouvertes=100), FRIDAY, [0], MIDNIGHT)
+    plan = plan_day(
+        [far, *close], played, _grille(decouvertes=100), FRIDAY, _spans([0]), MIDNIGHT, XF
+    )
     assert 0 in {t.tid for t in plan.hours[0]}
     assert plan.late == 1
+    # Breaks if the forced title can land at the end of the hour, where the next one cuts it: far
+    # from every other, the drift alone would put it last, and it would never play.
+    assert [t.tid for t in plan.hours[0]].index(0) < 15
 
 
 def test_rotation_wins_over_mood_for_a_title_far_from_every_hour() -> None:
@@ -164,9 +205,12 @@ def test_rotation_wins_over_mood_for_a_title_far_from_every_hour() -> None:
         np.zeros(3),
         True,
         MIDNIGHT,
+        DUREE,
     )
     played = {f"s{i}": MIDNIGHT - 3600 for i in range(32)} | {"s99": MIDNIGHT - 3 * 86400}
-    plan = plan_day([*titres, odd], played, _grille(decouvertes=33), FRIDAY, [8, 9], MIDNIGHT)
+    plan = plan_day(
+        [*titres, odd], played, _grille(decouvertes=33), FRIDAY, _spans([8, 9]), MIDNIGHT, XF
+    )
     assert 99 in {t.tid for h in (8, 9) for t in plan.hours[h]}
     assert plan.late == 1  # 3 jours sans passer, pour un tour de 2 h (33 titres, 384 créneaux)
 
@@ -176,7 +220,9 @@ def test_an_artist_heard_late_yesterday_waits_three_hours_after_midnight() -> No
     # never played) and was heard at 23:00 the day before: not before 2:00.
     titres = [_titre(i, "decouvertes", 0.5, artist=7 if i < 10 else 1000 + i) for i in range(400)]
     played = {"s0": MIDNIGHT - 3600}
-    plan = plan_day(titres, played, _grille(decouvertes=400), FRIDAY, [0, 1, 2], MIDNIGHT)
+    plan = plan_day(
+        titres, played, _grille(decouvertes=400), FRIDAY, _spans([0, 1, 2]), MIDNIGHT, XF
+    )
     assert 7 not in {t.artist for h in (0, 1) for t in plan.hours[h]}
     assert 7 in {t.artist for t in plan.hours[2]}
 
@@ -186,21 +232,190 @@ def test_the_hour_published_but_not_yet_played_counts_for_the_next_day(tmp_path:
     conn = make_model_db(tmp_path)
     titres = [_titre(i, "decouvertes", 0.5) for i in range(400)]
     grille = _grille(decouvertes=400)
-    today = plan_day(titres, {}, grille, FRIDAY, [23], MIDNIGHT)
-    record(conn, today, MIDNIGHT)
+    today = plan_day(titres, {}, grille, FRIDAY, _spans([23]), MIDNIGHT, XF)
+    record(conn, today)
     late = {t.artist for t in today.hours[23]}
 
-    played = with_published(conn, {}, MIDNIGHT + 23 * 3600)
-    tomorrow = plan_day(titres, played, grille, SATURDAY, [0, 1, 2, 3], MIDNIGHT + 86400)
+    played = with_published(conn, {}, MIDNIGHT + 23 * 3600, _starts(range(24), MIDNIGHT + 86400))
+    tomorrow = plan_day(
+        titres,
+        played,
+        grille,
+        SATURDAY,
+        _spans([0, 1, 2, 3], MIDNIGHT + 86400),
+        MIDNIGHT + 86400,
+        XF,
+    )
 
     assert not late & {t.artist for h in (0, 1, 2) for t in tomorrow.hours[h]}
     assert set(played) == {t.song_id for t in today.hours[23]}
 
 
-def test_missing_titles_leave_empty_slots() -> None:
+def test_the_sunday_pass_frees_the_hours_it_rewrites(tmp_path: Path) -> None:
+    # Breaks if the hours the plan rewrites still count as published: on 2026-10-04 the pass of
+    # 06:38 kept every title and artist of the night's grid for 7 h-23 h, and from noon each hour
+    # had 4 to 6 titles out of 16, the rest played by the fallback.
+    conn = make_model_db(tmp_path)
+    titres = [_titre(i, "decouvertes", 0.5) for i in range(400)]
+    grille = _grille(decouvertes=400)
+    night = plan_day(titres, {}, grille, FRIDAY, _spans(list(range(24))), MIDNIGHT, XF)
+    record(conn, night)
+    history = {t.song_id: MIDNIGHT + h * 3600 + 1800 for h in range(6) for t in night.hours[h]}
+    now, rest = MIDNIGHT + 6.5 * 3600, list(range(7, 24))
+
+    played = with_published(conn, history, now, _starts(rest))
+    plan = plan_day(titres, played, grille, FRIDAY, _spans(rest), MIDNIGHT, XF)
+
+    assert plan.empty_slots == 0 and all(len(plan.hours[h]) == 16 for h in rest)
+    # L'heure en cours, publiée et pas réécrite, compte toujours.
+    assert all(played[t.song_id] == MIDNIGHT + 7 * 3600 for t in night.hours[6])
+    # Le même plan, quand les heures réécrites comptent, laisse le secours jouer.
+    stale = with_published(conn, history, now, [])
+    assert plan_day(titres, stale, grille, FRIDAY, _spans(rest), MIDNIGHT, XF).short_hours > 0
+
+
+def test_a_published_hour_counts_until_it_ends_unless_the_plan_rewrites_it(
+    tmp_path: Path,
+) -> None:
+    # The grid of tomorrow written by hand at 15:30: today's hours from 15 h still play, an hour
+    # gone by no longer counts, and tomorrow's hours already published are rewritten.
+    conn = make_model_db(tmp_path)
+    rows = [(14, "past"), (15, "now"), (20, "tonight"), (24 + 3, "tomorrow")]
+    published = [(MIDNIGHT + h * 3600, song) for h, song in rows]
+    conn.executemany("INSERT INTO grille VALUES (?, ?)", published)
+    conn.commit()
+    played = with_published(conn, {}, MIDNIGHT + 15.5 * 3600, _starts(range(24), MIDNIGHT + 86400))
+    assert played == {"now": MIDNIGHT + 16 * 3600, "tonight": MIDNIGHT + 21 * 3600}
+
+
+PARIS = ZoneInfo("Europe/Paris")
+FALL_BACK = date(2026, 10, 25)  # dimanche : 3 h CEST redevient 2 h CET
+SPRING_FORWARD = date(2027, 3, 28)  # dimanche : 2 h CET devient 3 h CEST
+
+
+def _at(day: date, hour: int, minute: int = 0, fold: int = 0) -> float:
+    return datetime(day.year, day.month, day.day, hour, minute, tzinfo=PARIS, fold=fold).timestamp()
+
+
+def test_an_ordinary_day_has_twenty_four_hours_from_midnight() -> None:
+    spans = hour_spans(FRIDAY, range(24), PARIS)
+    assert spans == _spans(range(24))
+
+
+def test_the_repeated_hour_lasts_two_hours_and_the_next_ones_start_on_the_wall_clock() -> None:
+    # Breaks if hours are counted from midnight: from 3 h on, every hour of the Sunday pass would
+    # start an hour early.
+    spans = hour_spans(FALL_BACK, range(24), PARIS)
+    assert len(spans) == 24
+    assert spans[2] == (_at(FALL_BACK, 2), _at(FALL_BACK, 3))  # 2 h CEST puis 2 h CET
+    assert spans[2][1] - spans[2][0] == 7200
+    assert spans[7][0] == _at(FALL_BACK, 7) == _at(FALL_BACK, 0) + 8 * 3600
+    assert all(b - a == 3600 for h, (a, b) in spans.items() if h != 2)
+
+
+def test_the_missing_hour_is_left_out() -> None:
+    spans = hour_spans(SPRING_FORWARD, range(24), PARIS)
+    assert 2 not in spans and len(spans) == 23
+    assert spans[1] == (_at(SPRING_FORWARD, 1), _at(SPRING_FORWARD, 3))
+    assert spans[3][0] == _at(SPRING_FORWARD, 0) + 2 * 3600
+    assert all(b - a == 3600 for a, b in spans.values())
+
+
+def test_the_repeated_hour_gets_two_hours_of_titles() -> None:
+    # AzuraCast schedules « Grille dim 02h » on the wall clock, both occurrences, and loop_once
+    # plays it once: one hour of titles would leave the fallback for the second.
+    titres = [_titre(i, "decouvertes", 0.5) for i in range(400)]
+    spans = hour_spans(FALL_BACK, [1, 2, 3], PARIS)
+    plan = plan_day(titres, {}, _grille(decouvertes=400), FALL_BACK, spans, _at(FALL_BACK, 0), XF)
+    assert [len(plan.hours[h]) for h in (1, 2, 3)] == [16, 32, 16]
+    assert plan.empty_slots == 0
+
+
+def test_the_sunday_pass_of_the_clock_change_counts_the_hour_in_progress(tmp_path: Path) -> None:
+    # Breaks if published hours are dated from midnight: on 2026-10-25 the pass of 06:38 would see
+    # the hour of 6 h end at 6:00, and the grid of 23:00 the hour of 23 h end at 23:00.
+    conn = make_model_db(tmp_path)
+    titres = [_titre(i, "decouvertes", 0.5) for i in range(400)]
+    grille = _grille(decouvertes=400)
+    spans = hour_spans(FALL_BACK, range(24), PARIS)
+    night = plan_day(titres, {}, grille, FALL_BACK, spans, _at(FALL_BACK, 0), XF)
+    record(conn, night)
+
+    rest = hour_spans(FALL_BACK, range(7, 24), PARIS)
+    played = with_published(conn, {}, _at(FALL_BACK, 6, 38), [a for a, _ in rest.values()])
+    assert {t.song_id for t in night.hours[6]} == set(played)
+    assert set(played.values()) == {_at(FALL_BACK, 7)}
+
+    monday = date(2026, 10, 26)
+    tomorrow = [a for a, _ in hour_spans(monday, range(24), PARIS).values()]
+    played = with_published(conn, {}, _at(FALL_BACK, 23, 0), tomorrow)
+    assert {t.song_id for t in night.hours[23]} == set(played)
+
+
+def test_missing_titles_leave_the_hour_short() -> None:
     titres = [_titre(i, "decouvertes", 0.5) for i in range(10)]
-    plan = plan_day(titres, {}, _grille(decouvertes=10), FRIDAY, [8], MIDNIGHT)
-    assert len(plan.hours[8]) == 10 and plan.empty_slots == 6
+    plan = plan_day(titres, {}, _grille(decouvertes=10), FRIDAY, _spans([8]), MIDNIGHT, XF)
+    assert len(plan.hours[8]) == 10 and plan.short_hours == 1
+
+
+def test_an_hour_is_filled_to_its_length_not_to_a_count() -> None:
+    # Breaks if an hour holds a fixed count: 16 short titles ran out before the end on 2026-10-04
+    # at 5 h (3 585 s) and the fallback played; 16 long ones leave titles that never play.
+    short = [replace(_titre(i, "decouvertes", 0.5), duration_s=153.0) for i in range(200)]
+    plan = plan_day(short, {}, _grille(decouvertes=200), FRIDAY, _spans([8]), MIDNIGHT, XF)
+    assert len(plan.hours[8]) == 24 and plan.short_hours == 0  # 24 x 150 s = 3 600 s
+
+
+def test_the_lead_of_the_next_title_shortens_each_one() -> None:
+    # Breaks if the lead is ignored: 15 titles of 240 s make exactly an hour, but each one starts
+    # 15 s before the end of the previous, and the hour would run out a minute early.
+    titres = [replace(_titre(i, "decouvertes", 0.5), duration_s=240.0) for i in range(400)]
+    plan = plan_day(titres, {}, _grille(decouvertes=400), FRIDAY, _spans([8]), MIDNIGHT, 15.0)
+    assert len(plan.hours[8]) == 16  # 16 x 225 s
+
+
+def test_an_hour_after_a_long_title_keeps_room_for_its_overrun() -> None:
+    # Breaks if the hour after a long title counts on starting on time: the title of 1 000 s
+    # placed at 8 h can run 997 s into 9 h, so only 12 titles of 9 h are sure to start, and the 4
+    # least pressed (the first placed: never played, they are the least late) end the hour.
+    long = replace(_titre(0, "decouvertes", 0.5), duration_s=1000.0)
+    titres = [long, *(_titre(i, "decouvertes", 0.5) for i in range(1, 400))]
+    plan = plan_day(titres, {}, _grille(decouvertes=400), FRIDAY, _spans([8, 9]), MIDNIGHT, XF)
+    assert 0 in {t.tid for t in plan.hours[8]}
+    nine = [t.tid for t in plan.hours[9]]
+    assert len(nine) == 16 and nine[-4:] == sorted(nine)[:4]
+
+
+def test_the_turn_follows_the_measured_lengths() -> None:
+    # 400 titles of 300 s on air: 12 an hour, 288 a day, a turn of 400 / 288 days. An unmeasured
+    # title counts for the median length of the measured ones.
+    titres = [replace(_titre(i, "decouvertes", 0.5), duration_s=303.0) for i in range(399)]
+    titres.append(replace(_titre(399, "decouvertes", 0.5), duration_s=None, measured=False))
+    plan = plan_day(titres, {}, _grille(decouvertes=400), FRIDAY, _spans([8]), MIDNIGHT, XF)
+    assert abs(plan.turnover_days["decouvertes"] - 400 / 288) < 1e-9
+
+
+def test_a_slot_given_away_is_counted_once() -> None:
+    # Breaks if every draw of a blocked category counts: only the cues are allowed, and each of
+    # them takes the slot of one blocked category, not of every one the round-robin offers.
+    new = [_titre(i, "nouveautes", 0.5) for i in range(100)]
+    disc = [_titre(1000 + i, "decouvertes", 0.5) for i in range(100)]
+    cues = [_titre(2000 + i, "reperes", 0.5) for i in range(100)]
+    played = {t.song_id: MIDNIGHT + 8 * 3600 - 60 for t in new + disc}
+    grille = _grille(nouveautes=100, decouvertes=100, reperes=100)
+    plan = plan_day([*new, *disc, *cues], played, grille, FRIDAY, _spans([8]), MIDNIGHT, XF)
+    assert {t.categorie for t in plan.hours[8]} == {"reperes"} and len(plan.hours[8]) == 16
+    assert plan.empty_slots == 16
+
+
+def test_the_category_with_nothing_allowed_gives_its_slot_away() -> None:
+    # Ten new titles and a deep stock of discoveries: once the new ones have all played, the hour
+    # goes on with discoveries instead of leaving a hole that the fallback would fill.
+    titres = [_titre(i, "nouveautes", 0.5) for i in range(10)]
+    titres += [_titre(1000 + i, "decouvertes", 0.5) for i in range(400)]
+    grille = _grille(nouveautes=10, decouvertes=400)
+    plan = plan_day(titres, {}, grille, FRIDAY, _spans([8, 9]), MIDNIGHT, XF)
+    assert plan.short_hours == 0 and len(plan.hours[9]) == 16
 
 
 def test_titles_on_air_are_read_with_their_measures_as_quantiles(tmp_path: Path) -> None:
@@ -235,6 +450,7 @@ class FakeStation:
         self.existing = {"Grille ven 08h": 7}
         self.created: list[tuple[str, int, int]] = []
         self.filled: dict[int, str] = {}
+        self.emptied: list[int] = []
         self.found = found or {}
 
     def playlists(self) -> dict[str, int]:
@@ -248,12 +464,26 @@ class FakeStation:
         self.filled[playlist_id] = m3u_text
         return self.found.get(str(playlist_id), m3u_text.count("\n") - 1)
 
+    def empty_playlist(self, playlist_id: int) -> None:
+        self.emptied.append(playlist_id)
+
+
+def test_publish_empties_the_playlist_of_an_hour_that_does_not_exist() -> None:
+    # Breaks if the missing hour keeps last week's grid: on 2027-03-28 AzuraCast still plays
+    # « Grille dim 02h » once at 3 h, its start and end both falling on 03:00.
+    titres = [_titre(i, "decouvertes", 0.5) for i in range(32)]
+    plan = plan_day(titres, {}, _grille(decouvertes=32), FRIDAY, _spans([9]), MIDNIGHT, XF)
+    station = FakeStation()
+    publish(plan, station, [8, 10])
+    assert station.emptied == [7]  # « Grille ven 08h » ; celle de 10 h n'existe pas encore
+    assert 7 not in station.filled
+
 
 def test_publish_writes_each_hour_into_its_playlist() -> None:
     titres = [_titre(i, "decouvertes", 0.5) for i in range(32)]
-    plan = plan_day(titres, {}, _grille(decouvertes=32), FRIDAY, [8, 9], MIDNIGHT)
+    plan = plan_day(titres, {}, _grille(decouvertes=32), FRIDAY, _spans([8, 9]), MIDNIGHT, XF)
     station = FakeStation(found={"109": 3})
-    errors = publish(plan, station)
+    errors = publish(plan, station, [])
     assert station.created == [("Grille ven 09h", 5, 9)]
     assert station.filled[7] == m3u(plan.hours[8])
     assert station.filled[7].startswith("#EXTM3U\nantenne/")
@@ -304,3 +534,146 @@ def test_client_hour_playlists_history_and_import() -> None:
     assert c.fill_playlist(11, "#EXTM3U\na\nb\n") == 1
     assert b"playlist_file" in responses.calls[4].request.body
     assert c.timezone() == "Europe/Paris"
+
+
+@responses.activate
+def test_client_reads_how_early_azuracast_starts_the_next_title() -> None:
+    admin = "http://127.0.0.1:8080/api/admin/station/1"
+    c = AzuracastClient("http://127.0.0.1:8080", "k")
+    for crossfade, mode, autocue, expected in (
+        (2, "normal", False, 3.0),
+        (2, "smart", False, 3.0),
+        (2, "none", False, 0.0),
+        (0, "normal", False, 0.0),
+        (2, "normal", True, 0.0),  # AutoCue coupe le fondu (getCrossfadeTypeEnum)
+    ):
+        backend = {"crossfade": crossfade, "crossfade_type": mode, "enable_auto_cue": autocue}
+        responses.get(admin, json={"backend_config": backend})
+        assert c.start_next_s() == expected
+        responses.reset()
+
+
+@responses.activate
+def test_client_reads_when_each_queued_title_will_play() -> None:
+    responses.get(
+        API + "/queue",
+        json=[
+            {"song": {"id": "a"}, "cued_at": 100, "played_at": 400},
+            {"song": {"id": "b"}, "cued_at": 200, "played_at": None},  # pas encore estimé
+        ],
+    )
+    c = AzuracastClient("http://127.0.0.1:8080", "k")
+    assert c.queued() == {"a": 400.0, "b": 200.0}
+
+
+class FakeAzuracast(FakeStation):
+    def __init__(self) -> None:
+        super().__init__()
+        self.queue: dict[str, float] = {}
+
+    def timezone(self) -> str:
+        return "Europe/Paris"
+
+    def last_played(self, start: str, end: str) -> dict[str, float]:
+        return {"s2": 50.0}
+
+    def queued(self) -> dict[str, float]:
+        return self.queue
+
+    def start_next_s(self) -> float:
+        return XF
+
+
+@pytest.fixture
+def grille_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeAzuracast:
+    cfg = tmp_path / "config"
+    cfg.mkdir()
+    (cfg / "editorial.toml").write_text("")
+    settings = Settings(
+        _env_file=None,
+        plex_token="tok",
+        plex_music_section="Musique",
+        azuracast_api_key="k",
+        RADIO_DATA_DIR=tmp_path / "data",
+        RADIO_CONFIG_DIR=cfg,
+    )
+    monkeypatch.setattr(cli, "_settings", lambda: settings)
+    station = FakeAzuracast()
+    monkeypatch.setattr(cli, "AzuracastClient", lambda *a: station)
+    return station
+
+
+def _on_air(tmp_path: Path, n: int) -> None:
+    with connect(tmp_path / "data" / "radio.db") as conn:
+        conn.executemany(
+            "INSERT INTO antenne VALUES (?, 'decouverte', 'decouvertes', ?, ?, ?, ?, ?)",
+            [(i, i, f"s{i}", f"antenne/{i}.mp3", ENTERED, ENTERED) for i in range(1, n + 1)],
+        )
+
+
+def test_grille_command_writes_a_full_day(tmp_path: Path, grille_env: FakeAzuracast) -> None:
+    _on_air(tmp_path, 400)
+    res = CliRunner().invoke(cli.app, ["grille"])
+    assert res.exit_code == 0, res.output
+    assert "heures courtes : 0" in res.stdout
+    assert len(grille_env.filled) == 24
+
+
+def test_a_short_hour_is_published_then_fails_the_grid(
+    tmp_path: Path, grille_env: FakeAzuracast
+) -> None:
+    # Breaks if a short hour passes in silence: it runs out and the fallback plays (vision §1),
+    # and only a failed command makes Gatus alert.
+    _on_air(tmp_path, 10)
+    res = CliRunner().invoke(cli.app, ["grille"])
+    assert res.exit_code == 1
+    assert len(grille_env.filled) == 24  # la grille publiée est gardée
+    with connect(tmp_path / "data" / "radio.db") as conn:
+        stages = [s for s in last_stages(conn) if s[0] == "grille"]
+        n_rows = conn.execute("SELECT COUNT(*) FROM stage_reports").fetchone()[0]
+    assert n_rows == 1 and not stages[0][2]
+    short = stages[0][3]["heures courtes"]
+    assert isinstance(short, int) and short > 0
+    assert f"{short} heures trop courtes : le secours jouera" in res.output
+
+
+def test_the_grid_empties_the_hour_missing_from_the_day(
+    tmp_path: Path, grille_env: FakeAzuracast, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The command passes the hours the day lacks to `publish`: here, 2 h, as on 2027-03-28.
+    _on_air(tmp_path, 400)
+    grille_env.existing = {playlist_name(d, 2): 200 + d for d in range(1, 8)}
+    real = cli.grille_mod.hour_spans
+
+    def spring(day: date, hours: Iterable[int], tz: tzinfo) -> dict[int, tuple[float, float]]:
+        return {h: span for h, span in real(day, hours, tz).items() if h != 2}
+
+    monkeypatch.setattr(cli.grille_mod, "hour_spans", spring)
+    res = CliRunner().invoke(cli.app, ["grille"])
+    assert res.exit_code == 0, res.output
+    assert len(grille_env.emptied) == 1 and grille_env.emptied[0] not in grille_env.filled
+
+
+def test_the_grid_counts_what_azuracast_has_already_queued(
+    tmp_path: Path, grille_env: FakeAzuracast, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Breaks if the queue is ignored: AzuraCast queues ~20 min ahead, and a title already handed
+    # to Liquidsoap plays even when its hour is rewritten; placed again, it would play twice.
+    _on_air(tmp_path, 400)
+    grille_env.queue = {"s1": 1_791_130_000.0}
+    seen: list[dict[str, float]] = []
+    real = cli.grille_mod.with_published
+
+    def spy(
+        conn: sqlite3.Connection,
+        played: dict[str, float],
+        now: float,
+        rewritten: Iterable[float],
+    ) -> dict[str, float]:
+        seen.append(played)
+        return real(conn, played, now, rewritten)
+
+    monkeypatch.setattr(cli.grille_mod, "with_published", spy)
+    res = CliRunner().invoke(cli.app, ["grille"])
+    assert res.exit_code == 0, res.output
+    assert seen == [{"s2": 50.0, "s1": 1_791_130_000.0}]

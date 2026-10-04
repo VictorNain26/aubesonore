@@ -32,7 +32,7 @@ export function PlayerSideEffects(): null {
   useEffect(() => {
     if (!isPlaying || !title || !artist) return;
     const previous = document.title;
-    document.title = `${title} — ${artist} · AubeSonore`;
+    document.title = `${title}, ${artist} · AubeSonore`;
     return () => {
       document.title = previous;
     };

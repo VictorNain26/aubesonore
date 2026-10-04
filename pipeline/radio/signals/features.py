@@ -5,7 +5,8 @@ Chaîne officielle MTG, un seul réseau d'embedding : MSD-MusiCNN, puis les têt
 DEAM (valence, arousal), moyennées par patch ; tempo par TempoCNN (vote majoritaire, recommandé
 pour un tempo constant). Chaque valeur est donnée sur le titre entier, sur ses `EDGE_S` premières
 et sur ses `EDGE_S` dernières secondes : une transition se joue entre la fin d'un titre et le
-début du suivant. Le fichier d'antenne est lu, jamais écrit.
+début du suivant. Le titre, c'est ce qui passe à l'antenne : entre ses points de coupe quand le
+fichier en porte, et sa durée en découle. Le fichier d'antenne est lu, jamais écrit.
 """
 
 import hashlib
@@ -20,6 +21,8 @@ from typing import Any, Protocol
 
 import numpy as np
 import numpy.typing as npt
+
+from radio.acquire.audio import Cue, ToolError, cue_of
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +53,10 @@ MODELS = {
         "21c328332a221695dd6e8572728c617373064df882e8f81da6d88dc3a821e3b3",
     ),
 }
-FEATURES_TAG = "msd-musicnn-1/hop187+danceability-msd-musicnn-1+deam-msd-musicnn-2+deeptemp-k16-3"
+# « /cue » : mesuré sur la partie jouée ; une mesure d'un autre modèle est refaite et remplacée.
+FEATURES_TAG = (
+    "msd-musicnn-1/hop187+danceability-msd-musicnn-1+deam-msd-musicnn-2+deeptemp-k16-3/cue"
+)
 EDGE_S = 30.0
 # Patches MusiCNN sans recouvrement (187 trames, ~3 s) : même moyenne qu'au pas par défaut (93),
 # pour moitié moins de calcul (mesures du 2026-10-02).
@@ -174,11 +180,14 @@ class FeatureExtractor:
             return None
         return audio if audio.size else None
 
-    def measure(self, path: Path) -> Features | None:
+    def measure(self, path: Path, cue: Cue | None) -> Features | None:
         """None si l'audio est illisible ou trop court pour un patch."""
         a16 = self._load(path, 16000)
         a11 = self._load(path, 11025)
         if a16 is None or a11 is None:
+            return None
+        a16, a11 = played(a16, 16000, cue), played(a11, 11025, cue)
+        if not a16.size or not a11.size:
             return None
         try:
             emb = np.asarray(self._embed(a16), dtype=np.float32)
@@ -201,8 +210,15 @@ class FeatureExtractor:
         )
 
 
+def played(audio: Floats, rate: int, cue: Cue | None) -> Floats:
+    """La partie jouée : entre les points de coupe, ou tout le fichier sans eux."""
+    if cue is None:
+        return audio
+    return audio[int(cue.cue_in * rate) : int(cue.cue_out * rate)]
+
+
 class Extractor(Protocol):
-    def measure(self, path: Path) -> Features | None: ...
+    def measure(self, path: Path, cue: Cue | None) -> Features | None: ...
 
 
 @dataclass
@@ -216,22 +232,26 @@ class FeaturesReport:
 def measure_antenna(
     conn: sqlite3.Connection, media_dir: Path, extractor: Extractor, now: str, batch: int = 20
 ) -> FeaturesReport:
-    """Mesure les titres pas encore mesurés, à l'antenne et au repos (ils reviendront au fond).
-    Un fichier absent du dossier média n'est pas noté : il est nommé, et retenté à la passe
-    suivante."""
+    """Mesure les titres pas encore mesurés, ou mesurés autrement (`FEATURES_TAG`), à l'antenne et
+    au repos (ils reviendront au fond) ; une ancienne mesure reste en service jusqu'à son
+    remplacement. Un fichier absent du dossier média n'est pas noté : il est nommé, et retenté à
+    la passe suivante."""
     todo = conn.execute(
         """
         SELECT n.deezer_track_id, n.path FROM antenne n
         LEFT JOIN track_features f USING (deezer_track_id)
-        WHERE f.deezer_track_id IS NULL ORDER BY n.deezer_track_id
-        """
+        WHERE f.deezer_track_id IS NULL OR f.model != ? ORDER BY n.deezer_track_id
+        """,
+        (FEATURES_TAG,),
     ).fetchall()
     rep = FeaturesReport(n_todo=len(todo))
     rows: list[tuple[object, ...]] = []
 
     def flush() -> None:
         with conn:
-            conn.executemany(f"INSERT INTO track_features VALUES ({', '.join('?' * 17)})", rows)
+            conn.executemany(
+                f"INSERT OR REPLACE INTO track_features VALUES ({', '.join('?' * 17)})", rows
+            )
         rows.clear()
 
     for i, (tid, rel) in enumerate(todo, 1):
@@ -241,7 +261,13 @@ def measure_antenna(
         if not path.is_file():
             rep.missing.append(str(rel))
             continue
-        feats = extractor.measure(path)
+        try:
+            cue = cue_of(path)
+        except ToolError:
+            rep.n_failed += 1
+            rows.append((tid, "audio_failed", FEATURES_TAG, now, *([None] * 13)))
+            continue
+        feats = extractor.measure(path, cue)
         if feats is None:
             rep.n_failed += 1
             rows.append((tid, "audio_failed", FEATURES_TAG, now, *([None] * 13)))
