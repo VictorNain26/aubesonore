@@ -1,4 +1,4 @@
-"""CLI entry point: run, snapshot-popularity, snapshot-proximity, make-fixtures, load."""
+"""CLI entry point: run, the snapshots, make-fixtures, load."""
 
 from __future__ import annotations
 
@@ -10,13 +10,14 @@ from pathlib import Path
 import duckdb
 
 from musilogy import REFERENCE_DUMP as DUMP
-from musilogy import REFERENCE_POPULARITY
+from musilogy import REFERENCE_INFLUENCES, REFERENCE_POPULARITY
 from musilogy.build import build, check_invariants, connect
 from musilogy.extract import extract, reduce_artist, reduce_release_group
 from musilogy.fetch import (
     POPULARITY_BATCH,
     expected_sums,
     fetch_dump,
+    fetch_influences,
     fetch_popularity,
     fetch_proximity,
     sha256_file,
@@ -29,6 +30,8 @@ from musilogy.paths import (
     RAW_DIR,
     REFERENCE_DIR,
     SQL_DIR,
+    influences_snapshot,
+    influences_sums,
     out_dir,
     popularity_snapshot,
     popularity_sums,
@@ -43,6 +46,7 @@ WORK_DIR = work_dir(DUMP)
 ARTISTS_JSONL = WORK_DIR / "artists.jsonl"
 RELEASE_GROUPS_JSONL = WORK_DIR / "release_groups.jsonl"
 POPULARITY_JSONL = popularity_snapshot(REFERENCE_POPULARITY)
+INFLUENCES_JSONL = influences_snapshot(REFERENCE_INFLUENCES)
 
 WITNESSES = [
     "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d",  # The Beatles
@@ -155,6 +159,32 @@ def snapshot_proximity() -> None:
     print(f"{n} artists asked; pin it: REFERENCE_PROXIMITY = {date!r}")
 
 
+def snapshot_influences() -> None:
+    """Asks Wikidata for the declared influences between MusicBrainz artists.
+    Wikidata moves every day, so the snapshot is taken once and pinned, like
+    the ListenBrainz ones."""
+    date = datetime.now(UTC).date().isoformat()
+    dest = influences_snapshot(date)
+    if dest.exists():
+        raise SystemExit(
+            f"Wikidata influences {date} already taken at {dest}: it is never taken again"
+        )
+    n = fetch_influences(dest)
+    influences_sums(date).write_text(f"{sha256_file(dest)}  {dest.name}\n", encoding="utf-8")
+    print(f"{n} rows; pin it: REFERENCE_INFLUENCES = {date!r}")
+
+
+def verified_influences() -> Path:
+    if not INFLUENCES_JSONL.exists():
+        raise SystemExit(
+            f"Wikidata snapshot {REFERENCE_INFLUENCES} missing at {INFLUENCES_JSONL}; "
+            "it cannot be taken again: `musilogy snapshot-influences`, then pin the new one"
+        )
+    sums = expected_sums(influences_sums(REFERENCE_INFLUENCES))
+    verify(INFLUENCES_JSONL, sums[INFLUENCES_JSONL.name])
+    return INFLUENCES_JSONL
+
+
 def verified_popularity() -> Path:
     if not POPULARITY_JSONL.exists():
         raise SystemExit(
@@ -189,6 +219,7 @@ def run() -> None:
         fetch_and_extract()
 
     popularity = verified_popularity()
+    influences = verified_influences()
 
     con = connect()
     build(
@@ -199,6 +230,8 @@ def run() -> None:
         CORRECTIONS_CSV,
         popularity=popularity,
         popularity_snapshot=REFERENCE_POPULARITY,
+        influences=influences,
+        influences_snapshot=REFERENCE_INFLUENCES,
     )
 
     violations = check_invariants(con, SQL_DIR)
@@ -261,6 +294,17 @@ def make_fixtures() -> None:
             if json.loads(line)["artist_mbid"] in kept_set:
                 fh.write(line)
 
+    # The declarations that touch a fixture artist, from either side: the
+    # witnesses' influences, and who cites them.
+    with (
+        (out / "influences.jsonl").open("w", encoding="utf-8") as fh,
+        verified_influences().open(encoding="utf-8") as src,
+    ):
+        for line in src:
+            row = json.loads(line)
+            if row["artist_mbid"] in kept_set or row["influence_mbid"] in kept_set:
+                fh.write(line)
+
     print("witnesses found:", len(wanted & set(kept)), "linked artists:", len(set(kept) - wanted))
     missing = wanted - set(kept)
     print("missing:", missing or "none")
@@ -282,6 +326,10 @@ def main() -> None:
         "snapshot-proximity",
         help="take a dated ListenBrainz snapshot of each popular artist's neighbours",
     )
+    subparsers.add_parser(
+        "snapshot-influences",
+        help="take a dated Wikidata snapshot of the influences between MusicBrainz artists",
+    )
     subparsers.add_parser("make-fixtures", help="extract witness records for the test fixtures")
     subparsers.add_parser(
         "load", help="load the published tables into the site's Postgres (libpq environment)"
@@ -294,6 +342,8 @@ def main() -> None:
         snapshot_popularity()
     elif args.command == "snapshot-proximity":
         snapshot_proximity()
+    elif args.command == "snapshot-influences":
+        snapshot_influences()
     elif args.command == "make-fixtures":
         make_fixtures()
     elif args.command == "load":

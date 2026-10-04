@@ -1,8 +1,8 @@
 import pytest
 
-from musilogy import REFERENCE_DUMP, REFERENCE_POPULARITY
+from musilogy import REFERENCE_DUMP, REFERENCE_INFLUENCES, REFERENCE_POPULARITY
 from musilogy.build import build, check_invariants, connect
-from musilogy.paths import SQL_DIR, popularity_snapshot, work_dir
+from musilogy.paths import SQL_DIR, influences_snapshot, popularity_snapshot, work_dir
 
 # artists: 682 447 groups, orchestras and choirs, plus 1 599 244 persons. Every
 # count the persons moved splits along type: restricted to the other types, the
@@ -14,7 +14,15 @@ BASELINE = {
     "genres": 1_729,
     "links": 771_147,
     "popularity": 989_488,
+    # One row per pair of MBIDs Wikidata relates by "influenced by" (P737),
+    # deprecated statements left out.
+    "influences": 9_517,
 }
+# The influences whose two ends are artists of the dump, the only ones the
+# site can name; the other 251 have an end whose MBID `artists` does not hold.
+# A drift in how MBIDs are read on either side — case, whitespace — moves this
+# first.
+INFLUENCES_BETWEEN_ARTISTS = 9_266
 # links: every artist-to-artist relation, oriented source -> target and
 # de-duplicated across the two artists that carry it. Memberships replace the
 # former `members` table (601 759 rows), which read them from the band's side:
@@ -84,6 +92,7 @@ LIVE_LONG_AFTER_LAST_STUDIO = 914
 BANDS_WITHOUT_ALBUM = 1_801_156
 WORK = work_dir(REFERENCE_DUMP)
 POPULARITY = popularity_snapshot(REFERENCE_POPULARITY)
+INFLUENCES = influences_snapshot(REFERENCE_INFLUENCES)
 
 
 def test_the_baseline_looks_for_the_extractions_at_an_absolute_path():
@@ -104,6 +113,8 @@ def test_reference_dump_matches_the_baseline():
         pytest.skip("extractions missing: run Task 3")
     if not POPULARITY.exists():
         pytest.skip(f"ListenBrainz snapshot {REFERENCE_POPULARITY} missing")
+    if not INFLUENCES.exists():
+        pytest.skip(f"Wikidata snapshot {REFERENCE_INFLUENCES} missing")
     con = connect()
     build(
         con,
@@ -113,6 +124,8 @@ def test_reference_dump_matches_the_baseline():
         None,
         popularity=POPULARITY,
         popularity_snapshot=REFERENCE_POPULARITY,
+        influences=INFLUENCES,
+        influences_snapshot=REFERENCE_INFLUENCES,
     )
     assert check_invariants(con, SQL_DIR) == []
     for table, expected in BASELINE.items():
@@ -134,6 +147,14 @@ def test_reference_dump_matches_the_baseline():
     row = con.execute("SELECT count(*) FROM artists WHERE y0 IS NOT NULL").fetchone()
     assert row is not None
     assert row[0] == PLACEABLE
+
+    row = con.execute(
+        "SELECT count(*) FROM influences i "
+        "WHERE EXISTS (SELECT 1 FROM artists a WHERE a.mbid = i.artist_mbid) "
+        "AND EXISTS (SELECT 1 FROM artists a WHERE a.mbid = i.influence_mbid)"
+    ).fetchone()
+    assert row is not None
+    assert row[0] == INFLUENCES_BETWEEN_ARTISTS
 
     assert single_row(con, "r2_anomalies") == DATE_ANOMALIES
     assert single_row(con, "neutralised_inferences") == NEUTRALISED_INFERENCES

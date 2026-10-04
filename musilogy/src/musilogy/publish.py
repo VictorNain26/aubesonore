@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import json
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import duckdb
 
 from musilogy.fetch import expected_sums, sha256_file
-from musilogy.paths import PACKAGE_DIR, REFERENCE_DIR, popularity_sums
+from musilogy.paths import PACKAGE_DIR, REFERENCE_DIR, influences_sums, popularity_sums
 
-TABLES = ("artists", "albums", "genres", "links", "popularity")
+TABLES = ("artists", "albums", "genres", "links", "popularity", "influences")
 # A delivery has to come out in a fixed order, or the same code on the same
 # extraction writes different bytes: the tables are built by parallel joins and
 # aggregates, so their insertion order is whatever the threads produced. Each
@@ -26,6 +27,7 @@ ORDER_BY = {
     "genres": "genre_mbid",
     "links": "src_mbid, dst_mbid, type, y_begin NULLS LAST, y_end NULLS LAST",
     "popularity": "mbid",
+    "influences": "artist_mbid, influence_mbid",
 }
 
 
@@ -125,14 +127,16 @@ def _parameters(con: duckdb.DuckDBPyConnection) -> dict[str, Any]:
     return dict(zip(PARAMETERS, row, strict=True))
 
 
-def _popularity(con: duckdb.DuckDBPyConnection) -> dict[str, Any] | None:
+def _snapshot(
+    con: duckdb.DuckDBPyConnection, variable: str, sums: Callable[[str], Path]
+) -> dict[str, Any] | None:
     """Read back from the connection, like the parameters: the snapshot the
     build loaded, with the digest pinned for it."""
-    row = con.execute("SELECT getvariable('popularity_snapshot')::VARCHAR").fetchone()
+    row = con.execute(f"SELECT getvariable('{variable}')::VARCHAR").fetchone()
     assert row is not None  # a single-row projection always returns one row
     if row[0] is None:
         return None
-    return {"snapshot": row[0], "sha256": expected_sums(popularity_sums(row[0]))}
+    return {"snapshot": row[0], "sha256": expected_sums(sums(row[0]))}
 
 
 def publish(
@@ -177,7 +181,8 @@ def publish(
     manifest = {
         "dump": dump,
         "archive_sha256": expected_sums(REFERENCE_DIR / f"{dump}.SHA256SUMS"),
-        "popularity": _popularity(con),
+        "popularity": _snapshot(con, "popularity_snapshot", popularity_sums),
+        "influences": _snapshot(con, "influences_snapshot", influences_sums),
         "counts": counts,
         "output_sha256": output_sha256,
         "parameters": _parameters(con),

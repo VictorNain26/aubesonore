@@ -43,3 +43,38 @@ def test_a_link_reads_forward_from_its_source_and_backward_from_its_target(tmp_p
     assert pg_query(
         pg, f"SELECT type, direction, other_mbid FROM musilogy.artist_links('{B}')"
     ) == [("member of band", "backward", A)]
+
+
+C = "00000000-0000-4000-8000-0000000000f3"
+ABSENT = "00000000-0000-4000-8000-0000000000f9"
+
+
+def influences(conninfo, mbid):
+    return pg_query(
+        conninfo,
+        f"SELECT direction, mbid, y0, statement FROM musilogy.artist_influences('{mbid}')",
+    )
+
+
+def test_influences_read_both_ways_in_time_order(tmp_path, pg):
+    # A cites B (1960) and C (1950); C cites A. Read from A: what it cites, in
+    # time order, then who cites it. Read from B, the same statement is
+    # 'cited_by'.
+    loaded(
+        tmp_path,
+        pg,
+        [group(A, "1978"), group(B, "1960"), group(C, "1950")],
+        influences=[(A, B, "Q1$ab"), (A, C, "Q1$ac"), (C, A, "Q3$ca")],
+    )
+    assert influences(pg, A) == [
+        ("cited", C, 1950, "Q1$ac"),
+        ("cited", B, 1960, "Q1$ab"),
+        ("cited_by", C, 1950, "Q3$ca"),
+    ]
+    assert influences(pg, B) == [("cited_by", A, 1978, "Q1$ab")]
+
+
+def test_an_influence_absent_from_the_dump_has_no_name_to_show(tmp_path, pg):
+    loaded(tmp_path, pg, [group(A)], influences=[(A, ABSENT, "Q1$a"), (ABSENT, A, "Q9$b")])
+    assert influences(pg, A) == []
+    assert influences(pg, ABSENT) == []

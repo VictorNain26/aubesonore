@@ -1,6 +1,6 @@
 # musilogy
 
-Produit, hors ligne et depuis des sources épinglées et datées, les données de **Musilogy** (`docs/vision.md` à la racine, §2) : pour un artiste, qui faisait cette musique avant lui, en même temps, après lui ; qui il a cité comme influence ; dans quels groupes ses membres ont joué. Un dump JSON MusicBrainz et un relevé ListenBrainz deviennent cinq tables reproductibles et testées, publiées en Parquet ; `musilogy load` les copie dans le schéma `musilogy` de la base du site, qui ne lit que des fonctions SQL. La conception en vigueur, avec la feuille de route des tables et le contrat de ces fonctions, est `docs/conception.md`.
+Produit, hors ligne et depuis des sources épinglées et datées, les données de **Musilogy** (`docs/vision.md` à la racine, §2) : pour un artiste, qui faisait cette musique avant lui, en même temps, après lui ; qui il a cité comme influence ; dans quels groupes ses membres ont joué. Un dump JSON MusicBrainz, un relevé ListenBrainz et un relevé Wikidata deviennent six tables reproductibles et testées, publiées en Parquet ; `musilogy load` les copie dans le schéma `musilogy` de la base du site, qui ne lit que des fonctions SQL. La conception en vigueur, avec la feuille de route des tables et le contrat de ces fonctions, est `docs/conception.md`.
 
 ## Principe directeur
 
@@ -8,7 +8,7 @@ Produit, hors ligne et depuis des sources épinglées et datées, les données d
 
 **Les tables portent la population complète.** Aucun filtre d'affichage n'y entre : ce que le site montre d'abord se décide dans les fonctions SQL qu'il appelle, qui ordonnent sans exclure. Une donnée écartée en amont serait irrécupérable en aval.
 
-## Les cinq tables
+## Les six tables
 
 Mesurées sur le dump de référence `20260909-001002` :
 
@@ -19,6 +19,7 @@ Mesurées sur le dump de référence `20260909-001002` :
 | `genres` | le vocabulaire porté par `artists` | 1 729 |
 | `links` | un lien typé entre deux artistes — appartenance, pseudonyme, changement de nom, sous-groupe, professeur, famille… —, avec ses années | 771 147 |
 | `popularity` | les écoutes ListenBrainz d'un artiste, relevées à une date | 989 488 |
+| `influences` | une influence déclarée sur Wikidata entre deux MBID, avec la déclaration qui l'affirme | 9 517 |
 
 Colonnes réelles (voir `src/musilogy/sql/`) :
 
@@ -27,6 +28,7 @@ Colonnes réelles (voir `src/musilogy/sql/`) :
 - **`genres`** : `genre_mbid`, `name`, `n_artists`.
 - **`links`** : `src_mbid`, `dst_mbid`, `type`, `y_begin`, `y_end`.
 - **`popularity`** : `mbid`, `listen_count`, `user_count`, `snapshot`.
+- **`influences`** : `artist_mbid`, `influence_mbid`, `statement`.
 
 `name_key` est la clé de recherche d'un nom tapé : `strip_accents(lower(name))`, « bjork » trouve Björk.
 
@@ -58,9 +60,11 @@ Chaque règle vit dans son fichier SQL numéroté (`src/musilogy/sql/`) ; **la n
 
 - **`50_genres` — Vocabulaire.** Les genres effectivement portés par `artists.genres`, y compris ceux qu'aucun artiste ne déclare et que seuls des albums portent.
 
-- **`80_links` — Liens.** Toutes les relations d'artiste à artiste, **typées** : `type` garde le nom MusicBrainz (`member of band`, `is person`, `artist rename`, `subgroup`, `teacher`, `parent`…), pour que le consommateur sache ce qu'un lien affirme sans se fier à une catégorie de musilogy. Le dump porte chaque relation sur ses deux artistes, orientée par `direction` ; elle est lue source → cible des deux côtés, puis dédoublonnée, avec ses années lues par la même macro stricte que partout ailleurs. Les deux extrémités doivent être des artistes de `artists` : un lien vers un personnage ou un artiste sans type n'aurait nulle part où arriver, et ces 38 442 liens écartés sont comptés dans `manifest.json` (`link_exclusions`). **Ce n'est pas de l'influence** : MusicBrainz n'en porte aucune ; un lien est un fait vérifiable, qui a joué où, qui a enseigné à qui.
+- **`80_links` — Liens.** Toutes les relations d'artiste à artiste, **typées** : `type` garde le nom MusicBrainz (`member of band`, `is person`, `artist rename`, `subgroup`, `teacher`, `parent`…), pour que le consommateur sache ce qu'un lien affirme sans se fier à une catégorie de musilogy. Le dump porte chaque relation sur ses deux artistes, orientée par `direction` ; elle est lue source → cible des deux côtés, puis dédoublonnée, avec ses années lues par la même macro stricte que partout ailleurs. Les deux extrémités doivent être des artistes de `artists` : un lien vers un personnage ou un artiste sans type n'aurait nulle part où arriver, et ces 38 442 liens écartés sont comptés dans `manifest.json` (`link_exclusions`). **Ce n'est pas de l'influence** : MusicBrainz n'en porte aucune ; un lien est un fait vérifiable, qui a joué où, qui a enseigné à qui. Les influences déclarées viennent de Wikidata (`88_influences`).
 
 - **`87_popularity` — Popularité.** Le nombre d'écoutes (`listen_count`) et d'auditeurs (`user_count`) que ListenBrainz compte pour chaque artiste (`POST /1/popularity/artist`), à la date `snapshot`. Elle ordonne, **elle n'exclut jamais**. Un artiste dont ListenBrainz ne connaît aucune écoute n'a pas de ligne plutôt qu'un zéro qu'il n'a pas déclaré : 1 292 203 artistes sur 2 281 691 (57 %) sur le relevé de référence. Les comptes bougent chaque jour : `musilogy snapshot-popularity` interroge ListenBrainz pour tous les artistes de l'extraction (lots de 1 000, une requête par seconde, en-têtes `X-RateLimit-*` respectés), écrit le relevé dans `data/raw/listenbrainz/<date>/` et son empreinte dans `reference/listenbrainz-<date>.SHA256SUMS`. Comme le dump, un relevé ne se reprend pas : `REFERENCE_POPULARITY` épingle celui que `run` lit et vérifie, et `run` s'arrête s'il manque.
+
+- **`88_influences` — Influences déclarées.** `artist_mbid` cite `influence_mbid` comme influence selon Wikidata (« influencé par », P737), et `statement` est l'identifiant de la déclaration (`Q…$…`), pour la citer. Le relevé (section suivante) donne une ligne par déclaration et par paire de MBID — un élément Wikidata peut en porter plusieurs (P434) ; la table garde **une déclaration par paire de MBID**, la plus petite quand deux déclarations donnent la même paire (aucune sur le relevé de référence). Aucune extrémité n'est filtrée : 251 des 9 517 paires ont un MBID que `artists` ne porte pas, et ce sont les fonctions du site, qui joignent `artists`, qui les laissent de côté faute de nom. Trois invariants : une paire en double, un MBID qui n'a pas la forme d'un UUID en minuscules ou une déclaration sans identifiant, et une ligne que le relevé n'affirme pas dans ce sens.
 
 - **`90_invariants` — Contrôles.** Des vues qui doivent toutes renvoyer zéro ligne ; le nom de la vue *est* le nom de l'invariant. Chacune **recalcule indépendamment** ce qu'elle vérifie : une revue a montré qu'un invariant réutilisant la formule de production restait muet sur 265 violations réelles. Les bornes contractuelles y sont codées en dur, aux deux extrémités, sans relire les variables de session de la production ; changer de dump impose donc une modification délibérée de ce fichier — c'est l'intention.
 
@@ -72,11 +76,17 @@ Les corrections manuelles (`src/musilogy/corrections.csv`, colonnes `mbid, field
 
 `musilogy snapshot-proximity` relève, pour chaque artiste qu'au moins 500 auditeurs écoutent dans le relevé de popularité épinglé (111 402 artistes au 2026-10-04), ses 100 voisins selon ListenBrainz (`labs.api.listenbrainz.org/similar-artists`, algorithme épinglé dans `fetch.SIMILAR_ALGORITHM`) : une ligne par artiste, `{artist_mbid, similar: [{artist_mbid, score}]}`, dans `data/raw/listenbrainz/<date>/artist-similar.jsonl`, empreinte dans `reference/listenbrainz-similar-<date>.SHA256SUMS`. Le service prend un artiste par requête et n'annonce aucune limite : le relevé s'en tient à une requête par seconde, environ 31 heures. Interrompu, il reprend le relevé resté partiel, quel que soit le jour où il a commencé. Les données ListenBrainz sont publiées en CC0 (metabrainz.org/datasets/postgres-dumps) ; le service de similarité, qui en dérive, ne précise pas de licence. La table `proximity` et la fonction `artist_neighbours` (`docs/conception.md`, §2 à §4) viennent une fois le relevé épinglé.
 
+## Influences Wikidata (relevé)
+
+`musilogy snapshot-influences` pose une seule requête SPARQL au Wikidata Query Service (`query.wikidata.org/sparql`, avec l'en-tête `User-Agent` de contact qu'exige le service) : chaque déclaration « influencé par » (P737) non dépréciée dont le sujet et l'objet portent un MBID artiste (P434, valeurs de meilleur rang). Le service coupe une requête à 60 s et accorde 60 s de calcul par minute à chaque client ; celle-ci répond en 3 à 5 s, sans pagination. Le relevé, trié, va dans `data/raw/wikidata/<date>/influences.jsonl` (`{artist_mbid, influence_mbid, statement}`), son empreinte dans `reference/wikidata-influences-<date>.SHA256SUMS`, et `REFERENCE_INFLUENCES` épingle celui que `run` lit ; `run` s'arrête s'il manque. Les données de Wikidata sont sous CC0.
+
+Relevé du 2026-10-04 : 9 517 paires issues de 8 612 déclarations, 5 661 MBID distincts (2 589 qui citent, 3 728 cités). Des 288 artistes joués par l'antenne à cette date (285 dans le dump), `artist_influences` en rend au moins une pour 61 : 24 en citent, 49 sont cités.
+
 ## Ce que reçoit le site
 
-`data/out/<dump>/` contient les cinq tables en Parquet et le manifeste.
+`data/out/<dump>/` contient les six tables en Parquet et le manifeste.
 
-`manifest.json` porte les empreintes des archives, la date et l'empreinte du relevé ListenBrainz (`popularity`), **les empreintes des fichiers Parquet livrés** (`output_sha256`), les comptes, les **paramètres** du run (`dump_year`, `min_year`), les **entrées** (`rows_loaded` par table brute, le sidecar d'extraction), les anomalies de lecture de dates, les sept compteurs de neutralisation, les exclusions de liens, le commit et l'empreinte des corrections.
+`manifest.json` porte les empreintes des archives, la date et l'empreinte des relevés ListenBrainz (`popularity`) et Wikidata (`influences`), **les empreintes des fichiers Parquet livrés** (`output_sha256`), les comptes, les **paramètres** du run (`dump_year`, `min_year`), les **entrées** (`rows_loaded` par table brute, le sidecar d'extraction), les anomalies de lecture de dates, les sept compteurs de neutralisation, les exclusions de liens, le commit et l'empreinte des corrections.
 
 Ces empreintes de sortie sont opposables parce que la livraison est reproductible : à dump et code identiques, deux exécutions écrivent les mêmes octets. L'ordre des lignes est fixé par une clé totale sur chaque table. Un consommateur distingue donc une livraison inchangée d'une nouvelle par sa seule empreinte, sans retélécharger.
 
@@ -84,15 +94,19 @@ Ces empreintes de sortie sont opposables parce que la livraison est reproductibl
 
 `uv run musilogy load` vérifie les Parquet publiés contre leur manifeste, les copie dans un schéma `musilogy_next` de la base du site, compare les comptes copiés à ceux du manifeste, puis bascule `musilogy_next` en `musilogy` en une transaction : le site ne lit jamais un chargement partiel, et un chargement raté laisse le précédent en place. La connexion vient de l'environnement libpq (`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGSSLMODE`, `PGSSLROOTCERT`). Le SQL côté Postgres vit dans `src/musilogy/pg/`, numéroté comme `sql/` : `10_tables` avant la copie, les suivants sur le schéma de transit, `90_` une fois la bascule faite.
 
-Quatre tables sont chargées — `artists`, `genres`, `links`, `popularity` — plus `manifest` (dump, relevé, commit) ; `albums` reste en Parquet. Les listes de genres, que Postgres ne sait pas typer en structures anonymes, deviennent du `jsonb`.
+Cinq tables sont chargées — `artists`, `genres`, `links`, `popularity`, `influences` — plus `manifest` (dump, relevés, commit) ; `albums` reste en Parquet. Les listes de genres, que Postgres ne sait pas typer en structures anonymes, deviennent du `jsonb`. `20_search.sql` en tire `search`, la projection étroite de la recherche (`name_key` en collation C, nombre d'auditeurs, MBID), rangée par `name_key`. Mesuré sur un Postgres 16 jetable, avec le dump de référence : 408 s de chargement, 1 259 Mo en tout, dont 192 Mo et 68 Mo d'index pour la projection de recherche.
 
-**Ce que lit le site : des fonctions, pas des tables.** Il appelle les fonctions de `pg/90_*.sql`, testées ici contre Postgres, et dépend de leurs signatures, pas de la disposition des tables. `artist_card(mbid)` donne la fiche, `artist_links(mbid)` chaque lien lu depuis l'artiste (`forward` s'il en est la source MusicBrainz). Le contrat complet, fonctions à venir comprises, est `docs/conception.md` §4.
+**Ce que lit le site : des fonctions, pas des tables.** Il appelle les fonctions de `pg/90_*.sql`, testées ici contre Postgres, et dépend de leurs signatures, pas de la disposition des tables. Le contrat complet, fonctions à venir comprises, est `docs/conception.md` §4.
+
+- `artist_card(mbid)` donne la fiche, `artist_links(mbid)` chaque lien lu depuis l'artiste (`forward` s'il en est la source MusicBrainz).
+- `artist_influences(mbid)` donne les influences déclarées dans les deux sens, `cited` (l'artiste cite l'autre) puis `cited_by`, chacune dans l'ordre du temps et avec sa déclaration Wikidata. Un artiste absent du dump n'en a aucune, comme il n'a pas de fiche.
+- `search_artists(requête, taille)` cherche par préfixe du nom normalisé, les plus écoutés d'abord (`user_count`), ceux que ListenBrainz ne connaît pas en dernier, puis par nom et MBID. La requête est normalisée comme `name_key` (`strip_accents(lower(name))` dans DuckDB) par `musilogy.name_key(text)` : minuscules, décomposition canonique, retrait des marques combinantes — la catégorie Unicode M entière, 2 450 points, mesurée en interrogeant DuckDB sur chaque point de code —, recomposition. Sur le dump de référence, elle redonne le `name_key` de tous les noms sauf 6, des lettres cerclées (Ⓐ) que la libc du Postgres du site ne met pas en minuscule ; le seul bloc des diacritiques latins en manquait 12 987. Une requête vide ne trouve personne. Temps mesurés sur le Postgres jetable, cache chaud, médiane de 7 appels : « a » (157 112 noms) 78 ms, « the » 46 ms, « bjork », « radiohead » ou « sigur ros » moins de 4 ms ; le premier appel après le chargement, cache froid, a pris 1,8 s pour « a ». Lue directement dans `artists`, « a » prenait environ 1 s cache chaud.
 
 ## Chiffres de référence
 
 Le **contrat exécutable** est `tests/test_baseline.py` : il confronte le pipeline entier au dump de référence et compare exactement les comptes et la répartition des provenances. Les chiffres cités ici sont descriptifs ; en cas de divergence, c'est le test qui fait foi.
 
-Deux situations, deux conduites, à ne pas confondre. **Sur le dump de référence, un écart signale une règle mal implémentée** — jamais un prétexte pour ajuster la ligne de base. **Sur un nouveau dump, tous les chiffres bougent légitimement**, et la ligne de base se régénère : les comptes des tables, les trois répartitions de provenance, les neuf compteurs d'anomalies, les sept de neutralisation, les exclusions de liens et la répartition des liens par type. Il faut alors aussi mettre à jour `REFERENCE_DUMP`, la valeur par défaut de `dump_year`, ajouter le `reference/<dump>.SHA256SUMS` correspondant, prendre un relevé ListenBrainz sur la nouvelle extraction et l'épingler dans `REFERENCE_POPULARITY` (l'invariant `popularity_unrequested` refuse un relevé pris sur une autre), et modifier à la main les bornes codées en dur dans les vues de `90_invariants.sql` — cette dernière opération est délibérément manuelle, c'est ce qui empêche une mauvaise variable de satisfaire à la fois la règle et son contrôle. Les extractions vivant dans `data/work/<dump>/`, changer `REFERENCE_DUMP` suffit à repartir d'une extraction neuve, sans rien vider à la main.
+Deux situations, deux conduites, à ne pas confondre. **Sur le dump de référence, un écart signale une règle mal implémentée** — jamais un prétexte pour ajuster la ligne de base. **Sur un nouveau dump, tous les chiffres bougent légitimement**, et la ligne de base se régénère : les comptes des tables, les trois répartitions de provenance, les neuf compteurs d'anomalies, les sept de neutralisation, les exclusions de liens et la répartition des liens par type. Le compte des influences entre deux artistes du dump bouge avec lui. Il faut alors aussi mettre à jour `REFERENCE_DUMP`, la valeur par défaut de `dump_year`, ajouter le `reference/<dump>.SHA256SUMS` correspondant, prendre un relevé ListenBrainz sur la nouvelle extraction et l'épingler dans `REFERENCE_POPULARITY` (l'invariant `popularity_unrequested` refuse un relevé pris sur une autre), et modifier à la main les bornes codées en dur dans les vues de `90_invariants.sql` — cette dernière opération est délibérément manuelle, c'est ce qui empêche une mauvaise variable de satisfaire à la fois la règle et son contrôle. Les extractions vivant dans `data/work/<dump>/`, changer `REFERENCE_DUMP` suffit à repartir d'une extraction neuve, sans rien vider à la main.
 
 Provenance des bords, sur le dump de référence :
 
@@ -125,7 +139,7 @@ uv sync
 Trois niveaux de test :
 
 - `uv run pytest` — suite rapide, quelques secondes, sans dépendance au dump. Tourne sur 33 témoins réels versionnés dans `tests/fixtures/` (extraits authentiques du dump de référence, jamais de données inventées) et sur quelques enregistrements synthétiques pour les formes qu'aucun témoin ne porte.
-- `tests/test_load.py`, `tests/test_artist.py` — le chargement et les fonctions SQL du site, contre un vrai Postgres jetable désigné par `MUSILOGY_TEST_PG` (chaîne de connexion libpq ; les tests y suppriment et recréent les schémas `musilogy`). Sans elle, ces tests sont sautés, sauf en CI, qui fournit un service Postgres 16 et échoue si la variable manque.
+- `tests/test_load.py`, `tests/test_artist.py`, `tests/test_search.py` — le chargement et les fonctions SQL du site, contre un vrai Postgres jetable désigné par `MUSILOGY_TEST_PG` (chaîne de connexion libpq ; les tests y suppriment et recréent les schémas `musilogy`). Sans elle, ces tests sont sautés, sauf en CI, qui fournit un service Postgres 16 et échoue si la variable manque.
 - `uv run pytest -m slow` — ligne de base : confronte le pipeline entier aux ~3 millions d'enregistrements du dump de référence. Exige les extractions dans `data/work/<dump>/` (non versionnées, ~10 min à produire) ; sinon le test est ignoré.
 
 La suite passe depuis n'importe quel répertoire : tous les chemins sont ancrés sur le paquet (`musilogy.paths`), jamais sur le répertoire courant.
@@ -134,6 +148,7 @@ La suite passe depuis n'importe quel répertoire : tous les chemins sont ancrés
 uv run musilogy run                 # fetch → extract → transform → validate → publish
 uv run musilogy snapshot-popularity # relevé ListenBrainz daté, à épingler (~1 h)
 uv run musilogy snapshot-proximity  # voisins ListenBrainz des artistes d'au moins 500 auditeurs (~31 h, reprenable)
+uv run musilogy snapshot-influences # relevé Wikidata daté des influences déclarées, à épingler (quelques secondes)
 uv run musilogy make-fixtures       # régénère les témoins depuis les extractions
 uv run musilogy load                # charge data/out/ dans la base du site (environnement libpq)
 ```
@@ -146,7 +161,7 @@ Qualité : `uv run ruff check`, `uv run ruff format --check`, `uv run mypy`. La 
 
 ```
 src/musilogy/
-  fetch.py               télécharge et vérifie une archive MusicBrainz (SHA-256), relève ListenBrainz
+  fetch.py               télécharge et vérifie une archive MusicBrainz (SHA-256), relève ListenBrainz et Wikidata
   extract.py             projette les enregistrements bruts en flux, sans logique métier
   build.py               enchaîne les fichiers SQL, applique les corrections, vérifie les invariants
   publish.py             écrit les Parquet et manifest.json
@@ -154,7 +169,7 @@ src/musilogy/
   load.py                charge les Parquet publiés dans la base du site
   paths.py               chemins ancrés sur le paquet
   corrections.csv        corrections manuelles, versionné
-  reference/             empreintes des archives et des relevés ListenBrainz
+  reference/             empreintes des archives et des relevés ListenBrainz et Wikidata
   sql/                   les règles, en ordre topologique
   pg/                    les tables et les fonctions que lit le site, côté Postgres
 tests/
@@ -169,6 +184,6 @@ docs/research/           notes de recherche datées
 
 Les données de base MusicBrainz (artistes, dates, albums, relations) sont **CC0**. Les genres et tags sont des données supplémentaires sous **CC-BY-NC-SA 3.0**. Comme `artists` et `genres` en dépendent, **le jeu de données produit par ce pipeline est distribué sous CC-BY-NC-SA 3.0** : attribution à MusicBrainz obligatoire, usage non commercial uniquement, et partage à l'identique imposé à toute redistribution.
 
-Les comptes d'écoute de ListenBrainz sont sous **CC0** et n'ajoutent aucune contrainte.
+Les comptes d'écoute de ListenBrainz et les données de Wikidata sont sous **CC0** et n'ajoutent aucune contrainte. `tests/fixtures/influences.jsonl` est un extrait du relevé Wikidata du 2026-10-04 : les déclarations qui touchent un artiste des témoins.
 
 Les fixtures versionnées dans `tests/fixtures/` sont des extraits réels du dump MusicBrainz de référence, soumis à la même licence (voir `tests/fixtures/ATTRIBUTION.md`).

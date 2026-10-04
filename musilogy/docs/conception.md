@@ -48,7 +48,15 @@ genres), `albums` (non chargée : elle sert les dates), `genres` (vocabulaire),
   fiche) ; un doublon de paire est une violation.
 - `influences(artist_mbid, influence_mbid, statement)` : `artist_mbid` cite
   `influence_mbid` comme influence selon Wikidata ; `statement` est
-  l'identifiant de la déclaration, pour la citer.
+  l'identifiant de la déclaration (`Q…$…`), pour la citer. Les déclarations
+  dépréciées sont écartées. Un élément Wikidata peut porter plusieurs MBID :
+  une déclaration donne une ligne par paire de MBID, et la table garde une
+  déclaration par paire (la plus petite si deux déclarations donnent la même
+  paire). Une extrémité absente du dump reste dans la table. Relevé du
+  2026-10-04 : 9 517 paires (8 612 déclarations), 5 661 MBID distincts
+  (2 589 qui citent, 3 728 cités), dont 9 266 paires entre deux artistes du
+  dump ; `artist_influences` en rend au moins une pour 61 des 288 artistes
+  joués à cette date (24 en citent, 49 sont cités).
 
 ## 3. Proximité × temps
 
@@ -102,6 +110,20 @@ musilogy.search_artists(query text, page_size integer) RETURNS TABLE (
 
 Un voisin ou une influence absents du dump n'apparaissent pas : la fonction
 joint `artists`, faute de nom à montrer.
+
+`artist_influences` rend chaque direction dans l'ordre du temps (`y0`, les
+artistes sans année en dernier, puis le MBID).
+
+`search_artists` normalise la requête comme `name_key` l'est dans DuckDB
+(`strip_accents(lower(name))`), par une fonction Postgres interne,
+`musilogy.name_key(text)`, que le site n'a pas à appeler : sur le dump de
+référence, elle redonne le `name_key` de tous les noms sauf 6 (des lettres
+cerclées, Ⓐ, que la libc du Postgres du site ne met pas en minuscule). Une
+requête vide ne trouve personne. Le préfixe se lit dans `search`, une
+projection étroite créée au chargement (`name_key` en collation C, nombre
+d'auditeurs, MBID) : mesuré sur un Postgres 16 jetable chargé du dump de
+référence, cache chaud, 78 ms pour « a » (157 112 noms), 46 ms pour « the »,
+moins de 4 ms pour un nom complet.
 
 ## 5. Exécution
 

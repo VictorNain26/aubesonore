@@ -5,9 +5,9 @@ import pytest
 from conftest import build_synthetic, synthetic_artist
 
 from musilogy import REFERENCE_DUMP as DUMP
-from musilogy import REFERENCE_POPULARITY
+from musilogy import REFERENCE_INFLUENCES, REFERENCE_POPULARITY
 from musilogy.fetch import expected_sums, sha256_file
-from musilogy.paths import PACKAGE_DIR, REFERENCE_DIR, popularity_sums
+from musilogy.paths import PACKAGE_DIR, REFERENCE_DIR, influences_sums, popularity_sums
 from musilogy.publish import publish
 
 REF_SUMS = REFERENCE_DIR / f"{DUMP}.SHA256SUMS"
@@ -15,7 +15,7 @@ REF_SUMS = REFERENCE_DIR / f"{DUMP}.SHA256SUMS"
 
 def test_publish_writes_every_table(con, tmp_path):
     manifest = publish(con, tmp_path, DUMP, None)
-    for name in ("artists", "albums", "genres", "links", "popularity"):
+    for name in ("artists", "albums", "genres", "links", "popularity", "influences"):
         assert (tmp_path / f"{name}.parquet").exists()
         assert name in manifest["counts"]
     assert manifest["dump"] == DUMP
@@ -55,9 +55,19 @@ def test_manifest_names_the_popularity_snapshot_the_build_loaded(con, tmp_path):
     }
 
 
+def test_manifest_names_the_influences_snapshot_the_build_loaded(con, tmp_path):
+    manifest = publish(con, tmp_path, DUMP, None)
+    assert manifest["influences"] == {
+        "snapshot": REFERENCE_INFLUENCES,
+        "sha256": expected_sums(influences_sums(REFERENCE_INFLUENCES)),
+    }
+
+
 def test_a_build_without_snapshot_says_so_in_the_manifest(tmp_path):
     con = build_synthetic(tmp_path, [synthetic_artist("a", "1990", None)])
-    assert publish(con, tmp_path / "out", DUMP, None)["popularity"] is None
+    manifest = publish(con, tmp_path / "out", DUMP, None)
+    assert manifest["popularity"] is None
+    assert manifest["influences"] is None
 
 
 def test_manifest_carries_r2_anomaly_counters(con, tmp_path):
@@ -311,6 +321,7 @@ PARQUET_KEYS = {
     "albums": ["rg_mbid"],
     "genres": ["genre_mbid"],
     "links": ["src_mbid", "dst_mbid", "type", "y_begin", "y_end"],
+    "influences": ["artist_mbid", "influence_mbid"],
 }
 
 

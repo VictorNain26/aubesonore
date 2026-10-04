@@ -63,8 +63,9 @@ ignore_missing_imports = true
 module = [
     "conftest", "test_albums", "test_artist", "test_bands", "test_baseline",
     "test_cli", "test_corrections", "test_env", "test_extract", "test_fetch",
-    "test_fixtures", "test_genres", "test_invariants", "test_lifespan", "test_links",
-    "test_load", "test_paths", "test_persons", "test_popularity", "test_publish",
+    "test_fixtures", "test_genres", "test_influences", "test_invariants", "test_lifespan",
+    "test_links", "test_load", "test_paths", "test_persons", "test_popularity",
+    "test_publish", "test_search",
 ]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false

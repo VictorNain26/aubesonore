@@ -63,7 +63,7 @@ AzuraCast is the hub. The other two never talk to each other.
 - Any change that seems to need pipeline↔app coupling is a design smell — route it through
   AzuraCast, or reconsider.
 - musilogy is **offline reference data**, outside the radio: it turns a MusicBrainz dump and
-  dated ListenBrainz snapshots into Parquet tables. `musilogy load` copies them into a `musilogy`
+  dated ListenBrainz and Wikidata snapshots into Parquet tables. `musilogy load` copies them into a `musilogy`
   schema of the site's database, and the site reads them only through musilogy's SQL functions
   — never by calling musilogy at runtime (`docs/vision.md` §4.3).
 
