@@ -11,7 +11,6 @@ import { useArtistPage } from '../hooks/useArtistPage';
 import { artistPath } from '../lib/artistProfile';
 import { Cover } from './Cover';
 import { VolumeControl, type VolumeControlProps } from './VolumeControl';
-import { formatClock } from './time';
 import { ARTIST_LINK, TEXT_ACTION } from './styles';
 import {
   ListenDisc,
@@ -26,16 +25,23 @@ import * as m from '@/paraglide/messages.js';
 // Past this length the title would take three lines at hero size.
 const LONG_TITLE = 28;
 
+// A single's album is its own title: saying it twice tells nothing.
+function shownAlbum(album: string, title: string): string | null {
+  const name = album.trim();
+  return name && name.localeCompare(title.trim(), undefined, { sensitivity: 'accent' }) !== 0
+    ? name
+    : null;
+}
+
 export interface NowPlayingViewProps {
   track: {
     title: string;
     artist: string;
+    /** As the antenna names it; not shown when empty or when it repeats the title. */
+    album: string;
     art: string | undefined;
-    playedAt: number;
   } | null;
   isOnline: boolean;
-  /** Unique listeners; shown only from two upwards. */
-  listeners: number | undefined;
   listen: ListenState;
   onToggleListen: () => void;
   /** Ref on the Écouter button, watched to hide the player bar while it is visible. */
@@ -54,13 +60,13 @@ export interface NowPlayingViewProps {
 
 /**
  * What plays now, the biggest thing on the page: the cover, the title, the
- * artist (a link to their page once it exists), and Écouter right under it,
- * beside Garder and Partager. What played before is the thread just below.
+ * artist (a link to their page once it exists), its album, and Écouter right
+ * under it, beside Garder and Partager. What played before is the thread just
+ * below.
  */
 export function NowPlayingView({
   track,
   isOnline,
-  listeners,
   listen,
   onToggleListen,
   listenRef,
@@ -73,6 +79,7 @@ export function NowPlayingView({
   volume,
 }: NowPlayingViewProps) {
   const trackKey = track ? `${track.artist}|${track.title}` : 'none';
+  const album = track ? shownAlbum(track.album, track.title) : null;
   return (
     <div className="grid gap-6 md:grid-cols-12 md:items-end md:gap-x-10">
       <div className="lift-in md:col-span-5 lg:col-span-4">
@@ -100,16 +107,6 @@ export function NowPlayingView({
           </p>
         ) : track ? (
           <div key={trackKey} className={cn('flex flex-col gap-2', hasChanged && 'swap-in-late')}>
-            <span className="text-label text-text-muted flex items-center gap-2 font-mono uppercase">
-              <span
-                aria-hidden="true"
-                className="bg-accent motion-safe:animate-live size-1.5 rounded-full"
-              />
-              {m.now_on_air({ time: formatClock(track.playedAt) })}
-              {listeners !== undefined && listeners >= 2
-                ? ` · ${m.now_listeners({ count: listeners })}`
-                : null}
-            </span>
             <h2
               className={cn(
                 'm-0 text-balance',
@@ -128,10 +125,10 @@ export function NowPlayingView({
                 track.artist
               )}
             </p>
+            {album ? <p className="text-sub text-text-muted m-0">{album}</p> : null}
           </div>
         ) : (
           <div aria-busy="true" className="flex flex-col gap-2">
-            <span className="bg-surface-raised h-4 w-40 rounded-sm" />
             <span className="bg-surface-raised h-16 w-3/4 rounded-sm" />
             <span className="bg-surface-raised h-7 w-1/3 rounded-sm" />
           </div>
@@ -175,14 +172,13 @@ export function NowPlayingView({
 }
 
 export function NowPlaying() {
-  const { title, artist, art, playedAt, isOnline, listeners } = useNowPlayingStore(
+  const { title, artist, album, art, isOnline } = useNowPlayingStore(
     useShallow((s) => ({
       title: s.data?.now_playing?.song.title,
       artist: s.data?.now_playing?.song.artist,
+      album: s.data?.now_playing?.song.album,
       art: s.data?.now_playing?.song.art,
-      playedAt: s.data?.now_playing?.played_at,
       isOnline: s.data?.is_online ?? true,
-      listeners: s.data?.listeners?.unique,
     }))
   );
   const { isPlaying, isConnecting, toggle, volume, isMuted, setVolume, toggleMute } = usePlayer(
@@ -219,9 +215,8 @@ export function NowPlaying() {
 
   return (
     <NowPlayingView
-      track={title && artist && playedAt !== undefined ? { title, artist, art, playedAt } : null}
+      track={title && artist ? { title, artist, album: album ?? '', art } : null}
       isOnline={isOnline}
-      listeners={listeners}
       listen={listenState(isPlaying, isConnecting)}
       onToggleListen={toggle}
       listenRef={listenRef}
