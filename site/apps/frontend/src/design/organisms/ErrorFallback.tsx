@@ -4,22 +4,6 @@ import { Button } from '../atoms/Button';
 import { Modal } from './Modal';
 import * as m from '@/paraglide/messages.js';
 
-/**
- * Error boundary fallback shown when the player crashes. Offers a single
- * retry action wired to the boundary's `resetErrorBoundary`.
- */
-export function PlayerErrorFallback({ resetErrorBoundary }: FallbackProps) {
-  return (
-    <div role="alert" className="border-border mx-auto w-full max-w-lg border-t pt-6 text-center">
-      <p className="font-display text-title text-text">{m.error_player_title()}</p>
-      <p className="text-body text-text-muted mt-2">{m.error_player_body()}</p>
-      <Button variant="primary" onClick={resetErrorBoundary} className="mt-4">
-        {m.error_retry()}
-      </Button>
-    </div>
-  );
-}
-
 interface ModalErrorFallbackProps extends FallbackProps {
   /** Called after the fallback modal is dismissed, on top of closing itself. */
   onClose: () => void;

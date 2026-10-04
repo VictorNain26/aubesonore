@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
 import { Airplay } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -7,8 +8,11 @@ import { useNowPlayingStore } from '../lib/azuracast';
 import { usePlayer } from '../lib/player';
 import { useAirPlayStore } from '../stores/airplayStore';
 import { useTrackActions } from '../hooks/player/useTrackActions';
+import { useArtistPage } from '../hooks/useArtistPage';
+import { artistPath } from '../lib/artistProfile';
 import { Cover } from './Cover';
 import { VolumeControl } from './VolumeControl';
+import { NowPlayingSheet } from './NowPlayingSheet';
 import {
   ListenDisc,
   listenAria,
@@ -27,7 +31,13 @@ export interface PlayerBarViewProps {
   isHidden: boolean;
   listen: ListenState;
   onToggleListen: () => void;
-  track: { title: string; artist: string; art: string | undefined; playedAt: number } | null;
+  track: {
+    title: string;
+    artist: string;
+    album: string;
+    art: string | undefined;
+    playedAt: number;
+  } | null;
   isKept: boolean;
   onToggleKeep: () => void;
   volume: number;
@@ -35,12 +45,23 @@ export interface PlayerBarViewProps {
   onVolumeChange: (value: number) => void;
   onToggleMute: () => void;
   airPlay: { isActive: boolean; onOpen: () => void } | null;
+  /** The page of the artist on air, once it exists: the track leads there. */
+  artistHref: string | null;
+  isOnline: boolean;
+  /** True once the live has moved past the track shown first: the change then animates. */
+  hasChanged?: boolean;
 }
 
+const TRACK_LINK =
+  'ease-out-quart focus-visible:outline-on-accent flex min-w-0 flex-1 items-center gap-3 rounded-full py-1 pr-2 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-60';
+
 /**
- * The live player, one bar for every screen: pinned to the bottom, it slides in
+ * The live player, one bar for every screen: pinned to the bottom, it springs in
  * once the hero's Écouter button has scrolled away, so there is never two of
- * them on screen. Volume sits in it with a mouse; phones use their buttons.
+ * them on screen. Every page keeps its height free at the bottom (`pb-bar`), so it
+ * hides nothing. The track leads to the artist's page; when the live moves on, the
+ * cover comes into focus and the words fade in. Volume sits in it with a mouse;
+ * phones use their buttons.
  */
 export function PlayerBarView({
   isHidden,
@@ -54,6 +75,9 @@ export function PlayerBarView({
   onVolumeChange,
   onToggleMute,
   airPlay,
+  artistHref,
+  isOnline,
+  hasChanged = false,
 }: PlayerBarViewProps) {
   const [hasFocus, setHasFocus] = useState(false);
   // Never hide the bar while it holds the keyboard focus (WCAG 2.4.11). Only the
@@ -71,7 +95,7 @@ export function PlayerBarView({
       }}
       className={cn(
         'bg-accent text-on-accent shadow-bar bottom-safe max-w-bar fixed inset-x-3 z-40 mx-auto flex items-center gap-3 rounded-full py-1.5 pr-3 pl-1.5',
-        'ease-out-quart transition-[translate,opacity] duration-300',
+        'ease-spring transition-[translate,opacity] duration-500',
         hidden && 'pointer-events-none translate-y-24 opacity-0'
       )}
     >
@@ -80,30 +104,53 @@ export function PlayerBarView({
         onClick={onToggleListen}
         aria-label={listenAria(listen)}
         aria-busy={listen === 'connecting'}
-        className="ease-out-quart focus-visible:outline-on-accent shrink-0 rounded-full transition-transform duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95"
+        className="group ease-spring focus-visible:outline-on-accent shrink-0 rounded-full transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95"
       >
         <ListenDisc state={listen} className="size-12" />
       </button>
 
-      {track ? (
-        <Cover
-          src={track.art}
-          alt=""
-          seed={`${track.artist}|${track.title}`}
-          className="hidden size-10 shrink-0 md:block"
-        />
-      ) : null}
-
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="text-ui truncate font-semibold">
-          {track ? track.title : listenLabel(listen)}
+      {track && isOnline ? (
+        <>
+          {/* A phone opens the whole track in a sheet; a larger screen goes to the artist's page. */}
+          <span className="flex min-w-0 flex-1 md:hidden">
+            <NowPlayingSheet
+              track={track}
+              artistHref={artistHref}
+              listen={listen}
+              onToggleListen={onToggleListen}
+              isKept={isKept}
+              onToggleKeep={onToggleKeep}
+              airPlay={airPlay}
+            >
+              <TrackLine track={track} hasChanged={hasChanged} />
+            </NowPlayingSheet>
+          </span>
+          <span className="hidden min-w-0 flex-1 md:flex">
+            {artistHref ? (
+              <Link
+                to={artistHref}
+                title={`${track.title}, ${track.artist}`}
+                className={TRACK_LINK}
+              >
+                <TrackLine track={track} hasChanged={hasChanged} />
+              </Link>
+            ) : (
+              <span
+                title={`${track.title}, ${track.artist}`}
+                className="flex min-w-0 flex-1 items-center gap-3"
+              >
+                <TrackLine track={track} hasChanged={hasChanged} />
+              </span>
+            )}
+          </span>
+        </>
+      ) : (
+        <span className="text-ui min-w-0 flex-1 truncate font-semibold">
+          {isOnline ? listenLabel(listen) : m.off_air()}
         </span>
-        {track ? (
-          <span className="text-caption text-on-accent-muted truncate">{track.artist}</span>
-        ) : null}
-      </span>
+      )}
 
-      {track ? (
+      {track && isOnline ? (
         <button
           type="button"
           onClick={onToggleKeep}
@@ -138,15 +185,49 @@ export function PlayerBarView({
   );
 }
 
+function TrackLine({
+  track,
+  hasChanged,
+}: {
+  track: NonNullable<PlayerBarViewProps['track']>;
+  hasChanged: boolean;
+}) {
+  const key = `${track.artist}|${track.title}`;
+  return (
+    <>
+      <Cover
+        key={key}
+        src={track.art}
+        alt=""
+        seed={key}
+        className={cn('size-10 shrink-0', hasChanged && 'swap-in')}
+      />
+      <span
+        key={`${key}:words`}
+        className={cn('flex min-w-0 flex-col', hasChanged && 'swap-in-late')}
+      >
+        <span className="text-ui truncate font-semibold">{track.title}</span>
+        <span className="text-caption text-on-accent-muted truncate">{track.artist}</span>
+      </span>
+    </>
+  );
+}
+
 export function PlayerBar() {
-  const { title, artist, art, playedAt } = useNowPlayingStore(
+  const { title, artist, album, art, playedAt, isOnline } = useNowPlayingStore(
     useShallow((s) => ({
       title: s.data?.now_playing?.song.title,
       artist: s.data?.now_playing?.song.artist,
+      album: s.data?.now_playing?.song.album,
       art: s.data?.now_playing?.song.art,
       playedAt: s.data?.now_playing?.played_at,
+      isOnline: s.data?.is_online ?? true,
     }))
   );
+  const artistPage = useArtistPage(artist);
+  const trackKey = title && artist ? `${artist}|${title}` : null;
+  const [firstTrackKey, setFirstTrackKey] = useState<string | null>(null);
+  if (firstTrackKey === null && trackKey !== null) setFirstTrackKey(trackKey);
   const player = usePlayer(
     useShallow((s) => ({
       isPlaying: s.isPlaying,
@@ -182,7 +263,11 @@ export function PlayerBar() {
       isHidden={heroListenVisible}
       listen={listenState(player.isPlaying, player.isConnecting)}
       onToggleListen={player.toggle}
-      track={title && artist && playedAt !== undefined ? { title, artist, art, playedAt } : null}
+      track={
+        title && artist && playedAt !== undefined
+          ? { title, artist, album: album ?? '', art, playedAt }
+          : null
+      }
       isKept={isLiked}
       onToggleKeep={handleToggleLike}
       volume={player.volume}
@@ -192,6 +277,9 @@ export function PlayerBar() {
       airPlay={
         airPlay.available ? { isActive: airPlay.isActive, onOpen: airPlay.openPicker } : null
       }
+      artistHref={artistPage ? artistPath(artistPage) : null}
+      isOnline={isOnline}
+      hasChanged={firstTrackKey !== null && trackKey !== firstTrackKey}
     />
   );
 }

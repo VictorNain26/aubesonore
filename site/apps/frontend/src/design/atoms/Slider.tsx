@@ -74,13 +74,13 @@ export function Slider({
         <BaseSlider.Track
           className={cn(
             colors.track,
-            isVertical ? 'relative h-full w-1' : 'relative h-1 w-full rounded-full'
+            isVertical ? 'relative h-full w-1 rounded-full' : 'relative h-1 w-full rounded-full'
           )}
         >
           <BaseSlider.Indicator
             className={cn(
               colors.fill,
-              isVertical ? 'absolute bottom-0 w-1' : 'absolute h-1 rounded-full'
+              isVertical ? 'absolute bottom-0 w-1 rounded-full' : 'absolute h-1 rounded-full'
             )}
           />
           <BaseSlider.Thumb
