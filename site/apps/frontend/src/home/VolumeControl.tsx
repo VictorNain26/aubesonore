@@ -18,9 +18,15 @@ const MUTE_BUTTON = {
   surface: 'focus-visible:outline-accent',
 };
 
+const PANEL = {
+  accent: 'bg-accent text-on-accent shadow-bar',
+  surface: 'bg-surface-raised text-text shadow-lift',
+};
+
 /**
- * Mute and a level always in view, for a mouse only: phones and tablets set
- * the volume with their own buttons (and iOS ignores it from the page). The
+ * One speaker button, for a mouse only: phones and tablets set the volume with
+ * their own buttons (and iOS ignores it from the page). A click mutes; hovering
+ * or tabbing onto it opens the level above it, so the bar keeps its width. The
  * level reads 0–100 so a screen reader says "60", not "0.6".
  */
 export function VolumeControl({
@@ -35,7 +41,7 @@ export function VolumeControl({
   const Icon = level === 0 ? VolumeX : level < 0.5 ? Volume1 : Volume2;
 
   return (
-    <div className={cn('hidden shrink-0 items-center gap-1 pointer-fine:flex', className)}>
+    <div className={cn('group relative hidden shrink-0 pointer-fine:flex', className)}>
       <button
         type="button"
         onClick={onToggleMute}
@@ -47,16 +53,20 @@ export function VolumeControl({
       >
         <Icon className="size-4" aria-hidden="true" />
       </button>
-      <div className="w-24">
-        <Slider
-          label={m.volume_slider()}
-          value={Math.round(level * 100)}
-          onValueChange={(value) => onVolumeChange(value / 100)}
-          min={0}
-          max={100}
-          step={5}
-          tone={tone}
-        />
+      {/* The bottom padding bridges the button and the panel, so the pointer can travel up. */}
+      <div className="ease-out-quart invisible absolute bottom-full left-1/2 -translate-x-1/2 pb-2 opacity-0 transition-[opacity,visibility] duration-150 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+        <div className={cn('rounded-full py-2', PANEL[tone])}>
+          <Slider
+            label={m.volume_slider()}
+            value={Math.round(level * 100)}
+            onValueChange={(value) => onVolumeChange(value / 100)}
+            min={0}
+            max={100}
+            step={5}
+            orientation="vertical"
+            tone={tone}
+          />
+        </div>
       </div>
     </div>
   );
