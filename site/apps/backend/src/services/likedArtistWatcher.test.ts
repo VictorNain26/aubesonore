@@ -8,7 +8,7 @@ const { createLikedArtistNotifier } = await import('./likedArtistWatcher');
 const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
 
 function track(sh_id: number, artist = 'Hania Rani', title = 'F Major'): NowPlayingTrack {
-  return { sh_id, title, artist };
+  return { sh_id, title, artist, isrc: 'DEN271800071' };
 }
 
 interface SentCall {
@@ -22,6 +22,7 @@ interface RecordedPlay {
   shId: number;
   title: string;
   artist: string;
+  isrc: string | null;
 }
 
 function makeDeps(overrides: Partial<WatcherDeps> = {}) {
@@ -36,8 +37,8 @@ function makeDeps(overrides: Partial<WatcherDeps> = {}) {
       sent.push({ userIds, title, body, url });
       return Promise.resolve({ sent: userIds.length, failed: 0 });
     },
-    recordPlay: (shId, title, artist) => {
-      played.push({ shId, title, artist });
+    recordPlay: (shId, title, artist, isrc) => {
+      played.push({ shId, title, artist, isrc });
       return Promise.resolve();
     },
     resolveArtist: (artist) => {
@@ -171,7 +172,9 @@ describe('radio play recording', () => {
     await check();
 
     expect(sent).toHaveLength(0);
-    expect(played).toEqual([{ shId: 1, title: 'F Major', artist: 'Hania Rani' }]);
+    expect(played).toEqual([
+      { shId: 1, title: 'F Major', artist: 'Hania Rani', isrc: 'DEN271800071' },
+    ]);
   });
 
   it('records once per sh_id, not once per poll', async () => {

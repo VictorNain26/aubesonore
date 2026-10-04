@@ -1,9 +1,12 @@
 import { env } from '../config/env';
+import { toIsrc } from '../lib/isrc';
 
 export interface NowPlayingTrack {
   sh_id: number;
   title: string;
   artist: string;
+  /** Written by the pipeline into each antenna file (docs/vision.md §4.4). */
+  isrc: string | null;
 }
 
 const NOWPLAYING_TIMEOUT_MS = 10_000;
@@ -28,8 +31,8 @@ export async function fetchNowPlaying(): Promise<NowPlayingTrack | null> {
   const { sh_id, song } = nowPlaying as { sh_id?: unknown; song?: unknown };
   if (typeof sh_id !== 'number' || typeof song !== 'object' || song === null) return null;
 
-  const { title, artist } = song as { title?: unknown; artist?: unknown };
+  const { title, artist, isrc } = song as { title?: unknown; artist?: unknown; isrc?: unknown };
   if (typeof title !== 'string' || typeof artist !== 'string') return null;
 
-  return { sh_id, title, artist };
+  return { sh_id, title, artist, isrc: toIsrc(isrc) };
 }

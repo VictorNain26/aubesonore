@@ -1,16 +1,29 @@
 import { describe, it, expect, mock, spyOn, afterAll, beforeEach } from 'bun:test';
 import type { ArtistSearch } from './deezerService';
-import type { Lookup } from './musicbrainzService';
+import type { Lookup, MusicBrainzArtist } from './musicbrainzService';
 import { DrizzleQueryError } from 'drizzle-orm';
 import type { NowPlayingTrack } from './nowPlaying';
 
-type ArtistRow = { id: string; slug: string; deezerId?: string | null; mbid?: string | null };
+type ArtistRow = {
+  id: string;
+  slug: string;
+  deezerId?: string | null;
+  mbid?: string | null;
+  identifiedBy?: 'isrc' | 'name';
+};
 let artistRows: ArtistRow[] = [];
+// When set, each artist query answers the next entry: the resolver's lookups in order.
+let artistAnswers: ArtistRow[][] | null = null;
+let insertConflict = false;
+let isrcLookup: Lookup<string> = { status: 'none' };
+let isrcLookups = 0;
+let mbArtist: Lookup<MusicBrainzArtist> = { status: 'none' };
+let deezerByIsrc: ArtistSearch = { status: 'none' };
 let updates: Array<Record<string, unknown>> = [];
 let updateError: Error | null = null;
 let mbLookup: Lookup<string> = { status: 'none' };
 let mbLookups = 0;
-let playRows: Array<{ title: string }> = [];
+let playRows: Array<{ title: string; isrc?: string | null }> = [];
 let inserted: Array<Record<string, unknown>> = [];
 let search: ArtistSearch = { status: 'none' };
 let nowPlaying: NowPlayingTrack | null = null;
@@ -23,16 +36,19 @@ void mock.module('../db', () => ({
   schema,
   db: {
     select: () => ({
-      from: (table: unknown) => ({
-        where: () => ({
-          limit: () => Promise.resolve(table === schema.radioPlay ? playRows : artistRows),
-        }),
-      }),
+      from: (table: unknown) => {
+        const answer = () =>
+          Promise.resolve(
+            table === schema.radioPlay ? playRows : (artistAnswers?.shift() ?? artistRows)
+          );
+        return { where: () => ({ limit: answer, orderBy: () => ({ limit: answer }) }) };
+      },
     }),
     insert: () => ({
       values: (row: Record<string, unknown>) => ({
         onConflictDoNothing: () => ({
           returning: () => {
+            if (insertConflict) return Promise.resolve([]);
             inserted.push(row);
             return Promise.resolve([{ id: row.id, slug: row.slug }]);
           },
@@ -68,6 +84,12 @@ const spies = [
     mbLookups += 1;
     return Promise.resolve(mbLookup);
   }),
+  spyOn(musicbrainz, 'findMbidByIsrc').mockImplementation(() => {
+    isrcLookups += 1;
+    return Promise.resolve(isrcLookup);
+  }),
+  spyOn(musicbrainz, 'getArtistByMbid').mockImplementation(() => Promise.resolve(mbArtist)),
+  spyOn(deezer, 'findArtistByIsrc').mockImplementation(() => Promise.resolve(deezerByIsrc)),
 ];
 
 afterAll(() => {
@@ -79,6 +101,12 @@ const { normalizeArtistName, primaryArtistName, resolveArtist, slugify } =
 
 beforeEach(() => {
   artistRows = [];
+  artistAnswers = null;
+  insertConflict = false;
+  isrcLookup = { status: 'none' };
+  isrcLookups = 0;
+  mbArtist = { status: 'none' };
+  deezerByIsrc = { status: 'none' };
   playRows = [];
   inserted = [];
   search = { status: 'none' };
@@ -154,7 +182,7 @@ describe('resolveArtist', () => {
   });
 
   it('creates no page for a name the antenna never played', async () => {
-    nowPlaying = { sh_id: 1, title: 'X', artist: 'Someone Else' };
+    nowPlaying = { sh_id: 1, title: 'X', artist: 'Someone Else', isrc: null };
 
     expect(await resolveArtist('Buy Cheap Pills')).toBeNull();
     expect(searches).toBe(0);
@@ -162,7 +190,12 @@ describe('resolveArtist', () => {
   });
 
   it('accepts the artist on air before the watcher has recorded it', async () => {
-    nowPlaying = { sh_id: 1, title: 'Kelly Watch the Stars', artist: 'Air feat. Someone' };
+    nowPlaying = {
+      sh_id: 1,
+      title: 'Kelly Watch the Stars',
+      artist: 'Air feat. Someone',
+      isrc: null,
+    };
 
     expect(await resolveArtist('Air')).not.toBeNull();
     expect(inserted).toHaveLength(1);
@@ -297,5 +330,121 @@ describe('the MBID, pivot to Musilogy', () => {
     );
 
     expect(failure).toEqual(new Error('connection terminated'));
+  });
+});
+
+describe('identity by ISRC', () => {
+  const ISRC = 'GBDUW0000053';
+  const page = (deezerId: string | null): Lookup<MusicBrainzArtist> => ({
+    status: 'found',
+    value: {
+      facts: {
+        kind: 'group',
+        place: null,
+        country: null,
+        formed: null,
+        ended: null,
+        active: false,
+      },
+      links: [],
+      wikidataId: null,
+      deezerId,
+    },
+  });
+
+  it('identifies a new artist by the ISRC of its play, without searching its name', async () => {
+    playRows = [{ title: 'One More Time', isrc: ISRC }];
+    isrcLookup = { status: 'found', value: 'mb-daft-punk' };
+    mbArtist = page('27');
+
+    await resolveArtist('Daft Punk');
+
+    expect(searches).toBe(0);
+    expect(inserted[0]).toMatchObject({
+      displayName: 'Daft Punk',
+      deezerId: '27',
+      mbid: 'mb-daft-punk',
+      identifiedBy: 'isrc',
+    });
+  });
+
+  it('asks Deezer for the ISRC when MusicBrainz declares no single Deezer artist', async () => {
+    playRows = [{ title: 'One More Time', isrc: ISRC }];
+    isrcLookup = { status: 'found', value: 'mb-daft-punk' };
+    mbArtist = page(null);
+    deezerByIsrc = { status: 'match', artist: { id: '27', name: 'Daft Punk', picture: null } };
+
+    await resolveArtist('Daft Punk');
+
+    expect(inserted[0]).toMatchObject({ deezerId: '27', mbid: 'mb-daft-punk' });
+  });
+
+  it('reaches the MBID through the Deezer link when MusicBrainz does not know the ISRC', async () => {
+    playRows = [{ title: 'One More Time', isrc: ISRC }];
+    deezerByIsrc = { status: 'match', artist: { id: '27', name: 'Daft Punk', picture: null } };
+    mbLookup = { status: 'found', value: 'mb-daft-punk' };
+
+    await resolveArtist('Daft Punk');
+
+    expect(inserted[0]).toMatchObject({
+      deezerId: '27',
+      mbid: 'mb-daft-punk',
+      identifiedBy: 'isrc',
+    });
+  });
+
+  it('falls back to the name when no source knows the ISRC', async () => {
+    playRows = [{ title: 'One More Time', isrc: ISRC }];
+    search = { status: 'match', artist: { id: '27', name: 'Daft Punk', picture: null } };
+
+    await resolveArtist('Daft Punk');
+
+    expect(searches).toBe(1);
+    expect(inserted[0]).toMatchObject({ deezerId: '27', identifiedBy: 'name' });
+  });
+
+  it('persists nothing while a source fails on the ISRC, so the next play retries', async () => {
+    playRows = [{ title: 'One More Time', isrc: ISRC }];
+    isrcLookup = { status: 'failed' };
+
+    expect(await resolveArtist('Daft Punk')).toBeNull();
+    expect(inserted).toEqual([]);
+    expect(searches).toBe(0);
+  });
+
+  it('re-identifies a row bound by its name once a play carries an ISRC', async () => {
+    // Can was bound by name to a one-album homonym on Deezer (measured 2026-10-03).
+    artistRows = [
+      { id: 'a-can', slug: 'can', deezerId: '366546802', mbid: null, identifiedBy: 'name' },
+    ];
+    playRows = [{ title: 'Vitamin C', isrc: 'DEAE87200093' }];
+    isrcLookup = { status: 'found', value: 'mb-can' };
+    mbArtist = page('8213');
+
+    expect(await resolveArtist('Can')).toEqual({ id: 'a-can', slug: 'can' });
+    expect(updates).toEqual([{ deezerId: '8213', mbid: 'mb-can', identifiedBy: 'isrc' }]);
+  });
+
+  it('leaves a row identified by its ISRC alone', async () => {
+    artistRows = [
+      { id: 'a-27', slug: 'daft-punk', deezerId: '27', mbid: 'mb-dp', identifiedBy: 'isrc' },
+    ];
+    playRows = [{ title: 'One More Time', isrc: ISRC }];
+
+    await resolveArtist('Daft Punk');
+
+    expect(isrcLookups).toBe(0);
+    expect(updates).toEqual([]);
+  });
+
+  it("gives another spelling of an identified artist that artist's page", async () => {
+    playRows = [{ title: 'Frank Sinatra', isrc: 'FR0W60100020' }];
+    isrcLookup = { status: 'found', value: 'mb-kittin' };
+    mbArtist = page('1234');
+    insertConflict = true;
+    // No row under this spelling, before or after the insert; one holds the identity.
+    artistAnswers = [[], [], [{ id: 'a-kittin', slug: 'kittin' }]];
+
+    expect(await resolveArtist('Miss Kittin')).toEqual({ id: 'a-kittin', slug: 'kittin' });
   });
 });

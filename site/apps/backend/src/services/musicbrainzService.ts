@@ -9,6 +9,8 @@ export interface MusicBrainzArtist {
   links: ArtistLink[];
   /** The Wikidata item, the way to the artist's Wikipedia articles. */
   wikidataId: string | null;
+  /** The Deezer artist the MusicBrainz page declares, when it declares exactly one. */
+  deezerId: string | null;
 }
 
 export type Lookup<V> = { status: 'found'; value: V } | { status: 'none' } | { status: 'failed' };
@@ -125,6 +127,34 @@ export function findMbidByDeezerId(deezerId: string): Promise<Lookup<string>> {
   });
 }
 
+interface RawIsrc {
+  recordings?: Array<{ 'artist-credit'?: Array<{ artist?: { id?: string } }> }>;
+}
+
+/**
+ * The artist credited first on the recordings MusicBrainz attaches to this
+ * ISRC. An ISRC is the recording's own code: it binds a played track to its
+ * artist without a name. Recordings that disagree on that artist (an ISRC
+ * reused by mistake) bind none.
+ */
+export function findMbidByIsrc(isrc: string): Promise<Lookup<string>> {
+  return cached(`isrc:${isrc}`, async () => {
+    const fetched = await fetchJson<RawIsrc>(
+      `/isrc/${encodeURIComponent(isrc)}?inc=artist-credits&fmt=json`
+    );
+    if (fetched.status !== 'found') return fetched;
+
+    const ids = new Set(
+      (fetched.value.recordings ?? []).flatMap((recording) => {
+        const id = recording['artist-credit']?.[0]?.artist?.id;
+        return id ? [id] : [];
+      })
+    );
+    const [only] = ids;
+    return ids.size === 1 && only ? { status: 'found', value: only } : { status: 'none' };
+  });
+}
+
 interface RawArea {
   name?: string;
   'iso-3166-1-codes'?: string[];
@@ -205,6 +235,19 @@ function toLinks(raw: RawArtist): ArtistLink[] {
   });
 }
 
+const DEEZER_ARTIST = /^https:\/\/www\.deezer\.com\/artist\/(\d+)$/;
+
+function deezerIdOf(raw: RawArtist): string | null {
+  const ids = new Set(
+    (raw.relations ?? []).flatMap((relation) => {
+      const match = relation.ended ? null : DEEZER_ARTIST.exec(relation.url?.resource ?? '');
+      return match?.[1] ? [match[1]] : [];
+    })
+  );
+  const [only] = ids;
+  return ids.size === 1 && only ? only : null;
+}
+
 function wikidataIdOf(raw: RawArtist): string | null {
   const resource = raw.relations?.find((relation) => relation.type === 'wikidata')?.url?.resource;
   const id = resource?.split('/').pop();
@@ -223,6 +266,7 @@ export function getArtistByMbid(mbid: string): Promise<Lookup<MusicBrainzArtist>
         facts: toFacts(fetched.value),
         links: toLinks(fetched.value),
         wikidataId: wikidataIdOf(fetched.value),
+        deezerId: deezerIdOf(fetched.value),
       },
     };
   });

@@ -147,6 +147,30 @@ export async function searchArtist(
   })) as ArtistSearch;
 }
 
+/**
+ * The artist of the Deezer track with this ISRC. `GET /track/isrc:<code>` is
+ * not in Deezer's public documentation as far as could be read (its portal
+ * renders nothing without JavaScript); its answers were measured on
+ * 2026-10-04. The resolver asks it only when MusicBrainz declares no Deezer
+ * link for the artist.
+ */
+export async function findArtistByIsrc(isrc: string): Promise<ArtistSearch> {
+  const key = `isrc:${isrc}`;
+  const cached = deezerCache.get(key);
+  if (cached !== undefined) return cached as ArtistSearch;
+
+  return (await flight(key, async () => {
+    const fetched = await getJson<RawTrack>(`/track/isrc:${encodeURIComponent(isrc)}`);
+    if (fetched.status === 'failed') return { status: 'failed' };
+
+    const artist =
+      fetched.status === 'ok' && fetched.body.artist ? toArtist(fetched.body.artist) : null;
+    const result: ArtistSearch = artist ? { status: 'match', artist } : { status: 'none' };
+    deezerCache.set(key, result, artist ? undefined : NEGATIVE_TTL_MS);
+    return result;
+  })) as ArtistSearch;
+}
+
 export async function getArtist(id: string): Promise<DeezerArtist | null> {
   const key = `artist:${id}`;
   const cached = deezerCache.get(key);

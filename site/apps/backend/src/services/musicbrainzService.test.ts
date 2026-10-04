@@ -3,9 +3,15 @@ import { describe, it, expect, spyOn, afterEach, beforeEach, jest } from 'bun:te
 import group from './__fixtures__/musicbrainz-artist-group.json';
 import person from './__fixtures__/musicbrainz-artist-person.json';
 import deezerUrl from './__fixtures__/musicbrainz-url-deezer.json';
+import isrcAnswer from './__fixtures__/musicbrainz-isrc.json';
 
-const { findMbidByDeezerId, getArtistByMbid, musicbrainzCache, __resetMusicbrainzThrottle } =
-  await import('./musicbrainzService');
+const {
+  findMbidByDeezerId,
+  findMbidByIsrc,
+  getArtistByMbid,
+  musicbrainzCache,
+  __resetMusicbrainzThrottle,
+} = await import('./musicbrainzService');
 
 beforeEach(() => {
   __resetMusicbrainzThrottle();
@@ -104,8 +110,25 @@ describe('getArtistByMbid', () => {
           { platform: 'official', url: 'https://daftpunk.com/' },
         ],
         wikidataId: 'Q185828',
+        // The page declares two Deezer artists (27 and 1477045): neither for sure.
+        deezerId: null,
       },
     });
+  });
+
+  it('reads the Deezer artist the page declares when it declares one', async () => {
+    spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      json({
+        ...group,
+        relations: group.relations.filter(
+          (relation) => relation.url.resource !== 'https://www.deezer.com/artist/1477045'
+        ),
+      })
+    );
+
+    const found = await getArtistByMbid(group.id);
+
+    expect(found.status === 'found' && found.value.deezerId).toBe('27');
   });
 
   it('skips a former address and lists an address once', async () => {
@@ -182,5 +205,38 @@ describe('getArtistByMbid', () => {
       ended: null,
       active: false,
     });
+  });
+});
+
+describe('findMbidByIsrc', () => {
+  it('returns the artist credited first on the recording', async () => {
+    const fetchSpy = spyOn(globalThis, 'fetch').mockResolvedValueOnce(json(isrcAnswer));
+
+    expect(await findMbidByIsrc('GBAYE6500165')).toEqual({
+      status: 'found',
+      value: '06b6f280-8787-4a3d-8ab6-c6487b465320',
+    });
+    const [url] = fetchSpy.mock.calls[0] as [string];
+    expect(url).toBe('https://musicbrainz.org/ws/2/isrc/GBAYE6500165?inc=artist-credits&fmt=json');
+  });
+
+  it('binds none when the recordings disagree on their artist', async () => {
+    const [recording] = isrcAnswer.recordings;
+    if (!recording) throw new Error('fixture without recording');
+    const other = {
+      ...recording,
+      'artist-credit': [{ name: 'X', joinphrase: '', artist: { id: 'other', name: 'X' } }],
+    };
+    spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      json({ ...isrcAnswer, recordings: [recording, other] })
+    );
+
+    expect(await findMbidByIsrc('GBAYE6500165')).toEqual({ status: 'none' });
+  });
+
+  it('reads an unknown ISRC as a definitive miss', async () => {
+    spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ error: 'Not Found' }, 404));
+
+    expect(await findMbidByIsrc('ZZZ000000000')).toEqual({ status: 'none' });
   });
 });
