@@ -71,11 +71,34 @@ export function cardLine(card: MusilogyCard): string {
     ? new Intl.DisplayNames([getLocale()], { type: 'region' }).of(card.country)
     : '';
   const where = [card.beginArea, country].filter(Boolean).join(', ');
-  const when = card.y0 ? (card.yEnd ? `${card.y0} – ${card.yEnd}` : String(card.y0)) : '';
+  // A start read from the first album says so; an end is shown only when
+  // declared: a last album is not the end of a band still active.
+  const start = !card.y0
+    ? ''
+    : card.y0Source === 'first_album'
+      ? m.musilogy_first_album({ year: String(card.y0) })
+      : String(card.y0);
+  const when =
+    start && card.yEnd && card.yEndSource === 'declared' ? `${start} – ${card.yEnd}` : start;
   return [kind, where, when].filter(Boolean).join(' · ');
 }
 
-function ArtistRow({ artist, years }: { artist: MusilogyArtistRef; years?: string | null }) {
+/** The Wikidata statement a declared influence rests on. */
+export function statementUrl(statement: string): string {
+  const item = (statement.split('$')[0] ?? '').toUpperCase();
+  // A statement id is letters, digits, dashes and one `$`: valid as a fragment as is.
+  return `https://www.wikidata.org/wiki/${item}#${statement}`;
+}
+
+function ArtistRow({
+  artist,
+  years,
+  source,
+}: {
+  artist: MusilogyArtistRef;
+  years?: string | null;
+  source?: string | null;
+}) {
   const when = years === undefined ? (artist.y0 ? String(artist.y0) : null) : years;
   return (
     <li className="border-border reveal grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1">
@@ -93,6 +116,16 @@ function ArtistRow({ artist, years }: { artist: MusilogyArtistRef; years?: strin
           >
             {m.musilogy_played()}
           </Link>
+        ) : null}
+        {source ? (
+          <a
+            href={source}
+            rel="noopener noreferrer"
+            target="_blank"
+            className={`${TEXT_ACTION} text-label self-start font-mono uppercase`}
+          >
+            {m.musilogy_statement()}
+          </a>
         ) : null}
       </span>
       <span className="flex items-center">
@@ -115,9 +148,11 @@ export function linkYears(link: MusilogyLink): string | null {
 function ArtistList<T extends MusilogyArtistRef>({
   artists,
   yearsOf,
+  sourceOf,
 }: {
   artists: readonly T[];
   yearsOf?: (artist: T) => string | null;
+  sourceOf?: (artist: T) => string | null;
 }) {
   const [open, setOpen] = useState(false);
   const shown = open ? artists : artists.slice(0, FIRST_SHOWN);
@@ -129,6 +164,7 @@ function ArtistList<T extends MusilogyArtistRef>({
             key={artist.mbid}
             artist={artist}
             {...(yearsOf ? { years: yearsOf(artist) } : {})}
+            {...(sourceOf ? { source: sourceOf(artist) } : {})}
           />
         ))}
       </ol>
@@ -154,11 +190,14 @@ function NeighbourSection({
   title,
   body,
   neighbours,
+  surveyed,
 }: {
   id: string;
   title: string;
   body: string;
   neighbours: readonly MusilogyNeighbour[] | null;
+  /** False when the snapshot never asked about this artist: no neighbour, for want of asking. */
+  surveyed: boolean | null;
 }) {
   return (
     <Section id={id} title={title} body={body}>
@@ -167,7 +206,11 @@ function NeighbourSection({
       ) : neighbours.length > 0 ? (
         <ArtistList artists={neighbours} />
       ) : (
-        <Empty text={m.musilogy_neighbours_empty()} />
+        <Empty
+          text={
+            surveyed === false ? m.musilogy_neighbours_unsurveyed() : m.musilogy_neighbours_empty()
+          }
+        />
       )}
     </Section>
   );
@@ -225,19 +268,27 @@ function ArtistView({ artist, thisYear }: { artist: MusilogyArtist; thisYear: nu
           title={m.musilogy_before_title()}
           body={m.musilogy_before_body()}
           neighbours={neighbours?.before ?? null}
+          surveyed={card.proximitySurveyed}
         />
         <NeighbourSection
           id="during"
           title={m.musilogy_during_title()}
           body={m.musilogy_during_body()}
           neighbours={neighbours?.during ?? null}
+          surveyed={card.proximitySurveyed}
         />
         <NeighbourSection
           id="after"
           title={m.musilogy_after_title()}
           body={m.musilogy_after_body()}
           neighbours={neighbours?.after ?? null}
+          surveyed={card.proximitySurveyed}
         />
+        {neighbours && neighbours.undated.length > 0 ? (
+          <Section id="undated" title={m.musilogy_undated_title()} body={m.musilogy_undated_body()}>
+            <ArtistList artists={neighbours.undated} />
+          </Section>
+        ) : null}
 
         <Section
           id="influences"
@@ -260,7 +311,10 @@ function ArtistView({ artist, thisYear }: { artist: MusilogyArtist; thisYear: nu
                 .map(([label, list]) => (
                   <div key={label} className="flex flex-col gap-2">
                     <h3 className="text-label text-text-muted m-0 font-mono uppercase">{label}</h3>
-                    <ArtistList artists={list} />
+                    <ArtistList
+                      artists={list}
+                      sourceOf={(influence) => statementUrl(influence.statement)}
+                    />
                   </div>
                 ))}
             </div>
@@ -322,6 +376,7 @@ export type SearchState =
   | { status: 'idle' }
   | { status: 'searching' }
   | { status: 'unavailable' }
+  | { status: 'error' }
   | { status: 'done'; hits: MusilogySearchHit[] };
 
 /** Musilogy's entry: what it is, and a search for any artist. */
@@ -356,6 +411,8 @@ export function MusilogyHomeView({
         <div aria-live="polite" className="max-w-xl">
           {search.status === 'unavailable' ? (
             <Empty text={m.musilogy_unavailable_body()} />
+          ) : search.status === 'error' ? (
+            <Empty text={m.musilogy_search_error()} />
           ) : search.status === 'done' ? (
             search.hits.length > 0 ? (
               <ol className="border-accent m-0 list-none border-t p-0">

@@ -37,6 +37,7 @@ function artist(
       ended: true,
       genres: [],
       listeners: null,
+      proximitySurveyed: true,
     },
     neighbours,
     influences: null,

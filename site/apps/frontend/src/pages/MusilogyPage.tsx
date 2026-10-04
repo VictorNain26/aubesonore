@@ -67,7 +67,7 @@ function MusilogyHome() {
         .then((hits) => setSearch({ status: 'done', hits }))
         .catch((err: unknown) => {
           if (err instanceof Error && err.name === 'AbortError') return;
-          setSearch({ status: err instanceof MusilogyUnavailableError ? 'unavailable' : 'idle' });
+          setSearch({ status: err instanceof MusilogyUnavailableError ? 'unavailable' : 'error' });
         });
     }, SEARCH_PAUSE_MS);
     return () => {

@@ -12,16 +12,20 @@ import type {
 import { db } from '../db/index';
 import { artist } from '../db/schema';
 import { TtlCache } from '../lib/cache/ttlCache';
+import { createSingleFlight } from '../lib/singleFlight';
 
-// Every musilogy read goes through the functions `musilogy load` installs
-// (musilogy/docs/conception.md §4), tested there against Postgres: the site
-// depends on their signatures, never on musilogy's tables. Which artists the
+// Every musilogy read goes through the functions `musilogy load` installs,
+// whose signatures are the contract of musilogy/docs/conception.md §4 (each
+// delivered one is tested there against Postgres): the site never reads
+// musilogy's tables. Which artists the
 // antenna played is the site's own data, read from `artist`.
 // node-postgres returns bigint as a string; every count here fits a double.
 
 const ONE_HOUR_MS = 60 * 60_000;
 // musilogy only changes when it is loaded again.
 export const musilogyCache = new TtlCache<MusilogyArtist | null>(ONE_HOUR_MS);
+// One query per artist however many ask at once: a shared link opened by many.
+const flight = createSingleFlight<MusilogyArtist | null>();
 
 /** The musilogy schema, or the function asked, is not loaded. */
 export class MusilogyUnavailable extends Error {}
@@ -69,6 +73,7 @@ interface CardRow extends Record<string, unknown> {
   ended: boolean | null;
   genres: Array<{ name: string }> | null;
   user_count: Int8 | null;
+  proximity_surveyed: boolean | null;
 }
 
 interface NeighbourRow extends Record<string, unknown> {
@@ -142,7 +147,10 @@ const toCount = (value: Int8 | null): number | null => (value === null ? null : 
 export async function getMusilogyArtist(mbid: string): Promise<MusilogyArtist | null> {
   const cached = musilogyCache.get(mbid);
   if (cached !== undefined) return cached;
+  return flight(mbid, () => loadArtist(mbid));
+}
 
+async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
   const [cards, neighbourRows, influenceRows, linkRows] = await Promise.all([
     call<CardRow>(sql`SELECT * FROM musilogy.artist_card(${mbid})`),
     section<NeighbourRow>(sql`SELECT * FROM musilogy.artist_neighbours(${mbid})`),
@@ -206,6 +214,7 @@ export async function getMusilogyArtist(mbid: string): Promise<MusilogyArtist | 
       ended: card.ended,
       genres: (card.genres ?? []).map((genre) => genre.name),
       listeners: toCount(card.user_count),
+      proximitySurveyed: card.proximity_surveyed ?? null,
     },
     neighbours: neighbourRows && {
       before: neighbourRows.filter((row) => row.side === 'before').map(neighbour),
