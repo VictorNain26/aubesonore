@@ -4,13 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import type { MusilogyArtist, MusilogyNeighbour } from '@aubesonore/shared-types/client';
-import {
-  cardLine,
-  linkYears,
-  MusilogyArtistView,
-  MusilogyHomeView,
-  statementUrl,
-} from './MusilogyView';
+import { cardLine, linkYears, MusilogyArtistView, MusilogyHomeView } from './MusilogyView';
 
 const T_REX = 'c842d29f-a297-48cd-bb71-4f77fd672b16';
 
@@ -136,7 +130,7 @@ describe('MusilogyArtistView', () => {
     show({ status: 'ready', artist: artist({ card, neighbours: none }) });
 
     expect(
-      screen.getAllByText('Trop peu écouté sur ListenBrainz pour avoir été relevé.')
+      screen.getAllByText("Trop peu écouté pour qu'on lui connaisse des proches.")
     ).toHaveLength(3);
   });
 
@@ -151,21 +145,22 @@ describe('MusilogyArtistView', () => {
     expect(screen.getByRole('link', { name: 'Undated Band' })).toBeInTheDocument();
   });
 
-  it('links each declared influence to its Wikidata statement', () => {
+  it('names no source, licence or tool, and links nowhere outside the site', () => {
     show({
       status: 'ready',
       artist: artist({
         influences: {
-          cites: [{ ...neighbour(40, { name: 'The Kinks' }), statement: 'Q1$abc' }],
+          cites: [{ ...neighbour(40, { name: 'Chuck Berry' }), statement: 'Q1$abc' }],
           citedBy: [],
         },
       }),
     });
 
-    expect(screen.getByRole('link', { name: 'Wikidata' })).toHaveAttribute(
-      'href',
-      'https://www.wikidata.org/wiki/Q1#Q1$abc'
-    );
+    expect(screen.getByRole('link', { name: 'Chuck Berry' })).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent(/ListenBrainz|MusicBrainz|Wikidata|CC BY|CC0/);
+    for (const link of screen.getAllByRole('link')) {
+      expect(link.getAttribute('href')).toMatch(/^\//);
+    }
   });
 });
 
@@ -188,14 +183,6 @@ describe('cardLine', () => {
     expect(cardLine(card)).toBe('Groupe · London, Royaume-Uni · premier album en 1967');
     expect(cardLine({ ...card, yEndSource: 'declared' })).toBe(
       "Groupe · London, Royaume-Uni · premier album en 1967, jusqu'en 1977"
-    );
-  });
-});
-
-describe('statementUrl', () => {
-  it('opens the item page on the statement', () => {
-    expect(statementUrl('q19848$bbc07573-aaaa')).toBe(
-      'https://www.wikidata.org/wiki/Q19848#q19848$bbc07573-aaaa'
     );
   });
 });

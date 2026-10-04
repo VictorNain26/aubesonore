@@ -89,22 +89,7 @@ export function cardLine(card: MusilogyCard): string {
   return [kind, where, when].filter(Boolean).join(' · ');
 }
 
-/** The Wikidata statement a declared influence rests on. */
-export function statementUrl(statement: string): string {
-  const item = (statement.split('$')[0] ?? '').toUpperCase();
-  // A statement id is letters, digits, dashes and one `$`: valid as a fragment as is.
-  return `https://www.wikidata.org/wiki/${item}#${statement}`;
-}
-
-function ArtistRow({
-  artist,
-  years,
-  source,
-}: {
-  artist: MusilogyArtistRef;
-  years?: string | null;
-  source?: string | null;
-}) {
+function ArtistRow({ artist, years }: { artist: MusilogyArtistRef; years?: string | null }) {
   const when = years === undefined ? (artist.y0 ? String(artist.y0) : null) : years;
   return (
     <li className="border-border reveal grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1">
@@ -122,16 +107,6 @@ function ArtistRow({
           >
             {m.musilogy_played()}
           </Link>
-        ) : null}
-        {source ? (
-          <a
-            href={source}
-            rel="noopener noreferrer"
-            target="_blank"
-            className={`${TEXT_ACTION} text-label self-start font-mono uppercase`}
-          >
-            {m.musilogy_statement()}
-          </a>
         ) : null}
       </span>
       <span className="flex items-center">
@@ -154,11 +129,9 @@ export function linkYears(link: MusilogyLink): string | null {
 function ArtistList<T extends MusilogyArtistRef>({
   artists,
   yearsOf,
-  sourceOf,
 }: {
   artists: readonly T[];
   yearsOf?: (artist: T) => string | null;
-  sourceOf?: (artist: T) => string | null;
 }) {
   const [open, setOpen] = useState(false);
   const shown = open ? artists : artists.slice(0, FIRST_SHOWN);
@@ -170,7 +143,6 @@ function ArtistList<T extends MusilogyArtistRef>({
             key={artist.mbid}
             artist={artist}
             {...(yearsOf ? { years: yearsOf(artist) } : {})}
-            {...(sourceOf ? { source: sourceOf(artist) } : {})}
           />
         ))}
       </ol>
@@ -317,10 +289,7 @@ function ArtistView({ artist, thisYear }: { artist: MusilogyArtist; thisYear: nu
                 .map(([label, list]) => (
                   <div key={label} className="flex flex-col gap-2">
                     <h3 className="text-label text-text-muted m-0 font-mono uppercase">{label}</h3>
-                    <ArtistList
-                      artists={list}
-                      sourceOf={(influence) => statementUrl(influence.statement)}
-                    />
+                    <ArtistList artists={list} />
                   </div>
                 ))}
             </div>
@@ -332,8 +301,6 @@ function ArtistView({ artist, thisYear }: { artist: MusilogyArtist; thisYear: nu
             <Links links={links} />
           </Section>
         ) : null}
-
-        <p className="text-label text-text-muted m-0 font-mono uppercase">{m.musilogy_sources()}</p>
       </div>
     </>
   );
