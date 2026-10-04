@@ -90,7 +90,22 @@ describe('SiteHeader', () => {
     expect(screen.queryByRole('button', { name: 'Mes titres' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Les plus gardés' })).toHaveAttribute(
       'href',
-      '#plus-gardes'
+      '/#plus-gardes'
     );
+  });
+
+  it('names the site in a heading on the home page, and leads back to it elsewhere', () => {
+    const { unmount } = render(<SiteHeader />, { wrapper: MemoryRouter });
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('aubesonore');
+    expect(screen.queryByRole('link', { name: 'Le direct' })).not.toBeInTheDocument();
+    unmount();
+
+    render(
+      <MemoryRouter initialEntries={['/mentions-legales/']}>
+        <SiteHeader />
+      </MemoryRouter>
+    );
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Le direct' })).toHaveAttribute('href', '/');
   });
 });

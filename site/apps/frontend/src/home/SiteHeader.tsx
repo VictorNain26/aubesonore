@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useAuthModalStore } from '../stores/authModalStore';
 import { ModalErrorFallback } from '../design/organisms/ErrorFallback';
 import { Menu } from '../design/molecules/Menu';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { localizeHref } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
 
@@ -20,6 +20,9 @@ const PRELOAD_DELAY_MS = 2000;
 
 const NAV_LINK =
   'text-ui ease-out-quart focus-visible:outline-accent hidden min-h-11 items-center rounded-sm transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-97 md:inline-flex';
+
+const BRAND_LINK =
+  'ease-out-quart focus-visible:outline-accent flex flex-col gap-1.5 rounded-sm transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4';
 
 const OUTLINE_PILL =
   'text-ui border-accent ease-out-quart hover:bg-accent hover:text-on-accent focus-visible:outline-accent inline-flex min-h-11 items-center rounded-full border px-4.5 transition-[color,background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
@@ -37,6 +40,9 @@ export function SiteHeader() {
     }))
   );
   const openAuthModal = useAuthModalStore((s) => s.open);
+  const { pathname } = useLocation();
+  // The home page's heading is the site's name; elsewhere the name leads back to the live.
+  const isHome = ['/', '/en', '/en/', '/reset-password'].includes(pathname);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const closeLibrary = () => setIsLibraryOpen(false);
   // Kept mounted after the first opening, so closing it can animate.
@@ -52,17 +58,32 @@ export function SiteHeader() {
     return () => clearTimeout(timer);
   }, [isAuthenticated]);
 
+  const brand = (
+    <>
+      <span className="text-mark condensed">aubesonore</span>
+      <span className="sr-only">, </span>
+      <span className="text-sub text-text-muted font-normal text-balance">{m.hero_title()}</span>
+    </>
+  );
+
   return (
     <header className="px-page relative z-10 flex items-start justify-between gap-6 pt-5 md:pt-7">
-      <h1 className="m-0 flex flex-col gap-1.5">
-        <span className="text-mark condensed">aubesonore</span>
-        <span className="sr-only">, </span>
-        <span className="text-sub text-text-muted font-normal text-balance">{m.hero_title()}</span>
-      </h1>
+      {isHome ? (
+        <h1 className="m-0 flex flex-col gap-1.5">{brand}</h1>
+      ) : (
+        <Link to={localizeHref('/')} className={BRAND_LINK}>
+          {brand}
+        </Link>
+      )}
       <nav aria-label={m.nav_label()} className="flex shrink-0 items-center gap-7">
-        <a href="#plus-gardes" className={NAV_LINK}>
+        {isHome ? null : (
+          <Link to={localizeHref('/')} className={NAV_LINK}>
+            {m.nav_live()}
+          </Link>
+        )}
+        <Link to={`${localizeHref('/')}#plus-gardes`} className={NAV_LINK}>
           {m.most_kept_title()}
-        </a>
+        </Link>
         <Link to={localizeHref('/musilogy')} className={NAV_LINK}>
           {m.musilogy_title()}
         </Link>

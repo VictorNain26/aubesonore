@@ -161,9 +161,13 @@ describe('ArtistPageView', () => {
   });
 
   it('leads back to the live from the header', () => {
-    show({ status: 'loading' });
+    render(
+      <MemoryRouter initialEntries={['/artist/a-1/hania-rani']}>
+        <ArtistPageView state={{ status: 'loading' }} kept={[]} />
+      </MemoryRouter>
+    );
 
-    expect(screen.getByRole('link', { name: 'Revenir au direct' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Le direct' })).toHaveAttribute('href', '/');
   });
 });
 

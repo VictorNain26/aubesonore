@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
+import { useLocation } from 'react-router';
 import { PlayerErrorFallback } from '../design/organisms/ErrorFallback';
 import { Hero } from '../home/Hero';
 import { SinceDawn } from '../home/SinceDawn';
@@ -6,6 +8,12 @@ import { MostKept } from '../home/MostKept';
 import { SiteFooter } from '../home/SiteFooter';
 
 export default function HomePage() {
+  const { hash } = useLocation();
+  // Arriving from another page's "Les plus gardés" link: the router does not scroll to a hash.
+  useEffect(() => {
+    if (hash) document.getElementById(hash.slice(1))?.scrollIntoView();
+  }, [hash]);
+
   return (
     <>
       <main id="main">

@@ -6,7 +6,7 @@ import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 const SITE = 'https://aubesonore.fr';
-const { pageHtml, staticPageHtml, meta } = await import('../dist-ssr/entry-server.js');
+const { pageHtml, meta } = await import('../dist-ssr/entry-server.js');
 const template = await readFile('dist/index.html', 'utf8');
 const base = meta('fr');
 
@@ -35,16 +35,7 @@ function alternates(pages) {
   ].join('\n    ');
 }
 
-/** Static pages carry no app script: they are read, never hydrated. */
-function withoutScripts(html) {
-  return html
-    .replace(/<link\s+rel="preload"[^>]*as="fetch"[^>]*>\s*/g, '')
-    .replace(/<script type="module"[^>]*><\/script>\s*/g, '')
-    .replace(/<link rel="modulepreload"[^>]*>\s*/g, '')
-    .replace(/<script id="vite-plugin-pwa:register-sw"[^>]*><\/script>\s*/g, '');
-}
-
-async function write(page, body, { siblings, noindex = false, hydrate = true }) {
+async function write(page, body, { siblings, noindex = false }) {
   const { title, description } = meta(page.locale, page.kind);
   let html = template;
   html = replaceOrFail(html, '<html lang="fr">', `<html lang="${page.locale}">`);
@@ -70,7 +61,6 @@ async function write(page, body, { siblings, noindex = false, hydrate = true }) 
   );
   html = replaceOrFail(html, stylesheet[0], head);
   html = replaceOrFail(html, '<div id="root"></div>', `<div id="root">${body}</div>`);
-  if (!hydrate) html = withoutScripts(html);
   await mkdir(dirname(page.file), { recursive: true });
   await writeFile(page.file, html);
   console.log(`prerendered ${page.file}`);
@@ -92,16 +82,17 @@ const legal = [
 
 for (const page of home) await write(page, await pageHtml(page.locale), { siblings: home });
 for (const page of legal) {
-  await write(page, await staticPageHtml('legal', page.locale), {
-    siblings: legal,
-    hydrate: false,
-  });
+  await write(page, await pageHtml(page.locale, page.path), { siblings: legal });
 }
-await write(
+// nginx serves these for any unknown path, under /en/ in English; the client hydrates them at
+// that path, where no route matches either.
+const notFound = [
   { kind: 'notFound', locale: 'fr', path: '/404', file: 'dist/404.html' },
-  await staticPageHtml('notFound', 'fr'),
-  { siblings: home, noindex: true, hydrate: false }
-);
+  { kind: 'notFound', locale: 'en', path: '/en/404', file: 'dist/en/404.html' },
+];
+for (const page of notFound) {
+  await write(page, await pageHtml(page.locale, page.path), { siblings: home, noindex: true });
+}
 
 // Artist pages are not pre-rendered: the backend reads this empty shell from
 // the container and rewrites its head tags per artist (artistPage.routes.ts),

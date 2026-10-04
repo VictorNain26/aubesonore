@@ -11,7 +11,8 @@ import type {
 } from '@aubesonore/shared-types/client';
 import { getLocale } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
-import { Header, Section } from '../artist/ArtistPageView';
+import { Section } from '../artist/ArtistPageView';
+import { SiteHeader } from '../home/SiteHeader';
 import { TEXT_ACTION } from '../home/styles';
 import { artistPath } from '../lib/artistProfile';
 import { musilogyPath } from '../lib/musilogy';
@@ -329,7 +330,7 @@ export function MusilogyArtistView({
 }) {
   return (
     <main id="main" className="min-h-dvh">
-      <Header />
+      <SiteHeader />
       {state.status === 'loading' ? (
         <div aria-busy="true" className="px-page flex flex-col gap-6 pt-10 md:pt-16">
           <span className="bg-surface-raised h-12 w-2/3 rounded-sm" />
@@ -367,7 +368,7 @@ export function MusilogyHomeView({
 }) {
   return (
     <main id="main" className="min-h-dvh">
-      <Header />
+      <SiteHeader />
       <div className="lift-in px-page flex flex-col gap-6 pt-10 pb-24 md:pt-16">
         <h1 className="text-hero m-0">{m.musilogy_title()}</h1>
         <p className="text-intro text-text-muted max-w-blurb m-0">{m.musilogy_lead()}</p>
