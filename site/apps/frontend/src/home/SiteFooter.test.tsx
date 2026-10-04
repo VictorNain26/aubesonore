@@ -1,8 +1,13 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render as renderInDom, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
 import { SiteFooterView } from './SiteFooter';
+
+// The footer links to Musilogy through the router, so the stream keeps playing.
+const render = (ui: ReactElement) => renderInDom(ui, { wrapper: MemoryRouter });
 
 describe('SiteFooterView', () => {
   it('switches language and marks the current one', async () => {

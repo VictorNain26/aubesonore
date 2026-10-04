@@ -5,6 +5,8 @@ import { useAuthStore } from '../stores/authStore';
 import { useAuthModalStore } from '../stores/authModalStore';
 import { ModalErrorFallback } from '../design/organisms/ErrorFallback';
 import { Menu } from '../design/molecules/Menu';
+import { Link } from 'react-router';
+import { localizeHref } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
 
 const LikedTracksModal = lazy(() =>
@@ -47,6 +49,9 @@ export function SiteHeader() {
         <a href="#plus-gardes" className={NAV_LINK}>
           {m.most_kept_title()}
         </a>
+        <Link to={localizeHref('/musilogy')} className={NAV_LINK}>
+          {m.musilogy_title()}
+        </Link>
         {isLoading ? (
           <span aria-hidden="true" className="bg-surface-raised h-11 w-32 rounded-full" />
         ) : isAuthenticated && user ? (

@@ -17,6 +17,7 @@ const spies = [
             id: VALID_ID,
             name: 'Daft Punk',
             slug: 'daft-punk',
+            mbid: null,
             image: null,
             facts: null,
             summary: null,
