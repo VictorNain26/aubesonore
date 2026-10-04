@@ -21,6 +21,7 @@
   "liked_track_removed": "Removed",
   "liked_track_removal_countdown": "Time left before removal",
   "liked_track_undo": "Undo",
+  "sheet_open": "Open “{title}”, {artist}",
   "close": "Close",
   "error_generic": "Something went wrong",
   "error_retry": "Try again",

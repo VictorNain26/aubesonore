@@ -21,6 +21,7 @@
   "liked_track_removed": "Retiré",
   "liked_track_removal_countdown": "Temps restant avant suppression",
   "liked_track_undo": "Annuler",
+  "sheet_open": "Ouvrir « {title} », {artist}",
   "close": "Fermer",
   "error_generic": "Une erreur est survenue",
   "error_retry": "Réessayer",

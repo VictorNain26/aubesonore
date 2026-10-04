@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import type { ReactElement } from 'react';
-import { render as rtlRender, screen } from '@testing-library/react';
+import { render as rtlRender, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
 import { PlayerBarView, type PlayerBarViewProps } from './PlayerBar';
@@ -16,7 +16,7 @@ function props(overrides: Partial<PlayerBarViewProps> = {}): PlayerBarViewProps 
     isHidden: false,
     listen: 'idle',
     onToggleListen: vi.fn(),
-    track: { title: 'Mimoun', artist: 'Mickey 3D', art: undefined, playedAt },
+    track: { title: 'Mimoun', artist: 'Mickey 3D', album: '', art: undefined, playedAt },
     isKept: false,
     onToggleKeep: vi.fn(),
     volume: 0.8,
@@ -35,8 +35,9 @@ describe('PlayerBarView', () => {
     const onToggleListen = vi.fn();
     render(<PlayerBarView {...props({ onToggleListen })} />);
 
-    expect(screen.getByText('Mimoun')).toBeInTheDocument();
-    expect(screen.getByText('Mickey 3D')).toBeInTheDocument();
+    // Twice: the phone's sheet trigger and the larger screens' line, one hidden by CSS.
+    expect(screen.getAllByText('Mimoun')).toHaveLength(2);
+    expect(screen.getAllByText('Mickey 3D')).toHaveLength(2);
     expect(screen.queryByText(/à l'antenne/)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Écouter le direct' }));
     expect(onToggleListen).toHaveBeenCalledOnce();
@@ -111,5 +112,31 @@ describe('PlayerBarView', () => {
     render(<PlayerBarView {...props({ isOnline: false })} />);
     expect(screen.getByText('Silence radio. Retour dans un instant.')).toBeInTheDocument();
     expect(screen.queryByText('Mimoun')).not.toBeInTheDocument();
+  });
+
+  it('opens the whole track in a sheet from the track line, and closes it', async () => {
+    render(
+      <PlayerBarView
+        {...props({
+          track: {
+            title: 'Mimoun',
+            artist: 'Mickey 3D',
+            album: 'Tu vas pas mourir de rire',
+            art: undefined,
+            playedAt,
+          },
+        })}
+      />
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Ouvrir « Mimoun », Mickey 3D' }));
+
+    const sheet = await screen.findByRole('dialog', { name: 'Mimoun' });
+    expect(sheet).toHaveTextContent('extrait de Tu vas pas mourir de rire');
+    // Modal: the page behind, the bar included, leaves the accessibility tree.
+    expect(within(sheet).getByRole('button', { name: 'Écouter le direct' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Écouter le direct' })).toHaveLength(1);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Fermer' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
 });
