@@ -1,11 +1,16 @@
 import { Elysia } from 'elysia';
 import { getArtistProfile } from '../services/artistProfileService';
 import { resolveArtist } from '../services/artistResolver';
-import { isValidArtistId } from '../validators/artistValidator';
+import { findArtistPages } from '../services/artistPages';
+import { artistPagesSchema, isValidArtistId } from '../validators/artistValidator';
 import { checkRate, getClientIp } from '../lib/rateLimit';
+import { validateBody } from '../lib/validate';
+import { hasError } from '../lib/routeHelpers';
 
 const ARTIST_LIMIT = 10;
 const ARTIST_WINDOW_MS = 60_000;
+// One request per page load and one per new track: a DB read, no upstream call.
+const PAGES_LIMIT = 30;
 
 export const artistRoutes = new Elysia({ prefix: '/api/artist' })
   // Declared before /:id so the literal segment is not swallowed by the param.
@@ -30,6 +35,23 @@ export const artistRoutes = new Elysia({ prefix: '/api/artist' })
     }
 
     return resolved;
+  })
+  // POST for a read: the thread sends a whole day of names, too long for a URL.
+  .post('/pages', async ({ request, body, set }) => {
+    const ip = getClientIp(request.headers);
+    if (!checkRate('artist-pages', ip, PAGES_LIMIT, ARTIST_WINDOW_MS)) {
+      set.status = 429;
+      set.headers['retry-after'] = '60';
+      return { error: 'Trop de requêtes, réessayez dans 1 minute' };
+    }
+
+    const data = validateBody(artistPagesSchema, body);
+    if (hasError(data)) {
+      set.status = 400;
+      return data;
+    }
+
+    return findArtistPages(data.names);
   })
   .get('/:id', async ({ request, params, query, set }) => {
     const ip = getClientIp(request.headers);

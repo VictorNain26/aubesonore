@@ -1,13 +1,16 @@
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
 import { KeepHeart } from './KeepHeart';
 import { useNowPlayingStore } from '../lib/azuracast';
 import { useTodayHistory } from '../hooks/useTodayHistory';
 import { useLikeAction } from '../hooks/player/useLikeAction';
 import { useLikedTracksStore, isTrackLiked } from '../stores/likedTracksStore';
+import { useArtistPages } from '../hooks/useArtistPages';
+import { artistPath } from '../lib/artistProfile';
 import { Cover } from './Cover';
 import { formatClock } from './time';
-import { TEXT_ACTION } from './styles';
+import { ARTIST_LINK, TEXT_ACTION } from './styles';
 import * as m from '@/paraglide/messages.js';
 
 const PAGE = 10;
@@ -17,6 +20,8 @@ export interface ThreadRow {
   playedAt: number;
   title: string;
   artist: string;
+  /** The artist's page, once the antenna's record knows it: no link rather than a dead one. */
+  artistHref: string | null;
   art: string | null;
   isNow: boolean;
   isKept: boolean;
@@ -96,9 +101,22 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
                 />
                 <span className="flex min-w-0 flex-col lg:contents">
                   <span className="text-row truncate lg:self-center">{row.title}</span>
-                  <span className="text-sub text-text-muted truncate lg:self-center">
-                    {row.artist}
-                  </span>
+                  {row.artistHref ? (
+                    // Negative margins grow the tap target to 44px without moving the row.
+                    <Link
+                      to={row.artistHref}
+                      className={cn(
+                        ARTIST_LINK,
+                        'text-sub text-text-muted -my-3 truncate py-3 underline-offset-4 lg:self-center'
+                      )}
+                    >
+                      {row.artist}
+                    </Link>
+                  ) : (
+                    <span className="text-sub text-text-muted truncate lg:self-center">
+                      {row.artist}
+                    </span>
+                  )}
                 </span>
                 <button
                   type="button"
@@ -139,16 +157,22 @@ export function SinceDawn() {
   const tracks = useLikedTracksStore((s) => s.tracks);
   const { likingTrackId, toggleLike } = useLikeAction();
 
-  const rows: ThreadRow[] = entries.map((e) => ({
-    id: e.sh_id,
-    playedAt: e.played_at,
-    title: e.song.title,
-    artist: e.song.artist,
-    art: e.song.art,
-    isNow: e.sh_id === nowId,
-    isKept: isTrackLiked(tracks, e.song.title, e.song.artist),
-    isKeeping: likingTrackId === `${e.song.title}-${e.song.artist}`,
-  }));
+  const pages = useArtistPages(entries.map((e) => e.song.artist));
+
+  const rows: ThreadRow[] = entries.map((e) => {
+    const page = pages.get(e.song.artist);
+    return {
+      id: e.sh_id,
+      playedAt: e.played_at,
+      title: e.song.title,
+      artist: e.song.artist,
+      artistHref: page ? artistPath(page) : null,
+      art: e.song.art,
+      isNow: e.sh_id === nowId,
+      isKept: isTrackLiked(tracks, e.song.title, e.song.artist),
+      isKeeping: likingTrackId === `${e.song.title}-${e.song.artist}`,
+    };
+  });
 
   return (
     <SinceDawnView

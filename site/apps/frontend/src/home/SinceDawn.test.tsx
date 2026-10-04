@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { SinceDawnView, type ThreadRow } from './SinceDawn';
 
 function rows(count: number): ThreadRow[] {
@@ -10,6 +11,7 @@ function rows(count: number): ThreadRow[] {
     playedAt: Math.floor(new Date(2026, 9, 1, 17, 0).getTime() / 1000) - i * 240,
     title: `Titre ${i + 1}`,
     artist: `Artiste ${i + 1}`,
+    artistHref: null,
     art: null,
     isNow: i === 0,
     isKept: false,
@@ -66,5 +68,24 @@ describe('SinceDawnView', () => {
     const [arrived, ...others] = screen.getAllByRole('listitem');
     expect(arrived).toHaveClass('thread-in');
     others.forEach((li) => expect(li).not.toHaveClass('thread-in'));
+  });
+
+  it('links an artist to their page once it is known, and only then', () => {
+    const [known, unknown] = rows(2);
+    render(
+      <SinceDawnView
+        rows={[{ ...known!, artistHref: '/artist/a-1/artiste-1' }, unknown!]}
+        status="ready"
+        onToggleKeep={vi.fn()}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(screen.getByRole('link', { name: 'Artiste 1' })).toHaveAttribute(
+      'href',
+      '/artist/a-1/artiste-1'
+    );
+    expect(screen.queryByRole('link', { name: 'Artiste 2' })).not.toBeInTheDocument();
+    expect(screen.getByText('Artiste 2')).toBeInTheDocument();
   });
 });
