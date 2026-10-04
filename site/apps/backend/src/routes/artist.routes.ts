@@ -2,7 +2,7 @@ import { Elysia } from 'elysia';
 import { getArtistProfile } from '../services/artistProfileService';
 import { resolveArtist } from '../services/artistResolver';
 import { findArtistPages } from '../services/artistPages';
-import { artistPagesSchema, isValidArtistId } from '../validators/artistValidator';
+import { artistPagesSchema, isValidArtistSlug } from '../validators/artistValidator';
 import { checkRate, getClientIp } from '../lib/rateLimit';
 import { validateBody } from '../lib/validate';
 import { hasError } from '../lib/routeHelpers';
@@ -13,7 +13,6 @@ const ARTIST_WINDOW_MS = 60_000;
 const PAGES_LIMIT = 30;
 
 export const artistRoutes = new Elysia({ prefix: '/api/artist' })
-  // Declared before /:id so the literal segment is not swallowed by the param.
   .get('/resolve', async ({ request, query, set }) => {
     const ip = getClientIp(request.headers);
     if (!checkRate('artist', ip, ARTIST_LIMIT, ARTIST_WINDOW_MS)) {
@@ -53,7 +52,7 @@ export const artistRoutes = new Elysia({ prefix: '/api/artist' })
 
     return findArtistPages(data.names);
   })
-  .get('/:id', async ({ request, params, query, set }) => {
+  .get('/page/:slug', async ({ request, params, query, set }) => {
     const ip = getClientIp(request.headers);
     if (!checkRate('artist', ip, ARTIST_LIMIT, ARTIST_WINDOW_MS)) {
       set.status = 429;
@@ -61,7 +60,7 @@ export const artistRoutes = new Elysia({ prefix: '/api/artist' })
       return { error: 'Trop de requêtes, réessayez dans 1 minute' };
     }
 
-    if (!isValidArtistId(params.id)) {
+    if (!isValidArtistSlug(params.slug)) {
       set.status = 400;
       return { error: 'Identifiant invalide' };
     }
@@ -72,7 +71,7 @@ export const artistRoutes = new Elysia({ prefix: '/api/artist' })
       return { error: 'Langue invalide' };
     }
 
-    const profile = await getArtistProfile(params.id, lang);
+    const profile = await getArtistProfile(params.slug, lang);
     if (!profile) {
       set.status = 404;
       return { error: 'Artiste non trouvé' };

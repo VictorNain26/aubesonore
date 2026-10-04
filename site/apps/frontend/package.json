@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite --port 5173 --host 0.0.0.0",
     "build": "vite build && vite build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs",
-    "compile:i18n": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --strategy url baseLocale --emit-ts-declarations --silent",
+    "compile:i18n": "node scripts/compile-i18n.mjs",
     "lint": "pnpm compile:i18n && eslint .",
     "lint:fix": "pnpm compile:i18n && eslint . --fix",
     "typecheck": "pnpm compile:i18n && tsc --noEmit",

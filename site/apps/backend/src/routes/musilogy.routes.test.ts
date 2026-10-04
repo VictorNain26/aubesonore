@@ -33,7 +33,9 @@ void mock.module('../db/index', () => ({
   schema: realSchema,
   db: {
     execute: answer,
-    select: () => ({ from: () => ({ where: () => Promise.resolve(pageRows) }) }),
+    select: () => ({
+      from: () => ({ innerJoin: () => ({ where: () => Promise.resolve(pageRows) }) }),
+    }),
   },
 }));
 

@@ -36,7 +36,7 @@ describe('useLikeAction', () => {
     expect(options.action.label).toBe('Découvrir Test Artist');
 
     act(() => options.action.onClick());
-    expect(result.current.location.pathname).toBe('/artist/a-1/test-artist');
+    expect(result.current.location.pathname).toBe('/artiste/test-artist');
   });
 
   it('shows a plain toast when the artist has no page', async () => {

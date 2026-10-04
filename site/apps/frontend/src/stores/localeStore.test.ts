@@ -24,16 +24,26 @@ describe('localeStore', () => {
   });
 
   it("keeps the router's entry state when it swaps the URL", () => {
-    window.history.replaceState({ idx: 3, key: 'k' }, '', '/artist/a-1');
+    window.history.replaceState({ idx: 3, key: 'k' }, '', '/musilogy');
 
     useLocaleStore.getState().setLocale('en');
 
-    expect(window.location.pathname).toBe('/en/artist/a-1');
+    expect(window.location.pathname).toBe('/en/musilogy');
     expect(window.history.state).toEqual({ idx: 3, key: 'k' });
   });
 
+  it('swaps an artist page for its path in the other language, keeping the slug', () => {
+    window.history.replaceState(null, '', '/artiste/hania-rani');
+
+    useLocaleStore.getState().setLocale('en');
+    expect(window.location.pathname).toBe('/en/artist/hania-rani');
+
+    useLocaleStore.getState().setLocale('fr');
+    expect(window.location.pathname).toBe('/artiste/hania-rani');
+  });
+
   it('follows the URL when Back lands on the other language', () => {
-    window.history.replaceState(null, '', '/artist/a-1');
+    window.history.replaceState(null, '', '/artiste/hania-rani');
     useLocaleStore.getState().setLocale('en');
     // What the browser restores on Back, behind the store's back.
     window.history.replaceState(null, '', '/');

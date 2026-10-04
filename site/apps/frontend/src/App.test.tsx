@@ -12,7 +12,7 @@ vi.mock('./pages/ArtistPage', () => {
 describe('App', () => {
   it('shows the artist page error state when its chunk fails to load', async () => {
     render(
-      <MemoryRouter initialEntries={['/artist/a-1/hania-rani']}>
+      <MemoryRouter initialEntries={['/artiste/hania-rani']}>
         <App />
       </MemoryRouter>
     );

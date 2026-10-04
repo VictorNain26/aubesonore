@@ -74,9 +74,9 @@ export const handlers = [
     );
   }),
 
-  http.get(`${API}/api/artist/:id`, ({ params }) => {
-    if (params.id === 'malformed') return new HttpResponse(null, { status: 400 });
-    if (params.id !== 'a-1') return new HttpResponse(null, { status: 404 });
+  http.get(`${API}/api/artist/page/:slug`, ({ params }) => {
+    if (params.slug === 'malformed') return new HttpResponse(null, { status: 400 });
+    if (params.slug !== 'hania-rani') return new HttpResponse(null, { status: 404 });
     return HttpResponse.json(makeArtistProfile());
   }),
 
