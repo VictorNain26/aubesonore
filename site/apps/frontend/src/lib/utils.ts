@@ -23,7 +23,7 @@ const twMerge = extendTailwindMerge({
       ],
       'font-weight': ['display', 'heading'],
       shadow: ['cover', 'lift', 'bar'],
-      animate: ['breathe'],
+      animate: ['breathe', 'pulse-now'],
     },
   },
 });

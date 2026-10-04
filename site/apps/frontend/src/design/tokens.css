@@ -126,7 +126,7 @@
   --shadow-lift: 0 22px 40px -22px oklch(0.3 0.04 330 / 0.55);
   --shadow-bar: 0 16px 40px -12px oklch(0.204 0.012 293 / 0.5);
 
-  /* La lumière respire, les sections montent au défilement. */
+  /* La lumière respire, le point « maintenant » bat, les sections montent au défilement. */
   --animate-breathe: breathe 14s ease-in-out infinite;
 
   /* Mesures de lecture : l'accroche tient sur trois lignes, une légende sur deux. */
@@ -151,7 +151,21 @@
     }
   }
 
-  /* Entrée : l'aube monte de l'horizon, la ligne se trace, les blocs se posent. Décor et mouvement seuls : le texte n'est
+  @keyframes pulse-now {
+    0% {
+      box-shadow:
+        0 0 0 0 color-mix(in oklab, var(--dawn) 65%, transparent),
+        0 0 40px 14px color-mix(in oklab, var(--dawn) 50%, transparent);
+    }
+    100% {
+      box-shadow:
+        0 0 0 16px color-mix(in oklab, var(--dawn) 0%, transparent),
+        0 0 40px 14px color-mix(in oklab, var(--dawn) 50%, transparent);
+    }
+  }
+
+  /* Entrée : l'aube monte de l'horizon, la ligne se trace, le point « maintenant »
+     s'allume, les blocs se posent. Décor et mouvement seuls : le texte n'est
      jamais masqué (opacité), pour ne pas retarder l'affichage mesuré (LCP). */
   @keyframes dawn-up {
     from {
@@ -170,6 +184,15 @@
     }
     to {
       clip-path: inset(0 0 0 0);
+    }
+  }
+
+  @keyframes pop {
+    from {
+      scale: 0;
+    }
+    to {
+      scale: 1;
     }
   }
 
@@ -317,6 +340,14 @@
   }
 }
 
+@utility now-arrive {
+  @media (prefers-reduced-motion: no-preference) {
+    animation:
+      pop 0.5s var(--ease-spring) 1.6s both,
+      pulse-now 2.4s ease-out 2.1s infinite;
+  }
+}
+
 @utility lift-in {
   @media (prefers-reduced-motion: no-preference) {
     animation: settle 0.9s var(--ease-out-soft) both;
@@ -415,6 +446,15 @@
 @utility swap-in-late {
   @media (prefers-reduced-motion: no-preference) {
     animation: title-in 0.5s var(--ease-out-soft) 0.12s both;
+  }
+}
+
+/* The now dot swells with the bass of the live (--bass, set by the horizon line, 0 when
+   nothing is heard). `transform` adds to the `scale` its entry animation uses. */
+@utility bass-beat {
+  @media (prefers-reduced-motion: no-preference) {
+    transform: scale(calc(1 + var(--bass, 0) * 0.9));
+    transition: transform 0.08s linear;
   }
 }
 
