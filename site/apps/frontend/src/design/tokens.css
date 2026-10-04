@@ -70,7 +70,7 @@
   --text-title--line-height: 1.15;
   --text-title--font-weight: 600;
   /* Échelle de l'accueil v4. */
-  --text-hero: clamp(2.375rem, 1.5rem + 3.6vw, 5rem);
+  --text-hero: clamp(2.375rem, 1.5rem + 3.6vw, 6.25rem);
   --text-hero--line-height: 0.98;
   --text-hero--font-weight: 520;
   --text-hero--letter-spacing: -0.032em;
@@ -137,8 +137,8 @@
   --container-drawer: 32.5rem;
   --container-aside: 34rem;
   --container-bar: 42rem;
-  /* Largeur du contenu : identique jusqu'à 1440 px, centrée au-delà. */
-  --container-page: 85rem;
+  /* Largeur du contenu : identique jusqu'à 1680 px, centrée au-delà. */
+  --container-page: 100rem;
 
   @keyframes breathe {
     0%,
@@ -502,7 +502,7 @@
   width: min(100%, 46dvh);
 
   @media (width >= 64rem) {
-    width: min(100%, 50svh);
+    width: min(100%, 60svh);
   }
 }
 
