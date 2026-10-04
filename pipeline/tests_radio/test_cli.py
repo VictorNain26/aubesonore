@@ -9,6 +9,7 @@ from typer.testing import CliRunner
 
 import radio.cli as cli
 from radio.core.config import Settings
+from radio.core.report import last_stages
 from radio.signals.audio import ModelError
 from radio.sources.deezer import DeezerArtist, DeezerTrack, DeezerUnavailable
 from radio.sources.lastfm import LastfmUnavailable
@@ -154,13 +155,16 @@ def test_urllib3_logs_are_silenced(env: Path, monkeypatch: pytest.MonkeyPatch) -
 
 
 class DiscoverFakes:
-    def __init__(self, fail: bool = False) -> None:
+    def __init__(self, fail: bool = False, empty_top: bool = False) -> None:
         self.fail = fail
+        self.empty_top = empty_top
 
     def related(self, artist_id: int) -> list[DeezerArtist]:
         return [DeezerArtist(1, "Knife")] if artist_id == 83 else []
 
     def top(self, artist_id: int, limit: int = 10) -> list[DeezerTrack]:
+        if self.empty_top:
+            return []
         return [DeezerTrack(11, "Heartbeats", "Heartbeats", 200, 1000, 1, "Knife", True)]
 
     def similar_artists(self, artist: str, limit: int = 100) -> list[str]:
@@ -190,6 +194,19 @@ def test_discover_unavailable_exits_1(env: Path, monkeypatch: pytest.MonkeyPatch
     res = runner.invoke(cli.app, ["discover"])
     assert res.exit_code == 1
     assert "Last.fm indisponible (code 29) : le travail fait est gardé" in res.output
+
+
+def test_discover_without_any_title_fails_as_deezer_down(
+    env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _discover_env(monkeypatch, env, DiscoverFakes(empty_top=True))
+    res = runner.invoke(cli.app, ["discover"])
+    assert res.exit_code == 1
+    assert "Deezer indisponible (aucun titre pour 1 voisins) : le travail fait est gardé" in (
+        res.output
+    )
+    with cli._db(cli._settings()) as conn:
+        assert [(s, ok) for s, _, ok, _ in last_stages(conn)] == [("discover", False)]
 
 
 def test_discover_without_lastfm_key_exits_2(env: Path) -> None:
