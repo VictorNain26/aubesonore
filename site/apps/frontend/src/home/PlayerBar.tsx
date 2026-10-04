@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { Popover } from '@base-ui/react/popover';
-import { Airplay, Volume2, VolumeX } from 'lucide-react';
+import { Airplay } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { KeepHeart } from './KeepHeart';
 import { useNowPlayingStore } from '../lib/azuracast';
 import { usePlayer } from '../lib/player';
 import { useAirPlayStore } from '../stores/airplayStore';
 import { useTrackActions } from '../hooks/player/useTrackActions';
-import { Slider } from '../design/atoms/Slider';
 import { Cover } from './Cover';
+import { VolumeControl } from './VolumeControl';
 import {
   ListenDisc,
   listenAria,
@@ -38,59 +37,10 @@ export interface PlayerBarViewProps {
   airPlay: { isActive: boolean; onOpen: () => void } | null;
 }
 
-function VolumeControl({
-  volume,
-  isMuted,
-  onVolumeChange,
-  onToggleMute,
-}: Pick<PlayerBarViewProps, 'volume' | 'isMuted' | 'onVolumeChange' | 'onToggleMute'>) {
-  const silent = isMuted || volume === 0;
-  return (
-    <Popover.Root>
-      <Popover.Trigger
-        aria-label={m.volume_slider()}
-        className={cn(ICON_BUTTON, 'hidden pointer-fine:flex')}
-      >
-        {silent ? (
-          <VolumeX className="size-4" aria-hidden="true" />
-        ) : (
-          <Volume2 className="size-4" aria-hidden="true" />
-        )}
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Positioner side="top" sideOffset={12} className="z-50">
-          <Popover.Popup className="bg-accent text-on-accent shadow-bar ease-out-quart flex origin-(--transform-origin) flex-col items-center gap-1 rounded-full px-1 py-3 transition-[opacity,scale] duration-150 focus:outline-none data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
-            <Slider
-              label={m.volume_slider()}
-              value={isMuted ? 0 : volume}
-              onValueChange={onVolumeChange}
-              orientation="vertical"
-              step={0.05}
-              tone="accent"
-            />
-            <button
-              type="button"
-              onClick={onToggleMute}
-              aria-label={silent ? m.volume_unmute() : m.volume_mute()}
-              className={ICON_BUTTON}
-            >
-              {silent ? (
-                <VolumeX className="size-4" aria-hidden="true" />
-              ) : (
-                <Volume2 className="size-4" aria-hidden="true" />
-              )}
-            </button>
-          </Popover.Popup>
-        </Popover.Positioner>
-      </Popover.Portal>
-    </Popover.Root>
-  );
-}
-
 /**
  * The live player, one bar for every screen: pinned to the bottom, it slides in
  * once the hero's Écouter button has scrolled away, so there is never two of
- * them on screen. Volume opens on demand (mouse only: phones use their buttons).
+ * them on screen. Volume sits in it with a mouse; phones use their buttons.
  */
 export function PlayerBarView({
   isHidden,
@@ -106,14 +56,16 @@ export function PlayerBarView({
   airPlay,
 }: PlayerBarViewProps) {
   const [hasFocus, setHasFocus] = useState(false);
-  // Never hide the bar while it holds the keyboard focus (WCAG 2.4.11).
+  // Never hide the bar while it holds the keyboard focus (WCAG 2.4.11). Only the
+  // keyboard's: a mouse click focuses a button too (Chrome), and the bar must
+  // still leave when the listener scrolls back to the hero.
   const hidden = isHidden && !hasFocus;
 
   return (
     <section
       aria-label={m.player_label()}
       inert={hidden}
-      onFocus={() => setHasFocus(true)}
+      onFocus={(e) => setHasFocus(e.target.matches(':focus-visible'))}
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget)) setHasFocus(false);
       }}
@@ -168,6 +120,7 @@ export function PlayerBarView({
         isMuted={isMuted}
         onVolumeChange={onVolumeChange}
         onToggleMute={onToggleMute}
+        tone="accent"
       />
 
       {airPlay ? (

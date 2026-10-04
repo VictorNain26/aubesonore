@@ -72,10 +72,16 @@ export function Slider({
         }
       >
         <BaseSlider.Track
-          className={cn(colors.track, isVertical ? 'relative h-full w-1' : 'relative h-px w-full')}
+          className={cn(
+            colors.track,
+            isVertical ? 'relative h-full w-1' : 'relative h-1 w-full rounded-full'
+          )}
         >
           <BaseSlider.Indicator
-            className={cn(colors.fill, isVertical ? 'absolute bottom-0 w-1' : 'absolute h-px')}
+            className={cn(
+              colors.fill,
+              isVertical ? 'absolute bottom-0 w-1' : 'absolute h-1 rounded-full'
+            )}
           />
           <BaseSlider.Thumb
             aria-label={label}

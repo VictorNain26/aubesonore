@@ -56,6 +56,14 @@ describe('PlayerBarView', () => {
     expect(screen.getByRole('region', { hidden: true })).toHaveAttribute('inert');
   });
 
+  it('leaves for the hero after a click, which focuses a button too', async () => {
+    const { rerender } = render(<PlayerBarView {...props()} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Écouter le direct' }));
+    rerender(<PlayerBarView {...props({ isHidden: true })} />);
+    expect(screen.getByRole('region', { hidden: true })).toHaveAttribute('inert');
+  });
+
   it('keeps the track with a constant label', async () => {
     const onToggleKeep = vi.fn();
     render(<PlayerBarView {...props({ onToggleKeep, isKept: true })} />);
@@ -66,13 +74,14 @@ describe('PlayerBarView', () => {
     expect(onToggleKeep).toHaveBeenCalledOnce();
   });
 
-  it('opens the volume on demand and offers AirPlay only when available', async () => {
+  it('keeps the volume in view and offers AirPlay only when available', async () => {
     const onOpen = vi.fn();
-    const { rerender } = render(<PlayerBarView {...props()} />);
+    const onToggleMute = vi.fn();
+    const { rerender } = render(<PlayerBarView {...props({ onToggleMute })} />);
 
-    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Volume' }));
-    expect(await screen.findByRole('slider', { name: 'Volume' })).toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: 'Volume' })).toHaveAttribute('aria-valuenow', '80');
+    await userEvent.click(screen.getByRole('button', { name: 'Couper le son' }));
+    expect(onToggleMute).toHaveBeenCalledOnce();
     expect(screen.queryByRole('button', { name: 'Diffuser via AirPlay' })).not.toBeInTheDocument();
 
     rerender(<PlayerBarView {...props({ airPlay: { isActive: false, onOpen } })} />);

@@ -10,6 +10,7 @@ import { useTrackActions } from '../hooks/player/useTrackActions';
 import { useArtistPage } from '../hooks/useArtistPage';
 import { artistPath } from '../lib/artistProfile';
 import { Cover } from './Cover';
+import { VolumeControl, type VolumeControlProps } from './VolumeControl';
 import { formatClock } from './time';
 import { ARTIST_LINK, TEXT_ACTION } from './styles';
 import {
@@ -47,6 +48,8 @@ export interface NowPlayingViewProps {
   artistHref: string | null;
   /** True once the live has moved past the track shown at load: changes then animate. */
   hasChanged?: boolean;
+  /** Shown beside Écouter while listening, so the level is set without scrolling to the bar. */
+  volume?: Omit<VolumeControlProps, 'tone' | 'className'>;
 }
 
 /**
@@ -67,6 +70,7 @@ export function NowPlayingView({
   onShare,
   artistHref,
   hasChanged = false,
+  volume,
 }: NowPlayingViewProps) {
   const trackKey = track ? `${track.artist}|${track.title}` : 'none';
   return (
@@ -163,6 +167,7 @@ export function NowPlayingView({
               </button>
             </span>
           ) : null}
+          {volume && listen !== 'idle' ? <VolumeControl {...volume} tone="surface" /> : null}
         </div>
       </div>
     </div>
@@ -180,8 +185,16 @@ export function NowPlaying() {
       listeners: s.data?.listeners?.unique,
     }))
   );
-  const { isPlaying, isConnecting, toggle } = usePlayer(
-    useShallow((s) => ({ isPlaying: s.isPlaying, isConnecting: s.isConnecting, toggle: s.toggle }))
+  const { isPlaying, isConnecting, toggle, volume, isMuted, setVolume, toggleMute } = usePlayer(
+    useShallow((s) => ({
+      isPlaying: s.isPlaying,
+      isConnecting: s.isConnecting,
+      toggle: s.toggle,
+      volume: s.volume,
+      isMuted: s.isMuted,
+      setVolume: s.setVolume,
+      toggleMute: s.toggleMute,
+    }))
   );
   const { isLiked, isLiking, handleToggleLike, handleShare } = useTrackActions();
   const artistPage = useArtistPage(artist);
@@ -218,6 +231,7 @@ export function NowPlaying() {
       onShare={handleShare}
       artistHref={artistPage ? artistPath(artistPage) : null}
       hasChanged={firstTrackKey !== null && trackKey !== firstTrackKey}
+      volume={{ volume, isMuted, onVolumeChange: setVolume, onToggleMute: toggleMute }}
     />
   );
 }
