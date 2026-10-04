@@ -126,7 +126,7 @@
   --shadow-lift: 0 22px 40px -22px oklch(0.3 0.04 330 / 0.55);
   --shadow-bar: 0 16px 40px -12px oklch(0.204 0.012 293 / 0.5);
 
-  /* La lumière respire, le point « maintenant » bat, les sections montent au défilement. */
+  /* La lumière respire, le point « maintenant » bat, les blocs apparaissent en fondu au défilement. */
   --animate-breathe: breathe 14s ease-in-out infinite;
   --animate-live: live 2.4s ease-in-out infinite;
 
