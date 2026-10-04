@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useAuthStore } from '../stores/authStore';
@@ -9,9 +9,14 @@ import { Link } from 'react-router';
 import { localizeHref } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
 
+const loadLibrary = () => import('../components/LikedTracksModal');
 const LikedTracksModal = lazy(() =>
-  import('../components/LikedTracksModal').then((mod) => ({ default: mod.LikedTracksModal }))
+  loadLibrary().then((mod) => ({ default: mod.LikedTracksModal }))
 );
+
+// Once signed in, the library's code (~120 kB with the dialog) loads in the
+// background, so the first opening does not wait on the network.
+const PRELOAD_DELAY_MS = 2000;
 
 const NAV_LINK =
   'text-ui ease-out-quart focus-visible:outline-accent hidden min-h-11 items-center rounded-sm transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-97 md:inline-flex';
@@ -37,6 +42,15 @@ export function SiteHeader() {
   // Kept mounted after the first opening, so closing it can animate.
   const [hasOpenedLibrary, setHasOpenedLibrary] = useState(false);
   if (isLibraryOpen && !hasOpenedLibrary) setHasOpenedLibrary(true);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const timer = setTimeout(() => {
+      // Offline: the opening itself will try again.
+      loadLibrary().catch(() => undefined);
+    }, PRELOAD_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [isAuthenticated]);
 
   return (
     <header className="px-page relative z-10 flex items-start justify-between gap-6 pt-5 md:pt-7">
