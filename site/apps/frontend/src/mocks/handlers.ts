@@ -158,7 +158,13 @@ export function makeArtistProfile(overrides: Partial<ArtistProfile> = {}): Artis
     summary: null,
     links: [],
     playedOnRadio: [
-      { title: 'F Major', artist: 'Hania Rani', playedAt: '2026-10-01T05:12:00.000Z' },
+      {
+        title: 'F Major',
+        artist: 'Hania Rani',
+        plays: 3,
+        lastPlayedAt: '2026-10-01T05:12:00.000Z',
+        deezer: { link: 'https://www.deezer.com/track/510', cover: null },
+      },
     ],
     ...overrides,
   };

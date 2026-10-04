@@ -197,6 +197,10 @@ describe('findTrackByIsrc', () => {
         id: 17590811,
         title: "Since I Don't Have You (Mono)",
         isrc: 'GBAYE6500165',
+        link: 'https://www.deezer.com/track/17590811',
+        album: {
+          cover_medium: 'https://cdn-images.dzcdn.net/images/cover/c1/250x250-000000-80-0-0.jpg',
+        },
         artist: { id: 1887, name: 'Manfred Mann', picture_xl: null },
         contributors: [
           { id: 1887, name: 'Manfred Mann', picture_xl: null },
@@ -213,6 +217,8 @@ describe('findTrackByIsrc', () => {
           { id: '1887', name: 'Manfred Mann', picture: null },
           { id: '99', name: 'Guest', picture: null },
         ],
+        link: 'https://www.deezer.com/track/17590811',
+        cover: 'https://cdn-images.dzcdn.net/images/cover/c1/250x250-000000-80-0-0.jpg',
       },
     });
     const [url] = fetchSpy.mock.calls[0] as [string];

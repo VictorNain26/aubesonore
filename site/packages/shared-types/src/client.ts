@@ -104,11 +104,17 @@ export interface ArtistLink {
   url: string;
 }
 
-export interface ArtistRadioPlay {
+/** A title of the artist the antenna plays, once, with how often and when it last did. */
+export interface ArtistRadioTitle {
   title: string;
+  /** As AzuraCast credited the latest play: what a « Garder » names. */
   artist: string;
-  /** ISO timestamp of the play. */
-  playedAt: string;
+  /** Plays over the last year. */
+  plays: number;
+  /** ISO timestamp of the latest play. */
+  lastPlayedAt: string;
+  /** This very recording on Deezer, from the play's ISRC; null when not shown to be it. */
+  deezer: { link: string; cover: string | null } | null;
 }
 
 /** What MusicBrainz states about the artist, nothing inferred. */
@@ -145,7 +151,7 @@ export interface ArtistProfile {
   summary: ArtistSummary | null;
   links: ArtistLink[];
   /** What the antenna actually played — the one section no upstream can supply. */
-  playedOnRadio: ArtistRadioPlay[];
+  playedOnRadio: ArtistRadioTitle[];
 }
 
 export const PLATFORM_NAMES: Record<PreferredPlatform, string> = {
