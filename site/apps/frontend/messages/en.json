@@ -242,5 +242,6 @@
   "musilogy_undated_body": "Close artists whose start MusicBrainz does not know.",
   "musilogy_first_album": "first album in {year}",
   "musilogy_statement": "Wikidata",
-  "musilogy_search_error": "The search failed. Try again in a moment."
+  "musilogy_search_error": "The search failed. Try again in a moment.",
+  "musilogy_until": "until {year}"
 }

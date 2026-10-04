@@ -73,13 +73,19 @@ export function cardLine(card: MusilogyCard): string {
   const where = [card.beginArea, country].filter(Boolean).join(', ');
   // A start read from the first album says so; an end is shown only when
   // declared: a last album is not the end of a band still active.
-  const start = !card.y0
+  const end = card.yEnd && card.yEndSource === 'declared' ? String(card.yEnd) : null;
+  const when = !card.y0
     ? ''
     : card.y0Source === 'first_album'
-      ? m.musilogy_first_album({ year: String(card.y0) })
-      : String(card.y0);
-  const when =
-    start && card.yEnd && card.yEndSource === 'declared' ? `${start} – ${card.yEnd}` : start;
+      ? [
+          m.musilogy_first_album({ year: String(card.y0) }),
+          end ? m.musilogy_until({ year: end }) : '',
+        ]
+          .filter(Boolean)
+          .join(', ')
+      : end
+        ? `${card.y0} – ${end}`
+        : String(card.y0);
   return [kind, where, when].filter(Boolean).join(' · ');
 }
 

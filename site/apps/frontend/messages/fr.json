@@ -242,5 +242,6 @@
   "musilogy_undated_body": "Proches dont MusicBrainz ne connaît pas les débuts.",
   "musilogy_first_album": "premier album en {year}",
   "musilogy_statement": "Wikidata",
-  "musilogy_search_error": "La recherche a échoué. Réessayez dans un moment."
+  "musilogy_search_error": "La recherche a échoué. Réessayez dans un moment.",
+  "musilogy_until": "jusqu'en {year}"
 }

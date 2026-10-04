@@ -186,6 +186,9 @@ describe('cardLine', () => {
   it('shows no end it can only infer, and says a start comes from the first album', () => {
     const card = { ...artist().card, y0Source: 'first_album', yEndSource: 'last_album' };
     expect(cardLine(card)).toBe('Groupe · London, Royaume-Uni · premier album en 1967');
+    expect(cardLine({ ...card, yEndSource: 'declared' })).toBe(
+      "Groupe · London, Royaume-Uni · premier album en 1967, jusqu'en 1977"
+    );
   });
 });
 
