@@ -3,18 +3,18 @@ import { object, record, safeParse, string } from 'valibot';
 import { getLocale, localizeHref } from '@/paraglide/runtime.js';
 import { API_BASE_URL } from '../utils/config';
 
-/** The page path of an artist, in the current language (`/artist/…` or `/en/artist/…`). */
-export function artistPath(page: { id: string; slug: string }): string {
-  return localizeHref(`/artist/${page.id}/${page.slug}`);
+/** The page path of an artist, in the current language (`/artiste/…` or `/en/artist/…`). */
+export function artistPath(page: { slug: string }): string {
+  return localizeHref(`/artiste/${encodeURIComponent(page.slug)}`);
 }
 
 /** The profile in the page language: its summary is the Wikipedia article in that language. */
 export async function fetchArtistProfile(
-  id: string,
+  slug: string,
   signal?: AbortSignal
 ): Promise<ArtistProfile | null> {
   const response = await fetch(
-    `${API_BASE_URL}/api/artist/${encodeURIComponent(id)}?lang=${getLocale()}`,
+    `${API_BASE_URL}/api/artist/page/${encodeURIComponent(slug)}?lang=${getLocale()}`,
     { signal: signal ?? null }
   );
   // 400: a malformed id, from a truncated link — as unknown as a 404.

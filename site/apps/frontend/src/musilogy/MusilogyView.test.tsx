@@ -84,7 +84,7 @@ describe('MusilogyArtistView', () => {
 
     expect(screen.getByRole('link', { name: 'David Bowie' })).toHaveAttribute(
       'href',
-      '/artist/a-bowie/david-bowie'
+      '/artiste/david-bowie'
     );
   });
 

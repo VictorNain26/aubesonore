@@ -9,15 +9,15 @@ function open(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
-        <Route path="/artist/:id/:slug?" element={<ArtistPage />} />
+        <Route path="/artiste/:slug" element={<ArtistPage />} />
       </Routes>
     </MemoryRouter>
   );
 }
 
 describe('ArtistPage', () => {
-  it('loads the profile of the id in the url', async () => {
-    open('/artist/a-1/hania-rani');
+  it('loads the profile of the slug in the url', async () => {
+    open('/artiste/hania-rani');
 
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Hania Rani' })
@@ -26,16 +26,16 @@ describe('ArtistPage', () => {
     await waitFor(() => expect(document.title).toBe('Hania Rani · AubeSonore'));
   });
 
-  it('shows the not-found state for an id the API does not know', async () => {
-    open('/artist/nope');
+  it('shows the not-found state for a slug the API does not know', async () => {
+    open('/artiste/nope');
 
     expect(
       await screen.findByRole('heading', { name: 'Artiste introuvable.' })
     ).toBeInTheDocument();
   });
 
-  it('shows the not-found state for an id the API rejects as malformed', async () => {
-    open('/artist/malformed');
+  it('shows the not-found state for a slug the API rejects as malformed', async () => {
+    open('/artiste/malformed');
 
     expect(
       await screen.findByRole('heading', { name: 'Artiste introuvable.' })
@@ -45,7 +45,7 @@ describe('ArtistPage', () => {
   it('shows the player bar, since no hero carries the listen button here', () => {
     useHeroListenVisible.setState({ visible: true });
 
-    open('/artist/a-1');
+    open('/artiste/hania-rani');
 
     expect(useHeroListenVisible.getState().visible).toBe(false);
   });

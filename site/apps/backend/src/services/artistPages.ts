@@ -1,6 +1,6 @@
-import { inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { db } from '../db';
-import { artist } from '../db/schema';
+import { artist, artistSlug } from '../db/schema';
 import { normalizeArtistName, primaryArtistName } from './artistResolver';
 
 export interface ArtistPageRef {
@@ -38,8 +38,19 @@ export async function findArtistPages(
   const keys = [...new Set(names.map(pageKey))].filter(Boolean);
   if (keys.length === 0) return {};
   const rows = await db
-    .select({ id: artist.id, slug: artist.slug, normalizedName: artist.normalizedName })
+    .select({ id: artist.id, slug: artistSlug.slug, normalizedName: artist.normalizedName })
     .from(artist)
+    .innerJoin(artistSlug, eq(artistSlug.artistId, artist.id))
     .where(inArray(artist.normalizedName, keys));
   return matchPages(names, rows);
+}
+
+/** The slug of an artist's page, for the addresses it had before slugs (/artist/<id>/…). */
+export async function slugOfArtist(id: string): Promise<string | null> {
+  const rows = await db
+    .select({ slug: artistSlug.slug })
+    .from(artistSlug)
+    .where(eq(artistSlug.artistId, id))
+    .limit(1);
+  return rows[0]?.slug ?? null;
 }

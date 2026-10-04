@@ -59,8 +59,8 @@ export default function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/en" element={<HomePage />} />
-          <Route path="/artist/:id/:slug?" element={artist} />
-          <Route path="/en/artist/:id/:slug?" element={artist} />
+          <Route path="/artiste/:slug" element={artist} />
+          <Route path="/en/artist/:slug" element={artist} />
           <Route path="/musilogy" element={musilogy} />
           <Route path="/en/musilogy" element={musilogy} />
           <Route path="/musilogy/:mbid/:slug?" element={musilogy} />

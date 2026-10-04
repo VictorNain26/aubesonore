@@ -1,4 +1,4 @@
-import { DrizzleQueryError, inArray, sql, type SQL } from 'drizzle-orm';
+import { DrizzleQueryError, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import type {
   ArtistPageRef,
   MusilogyArtist,
@@ -10,7 +10,7 @@ import type {
   MusilogySearchHit,
 } from '@aubesonore/shared-types/client';
 import { db } from '../db/index';
-import { artist } from '../db/schema';
+import { artist, artistSlug } from '../db/schema';
 import { TtlCache } from '../lib/cache/ttlCache';
 import { createSingleFlight } from '../lib/singleFlight';
 
@@ -134,8 +134,9 @@ const LINK_KINDS: Record<string, { forward: MusilogyLinkKind; backward: Musilogy
 async function playedByMbid(mbids: string[]): Promise<Map<string, ArtistPageRef>> {
   if (mbids.length === 0) return new Map();
   const rows = await db
-    .select({ id: artist.id, slug: artist.slug, mbid: artist.mbid })
+    .select({ id: artist.id, slug: artistSlug.slug, mbid: artist.mbid })
     .from(artist)
+    .innerJoin(artistSlug, eq(artistSlug.artistId, artist.id))
     .where(inArray(artist.mbid, [...new Set(mbids)]));
   return new Map(
     rows.flatMap((r) => (r.mbid ? [[r.mbid, { id: r.id, slug: r.slug }] as const] : []))

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { and, desc, DrizzleQueryError, eq, isNull, or, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { artist, artistProfile, likedTracks, radioPlay } from '../db/schema';
+import { artist, artistProfile, artistSlug, likedTracks, radioPlay } from '../db/schema';
 import { logger } from '../lib/logger';
 import { findTrackByIsrc, searchArtist } from './deezerService';
 import { findMbidByDeezerId, findRecordingsByIsrc, getArtistByMbid } from './musicbrainzService';
@@ -33,13 +33,36 @@ export function slugify(name: string): string {
   return normalizeArtistName(name).replace(/ /g, '-');
 }
 
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+// Far more homonyms than the antenna will ever play under one name.
+const MAX_SUFFIX = 100;
+
+/**
+ * Gives the artist the first free slug of its name, the name alone or with a
+ * suffix (`cassius`, `cassius-2`…). A slug is never taken back: whoever holds
+ * it keeps it, so the next homonym gets the next suffix.
+ */
+async function claimSlug(tx: Tx, artistId: string, base: string): Promise<string> {
+  for (let n = 1; n <= MAX_SUFFIX; n += 1) {
+    const slug = n === 1 ? base : `${base}-${n}`;
+    const claimed = await tx
+      .insert(artistSlug)
+      .values({ slug, artistId })
+      .onConflictDoNothing({ target: artistSlug.slug })
+      .returning({ slug: artistSlug.slug });
+    if (claimed[0]) return claimed[0].slug;
+  }
+  throw new Error(`artist slug: no free suffix for "${base}"`);
+}
+
 type Resolved = { id: string; slug: string };
 type Identity = { id: string; deezerId: string | null; mbid: string | null };
 type Row = Resolved & Identity & { identifiedBy: 'isrc' | 'name' };
 
 const ROW = {
   id: artist.id,
-  slug: artist.slug,
+  slug: artistSlug.slug,
   deezerId: artist.deezerId,
   mbid: artist.mbid,
   identifiedBy: artist.identifiedBy,
@@ -49,6 +72,7 @@ async function findBy(normalizedName: string): Promise<Row | null> {
   const rows = await db
     .select(ROW)
     .from(artist)
+    .innerJoin(artistSlug, eq(artistSlug.artistId, artist.id))
     .where(eq(artist.normalizedName, normalizedName))
     .limit(1);
   return rows[0] ?? null;
@@ -315,26 +339,30 @@ async function resolveOn(
   // A source down: resolve again next time rather than persist a guess.
   if (identity === 'failed') return null;
 
-  const inserted = await db
-    .insert(artist)
-    .values({
-      id: randomUUID(),
-      normalizedName,
-      displayName: identity.displayName,
-      slug: slugify(identity.displayName),
-      deezerId: identity.deezerId,
-      mbid: identity.mbid,
-      identifiedBy: identity.identifiedBy,
-    })
-    .onConflictDoNothing()
-    .returning({ id: artist.id, slug: artist.slug });
+  // The row and its slug land together: a page without an address would be unreachable.
+  const created = await db.transaction(async (tx) => {
+    const inserted = await tx
+      .insert(artist)
+      .values({
+        id: randomUUID(),
+        normalizedName,
+        displayName: identity.displayName,
+        deezerId: identity.deezerId,
+        mbid: identity.mbid,
+        identifiedBy: identity.identifiedBy,
+      })
+      .onConflictDoNothing()
+      .returning({ id: artist.id });
+    if (!inserted[0]) return null;
+    const base = slugify(identity.displayName) || normalizedName.replace(/ /g, '-');
+    return { id: inserted[0].id, slug: await claimSlug(tx, inserted[0].id, base) };
+  });
+  if (created) return created;
   // Nothing inserted: a concurrent resolution of this name won the race, or
   // another spelling of the same artist already holds this identity, and its
   // page is this artist's page.
   const row =
-    inserted[0] ??
-    (await findBy(normalizedName)) ??
-    (await findByIdentity(identity.deezerId, identity.mbid));
+    (await findBy(normalizedName)) ?? (await findByIdentity(identity.deezerId, identity.mbid));
   if (!row) return null;
   return { id: row.id, slug: row.slug };
 }
@@ -348,6 +376,7 @@ async function findByIdentity(deezerId: string | null, mbid: string | null): Pro
   const rows = await db
     .select(ROW)
     .from(artist)
+    .innerJoin(artistSlug, eq(artistSlug.artistId, artist.id))
     .where(or(...keys))
     .limit(1);
   return rows[0] ?? null;

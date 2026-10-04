@@ -1,7 +1,7 @@
 import type { ArtistProfile, ArtistRadioTitle, SiteLocale } from '@aubesonore/shared-types/client';
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
-import { artist, artistProfile } from '../db/schema';
+import { artist, artistProfile, artistSlug } from '../db/schema';
 import { logger } from '../lib/logger';
 import type { Lookup } from '../lib/lookup';
 import { createSingleFlight } from '../lib/singleFlight';
@@ -104,19 +104,21 @@ async function deezerRecording(
 }
 
 export async function getArtistProfile(
-  id: string,
+  slug: string,
   locale: SiteLocale
 ): Promise<ArtistProfile | null> {
   const rows = await db
     .select()
-    .from(artist)
+    .from(artistSlug)
+    .innerJoin(artist, eq(artist.id, artistSlug.artistId))
     .leftJoin(artistProfile, eq(artistProfile.artistId, artist.id))
-    .where(eq(artist.id, id))
+    .where(eq(artistSlug.slug, slug))
     .limit(1);
 
   const found = rows[0];
   if (!found) return null;
   const row = found.artist;
+  const { id } = row;
 
   // The first view waits for the sources; later ones never do.
   let stored = found.artist_profile;
@@ -149,7 +151,7 @@ export async function getArtistProfile(
   return {
     id: row.id,
     name: row.displayName,
-    slug: row.slug,
+    slug,
     mbid: row.mbid,
     image: stored.image,
     facts: stored.facts,

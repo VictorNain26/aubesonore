@@ -8,3 +8,7 @@ dist-ssr/
 coverage/
 .turbo/
 apps/frontend/src/paraglide/
+
+# Written by Paraglide on each compile, ignored by git.
+apps/frontend/project.inlang/.meta.json
+apps/frontend/project.inlang/README.md

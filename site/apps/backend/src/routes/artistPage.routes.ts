@@ -4,8 +4,9 @@ import { env } from '../config/env';
 import { logger } from '../lib/logger';
 import { checkRate, getClientIp } from '../lib/rateLimit';
 import { getArtistProfile } from '../services/artistProfileService';
+import { slugOfArtist } from '../services/artistPages';
 import { renderArtistShell } from '../services/templates/artistShell';
-import { isValidArtistId } from '../validators/artistValidator';
+import { isValidArtistId, isValidArtistSlug } from '../validators/artistValidator';
 
 // Higher than the JSON budget: this is a document route, and a single visit
 // pulls one page rather than a burst of API calls.
@@ -47,8 +48,13 @@ export function __resetArtistShell(): void {
 
 interface HandlerContext {
   request: Request;
-  params: { id: string };
+  params: { slug: string };
   set: { status?: number | string; headers: Record<string, string | number> };
+}
+
+/** The page path of an artist: /artiste/<slug> in French, /en/artist/<slug> in English. */
+export function artistPagePath(locale: SiteLocale, slug: string): string {
+  return `${locale === 'en' ? '/en/artist' : '/artiste'}/${encodeURIComponent(slug)}`;
 }
 
 async function handle(
@@ -75,8 +81,10 @@ async function handle(
   // leaves browsers on a page whose hashed assets are gone.
   set.headers['cache-control'] = 'no-cache';
 
-  // A malformed id (a truncated link) is an unknown artist: no lookup.
-  const profile = isValidArtistId(params.id) ? await getArtistProfile(params.id, locale) : null;
+  // A malformed slug (a truncated link) is an unknown artist: no lookup.
+  const profile = isValidArtistSlug(params.slug)
+    ? await getArtistProfile(params.slug, locale)
+    : null;
   // Unknown artist: a real 404, or crawlers index it as a soft 404. The SPA
   // still boots and renders its own not-found state.
   if (!profile) {
@@ -84,16 +92,39 @@ async function handle(
     return html;
   }
 
-  const prefix = locale === 'en' ? '/en' : '';
-  const pageUrl = `${env.FRONTEND_BASE_URL}${prefix}/artist/${profile.id}/${profile.slug}`;
+  const pageUrl = `${env.FRONTEND_BASE_URL}${artistPagePath(locale, profile.slug)}`;
   return renderArtistShell(html, profile, pageUrl, locale);
 }
 
-const fr = (context: HandlerContext) => handle('fr', context);
-const en = (context: HandlerContext) => handle('en', context);
+type ResponseSet = HandlerContext['set'];
 
+/**
+ * The addresses pages had before slugs (/artist/<id>/<slug>), still in shares
+ * and search results: a permanent redirect hands them to the page's address.
+ */
+async function legacy(locale: SiteLocale, id: string, set: ResponseSet): Promise<string> {
+  const slug = isValidArtistId(id) ? await slugOfArtist(id) : null;
+  if (!slug) {
+    set.status = 404;
+    return locale === 'en' ? 'Artist not found' : 'Artiste introuvable';
+  }
+  set.status = 301;
+  set.headers.location = artistPagePath(locale, slug);
+  return '';
+}
+
+/** /en/artist/<x> is an old address when <x> is an artist id, the page of slug <x> otherwise. */
+async function english(context: HandlerContext): Promise<string> {
+  return isValidArtistId(context.params.slug)
+    ? legacy('en', context.params.slug, context.set)
+    : handle('en', context);
+}
+
+// The router wants one parameter name per position: the English old address
+// carries its id in `slug`.
 export const artistPageRoutes = new Elysia()
-  .get('/artist/:id', fr)
-  .get('/artist/:id/:slug', fr)
-  .get('/en/artist/:id', en)
-  .get('/en/artist/:id/:slug', en);
+  .get('/artiste/:slug', (context) => handle('fr', context))
+  .get('/en/artist/:slug', english)
+  .get('/en/artist/:slug/:old', ({ params, set }) => legacy('en', params.slug, set))
+  .get('/artist/:id', ({ params, set }) => legacy('fr', params.id, set))
+  .get('/artist/:id/:old', ({ params, set }) => legacy('fr', params.id, set));

@@ -11,13 +11,13 @@ import { useLikedTracksStore } from '../stores/likedTracksStore';
 import { useLocaleStore } from '../stores/localeStore';
 
 export default function ArtistPage() {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const locale = useLocaleStore((s) => s.locale);
   const [loaded, setLoaded] = useState<{
     key: string;
     state: ArtistPageState;
   } | null>(null);
-  const key = `${id}:${locale}`;
+  const key = `${slug}:${locale}`;
   const setListenVisible = useHeroListenVisible((s) => s.setVisible);
   // The listener's kept tracks: this artist's, newest first. Loaded again on
   // each page, since a track kept a moment ago is tied to its artist after the
@@ -26,22 +26,15 @@ export default function ArtistPage() {
   const signedIn = useAuthStore((s) => s.isAuthenticated);
   useEffect(() => {
     if (signedIn) void useLikedTracksStore.getState().refresh();
-  }, [id, signedIn]);
-  const kept = useMemo(
-    () =>
-      tracks
-        .filter((track) => track.artistId === id)
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    [tracks, id]
-  );
+  }, [slug, signedIn]);
 
   // No hero here: the player bar is the only way to listen.
   useEffect(() => setListenVisible(false), [setListenVisible]);
 
   useEffect(() => {
-    if (!id) return;
+    if (!slug) return;
     const controller = new AbortController();
-    fetchArtistProfile(id, controller.signal)
+    fetchArtistProfile(slug, controller.signal)
       .then((profile) =>
         setLoaded({
           key,
@@ -53,11 +46,23 @@ export default function ArtistPage() {
         setLoaded({ key, state: { status: 'error' } });
       });
     return () => controller.abort();
-  }, [id, key]);
+  }, [slug, key]);
 
   // Derived, so another artist or language never flashes the previous one.
   const state: ArtistPageState =
     loaded !== null && loaded.key === key ? loaded.state : { status: 'loading' };
+
+  // Kept tracks are tied to the artist's id, which the profile gives.
+  const id = state.status === 'ready' ? state.profile.id : null;
+  const kept = useMemo(
+    () =>
+      id === null
+        ? []
+        : tracks
+            .filter((track) => track.artistId === id)
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    [tracks, id]
+  );
 
   // What Musilogy holds of the artist, once the profile gives their MBID. A failure or Musilogy not
   // loaded leaves the page without those sections; the profile still answers.

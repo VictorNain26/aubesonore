@@ -16,6 +16,9 @@ let artistRows: ArtistRow[] = [];
 // When set, each artist query answers the next entry: the resolver's lookups in order.
 let artistAnswers: ArtistRow[][] | null = null;
 let insertConflict = false;
+// Slugs already held by other artists, and every slug the resolver tried to claim.
+let takenSlugs = new Set<string>();
+let claimedSlugs: Array<{ slug: string; artistId: string }> = [];
 let isrcLookup: Lookup<IsrcRecording[]> = { status: 'none' };
 let isrcLookups = 0;
 let mbArtist: Lookup<MusicBrainzArtist> = { status: 'none' };
@@ -34,46 +37,54 @@ let searchedTitles: string[] = [];
 
 const schema = await import('../db/schema');
 
-void mock.module('../db', () => ({
-  schema,
-  db: {
-    select: () => ({
-      from: (table: unknown) => {
-        const answer = () =>
-          Promise.resolve(
-            table === schema.radioPlay ? playRows : (artistAnswers?.shift() ?? artistRows)
-          );
-        return { where: () => ({ limit: answer, orderBy: () => ({ limit: answer }) }) };
-      },
-    }),
-    insert: () => ({
-      values: (row: Record<string, unknown>) => ({
-        onConflictDoNothing: () => ({
-          returning: () => {
-            if (insertConflict) return Promise.resolve([]);
-            inserted.push(row);
-            return Promise.resolve([{ id: row.id, slug: row.slug }]);
-          },
-        }),
-      }),
-    }),
-    update: () => ({
-      set: (values: Record<string, unknown>) => ({
-        where: () => {
-          if (updateError) return Promise.reject(updateError);
-          updates.push(values);
-          return Promise.resolve();
+const db = {
+  select: () => ({
+    from: (table: unknown) => {
+      const answer = () =>
+        Promise.resolve(
+          table === schema.radioPlay ? playRows : (artistAnswers?.shift() ?? artistRows)
+        );
+      const filtered = { where: () => ({ limit: answer, orderBy: () => ({ limit: answer }) }) };
+      return { ...filtered, innerJoin: () => filtered };
+    },
+  }),
+  insert: (table: unknown) => ({
+    values: (row: Record<string, unknown>) => ({
+      onConflictDoNothing: () => ({
+        returning: () => {
+          if (table === schema.artistSlug) {
+            const claim = row as { slug: string; artistId: string };
+            if (takenSlugs.has(claim.slug)) return Promise.resolve([]);
+            takenSlugs.add(claim.slug);
+            claimedSlugs.push(claim);
+            return Promise.resolve([{ slug: claim.slug }]);
+          }
+          if (insertConflict) return Promise.resolve([]);
+          inserted.push(row);
+          return Promise.resolve([{ id: row.id }]);
         },
       }),
     }),
-    delete: () => ({
+  }),
+  transaction: <T>(work: (tx: unknown) => Promise<T>) => work(db),
+  update: () => ({
+    set: (values: Record<string, unknown>) => ({
       where: () => {
-        deletedProfiles += 1;
+        if (updateError) return Promise.reject(updateError);
+        updates.push(values);
         return Promise.resolve();
       },
     }),
-  },
-}));
+  }),
+  delete: () => ({
+    where: () => {
+      deletedProfiles += 1;
+      return Promise.resolve();
+    },
+  }),
+};
+
+void mock.module('../db', () => ({ schema, db }));
 
 // spyOn on the real exports, restored after this file: mock.module would
 // replace these modules for every other test file of the run (Bun 1.3).
@@ -117,6 +128,8 @@ beforeEach(() => {
   artistRows = [];
   artistAnswers = null;
   insertConflict = false;
+  takenSlugs = new Set();
+  claimedSlugs = [];
   isrcLookup = { status: 'none' };
   isrcLookups = 0;
   mbArtist = { status: 'none' };
@@ -252,11 +265,23 @@ describe('resolveArtist', () => {
 
     await resolveArtist('daft punk');
 
-    expect(inserted[0]).toMatchObject({
-      displayName: 'Daft Punk',
-      deezerId: '27',
-      slug: 'daft-punk',
-    });
+    expect(inserted[0]).toMatchObject({ displayName: 'Daft Punk', deezerId: '27' });
+    expect(claimedSlugs).toEqual([{ slug: 'daft-punk', artistId: inserted[0]?.id as string }]);
+  });
+
+  it('gives a homonym the next free suffix, never a slug another artist holds', async () => {
+    playRows = [{ title: 'Feeling for You' }];
+    takenSlugs = new Set(['cassius', 'cassius-2']);
+
+    expect(await resolveArtist('Cassius')).toMatchObject({ slug: 'cassius-3' });
+    expect(claimedSlugs.map((c) => c.slug)).toEqual(['cassius-3']);
+  });
+
+  it('keys a name with no letter of its own on the played name', async () => {
+    playRows = [{ title: 'Kelly Watch the Stars' }];
+    search = { status: 'match', artist: { id: '9', name: '!!!', picture: null } };
+
+    expect(await resolveArtist('Chk Chk Chk')).toMatchObject({ slug: 'chk-chk-chk' });
   });
 
   it('resolves a name written without Latin letters', async () => {

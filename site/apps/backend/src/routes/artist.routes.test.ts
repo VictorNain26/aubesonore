@@ -2,7 +2,6 @@ import { describe, it, expect, spyOn, afterAll, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
 
 const VALID_ID = '11111111-1111-1111-1111-111111111111';
-const UNKNOWN_ID = '22222222-2222-2222-2222-222222222222';
 
 // spyOn on the real exports, restored after this file: mock.module would
 // replace these modules for every other test file of the run (Bun 1.3).
@@ -11,9 +10,9 @@ const resolver = await import('../services/artistResolver');
 const pagesService = await import('../services/artistPages');
 
 const spies = [
-  spyOn(profileService, 'getArtistProfile').mockImplementation((id: string) =>
+  spyOn(profileService, 'getArtistProfile').mockImplementation((slug: string) =>
     Promise.resolve(
-      id === VALID_ID
+      slug === 'daft-punk'
         ? {
             id: VALID_ID,
             name: 'Daft Punk',
@@ -51,9 +50,9 @@ afterEach(() => {
   __resetRateLimits();
 });
 
-describe('GET /api/artist/:id', () => {
-  it('returns the profile for a known id', async () => {
-    const res = await app.handle(new Request(`http://localhost/api/artist/${VALID_ID}`));
+describe('GET /api/artist/page/:slug', () => {
+  it('returns the profile for a known slug', async () => {
+    const res = await app.handle(new Request(`http://localhost/api/artist/page/daft-punk`));
 
     expect(res.status).toBe(200);
     expect(((await res.json()) as { name: string }).name).toBe('Daft Punk');
@@ -61,36 +60,36 @@ describe('GET /api/artist/:id', () => {
 
   it('asks the profile in the page language, French by default', async () => {
     const [profileSpy] = spies;
-    await app.handle(new Request(`http://localhost/api/artist/${VALID_ID}?lang=en`));
-    await app.handle(new Request(`http://localhost/api/artist/${VALID_ID}`));
+    await app.handle(new Request(`http://localhost/api/artist/page/daft-punk?lang=en`));
+    await app.handle(new Request(`http://localhost/api/artist/page/daft-punk`));
 
     expect(profileSpy?.mock.calls.slice(-2)).toEqual([
-      [VALID_ID, 'en'],
-      [VALID_ID, 'fr'],
+      ['daft-punk', 'en'],
+      ['daft-punk', 'fr'],
     ]);
   });
 
   it('rejects a language the site is not published in', async () => {
-    const res = await app.handle(new Request(`http://localhost/api/artist/${VALID_ID}?lang=de`));
+    const res = await app.handle(new Request(`http://localhost/api/artist/page/daft-punk?lang=de`));
 
     expect(res.status).toBe(400);
   });
 
-  it('rejects a malformed id at the boundary', async () => {
-    const res = await app.handle(new Request('http://localhost/api/artist/not-a-uuid'));
+  it('rejects a malformed slug at the boundary', async () => {
+    const res = await app.handle(new Request('http://localhost/api/artist/page/Daft%20Punk'));
 
     expect(res.status).toBe(400);
   });
 
-  it('returns 404 for an unknown id', async () => {
-    const res = await app.handle(new Request(`http://localhost/api/artist/${UNKNOWN_ID}`));
+  it('returns 404 for an unknown slug', async () => {
+    const res = await app.handle(new Request('http://localhost/api/artist/page/inconnu'));
 
     expect(res.status).toBe(404);
   });
 
   it('rate limits once the per-IP budget is spent', async () => {
     const request = (): Request =>
-      new Request(`http://localhost/api/artist/${VALID_ID}`, {
+      new Request(`http://localhost/api/artist/page/daft-punk`, {
         headers: { 'x-forwarded-for': '203.0.113.9' },
       });
 

@@ -30,13 +30,13 @@ let profileImage: string | null = 'https://cdn-images.dzcdn.net/images/artist/dp
 // spyOn on the real exports, restored after this file: mock.module would
 // replace these modules for every other test file of the run (Bun 1.3).
 const profileService = await import('../services/artistProfileService');
-const profileSpy = spyOn(profileService, 'getArtistProfile').mockImplementation((id: string) =>
+const profileSpy = spyOn(profileService, 'getArtistProfile').mockImplementation((slug: string) =>
   Promise.resolve(
-    id === VALID_ID
+    slug === 'daft-punk' || slug === 'кино'
       ? {
           id: VALID_ID,
           name: profileName,
-          slug: 'daft-punk',
+          slug,
           mbid: null,
           image: profileImage,
           facts: null,
@@ -52,8 +52,14 @@ const profileSpy = spyOn(profileService, 'getArtistProfile').mockImplementation(
   )
 );
 
+const pages = await import('../services/artistPages');
+const slugSpy = spyOn(pages, 'slugOfArtist').mockImplementation((id: string) =>
+  Promise.resolve(id === VALID_ID ? 'daft-punk' : null)
+);
+
 afterAll(() => {
   profileSpy.mockRestore();
+  slugSpy.mockRestore();
 });
 
 const { artistPageRoutes, __resetArtistShell } = await import('./artistPage.routes');
@@ -84,17 +90,17 @@ function count(html: string, needle: string): number {
   return html.split(needle).length - 1;
 }
 
-describe('GET /artist/:id', () => {
+describe('GET /artiste/:slug', () => {
   it('rewrites the head tags of the empty shell in place', async () => {
     mockShell();
 
-    const res = await app.handle(new Request(`http://localhost/artist/${VALID_ID}/daft-punk`));
+    const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toContain('text/html');
     expect(shellUrl).toEndWith('/app.html');
     const html = await res.text();
-    const pageUrl = `${env.FRONTEND_BASE_URL}/artist/${VALID_ID}/daft-punk`;
+    const pageUrl = `${env.FRONTEND_BASE_URL}/artiste/daft-punk`;
     expect(html).toContain('<title>Daft Punk · AubeSonore</title>');
     expect(html).toContain(`<link rel="canonical" href="${pageUrl}" />`);
     expect(html).toContain(`<meta property="og:url" content="${pageUrl}" />`);
@@ -111,20 +117,22 @@ describe('GET /artist/:id', () => {
     expect(html).toContain('<div id="root"></div>');
   });
 
-  it('serves the same tags on the slug-decorated url', async () => {
+  it('reads a slug written in another script, and keeps its address percent-encoded', async () => {
     mockShell();
 
-    const res = await app.handle(new Request(`http://localhost/artist/${VALID_ID}/daft-punk`));
+    const res = await app.handle(new Request('http://localhost/artiste/%D0%BA%D0%B8%D0%BD%D0%BE'));
 
     expect(res.status).toBe(200);
-    expect(await res.text()).toContain('property="og:title"');
+    expect(await res.text()).toContain(
+      `<link rel="canonical" href="${env.FRONTEND_BASE_URL}/artiste/%D0%BA%D0%B8%D0%BD%D0%BE" />`
+    );
   });
 
   it('keeps an artist name inside its attribute and its text node', async () => {
     mockShell();
     profileName = 'AT&T "><script>alert(1)</script>';
 
-    const res = await app.handle(new Request(`http://localhost/artist/${VALID_ID}`));
+    const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
     const html = await res.text();
     expect(html).not.toContain('"><script>');
@@ -140,7 +148,7 @@ describe('GET /artist/:id', () => {
     mockShell();
     profileImage = 'https://evil.example/pwn.jpg';
 
-    const res = await app.handle(new Request(`http://localhost/artist/${VALID_ID}`));
+    const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
     const html = await res.text();
     expect(html).not.toContain('evil.example');
@@ -154,16 +162,16 @@ describe('GET /artist/:id', () => {
     mockShell();
     profileImage = 'http://cdn-images.dzcdn.net/images/artist/dp.jpg';
 
-    const res = await app.handle(new Request(`http://localhost/artist/${VALID_ID}`));
+    const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
     expect(await res.text()).not.toContain('http://cdn-images.dzcdn.net');
   });
 
-  it('answers a malformed id like an unknown artist, without a lookup', async () => {
+  it('answers a malformed slug like an unknown artist, without a lookup', async () => {
     mockShell();
     profileSpy.mockClear();
 
-    const res = await app.handle(new Request('http://localhost/en/artist/not-a-uuid'));
+    const res = await app.handle(new Request('http://localhost/en/artist/daft_punk'));
 
     expect(res.status).toBe(404);
     expect(await res.text()).toBe(SHELL);
@@ -174,11 +182,11 @@ describe('GET /artist/:id', () => {
     mockShell();
     profileImage = null;
 
-    const res = await app.handle(new Request(`http://localhost/en/artist/${VALID_ID}/daft-punk`));
+    const res = await app.handle(new Request('http://localhost/en/artist/daft-punk'));
 
     const html = await res.text();
     expect(html).toContain('<html lang="en">');
-    expect(html).toContain(`href="${env.FRONTEND_BASE_URL}/en/artist/${VALID_ID}/daft-punk"`);
+    expect(html).toContain(`href="${env.FRONTEND_BASE_URL}/en/artist/daft-punk"`);
     expect(html).toContain('<meta property="og:locale" content="en_GB" />');
     expect(html).toContain(
       '<meta property="og:image" content="https://aubesonore.fr/og-en.png" />'
@@ -191,17 +199,39 @@ describe('GET /artist/:id', () => {
   it('answers 404 with the untouched shell when the artist is unknown', async () => {
     mockShell();
 
-    const res = await app.handle(new Request(`http://localhost/artist/${UNKNOWN_ID}`));
+    const res = await app.handle(new Request('http://localhost/artiste/inconnu'));
 
     expect(res.status).toBe(404);
     expect(await res.text()).toBe(SHELL);
+  });
+});
+
+describe('the addresses pages had before slugs', () => {
+  it.each([
+    [`/artist/${VALID_ID}/daft-punk`, '/artiste/daft-punk'],
+    [`/artist/${VALID_ID}`, '/artiste/daft-punk'],
+    [`/artist/${VALID_ID}/an-old-slug`, '/artiste/daft-punk'],
+    [`/en/artist/${VALID_ID}/daft-punk`, '/en/artist/daft-punk'],
+    [`/en/artist/${VALID_ID}`, '/en/artist/daft-punk'],
+  ])('moves %s permanently to %s', async (from, to) => {
+    const res = await app.handle(new Request(`http://localhost${from}`));
+
+    expect(res.status).toBe(301);
+    expect(res.headers.get('location')).toBe(to);
+  });
+
+  it('answers 404 for an id no artist holds', async () => {
+    const res = await app.handle(new Request(`http://localhost/artist/${UNKNOWN_ID}/daft-punk`));
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get('location')).toBeNull();
   });
 
   it('returns 502 when the frontend shell cannot be read', async () => {
     globalThis.fetch = (() =>
       Promise.resolve(new Response(null, { status: 500 }))) as unknown as typeof fetch;
 
-    const res = await app.handle(new Request(`http://localhost/artist/${VALID_ID}`));
+    const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
     expect(res.status).toBe(502);
   });
@@ -218,8 +248,8 @@ describe('GET /artist/:id', () => {
       );
     }) as unknown as typeof fetch;
 
-    await app.handle(new Request(`http://localhost/artist/${VALID_ID}`));
-    const res = await app.handle(new Request(`http://localhost/artist/${VALID_ID}`));
+    await app.handle(new Request('http://localhost/artiste/daft-punk'));
+    const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
     expect(seen).toEqual([null, '"v1"']);
     expect(await res.text()).toContain('Daft Punk · AubeSonore');
@@ -234,19 +264,19 @@ describe('GET /artist/:id', () => {
         })
       )) as unknown as typeof fetch;
 
-    await app.handle(new Request(`http://localhost/artist/${VALID_ID}`));
+    await app.handle(new Request('http://localhost/artiste/daft-punk'));
     version = 'new';
-    const res = await app.handle(new Request(`http://localhost/artist/${VALID_ID}`));
+    const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
     expect(await res.text()).toContain('data-build="new"');
   });
 
   it('keeps the last shell when the frontend container is briefly unreachable', async () => {
     mockShell();
-    await app.handle(new Request(`http://localhost/artist/${VALID_ID}`));
+    await app.handle(new Request('http://localhost/artiste/daft-punk'));
     globalThis.fetch = (() => Promise.reject(new Error('ECONNREFUSED'))) as unknown as typeof fetch;
 
-    const res = await app.handle(new Request(`http://localhost/artist/${VALID_ID}`));
+    const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
     expect(res.status).toBe(200);
   });
@@ -254,7 +284,7 @@ describe('GET /artist/:id', () => {
   it('asks browsers to revalidate the page', async () => {
     mockShell();
 
-    const res = await app.handle(new Request(`http://localhost/artist/${VALID_ID}`));
+    const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
     expect(res.headers.get('cache-control')).toBe('no-cache');
   });

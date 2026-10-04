@@ -238,7 +238,6 @@ export const artist = pgTable(
     id: text('id').primaryKey(),
     normalizedName: text('normalized_name').notNull(),
     displayName: text('display_name').notNull(),
-    slug: text('slug').notNull(),
     deezerId: text('deezer_id'),
     mbid: text('mbid'),
     // 'isrc' when a played track's ISRC gave the identity, 'name' when only the
@@ -257,6 +256,19 @@ export const artist = pgTable(
     artistMbidUnique: uniqueIndex('artist_mbid_unique').on(table.mbid),
   })
 );
+
+// ─────────────────────────────────────────────
+// ARTIST_SLUG TABLE — the name of each artist page in its URL
+// ─────────────────────────────────────────────
+// A slug, once given, never changes nor goes to another artist: a page shared
+// or indexed keeps its address. A homonym takes the next free suffix.
+export const artistSlug = pgTable('artist_slug', {
+  slug: text('slug').primaryKey(),
+  artistId: text('artist_id')
+    .notNull()
+    .unique('artist_slug_artist_id_unique')
+    .references(() => artist.id, { onDelete: 'cascade' }),
+});
 
 // ─────────────────────────────────────────────
 // ARTIST_PROFILE TABLE — the last known answer of each source

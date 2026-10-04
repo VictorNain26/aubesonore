@@ -8,7 +8,6 @@ const baseRow: ArtistRow = {
   id: 'artist-1',
   displayName: 'Daft Punk',
   normalizedName: 'daft punk',
-  slug: 'daft-punk',
   deezerId: '27',
   mbid: null,
   identifiedBy: 'isrc',
@@ -48,7 +47,9 @@ void mock.module('../db', () => ({
   db: {
     select: () => ({
       from: () => ({
-        leftJoin: () => ({ where: () => ({ limit: () => Promise.resolve(rows) }) }),
+        innerJoin: () => ({
+          leftJoin: () => ({ where: () => ({ limit: () => Promise.resolve(rows) }) }),
+        }),
       }),
     }),
     insert: () => ({
@@ -161,7 +162,7 @@ beforeEach(() => {
 
 describe('getArtistProfile', () => {
   it('asks every source on the first view, answers in the page language and stores it', async () => {
-    const profile = await getArtistProfile('artist-1', 'en');
+    const profile = await getArtistProfile('daft-punk', 'en');
 
     expect(profile).toEqual({
       id: 'artist-1',
@@ -183,7 +184,7 @@ describe('getArtistProfile', () => {
   });
 
   it('keeps the MBID it found, the bridge to Musilogy', async () => {
-    await getArtistProfile('artist-1', 'fr');
+    await getArtistProfile('daft-punk', 'fr');
 
     expect(mbidWrites).toEqual([{ mbid: 'mb-1' }]);
   });
@@ -191,7 +192,7 @@ describe('getArtistProfile', () => {
   it('serves a fresh stored profile without asking any source', async () => {
     rows = [{ artist: baseRow, artist_profile: storedProfile() }];
 
-    const profile = await getArtistProfile('artist-1', 'fr');
+    const profile = await getArtistProfile('daft-punk', 'fr');
 
     expect(profile?.image).toBe('https://cdn.deezer.com/stored.jpg');
     expect(profile?.summary).toEqual(summaryFr);
@@ -203,7 +204,7 @@ describe('getArtistProfile', () => {
   it('serves a stale profile at once and refreshes it behind the answer', async () => {
     rows = [{ artist: baseRow, artist_profile: storedProfile({ refreshedAt: LONG_AGO }) }];
 
-    const profile = await getArtistProfile('artist-1', 'fr');
+    const profile = await getArtistProfile('daft-punk', 'fr');
     await settle();
 
     expect(profile?.image).toBe('https://cdn.deezer.com/stored.jpg');
@@ -215,7 +216,7 @@ describe('getArtistProfile', () => {
     rows = [{ artist: baseRow, artist_profile: storedProfile({ refreshedAt: LONG_AGO }) }];
     spies.deezer.mockResolvedValueOnce({ status: 'failed' });
 
-    await getArtistProfile('artist-1', 'fr');
+    await getArtistProfile('daft-punk', 'fr');
     await settle();
 
     expect(stored[0]!.image).toBe('https://cdn.deezer.com/stored.jpg');
@@ -225,7 +226,7 @@ describe('getArtistProfile', () => {
   it('clears a section its source no longer knows', async () => {
     spies.mbid.mockResolvedValueOnce({ status: 'none' });
 
-    const profile = await getArtistProfile('artist-1', 'fr');
+    const profile = await getArtistProfile('daft-punk', 'fr');
 
     expect(profile?.facts).toBeNull();
     expect(profile?.summary).toBeNull();
@@ -238,7 +239,7 @@ describe('getArtistProfile', () => {
   it('keeps the radio floor when the artist matched no upstream', async () => {
     rows = [{ artist: { ...baseRow, deezerId: null }, artist_profile: null }];
 
-    const profile = await getArtistProfile('artist-1', 'fr');
+    const profile = await getArtistProfile('daft-punk', 'fr');
 
     expect(profile?.image).toBeNull();
     expect(profile?.facts).toBeNull();
@@ -247,7 +248,7 @@ describe('getArtistProfile', () => {
   });
 
   it('lists each title once, with its plays and its very recording on Deezer', async () => {
-    const profile = await getArtistProfile('artist-1', 'fr');
+    const profile = await getArtistProfile('daft-punk', 'fr');
 
     expect(profile?.playedOnRadio).toEqual([AROUND_THE_WORLD]);
     expect(spies.isrcTrack).toHaveBeenCalledWith('GBDUW9700012');
@@ -264,13 +265,13 @@ describe('getArtistProfile', () => {
       },
     });
     spies.isrcTrack.mockResolvedValueOnce(other('Lirik Banzay', '27', 'Daft Punk'));
-    expect((await getArtistProfile('artist-1', 'fr'))?.playedOnRadio[0]?.deezer).toBeNull();
+    expect((await getArtistProfile('daft-punk', 'fr'))?.playedOnRadio[0]?.deezer).toBeNull();
 
     spies.isrcTrack.mockResolvedValueOnce(other('Around the World', '99', 'Someone Else'));
-    expect((await getArtistProfile('artist-1', 'fr'))?.playedOnRadio[0]?.deezer).toBeNull();
+    expect((await getArtistProfile('daft-punk', 'fr'))?.playedOnRadio[0]?.deezer).toBeNull();
 
     spies.isrcTrack.mockResolvedValueOnce({ status: 'failed' });
-    expect((await getArtistProfile('artist-1', 'fr'))?.playedOnRadio[0]?.deezer).toBeNull();
+    expect((await getArtistProfile('daft-punk', 'fr'))?.playedOnRadio[0]?.deezer).toBeNull();
   });
 
   it('returns null for an unknown id', async () => {
