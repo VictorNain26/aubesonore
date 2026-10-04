@@ -2,9 +2,11 @@
 
 Erreur définitive sur un artiste, ou voisin sans titre : sauté, compté, nommé. Deezer ou
 Last.fm indisponible : la passe s'arrête, le travail fait est gardé, aucune graine n'est marquée ;
-la passe suivante reprend avec les mêmes graines. Un Deezer qui ne rend aucun titre pour aucun
-voisin est indisponible : un voisin sans titre est rare (1 artiste relié sur 1 809, mesuré le
-2026-10-04), et ce jour-là 126 voisins sur 126 étaient vides.
+la passe suivante reprend avec les mêmes graines. Une source qui répond vide partout est
+indisponible, d'après les taux mesurés le 2026-10-04 : aucun artiste relié pour aucune graine
+(9,5 % des artistes de la bibliothèque n'en ont pas sur Deezer), aucun similaire pour aucune
+graine (2 % sur Last.fm), aucun titre pour aucun voisin (1 artiste relié sur 1 809 ; ce jour-là,
+126 voisins sur 126 étaient vides).
 """
 
 import logging
@@ -60,6 +62,7 @@ def discover_pass(
     rep = DiscoverReport(run.run_id, run.resumed, len(run.seeds), run.n_dropped)
     seen: set[int] = set()
     stamp = now.isoformat()
+    answered = no_related = no_similar = 0
     for i, seed in enumerate(run.seeds, 1):
         logger.info("discover: seed %d/%d", i, len(run.seeds))
         try:
@@ -72,7 +75,10 @@ def discover_pass(
         except (DeezerError, LastfmError) as e:
             rep.skipped.append(f"{seed.name} ({type(e).__name__})")
             continue
-        for n in found:
+        answered += 1
+        no_related += not found.n_related
+        no_similar += not found.n_similar
+        for n in found.artists:
             if n.id in seen:
                 continue
             seen.add(n.id)
@@ -100,6 +106,10 @@ def discover_pass(
             rep.n_filtered += len(top) - len(kept)
             rep.n_added += len(added)
             rep.n_duplicates += len(kept) - len(added)
+    if answered and no_related == answered:
+        raise DeezerUnavailable(f"aucun artiste relié pour {answered} graines")
+    if answered and no_similar == answered:
+        raise LastfmUnavailable(f"aucun artiste similaire pour {answered} graines")
     if rep.n_neighbours and not rep.n_seen:
         raise DeezerUnavailable(f"aucun titre pour {rep.n_neighbours} voisins")
     finish_run(conn, run.run_id, now)
