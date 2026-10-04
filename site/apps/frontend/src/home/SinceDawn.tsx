@@ -46,7 +46,7 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
         <h2 id="since-dawn-title" className="text-section m-0">
           {m.since_dawn_title()}
         </h2>
-        <p className="text-text-muted max-w-blurb m-0">{m.since_dawn_body()}</p>
+        <p className="text-intro text-text-muted max-w-blurb m-0">{m.since_dawn_body()}</p>
       </div>
 
       <div className="flex flex-col">
@@ -68,7 +68,7 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
               <li
                 key={row.id}
                 className={cn(
-                  'border-border ease-out-soft hover:bg-accent/3 grid min-h-16 grid-cols-[3.75rem_2.75rem_minmax(0,1fr)_2.75rem] items-center gap-x-3 border-b py-2 transition-colors duration-300 md:min-h-15 md:grid-cols-[4.5rem_2.75rem_minmax(0,1.2fr)_minmax(0,1fr)_2.75rem] md:gap-x-6 md:px-1',
+                  'border-border ease-out-soft hover:bg-accent/3 grid min-h-16 grid-cols-[3.75rem_2.75rem_minmax(0,1fr)_2.75rem] items-center gap-x-3 border-b py-2 transition-colors duration-300 md:px-1 lg:min-h-15 lg:grid-cols-[4.5rem_2.75rem_minmax(0,1.2fr)_minmax(0,1fr)_2.75rem] lg:gap-x-6',
                   initialIds !== null && !initialIds.has(row.id) ? 'thread-in' : 'reveal'
                 )}
               >
@@ -94,9 +94,9 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
                   seed={`${row.artist}|${row.title}`}
                   className="size-11"
                 />
-                <span className="flex min-w-0 flex-col md:contents">
-                  <span className="text-row truncate md:self-center">{row.title}</span>
-                  <span className="text-sub text-text-muted truncate md:self-center">
+                <span className="flex min-w-0 flex-col lg:contents">
+                  <span className="text-row truncate lg:self-center">{row.title}</span>
+                  <span className="text-sub text-text-muted truncate lg:self-center">
                     {row.artist}
                   </span>
                 </span>
@@ -123,7 +123,7 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
           <button
             type="button"
             onClick={() => setVisible((v) => v + PAGE)}
-            className={cn(TEXT_ACTION, 'mt-5 self-start md:ml-41')}
+            className={cn(TEXT_ACTION, 'mt-5 self-start md:ml-33 lg:ml-42')}
           >
             {m.since_dawn_more()}
           </button>

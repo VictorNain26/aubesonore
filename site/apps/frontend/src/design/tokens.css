@@ -66,16 +66,9 @@
   --font-weight-bold: 700;
 
   --text-*: initial;
-  --text-display: clamp(2.25rem, 1.2rem + 4.5vw, 4rem);
-  --text-display--line-height: 1.05;
-  --text-display--font-weight: 640;
-  --text-display--letter-spacing: -0.015em;
   --text-title: clamp(1.35rem, 1.1rem + 1vw, 1.75rem);
   --text-title--line-height: 1.15;
   --text-title--font-weight: 600;
-  --text-lead: 1.125rem;
-  --text-lead--line-height: 1.5;
-  --text-lead--font-weight: 450;
   /* Échelle de l'accueil v4. */
   --text-hero: clamp(2.375rem, 1.5rem + 3.6vw, 5rem);
   --text-hero--line-height: 0.98;
@@ -108,7 +101,7 @@
   --text-ui: 0.9375rem;
   --text-ui--line-height: 1.4;
   --text-ui--font-weight: 500;
-  --text-label: 0.75rem;
+  --text-label: 0.8125rem;
   --text-label--line-height: 1.3;
   --text-label--letter-spacing: 0.08em;
   --text-body: 1rem;
@@ -144,6 +137,8 @@
   --container-drawer: 32.5rem;
   --container-aside: 34rem;
   --container-bar: 42rem;
+  /* Largeur du contenu : identique jusqu'à 1440 px, centrée au-delà. */
+  --container-page: 85rem;
 
   @keyframes breathe {
     0%,
@@ -288,11 +283,51 @@
       transparent 72%
     );
   filter: blur(8px);
+  /* The band overhangs the hero by --sink, and the horizon line sits --sink above the hero's
+     foot: the light is full on the line and dies out at the foot, never cut straight. The
+     extra 0.5rem covers the 8px the band sinks while it breathes. */
+  --sink: 2.5rem;
+  mask-image: linear-gradient(
+    to top,
+    transparent calc(var(--sink) + 0.5rem),
+    black calc(var(--sink) * 2)
+  );
 
   @media (width >= 48rem) {
     inset-inline: -15%;
     bottom: -3.75rem;
     height: 28.75rem;
+    --sink: 3.75rem;
+  }
+}
+
+/* The grain darkens the paper a little: it thins out before the hero ends, so the page below
+   does not start on a step. */
+@utility grain-fade {
+  mask-image: linear-gradient(to top, transparent, black 8rem);
+}
+
+/* Page gutters: 1.5rem, 2.5rem from md, and wider past --container-page so the content stays
+   centred on large screens while backgrounds still run edge to edge. */
+@utility px-page {
+  padding-inline: max(1.5rem, (100% - var(--container-page)) / 2);
+
+  @media (width >= 48rem) {
+    padding-inline: max(2.5rem, (100% - var(--container-page)) / 2);
+  }
+}
+
+/* Inside a centred block, runs out to the left edge of the screen (the overflow past it,
+   a scrollbar's width at most, is clipped by the hero). */
+@utility bleed-left {
+  left: calc(50% - 50vw);
+}
+
+@utility mx-page {
+  margin-inline: max(1.5rem, (100% - var(--container-page)) / 2);
+
+  @media (width >= 48rem) {
+    margin-inline: max(2.5rem, (100% - var(--container-page)) / 2);
   }
 }
 
@@ -346,9 +381,10 @@
     var(--surface);
 }
 
-/* L'écran d'ouverture remplit la fenêtre sans dépasser 50rem sur les grands écrans. */
+/* L'écran d'ouverture remplit la fenêtre sans dépasser 50rem sur les grands écrans ; sur
+   tablette en portrait, il suit son contenu au lieu de le laisser flotter. */
 @utility hero-height {
-  @media (width >= 48rem) {
+  @media (width >= 64rem) {
     min-height: min(100svh, 50rem);
   }
 }

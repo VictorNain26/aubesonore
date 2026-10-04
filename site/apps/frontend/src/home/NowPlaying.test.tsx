@@ -23,7 +23,6 @@ function props(overrides: Partial<NowPlayingViewProps> = {}): NowPlayingViewProp
     onToggleKeep: vi.fn(),
     onShare: vi.fn(),
     artistHref: null,
-    before: [],
     ...overrides,
   };
 }
@@ -74,40 +73,21 @@ describe('NowPlayingView', () => {
     expect(screen.getByRole('button', { name: 'Garder' })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('links to the artist page only once it exists', () => {
+  it("links the artist's name to their page only once it exists", () => {
     const { rerender } = render(<NowPlayingView {...props()} />);
-    expect(screen.queryByRole('link', { name: "L'artiste" })).not.toBeInTheDocument();
+    expect(screen.getByText('Mickey 3D')).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
 
-    rerender(<NowPlayingView {...props({ artistHref: '/artist/a-1/can' })} />);
-    expect(screen.getByRole('link', { name: "L'artiste" })).toHaveAttribute(
+    rerender(<NowPlayingView {...props({ artistHref: '/artist/a-1/mickey-3d' })} />);
+    expect(screen.getByRole('link', { name: 'Mickey 3D' })).toHaveAttribute(
       'href',
-      '/artist/a-1/can'
+      '/artist/a-1/mickey-3d'
     );
   });
 
   it('says radio silence when the station is off air', () => {
     render(<NowPlayingView {...props({ isOnline: false })} />);
     expect(screen.getByText('Silence radio. Retour dans un instant.')).toBeInTheDocument();
-  });
-
-  it('shows the tracks just before the live, linked to the whole thread', () => {
-    render(
-      <NowPlayingView
-        {...props({
-          before: [
-            { id: 2, playedAt: playedAt - 240, title: 'Tango Whiskyman', artist: 'CAN' },
-            { id: 1, playedAt: playedAt - 480, title: 'Hunnybee', artist: 'UMO' },
-          ],
-        })}
-      />
-    );
-
-    expect(screen.getByText('Juste avant')).toBeInTheDocument();
-    expect(screen.getByText('Tango Whiskyman')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: "Tout le fil depuis l'aube" })).toHaveAttribute(
-      'href',
-      '#depuis-l-aube'
-    );
   });
 
   it('beats the heart when a track is kept, not when it loads kept', () => {
