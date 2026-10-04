@@ -39,7 +39,7 @@ function MusilogyArtist({ mbid }: { mbid: string }) {
 
   const name = state.status === 'ready' ? state.artist.card.name : null;
   useEffect(() => {
-    document.title = name ? `${name} — Musilogy` : `${m.musilogy_title()} — AubeSonore`;
+    document.title = `${name ?? m.musilogy_title()} · AubeSonore`;
   }, [name]);
 
   useEffect(() => {
@@ -54,7 +54,7 @@ function MusilogyHome() {
   const [search, setSearch] = useState<SearchState>({ status: 'idle' });
 
   useEffect(() => {
-    document.title = `${m.musilogy_title()} — AubeSonore`;
+    document.title = `${m.musilogy_title()} · AubeSonore`;
   }, []);
 
   useEffect(() => {

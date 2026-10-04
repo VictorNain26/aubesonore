@@ -38,13 +38,13 @@ export function meta(
 ): { title: string; description: string } {
   if (page === 'notFound') {
     return {
-      title: 'Page introuvable — AubeSonore',
+      title: 'Page introuvable · AubeSonore',
       description: "Un blanc à l'antenne : cette page n'existe pas, ou plus.",
     };
   }
   if (page === 'legal') {
     const title = m.legal_title({}, { locale });
-    return { title: `${title} — AubeSonore`, description: title };
+    return { title: `${title} · AubeSonore`, description: title };
   }
   return {
     title: m.meta_title({}, { locale }),

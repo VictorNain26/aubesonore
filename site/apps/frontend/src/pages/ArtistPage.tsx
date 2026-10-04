@@ -68,7 +68,7 @@ export default function ArtistPage() {
 
   const name = state.status === 'ready' ? state.profile.name : null;
   useEffect(() => {
-    if (name) document.title = `${name} — AubeSonore`;
+    if (name) document.title = `${name} · AubeSonore`;
   }, [name]);
 
   useEffect(() => {

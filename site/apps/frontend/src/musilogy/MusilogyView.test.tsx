@@ -167,15 +167,16 @@ describe('MusilogyArtistView', () => {
 describe('linkYears', () => {
   it('gives the years in the group, open on the side it is not known', () => {
     const link = { ...neighbour(1), kind: 'members' as const, yBegin: 1971, yEnd: 1975 };
-    expect(linkYears(link)).toBe('1971 – 1975');
-    expect(linkYears({ ...link, yEnd: null })).toBe('1971 –');
+    expect(linkYears(link)).toBe('de 1971 à 1975');
+    expect(linkYears({ ...link, yEnd: null })).toBe('depuis 1971');
+    expect(linkYears({ ...link, yBegin: null })).toBe("jusqu'en 1975");
     expect(linkYears({ ...link, yBegin: null, yEnd: null })).toBeNull();
   });
 });
 
 describe('cardLine', () => {
   it('states the type, where and when', () => {
-    expect(cardLine(artist().card)).toBe('Groupe · London, Royaume-Uni · 1967 – 1977');
+    expect(cardLine(artist().card)).toBe('Groupe · London, Royaume-Uni · de 1967 à 1977');
   });
 
   it('shows no end it can only infer, and says a start comes from the first album', () => {
