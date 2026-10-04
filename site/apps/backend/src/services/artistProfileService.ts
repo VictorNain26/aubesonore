@@ -121,6 +121,7 @@ export async function getArtistProfile(
     id: row.id,
     name: row.displayName,
     slug: row.slug,
+    mbid: row.mbid,
     image: stored.image,
     facts: stored.facts,
     summary: locale === 'fr' ? stored.summaryFr : stored.summaryEn,

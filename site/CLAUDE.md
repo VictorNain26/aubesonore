@@ -81,6 +81,17 @@ The artist profile (`GET /api/artist/:id`, document route `/artist/:id/:slug`) a
 - **OG tags**: `artistPage.routes` reads the build's empty shell (`app.html`) from the frontend container — never `index.html`, the pre-rendered home page — revalidating it on every request with its ETag (a shell kept past a deploy points at deleted assets), and rewrites its head tags **in place** (title, description, canonical, `og:*`, `twitter:*`) with `HTMLRewriter`; appending would leave the home page's canonical in place. `og:image` is restricted to an allowlist of Deezer CDN hosts. An unknown id answers 404; pages are `Cache-Control: no-cache` like every HTML page of the site.
 - Deezer images are **hotlinked, never re-hosted**.
 
+## Working with Musilogy
+
+Musilogy (`/musilogy`, `/musilogy/:mbid/:slug`, and `/en/…`) places any artist MusicBrainz knows among those who made its music before, alongside and after it, its declared influences and its bands (`docs/vision.md` §2). Its data is musilogy's, loaded into the `musilogy` schema: `musilogyService` calls only the SQL functions of `musilogy/docs/conception.md` §4, never the tables.
+
+- **A section not loaded yet is `null`, never empty.** A function Postgres does not know yet (`42883`, or the schema missing) makes its section `null` (`neighbours`, `influences`) and the page says so; the card and the search answer 503 instead, and the page says Musilogy is reloading. musilogy changes only when it is loaded again: answers are cached for an hour.
+- **Proximity is never an influence.** Neighbours come from ListenBrainz co-listening, sorted by musilogy into before / alongside / after by their start year (±3 years); only Wikidata's declared influences are called influences, each with its statement.
+- **Band links** keep MusicBrainz's band relations only (`LINK_KINDS`: member of band, founder, subgroup, artist rename, is person, collaboration), worded from the artist's side; the direction of each was checked on the loaded data.
+- An artist the antenna played links to its artist page (`played`), read from `artist.mbid`; the artist page links back (`ArtistProfile.mbid`).
+- **The map** (`MusilogyMap`) draws the 40 closest neighbours in time, laid out by `layoutMap` (a pure function): years left to right, the artist's span on the axis with its name, each neighbour at its start year, the closest on the rows nearest the axis; a label with no free row is left to the lists. Labels are Geist Mono at 12 units, whose advance (0.6 em, measured in Chromium) makes their width known — a CSS letter-spacing on the SVG would break that. The drawing is `aria-hidden`: the lists below are its accessible form. On a narrow screen it keeps its size, scrolls sideways and opens on the artist.
+- The pages are the app shell, `X-Robots-Tag: noindex` (nginx), until a richness threshold for indexing is measured.
+
 ## SSRF, headers, and other security baselines
 
 - Never `fetch()` a user-supplied URL without `assertSafeUrl()` from `lib/security/urlValidation`. It blocks private IPv4/IPv6, link-local (`169.254.0.0/16` = cloud metadata), and enforces `https` in prod.

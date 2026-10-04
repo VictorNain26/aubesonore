@@ -2,6 +2,7 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { SiteHeader } from './SiteHeader';
 import { useAuthStore } from '../stores/authStore';
 import { useAuthModalStore } from '../stores/authModalStore';
@@ -30,7 +31,7 @@ beforeEach(() => {
 
 describe('SiteHeader', () => {
   it('shows the sign-in button when unauthenticated and opens the auth modal on click', async () => {
-    render(<SiteHeader />);
+    render(<SiteHeader />, { wrapper: MemoryRouter });
 
     const button = screen.getByRole('button', { name: 'Se connecter' });
     await userEvent.click(button);
@@ -59,7 +60,7 @@ describe('SiteHeader', () => {
 
   it('opens Mes titres in a drawer named like its button', async () => {
     signIn();
-    render(<SiteHeader />);
+    render(<SiteHeader />, { wrapper: MemoryRouter });
 
     await userEvent.click(screen.getByRole('button', { name: 'Mes titres' }));
     expect(await screen.findByRole('dialog', { name: 'Mes titres' })).toBeInTheDocument();
@@ -67,7 +68,7 @@ describe('SiteHeader', () => {
 
   it('keeps the account in its own menu, where the listener signs out', async () => {
     const signOut = signIn();
-    render(<SiteHeader />);
+    render(<SiteHeader />, { wrapper: MemoryRouter });
 
     await userEvent.click(screen.getByRole('button', { name: 'Mon compte' }));
     expect(await screen.findByText('jane@example.com')).toBeInTheDocument();
@@ -78,14 +79,14 @@ describe('SiteHeader', () => {
   it('shows neither sign-in nor user menu while loading', () => {
     useAuthStore.setState({ ...baseAuthState, isLoading: true });
 
-    render(<SiteHeader />);
+    render(<SiteHeader />, { wrapper: MemoryRouter });
 
     expect(screen.queryByRole('button', { name: 'Se connecter' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Mes titres' })).not.toBeInTheDocument();
   });
 
   it('opens my tracks only for a signed-in listener', () => {
-    render(<SiteHeader />);
+    render(<SiteHeader />, { wrapper: MemoryRouter });
     expect(screen.queryByRole('button', { name: 'Mes titres' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Les plus gardés' })).toHaveAttribute(
       'href',

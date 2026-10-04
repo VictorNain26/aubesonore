@@ -258,6 +258,17 @@ def test_a_proximity_snapshot_cut_short_resumes_where_it_stopped(tmp_path, monke
 
 
 @pytest.mark.usefixtures("slept")
+def test_a_neighbour_naming_no_artist_is_kept(monkeypatch):
+    # The service leaves reference_mbid empty now and then (2026-10-04): the
+    # first snapshot stopped on its sixth artist.
+    asked = mbids(1)[0]
+    rows = neighbours(asked)
+    rows[1]["reference_mbid"] = None
+    monkeypatch.setattr(fetch, "_get", lambda _url, _params: (rows, Message()))
+    assert len(fetch.similar_artists(asked)["similar"]) == 2
+
+
+@pytest.mark.usefixtures("slept")
 def test_neighbours_of_another_artist_are_refused(monkeypatch):
     # Breaks if a neighbour could land on an artist it was not asked for.
     monkeypatch.setattr(

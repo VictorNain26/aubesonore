@@ -9,6 +9,7 @@ import { logger } from './lib/logger';
 import { trackRoutes } from './routes/track.routes';
 import { preferencesRoutes } from './routes/preferences.routes';
 import { artistRoutes } from './routes/artist.routes';
+import { musilogyRoutes } from './routes/musilogy.routes';
 import { artistPageRoutes } from './routes/artistPage.routes';
 import { pushRoutes } from './routes/push.routes';
 import { statsRoutes } from './routes/stats.routes';
@@ -83,6 +84,7 @@ const app = new Elysia()
   .use(trackRoutes)
   .use(preferencesRoutes)
   .use(artistRoutes)
+  .use(musilogyRoutes)
   .use(artistPageRoutes)
   .use(pushRoutes)
   .use(statsRoutes)

@@ -173,14 +173,17 @@ def similar_artists(mbid: str) -> dict[str, Any]:
     service answers one artist per request (it takes no batch) and states no
     rate limit: the snapshot keeps to the API's one call per second.
 
-    An external payload: every neighbour must name the artist asked, or a
-    neighbour lands on the wrong artist without anything noticing."""
+    An external payload: no neighbour may name another artist than the one
+    asked, or it lands on the wrong artist without anything noticing. A
+    neighbour naming none is kept: the service leaves `reference_mbid` empty
+    now and then (Pitty, among the neighbours of 00034ede…, 2026-10-04), and
+    the request asked about one artist only."""
     rows, _ = _with_retries(
         lambda: _get(SIMILAR_URL, {"artist_mbids": mbid, "algorithm": SIMILAR_ALGORITHM})
     )
     if not isinstance(rows, list) or any(
         not isinstance(r, dict)
-        or r.get("reference_mbid") != mbid
+        or r.get("reference_mbid") not in (mbid, None)
         or not isinstance(r.get("artist_mbid"), str)
         or not isinstance(r.get("score"), int)
         for r in rows

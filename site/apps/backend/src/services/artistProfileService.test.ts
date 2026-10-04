@@ -141,6 +141,7 @@ describe('getArtistProfile', () => {
       id: 'artist-1',
       name: 'Daft Punk',
       slug: 'daft-punk',
+      mbid: null,
       image: 'https://cdn.deezer.com/dp.jpg',
       facts,
       summary: summaryEn,

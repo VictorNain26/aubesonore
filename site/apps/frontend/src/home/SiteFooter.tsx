@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
+import { localizeHref } from '@/paraglide/runtime.js';
 import { cn } from '@/lib/utils';
 import { useLocaleStore } from '../stores/localeStore';
 import { AboutModal } from '../design/organisms/AboutModal';
@@ -45,6 +47,9 @@ export function SiteFooterView({
         © {new Date().getFullYear()} AubeSonore · {m.footer_free()}
       </span>
       <div className="flex flex-wrap items-center gap-x-7">
+        <Link to={localizeHref('/musilogy')} className={LINK}>
+          {m.musilogy_title()}
+        </Link>
         <button type="button" onClick={onOpenAbout} className={LINK}>
           {m.footer_about()}
         </button>

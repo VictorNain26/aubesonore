@@ -37,6 +37,7 @@ const profileSpy = spyOn(profileService, 'getArtistProfile').mockImplementation(
           id: VALID_ID,
           name: profileName,
           slug: 'daft-punk',
+          mbid: null,
           image: profileImage,
           facts: null,
           summary: {

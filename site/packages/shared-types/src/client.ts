@@ -137,6 +137,8 @@ export interface ArtistProfile {
   id: string;
   name: string;
   slug: string;
+  /** The MusicBrainz id, the way into Musilogy; null when none is known. */
+  mbid: string | null;
   /** Absolute https Deezer URL, hotlinked — never re-hosted. */
   image: string | null;
   facts: ArtistFacts | null;
@@ -161,3 +163,103 @@ export const PLATFORM_NAMES: Record<PreferredPlatform, string> = {
 // Stable ordering matches PREFERRED_PLATFORMS.
 export const PLATFORMS: ReadonlyArray<{ id: PreferredPlatform; name: string }> =
   PREFERRED_PLATFORMS.map((id) => ({ id, name: PLATFORM_NAMES[id] }));
+
+/** The address of an artist page: only artists the antenna played have one. */
+export interface ArtistPageRef {
+  id: string;
+  slug: string;
+}
+
+/**
+ * Musilogy (docs/vision.md §2) reads musilogy's SQL functions over a
+ * MusicBrainz dump (genres CC BY-NC-SA 3.0), ListenBrainz snapshots (CC0) and
+ * Wikidata (CC0). Artists are keyed by MBID; `played` leads to the artist page
+ * when the antenna played them. An absence stays null.
+ */
+export interface MusilogyArtistRef {
+  mbid: string;
+  name: string;
+  /** MusicBrainz's own way of telling homonyms apart. */
+  disambiguation: string | null;
+  /** The start of the career: declared, else the first album's year. */
+  y0: number | null;
+  played: ArtistPageRef | null;
+}
+
+export interface MusilogyCard extends MusilogyArtistRef {
+  /** MusicBrainz's type: Group, Person, Orchestra, Choir. */
+  type: string;
+  country: string | null;
+  beginArea: string | null;
+  /** `declared` or `first_album`: an inferred start is not a stated one. */
+  y0Source: string | null;
+  yEnd: number | null;
+  yEndSource: string | null;
+  ended: boolean | null;
+  genres: string[];
+  /** ListenBrainz listeners; null when it counts none, not zero. */
+  listeners: number | null;
+}
+
+/** A neighbour by co-listening: close in sound, never said to be an influence. */
+export interface MusilogyNeighbour extends MusilogyArtistRef {
+  yEnd: number | null;
+  score: number;
+}
+
+export interface MusilogyInfluence extends MusilogyArtistRef {
+  /** The Wikidata statement that declares it. */
+  statement: string;
+}
+
+/** The band links Musilogy shows, read from the artist's side. */
+export type MusilogyLinkKind =
+  | 'memberOf'
+  | 'members'
+  | 'founded'
+  | 'foundedBy'
+  | 'subgroupOf'
+  | 'subgroups'
+  | 'renamedTo'
+  | 'renamedFrom'
+  | 'aliasOf'
+  | 'aliases'
+  | 'collaboratedIn'
+  | 'collaborators';
+
+export interface MusilogyLink extends MusilogyArtistRef {
+  kind: MusilogyLinkKind;
+  yBegin: number | null;
+  yEnd: number | null;
+}
+
+/** Close neighbours who started more than 3 years before, within 3 years, after, or undated. */
+export interface MusilogyNeighbours {
+  before: MusilogyNeighbour[];
+  during: MusilogyNeighbour[];
+  after: MusilogyNeighbour[];
+  undated: MusilogyNeighbour[];
+}
+
+/** Influences the artist declared, and artists who declared it one. */
+export interface MusilogyInfluences {
+  cites: MusilogyInfluence[];
+  citedBy: MusilogyInfluence[];
+}
+
+export interface MusilogyArtist {
+  card: MusilogyCard;
+  /** Null while the data behind a section is not loaded yet; empty when it holds none. */
+  neighbours: MusilogyNeighbours | null;
+  influences: MusilogyInfluences | null;
+  links: MusilogyLink[];
+}
+
+export interface MusilogySearchHit {
+  mbid: string;
+  name: string;
+  disambiguation: string | null;
+  type: string;
+  y0: number | null;
+  listeners: number | null;
+}

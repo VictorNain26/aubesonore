@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Route, Routes, useLocation } from 'react-router';
 import { ArtistPageView } from './artist/ArtistPageView';
+import { MusilogyArtistView } from './musilogy/MusilogyView';
 import { AuthInit } from './components/AuthInit';
 import { AuthModalHost } from './components/AuthModalHost';
 import { NowPlayingPoller } from './components/NowPlayingPoller';
@@ -13,6 +14,7 @@ import { NotFoundPage } from './pages/NotFoundPage';
 import { useLocaleStore } from './stores/localeStore';
 
 const ArtistPage = lazy(() => import('./pages/ArtistPage'));
+const MusilogyPage = lazy(() => import('./pages/MusilogyPage'));
 
 /** Rendered inside a router: BrowserRouter in main.tsx, StaticRouter when pre-rendering. */
 export default function App() {
@@ -33,6 +35,14 @@ export default function App() {
     </ErrorBoundary>
   );
 
+  const musilogy = (
+    <ErrorBoundary fallback={<MusilogyArtistView state={{ status: 'error' }} />}>
+      <Suspense fallback={null}>
+        <MusilogyPage />
+      </Suspense>
+    </ErrorBoundary>
+  );
+
   return (
     <>
       <AuthInit />
@@ -44,6 +54,10 @@ export default function App() {
           <Route path="/reset-password" element={<HomePage />} />
           <Route path="/artist/:id/:slug?" element={artist} />
           <Route path="/en/artist/:id/:slug?" element={artist} />
+          <Route path="/musilogy" element={musilogy} />
+          <Route path="/en/musilogy" element={musilogy} />
+          <Route path="/musilogy/:mbid/:slug?" element={musilogy} />
+          <Route path="/en/musilogy/:mbid/:slug?" element={musilogy} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
         {/* Outside the routes: navigating between pages keeps the bar mounted. */}
