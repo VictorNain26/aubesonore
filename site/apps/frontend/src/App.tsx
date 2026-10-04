@@ -11,6 +11,7 @@ import { PlayerBar } from './home/PlayerBar';
 import Layout from './layout/Layout';
 import HomePage from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { LegalPage } from './pages/LegalPage';
 import { useLocaleStore } from './stores/localeStore';
 
 const ArtistPage = lazy(() => import('./pages/ArtistPage'));
@@ -58,6 +59,8 @@ export default function App() {
           <Route path="/en/musilogy" element={musilogy} />
           <Route path="/musilogy/:mbid/:slug?" element={musilogy} />
           <Route path="/en/musilogy/:mbid/:slug?" element={musilogy} />
+          <Route path="/mentions-legales" element={<LegalPage />} />
+          <Route path="/en/legal" element={<LegalPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
         {/* Outside the routes: navigating between pages keeps the bar mounted. */}

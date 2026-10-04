@@ -5,8 +5,6 @@ import { overwriteGetLocale, type Locale } from './paraglide/runtime.js';
 import * as m from './paraglide/messages.js';
 import { useLocaleStore } from './stores/localeStore';
 import App from './App';
-import { NotFoundPage } from './pages/NotFoundPage';
-import { LegalPage } from './pages/LegalPage';
 
 async function toHtml(element: ReactElement): Promise<string> {
   const { prelude } = await prerenderToNodeStream(<StrictMode>{element}</StrictMode>);
@@ -15,21 +13,18 @@ async function toHtml(element: ReactElement): Promise<string> {
   return Buffer.concat(chunks).toString('utf8');
 }
 
-/** The home page as a crawler without JavaScript should read it, in one language. */
-export function pageHtml(locale: Locale): Promise<string> {
+/**
+ * A page as a crawler without JavaScript should read it, in one language: the home page, the
+ * legal page, or the 404 (rendered at a path no route knows). The client hydrates each.
+ */
+export function pageHtml(locale: Locale, path = locale === 'en' ? '/en/' : '/'): Promise<string> {
   overwriteGetLocale(() => locale);
   useLocaleStore.setState({ locale });
   return toHtml(
-    <StaticRouter location={locale === 'en' ? '/en/' : '/'}>
+    <StaticRouter location={path}>
       <App />
     </StaticRouter>
   );
-}
-
-/** Pages served as plain HTML, never hydrated. */
-export function staticPageHtml(page: 'notFound' | 'legal', locale: Locale): Promise<string> {
-  overwriteGetLocale(() => locale);
-  return toHtml(page === 'notFound' ? <NotFoundPage /> : <LegalPage />);
 }
 
 export function meta(
@@ -38,8 +33,8 @@ export function meta(
 ): { title: string; description: string } {
   if (page === 'notFound') {
     return {
-      title: 'Page introuvable · AubeSonore',
-      description: "Un blanc à l'antenne : cette page n'existe pas, ou plus.",
+      title: `${m.notfound_meta_title({}, { locale })} · AubeSonore`,
+      description: m.notfound_body({}, { locale }),
     };
   }
   if (page === 'legal') {

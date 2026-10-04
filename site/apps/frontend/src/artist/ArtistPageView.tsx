@@ -8,12 +8,13 @@ import type {
   ArtistSummary,
   ClientLikedTrack,
 } from '@aubesonore/shared-types/client';
-import { getLocale, localizeHref } from '@/paraglide/runtime.js';
+import { getLocale } from '@/paraglide/runtime.js';
 import { Cover } from '../home/Cover';
 import { KeepHeart } from '../home/KeepHeart';
 import { musilogyPath } from '../lib/musilogy';
 import { ARTIST_LINK, TEXT_ACTION } from '../home/styles';
 import * as m from '@/paraglide/messages.js';
+import { SiteHeader } from '../home/SiteHeader';
 
 export type ArtistPageState =
   | { status: 'loading' }
@@ -197,22 +198,6 @@ export function Section({
   );
 }
 
-export function Header() {
-  return (
-    <header className="px-page flex items-center justify-between gap-6 pt-5 md:pt-7">
-      <Link
-        to={localizeHref('/')}
-        className="text-mark condensed ease-out-quart focus-visible:outline-accent inline-flex min-h-11 items-center rounded-sm transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4"
-      >
-        aubesonore
-      </Link>
-      <Link to={localizeHref('/')} className={TEXT_ACTION}>
-        {m.artist_back()}
-      </Link>
-    </header>
-  );
-}
-
 function Message({ title, body }: { title: string; body: string }) {
   return (
     <div className="lift-in px-page flex flex-col gap-4 py-24">
@@ -356,7 +341,7 @@ export function ArtistPageView({
 }) {
   return (
     <main id="main" className="min-h-dvh">
-      <Header />
+      <SiteHeader />
       {state.status === 'loading' ? (
         <div aria-busy="true" className="px-page flex flex-col gap-6 pt-10 md:pt-16">
           <span className="bg-surface-raised aspect-square w-40 rounded-sm md:w-60" />
