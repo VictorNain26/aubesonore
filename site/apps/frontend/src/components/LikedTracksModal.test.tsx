@@ -133,8 +133,18 @@ describe('LikedTracksModal', () => {
   });
 
   it('names the platform a track really opens on when it is not on the chosen one', () => {
+    usePreferencesStore.setState({
+      preferences: {
+        userId: 'u1',
+        preferredPlatform: 'appleMusic',
+        updatedAt: new Date().toISOString(),
+      },
+    });
     useLikedTracksStore.setState({
-      tracks: [{ ...makeTrack(0), platformLinks: { deezer: 'https://www.deezer.com/track/y' } }],
+      tracks: [
+        { ...makeTrack(0), platformLinks: { deezer: 'https://www.deezer.com/track/y' } },
+        { ...makeTrack(1), platformLinks: { appleMusic: 'https://music.apple.com/z' } },
+      ],
     });
     render(<LikedTracksModal isOpen={true} onClose={vi.fn()} />);
 
@@ -146,6 +156,30 @@ describe('LikedTracksModal', () => {
     expect(screen.getByRole('button', { name: 'Ne plus garder « Track 0 »' })).toHaveTextContent(
       'Retirer'
     );
+  });
+
+  it('opens on Deezer when the saved platform links no kept track', () => {
+    useLikedTracksStore.setState({
+      tracks: [{ ...makeTrack(0), platformLinks: { deezer: 'https://www.deezer.com/track/y' } }],
+    });
+    render(<LikedTracksModal isOpen={true} onClose={vi.fn()} />);
+
+    expect(screen.getByRole('link', { name: 'Ouvrir « Track 0 » sur Deezer' })).toBeInTheDocument();
+    expect(screen.getByText('gardé le 1 janvier')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: "Choisir la plateforme d'écoute" })
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers only the platforms the kept tracks open on, and Deezer always', async () => {
+    useLikedTracksStore.setState({
+      tracks: [{ ...makeTrack(0), platformLinks: { appleMusic: 'https://music.apple.com/z' } }],
+    });
+    render(<LikedTracksModal isOpen={true} onClose={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole('button', { name: "Choisir la plateforme d'écoute" }));
+    const options = await screen.findAllByRole('menuitemradio');
+    expect(options.map((option) => option.textContent)).toEqual(['Apple Music', 'Deezer']);
   });
 
   it('counts nothing when the library is empty', async () => {

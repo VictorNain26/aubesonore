@@ -18,6 +18,10 @@ interface LikedTracksModalProps {
   pageSize?: number;
 }
 
+// getPlatformLink files a YouTube choice under its YouTube Music link.
+const linkKey = (platform: PreferredPlatform) =>
+  platform === 'youtube' ? 'youtubeMusic' : platform;
+
 // Grace period during which a removed track stays visible with an Undo
 // affordance before the unlike request actually fires.
 const REMOVAL_DELAY_MS = 5000;
@@ -59,7 +63,22 @@ export function LikedTracksModal({ isOpen, onClose, pageSize = 50 }: LikedTracks
   // at least one removal is pending.
   const [now, setNow] = useState(() => Date.now());
 
-  const preferredPlatform = preferences?.preferredPlatform || 'spotify';
+  // Only the platforms a kept track really opens on, and Deezer always: every
+  // track on the antenna comes from its Deezer page, whose ISRC finds it there.
+  // A saved choice that opens nothing (Spotify without Premium, Tidal…) reads
+  // as Deezer instead of promising a platform the links never reach.
+  const platforms = useMemo(
+    () =>
+      PLATFORMS.filter(
+        (platform) =>
+          platform.id === 'deezer' ||
+          tracks.some((track) => track.platformLinks?.[linkKey(platform.id)])
+      ),
+    [tracks]
+  );
+  const saved = preferences?.preferredPlatform;
+  const preferredPlatform: PreferredPlatform =
+    saved && platforms.some((platform) => platform.id === saved) ? saved : 'deezer';
 
   useEffect(() => {
     if (pendingRemovals.size === 0) return;
@@ -142,7 +161,7 @@ export function LikedTracksModal({ isOpen, onClose, pageSize = 50 }: LikedTracks
   const visibleTracks = sortedTracks.slice(0, visibleCount);
   const hiddenCount = sortedTracks.length - visibleTracks.length;
 
-  const preferredKey = preferredPlatform === 'youtube' ? 'youtubeMusic' : preferredPlatform;
+  const preferredKey = linkKey(preferredPlatform);
   const linkOf = (track: (typeof visibleTracks)[number]) => {
     const link = getPlatformLink(track, preferredPlatform);
     return link
@@ -184,7 +203,7 @@ export function LikedTracksModal({ isOpen, onClose, pageSize = 50 }: LikedTracks
       tracks={trackViewModels}
       hiddenCount={hiddenCount}
       onShowMore={() => setVisibleCount(sortedTracks.length)}
-      platforms={PLATFORMS}
+      platforms={platforms}
       selectedPlatformId={preferredPlatform}
       onSelectPlatform={(platformId) => handleUpdatePlatform(platformId as PreferredPlatform)}
       onDeleteTrack={handleDelete}
