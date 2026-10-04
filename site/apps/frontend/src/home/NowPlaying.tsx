@@ -125,7 +125,11 @@ export function NowPlayingView({
                 track.artist
               )}
             </p>
-            {album ? <p className="text-sub text-text-muted m-0">{album}</p> : null}
+            {album ? (
+              <p className="text-sub text-text-muted m-0">
+                {m.now_album_from()} <cite>{album}</cite>
+              </p>
+            ) : null}
           </div>
         ) : (
           <div aria-busy="true" className="flex flex-col gap-2">
