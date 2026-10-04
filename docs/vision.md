@@ -233,7 +233,7 @@ Risques connus, acceptés tant que leur déclencheur ne s'est pas produit :
 | Surface | Route | Indexée | Geste |
 |---|---|---|---|
 | Accueil | `/`, `/en` | oui, pré-rendue | Écouter |
-| Page artiste | `/artist/:id/:slug` | oui | Savoir, Comprendre |
+| Page artiste | `/artiste/:slug`, `/en/artist/:slug` ; un slug par artiste, jamais réattribué | oui | Savoir, Comprendre |
 | Musilogy | `/musilogy` (recherche), `/musilogy/:mbid/:slug` pour un artiste jamais joué (et `/en/…`) | au-delà d'un seuil de contenu (§2.3) | Comprendre |
 | Connexion | `/connexion`, `/en/sign-in` | non | Garder |
 | Bibliothèque, compte | panneau et menu de l'en-tête | non | Garder |
@@ -273,7 +273,10 @@ Dans cet ordre ; chaque étape est une ou plusieurs PR courtes, fusionnées avan
 5. **musilogy refondu** — fait pour les retraits (#280), les influences Wikidata et la recherche
    (#286) ; reste la proximité, dont la PR attend la fin du relevé (écart 1).
 6. **Musilogy, le produit** — page texte (#281, #289) et carte (#285) en ligne ; reste le seuil
-   d'indexation mesuré, et le rendu serveur qu'il suppose (écart 5).
+   d'indexation mesuré, et le rendu serveur qu'il suppose (écart 5). Une page qui passe le seuil
+   reçoit alors son slug dans `artist_slug`, comme un artiste joué ; les autres gardent leur
+   adresse par MBID, non indexée : un registre de 2,28 M de noms ne servirait qu'à des pages que
+   personne ne trouve par un moteur.
 7. **Influences tirées de Wikipédia**, chaque citation avec sa phrase, après mesure du coût.
 8. **Liens d'œuvre** : featurings (écart 4), remixes, producteurs, tirés du dump MusicBrainz.
 
