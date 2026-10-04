@@ -232,24 +232,22 @@ Risques connus, acceptés tant que leur déclencheur ne s'est pas produit :
 
 ## 6. Écarts actuels
 
-Ce qui ne s'emboîte pas encore, mesuré les 2026-10-03 et 2026-10-04 :
+Ce qui ne s'emboîte pas encore, mesuré le 2026-10-04 au soir (les écarts du 2026-10-03 sur la
+frise, l'identité devinée, les titres gardés non reliés, les caches de la page artiste et les
+alertes « artiste aimé » sont résolus par les étapes 2 à 4, dans l'historique git) :
 
-1. **Le site porte ce que cette vision abandonne** : la frise des genres (`/frieze`, #266), son
-   API (`/api/frieze`, #262), la section filiation et contemporains de la page artiste (#264) ;
-   côté musilogy, les tables et fonctions qui les servent (densité, activité, scènes, filiation,
-   contemporains).
-2. **L'identité est devinée** : l'artiste se trouve par une recherche Deezer sur le nom et un
-   titre joué, le MBID seulement par le lien Deezer que MusicBrainz déclare ; 21 des 168 artistes
-   joués n'ont pas de MBID, et Can est rattaché à une mauvaise page Deezer. Le champ `isrc`
-   d'AzuraCast est vide pour tous les titres.
-3. **Les titres gardés ne sont reliés à rien** : `liked_tracks` ne garde que le nom de l'artiste
-   en texte, `isrc` est vide pour les 91 titres, `songlink_url` pointe vers un service fermé ;
-   12 des 88 artistes gardés correspondent à un artiste connu du site.
-4. **La page artiste dépend de caches en mémoire** : chaque déploiement les vide, et une page
-   froide enchaîne Deezer, MusicBrainz, Wikidata et Wikipédia à chaud.
-5. **Les alertes « artiste aimé » ne reconnaissent pas l'artiste comme le reste du site** : elles
-   comparent le nom en minuscules brutes (`likedArtistWatcher`), là où l'identité utilise le nom
-   normalisé.
+1. **Les proximités ne sont pas encore en ligne** : le relevé ListenBrainz (111 402 artistes)
+   avance à ~0,55 artiste par seconde, pannes du service comprises ; tant qu'il n'est pas
+   épinglé et chargé, Musilogy dit « pas encore relevées » et la carte ne s'affiche pas.
+2. **Licence de la similarité ListenBrainz** : le service n'en publie pas ; les données dont il
+   dérive sont en CC0. Le site crédite ListenBrainz sans licence (§2.4).
+3. **Identité incomplète** : 39 des 332 artistes joués n'ont pas de MBID (MusicBrainz ne les
+   connaît pas, ou sans lien vérifiable) ; 22 des 91 titres gardés, gardés avant que les
+   passages soient enregistrés, ne retrouvent ni leur passage ni leur titre exact chez Deezer.
+4. **Les featurings ne relient que l'artiste principal** (§4.4 promet chaque crédité).
+5. **Musilogy n'est pas indexé** : pages rendues côté client, `noindex` tant que le seuil de
+   richesse n'est pas mesuré (§2.3) ; l'objectif d'attirer des auditeurs n'est donc pas encore
+   servi.
 6. **Le README du site décrit un site qui n'existe plus** : Songlink/Odesli (fermé le
    2026-07-31), identité jour/nuit, fil-journée.
 7. **La migration `0006_timestamptz` avale toute erreur** (`EXCEPTION WHEN OTHERS THEN NULL`).
@@ -259,21 +257,18 @@ Ce qui ne s'emboîte pas encore, mesuré les 2026-10-03 et 2026-10-04 :
 
 Dans cet ordre ; chaque étape est une ou plusieurs PR courtes, fusionnées avant la suivante.
 
-1. **Cette vision**, validée.
-2. **Retraits** : la frise, son API et la section filiation de la page artiste quittent le site,
-   avec leurs types, messages et documents (écart 1, côté site).
-3. **Identité exacte** : le pipeline écrit l'ISRC de chaque titre dans AzuraCast, rattrapage des
-   titres déjà publiés compris ; le site résout par l'ISRC (§4.4) ; un titre gardé enregistre son
-   ISRC et son artiste, et les 91 titres gardés sont rattrapés (écarts 2, 3 et 5).
-4. **Page artiste** : profil gardé en base, portrait factuel, vos titres gardés ou ce que
-   l'antenne a joué, lien vers Musilogy (écart 4).
-5. **musilogy refondu** : retrait de ce qui servait la frise et la filiation ; relevé daté des
-   proximités ListenBrainz, influences Wikidata, liens de groupe ; une nouvelle conception écrite
-   dans `musilogy/` (écart 1, côté musilogy).
-6. **Musilogy, le produit** : la page texte d'un artiste d'abord, puis la carte, puis le seuil
-   d'indexation mesuré.
+1. **Cette vision** — fait (#267).
+2. **Retraits** — fait (#268).
+3. **Identité exacte** — fait : ISRC écrit par le pipeline (#269, 532 titres rattrapés), résolution
+   par ISRC (#270) vérifiée contre le titre et le nom joués (#288, 6 identités réparées), titres
+   gardés reliés (#272).
+4. **Page artiste** — fait (#275) : profil gardé en base, portrait factuel, titres gardés.
+5. **musilogy refondu** — fait pour les retraits (#280), les influences Wikidata et la recherche
+   (#286) ; reste la proximité, dont la PR attend la fin du relevé (écart 1).
+6. **Musilogy, le produit** — page texte (#281, #289) et carte (#285) en ligne ; reste le seuil
+   d'indexation mesuré, et le rendu serveur qu'il suppose (écart 5).
 7. **Influences tirées de Wikipédia**, chaque citation avec sa phrase, après mesure du coût.
-8. **Liens d'œuvre** : featurings, remixes, producteurs, tirés du dump MusicBrainz.
+8. **Liens d'œuvre** : featurings (écart 4), remixes, producteurs, tirés du dump MusicBrainz.
 
 En parallèle : le README du site et la migration 0006 (écarts 6 et 7), la copie hors site dès
 qu'un compte de stockage existe, le test du disque de sauvegarde sur un port USB natif.
