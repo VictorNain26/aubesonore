@@ -80,7 +80,7 @@ export function PlayerBarView({
         onClick={onToggleListen}
         aria-label={listenAria(listen)}
         aria-busy={listen === 'connecting'}
-        className="ease-out-quart focus-visible:outline-on-accent shrink-0 rounded-full transition-transform duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95"
+        className="group ease-spring focus-visible:outline-on-accent shrink-0 rounded-full transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95"
       >
         <ListenDisc state={listen} className="size-12" />
       </button>

@@ -141,7 +141,7 @@ export function NowPlayingView({
             onClick={onToggleListen}
             aria-label={listenAria(listen)}
             aria-busy={listen === 'connecting'}
-            className="bg-accent text-on-accent ease-out-quart focus-visible:outline-accent flex h-14 w-full items-center gap-3 rounded-full py-1.5 pr-6 pl-1.5 transition-transform duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95 md:w-auto"
+            className="group bg-accent text-on-accent ease-spring focus-visible:outline-accent flex h-14 w-full items-center gap-3 rounded-full py-1.5 pr-6 pl-1.5 transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95 md:w-auto"
           >
             <ListenDisc state={listen} className="size-11" />
             <ListenLabel state={listen} className="text-ui font-semibold" />

@@ -253,6 +253,16 @@
       opacity: 0.3;
     }
   }
+
+  @keyframes level {
+    0%,
+    100% {
+      scale: 1 0.35;
+    }
+    50% {
+      scale: 1 1;
+    }
+  }
 }
 
 @utility dawn-band {
@@ -422,6 +432,32 @@
 }
 
 /* The live moves to the next track: the cover comes into focus, the title rises. */
+/* The live is playing: three bars rise and fall out of step, like a meter. Still when motion is
+   reduced, at three heights. */
+@utility live-bars {
+  & > span {
+    transform-origin: bottom;
+  }
+  & > span:nth-child(1) {
+    scale: 1 0.6;
+  }
+  & > span:nth-child(3) {
+    scale: 1 0.8;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    & > span {
+      animation: level 0.9s var(--ease-out-soft) infinite;
+    }
+    & > span:nth-child(2) {
+      animation-delay: -0.3s;
+    }
+    & > span:nth-child(3) {
+      animation-delay: -0.6s;
+    }
+  }
+}
+
 @utility swap-in {
   @media (prefers-reduced-motion: no-preference) {
     animation: cover-in 0.7s var(--ease-out-soft) both;
