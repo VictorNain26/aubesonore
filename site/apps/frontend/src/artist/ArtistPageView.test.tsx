@@ -2,22 +2,11 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { makeArtistProfile, makeFriezeArtist } from '../mocks/handlers';
-import {
-  ArtistPageView,
-  factsLine,
-  type ArtistPageState,
-  type LineageState,
-} from './ArtistPageView';
+import { makeArtistProfile } from '../mocks/handlers';
+import { ArtistPageView, factsLine, type ArtistPageState } from './ArtistPageView';
 
-function show(state: ArtistPageState, lineage: LineageState = { status: 'none' }) {
-  return render(<ArtistPageView state={state} lineage={lineage} />, { wrapper: MemoryRouter });
-}
-
-const ready = { status: 'ready' as const, profile: makeArtistProfile() };
-
-function ref(mbid: string, name: string, played: { id: string; slug: string } | null = null) {
-  return { mbid, name, disambiguation: null, y0: 1960, played };
+function show(state: ArtistPageState) {
+  return render(<ArtistPageView state={state} />, { wrapper: MemoryRouter });
 }
 
 const SUMMARY = {
@@ -137,115 +126,5 @@ describe('factsLine', () => {
         active: false,
       })
     ).toBeNull();
-  });
-});
-
-describe('ArtistPageView, lineage and contemporaries', () => {
-  it('names each model by its role in the source, and links the ones the antenna played', () => {
-    show(ready, {
-      status: 'ready',
-      artist: makeFriezeArtist({
-        lineage: [
-          {
-            side: 'inspiration',
-            artist: {
-              ...ref('mb-t', 'Lindsay Kemp', { id: 'p-1', slug: 'lindsay-kemp' }),
-              yEnd: 2018,
-            },
-            source: 'mb_teacher',
-          },
-          {
-            side: 'inspiration',
-            artist: { ...ref('mb-a', 'Anthony Newley'), yEnd: null },
-            source: 'mb_tribute',
-          },
-        ],
-      }),
-    });
-
-    expect(screen.getByRole('heading', { name: 'Ses modèles' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Lindsay Kemp' })).toHaveAttribute(
-      'href',
-      '/artist/p-1/lindsay-kemp'
-    );
-    expect(screen.getByText('professeur')).toBeInTheDocument();
-    expect(screen.getByText('Anthony Newley').tagName).toBe('SPAN');
-    expect(screen.getByText('honoré')).toBeInTheDocument();
-  });
-
-  it('says no source is known rather than leaving a side blank', () => {
-    show(ready, { status: 'ready', artist: makeFriezeArtist() });
-
-    expect(screen.getAllByText('Aucune source connue.')).toHaveLength(3);
-  });
-
-  it('shows the first twelve heirs and counts the rest', () => {
-    const lineage = Array.from({ length: 15 }, (_, i) => ({
-      side: 'descendant' as const,
-      artist: { ...ref(`mb-${i}`, `Pupil ${i}`), yEnd: null },
-      source: 'mb_teacher',
-    }));
-
-    show(ready, { status: 'ready', artist: makeFriezeArtist({ lineage }) });
-
-    expect(screen.getAllByText('élève')).toHaveLength(12);
-    expect(screen.getByText('Et 3 autres.')).toBeInTheDocument();
-  });
-
-  it('counts tribute acts under their own label instead of mixing them with the heirs', () => {
-    const tributes = Array.from({ length: 30 }, (_, i) => ({
-      side: 'descendant' as const,
-      artist: { ...ref(`mb-t${i}`, `Tribute ${i}`), yEnd: null },
-      source: 'mb_tribute',
-    }));
-    const heir = {
-      side: 'descendant' as const,
-      artist: { ...ref('mb-h', 'Dave Rodgers'), disambiguation: 'Eurobeat artist', yEnd: 2024 },
-      source: 'mb_named_after',
-    };
-
-    show(ready, { status: 'ready', artist: makeFriezeArtist({ lineage: [heir, ...tributes] }) });
-
-    expect(screen.getByText('Dave Rodgers')).toBeInTheDocument();
-    expect(screen.getByText('Eurobeat artist · porte son nom')).toBeInTheDocument();
-    expect(screen.queryByText('Tribute 0')).not.toBeInTheDocument();
-    expect(screen.getByText('Groupes hommage : 30.')).toBeInTheDocument();
-  });
-
-  it('gives each contemporary the genres it shares and the scene that matched', () => {
-    show(ready, {
-      status: 'ready',
-      artist: makeFriezeArtist({
-        contemporaries: {
-          total: 30,
-          offset: 0,
-          items: [
-            {
-              artist: { ...ref('mb-c', 'Hot Chocolate'), yPresenceEnd: 1987 },
-              scene: 'begin_area',
-              sharedGenres: ['soul', 'pop'],
-              jaccard: 0.4,
-            },
-          ],
-        },
-      }),
-    });
-
-    expect(screen.getByText('soul, pop · même lieu')).toBeInTheDocument();
-    expect(screen.getByText('1960 – 1987')).toBeInTheDocument();
-    expect(screen.getByText('Et 29 autres.')).toBeInTheDocument();
-  });
-
-  it('shows nothing of musilogy while it loads, fails, or does not know the artist', () => {
-    for (const lineage of [
-      { status: 'loading' as const },
-      { status: 'error' as const },
-      { status: 'ready' as const, artist: null },
-      { status: 'none' as const },
-    ]) {
-      const { unmount } = show(ready, lineage);
-      expect(screen.queryByRole('heading', { name: 'Ses modèles' })).not.toBeInTheDocument();
-      unmount();
-    }
   });
 });

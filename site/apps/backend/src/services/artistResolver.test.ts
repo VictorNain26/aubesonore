@@ -218,7 +218,7 @@ describe('resolveArtist', () => {
   });
 });
 
-describe('the MBID, pivot to the frieze', () => {
+describe('the MBID, pivot to Musilogy', () => {
   const DAFT_PUNK = {
     status: 'match',
     artist: { id: '27', name: 'Daft Punk', picture: null },

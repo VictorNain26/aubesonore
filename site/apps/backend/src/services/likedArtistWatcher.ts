@@ -45,7 +45,7 @@ export function createLikedArtistNotifier(deps: WatcherDeps): () => Promise<void
 
     // Every artist the antenna plays gets its identity, MBID included, at its
     // first play rather than when a listener opens its page: that is what
-    // links the antenna to the frieze (docs/vision.md §4.4). Not awaited, so a
+    // links the antenna to Musilogy (docs/vision.md §4.4). Not awaited, so a
     // slow lookup never delays the notification.
     deps.resolveArtist(track.artist).catch((err: unknown) => {
       logger.warn('artist.resolve_failed', {

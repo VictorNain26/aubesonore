@@ -1,4 +1,4 @@
-import type { ArtistProfile, FriezeArtist } from '@aubesonore/shared-types/client';
+import type { ArtistProfile } from '@aubesonore/shared-types/client';
 import { http, HttpResponse } from 'msw';
 
 const API = 'http://localhost:3000';
@@ -144,35 +144,6 @@ export function makeArtistProfile(overrides: Partial<ArtistProfile> = {}): Artis
     playedOnRadio: [
       { title: 'F Major', artist: 'Hania Rani', playedAt: '2026-10-01T05:12:00.000Z' },
     ],
-    mbid: null,
-    ...overrides,
-  };
-}
-
-export function makeFriezeArtist(overrides: Partial<FriezeArtist> = {}): FriezeArtist {
-  return {
-    card: {
-      mbid: 'mb-bowie',
-      name: 'David Bowie',
-      disambiguation: null,
-      y0: 1967,
-      played: null,
-      type: 'Person',
-      country: 'GB',
-      beginArea: 'Brixton',
-      yBirth: 1947,
-      y0Source: 'first_album',
-      yEnd: 2016,
-      yEndSource: 'declared',
-      ended: true,
-      genres: [],
-      genreSource: null,
-      listenCount: null,
-      userCount: null,
-    },
-    links: [],
-    lineage: [],
-    contemporaries: { total: 0, offset: 0, items: [] },
     ...overrides,
   };
 }
