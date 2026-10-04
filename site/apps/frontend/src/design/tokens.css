@@ -209,7 +209,7 @@
   @keyframes focus-in {
     from {
       opacity: 0;
-      filter: blur(6px);
+      scale: 0.98;
     }
   }
 
@@ -392,10 +392,11 @@
   font-stretch: 75%;
 }
 
-/* Each block comes into focus as it enters the screen, a fade out of a light
-   blur, and goes back out when the scroll takes it away (animation-timeline:
-   view(): Chrome 115, Safari 26; elsewhere it just shows). Opacity and blur only:
-   a block that moved would open gaps in the lists. */
+/* Each block comes forward as it enters the screen, fading in from 98% of its
+   size, and goes back when the scroll takes it away (animation-timeline: view():
+   Chrome 115, Safari 26; elsewhere it just shows). It never moves: a shift would
+   open gaps in the lists (2.5rem did, 40px), and a blur dropped frames on wide
+   screens. A 61px row shrinks by just over half a pixel each side. */
 @utility reveal {
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {
