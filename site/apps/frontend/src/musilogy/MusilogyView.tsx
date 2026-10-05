@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { Search, X } from 'lucide-react';
 import type {
   MusilogyArtist,
   MusilogyArtistRef,
@@ -10,7 +11,6 @@ import type {
 import * as m from '@/paraglide/messages.js';
 import type { PageNavItem } from '../design/molecules/PageNav';
 import { Section } from '../design/molecules/Section';
-import { SiteHeader } from '../home/SiteHeader';
 import { ARTIST_LINK, TEXT_ACTION } from '../home/styles';
 import { cn } from '@/lib/utils';
 import { DISCOVERY } from '../lib/discoveryTrail';
@@ -275,12 +275,97 @@ export function MusilogySections({
 
 export type SearchState =
   | { status: 'idle' }
-  | { status: 'searching' }
+  /** `hits`: the last answer, kept on screen while the next one comes. */
+  | { status: 'searching'; hits: MusilogySearchHit[] }
   | { status: 'unavailable' }
   | { status: 'error' }
   | { status: 'done'; hits: MusilogySearchHit[] };
 
-/** Musilogy's entry: what it is, and a search for any artist. */
+// MusicBrainz's artist types the site has a word for; a character or "Other" says nothing.
+const HIT_KINDS: Record<string, () => string> = {
+  Person: () => m.artist_kind_person(),
+  Group: () => m.artist_kind_group(),
+  Orchestra: () => m.artist_kind_orchestra(),
+  Choir: () => m.artist_kind_choir(),
+};
+
+// Name and what tells it apart, then on a wide screen the kind and the first year in columns.
+const HIT_COLUMNS =
+  'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 md:grid-cols-[minmax(0,1fr)_9rem_5rem]';
+
+function SearchHitRow({ hit }: { hit: MusilogySearchHit }) {
+  const kind = HIT_KINDS[hit.type]?.() ?? null;
+  return (
+    <li className={cn(HIT_COLUMNS, 'border-border min-h-18 border-b py-2.5')}>
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <Link
+          to={pagePathOf({ ...hit, played: null })}
+          state={DISCOVERY}
+          className={cn(ARTIST_LINK, 'text-row self-start truncate underline-offset-4')}
+        >
+          {hit.name}
+        </Link>
+        {hit.disambiguation || kind ? (
+          <span className="text-sub text-text-muted truncate">
+            {/* The kind has its own column on a wide screen. */}
+            {kind ? (
+              <span className="md:hidden">
+                {kind}
+                {hit.disambiguation ? ' · ' : null}
+              </span>
+            ) : null}
+            {hit.disambiguation}
+          </span>
+        ) : null}
+      </span>
+      <span className="text-sub text-text-muted hidden md:block">{kind}</span>
+      <span className="text-ui text-text-muted font-mono whitespace-nowrap tabular-nums md:justify-self-start">
+        {hit.y0 ?? null}
+      </span>
+    </li>
+  );
+}
+
+function HitsSkeleton() {
+  return (
+    <ol aria-busy="true" className="m-0 list-none p-0">
+      {Array.from({ length: 5 }, (_, i) => (
+        <li
+          key={i}
+          className="border-border flex min-h-18 flex-col justify-center gap-2 border-b py-2.5"
+        >
+          <span className="bg-surface-raised h-4 w-1/3 rounded-sm" />
+          <span className="bg-surface-raised h-3 w-1/2 rounded-sm" />
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function SearchHits({ hits, stale }: { hits: MusilogySearchHit[]; stale: boolean }) {
+  return (
+    <div className={cn('ease-out-quart transition-opacity duration-150', stale && 'opacity-50')}>
+      <div
+        aria-hidden="true"
+        className={cn(
+          HIT_COLUMNS,
+          'border-border text-label text-text-muted hidden border-b pb-3 font-mono uppercase md:grid'
+        )}
+      >
+        <span>{m.musilogy_col_artist()}</span>
+        <span>{m.musilogy_col_kind()}</span>
+        <span>{m.musilogy_col_start()}</span>
+      </div>
+      <ol className="m-0 list-none p-0">
+        {hits.map((hit) => (
+          <SearchHitRow key={hit.mbid} hit={hit} />
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/** Musilogy's entry: what it is, and a search for any artist, its answers in columns. */
 export function MusilogyHomeView({
   query,
   onQueryChange,
@@ -291,38 +376,64 @@ export function MusilogyHomeView({
   search: SearchState;
 }) {
   return (
-    <main id="main" className="min-h-dvh">
-      <SiteHeader />
-      <div className="lift-in px-page flex flex-col gap-6 pt-10 pb-24 md:pt-16">
+    <main
+      id="main"
+      className="lift-in px-page flex flex-1 flex-col gap-10 pt-10 pb-16 md:gap-14 md:pt-16 md:pb-24"
+    >
+      <div className="grid gap-5 md:grid-cols-2 md:items-end md:gap-16">
         <h1 className="text-hero m-0">{m.musilogy_title()}</h1>
-        <p className="text-intro text-text-muted max-w-blurb m-0">{m.musilogy_lead()}</p>
-        <label className="flex max-w-xl flex-col gap-1.5">
-          <span className="text-ui">{m.musilogy_search_label()}</span>
+        <p className="text-intro text-text-muted max-w-aside m-0 md:pb-2">{m.musilogy_lead()}</p>
+      </div>
+
+      <div className="flex flex-col gap-8">
+        <label role="search" className="relative block w-full max-w-2xl">
+          <span className="sr-only">{m.musilogy_search_label()}</span>
+          <Search
+            className="text-text-muted pointer-events-none absolute top-1/2 left-5 size-5 -translate-y-1/2"
+            strokeWidth={1.8}
+            aria-hidden="true"
+          />
           <input
             type="search"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') onQueryChange('');
+            }}
             placeholder={m.musilogy_search_placeholder()}
             autoComplete="off"
-            className="border-accent text-row ease-out-quart placeholder:text-text-faint h-13 rounded-none border-0 border-b bg-transparent px-0 transition-[border-width] duration-150 focus-visible:border-b-2 focus-visible:outline-none [&::-webkit-search-cancel-button]:hidden"
+            className="text-row border-accent ease-out-quart placeholder:text-text-faint hover:bg-surface-raised focus-visible:outline-accent h-14 w-full rounded-full border bg-transparent pr-14 pl-13 font-normal transition-colors duration-150 focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-search-cancel-button]:hidden"
           />
+          {query ? (
+            <button
+              type="button"
+              onClick={() => onQueryChange('')}
+              aria-label={m.library_search_clear()}
+              className="ease-out-quart focus-visible:outline-accent absolute top-1.5 right-1.5 flex size-11 items-center justify-center rounded-full transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90"
+            >
+              <X className="size-4.5" strokeWidth={1.8} aria-hidden="true" />
+            </button>
+          ) : null}
         </label>
-        <div aria-live="polite" className="max-w-xl">
-          {search.status === 'unavailable' ? (
+
+        <div aria-live="polite">
+          {search.status === 'idle' ? (
+            <p className="text-text-muted m-0">{m.musilogy_search_hint()}</p>
+          ) : search.status === 'unavailable' ? (
             <Empty text={m.musilogy_unavailable_body()} />
           ) : search.status === 'error' ? (
             <Empty text={m.musilogy_search_error()} />
-          ) : search.status === 'done' ? (
+          ) : search.status === 'searching' ? (
             search.hits.length > 0 ? (
-              <ol className="m-0 list-none p-0">
-                {search.hits.map((hit) => (
-                  <ArtistRow key={hit.mbid} artist={{ ...hit, played: null }} />
-                ))}
-              </ol>
+              <SearchHits hits={search.hits} stale />
             ) : (
-              <Empty text={m.musilogy_search_empty()} />
+              <HitsSkeleton />
             )
-          ) : null}
+          ) : search.hits.length > 0 ? (
+            <SearchHits hits={search.hits} stale={false} />
+          ) : (
+            <Empty text={m.musilogy_search_empty()} />
+          )}
         </div>
       </div>
     </main>

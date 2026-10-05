@@ -192,7 +192,7 @@
   "artist_error_title": "Page unavailable.",
   "artist_error_body": "This page cannot be loaded right now. Try again in a moment.",
   "musilogy_title": "Musilogy",
-  "musilogy_lead": "Where a music comes from: who made it before, who made it alongside, who came after, in the same vein.",
+  "musilogy_lead": "Love an artist? Discover those around them.",
   "musilogy_search_label": "Find an artist",
   "musilogy_search_placeholder": "An artist or band name",
   "musilogy_search_empty": "No artist by that name.",
@@ -245,5 +245,9 @@
   "library_col_artist": "Artist",
   "library_col_added": "Added",
   "library_sort_asc": "ascending",
-  "library_sort_desc": "descending"
+  "library_sort_desc": "descending",
+  "musilogy_search_hint": "Type at least two letters of a name.",
+  "musilogy_col_artist": "Artist",
+  "musilogy_col_kind": "Kind",
+  "musilogy_col_start": "Started"
 }

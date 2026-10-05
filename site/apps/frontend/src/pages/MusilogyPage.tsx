@@ -3,6 +3,7 @@ import { Navigate, useLocation, useParams } from 'react-router';
 import * as m from '@/paraglide/messages.js';
 import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../home/SiteFooter';
+import { SiteHeader } from '../home/SiteHeader';
 import { MusilogyUnavailableError, searchMusilogy } from '../lib/musilogy';
 import { artistPath } from '../lib/artistProfile';
 import { MusilogyHomeView, type SearchState } from '../musilogy/MusilogyView';
@@ -39,7 +40,10 @@ function MusilogyHome() {
     if (trimmed.length < 2) return;
     const controller = new AbortController();
     const timer = setTimeout(() => {
-      setSearch({ status: 'searching' });
+      setSearch((previous) => ({
+        status: 'searching',
+        hits: previous.status === 'done' || previous.status === 'searching' ? previous.hits : [],
+      }));
       searchMusilogy(trimmed, controller.signal)
         .then((hits) => setSearch({ status: 'done', hits }))
         .catch((err: unknown) => {
@@ -76,10 +80,12 @@ export default function MusilogyPage() {
     };
   }, []);
 
+  if (mbid) return <MusilogyArtist mbid={mbid} />;
   return (
-    <>
-      {mbid ? <MusilogyArtist mbid={mbid} /> : <MusilogyHome />}
+    <div className="min-h-page flex flex-col">
+      <SiteHeader />
+      <MusilogyHome />
       <SiteFooter />
-    </>
+    </div>
   );
 }
