@@ -90,6 +90,7 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
                   src={row.art}
                   alt=""
                   seed={`${row.artist}|${row.title}`}
+                  sizes="2.75rem"
                   className="size-11"
                 />
                 <span className="flex min-w-0 flex-col lg:contents">
