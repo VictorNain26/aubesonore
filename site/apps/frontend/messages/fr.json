@@ -192,7 +192,7 @@
   "artist_error_title": "Page indisponible.",
   "artist_error_body": "Impossible de charger cette page pour l'instant. Réessayez dans un moment.",
   "musilogy_title": "Musilogy",
-  "musilogy_lead": "D'où vient une musique : qui la faisait avant, qui la faisait en même temps, qui est venu après, dans la même veine.",
+  "musilogy_lead": "Un artiste vous plaît ? Découvrez ceux qui l'entourent.",
   "musilogy_search_label": "Chercher un artiste",
   "musilogy_search_placeholder": "Un nom d'artiste ou de groupe",
   "musilogy_search_empty": "Aucun artiste de ce nom.",
@@ -245,5 +245,9 @@
   "library_col_artist": "Artiste",
   "library_col_added": "Ajouté le",
   "library_sort_asc": "ordre croissant",
-  "library_sort_desc": "ordre décroissant"
+  "library_sort_desc": "ordre décroissant",
+  "musilogy_search_hint": "Tapez au moins deux lettres d'un nom.",
+  "musilogy_col_artist": "Artiste",
+  "musilogy_col_kind": "Type",
+  "musilogy_col_start": "Débuts"
 }
