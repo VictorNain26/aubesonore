@@ -1,6 +1,7 @@
 # AubeSonore — vision produit et architecture
 
-Refonte du 2026-10-04, à valider par Victor. Elle remplace la version du 2026-10-03, dont le
+Refonte du 2026-10-04, révisée le 2026-10-05 (un artiste, une page : §1, §2.4, §4.5, §5, §7), à
+valider par Victor. Elle remplace la version du 2026-10-03, dont le
 geste « Explorer » (frise des genres, filiation tirée de MusicBrainz, contemporains par lieu de
 début) ne répondait pas à la question posée et reposait sur des données qui ne la remplissaient
 pas. Validé, ce document fait autorité sur ce qui traverse les pièces : les produits, qui possède
@@ -9,16 +10,18 @@ quoi, comment les pièces se parlent. Chaque pièce garde sa conception propre �
 diffusion), `musilogy/` (à réécrire, §8) — et ne doit pas le contredire. Quand le système réel le
 contredit, le système a raison et ce document se corrige.
 
-## 1. Deux produits, une radio
+## 1. Une radio, une page par artiste
 
 **AubeSonore** est une webradio de découverte dans la couleur de Victor : des titres qu'on ne
 connaît pas, qu'il aurait pu choisir. Son goût (Plex) et ses votes (page privée) décident de ce
 qui passe ; les auditeurs écoutent, gardent, apprennent qui joue.
 
-**Musilogy** fait comprendre d'où vient une musique : pour n'importe quel artiste, ce qui l'a
-précédé dans la même veine, ce qui jouait à côté de lui, ce qui l'a suivi, et les liens de ses
-membres. C'est un produit à part, avec sa propre promesse (§2), relié à la radio dans les deux
-sens : Musilogy amène des auditeurs à l'antenne, l'antenne amène à Musilogy.
+**La page artiste** dit, pour n'importe quel artiste qui a un MBID, qui il est, où l'écouter, ce
+qu'il a sorti, et d'où vient sa musique : ce qui l'a précédé dans la même veine, ce qui jouait à
+côté de lui, ce qui l'a suivi, ce qui sonne comme lui, les liens de ses membres. **Musilogy** est
+cette dernière couche (§2) et sa porte d'entrée, la recherche ; ce n'est plus un second type de
+page. La radio et les pages se nourrissent : une page amène des auditeurs à l'antenne, l'antenne
+amène à ses pages.
 
 **L'objectif du moment est d'attirer des auditeurs.** Au 2026-10-04, la radio n'a pas
 d'auditeur régulier : 3 comptes, un seul qui garde des titres (89). Tout doit donc fonctionner
@@ -30,14 +33,14 @@ sans compte ; le compte personnalise, il ne débloque rien.
 |---|---|---|---|
 | **Écouter** | « Qu'est-ce qui passe ? » | accueil | le direct, ce qui vient de passer, les plus gardés |
 | **Garder** | « Je ne veux pas le perdre » | bibliothèque, compte | aimer, retrouver, être prévenu quand l'artiste repasse |
-| **Savoir** | « Qui est-ce ? » | page artiste | portrait, ouverture de Wikipédia ou portrait factuel, vos titres gardés de l'artiste, où l'écouter |
-| **Comprendre** | « D'où vient cette musique ? » | la même page artiste, ou Musilogy pour un artiste jamais joué | la carte de l'artiste : avant, pendant, après, influences déclarées, liens de groupe |
+| **Savoir** | « Qui est-ce ? » | page artiste | portrait, ouverture de Wikipédia ou portrait factuel, où l'écouter, albums et EP, vos titres gardés de l'artiste |
+| **Comprendre** | « D'où vient cette musique ? » | la même page artiste ; la recherche Musilogy pour y entrer par un nom | la carte : avant, pendant, après, ce qui sonne pareil, influences déclarées, liens de groupe |
 
-Les gestes se bouclent : le titre en cours mène à sa page artiste, qui porte aussi ce que Musilogy
-sait de lui. **Un artiste, une page** (depuis le 2026-10-04) : la page artiste réunit qui il est et
-sa place dans l'histoire de sa musique, chaque section seulement quand elle a quelque chose à
-montrer. Musilogy garde sa recherche et une page pour les artistes que l'antenne n'a jamais joués ;
-celle d'un artiste joué renvoie à sa page artiste. Chaque page garde le lecteur du direct.
+Les gestes se bouclent : le titre en cours mène à sa page artiste, et chaque artiste cité sur
+une page mène à la sienne. **Un artiste, une page** : une seule page, la même pour un artiste que
+l'antenne a joué et pour un autre (2026-10-05) ; avoir été joué y ajoute des sections (vos titres
+gardés), pas une autre page. Chaque section n'apparaît que si elle a quelque chose à montrer
+(§2.4), et chaque page garde le lecteur du direct.
 
 ### 1.2 Ce que les produits ne sont pas
 
@@ -53,8 +56,8 @@ celle d'un artiste joué renvoie à sa page artiste. Chaque page garde le lecteu
   article (« Lire la suite sur Wikipédia »).
 - **Pas une boucle de goût.** Ce que les auditeurs gardent ne nourrit pas l'antenne : la radio
   est dans la couleur de Victor, pas dans celle de son audience.
-- **Pas une page artiste pour n'importe quel nom.** Une page artiste n'existe que pour un artiste
-  que l'antenne a joué ; Musilogy couvre tout artiste qui a un MBID.
+- **Pas une page pour n'importe quel nom.** Une page existe pour un artiste qui a un MBID, ou pour
+  un artiste que l'antenne a joué ; jamais pour un nom tapé dans une adresse ou une API.
 
 ## 2. Musilogy
 
@@ -65,16 +68,19 @@ qui la faisait en même temps, qui l'a reprise après ; qui il a cité comme inf
 groupes ses membres ont joué. Chaque lien se suit, et la carte se recentre : on apprend en
 marchant d'un artiste à l'autre.
 
-### 2.2 Trois couches, trois niveaux de preuve
+### 2.2 Quatre couches, quatre niveaux de preuve
 
 | Couche | Source | Couverture mesurée | Ce que le site en dit |
 |---|---|---|---|
 | **Proximité × temps** | artistes proches selon ListenBrainz (co-écoute), rangés par leurs dates MusicBrainz | 15 des 16 artistes joués échantillonnés ont 100 voisins, des plus confidentiels (1 045 auditeurs) aux plus connus (2026-10-04) | « avant lui, en même temps, après lui, dans la même veine » — jamais « influencé par » |
 | **Influences déclarées** | Wikidata (P737), puis citations extraites de Wikipédia avec leur phrase | 61 des 288 artistes joués via Wikidata (2026-10-04) | « a cité X comme influence » ; la déclaration reste en base, sans lien à l'écran (§1.2) |
 | **Liens de groupe** | relations entre artistes de MusicBrainz | 75 % des artistes joués ont au moins un autre projet à deux pas, médiane 2 (2026-10-04) | « membre de », « autre projet de » |
+| **Couleur du son** | empreinte Discogs-EffNet de quelques extraits Deezer de 30 s par artiste, comme le pipeline le fait déjà pour l'antenne ; voisins les plus proches, styles Discogs | bornée par les artistes dont l'identifiant Deezer est connu : 45 % des 111 402 artistes à 500 auditeurs ou plus par le lien que MusicBrainz déclare (2026-10-05, §2.4) | « sonne comme », jamais « influencé par » ni « dans la même veine » |
 
 La proximité seule ne dit pas qui a inspiré qui ; le temps lui donne un sens (avant, pendant,
-après), et l'influence déclarée, quand elle existe, prime sur elle et se voit. Le classement
+après), et l'influence déclarée, quand elle existe, prime sur elle et se voit. La couleur du son
+répond à une autre question, « qu'est-ce qui sonne pareil ? » : elle rapproche des artistes que
+personne n'écoute ensemble et qu'aucun lien ne relie. Le classement
 d'une couche est un calcul nommé, documenté, jamais un jugement.
 
 ### 2.3 La carte et le texte
@@ -86,10 +92,39 @@ d'une couche est un calcul nommé, documenté, jamais un jugement.
 - **Le texte** : sous la carte, la même chose en phrases et en listes (les sources sont créditées
   dans les Mentions légales, §1.2). C'est ce
   que lisent les lecteurs d'écran et les moteurs de recherche.
-- **Indexée quand elle est riche** : une page Musilogy est proposée aux moteurs de recherche
+- **Indexée quand elle est riche** : une page artiste est proposée aux moteurs de recherche
   au-delà d'un seuil de contenu à mesurer ; en deçà, elle existe mais n'est pas listée.
 
-### 2.4 Conditions préalables
+### 2.4 La page
+
+Dans cet ordre, chaque section seulement quand elle a quelque chose à montrer :
+
+1. **Qui** : le portrait, le nom, une ligne de faits, l'ouverture de Wikipédia ou, sans article,
+   les faits dits en une phrase.
+2. **Écouter ailleurs** : les liens que MusicBrainz déclare (Deezer, Spotify, Bandcamp, site
+   officiel…).
+3. **Albums et EP**, chacun avec sa pochette et son année.
+4. **Vos titres gardés**, pour un auditeur connecté qui en a gardé.
+5. **D'où vient cette musique** : la carte, puis en texte les proches dans le temps, ce qui sonne
+   pareil, les influences, les groupes.
+
+**Le portrait, en cascade**, puisqu'aucune source ne couvre tous les artistes (mesuré le
+2026-10-05 sur le dump du 2026-09-09 et Wikidata) :
+
+| Source | Artistes joués (322) | 500 auditeurs ou plus (111 402) | Tous (2,98 M) |
+|---|---|---|---|
+| lien Deezer déclaré dans MusicBrainz | 96 % | 45 % | 8 % |
+| image Wikidata (P18) | 70 % | 32 % | ~4 % |
+| pochette d'un album (Cover Art Archive) | à mesurer | à mesurer | à mesurer |
+
+Le portrait Deezer d'abord, l'image Wikidata ensuite (sa licence, propre à chaque image, est à
+lire avant de l'afficher), la pochette d'un album enfin, et sinon le visuel « onde » que le site
+génère déjà : chaque page a une image, toutes ne sont pas des photos. L'union des sources n'est
+pas encore mesurée. Les identifiants Deezer peuvent aussi venir des ISRC des enregistrements du
+dump, vérifiés comme ceux de l'antenne (§4.4), au lieu du seul lien déclaré : c'est ce qui élargit
+le portrait et la couleur du son au-delà de 45 %.
+
+### 2.5 Conditions préalables
 
 - **Licence de la similarité ListenBrainz** : le service (`labs.api.listenbrainz.org`) ne la
   publie pas sur sa page ; MetaBrainz publie ses jeux de données en CC0. À confirmer avant de
@@ -122,8 +157,8 @@ d'une couche est un calcul nommé, documenté, jamais un jugement.
 |---|---|---|---|
 | `azuracast/` | diffuser | l'antenne : médias et leurs métadonnées, playlists, historique de diffusion | — |
 | `pipeline/` | choisir ce qui passe | le goût (modèle, votes, candidats) et la bibliothèque d'antenne, qu'il publie par l'API d'AzuraCast avec l'ISRC de chaque titre | Plex (lecture seule), Deezer, Last.fm, Hype Machine, Soulseek |
-| `site/` | l'expérience de l'auditeur | comptes, titres gardés, identité et profil des artistes joués, journal de diffusion | AzuraCast (lecture seule), Deezer, MusicBrainz, Wikidata, Wikipédia, le schéma `musilogy` |
-| `musilogy/` | les données de Musilogy | ses tables, produites hors ligne depuis des sources épinglées et datées, et le schéma `musilogy` de la base du site, qu'il remplace en bloc à chaque `musilogy load` | dumps MusicBrainz, relevés ListenBrainz (popularité, proximité), Wikidata |
+| `site/` | l'expérience de l'auditeur | comptes, titres gardés, identité des artistes joués, ce que les sources en direct disent d'un artiste (portrait, ouverture de Wikipédia), rangé par MBID, journal de diffusion | AzuraCast (lecture seule), Deezer, Wikidata, Wikipédia, le schéma `musilogy` |
+| `musilogy/` | ce qui se sait d'un artiste hors ligne | ses tables, produites hors ligne depuis des sources épinglées et datées (faits, liens, albums et EP, proximités, influences, groupes, couleur du son), et le schéma `musilogy` de la base du site, qu'il remplace en bloc à chaque `musilogy load` | dumps MusicBrainz, relevés ListenBrainz (popularité, proximité), Wikidata, extraits Deezer (couleur du son) |
 
 ### 4.2 Les flux
 
@@ -143,16 +178,17 @@ d'une couche est un calcul nommé, documenté, jamais un jugement.
 |---|---|---|
 | pipeline → AzuraCast | API AzuraCast, dossier `antenne/` ; l'ISRC de chaque titre écrit dans le fichier en trame ID3 `TSRC`, qu'AzuraCast range dans le champ `isrc` du média ; jamais de `PUT /file/{id}`, qui réécrit et supprime les balises | `pipeline/docs/vision.md` §6 et §7.2 |
 | site ← AzuraCast | now-playing et historique en lecture, dont `song.isrc` | `site/CLAUDE.md` |
-| site ← musilogy | les fonctions SQL de `musilogy/src/musilogy/pg/90_*.sql` : le site n'appelle qu'elles, jamais les tables | conception de musilogy |
-| site ← Deezer, MusicBrainz, Wikidata, Wikipédia | chacun isolé, autorisé à tomber seul, son dernier résultat gardé en base (§4.6) | `site/CLAUDE.md` |
+| site ← musilogy | les fonctions SQL de `musilogy/src/musilogy/pg/90_*.sql` : le site n'appelle qu'elles, jamais les tables ; s'y ajoutent les liens d'un artiste, ses albums et EP, ses voisins par le son | conception de musilogy |
+| site ← Deezer, Wikidata, Wikipédia | chacun isolé, autorisé à tomber seul, son dernier résultat gardé en base (§4.6) ; MusicBrainz n'est plus appelé en direct que pour identifier un titre joué (§4.4) | `site/CLAUDE.md` |
 
 **Couplages interdits**, et pourquoi :
 
 - **pipeline ↔ site** : l'antenne ne dépend pas du site, le site ne pilote pas l'antenne ; tout
   passe par AzuraCast, ISRC compris.
 - **site → musilogy à l'exécution** : le site lit une copie chargée, jamais le pipeline de
-  données ; musilogy peut être en panne, en travaux ou absent sans que le site tombe — Musilogy
-  affiche alors son indisponibilité, la page artiste n'en dépend pas.
+  données ; musilogy peut être en panne, en travaux ou absent sans que le site tombe. Sans copie
+  chargée, la page d'un artiste joué garde ce que l'antenne et les sources en direct en savent ;
+  celle d'un artiste jamais joué répond qu'elle n'est pas disponible.
 
 ### 4.4 L'identité d'un titre et d'un artiste
 
@@ -189,13 +225,14 @@ artistes : la page est celle de l'artiste principal, chaque crédité est relié
 |---|---|---|
 | ce que l'antenne a joué | `radio_play` (site) | aucune source externe ne le sait |
 | ce que l'auditeur a gardé | `liked_tracks` (site) | idem |
-| portrait | Deezer | l'image de l'artiste exact du titre |
-| faits de la page artiste (type, lieu, années) | MusicBrainz, rafraîchis | à jour pour les nouveautés que le dump épinglé ne connaît pas |
-| ouverture de l'article | Wikipédia (CC BY-SA), via Wikidata | — |
-| proximités, influences, liens de groupe, dates (Musilogy) | musilogy, datés de leurs relevés | reproductibles, avec leur provenance |
+| portrait | Deezer, puis Wikidata, puis une pochette (§2.4) | l'image de l'artiste exact, quand une source l'a |
+| faits (type, lieu, années), liens d'écoute, albums et EP | le dump MusicBrainz, via musilogy | une seule source pour toute page, reproductible ; un dump plus récent se fait épingler |
+| ouverture de l'article | Wikipédia (CC BY-SA), via l'identifiant Wikidata du dump | — |
+| proximités, influences, liens de groupe, couleur du son | musilogy, datés de leurs relevés | reproductibles, avec leur provenance |
 
-La page artiste et Musilogy peuvent donner deux années différentes pour un même artiste : chacune
-garde la source de ce qu'elle montre, aucune ne recopie l'autre.
+Jusqu'au 2026-10-05, les faits d'un artiste joué venaient de MusicBrainz en direct et ceux de
+Musilogy du dump : deux années pouvaient se contredire sur une même page. Le dump devient la seule
+source ; un artiste plus récent que le dump épinglé n'a pas de faits jusqu'au suivant.
 
 ### 4.6 Une page artiste qui répond toujours
 
@@ -233,8 +270,8 @@ Risques connus, acceptés tant que leur déclencheur ne s'est pas produit :
 | Surface | Route | Indexée | Geste |
 |---|---|---|---|
 | Accueil | `/`, `/en` | oui, pré-rendue | Écouter |
-| Page artiste | `/artiste/:slug`, `/en/artist/:slug` ; un slug par artiste, jamais réattribué | oui | Savoir, Comprendre |
-| Musilogy | `/musilogy` (recherche), `/musilogy/:mbid/:slug` pour un artiste jamais joué (et `/en/…`) | au-delà d'un seuil de contenu (§2.3) | Comprendre |
+| Page artiste | `/artiste/:slug` (`/en/artist/:slug`) ; `/artiste/:mbid` tant que l'artiste n'a pas de slug ; un slug par artiste, jamais réattribué, donné aux artistes joués et aux pages qui passent le seuil | au-delà d'un seuil de contenu (§2.3), décidé par le serveur | Savoir, Comprendre |
+| Musilogy | `/musilogy` (recherche) ; `/musilogy/:mbid/…` renvoie en 301 à la page artiste | non | Comprendre |
 | Connexion | `/connexion`, `/en/sign-in` | non | Garder |
 | Bibliothèque, compte | panneau et menu de l'en-tête | non | Garder |
 
@@ -257,8 +294,15 @@ alertes « artiste aimé » sont résolus par les étapes 2 à 4, dans l'histori
 4. **Les featurings ne relient que l'artiste principal** (§4.4 promet chaque crédité).
 5. **Musilogy n'est pas indexé** : pages rendues côté client, `noindex` tant que le seuil de
    richesse n'est pas mesuré (§2.3) ; l'objectif d'attirer des auditeurs n'est donc pas encore
-   servi.
+   servi. Le serveur répond 200 et le titre de l'accueil pour toute page Musilogy, même d'un MBID
+   inconnu.
 6. **Aucune copie hors de la maison** (§4.7).
+7. **Deux pages pour un artiste** : la page artiste (artistes joués) et la page Musilogy (les
+   autres) ; un artiste jamais joué n'a ni portrait, ni ouverture de Wikipédia, ni liens d'écoute.
+8. **Deux sources pour les mêmes faits** : MusicBrainz en direct pour la page artiste, le dump pour
+   Musilogy (§4.5).
+9. **Ni albums ni EP** : musilogy n'extrait que les albums, pour dater les artistes, et ne les
+   charge pas.
 
 ## 7. Feuille de route
 
@@ -272,13 +316,30 @@ Dans cet ordre ; chaque étape est une ou plusieurs PR courtes, fusionnées avan
 4. **Page artiste** — fait (#275) : profil gardé en base, portrait factuel, titres gardés.
 5. **musilogy refondu** — fait pour les retraits (#280), les influences Wikidata et la recherche
    (#286) ; reste la proximité, dont la PR attend la fin du relevé (écart 1).
-6. **Musilogy, le produit** — page texte (#281, #289) et carte (#285) en ligne ; reste le seuil
-   d'indexation mesuré, et le rendu serveur qu'il suppose (écart 5). Une page qui passe le seuil
-   reçoit alors son slug dans `artist_slug`, comme un artiste joué ; les autres gardent leur
-   adresse par MBID, non indexée : un registre de 2,28 M de noms ne servirait qu'à des pages que
-   personne ne trouve par un moteur.
-7. **Influences tirées de Wikipédia**, chaque citation avec sa phrase, après mesure du coût.
-8. **Liens d'œuvre** : featurings (écart 4), remixes, producteurs, tirés du dump MusicBrainz.
+6. **Musilogy, le produit** — page texte (#281, #289) et carte (#285) en ligne, URL des pages
+   artiste par slug (#332).
+7. **Un artiste, une page** (écarts 5, 7, 8, 9), en cascade :
+   1. musilogy extrait du dump les liens d'un artiste (relations URL) et ses albums et EP, et les
+      expose par le contrat (§4.3) ;
+   2. le site range le profil par MBID, lit faits et liens dans musilogy (fin des appels
+      MusicBrainz en direct pour le profil) et compose le portrait en cascade (§2.4) ;
+   3. une seule page, `/artiste/…`, sections dans l'ordre du §2.4 ; `/musilogy/:mbid` en 301 ;
+   4. le serveur écrit le titre, la description et le canonique de chaque page, répond 404 pour un
+      MBID inconnu et décide du `noindex` (Google peut ne pas rendre une page marquée `noindex`,
+      un `noindex` levé par JavaScript ne compte pas) ;
+   5. après la proximité : le seuil d'indexation mesuré, un slug pour chaque page qui le passe,
+      le `noindex` levé pour elles. Les autres gardent leur adresse par MBID : un registre de
+      2,28 M de noms ne servirait qu'à des pages que personne ne trouve par un moteur.
+
+   Le rendu React complet côté serveur n'en fait pas partie : Google rend le JavaScript, et ce
+   rendu supposerait que le backend importe le bundle du front. Il se décide sur une mesure (pages
+   indexées sans leur contenu, inspection d'URL de la Search Console).
+8. **La couleur du son** : un relevé musilogy des empreintes Discogs-EffNet des extraits Deezer
+   des artistes à 500 auditeurs ou plus, daté et épinglé comme la proximité ; les identifiants
+   Deezer complétés par les ISRC du dump des enregistrements. Plusieurs jours de calcul en tâche
+   plafonnée.
+9. **Influences tirées de Wikipédia**, chaque citation avec sa phrase, après mesure du coût.
+10. **Liens d'œuvre** : featurings (écart 4), remixes, producteurs, tirés du dump MusicBrainz.
 
 En parallèle : la copie hors site dès qu'un compte de stockage existe, le test du disque de
 sauvegarde sur un port USB natif.
