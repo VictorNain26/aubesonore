@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import type { MusilogyArtist } from '@aubesonore/shared-types/client';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { makeArtistProfile } from '../mocks/handlers';
 import {
@@ -74,6 +74,38 @@ describe('ArtistPageView', () => {
       screen.queryByRole('heading', { name: "Ses titres à l'antenne" })
     ).not.toBeInTheDocument();
     expect(screen.queryByText('F Major')).not.toBeInTheDocument();
+  });
+
+  it('shows the way walked to the artist, each earlier step a link back', () => {
+    render(
+      <ArtistPageView
+        state={{ status: 'ready', profile: makeArtistProfile() }}
+        trail={[
+          { path: '/artiste/stereolab', name: 'Stereolab' },
+          { path: '/artiste/hania-rani', name: 'Hania Rani' },
+        ]}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    const trail = screen.getByRole('navigation', { name: 'Votre parcours' });
+    expect(within(trail).getByRole('link', { name: 'Stereolab' })).toHaveAttribute(
+      'href',
+      '/artiste/stereolab'
+    );
+    expect(within(trail).getByText('Hania Rani')).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('shows no trail for the first artist of a walk', () => {
+    render(
+      <ArtistPageView
+        state={{ status: 'ready', profile: makeArtistProfile() }}
+        trail={[{ path: '/artiste/hania-rani', name: 'Hania Rani' }]}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(screen.queryByRole('navigation', { name: 'Votre parcours' })).not.toBeInTheDocument();
   });
 
   it("carries Musilogy's sections that hold something, on the same page", () => {

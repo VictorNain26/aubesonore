@@ -1,6 +1,11 @@
-import type { MusilogyArtist, MusilogySearchHit } from '@aubesonore/shared-types/client';
+import type {
+  MusilogyArtist,
+  MusilogyArtistRef,
+  MusilogySearchHit,
+} from '@aubesonore/shared-types/client';
 import { localizeHref } from '@/paraglide/runtime.js';
 import { API_BASE_URL } from '../utils/config';
+import { artistPath } from './artistProfile';
 
 /** Musilogy is not loaded on the server, or is being reloaded. */
 export class MusilogyUnavailableError extends Error {}
@@ -19,6 +24,11 @@ function slugOf(name: string): string {
 export function musilogyPath(artist: { mbid: string; name: string }): string {
   const slug = slugOf(artist.name);
   return localizeHref(`/musilogy/${artist.mbid}${slug ? `/${slug}` : ''}`);
+}
+
+/** One page per artist: the antenna's page when it played them, Musilogy's otherwise. */
+export function pagePathOf(artist: MusilogyArtistRef): string {
+  return artist.played ? artistPath(artist.played) : musilogyPath(artist);
 }
 
 async function read<T>(path: string, signal?: AbortSignal): Promise<T | null> {

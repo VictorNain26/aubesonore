@@ -1,14 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router';
+import { useLocation, useParams } from 'react-router';
 import { ArtistPageView, type ArtistPageState } from '../artist/ArtistPageView';
 import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../home/SiteFooter';
 import type { MusilogyArtist } from '@aubesonore/shared-types/client';
 import { fetchArtistProfile } from '../lib/artistProfile';
+import { useDiscoveryTrail } from '../lib/discoveryTrail';
 import { fetchMusilogyArtist } from '../lib/musilogy';
+import { useScrollMemory } from '../lib/scrollMemory';
+import { seenStore } from '../lib/seenPages';
 import { useAuthStore } from '../stores/authStore';
 import { useLikedTracksStore } from '../stores/likedTracksStore';
 import { useLocaleStore } from '../stores/localeStore';
+
+const seenProfiles = seenStore<ArtistPageState>();
+// null: the dump does not know the MBID, or Musilogy failed; the page shows without its sections.
+const seenMusilogy = seenStore<MusilogyArtist | null>();
 
 export default function ArtistPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -35,12 +42,13 @@ export default function ArtistPage() {
     if (!slug) return;
     const controller = new AbortController();
     fetchArtistProfile(slug, controller.signal)
-      .then((profile) =>
-        setLoaded({
-          key,
-          state: profile ? { status: 'ready', profile } : { status: 'missing' },
-        })
-      )
+      .then((profile) => {
+        const next: ArtistPageState = profile
+          ? { status: 'ready', profile }
+          : { status: 'missing' };
+        seenProfiles.set(key, next);
+        setLoaded({ key, state: next });
+      })
       .catch((err: unknown) => {
         if (err instanceof Error && err.name === 'AbortError') return;
         setLoaded({ key, state: { status: 'error' } });
@@ -50,7 +58,9 @@ export default function ArtistPage() {
 
   // Derived, so another artist or language never flashes the previous one.
   const state: ArtistPageState =
-    loaded !== null && loaded.key === key ? loaded.state : { status: 'loading' };
+    loaded !== null && loaded.key === key
+      ? loaded.state
+      : (seenProfiles.get(key) ?? { status: 'loading' });
 
   // Kept tracks are tied to the artist's id, which the profile gives.
   const id = state.status === 'ready' ? state.profile.id : null;
@@ -67,17 +77,35 @@ export default function ArtistPage() {
   // What Musilogy holds of the artist, once the profile gives their MBID. A failure or Musilogy not
   // loaded leaves the page without those sections; the profile still answers.
   const mbid = state.status === 'ready' ? state.profile.mbid : null;
-  const [musilogy, setMusilogy] = useState<{ mbid: string; artist: MusilogyArtist } | null>(null);
+  const [musilogy, setMusilogy] = useState<{ mbid: string; artist: MusilogyArtist | null } | null>(
+    null
+  );
   useEffect(() => {
     if (!mbid) return;
     const controller = new AbortController();
+    const settle = (artist: MusilogyArtist | null) => {
+      seenMusilogy.set(mbid, artist);
+      setMusilogy({ mbid, artist });
+    };
     fetchMusilogyArtist(mbid, controller.signal)
-      .then((artist) => {
-        if (artist) setMusilogy({ mbid, artist });
-      })
-      .catch(() => undefined);
+      .then(settle)
+      .catch((err: unknown) => {
+        if (!(err instanceof Error && err.name === 'AbortError')) settle(null);
+      });
     return () => controller.abort();
   }, [mbid]);
+  const musilogySeen = mbid ? seenMusilogy.get(mbid) : undefined;
+  const musilogyArtist =
+    musilogy !== null && musilogy.mbid === mbid ? musilogy.artist : (musilogySeen ?? null);
+
+  // Ready once Musilogy has answered too: back restores the place in its lists.
+  const settled = state.status !== 'loading' && (!mbid || musilogySeen !== undefined);
+  useScrollMemory(settled);
+
+  const { pathname } = useLocation();
+  const trail = useDiscoveryTrail(
+    state.status === 'ready' ? { path: pathname, name: state.profile.name } : null
+  );
 
   useEffect(() => {
     const previous = document.title;
@@ -91,17 +119,9 @@ export default function ArtistPage() {
     if (name) document.title = `${name} · AubeSonore`;
   }, [name]);
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [id]);
-
   return (
     <>
-      <ArtistPageView
-        state={state}
-        kept={kept}
-        musilogy={musilogy !== null && musilogy.mbid === mbid ? musilogy.artist : null}
-      />
+      <ArtistPageView state={state} kept={kept} musilogy={musilogyArtist} trail={trail} />
       <SiteFooter />
     </>
   );

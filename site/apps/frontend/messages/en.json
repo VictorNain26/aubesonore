@@ -199,6 +199,7 @@
   "musilogy_links_title": "Bands and projects",
   "musilogy_members": "Members",
   "musilogy_groups": "Bands",
+  "musilogy_joint_projects": "Joint projects",
   "musilogy_member_projects": "Members' projects",
   "musilogy_other_names": "Other names",
   "musilogy_via": "with {names}",
@@ -227,5 +228,6 @@
   "auth_error_exists": "An account already exists with this address. Sign in.",
   "auth_error_password_long": "Password too long.",
   "auth_error_rate_limited": "Too many attempts. Try again in a minute.",
-  "page_nav_label": "On this page"
+  "page_nav_label": "On this page",
+  "trail_label": "Your path"
 }

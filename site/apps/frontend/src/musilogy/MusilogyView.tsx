@@ -15,8 +15,9 @@ import { Section } from '../design/molecules/Section';
 import { SiteHeader } from '../home/SiteHeader';
 import { ARTIST_LINK, TEXT_ACTION } from '../home/styles';
 import { cn } from '@/lib/utils';
-import { artistPath } from '../lib/artistProfile';
-import { musilogyPath } from '../lib/musilogy';
+import { DISCOVERY, type TrailStep } from '../lib/discoveryTrail';
+import { pagePathOf } from '../lib/musilogy';
+import { DiscoveryTrail } from '../design/molecules/DiscoveryTrail';
 import { MusilogyMap } from './MusilogyMap';
 import { ReleasesSection } from './Releases';
 
@@ -69,11 +70,6 @@ export function cardLine(card: MusilogyCard): string {
   return [kind, where, when].filter(Boolean).join(' · ');
 }
 
-/** One page per artist: the antenna's page when it played them, Musilogy's otherwise. */
-function pathOf(artist: MusilogyArtistRef): string {
-  return artist.played ? artistPath(artist.played) : musilogyPath(artist);
-}
-
 function ArtistRow({
   artist,
   years,
@@ -90,7 +86,8 @@ function ArtistRow({
     <li className="border-border reveal grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1">
       <span className="flex min-w-0 flex-col">
         <Link
-          to={pathOf(artist)}
+          to={pagePathOf(artist)}
+          state={DISCOVERY}
           className={cn(ARTIST_LINK, 'text-row self-start truncate underline-offset-4')}
         >
           {artist.name}
@@ -172,7 +169,11 @@ function OtherNames({ names }: { names: readonly MusilogyOtherName[] }) {
     <ul className="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0">
       {names.map((name) => (
         <li key={name.mbid} className="reveal inline-flex min-h-11 items-baseline gap-2">
-          <Link to={pathOf(name)} className={cn(ARTIST_LINK, 'text-row underline-offset-4')}>
+          <Link
+            to={pagePathOf(name)}
+            state={DISCOVERY}
+            className={cn(ARTIST_LINK, 'text-row underline-offset-4')}
+          >
             {name.name}
           </Link>
           <span className="text-ui text-text-muted">{NAME_KINDS[name.kind]()}</span>
@@ -196,7 +197,10 @@ function Bands({ artist }: { artist: MusilogyArtist }) {
         </SubList>
       ) : null}
       {bands && bands.groups.length > 0 ? (
-        <SubList label={m.musilogy_groups()}>
+        // A person's bands; for a group, the projects it took part in (Stereolab in Uilab).
+        <SubList
+          label={artist.card.type === 'Person' ? m.musilogy_groups() : m.musilogy_joint_projects()}
+        >
           <ArtistList artists={bands.groups} yearsOf={linkYears} />
         </SubList>
       ) : null}
@@ -318,12 +322,21 @@ export function MusilogySections({
 }
 
 /** An artist the antenna never played: who Musilogy says they are, and what it holds of them. */
-function ArtistView({ artist, thisYear }: { artist: MusilogyArtist; thisYear: number }) {
+function ArtistView({
+  artist,
+  thisYear,
+  trail,
+}: {
+  artist: MusilogyArtist;
+  thisYear: number;
+  trail: readonly TrailStep[];
+}) {
   const { card } = artist;
   const line = cardLine(card);
   return (
     <>
       <div className="lift-in px-page flex flex-col gap-3 pt-10 md:pt-16">
+        <DiscoveryTrail steps={trail} />
         <h1 className="text-hero m-0 break-words">{card.name}</h1>
         {card.disambiguation ? (
           <p className="text-sub text-text-muted m-0">{card.disambiguation}</p>
@@ -368,9 +381,12 @@ function Message({ title, body }: { title: string; body: string }) {
 /** An artist's place in the history of its music: before, alongside, after, and its bands. */
 export function MusilogyArtistView({
   state,
+  trail = [],
   thisYear = new Date().getFullYear(),
 }: {
   state: MusilogyState;
+  /** The artists walked through to reach this one. */
+  trail?: readonly TrailStep[];
   /** Where an active artist's span ends on the map. */
   thisYear?: number;
 }) {
@@ -389,7 +405,7 @@ export function MusilogyArtistView({
       ) : state.status === 'error' ? (
         <Message title={m.musilogy_error_title()} body={m.musilogy_error_body()} />
       ) : (
-        <ArtistView artist={state.artist} thisYear={thisYear} />
+        <ArtistView artist={state.artist} thisYear={thisYear} trail={trail} />
       )}
     </main>
   );

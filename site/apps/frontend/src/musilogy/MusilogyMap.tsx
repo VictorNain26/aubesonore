@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router';
 import type { MusilogyArtist, MusilogyNeighbour } from '@aubesonore/shared-types/client';
-import { musilogyPath } from '../lib/musilogy';
+import { DISCOVERY } from '../lib/discoveryTrail';
+import { pagePathOf } from '../lib/musilogy';
 
 // Drawing units of the viewBox; the SVG scales to its column.
 const WIDTH = 960;
@@ -136,7 +137,8 @@ export function MusilogyMap({ artist, thisYear }: { artist: MusilogyArtist; this
         {placed.map(({ neighbour, x, y, anchor }) => (
           <Link
             key={neighbour.mbid}
-            to={musilogyPath(neighbour)}
+            to={pagePathOf(neighbour)}
+            state={DISCOVERY}
             tabIndex={-1}
             className="ease-out-quart transition-opacity duration-150 hover:opacity-60"
           >

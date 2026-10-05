@@ -199,6 +199,7 @@
   "musilogy_links_title": "Groupes et projets",
   "musilogy_members": "Membres",
   "musilogy_groups": "Groupes",
+  "musilogy_joint_projects": "Projets communs",
   "musilogy_member_projects": "Projets des membres",
   "musilogy_other_names": "Autres noms",
   "musilogy_via": "avec {names}",
@@ -227,5 +228,6 @@
   "auth_error_exists": "Un compte existe déjà avec cette adresse. Connectez-vous.",
   "auth_error_password_long": "Mot de passe trop long.",
   "auth_error_rate_limited": "Trop de tentatives. Réessayez dans une minute.",
-  "page_nav_label": "Sur cette page"
+  "page_nav_label": "Sur cette page",
+  "trail_label": "Votre parcours"
 }
