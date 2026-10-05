@@ -3,6 +3,7 @@ import { Dialog } from '@base-ui/react/dialog';
 import { Link, useLocation } from 'react-router';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Logo } from '../design/atoms/Logo';
 import { localizeHref } from '@/paraglide/runtime.js';
 import { useAuthStore } from '../stores/authStore';
 import { useLocaleStore } from '../stores/localeStore';
@@ -46,7 +47,10 @@ export function MobileMenu() {
       <Dialog.Portal>
         <Dialog.Popup className="bg-surface text-text ease-out-soft px-page fixed inset-0 z-50 flex flex-col overflow-y-auto pt-5 pb-10 transition-[opacity,translate] duration-300 focus-visible:outline-none data-[ending-style]:-translate-y-2 data-[ending-style]:opacity-0 data-[starting-style]:-translate-y-2 data-[starting-style]:opacity-0">
           <div className="flex items-center justify-between gap-4">
-            <Dialog.Title className="text-mark condensed m-0">aubesonore</Dialog.Title>
+            <Dialog.Title className="text-mark m-0">
+              <Logo className="block h-[0.795em]" />
+              <span className="sr-only">AubeSonore</span>
+            </Dialog.Title>
             <Dialog.Close aria-label={m.close()} className={CLOSE}>
               <X className="size-4.5" strokeWidth={1.8} aria-hidden="true" />
             </Dialog.Close>

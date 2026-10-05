@@ -38,7 +38,7 @@ export default defineConfig(({ mode }) => {
         },
         includeAssets: [
           'favicon.svg',
-          'icon-32.png',
+          'favicon.ico',
           'robots.txt',
           'sitemap.xml',
           'llms.txt',

@@ -1,12 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="24 32 464 464">
-  <style>
-    .ink { stroke: #211F26; }
-    @media (prefers-color-scheme: dark) { .ink { stroke: #E8E0D7; } }
-  </style>
-  <clipPath id="sky">
-    <path d="M0 292 C 64 252, 128 332, 192 292 S 320 252, 384 292 S 470 316, 512 292 V 0 H 0 Z"/>
-  </clipPath>
-  <circle cx="256" cy="292" r="168" fill="#F2AC81" clip-path="url(#sky)"/>
-  <path class="ink" d="M40 292 C 88 262, 144 322, 192 292 S 320 262, 384 292 S 446 312, 472 292" fill="none" stroke-width="26" stroke-linecap="round"/>
-  <path d="M96 380 C 140 356, 192 404, 240 380 S 352 356, 416 380" fill="none" stroke="#F2AC81" stroke-width="26" stroke-linecap="round"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="AubeSonore"><style>.ink{fill:none;stroke:#211F26}@media (prefers-color-scheme:dark){.ink{stroke:#E8E0D7}}</style><clipPath id="f-sky"><path d="M-1 18 L2 18 C5.61 18 6.13 17.28 8.56 17.28 C12.43 17.28 14.81 20 16 20 C17.19 20 19.57 17.28 23.44 17.28 C25.87 17.28 26.39 18 30 18 L33 18 L33 -7 L-1 -7 Z"/></clipPath><g clip-path="url(#f-sky)"><circle cx="16" cy="21" r="14" fill="#F2AC81"/></g><path d="M1 21 L2 21 C5.93 21 6.59 20.28 8.56 20.28 C11.68 20.28 13.39 23 16 23 C18.61 23 20.32 20.28 23.44 20.28 C25.41 20.28 26.07 21 30 21 L31 21" fill="none" class="ink" stroke-width="2" stroke-linecap="butt" stroke-linejoin="round"/></svg>
