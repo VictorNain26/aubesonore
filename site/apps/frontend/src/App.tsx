@@ -2,7 +2,6 @@ import { lazy, Suspense, useEffect } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Route, Routes, useLocation } from 'react-router';
 import { ArtistPageView } from './artist/ArtistPageView';
-import { MusilogyArtistView } from './musilogy/MusilogyView';
 import { AuthInit } from './components/AuthInit';
 import { NowPlayingPoller } from './components/NowPlayingPoller';
 import { PlayerSideEffects } from './components/Player/PlayerSideEffects';
@@ -39,7 +38,7 @@ export default function App() {
   );
 
   const musilogy = (
-    <ErrorBoundary fallback={<MusilogyArtistView state={{ status: 'error' }} />}>
+    <ErrorBoundary fallback={<ArtistPageView state={{ status: 'error' }} />}>
       <Suspense fallback={null}>
         <MusilogyPage />
       </Suspense>

@@ -30,14 +30,34 @@ let profileImage: string | null = 'https://cdn-images.dzcdn.net/images/artist/dp
 // spyOn on the real exports, restored after this file: mock.module would
 // replace these modules for every other test file of the run (Bun 1.3).
 const profileService = await import('../services/artistProfileService');
-const profileSpy = spyOn(profileService, 'getArtistProfile').mockImplementation((slug: string) =>
-  Promise.resolve(
-    slug === 'daft-punk' || slug === 'кино'
+const musilogyService = await import('../services/musilogyService');
+const DAFT_PUNK_MBID = '056e4f3e-d505-4dad-8ec1-d04f521cbb56';
+const UNPLAYED_MBID = '8d3431db-bc83-4dc2-93b8-0e46e31d09f7';
+const NOT_LOADED_MBID = '00000000-0000-4000-8000-000000000000';
+const unplayed = {
+  id: UNPLAYED_MBID,
+  name: 'Protomartyr',
+  slug: UNPLAYED_MBID,
+  mbid: UNPLAYED_MBID,
+  played: false,
+  image: null,
+  facts: null,
+  summary: null,
+  links: [],
+  playedOnRadio: [],
+};
+const profileSpy = spyOn(profileService, 'getArtistProfile').mockImplementation((slug: string) => {
+  if (slug === UNPLAYED_MBID) return Promise.resolve(unplayed);
+  if (slug === NOT_LOADED_MBID)
+    return Promise.reject(new musilogyService.MusilogyUnavailable('3F000'));
+  return Promise.resolve(
+    slug === 'daft-punk' || slug === 'кино' || slug === DAFT_PUNK_MBID
       ? {
           id: VALID_ID,
           name: profileName,
-          slug,
+          slug: slug === DAFT_PUNK_MBID ? 'daft-punk' : slug,
           mbid: null,
+          played: true,
           image: profileImage,
           facts: null,
           summary: {
@@ -49,8 +69,8 @@ const profileSpy = spyOn(profileService, 'getArtistProfile').mockImplementation(
           playedOnRadio: [],
         }
       : null
-  )
-);
+  );
+});
 
 const pages = await import('../services/artistPages');
 const slugSpy = spyOn(pages, 'slugOfArtist').mockImplementation((id: string) =>
@@ -194,6 +214,37 @@ describe('GET /artiste/:slug', () => {
     expect(html).toContain(
       '<meta name="twitter:image" content="https://aubesonore.fr/og-en.png" />'
     );
+  });
+
+  it("sends an MBID the antenna played to the artist's slug", async () => {
+    mockShell();
+
+    const res = await app.handle(new Request(`http://localhost/artiste/${DAFT_PUNK_MBID}`));
+
+    expect(res.status).toBe(301);
+    expect(res.headers.get('location')).toBe('/artiste/daft-punk');
+  });
+
+  it('serves the page of an artist never played at its MBID, kept out of search results', async () => {
+    mockShell();
+
+    const res = await app.handle(new Request(`http://localhost/artiste/${UNPLAYED_MBID}`));
+    const html = await res.text();
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('x-robots-tag')).toBe('noindex');
+    expect(html).toContain(
+      `<link rel="canonical" href="${env.FRONTEND_BASE_URL}/artiste/${UNPLAYED_MBID}"`
+    );
+    expect(html).toContain('Protomartyr sur AubeSonore, radio de découverte musicale.');
+  });
+
+  it('answers 503 while Musilogy, which makes a page by MBID, is not loaded', async () => {
+    mockShell();
+
+    const res = await app.handle(new Request(`http://localhost/artiste/${NOT_LOADED_MBID}`));
+
+    expect(res.status).toBe(503);
   });
 
   it('answers 404 with the untouched shell when the artist is unknown', async () => {

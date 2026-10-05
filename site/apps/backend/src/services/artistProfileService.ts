@@ -119,21 +119,73 @@ async function deezerRecording(
   return credited ? { link: track.value.link, cover: track.value.cover } : null;
 }
 
+const MBID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/** Whether a page key is an MBID: the address of an artist page without a slug. */
+export function isMbid(key: string): boolean {
+  return MBID.test(key);
+}
+
+/**
+ * The page of an artist the antenna never played, made from what Musilogy
+ * knows of its MBID (docs/vision.md §5): no row is stored for it, so a crawler
+ * walking Musilogy fills no table. The portrait and the Wikipedia opening are
+ * the live sources' cached answers. Null when the dump does not know the
+ * MBID; MusilogyUnavailable while it is not loaded.
+ */
+async function unplayedProfile(mbid: string, locale: SiteLocale): Promise<ArtistProfile | null> {
+  const identity = await getArtistIdentity(mbid);
+  if (!identity) return null;
+  const [deezer, summary] = await Promise.all([
+    identity.deezerId ? bounded('deezer', getArtist(identity.deezerId)) : NONE,
+    identity.wikidataId ? bounded('wikipedia', getSummary(identity.wikidataId, locale)) : NONE,
+  ]);
+  return {
+    id: mbid,
+    name: identity.name,
+    slug: mbid,
+    mbid,
+    played: false,
+    image: (deezer.status === 'found' ? deezer.value.picture : null) ?? identity.firstCover,
+    facts: identity.facts,
+    summary: summary.status === 'found' ? summary.value : null,
+    links: [
+      ...(identity.deezerId
+        ? [
+            {
+              platform: 'deezer' as const,
+              url: `https://www.deezer.com/artist/${identity.deezerId}`,
+            },
+          ]
+        : []),
+      ...identity.links,
+    ],
+    playedOnRadio: [],
+  };
+}
+
+/**
+ * An artist page by its slug, or by its MBID: the antenna's page when it
+ * played the artist (its slug then is the address to send the reader to),
+ * the page made from Musilogy otherwise.
+ */
 export async function getArtistProfile(
-  slug: string,
+  key: string,
   locale: SiteLocale
 ): Promise<ArtistProfile | null> {
+  const byMbid = isMbid(key);
   const rows = await db
     .select()
     .from(artistSlug)
     .innerJoin(artist, eq(artist.id, artistSlug.artistId))
     .leftJoin(artistProfile, eq(artistProfile.artistId, artist.id))
-    .where(eq(artistSlug.slug, slug))
+    .where(byMbid ? eq(artist.mbid, key) : eq(artistSlug.slug, key))
     .limit(1);
 
   const found = rows[0];
-  if (!found) return null;
+  if (!found) return byMbid ? unplayedProfile(key, locale) : null;
   const row = found.artist;
+  const { slug } = found.artist_slug;
   const { id } = row;
 
   // The dump is local: read on every view, cached by musilogyService. The
@@ -171,6 +223,7 @@ export async function getArtistProfile(
     name: row.displayName,
     slug,
     mbid: row.mbid,
+    played: true,
     image: stored.image ?? (identity.status === 'found' ? identity.value.firstCover : null),
     facts: identity.status === 'found' ? identity.value.facts : null,
     summary: locale === 'fr' ? stored.summaryFr : stored.summaryEn,

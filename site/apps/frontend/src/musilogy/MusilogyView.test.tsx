@@ -4,8 +4,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import type { MusilogyArtist, MusilogyNeighbour } from '@aubesonore/shared-types/client';
-import { cardLine, linkYears, MusilogyArtistView, MusilogyHomeView } from './MusilogyView';
-import { coverOf } from './Releases';
+import { linkYears, MusilogyHomeView, MusilogySections } from './MusilogyView';
+import { coverOf, ReleasesSection } from './Releases';
 
 const T_REX = 'c842d29f-a297-48cd-bb71-4f77fd672b16';
 
@@ -61,26 +61,37 @@ function artist(overrides: Partial<MusilogyArtist> = {}): MusilogyArtist {
   };
 }
 
-function show(state: Parameters<typeof MusilogyArtistView>[0]['state']) {
-  return render(<MusilogyArtistView state={state} />, { wrapper: MemoryRouter });
+/** What an artist page shows of Musilogy: the records, then where to go next. */
+function Sections({ artist: shown }: { artist: MusilogyArtist }) {
+  return (
+    <>
+      {shown.releases && shown.releases.length > 0 ? (
+        <ReleasesSection releases={shown.releases} />
+      ) : null}
+      <MusilogySections artist={shown} thisYear={2026} />
+    </>
+  );
 }
 
-describe('MusilogyArtistView', () => {
-  it('places the artist among those before, alongside and after it', () => {
-    show({ status: 'ready', artist: artist() });
+function show(shown: MusilogyArtist) {
+  return render(<Sections artist={shown} />, { wrapper: MemoryRouter });
+}
 
-    expect(screen.getByRole('heading', { level: 1, name: 'T. Rex' })).toBeInTheDocument();
+describe('MusilogySections', () => {
+  it('places the artist among those before, alongside and after it', () => {
+    show(artist());
+
     expect(screen.getByRole('heading', { name: 'Avant' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'The Kinks' })).toHaveAttribute(
       'href',
-      `/musilogy/${neighbour(3).mbid}/the-kinks`
+      `/artiste/${neighbour(3).mbid}`
     );
     expect(screen.getByRole('link', { name: 'Ramones' })).toBeInTheDocument();
     expect(screen.getByText(/placés selon leurs débuts/)).toBeInTheDocument();
   });
 
   it('leads straight to the page of a neighbour the antenna played', () => {
-    show({ status: 'ready', artist: artist() });
+    show(artist());
 
     expect(screen.getByRole('link', { name: 'David Bowie' })).toHaveAttribute(
       'href',
@@ -89,32 +100,18 @@ describe('MusilogyArtistView', () => {
   });
 
   it('names each band link from the artist side', () => {
-    show({ status: 'ready', artist: artist() });
+    show(artist());
 
     expect(screen.getByRole('heading', { name: 'Membres' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Marc Bolan' })).toBeInTheDocument();
   });
 
   it('leaves out every section with nothing in it, without a title over an absence', () => {
-    show({ status: 'ready', artist: artist({ neighbours: null, influences: null }) });
+    show(artist({ neighbours: null, influences: null }));
 
     expect(screen.queryByRole('heading', { name: 'Avant' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Groupes et projets' })).toBeInTheDocument();
-  });
-
-  it('says once that there is nothing to show when Musilogy holds nothing', () => {
-    show({
-      status: 'ready',
-      artist: artist({
-        neighbours: null,
-        influences: null,
-        bands: { members: [], groups: [] },
-      }),
-    });
-
-    expect(screen.getByText("Rien à montrer ici pour l'instant.")).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
   });
 
   it('shows the albums, then the EPs folded past the first eight, with their covers', async () => {
@@ -128,10 +125,7 @@ describe('MusilogyArtistView', () => {
       ...extra,
     });
     const eps = Array.from({ length: 10 }, (_, i) => record(10 + i, 'ep'));
-    show({
-      status: 'ready',
-      artist: artist({ releases: [record(1, 'album', { soundtrack: true }), ...eps] }),
-    });
+    show(artist({ releases: [record(1, 'album', { soundtrack: true }), ...eps] }));
 
     expect(screen.getByRole('heading', { name: 'Albums et EP' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Albums' })).toBeInTheDocument();
@@ -146,29 +140,21 @@ describe('MusilogyArtistView', () => {
 
   it("calls a person's groups its bands, and a group's its joint projects", () => {
     const uilab = { ...neighbour(60, { name: 'Uilab' }), yBegin: 1997, yEnd: 1997 };
-    const { rerender } = show({
-      status: 'ready',
-      artist: artist({ bands: { members: [], groups: [uilab] } }),
-    });
+    const { rerender } = show(artist({ bands: { members: [], groups: [uilab] } }));
     expect(screen.getByRole('heading', { name: 'Projets communs' })).toBeInTheDocument();
 
     const person = artist({ bands: { members: [], groups: [uilab] } });
-    rerender(
-      <MusilogyArtistView
-        state={{ status: 'ready', artist: { ...person, card: { ...person.card, type: 'Person' } } }}
-      />
-    );
+    rerender(<Sections artist={{ ...person, card: { ...person.card, type: 'Person' } }} />);
     expect(screen.getByRole('heading', { name: 'Groupes' })).toBeInTheDocument();
   });
 
   it("names who leads to each member's project, and what each other name is", () => {
-    show({
-      status: 'ready',
-      artist: artist({
+    show(
+      artist({
         memberProjects: [{ ...neighbour(50, { name: 'Shagrat' }), via: ['Steve Peregrine Took'] }],
         otherNames: [{ ...neighbour(51, { name: 'Tyrannosaurus Rex' }), kind: 'former' }],
-      }),
-    });
+      })
+    );
 
     expect(screen.getByRole('heading', { name: 'Projets des membres' })).toBeInTheDocument();
     expect(screen.getByText('avec Steve Peregrine Took')).toBeInTheDocument();
@@ -178,41 +164,25 @@ describe('MusilogyArtistView', () => {
 
   it('shows the closest first and opens the rest on demand', async () => {
     const before = Array.from({ length: 15 }, (_, i) => neighbour(i));
-    show({
-      status: 'ready',
-      artist: artist({ neighbours: { before, during: [], after: [], undated: [] } }),
-    });
+    show(artist({ neighbours: { before, during: [], after: [], undated: [] } }));
 
     expect(screen.queryByRole('link', { name: 'Artist 14' })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Voir 3 de plus' }));
     expect(screen.getByRole('link', { name: 'Artist 14' })).toBeInTheDocument();
   });
 
-  it('says when Musilogy is not available, or the artist missing from its snapshot', () => {
-    const { rerender } = show({ status: 'unavailable' });
-    expect(
-      screen.getByRole('heading', { name: "Musilogy n'est pas disponible." })
-    ).toBeInTheDocument();
-
-    rerender(<MusilogyArtistView state={{ status: 'missing' }} />);
-    expect(screen.getByRole('heading', { name: 'Artiste absent.' })).toBeInTheDocument();
-  });
-
   it('shows influences only when the artist declared some', () => {
-    const { rerender } = show({ status: 'ready', artist: artist() });
+    const { rerender } = show(artist());
     expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
 
     rerender(
-      <MusilogyArtistView
-        state={{
-          status: 'ready',
-          artist: artist({
-            influences: {
-              cites: [{ ...neighbour(40, { name: 'Elvis' }), statement: 'Q1$abc' }],
-              citedBy: [],
-            },
-          }),
-        }}
+      <Sections
+        artist={artist({
+          influences: {
+            cites: [{ ...neighbour(40, { name: 'Elvis' }), statement: 'Q1$abc' }],
+            citedBy: [],
+          },
+        })}
       />
     );
     expect(screen.getByRole('heading', { name: 'Influences' })).toBeInTheDocument();
@@ -221,25 +191,21 @@ describe('MusilogyArtistView', () => {
 
   it('lists the neighbours whose start is unknown', () => {
     const undated = [neighbour(30, { name: 'Undated Band', y0: null })];
-    show({
-      status: 'ready',
-      artist: artist({ neighbours: { before: [], during: [], after: [], undated } }),
-    });
+    show(artist({ neighbours: { before: [], during: [], after: [], undated } }));
 
     expect(screen.getByRole('heading', { name: 'Débuts inconnus' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Undated Band' })).toBeInTheDocument();
   });
 
   it('names no source, licence or tool, and links nowhere outside the site', () => {
-    show({
-      status: 'ready',
-      artist: artist({
+    show(
+      artist({
         influences: {
           cites: [{ ...neighbour(40, { name: 'Chuck Berry' }), statement: 'Q1$abc' }],
           citedBy: [],
         },
-      }),
-    });
+      })
+    );
 
     expect(screen.getByRole('link', { name: 'Chuck Berry' })).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent(/ListenBrainz|MusicBrainz|Wikidata|CC BY|CC0/);
@@ -256,20 +222,6 @@ describe('linkYears', () => {
     expect(linkYears({ ...link, yEnd: null })).toBe('depuis 1971');
     expect(linkYears({ ...link, yBegin: null })).toBe("jusqu'en 1975");
     expect(linkYears({ ...link, yBegin: null, yEnd: null })).toBeNull();
-  });
-});
-
-describe('cardLine', () => {
-  it('states the type, where and when', () => {
-    expect(cardLine(artist().card)).toBe('Groupe · London, Royaume-Uni · de 1967 à 1977');
-  });
-
-  it('shows no end it can only infer, and says a start comes from the first album', () => {
-    const card = { ...artist().card, y0Source: 'first_album', yEndSource: 'last_album' };
-    expect(cardLine(card)).toBe('Groupe · London, Royaume-Uni · premier album en 1967');
-    expect(cardLine({ ...card, yEndSource: 'declared' })).toBe(
-      "Groupe · London, Royaume-Uni · premier album en 1967, jusqu'en 1977"
-    );
   });
 });
 
@@ -301,7 +253,7 @@ describe('MusilogyHomeView', () => {
     expect(onQueryChange).toHaveBeenCalledWith('t');
     expect(screen.getByRole('link', { name: 'T. Rex' })).toHaveAttribute(
       'href',
-      `/musilogy/${T_REX}/t-rex`
+      `/artiste/${T_REX}`
     );
   });
 });

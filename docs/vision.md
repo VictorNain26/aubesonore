@@ -291,19 +291,17 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 
 ## 6. Écarts actuels
 
-1. **Deux pages pour un artiste** : la page artiste (artistes joués) et la page Musilogy (les
-   autres) ; un artiste jamais joué n'a ni portrait, ni ouverture de Wikipédia, ni liens d'écoute.
-2. **Ni albums ni EP sur la page**, alors que musilogy les publie ; les bootlegs n'en sont pas
-   encore retirés (409 des 4 526 disques des artistes joués, 2026-10-05).
-3. **Les proches ne sont pas encore en ligne** : la carte ne s'affiche pas tant que le relevé n'est
+1. **Les bootlegs sont encore sur la page** : 409 des 4 526 disques des artistes joués
+   (2026-10-05), en attendant la fin du relevé du statut officiel.
+2. **Les proches ne sont pas encore en ligne** : la carte ne s'affiche pas tant que le relevé n'est
    pas chargé.
-4. **Musilogy n'est pas indexé** : pages rendues côté client, `noindex`, et le serveur répond 200
-   avec le titre de l'accueil pour toute page, même d'un MBID inconnu.
-5. **Identité incomplète** : 39 des 332 artistes joués n'ont pas de MBID ; 22 des 91 titres gardés
+3. **Les pages d'artistes jamais joués ne sont pas indexées** : `/artiste/<mbid>`, `noindex`
+   jusqu'au seuil d'indexation (étape 7.5).
+4. **Identité incomplète** : 39 des 332 artistes joués n'ont pas de MBID ; 22 des 91 titres gardés
    ne retrouvent ni leur passage ni leur titre exact chez Deezer.
-6. **Les featurings ne relient que l'artiste principal** (§4.4).
-7. **Licence de la similarité ListenBrainz** non publiée (§2.5).
-8. **Aucune copie hors de la maison** (§4.7).
+5. **Les featurings ne relient que l'artiste principal** (§4.4).
+6. **Licence de la similarité ListenBrainz** non publiée (§2.5).
+7. **Aucune copie hors de la maison** (§4.7).
 
 ## 7. Feuille de route
 
@@ -311,22 +309,23 @@ Dans cet ordre, en PR courtes fusionnées une à une. Les étapes 1 à 6 (vision
 par ISRC, page artiste, musilogy refondu, Musilogy en ligne) sont faites ; leur détail est dans
 l'historique git.
 
-7. **Un artiste, une page** (écarts 1, 2, 4) :
+7. **Un artiste, une page** (écarts 1 et 3) :
    1. musilogy : albums et EP et liens d'écoute — fait (#337, #338) ; le relevé du statut
       officiel MusicBrainz pour retirer les bootlegs (#340, en cours, environ 38 h), puis la règle
       qui s'en sert ; les groupes et projets du §2.4 : `links` réduite aux appartenances, aux
       pseudonymes et aux changements de nom, et une fonction SQL par rubrique ;
-   2. le site lit faits et liens d'écoute dans musilogy (#344) ; reste une page pour tout MBID et
-      le portrait en cascade (§2.4) ;
-   3. une seule page, `/artiste/…`, sections dans l'ordre du §2.4 ; `/musilogy/:mbid` en 301 ;
+   2. le site lit faits et liens d'écoute dans musilogy (#344), le portrait en cascade (#346) —
+      fait ;
+   3. une seule page, `/artiste/…`, sections dans l'ordre du §2.4 (#347), le fil de découverte
+      (#348), une page pour tout MBID et `/musilogy/:mbid` en 301 (cette PR) — fait ;
    4. le serveur écrit le titre, la description et le canonique de chaque page, répond 404 pour un
-      MBID inconnu et décide du `noindex` (un `noindex` levé par JavaScript ne compte pas) ;
+      MBID inconnu et `noindex` pour une page par MBID — fait (cette PR) ;
    5. une fois les proches en ligne : le seuil d'indexation mesuré, un slug pour chaque page qui
       le passe.
 
    Le rendu React complet côté serveur n'en fait pas partie : Google rend le JavaScript. Il se
    décide sur une mesure (pages indexées sans leur contenu, inspection d'URL de la Search Console).
-8. **Les proches en ligne** (écart 3) : la PR de la proximité attend la fin de son relevé, puis la
+8. **Les proches en ligne** (écart 2) : la PR de la proximité attend la fin de son relevé, puis la
    carte se juge à l'usage (§2.3).
 9. **Les données à jour** : un dump MusicBrainz plus récent et les relevés rapides refaits
    régulièrement par un timer (dump, relevés, invariants, publication, chargement) ; les relevés
@@ -335,7 +334,7 @@ l'historique git.
     - **ce qui sonne pareil** : l'empreinte sonore d'extraits Deezer, plusieurs jours de calcul ;
       utile si les proches laissent sans voisins des artistes qu'on veut faire découvrir, à mesurer
       sur les artistes joués ;
-    - **les liens d'œuvre** (écart 6) : featurings, remixes, producteurs, tirés du dump
+    - **les liens d'œuvre** (écart 5) : featurings, remixes, producteurs, tirés du dump
       MusicBrainz.
 
 En parallèle : la copie hors site dès qu'un compte de stockage existe.

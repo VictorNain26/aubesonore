@@ -49,7 +49,17 @@ void mock.module('../db', () => ({
     select: () => ({
       from: () => ({
         innerJoin: () => ({
-          leftJoin: () => ({ where: () => ({ limit: () => Promise.resolve(rows) }) }),
+          leftJoin: () => ({
+            where: () => ({
+              limit: () =>
+                Promise.resolve(
+                  rows.map((row) => ({
+                    artist_slug: { slug: 'daft-punk', artistId: row.artist.id },
+                    ...row,
+                  }))
+                ),
+            }),
+          }),
         }),
       }),
     }),
@@ -90,6 +100,8 @@ const spies = {
     value: 'mb-1',
   }),
   identity: spyOn(musilogy, 'getArtistIdentity').mockResolvedValue({
+    name: 'Daft Punk',
+    deezerId: '27',
     facts,
     links: [{ platform: 'official', url: 'https://daftpunk.com/' }],
     wikidataId: 'Q185828',
@@ -165,6 +177,7 @@ describe('getArtistProfile', () => {
       name: 'Daft Punk',
       slug: 'daft-punk',
       mbid: null,
+      played: true,
       image: 'https://cdn.deezer.com/dp.jpg',
       facts,
       summary: summaryEn,
@@ -207,6 +220,8 @@ describe('getArtistProfile', () => {
       links: [],
       wikidataId: 'Q185828',
       firstCover: null,
+      name: 'Daft Punk',
+      deezerId: '27',
     });
 
     const profile = await getArtistProfile('daft-punk', 'fr');
@@ -315,6 +330,59 @@ describe('getArtistProfile', () => {
 
     spies.isrcTrack.mockResolvedValueOnce({ status: 'failed' });
     expect((await getArtistProfile('daft-punk', 'fr'))?.playedOnRadio[0]?.deezer).toBeNull();
+  });
+
+  it('makes the page of an artist the antenna never played from Musilogy, at its MBID', async () => {
+    rows = [];
+    const MBID = '056e4f3e-d505-4dad-8ec1-d04f521cbb56';
+
+    const profile = await getArtistProfile(MBID, 'en');
+
+    expect(profile).toEqual({
+      id: MBID,
+      name: 'Daft Punk',
+      slug: MBID,
+      mbid: MBID,
+      played: false,
+      image: 'https://cdn.deezer.com/dp.jpg',
+      facts,
+      summary: summaryEn,
+      links: [
+        { platform: 'deezer', url: 'https://www.deezer.com/artist/27' },
+        { platform: 'official', url: 'https://daftpunk.com/' },
+      ],
+      playedOnRadio: [],
+    });
+    expect(spies.identity).toHaveBeenCalledWith(MBID);
+    expect(stored).toEqual([]);
+  });
+
+  it('shows the first record cover of an artist never played that Deezer does not know', async () => {
+    rows = [];
+    spies.identity.mockResolvedValueOnce({
+      name: 'Protomartyr',
+      deezerId: null,
+      facts,
+      links: [],
+      wikidataId: null,
+      firstCover: HOMEWORK_COVER,
+    });
+
+    const profile = await getArtistProfile('8d3431db-bc83-4dc2-93b8-0e46e31d09f7', 'fr');
+
+    expect(profile?.image).toBe(HOMEWORK_COVER);
+    expect(profile?.links).toEqual([]);
+    expect(spies.deezer).not.toHaveBeenCalled();
+  });
+
+  it('knows no page for an MBID the dump does not hold, nor for an unknown slug', async () => {
+    rows = [];
+    spies.identity.mockResolvedValueOnce(null);
+    expect(await getArtistProfile('8d3431db-bc83-4dc2-93b8-0e46e31d09f7', 'fr')).toBeNull();
+
+    spies.identity.mockClear();
+    expect(await getArtistProfile('nobody', 'fr')).toBeNull();
+    expect(spies.identity).not.toHaveBeenCalled();
   });
 
   it('returns null for an unknown id', async () => {

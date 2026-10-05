@@ -89,6 +89,8 @@ beforeEach(() => {
 describe('getArtistIdentity', () => {
   it("reads a group's career, one link per platform, https only, site last", async () => {
     expect(await getArtistIdentity(DAFT_PUNK)).toEqual({
+      name: 'Daft Punk',
+      deezerId: '27',
       facts: {
         kind: 'group',
         place: 'Paris',
