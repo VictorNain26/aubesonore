@@ -76,6 +76,19 @@ describe('SiteHeader', () => {
     );
   });
 
+  it('marks Musilogy as the page the listener is on, and only there', () => {
+    const { unmount } = render(
+      <MemoryRouter initialEntries={['/musilogy']}>
+        <SiteHeader />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('link', { name: 'Musilogy' })).toHaveAttribute('aria-current', 'page');
+    unmount();
+
+    render(<SiteHeader />, { wrapper: MemoryRouter });
+    expect(screen.getByRole('link', { name: 'Musilogy' })).not.toHaveAttribute('aria-current');
+  });
+
   it('keeps the account in its own menu, where the listener signs out', async () => {
     const signOut = signIn();
     render(<SiteHeader />, { wrapper: MemoryRouter });
