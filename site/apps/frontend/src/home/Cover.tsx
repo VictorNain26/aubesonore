@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { isDefaultArtwork } from '../lib/azuracast';
 import { CoverGlyph } from '../design/atoms/CoverGlyph';
+import { artworkAt } from '../lib/artwork';
 
 export interface CoverProps {
   src: string | null | undefined;
@@ -10,9 +11,11 @@ export interface CoverProps {
   seed: string;
   className?: string;
   priority?: boolean;
+  /** Pixels of the image file, for a cover shown small: where the host resizes, fewer bytes. */
+  size?: number;
 }
 
-export function Cover({ src, alt, seed, className, priority = false }: CoverProps) {
+export function Cover({ src, alt, seed, className, priority = false, size }: CoverProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const usable = !isDefaultArtwork(src) && src !== failedSrc;
 
@@ -25,7 +28,7 @@ export function Cover({ src, alt, seed, className, priority = false }: CoverProp
     >
       {usable ? (
         <img
-          src={src ?? undefined}
+          src={src && size ? artworkAt(src, size) : (src ?? undefined)}
           alt={alt}
           referrerPolicy="no-referrer"
           decoding="async"

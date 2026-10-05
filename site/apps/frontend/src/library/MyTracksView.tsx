@@ -98,6 +98,7 @@ const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
         alt=""
         seed={`${track.artist}|${track.title}`}
         className="row-span-2 size-11 md:row-span-1"
+        size={160}
       />
       <span className="text-row self-end truncate md:self-center">{track.title}</span>
       {/* On a phone the artist and the date share the line under the title; on a wide screen the
