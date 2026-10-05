@@ -69,6 +69,7 @@ class AntenneReport:
     n_references: int = 0
     n_references_no_cover: int = 0
     n_promoted: int = 0
+    n_promotions_artist_full: int = 0
     n_ended: int = 0
     n_rested: int = 0
     n_returned: int = 0
@@ -233,24 +234,41 @@ def end_first_stay(
     rep: AntenneReport,
 ) -> None:
     """Après `stay_weeks` semaines, la part `promotion_share` la meilleure d'une cohorte (un
-    « oui » d'abord, puis la note du modèle) part au repos avant le fond ; le reste sort."""
-    rows = [
-        (str(r[0]), str(r[1]))
-        for r in conn.execute(
-            """
-            SELECT n.path, n.song_id FROM antenne n
-            LEFT JOIN scores s USING (deezer_track_id)
-            LEFT JOIN votes v ON v.deezer_track_id = n.deezer_track_id AND v.vote = 'oui'
-            WHERE n.categorie IN ('nouveautes', 'decouvertes') AND n.since <= ?
-            ORDER BY v.deezer_track_id IS NULL, COALESCE(s.score, 0) DESC, n.deezer_track_id
-            """,
-            (_weeks_ago(now, cfg.stay_weeks),),
+    « oui » d'abord, puis la note du modèle) part au repos avant le fond ; le reste sort. Un
+    artiste a au plus deux titres à l'antenne, repos compris : un titre qui lui en donnerait un
+    troisième n'est pas promu, il est compté et sa place va au suivant de la cohorte."""
+    rows = conn.execute(
+        """
+        SELECT n.path, n.song_id, t.deezer_artist_id FROM antenne n
+        JOIN tracks t USING (deezer_track_id)
+        LEFT JOIN scores s USING (deezer_track_id)
+        LEFT JOIN votes v ON v.deezer_track_id = n.deezer_track_id AND v.vote = 'oui'
+        WHERE n.categorie IN ('nouveautes', 'decouvertes') AND n.since <= ?
+        ORDER BY v.deezer_track_id IS NULL, COALESCE(s.score, 0) DESC, n.deezer_track_id
+        """,
+        (_weeks_ago(now, cfg.stay_weeks),),
+    ).fetchall()
+    due = [(str(p), int(a)) for p, song, a in rows if song not in busy]
+    leaving = {p for p, _ in due}
+    on_air = Counter(
+        int(a)
+        for p, a in conn.execute(
+            "SELECT n.path, t.deezer_artist_id FROM antenne n JOIN tracks t USING (deezer_track_id)"
         )
-    ]
-    due = [p for p, song in rows if song not in busy]
+        if p not in leaving
+    )
     k = round(cfg.promotion_share * len(due))
-    rep.n_promoted = _move(conn, station, due[:k], REST, "repos", now.isoformat(), rep)
-    rep.n_ended = _remove(conn, station, due[k:], rep)
+    promoted: list[str] = []
+    for path, artist in due:
+        if len(promoted) == k:
+            break
+        if on_air[artist] >= 2:
+            rep.n_promotions_artist_full += 1
+            continue
+        on_air[artist] += 1
+        promoted.append(path)
+    rep.n_promoted = _move(conn, station, promoted, REST, "repos", now.isoformat(), rep)
+    rep.n_ended = _remove(conn, station, [p for p, _ in due if p not in set(promoted)], rep)
 
 
 def expire(

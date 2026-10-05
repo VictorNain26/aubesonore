@@ -572,6 +572,7 @@ def antenne() -> None:
                 "repères sautés": len(rep.skipped_references),
                 "votés non écartés": rep.n_voted_out,
                 "promus": rep.n_promoted,
+                "non promus, artiste déjà deux fois à l'antenne": rep.n_promotions_artist_full,
                 "fins de séjour": rep.n_ended,
                 "mis au repos": rep.n_rested,
                 "revenus au fond": rep.n_returned,
@@ -591,7 +592,8 @@ def antenne() -> None:
             f"{_n(rep.n_references)} repères ajoutés, {_n(rep.n_references_out)} sortis)",
             f"  votés « non » écartés : {_n(rep.n_voted_out)}",
             f"  fin du premier séjour : {_n(rep.n_promoted)} promus au repos, "
-            f"{_n(rep.n_ended)} sortis",
+            f"{_n(rep.n_ended)} sortis, {_n(rep.n_promotions_artist_full)} non promus "
+            f"(artiste déjà deux fois à l'antenne)",
             f"  fond : {_n(rep.n_rested)} mis au repos, {_n(rep.n_returned)} revenus, "
             f"{_n(rep.n_expired)} périmés",
             f"  réalignement : {_n(rep.n_forgotten)} disparus d'AzuraCast oubliés, "

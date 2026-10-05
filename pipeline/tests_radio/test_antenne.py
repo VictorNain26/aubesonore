@@ -259,6 +259,27 @@ def test_after_its_first_stay_the_best_rests_and_the_rest_leaves(
     assert rep.n_total == 1  # le repos est hors antenne
 
 
+def test_a_promotion_never_gives_an_artist_a_third_title(tmp_path: Path, no_tools: None) -> None:
+    # Breaks if the end of the first stay promotes a title whose artist already has two on air.
+    conn = make_model_db(tmp_path)
+    serve_scores(conn)
+    station = _on_air(conn, [(200001, "decouverte", "fond")], LATER)
+    cohort = [200000, 200002, 200003, 200101, 200102, 200103]
+    old = _on_air(
+        conn, [(t, "decouverte", "decouvertes") for t in cohort], LATER - timedelta(weeks=7)
+    )
+    station.media += old.media
+
+    rep = _run(conn, station, promotion_share=0.5)
+
+    # 3 promus sur 6, par note : 200003 et 200103 (0,75), puis 200002 (0,6875), qui donnerait un
+    # troisième titre à l'artiste 2000 ; sa place va à 200102.
+    cats = _categories(conn)
+    assert (rep.n_promoted, rep.n_promotions_artist_full, rep.n_ended) == (3, 1, 3)
+    assert {t for t, (c, _) in cats.items() if c == "repos"} == {200003, 200103, 200102}
+    assert 200002 not in cats
+
+
 def test_a_young_title_stays_whatever_its_score(tmp_path: Path, no_tools: None) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
