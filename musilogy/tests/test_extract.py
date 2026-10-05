@@ -84,6 +84,30 @@ def test_reduce_artist_keeps_artist_relations_with_their_type_and_direction():
     ]
 
 
+def test_reduce_artist_keeps_url_relations_with_their_type_and_end():
+    # Case this must catch: url relations dropped again, or their type lost,
+    # which would leave artist_urls without a platform to name.
+    out = reduce_artist(
+        {
+            **GROUP,
+            "relations": [
+                *GROUP["relations"],
+                {
+                    "type": "bandcamp",
+                    "target-type": "url",
+                    "ended": True,
+                    "url": {"resource": "https://disincarnate.bandcamp.com/"},
+                },
+            ],
+        }
+    )
+    assert out is not None
+    assert out["urls"] == [
+        {"type": "discogs", "url": "https://example.invalid", "ended": None},
+        {"type": "bandcamp", "url": "https://disincarnate.bandcamp.com/", "ended": True},
+    ]
+
+
 def test_reduce_artist_keeps_persons():
     out = reduce_artist({"id": "x", "name": "y", "type": "Person"})
     assert out is not None
@@ -143,8 +167,16 @@ def test_reduce_release_group_refuses_a_genre_without_a_vote_count():
         reduce_release_group({"id": "r", "primary-type": "Album", "genres": [{"id": "g"}]})
 
 
-def test_reduce_release_group_drops_singles():
-    assert reduce_release_group({"id": "r", "primary-type": "Single"}) is None
+def test_reduce_release_group_keeps_eps_and_names_the_type():
+    for kind in ("Album", "EP"):
+        reduced = reduce_release_group({"id": "r", "primary-type": kind})
+        assert reduced is not None
+        assert reduced["primary_type"] == kind
+
+
+def test_reduce_release_group_drops_singles_and_the_other_types():
+    for kind in ("Single", "Broadcast", "Other", None):
+        assert reduce_release_group({"id": "r", "primary-type": kind}) is None
 
 
 def _write_mbdump_archive(path, lines: list[bytes]) -> None:
@@ -169,8 +201,8 @@ def test_iter_records_surfaces_malformed_lines_instead_of_dropping_them_silently
 def test_extract_reports_what_it_dropped(tmp_path):
     # A rule that removes data must leave a visible trace: the primary-type
     # filter lives in the projection for size reasons — keeping every
-    # release-group would inflate the intermediate by roughly two thirds — so
-    # the count is the only way the manifest can show what it cost.
+    # release-group, singles included, would inflate the intermediate — so the
+    # count is the only way the manifest can show what it cost.
     archive = tmp_path / "sample.tar.xz"
     _write_mbdump_archive(
         archive,
@@ -181,4 +213,4 @@ def test_extract_reports_what_it_dropped(tmp_path):
         ],
     )
     kept, dropped = extract(archive, reduce_release_group, tmp_path / "out.jsonl")
-    assert (kept, dropped) == (1, 2)
+    assert (kept, dropped) == (2, 1)

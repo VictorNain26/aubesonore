@@ -30,8 +30,9 @@ et `run` lit celui que la constante épingle.
 ## 2. Tables
 
 **Gardées** : `artists` (identité, type, dates et leur provenance, lieu,
-genres), `albums` (non chargée : elle sert les dates), `genres` (vocabulaire),
-`links` (relations typées entre artistes), `popularity`.
+genres), `albums` (non chargée : elle sert les dates, et ne compte que les
+albums), `genres` (vocabulaire), `links` (relations typées entre artistes),
+`popularity`.
 
 **Retirées**, avec leurs étapes SQL, leurs invariants et leurs tests :
 `presence`, la fiabilité des genres pour la densité (`55_genre_reliability`),
@@ -41,6 +42,18 @@ genres), `albums` (non chargée : elle sert les dates), `genres` (vocabulaire),
 `multi_artist_drop_pct`, `density_eligible`) partent aussi.
 
 **Ajoutées** :
+
+- `releases(artist_mbid, rg_mbid, title, primary_type, secondary, y,
+  n_credited)` : chaque album et EP du dump, une ligne par artiste crédité de
+  la population, quels que soient ses types secondaires (live, compilation,
+  remix…) et sa date ; `n_credited` dit combien d'artistes le partagent. Le
+  site choisit ce qu'il montre (`docs/vision.md` §2.4). L'extraction garde
+  désormais les EP à côté des albums ; `albums` reste limitée aux albums.
+- `urls(artist_mbid, type, url, ended)` : les pages que MusicBrainz relie à un
+  artiste (plateformes d'écoute, site officiel, Wikidata, Discogs…), avec le
+  type de relation de MusicBrainz ; `ended` marque une page qui n'est plus
+  celle de l'artiste. Une même page reliée deux fois sous un même type est une
+  ligne.
 
 - `proximity(artist_mbid, neighbour_mbid, score, rank)` *(à livrer, après
   le relevé)* : les voisins ListenBrainz de chaque artiste relevé, `rank` de 1
@@ -95,6 +108,8 @@ absente (code `42883`).
 | `artist_influences` | livrée par #286 |
 | `search_artists` | livrée par #286 |
 | `artist_neighbours` | à livrer, après le relevé de proximité (§5) |
+| `artist_releases` | livrée par cette PR |
+| `artist_urls` | livrée par cette PR |
 
 ```sql
 -- Fiche. proximity_surveyed : vrai si l'artiste a été interrogé dans le
@@ -128,6 +143,18 @@ musilogy.artist_influences(artist text) RETURNS TABLE (
 musilogy.search_artists(query text, page_size integer) RETURNS TABLE (
   mbid text, name text, disambiguation text, type text, y0 integer,
   user_count bigint)
+
+-- Albums et EP de l'artiste, tous, avec leurs types secondaires pour que le
+-- site choisisse ; du plus ancien au plus récent, sans année en dernier, puis
+-- par titre et MBID.
+musilogy.artist_releases(artist text) RETURNS TABLE (
+  mbid text, title text, primary_type text, secondary text[], y integer,
+  n_credited integer)
+
+-- Pages que MusicBrainz relie à l'artiste et qui sont encore les siennes
+-- (relation non terminée), avec le type de relation de MusicBrainz ; par
+-- type puis URL.
+musilogy.artist_urls(artist text) RETURNS TABLE (type text, url text)
 ```
 
 Un voisin ou une influence absents du dump n'apparaissent pas : la fonction
