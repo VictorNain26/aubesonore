@@ -26,6 +26,15 @@ describe('ArtistPage', () => {
     await waitFor(() => expect(document.title).toBe('Hania Rani · AubeSonore'));
   });
 
+  it('keeps its footer out of view until its content has come', async () => {
+    // An artist no earlier test opened: a page seen before comes back at once.
+    open('/artiste/nils-frahm');
+
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
+    await screen.findByRole('heading', { level: 1 });
+    expect(await screen.findByRole('contentinfo')).toBeInTheDocument();
+  });
+
   it('shows the not-found state for a slug the API does not know, with the way back', async () => {
     open('/artiste/nope');
 
