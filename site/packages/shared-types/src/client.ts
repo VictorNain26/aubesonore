@@ -199,25 +199,43 @@ export interface MusilogyInfluence extends MusilogyArtistRef {
   statement: string;
 }
 
-/** The band links Musilogy shows, read from the artist's side. */
-export type MusilogyLinkKind =
-  | 'memberOf'
-  | 'members'
-  | 'founded'
-  | 'foundedBy'
-  | 'subgroupOf'
-  | 'subgroups'
-  | 'renamedTo'
-  | 'renamedFrom'
-  | 'aliasOf'
-  | 'aliases'
-  | 'collaboratedIn'
-  | 'collaborators';
+/** A record of the artist's work (docs/vision.md §2.4). */
+export interface MusilogyRelease {
+  /** The MusicBrainz release group: its cover is at the Cover Art Archive. */
+  mbid: string;
+  title: string;
+  type: 'album' | 'ep';
+  /** A soundtrack the artist composed. */
+  soundtrack: boolean;
+  remix: boolean;
+  /** Null when MusicBrainz has no legible date. */
+  year: number | null;
+}
 
-export interface MusilogyLink extends MusilogyArtistRef {
-  kind: MusilogyLinkKind;
+/** A member of a group, or a group of a person, with the years declared. */
+export interface MusilogyBandmate extends MusilogyArtistRef {
   yBegin: number | null;
   yEnd: number | null;
+}
+
+/** Members of a group, or groups a person is part of. */
+export interface MusilogyBands {
+  members: MusilogyBandmate[];
+  groups: MusilogyBandmate[];
+}
+
+/** Another group or name of the members, two steps away: always one with a record. */
+export interface MusilogyProject extends MusilogyArtistRef {
+  /** The members who lead there. */
+  via: string[];
+}
+
+/**
+ * 'alias': a name the person performs under; 'person': the person behind
+ * this name; 'former' and 'later': the name before and after a change.
+ */
+export interface MusilogyOtherName extends MusilogyArtistRef {
+  kind: 'alias' | 'person' | 'former' | 'later';
 }
 
 /** Close neighbours who started more than 3 years before, within 3 years, after, or undated. */
@@ -239,7 +257,10 @@ export interface MusilogyArtist {
   /** Null while the data behind a section is not loaded yet; empty when it holds none. */
   neighbours: MusilogyNeighbours | null;
   influences: MusilogyInfluences | null;
-  links: MusilogyLink[];
+  releases: MusilogyRelease[] | null;
+  bands: MusilogyBands | null;
+  memberProjects: MusilogyProject[] | null;
+  otherNames: MusilogyOtherName[] | null;
 }
 
 export interface MusilogySearchHit {

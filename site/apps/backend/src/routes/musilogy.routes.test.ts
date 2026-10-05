@@ -107,7 +107,6 @@ describe('GET /api/musilogy/artist/:mbid', () => {
         neighbour('0bfba3d3-6a04-4779-bb0a-df07df5b0558', 'Undated', null, null),
       ],
       artist_influences: [],
-      artist_links: [],
     };
     pageRows = [{ id: 'a-bowie', slug: 'david-bowie', mbid: BOWIE }];
 
@@ -139,38 +138,73 @@ describe('GET /api/musilogy/artist/:mbid', () => {
     expect(body.neighbours.undated!.map((n) => n.name)).toEqual(['Undated']);
   });
 
-  it('words each band link from the side the artist stands on, and drops the rest', async () => {
-    const link = (type: string, direction: string, mbid: string, name: string) => ({
-      type,
-      direction,
-      other_mbid: mbid,
-      other_name: name,
-      other_disambiguation: null,
-      other_y0: null,
-      y_begin: 1967,
-      y_end: null,
+  it("gives the work, the band, the members' projects and other names, as musilogy reads them", async () => {
+    const person = (mbid: string, name: string, y0: number | null = null) => ({
+      mbid,
+      name,
+      disambiguation: null,
+      y0,
     });
     answers = {
       artist_card: [card],
-      artist_neighbours: [],
-      artist_influences: [],
-      artist_links: [
-        link('member of band', 'backward', BOLAN, 'Marc Bolan'),
-        link('member of band', 'backward', TOOK, 'Steve Peregrine Took'),
-        link('artist rename', 'backward', KINKS, 'Tyrannosaurus Rex'),
-        link('tribute', 'backward', RAMONES, 'A Tribute Band'),
+      artist_releases: [
+        {
+          mbid: 'rg-unicorn',
+          title: 'Unicorn',
+          primary_type: 'Album',
+          soundtrack: false,
+          remix: false,
+          y: 1969,
+        },
+        {
+          mbid: 'rg-ride',
+          title: 'Ride a White Swan',
+          primary_type: 'EP',
+          soundtrack: false,
+          remix: false,
+          y: null,
+        },
       ],
+      artist_bands: [
+        { role: 'member', ...person(BOLAN, 'Marc Bolan', 1965), y_begin: 1967, y_end: 1977 },
+        { role: 'member', ...person(TOOK, 'Steve Peregrine Took'), y_begin: 1967, y_end: 1969 },
+      ],
+      artist_member_projects: [
+        { ...person(KINKS, 'Shagrat', 1970), via: ['Steve Peregrine Took'] },
+      ],
+      artist_other_names: [{ kind: 'former', ...person(RAMONES, 'Tyrannosaurus Rex', 1967) }],
     };
+    pageRows = [{ id: 'a-bolan', slug: 'marc-bolan', mbid: BOLAN }];
 
-    const body = (await (await get(`/artist/${T_REX}`)).json()) as {
-      links: Array<{ kind: string; name: string }>;
-    };
+    const body = (await (await get(`/artist/${T_REX}`)).json()) as Record<string, unknown>;
 
-    expect(body.links.map((l) => [l.kind, l.name])).toEqual([
-      ['members', 'Marc Bolan'],
-      ['members', 'Steve Peregrine Took'],
-      ['renamedFrom', 'Tyrannosaurus Rex'],
+    expect(body.releases).toEqual([
+      {
+        mbid: 'rg-unicorn',
+        title: 'Unicorn',
+        type: 'album',
+        soundtrack: false,
+        remix: false,
+        year: 1969,
+      },
+      {
+        mbid: 'rg-ride',
+        title: 'Ride a White Swan',
+        type: 'ep',
+        soundtrack: false,
+        remix: false,
+        year: null,
+      },
     ]);
+    expect(body.bands).toMatchObject({
+      members: [
+        { name: 'Marc Bolan', yBegin: 1967, yEnd: 1977, played: { slug: 'marc-bolan' } },
+        { name: 'Steve Peregrine Took', yBegin: 1967, yEnd: 1969, played: null },
+      ],
+      groups: [],
+    });
+    expect(body.memberProjects).toMatchObject([{ name: 'Shagrat', via: ['Steve Peregrine Took'] }]);
+    expect(body.otherNames).toMatchObject([{ name: 'Tyrannosaurus Rex', kind: 'former' }]);
   });
 
   it('splits influences the artist cites from those that cite it', async () => {
@@ -189,7 +223,6 @@ describe('GET /api/musilogy/artist/:mbid', () => {
         influence('cited', KINKS, 'The Kinks'),
         influence('cited_by', RAMONES, 'Ramones'),
       ],
-      artist_links: [],
     };
 
     const body = (await (await get(`/artist/${T_REX}`)).json()) as {
@@ -201,13 +234,24 @@ describe('GET /api/musilogy/artist/:mbid', () => {
   });
 
   it('says a section is unknown, not empty, while its data is not loaded', async () => {
-    answers = { artist_card: [card], artist_links: [] };
-    notLoaded = new Set(['artist_neighbours', 'artist_influences']);
+    answers = { artist_card: [card] };
+    notLoaded = new Set([
+      'artist_neighbours',
+      'artist_influences',
+      'artist_releases',
+      'artist_bands',
+      'artist_member_projects',
+      'artist_other_names',
+    ]);
 
     const body = (await (await get(`/artist/${T_REX}`)).json()) as Record<string, unknown>;
 
     expect(body.neighbours).toBeNull();
     expect(body.influences).toBeNull();
+    expect(body.releases).toBeNull();
+    expect(body.bands).toBeNull();
+    expect(body.memberProjects).toBeNull();
+    expect(body.otherNames).toBeNull();
   });
 
   it('answers 503 while musilogy is not loaded, 404 for an unknown artist, 400 for a bad id', async () => {

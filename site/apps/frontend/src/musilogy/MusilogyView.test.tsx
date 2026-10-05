@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import type { MusilogyArtist, MusilogyNeighbour } from '@aubesonore/shared-types/client';
 import { cardLine, linkYears, MusilogyArtistView, MusilogyHomeView } from './MusilogyView';
+import { coverOf } from './Releases';
 
 const T_REX = 'c842d29f-a297-48cd-bb71-4f77fd672b16';
 
@@ -49,14 +50,13 @@ function artist(overrides: Partial<MusilogyArtist> = {}): MusilogyArtist {
       undated: [],
     },
     influences: { cites: [], citedBy: [] },
-    links: [
-      {
-        ...neighbour(20, { name: 'Marc Bolan' }),
-        kind: 'members',
-        yBegin: 1967,
-        yEnd: 1977,
-      },
-    ],
+    releases: [],
+    bands: {
+      members: [{ ...neighbour(20, { name: 'Marc Bolan' }), yBegin: 1967, yEnd: 1977 }],
+      groups: [],
+    },
+    memberProjects: [],
+    otherNames: [],
     ...overrides,
   };
 }
@@ -76,7 +76,7 @@ describe('MusilogyArtistView', () => {
       `/musilogy/${neighbour(3).mbid}/the-kinks`
     );
     expect(screen.getByRole('link', { name: 'Ramones' })).toBeInTheDocument();
-    expect(screen.getByText(/jamais une influence/)).toBeInTheDocument();
+    expect(screen.getByText(/placés selon leurs débuts/)).toBeInTheDocument();
   });
 
   it('leads straight to the page of a neighbour the antenna played', () => {
@@ -99,15 +99,64 @@ describe('MusilogyArtistView', () => {
     show({ status: 'ready', artist: artist({ neighbours: null, influences: null }) });
 
     expect(screen.queryByRole('heading', { name: 'Avant' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Influences déclarées' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Groupes et projets' })).toBeInTheDocument();
   });
 
   it('says once that there is nothing to show when Musilogy holds nothing', () => {
-    show({ status: 'ready', artist: artist({ neighbours: null, influences: null, links: [] }) });
+    show({
+      status: 'ready',
+      artist: artist({
+        neighbours: null,
+        influences: null,
+        bands: { members: [], groups: [] },
+      }),
+    });
 
-    expect(screen.getByText("Rien à montrer sur cet artiste pour l'instant.")).toBeInTheDocument();
+    expect(screen.getByText("Rien à montrer ici pour l'instant.")).toBeInTheDocument();
     expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
+  });
+
+  it('shows the albums, then the EPs folded past the first eight, with their covers', async () => {
+    const record = (n: number, type: 'album' | 'ep', extra = {}) => ({
+      mbid: `rg-${n}`,
+      title: `Record ${n}`,
+      type,
+      soundtrack: false,
+      remix: false,
+      year: 1960 + n,
+      ...extra,
+    });
+    const eps = Array.from({ length: 10 }, (_, i) => record(10 + i, 'ep'));
+    show({
+      status: 'ready',
+      artist: artist({ releases: [record(1, 'album', { soundtrack: true }), ...eps] }),
+    });
+
+    expect(screen.getByRole('heading', { name: 'Albums et EP' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Albums' })).toBeInTheDocument();
+    expect(screen.getByText('1961 · bande originale')).toBeInTheDocument();
+    expect(coverOf(record(1, 'album'))).toBe(
+      'https://coverartarchive.org/release-group/rg-1/front-250'
+    );
+    expect(screen.queryByText('Record 19')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Voir 2 de plus' }));
+    expect(screen.getByText('Record 19')).toBeInTheDocument();
+  });
+
+  it("names who leads to each member's project, and what each other name is", () => {
+    show({
+      status: 'ready',
+      artist: artist({
+        memberProjects: [{ ...neighbour(50, { name: 'Shagrat' }), via: ['Steve Peregrine Took'] }],
+        otherNames: [{ ...neighbour(51, { name: 'Tyrannosaurus Rex' }), kind: 'former' }],
+      }),
+    });
+
+    expect(screen.getByRole('heading', { name: 'Projets des membres' })).toBeInTheDocument();
+    expect(screen.getByText('avec Steve Peregrine Took')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Tyrannosaurus Rex' })).toBeInTheDocument();
+    expect(screen.getByText('ancien nom')).toBeInTheDocument();
   });
 
   it('shows the closest first and opens the rest on demand', async () => {
@@ -134,7 +183,7 @@ describe('MusilogyArtistView', () => {
 
   it('shows influences only when the artist declared some', () => {
     const { rerender } = show({ status: 'ready', artist: artist() });
-    expect(screen.queryByRole('heading', { name: 'Influences déclarées' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
 
     rerender(
       <MusilogyArtistView
@@ -149,7 +198,7 @@ describe('MusilogyArtistView', () => {
         }}
       />
     );
-    expect(screen.getByRole('heading', { name: 'Influences déclarées' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Influences' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Elvis' })).toBeInTheDocument();
   });
 
@@ -160,7 +209,7 @@ describe('MusilogyArtistView', () => {
       artist: artist({ neighbours: { before: [], during: [], after: [], undated } }),
     });
 
-    expect(screen.getByRole('heading', { name: 'Dates inconnues' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Débuts inconnus' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Undated Band' })).toBeInTheDocument();
   });
 
@@ -178,7 +227,7 @@ describe('MusilogyArtistView', () => {
     expect(screen.getByRole('link', { name: 'Chuck Berry' })).toBeInTheDocument();
     expect(document.body).not.toHaveTextContent(/ListenBrainz|MusicBrainz|Wikidata|CC BY|CC0/);
     for (const link of screen.getAllByRole('link')) {
-      expect(link.getAttribute('href')).toMatch(/^\//);
+      expect(link.getAttribute('href')).toMatch(/^[/#]/);
     }
   });
 });

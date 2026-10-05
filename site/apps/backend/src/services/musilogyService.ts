@@ -6,10 +6,12 @@ import type {
   ArtistPlatform,
   MusilogyArtist,
   MusilogyArtistRef,
+  MusilogyBandmate,
   MusilogyInfluence,
-  MusilogyLink,
-  MusilogyLinkKind,
   MusilogyNeighbour,
+  MusilogyOtherName,
+  MusilogyProject,
+  MusilogyRelease,
   MusilogySearchHit,
 } from '@aubesonore/shared-types/client';
 import { db } from '../db/index';
@@ -98,15 +100,30 @@ interface InfluenceRow extends Record<string, unknown> {
   statement: string;
 }
 
-interface LinkRow extends Record<string, unknown> {
-  type: string;
-  direction: 'forward' | 'backward';
-  other_mbid: string;
-  other_name: string;
-  other_disambiguation: string | null;
-  other_y0: number | null;
+interface BandRow extends Record<string, unknown> {
+  role: 'member' | 'group';
+  mbid: string;
+  name: string;
+  disambiguation: string | null;
+  y0: number | null;
   y_begin: number | null;
   y_end: number | null;
+}
+
+interface ProjectRow extends Record<string, unknown> {
+  mbid: string;
+  name: string;
+  disambiguation: string | null;
+  y0: number | null;
+  via: string[];
+}
+
+interface OtherNameRow extends Record<string, unknown> {
+  kind: MusilogyOtherName['kind'];
+  mbid: string;
+  name: string;
+  disambiguation: string | null;
+  y0: number | null;
 }
 
 interface SearchRow extends Record<string, unknown> {
@@ -117,22 +134,6 @@ interface SearchRow extends Record<string, unknown> {
   y0: number | null;
   user_count: Int8 | null;
 }
-
-// The band links Musilogy shows, by MusicBrainz relation and by the side the
-// artist stands on (checked on the loaded data, 2026-10-04): the source of
-// `member of band` is the member, of `founder` the founder, of `subgroup` the
-// subgroup (Audioslave → Rage Against the Machine), of `artist rename` the
-// former name (Warsaw → Joy Division), of `is person` the person behind an
-// alias (Damon Albarn → Dan Abnormal), of `collaboration` the participant.
-// Family, teaching, tributes and the rest are not band history.
-const LINK_KINDS: Record<string, { forward: MusilogyLinkKind; backward: MusilogyLinkKind }> = {
-  'member of band': { forward: 'memberOf', backward: 'members' },
-  founder: { forward: 'founded', backward: 'foundedBy' },
-  subgroup: { forward: 'subgroupOf', backward: 'subgroups' },
-  'artist rename': { forward: 'renamedTo', backward: 'renamedFrom' },
-  'is person': { forward: 'aliases', backward: 'aliasOf' },
-  collaboration: { forward: 'collaboratedIn', backward: 'collaborators' },
-};
 
 async function playedByMbid(mbids: string[]): Promise<Map<string, ArtistPageRef>> {
   if (mbids.length === 0) return new Map();
@@ -155,27 +156,27 @@ export async function getMusilogyArtist(mbid: string): Promise<MusilogyArtist | 
 }
 
 async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
-  const [cards, neighbourRows, influenceRows, linkRows] = await Promise.all([
-    call<CardRow>(sql`SELECT * FROM musilogy.artist_card(${mbid})`),
-    section<NeighbourRow>(sql`SELECT * FROM musilogy.artist_neighbours(${mbid})`),
-    section<InfluenceRow>(sql`SELECT * FROM musilogy.artist_influences(${mbid})`),
-    call<LinkRow>(sql`SELECT * FROM musilogy.artist_links(${mbid})`),
-  ]);
+  const [cards, neighbourRows, influenceRows, releaseRows, bandRows, projectRows, nameRows] =
+    await Promise.all([
+      call<CardRow>(sql`SELECT * FROM musilogy.artist_card(${mbid})`),
+      section<NeighbourRow>(sql`SELECT * FROM musilogy.artist_neighbours(${mbid})`),
+      section<InfluenceRow>(sql`SELECT * FROM musilogy.artist_influences(${mbid})`),
+      section<ReleaseRow>(sql`SELECT * FROM musilogy.artist_releases(${mbid})`),
+      section<BandRow>(sql`SELECT * FROM musilogy.artist_bands(${mbid})`),
+      section<ProjectRow>(sql`SELECT * FROM musilogy.artist_member_projects(${mbid})`),
+      section<OtherNameRow>(sql`SELECT * FROM musilogy.artist_other_names(${mbid})`),
+    ]);
   const card = cards[0];
   if (!card) {
     musilogyCache.set(mbid, null);
     return null;
   }
 
-  const bandLinks = linkRows.flatMap((row) => {
-    const kinds = LINK_KINDS[row.type];
-    return kinds ? [{ row, kind: kinds[row.direction] }] : [];
-  });
   const played = await playedByMbid([
     card.mbid,
-    ...(neighbourRows ?? []).map((row) => row.mbid),
-    ...(influenceRows ?? []).map((row) => row.mbid),
-    ...bandLinks.map(({ row }) => row.other_mbid),
+    ...[neighbourRows, influenceRows, bandRows, projectRows, nameRows].flatMap((rows) =>
+      (rows ?? []).map((row) => row.mbid)
+    ),
   ]);
   const ref = (
     mbidOf: string,
@@ -199,11 +200,18 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
     ...ref(row.mbid, row.name, row.disambiguation, row.y0),
     statement: row.statement,
   });
-  const link = ({ row, kind }: { row: LinkRow; kind: MusilogyLinkKind }): MusilogyLink => ({
-    ...ref(row.other_mbid, row.other_name, row.other_disambiguation, row.other_y0),
-    kind,
+  const bandmate = (row: BandRow): MusilogyBandmate => ({
+    ...ref(row.mbid, row.name, row.disambiguation, row.y0),
     yBegin: row.y_begin,
     yEnd: row.y_end,
+  });
+  const release = (row: ReleaseRow): MusilogyRelease => ({
+    mbid: row.mbid,
+    title: row.title,
+    type: row.primary_type === 'EP' ? 'ep' : 'album',
+    soundtrack: row.soundtrack,
+    remix: row.remix,
+    year: row.y,
   });
 
   const result: MusilogyArtist = {
@@ -230,7 +238,27 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
       cites: influenceRows.filter((row) => row.direction === 'cited').map(influence),
       citedBy: influenceRows.filter((row) => row.direction === 'cited_by').map(influence),
     },
-    links: bandLinks.map(link),
+    releases: releaseRows && releaseRows.map(release),
+    bands: bandRows && {
+      members: bandRows.filter((row) => row.role === 'member').map(bandmate),
+      groups: bandRows.filter((row) => row.role === 'group').map(bandmate),
+    },
+    memberProjects:
+      projectRows &&
+      projectRows.map(
+        (row): MusilogyProject => ({
+          ...ref(row.mbid, row.name, row.disambiguation, row.y0),
+          via: row.via,
+        })
+      ),
+    otherNames:
+      nameRows &&
+      nameRows.map(
+        (row): MusilogyOtherName => ({
+          ...ref(row.mbid, row.name, row.disambiguation, row.y0),
+          kind: row.kind,
+        })
+      ),
   };
   musilogyCache.set(mbid, result);
   return result;
@@ -363,7 +391,11 @@ function wikidataIdOf(rows: UrlRow[]): string | null {
 
 interface ReleaseRow extends Record<string, unknown> {
   mbid: string;
+  title: string;
   primary_type: string;
+  soundtrack: boolean;
+  remix: boolean;
+  y: number | null;
 }
 
 /**

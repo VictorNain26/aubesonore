@@ -52,7 +52,10 @@ const MUSILOGY: MusilogyArtist = {
     undated: [],
   },
   influences: null,
-  links: [],
+  releases: [],
+  bands: { members: [], groups: [] },
+  memberProjects: [],
+  otherNames: [],
 };
 
 const SUMMARY = {
@@ -83,11 +86,50 @@ describe('ArtistPageView', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(screen.getByRole('heading', { name: 'Sa place dans le temps' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Artistes proches' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Avant' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Après' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Influences déclarées' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Explorer dans Musilogy' })).not.toBeInTheDocument();
+  });
+
+  it('orders the page as the vision does: listen, records, kept, then where to go next', () => {
+    const record = (n: number, type: 'album' | 'ep') => ({
+      mbid: `rg-${n}`,
+      title: `Record ${n}`,
+      type,
+      soundtrack: false,
+      remix: false,
+      year: 2015 + n,
+    });
+    render(
+      <ArtistPageView
+        state={{
+          status: 'ready',
+          profile: makeArtistProfile({
+            links: [{ platform: 'bandcamp', url: 'https://haniarani.bandcamp.com/' }],
+          }),
+        }}
+        kept={[{ id: 'k-1', title: 'Glass', createdAt: '2026-09-12T08:00:00.000Z' }]}
+        musilogy={{ ...MUSILOGY, releases: [record(1, 'album'), record(2, 'ep')] }}
+        thisYear={2026}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
+      'Écouter ailleurs',
+      'Albums et EP',
+      'Vos titres gardés',
+      'Artistes proches',
+    ]);
+    expect(
+      screen
+        .getAllByRole('link')
+        .filter((link) => link.getAttribute('href')?.startsWith('#'))
+        .map((link) => link.textContent)
+    ).toEqual(['Écouter ailleurs', 'Albums et EP', 'Vos titres gardés', 'Artistes proches']);
+    expect(screen.getByText('Record 1')).toBeInTheDocument();
   });
 
   it('says the facts in a sentence when Wikipedia has no article', () => {

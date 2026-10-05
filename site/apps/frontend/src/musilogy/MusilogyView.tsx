@@ -3,13 +3,14 @@ import { Link } from 'react-router';
 import type {
   MusilogyArtist,
   MusilogyArtistRef,
+  MusilogyBandmate,
   MusilogyCard,
-  MusilogyLink,
-  MusilogyLinkKind,
+  MusilogyOtherName,
   MusilogySearchHit,
 } from '@aubesonore/shared-types/client';
 import { getLocale } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
+import { PageNav, type PageNavItem } from '../design/molecules/PageNav';
 import { Section } from '../design/molecules/Section';
 import { SiteHeader } from '../home/SiteHeader';
 import { ARTIST_LINK, TEXT_ACTION } from '../home/styles';
@@ -17,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { artistPath } from '../lib/artistProfile';
 import { musilogyPath } from '../lib/musilogy';
 import { MusilogyMap } from './MusilogyMap';
+import { ReleasesSection } from './Releases';
 
 export type MusilogyState =
   | { status: 'loading' }
@@ -35,35 +37,12 @@ const KIND_LABELS: Record<string, () => string> = {
   Choir: () => m.artist_kind_choir(),
 };
 
-const LINK_LABELS: Record<MusilogyLinkKind, () => string> = {
-  memberOf: () => m.musilogy_link_member_of(),
-  members: () => m.musilogy_link_members(),
-  founded: () => m.musilogy_link_founded(),
-  foundedBy: () => m.musilogy_link_founded_by(),
-  subgroupOf: () => m.musilogy_link_subgroup_of(),
-  subgroups: () => m.musilogy_link_subgroups(),
-  renamedTo: () => m.musilogy_link_renamed_to(),
-  renamedFrom: () => m.musilogy_link_renamed_from(),
-  aliasOf: () => m.musilogy_link_alias_of(),
-  aliases: () => m.musilogy_link_aliases(),
-  collaboratedIn: () => m.musilogy_link_collaborated_in(),
-  collaborators: () => m.musilogy_link_collaborators(),
+const NAME_KINDS: Record<MusilogyOtherName['kind'], () => string> = {
+  alias: () => m.musilogy_name_alias(),
+  person: () => m.musilogy_name_person(),
+  former: () => m.musilogy_name_former(),
+  later: () => m.musilogy_name_later(),
 };
-
-const LINK_ORDER: MusilogyLinkKind[] = [
-  'members',
-  'memberOf',
-  'foundedBy',
-  'founded',
-  'renamedFrom',
-  'renamedTo',
-  'subgroupOf',
-  'subgroups',
-  'aliasOf',
-  'aliases',
-  'collaborators',
-  'collaboratedIn',
-];
 
 /** "Groupe · Royaume-Uni · 1967 – 1977": what MusicBrainz states, nothing more. */
 export function cardLine(card: MusilogyCard): string {
@@ -90,21 +69,33 @@ export function cardLine(card: MusilogyCard): string {
   return [kind, where, when].filter(Boolean).join(' · ');
 }
 
-function ArtistRow({ artist, years }: { artist: MusilogyArtistRef; years?: string | null }) {
+/** One page per artist: the antenna's page when it played them, Musilogy's otherwise. */
+function pathOf(artist: MusilogyArtistRef): string {
+  return artist.played ? artistPath(artist.played) : musilogyPath(artist);
+}
+
+function ArtistRow({
+  artist,
+  years,
+  detail,
+}: {
+  artist: MusilogyArtistRef;
+  years?: string | null;
+  /** The line under the name; MusicBrainz's disambiguation by default. */
+  detail?: string | null;
+}) {
   const when = years === undefined ? (artist.y0 ? String(artist.y0) : null) : years;
+  const under = detail === undefined ? artist.disambiguation : detail;
   return (
     <li className="border-border reveal grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1">
       <span className="flex min-w-0 flex-col">
-        {/* One page per artist: the antenna's page when it played them, Musilogy's otherwise. */}
         <Link
-          to={artist.played ? artistPath(artist.played) : musilogyPath(artist)}
+          to={pathOf(artist)}
           className={cn(ARTIST_LINK, 'text-row self-start truncate underline-offset-4')}
         >
           {artist.name}
         </Link>
-        {artist.disambiguation ? (
-          <span className="text-ui text-text-muted truncate">{artist.disambiguation}</span>
-        ) : null}
+        {under ? <span className="text-ui text-text-muted truncate">{under}</span> : null}
       </span>
       <span className="flex items-center">
         {when ? (
@@ -117,8 +108,8 @@ function ArtistRow({ artist, years }: { artist: MusilogyArtistRef; years?: strin
   );
 }
 
-/** A link's years in the group: "de 1971 à 1975", "depuis 1971" or "jusqu'en 1975". */
-export function linkYears(link: MusilogyLink): string | null {
+/** Years in a group: "de 1971 à 1975", "depuis 1971" or "jusqu'en 1975". */
+export function linkYears(link: Pick<MusilogyBandmate, 'yBegin' | 'yEnd'>): string | null {
   if (link.yBegin && link.yEnd)
     return m.years_range({ from: String(link.yBegin), to: String(link.yEnd) });
   if (link.yBegin) return m.artist_since({ year: String(link.yBegin) });
@@ -129,9 +120,11 @@ export function linkYears(link: MusilogyLink): string | null {
 function ArtistList<T extends MusilogyArtistRef>({
   artists,
   yearsOf,
+  detailOf,
 }: {
   artists: readonly T[];
   yearsOf?: (artist: T) => string | null;
+  detailOf?: (artist: T) => string | null;
 }) {
   const [open, setOpen] = useState(false);
   const shown = open ? artists : artists.slice(0, FIRST_SHOWN);
@@ -143,6 +136,7 @@ function ArtistList<T extends MusilogyArtistRef>({
             key={artist.mbid}
             artist={artist}
             {...(yearsOf ? { years: yearsOf(artist) } : {})}
+            {...(detailOf ? { detail: detailOf(artist) } : {})}
           />
         ))}
       </ol>
@@ -172,37 +166,108 @@ function SubList({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function Links({ links }: { links: readonly MusilogyLink[] }) {
-  const byKind = LINK_ORDER.map((kind) => [kind, links.filter((l) => l.kind === kind)] as const);
+/** Other names on one line, each with what it is to the artist. */
+function OtherNames({ names }: { names: readonly MusilogyOtherName[] }) {
+  return (
+    <ul className="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0">
+      {names.map((name) => (
+        <li key={name.mbid} className="reveal inline-flex min-h-11 items-baseline gap-2">
+          <Link to={pathOf(name)} className={cn(ARTIST_LINK, 'text-row underline-offset-4')}>
+            {name.name}
+          </Link>
+          <span className="text-ui text-text-muted">{NAME_KINDS[name.kind]()}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * Members or bands, the members' other projects, other names: three sections
+ * rather than MusicBrainz's dozen relation types (docs/vision.md §2.4).
+ */
+function Bands({ artist }: { artist: MusilogyArtist }) {
+  const { bands, memberProjects, otherNames } = artist;
   return (
     <div className="flex flex-col gap-8">
-      {byKind
-        .filter(([, list]) => list.length > 0)
-        .map(([kind, list]) => (
-          <SubList key={kind} label={LINK_LABELS[kind]()}>
-            <ArtistList artists={list} yearsOf={linkYears} />
-          </SubList>
-        ))}
+      {bands && bands.members.length > 0 ? (
+        <SubList label={m.musilogy_members()}>
+          <ArtistList artists={bands.members} yearsOf={linkYears} />
+        </SubList>
+      ) : null}
+      {bands && bands.groups.length > 0 ? (
+        <SubList label={m.musilogy_groups()}>
+          <ArtistList artists={bands.groups} yearsOf={linkYears} />
+        </SubList>
+      ) : null}
+      {memberProjects && memberProjects.length > 0 ? (
+        <SubList label={m.musilogy_member_projects()}>
+          <ArtistList
+            artists={memberProjects}
+            detailOf={(project) => m.musilogy_via({ names: project.via.join(', ') })}
+          />
+        </SubList>
+      ) : null}
+      {otherNames && otherNames.length > 0 ? (
+        <SubList label={m.musilogy_other_names()}>
+          <OtherNames names={otherNames} />
+        </SubList>
+      ) : null}
     </div>
   );
 }
 
+function bandCount({ bands, memberProjects, otherNames }: MusilogyArtist): number {
+  return (
+    (bands ? bands.members.length + bands.groups.length : 0) +
+    (memberProjects?.length ?? 0) +
+    (otherNames?.length ?? 0)
+  );
+}
+
+/** The close artists Musilogy holds, by when they started against the artist. */
+function closeOf({ neighbours }: MusilogyArtist) {
+  return neighbours
+    ? (
+        [
+          [m.musilogy_before_title(), neighbours.before],
+          [m.musilogy_during_title(), neighbours.during],
+          [m.musilogy_after_title(), neighbours.after],
+          [m.musilogy_undated_title(), neighbours.undated],
+        ] as const
+      ).filter(([, list]) => list.length > 0)
+    : [];
+}
+
+function citedOf({ influences }: MusilogyArtist) {
+  return influences
+    ? (
+        [
+          [m.musilogy_cites(), influences.cites],
+          [m.musilogy_cited_by(), influences.citedBy],
+        ] as const
+      ).filter(([, list]) => list.length > 0)
+    : [];
+}
+
+/** The sections MusilogySections shows, for the page's anchors (PageNav). */
+export function musilogyNav(artist: MusilogyArtist): PageNavItem[] {
+  return [
+    closeOf(artist).length > 0 ? { id: 'close', label: m.musilogy_close_title() } : null,
+    citedOf(artist).length > 0 ? { id: 'influences', label: m.musilogy_influences_title() } : null,
+    bandCount(artist) > 0 ? { id: 'bands', label: m.musilogy_links_title() } : null,
+  ].filter((item) => item !== null);
+}
+
 /** Whether Musilogy holds anything to show about an artist. */
-export function hasMusilogySections({ neighbours, influences, links }: MusilogyArtist): boolean {
-  const near = neighbours
-    ? neighbours.before.length +
-      neighbours.during.length +
-      neighbours.after.length +
-      neighbours.undated.length
-    : 0;
-  const cited = influences ? influences.cites.length + influences.citedBy.length : 0;
-  return near + cited + links.length > 0;
+export function hasMusilogySections(artist: MusilogyArtist): boolean {
+  return musilogyNav(artist).length > 0 || (artist.releases?.length ?? 0) > 0;
 }
 
 /**
- * What Musilogy knows of an artist, one section per thing it holds: its place in time (the map,
- * then before, alongside, after), the influences it declared, its bands. A section with nothing
- * in it is left out: no « nothing yet » under a title.
+ * Where to go next from an artist, one section per thing Musilogy holds: the close artists (the
+ * map, then before, alongside, after), the influences, the bands and their projects. A section
+ * with nothing in it is left out: no « nothing yet » under a title.
  */
 export function MusilogySections({
   artist,
@@ -211,44 +276,29 @@ export function MusilogySections({
   artist: MusilogyArtist;
   thisYear: number;
 }) {
-  const { neighbours, influences, links } = artist;
-  const near = neighbours
-    ? (
-        [
-          ['before', m.musilogy_before_title(), m.musilogy_before_body(), neighbours.before],
-          ['during', m.musilogy_during_title(), m.musilogy_during_body(), neighbours.during],
-          ['after', m.musilogy_after_title(), m.musilogy_after_body(), neighbours.after],
-          ['undated', m.musilogy_undated_title(), m.musilogy_undated_body(), neighbours.undated],
-        ] as const
-      ).filter(([, , , list]) => list.length > 0)
-    : [];
-  const cited = influences
-    ? (
-        [
-          [m.musilogy_cites(), influences.cites],
-          [m.musilogy_cited_by(), influences.citedBy],
-        ] as const
-      ).filter(([, list]) => list.length > 0)
-    : [];
-
+  const close = closeOf(artist);
+  const cited = citedOf(artist);
   return (
     <>
-      {near.length > 0 ? (
-        <Section id="time" title={m.musilogy_map_title()} body={m.musilogy_neighbours_note()}>
-          <MusilogyMap artist={artist} thisYear={thisYear} />
+      {close.length > 0 ? (
+        <Section
+          id="close"
+          title={m.musilogy_close_title()}
+          body={m.musilogy_neighbours_note()}
+          sticky
+        >
+          <div className="flex flex-col gap-10">
+            <MusilogyMap artist={artist} thisYear={thisYear} />
+            {close.map(([label, list]) => (
+              <SubList key={label} label={label}>
+                <ArtistList artists={list} />
+              </SubList>
+            ))}
+          </div>
         </Section>
       ) : null}
-      {near.map(([id, title, body, list]) => (
-        <Section key={id} id={id} title={title} body={body}>
-          <ArtistList artists={list} />
-        </Section>
-      ))}
       {cited.length > 0 ? (
-        <Section
-          id="influences"
-          title={m.musilogy_influences_title()}
-          body={m.musilogy_influences_body()}
-        >
+        <Section id="influences" title={m.musilogy_influences_title()} sticky>
           <div className="flex flex-col gap-8">
             {cited.map(([label, list]) => (
               <SubList key={label} label={label}>
@@ -258,9 +308,9 @@ export function MusilogySections({
           </div>
         </Section>
       ) : null}
-      {links.length > 0 ? (
-        <Section id="links" title={m.musilogy_links_title()} body={m.musilogy_links_body()}>
-          <Links links={links} />
+      {bandCount(artist) > 0 ? (
+        <Section id="bands" title={m.musilogy_links_title()} sticky>
+          <Bands artist={artist} />
         </Section>
       ) : null}
     </>
@@ -279,10 +329,25 @@ function ArtistView({ artist, thisYear }: { artist: MusilogyArtist; thisYear: nu
           <p className="text-sub text-text-muted m-0">{card.disambiguation}</p>
         ) : null}
         {line ? <p className="text-sub text-text-muted m-0">{line}</p> : null}
+        <div className="mt-3">
+          <PageNav
+            items={[
+              ...(artist.releases && artist.releases.length > 0
+                ? [{ id: 'records', label: m.artist_records_title() }]
+                : []),
+              ...musilogyNav(artist),
+            ]}
+          />
+        </div>
       </div>
       <div className="px-page flex flex-col gap-16 py-16 md:gap-28 md:py-28">
         {hasMusilogySections(artist) ? (
-          <MusilogySections artist={artist} thisYear={thisYear} />
+          <>
+            {artist.releases && artist.releases.length > 0 ? (
+              <ReleasesSection releases={artist.releases} />
+            ) : null}
+            <MusilogySections artist={artist} thisYear={thisYear} />
+          </>
         ) : (
           <Empty text={m.musilogy_nothing_yet()} />
         )}
