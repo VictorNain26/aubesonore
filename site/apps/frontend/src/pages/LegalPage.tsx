@@ -13,6 +13,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 const CONTACT = 'contact@aubesonore.fr';
+const LINK = 'text-text underline decoration-1 underline-offset-4';
 
 /** Legal notice and privacy policy, pre-rendered in each language and hydrated like any page. */
 export function LegalPage() {
@@ -21,7 +22,7 @@ export function LegalPage() {
     document.title = `${m.legal_title()} · AubeSonore`;
   }, []);
   const mail = (
-    <a href={`mailto:${CONTACT}`} className="text-text underline decoration-1 underline-offset-4">
+    <a href={`mailto:${CONTACT}`} className={LINK}>
       {CONTACT}
     </a>
   );
@@ -47,6 +48,19 @@ export function LegalPage() {
           <p className="m-0">{m.legal_data_collected()}</p>
           <p className="m-0">{m.legal_data_purpose()}</p>
           <p className="m-0">{m.legal_data_processors()}</p>
+          {/* YouTube API Services Developer Policies III.A.1-2: a link to YouTube's Terms of
+              Service, and the Google Privacy Policy at the address they give. */}
+          <p className="m-0">
+            {m.legal_youtube_intro()}{' '}
+            <a href="https://www.youtube.com/t/terms" className={LINK}>
+              {m.legal_youtube_terms()}
+            </a>
+            {m.legal_youtube_privacy_intro()}{' '}
+            <a href="http://www.google.com/policies/privacy" className={LINK}>
+              {m.legal_youtube_privacy()}
+            </a>
+            .
+          </p>
           <p className="m-0">{m.legal_data_retention()}</p>
           <p className="m-0">
             {m.legal_data_rights()} {mail}. {m.legal_data_cnil()}

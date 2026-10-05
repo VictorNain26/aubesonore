@@ -32,6 +32,7 @@ Variables principales (liste complète dans `.env.example`) :
 - `ALLOWED_ORIGINS`, `COOKIE_DOMAIN`, `FRONTEND_BASE_URL`, `BACKEND_BASE_URL`
 - `AZURACAST_BASE_URL`, `AZURACAST_API_KEY`, `AZURACAST_STATION_ID`
 - `OUTBOUND_USER_AGENT` — User-Agent avec contact exigé par MusicBrainz et Wikimedia
+- `YOUTUBE_API_KEY` — facultative : clé YouTube Data API v3 (restreinte à cette API) pour le lien direct de chaque titre gardé ; sans elle, chaque titre ouvre une recherche YouTube
 
 ## Développement
 

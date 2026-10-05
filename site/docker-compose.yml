@@ -103,6 +103,7 @@ services:
       AZURACAST_BASE_URL: ${AZURACAST_BASE_URL:-http://host.docker.internal:8080}
       AZURACAST_API_KEY: ${AZURACAST_API_KEY:-}
       AZURACAST_STATION_ID: ${AZURACAST_STATION_ID:-1}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
     volumes:
       - pg_certs:/certs:ro
     ports:

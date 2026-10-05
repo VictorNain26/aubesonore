@@ -87,7 +87,7 @@ n'existent nulle part ailleurs.
 
 ```bash
 cd ~/aubesonore/site
-cp .env.example .env                  # secrets d'auth, SMTP, base
+cp .env.example .env                  # secrets d'auth, SMTP, base, clé YouTube
 docker compose up -d --build
 ln -s ~/aubesonore/site/scripts/systemd/* ~/.config/systemd/user/
 systemctl --user enable --now aubesonore-deploy.timer aubesonore-backup.timer
