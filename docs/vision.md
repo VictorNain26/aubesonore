@@ -315,7 +315,7 @@ l'historique git.
       officiel MusicBrainz pour retirer les bootlegs (#340, en cours, environ 38 h), puis la règle
       qui s'en sert ; les groupes et projets du §2.4 : `links` réduite aux appartenances, aux
       pseudonymes et aux changements de nom, et une fonction SQL par rubrique ;
-   2. le site lit faits et liens d'écoute dans musilogy (#343) ; reste une page pour tout MBID et
+   2. le site lit faits et liens d'écoute dans musilogy (#344) ; reste une page pour tout MBID et
       le portrait en cascade (§2.4) ;
    3. une seule page, `/artiste/…`, sections dans l'ordre du §2.4 ; `/musilogy/:mbid` en 301 ;
    4. le serveur écrit le titre, la description et le canonique de chaque page, répond 404 pour un
