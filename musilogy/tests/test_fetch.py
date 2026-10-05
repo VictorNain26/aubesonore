@@ -355,3 +355,109 @@ def test_a_throttled_wikidata_query_waits_for_its_retry_after(monkeypatch, slept
     monkeypatch.setattr(fetch, "_get", get)
     assert fetch.influences() == []
     assert slept == [9.0]
+
+
+def browse(artist, ids, count=None):
+    return {
+        "release-group-count": len(ids) if count is None else count,
+        "release-group-offset": 0,
+        "release-groups": [{"id": i, "artist-credit": [{"artist": {"id": artist}}]} for i in ids],
+    }
+
+
+def browsing(pages):
+    """A fake MusicBrainz serving `pages[artist]` one after another, and the
+    requests it was asked."""
+    asked = []
+
+    def get(_url, params):
+        asked.append(params)
+        return pages[params["artist"]].pop(0), Message()
+
+    return get, asked
+
+
+def test_an_official_snapshot_joins_the_pages_and_paces_each_request(tmp_path, monkeypatch, slept):
+    # Breaks if a page is lost, if the next page is not asked from where the
+    # last one stopped, or if a page goes out faster than one a second.
+    artist = mbids(1)[0]
+    first, second = mbids(100, start=500), mbids(3, start=400)
+    get, asked = browsing({artist: [browse(artist, first, 103), browse(artist, second, 103)]})
+    monkeypatch.setattr(fetch, "_get", get)
+    dest = tmp_path / "snap" / "official-release-groups.jsonl"
+
+    assert fetch.fetch_official(iter([artist]), dest) == 1
+    assert [p["offset"] for p in asked] == ["0", "100"]
+    assert asked[0]["release-group-status"] == "website-default"
+    assert asked[0]["type"] == "album|ep"
+    row = json.loads(dest.read_text(encoding="utf-8"))
+    assert row == {"artist_mbid": artist, "release_groups": sorted(first + second)}
+    assert len(slept) == 2
+    assert all(0 < wait <= fetch.MIN_INTERVAL for wait in slept)
+
+
+@pytest.mark.usefixtures("slept")
+def test_an_official_snapshot_cut_short_resumes_where_it_stopped(tmp_path, monkeypatch):
+    artists = mbids(4)
+    get, asked = browsing({a: [browse(a, [])] for a in artists})
+    monkeypatch.setattr(fetch, "_get", get)
+    dest = tmp_path / "official-release-groups.jsonl"
+    written = [json.dumps({"artist_mbid": a, "release_groups": []}) + "\n" for a in artists[:2]]
+    dest.with_name(dest.name + ".partial").write_text(
+        "".join(written) + written[0][:10], encoding="utf-8"
+    )
+
+    assert fetch.fetch_official(iter(artists), dest) == 4
+    assert [p["artist"] for p in asked] == artists[2:]
+
+
+@pytest.mark.usefixtures("slept")
+def test_an_artist_musicbrainz_no_longer_holds_is_left_unsurveyed(monkeypatch):
+    # Breaks if a 404 stops the snapshot, or if it reads as an artist without
+    # any official record, which would hide all of the artist's records.
+    def gone(url, _params):
+        raise urllib.error.HTTPError(url, 404, "Not Found", Message(), None)
+
+    monkeypatch.setattr(fetch, "_get", gone)
+    artist = mbids(1)[0]
+    assert fetch.official_release_groups(artist) == {"artist_mbid": artist, "release_groups": None}
+
+
+@pytest.mark.usefixtures("slept")
+def test_an_answer_for_the_artist_merged_into_is_left_unsurveyed(monkeypatch):
+    artist, merged_into = mbids(2)
+    get, _ = browsing({artist: [browse(merged_into, mbids(2, start=500))]})
+    monkeypatch.setattr(fetch, "_get", get)
+    assert fetch.official_release_groups(artist)["release_groups"] is None
+
+
+@pytest.mark.usefixtures("slept")
+def test_a_release_group_of_another_artist_is_refused(monkeypatch):
+    # Breaks if a record could land on an artist that does not sign it.
+    artist, other = mbids(2)
+    page = browse(artist, mbids(2, start=500))
+    page["release-groups"] += browse(other, mbids(1, start=600))["release-groups"]
+    page["release-group-count"] = 3
+    get, _ = browsing({artist: [page]})
+    monkeypatch.setattr(fetch, "_get", get)
+    with pytest.raises(fetch.DownloadError):
+        fetch.official_release_groups(artist)
+
+
+@pytest.mark.usefixtures("slept")
+@pytest.mark.parametrize(
+    "second",
+    [
+        pytest.param(lambda a: browse(a, mbids(3, start=400), 104), id="count-moved"),
+        pytest.param(lambda a: browse(a, [], 103), id="pages-stop-short"),
+        pytest.param(lambda a: browse(a, mbids(3, start=500), 103), id="page-repeated"),
+    ],
+)
+def test_pages_that_do_not_add_up_are_refused(monkeypatch, second):
+    # Breaks if an edit landing between two pages, or a short page, gives a
+    # partial or doubled list that would pass for the artist's whole work.
+    artist = mbids(1)[0]
+    get, _ = browsing({artist: [browse(artist, mbids(100, start=500), 103), second(artist)]})
+    monkeypatch.setattr(fetch, "_get", get)
+    with pytest.raises(fetch.DownloadError):
+        fetch.official_release_groups(artist)

@@ -44,6 +44,14 @@ def proximity_sums(date: str) -> Path:
     return REFERENCE_DIR / f"listenbrainz-similar-{date}.SHA256SUMS"
 
 
+def official_snapshot(date: str) -> Path:
+    return RAW_DIR / "musicbrainz" / date / "official-release-groups.jsonl"
+
+
+def official_sums(date: str) -> Path:
+    return REFERENCE_DIR / f"musicbrainz-official-{date}.SHA256SUMS"
+
+
 def influences_snapshot(date: str) -> Path:
     return RAW_DIR / "wikidata" / date / "influences.jsonl"
 
