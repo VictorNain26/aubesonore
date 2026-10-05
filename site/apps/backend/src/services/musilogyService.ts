@@ -361,12 +361,32 @@ function wikidataIdOf(rows: UrlRow[]): string | null {
   return ids.size === 1 && only ? only : null;
 }
 
+interface ReleaseRow extends Record<string, unknown> {
+  mbid: string;
+  primary_type: string;
+}
+
+/**
+ * The cover of the artist's first album, else of its first EP, at the
+ * Cover Art Archive: the portrait when Deezer has none (docs/vision.md §2.4).
+ * The archive answers a redirect to the image, or 404 when the community
+ * chose none (musicbrainz.org/doc/Cover_Art_Archive/API): the page falls back
+ * on its generated wave. A first album has one for 321 of the 336 played
+ * artists, 199 of 300 sampled with 500 listeners or more (2026-10-05).
+ */
+function firstCoverOf(releases: ReleaseRow[]): string | null {
+  const first = releases.find((r) => r.primary_type === 'Album') ?? releases[0];
+  return first ? `https://coverartarchive.org/release-group/${first.mbid}/front-500` : null;
+}
+
 /** Who the artist is, as the dump states it: the profile's facts and links. */
 export interface ArtistIdentity {
   facts: ArtistFacts;
   links: ArtistLink[];
   /** The Wikidata item, the way to the artist's Wikipedia articles. */
   wikidataId: string | null;
+  /** The cover of the first record, hotlinked from the Cover Art Archive. */
+  firstCover: string | null;
 }
 
 export const identityCache = new TtlCache<ArtistIdentity | null>(ONE_HOUR_MS);
@@ -380,13 +400,19 @@ export function getArtistIdentity(mbid: string): Promise<ArtistIdentity | null> 
   const cached = identityCache.get(mbid);
   if (cached !== undefined) return Promise.resolve(cached);
   return identityFlight(mbid, async () => {
-    const [cards, urls] = await Promise.all([
+    const [cards, urls, releases] = await Promise.all([
       call<CardRow>(sql`SELECT * FROM musilogy.artist_card(${mbid})`),
       call<UrlRow>(sql`SELECT * FROM musilogy.artist_urls(${mbid})`),
+      call<ReleaseRow>(sql`SELECT * FROM musilogy.artist_releases(${mbid})`),
     ]);
     const card = cards[0];
     const identity = card
-      ? { facts: toFacts(card), links: toLinks(urls), wikidataId: wikidataIdOf(urls) }
+      ? {
+          facts: toFacts(card),
+          links: toLinks(urls),
+          wikidataId: wikidataIdOf(urls),
+          firstCover: firstCoverOf(releases),
+        }
       : null;
     identityCache.set(mbid, identity);
     return identity;

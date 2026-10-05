@@ -128,8 +128,9 @@ Un ordre de départ, chaque section seulement quand elle a quelque chose à mont
 
 **Le portrait**, puisqu'aucune source ne couvre tous les artistes : la photo Deezer (lien déclaré
 dans MusicBrainz pour 96 % des artistes joués, 45 % des artistes à 500 auditeurs ou plus, 8 % de
-tous), sinon la pochette du premier album (Cover Art Archive), sinon le visuel « onde » que le site
-génère. Chaque page a une image, toutes ne sont pas des photos. L'image Wikidata/Commons attend :
+tous), sinon la pochette du premier album, ou du premier EP (Cover Art Archive : 321 des 336
+artistes joués, 199 sur 300 artistes à 500 auditeurs ou plus tirés au hasard, 2026-10-05), sinon le
+visuel « onde » que le site génère. Chaque page a une image, toutes ne sont pas des photos. L'image Wikidata/Commons attend :
 chaque image a sa licence et son auteur à créditer à côté d'elle. Les identifiants Deezer peuvent
 aussi venir des ISRC des enregistrements du dump, vérifiés comme ceux de l'antenne (§4.4).
 
