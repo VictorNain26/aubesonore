@@ -6,6 +6,7 @@ import { AuthInit } from './components/AuthInit';
 import { NowPlayingPoller } from './components/NowPlayingPoller';
 import { PlayerSideEffects } from './components/Player/PlayerSideEffects';
 import { PlayerBar } from './home/PlayerBar';
+import { SiteFooter } from './home/SiteFooter';
 import Layout from './layout/Layout';
 import HomePage from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -29,8 +30,16 @@ export default function App() {
 
   // A page chunk that fails to load (offline, a second failure inside the
   // preloadReload window) shows the page's error state, not a blank app.
+  // In the frame of every page: the error fills the screen, with the footer under it.
+  const pageError = (
+    <div className="min-h-page flex flex-col">
+      <ArtistPageView state={{ status: 'error' }} />
+      <SiteFooter />
+    </div>
+  );
+
   const artist = (
-    <ErrorBoundary fallback={<ArtistPageView state={{ status: 'error' }} />}>
+    <ErrorBoundary fallback={pageError}>
       <Suspense fallback={null}>
         <ArtistPage />
       </Suspense>
@@ -38,7 +47,7 @@ export default function App() {
   );
 
   const musilogy = (
-    <ErrorBoundary fallback={<ArtistPageView state={{ status: 'error' }} />}>
+    <ErrorBoundary fallback={pageError}>
       <Suspense fallback={null}>
         <MusilogyPage />
       </Suspense>
