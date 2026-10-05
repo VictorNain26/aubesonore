@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { isDefaultArtwork } from '../lib/azuracast';
 import { CoverGlyph } from '../design/atoms/CoverGlyph';
-import { artworkAt } from '../lib/artwork';
+import { artworkSrcSet } from '../lib/artwork';
 
 export interface CoverProps {
   src: string | null | undefined;
@@ -11,11 +11,14 @@ export interface CoverProps {
   seed: string;
   className?: string;
   priority?: boolean;
-  /** Pixels of the image file, for a cover shown small: where the host resizes, fewer bytes. */
-  size?: number;
+  /**
+   * The width the cover is laid out at, as the `sizes` attribute: where its host resizes, the
+   * browser downloads the smallest file that fills it on this screen.
+   */
+  sizes?: string;
 }
 
-export function Cover({ src, alt, seed, className, priority = false, size }: CoverProps) {
+export function Cover({ src, alt, seed, className, priority = false, sizes }: CoverProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const usable = !isDefaultArtwork(src) && src !== failedSrc;
 
@@ -28,7 +31,9 @@ export function Cover({ src, alt, seed, className, priority = false, size }: Cov
     >
       {usable ? (
         <img
-          src={src && size ? artworkAt(src, size) : (src ?? undefined)}
+          src={src ?? undefined}
+          srcSet={src && sizes ? artworkSrcSet(src) : undefined}
+          sizes={sizes}
           alt={alt}
           referrerPolicy="no-referrer"
           decoding="async"

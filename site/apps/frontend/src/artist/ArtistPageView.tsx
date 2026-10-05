@@ -173,6 +173,8 @@ function Profile({
           alt={m.artist_portrait_alt({ name: profile.name })}
           seed={profile.name}
           priority
+          // w-40 on phones; the 4/12 title column from md.
+          sizes="(min-width: 48rem) 33vw, 10rem"
           className="aspect-square w-40 md:w-full"
         />
         <div className="flex min-w-0 flex-col gap-3 md:justify-end">
