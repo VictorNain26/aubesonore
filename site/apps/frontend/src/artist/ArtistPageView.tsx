@@ -6,10 +6,11 @@ import type {
   ClientLikedTrack,
   MusilogyArtist,
 } from '@aubesonore/shared-types/client';
-import { getLocale } from '@/paraglide/runtime.js';
+import { getLocale, localizeHref } from '@/paraglide/runtime.js';
+import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
 import { Cover } from '../home/Cover';
-import { ARTIST_LINK } from '../home/styles';
+import { ARTIST_LINK, BACK_TO_LIVE } from '../home/styles';
 import * as m from '@/paraglide/messages.js';
 import { SiteHeader } from '../home/SiteHeader';
 import { Section } from '../design/molecules/Section';
@@ -102,11 +103,17 @@ function formatKeptAt(iso: string): string {
 }
 
 /** The day of a play: the year only when it is not this one. */
+/** A page with nothing to show, like the 404: what happened, and the way back to the live. */
 function Message({ title, body }: { title: string; body: string }) {
   return (
-    <div className="lift-in px-page flex flex-col gap-4 py-24">
+    <div className="lift-in px-page flex flex-1 flex-col justify-center gap-3 py-16">
       <h1 className="text-hero m-0">{title}</h1>
       <p className="text-intro text-text-muted max-w-blurb m-0">{body}</p>
+      <p className="m-0 mt-6">
+        <Link to={localizeHref('/')} className={BACK_TO_LIVE}>
+          {m.artist_back()}
+        </Link>
+      </p>
     </div>
   );
 }
@@ -265,7 +272,13 @@ export function ArtistPageView({
   thisYear?: number;
 }) {
   return (
-    <main id="main" className="min-h-dvh">
+    <main
+      id="main"
+      className={cn(
+        'flex-1',
+        (state.status === 'missing' || state.status === 'error') && 'flex flex-col'
+      )}
+    >
       <SiteHeader />
       {state.status === 'loading' ? (
         <div aria-busy="true" className="px-page flex flex-col gap-6 pt-10 md:pt-16">

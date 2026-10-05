@@ -18,5 +18,8 @@ describe('App', () => {
     );
 
     expect(await screen.findByRole('heading', { name: 'Page indisponible.' })).toBeInTheDocument();
+    // In the frame of every page, footer and way back to the live included.
+    expect(screen.getByRole('link', { name: 'Revenir au direct' })).toBeInTheDocument();
+    expect(screen.getByRole('contentinfo')).toBeInTheDocument();
   });
 });

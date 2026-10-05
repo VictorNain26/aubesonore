@@ -4,6 +4,8 @@ import { localizeHref } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
 import { SiteHeader } from '../home/SiteHeader';
 import { SiteFooter } from '../home/SiteFooter';
+import { useHeroListenVisible } from '../home/listen';
+import { BACK_TO_LIVE } from '../home/styles';
 
 const SILENCE_FROM = 0.54;
 const SILENCE_TO = 0.8;
@@ -33,23 +35,25 @@ function silentHorizonPath(): string {
  * under /en/), and the client hydrates it there. The horizon falls silent in its middle.
  */
 export function NotFoundPage() {
+  const setListenVisible = useHeroListenVisible((s) => s.setVisible);
+
+  // No hero here: the player bar is the only way to listen.
+  useEffect(() => setListenVisible(false), [setListenVisible]);
+
   // Reached inside the app, the tab says where the listener is; pre-rendered, the head already does.
   useEffect(() => {
     document.title = `${m.notfound_meta_title()} · AubeSonore`;
   }, []);
   return (
-    <>
-      <main id="main" className="relative flex min-h-dvh flex-col overflow-hidden">
+    <div className="min-h-page flex flex-col">
+      <main id="main" className="relative flex flex-1 flex-col overflow-hidden">
         <div aria-hidden="true" className="dawn-band dawn-arrive" />
         <SiteHeader />
         <div className="lift-in px-page relative z-10 flex flex-1 flex-col justify-center gap-3 py-16">
           <h1 className="text-hero m-0">{m.notfound_title()}</h1>
           <p className="text-intro text-text-muted max-w-blurb m-0">{m.notfound_body()}</p>
           <p className="m-0 mt-6">
-            <Link
-              to={localizeHref('/')}
-              className="bg-accent text-on-accent text-ui ease-spring focus-visible:outline-accent inline-flex h-14 items-center rounded-full px-6 font-semibold transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95"
-            >
+            <Link to={localizeHref('/')} className={BACK_TO_LIVE}>
               {m.artist_back()}
             </Link>
           </p>
@@ -73,6 +77,6 @@ export function NotFoundPage() {
         </div>
       </main>
       <SiteFooter />
-    </>
+    </div>
   );
 }
