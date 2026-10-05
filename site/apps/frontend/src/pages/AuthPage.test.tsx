@@ -93,7 +93,12 @@ describe('AuthPage', () => {
       await screen.findByRole('heading', { level: 1, name: 'Vérifiez votre boîte mail' })
     ).toBeInTheDocument();
     expect(asked).toMatchObject({ email: 'jane@example.com' });
-    expect(screen.getByText('jane@example.com')).toBeInTheDocument();
+    // One sentence: the address, a comma, then what waits in the inbox.
+    const sentence =
+      'Si un compte existe pour jane@example.com, un e-mail vous attend avec un lien pour choisir un nouveau mot de passe.';
+    expect(
+      screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === sentence)
+    ).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Retour à la connexion' }));
     expect(screen.getByRole('heading', { level: 1, name: 'Se connecter' })).toBeInTheDocument();

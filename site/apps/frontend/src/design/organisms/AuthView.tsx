@@ -115,6 +115,7 @@ function AuthPitch({ className }: { className?: string }) {
 function MailSentBody({
   lead,
   email,
+  separator,
   rest,
   hint,
   action,
@@ -122,6 +123,8 @@ function MailSentBody({
 }: {
   lead: string;
   email: string;
+  /** What follows the address: a full stop before a new sentence, a comma inside the same one. */
+  separator: '.' | ',';
   rest: string;
   hint: string;
   action: string;
@@ -130,7 +133,8 @@ function MailSentBody({
   return (
     <div className="max-w-form flex flex-col gap-6">
       <p className="text-intro text-text-muted m-0">
-        {lead} <span className="text-text font-medium wrap-break-word">{email}</span>. {rest}
+        {lead} <span className="text-text font-medium wrap-break-word">{email}</span>
+        {separator} {rest}
       </p>
       <p className="text-ui text-text-muted m-0 font-normal">{hint}</p>
       <Button onClick={onAction} className="h-14 w-full justify-center">
@@ -228,6 +232,7 @@ export function AuthView({
               <MailSentBody
                 lead={m.auth_verification_sent_to()}
                 email={pendingEmail}
+                separator="."
                 rest={m.auth_verification_click_link()}
                 hint={m.auth_verification_spam_hint()}
                 action={m.auth_verification_dismiss()}
@@ -237,6 +242,7 @@ export function AuthView({
               <MailSentBody
                 lead={m.auth_reset_sent_to()}
                 email={pendingEmail}
+                separator=","
                 rest={m.auth_reset_sent_rest()}
                 hint={m.auth_reset_sent_hint()}
                 action={m.auth_back_to_signin()}
