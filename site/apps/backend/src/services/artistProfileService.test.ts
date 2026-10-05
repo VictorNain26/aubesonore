@@ -75,6 +75,7 @@ void mock.module('../db', () => ({
 // replace these modules for every other test file of the run (Bun 1.3).
 const deezer = await import('./deezerService');
 const musicbrainz = await import('./musicbrainzService');
+const musilogy = await import('./musilogyService');
 const radioPlays = await import('./radioPlayService');
 const wikipedia = await import('./wikipediaService');
 
@@ -87,14 +88,10 @@ const spies = {
     status: 'found',
     value: 'mb-1',
   }),
-  musicbrainz: spyOn(musicbrainz, 'getArtistByMbid').mockResolvedValue({
-    status: 'found',
-    value: {
-      facts,
-      links: [{ platform: 'official', url: 'https://daftpunk.com/' }],
-      wikidataId: 'Q185828',
-      deezerId: '27',
-    },
+  identity: spyOn(musilogy, 'getArtistIdentity').mockResolvedValue({
+    facts,
+    links: [{ platform: 'official', url: 'https://daftpunk.com/' }],
+    wikidataId: 'Q185828',
   }),
   summary: spyOn(wikipedia, 'getSummary').mockImplementation((_id, locale) =>
     Promise.resolve({ status: 'found', value: locale === 'fr' ? summaryFr : summaryEn })
@@ -140,9 +137,6 @@ function storedProfile(values: Partial<StoredProfile> = {}): StoredProfile {
   return {
     artistId: 'artist-1',
     image: 'https://cdn.deezer.com/stored.jpg',
-    facts,
-    links: [{ platform: 'official', url: 'https://daftpunk.com/' }],
-    wikidataId: 'Q185828',
     summaryFr,
     summaryEn,
     refreshedAt: new Date(),
@@ -179,7 +173,9 @@ describe('getArtistProfile', () => {
       playedOnRadio: [AROUND_THE_WORLD],
     });
     expect(stored).toHaveLength(1);
-    expect(stored[0]).toMatchObject({ summaryFr, summaryEn, wikidataId: 'Q185828' });
+    expect(stored[0]).toMatchObject({ summaryFr, summaryEn });
+    expect(spies.summary).toHaveBeenCalledWith('Q185828', 'fr');
+    expect(spies.identity).toHaveBeenCalledWith('mb-1');
     expect(stored[0]!.refreshedAt.getTime()).toBeGreaterThan(LONG_AGO.getTime());
   });
 
@@ -189,16 +185,51 @@ describe('getArtistProfile', () => {
     expect(mbidWrites).toEqual([{ mbid: 'mb-1' }]);
   });
 
-  it('serves a fresh stored profile without asking any source', async () => {
+  it('serves a fresh stored profile without asking any live source', async () => {
     rows = [{ artist: baseRow, artist_profile: storedProfile() }];
 
     const profile = await getArtistProfile('daft-punk', 'fr');
 
     expect(profile?.image).toBe('https://cdn.deezer.com/stored.jpg');
     expect(profile?.summary).toEqual(summaryFr);
+    expect(profile?.facts).toEqual(facts);
     expect(spies.deezer).not.toHaveBeenCalled();
-    expect(spies.musicbrainz).not.toHaveBeenCalled();
+    expect(spies.summary).not.toHaveBeenCalled();
     expect(stored).toEqual([]);
+  });
+
+  it('reads the facts again from the dump at each view, not from what was stored', async () => {
+    rows = [{ artist: baseRow, artist_profile: storedProfile() }];
+    spies.identity.mockResolvedValueOnce({
+      facts: { ...facts, ended: null, active: true },
+      links: [],
+      wikidataId: 'Q185828',
+    });
+
+    const profile = await getArtistProfile('daft-punk', 'fr');
+
+    expect(profile?.facts).toMatchObject({ ended: null, active: true });
+    expect(profile?.links).toEqual([
+      { platform: 'deezer', url: 'https://www.deezer.com/artist/27' },
+    ]);
+  });
+
+  it('keeps the stored openings and stays stale while musilogy is not loaded', async () => {
+    // Without the dump, the article to ask is unknown: what was stored stays,
+    // and the old date makes the next view try again.
+    rows = [{ artist: baseRow, artist_profile: storedProfile({ refreshedAt: LONG_AGO }) }];
+    spies.identity.mockRejectedValueOnce(new musilogy.MusilogyUnavailable('3F000'));
+
+    const profile = await getArtistProfile('daft-punk', 'fr');
+    await settle();
+
+    expect(profile?.facts).toBeNull();
+    expect(profile?.links).toEqual([
+      { platform: 'deezer', url: 'https://www.deezer.com/artist/27' },
+    ]);
+    expect(profile?.summary).toEqual(summaryFr);
+    expect(stored[0]).toMatchObject({ summaryFr, summaryEn, refreshedAt: LONG_AGO });
+    expect(spies.summary).not.toHaveBeenCalled();
   });
 
   it('serves a stale profile at once and refreshes it behind the answer', async () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect, mock, spyOn, afterAll, beforeEach } from 'bun:test';
 import type { ArtistSearch, DeezerIsrcTrack } from './deezerService';
 import type { Lookup } from '../lib/lookup';
-import type { IsrcRecording, MusicBrainzArtist } from './musicbrainzService';
+import type { IsrcRecording } from './musicbrainzService';
 import { DrizzleQueryError } from 'drizzle-orm';
 import type { NowPlayingTrack } from './nowPlaying';
 
@@ -21,7 +21,7 @@ let takenSlugs = new Set<string>();
 let claimedSlugs: Array<{ slug: string; artistId: string }> = [];
 let isrcLookup: Lookup<IsrcRecording[]> = { status: 'none' };
 let isrcLookups = 0;
-let mbArtist: Lookup<MusicBrainzArtist> = { status: 'none' };
+let declaredDeezerId: Lookup<string> = { status: 'none' };
 let deezerByIsrc: Lookup<DeezerIsrcTrack> = { status: 'none' };
 let deletedProfiles = 0;
 let updates: Array<Record<string, unknown>> = [];
@@ -107,7 +107,9 @@ const spies = [
     isrcLookups += 1;
     return Promise.resolve(isrcLookup);
   }),
-  spyOn(musicbrainz, 'getArtistByMbid').mockImplementation(() => Promise.resolve(mbArtist)),
+  spyOn(musicbrainz, 'findDeezerIdByMbid').mockImplementation(() =>
+    Promise.resolve(declaredDeezerId)
+  ),
   spyOn(deezer, 'findTrackByIsrc').mockImplementation(() => Promise.resolve(deezerByIsrc)),
 ];
 
@@ -132,7 +134,7 @@ beforeEach(() => {
   claimedSlugs = [];
   isrcLookup = { status: 'none' };
   isrcLookups = 0;
-  mbArtist = { status: 'none' };
+  declaredDeezerId = { status: 'none' };
   deezerByIsrc = { status: 'none' };
   deletedProfiles = 0;
   playRows = [];
@@ -387,22 +389,8 @@ describe('sameTitle', () => {
 
 describe('identity by ISRC', () => {
   const ISRC = 'GBDUW0000053';
-  const page = (deezerId: string | null): Lookup<MusicBrainzArtist> => ({
-    status: 'found',
-    value: {
-      facts: {
-        kind: 'group',
-        place: null,
-        country: null,
-        formed: null,
-        ended: null,
-        active: false,
-      },
-      links: [],
-      wikidataId: null,
-      deezerId,
-    },
-  });
+  const page = (deezerId: string | null): Lookup<string> =>
+    deezerId ? { status: 'found', value: deezerId } : { status: 'none' };
   const recording = (title: string, ...credits: Array<[string, string]>): IsrcRecording => ({
     title,
     credits: credits.map(([mbid, name]) => ({ mbid, names: [name] })),
@@ -421,7 +409,7 @@ describe('identity by ISRC', () => {
   it('identifies a new artist by an ISRC whose recording is the played track', async () => {
     playRows = [{ title: 'One More Time', isrc: ISRC }];
     isrcLookup = { status: 'found', value: [recording('One More Time', ['mb-dp', 'Daft Punk'])] };
-    mbArtist = page('27');
+    declaredDeezerId = page('27');
 
     await resolveArtist('Daft Punk');
 
@@ -440,7 +428,7 @@ describe('identity by ISRC', () => {
       status: 'found',
       value: [recording('Something', ['mb-a', 'Another Artist'], ['mb-b', 'Played Name'])],
     };
-    mbArtist = page('99');
+    declaredDeezerId = page('99');
 
     await resolveArtist('Played Name');
 
@@ -487,7 +475,7 @@ describe('identity by ISRC', () => {
   it('asks Deezer for the ISRC when MusicBrainz declares no single Deezer artist', async () => {
     playRows = [{ title: 'One More Time', isrc: ISRC }];
     isrcLookup = { status: 'found', value: [recording('One More Time', ['mb-dp', 'Daft Punk'])] };
-    mbArtist = page(null);
+    declaredDeezerId = page(null);
     deezerByIsrc = deezerTrack('One More Time', ['27', 'Daft Punk']);
 
     await resolveArtist('Daft Punk');
@@ -525,7 +513,7 @@ describe('identity by ISRC', () => {
     ];
     playRows = [{ title: 'Vitamin C', isrc: 'DEAE87200093' }];
     isrcLookup = { status: 'found', value: [recording('Vitamin C', ['mb-can', 'Can'])] };
-    mbArtist = page('8213');
+    declaredDeezerId = page('8213');
 
     expect(await resolveArtist('Can')).toEqual({ id: 'a-can', slug: 'can' });
     expect(updates).toEqual([{ deezerId: '8213', mbid: 'mb-can', identifiedBy: 'isrc' }]);
@@ -550,7 +538,7 @@ describe('identity by ISRC', () => {
       status: 'found',
       value: [recording('Frank Sinatra', ['mb-kittin', 'Miss Kittin'])],
     };
-    mbArtist = page('1234');
+    declaredDeezerId = page('1234');
     insertConflict = true;
     // No row under this spelling, before or after the insert; one holds the identity.
     artistAnswers = [[], [], [{ id: 'a-kittin', slug: 'kittin' }]];
@@ -593,22 +581,7 @@ describe('reverifyArtist', () => {
       status: 'found',
       value: [{ title: 'One More Time', credits: [{ mbid: 'mb-dp', names: ['Daft Punk'] }] }],
     };
-    mbArtist = {
-      status: 'found',
-      value: {
-        facts: {
-          kind: 'group',
-          place: null,
-          country: null,
-          formed: null,
-          ended: null,
-          active: false,
-        },
-        links: [],
-        wikidataId: null,
-        deezerId: '27',
-      },
-    };
+    declaredDeezerId = { status: 'found', value: '27' };
 
     expect(await reverifyArtist('daft punk', 'Daft Punk')).toBe('kept');
     expect(deletedProfiles).toBe(0);
