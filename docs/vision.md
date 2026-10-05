@@ -317,9 +317,9 @@ l'historique git.
    2. le site lit faits et liens d'écoute dans musilogy (#344), le portrait en cascade (#346) —
       fait ;
    3. une seule page, `/artiste/…`, sections dans l'ordre du §2.4 (#347), le fil de découverte
-      (#348), une page pour tout MBID et `/musilogy/:mbid` en 301 (cette PR) — fait ;
+      (#348), une page pour tout MBID et `/musilogy/:mbid` en 301 (#352) — fait ;
    4. le serveur écrit le titre, la description et le canonique de chaque page, répond 404 pour un
-      MBID inconnu et `noindex` pour une page par MBID — fait (cette PR) ;
+      MBID inconnu et `noindex` pour une page par MBID — fait (#352) ;
    5. une fois les proches en ligne : le seuil d'indexation mesuré, un slug pour chaque page qui
       le passe.
 
