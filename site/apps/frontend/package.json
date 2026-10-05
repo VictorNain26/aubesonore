@@ -6,7 +6,7 @@
   "packageManager": "pnpm@10.34.5",
   "scripts": {
     "dev": "vite --port 5173 --host 0.0.0.0",
-    "build": "vite build && vite build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs",
+    "build": "vite build && vite build --ssr src/entry-server.tsx --outDir dist-ssr && node scripts/prerender.mjs && node scripts/precompress.mjs",
     "compile:i18n": "node scripts/compile-i18n.mjs",
     "lint": "pnpm compile:i18n && eslint .",
     "lint:fix": "pnpm compile:i18n && eslint . --fix",
