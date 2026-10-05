@@ -131,7 +131,11 @@ export interface ArtistProfile {
   slug: string;
   /** The MusicBrainz id, the way into Musilogy; null when none is known. */
   mbid: string | null;
-  /** Absolute https Deezer URL, hotlinked — never re-hosted. */
+  /**
+   * The Deezer portrait, else the cover of the first record at the Cover Art
+   * Archive; absolute https, hotlinked, never re-hosted. The page shows its
+   * generated wave when it is null or fails to load.
+   */
   image: string | null;
   facts: ArtistFacts | null;
   summary: ArtistSummary | null;

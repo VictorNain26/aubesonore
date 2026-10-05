@@ -35,6 +35,7 @@ const summaryEn = {
 };
 
 const LONG_AGO = new Date('2026-01-01T00:00:00Z');
+const HOMEWORK_COVER = 'https://coverartarchive.org/release-group/homework/front-500';
 
 let rows: Array<{ artist: ArtistRow; artist_profile: StoredProfile | null }> = [];
 let stored: StoredProfile[] = [];
@@ -92,6 +93,7 @@ const spies = {
     facts,
     links: [{ platform: 'official', url: 'https://daftpunk.com/' }],
     wikidataId: 'Q185828',
+    firstCover: HOMEWORK_COVER,
   }),
   summary: spyOn(wikipedia, 'getSummary').mockImplementation((_id, locale) =>
     Promise.resolve({ status: 'found', value: locale === 'fr' ? summaryFr : summaryEn })
@@ -204,6 +206,7 @@ describe('getArtistProfile', () => {
       facts: { ...facts, ended: null, active: true },
       links: [],
       wikidataId: 'Q185828',
+      firstCover: null,
     });
 
     const profile = await getArtistProfile('daft-punk', 'fr');
@@ -265,6 +268,15 @@ describe('getArtistProfile', () => {
       { platform: 'deezer', url: 'https://www.deezer.com/artist/27' },
     ]);
     expect(spies.summary).not.toHaveBeenCalled();
+  });
+
+  it("shows the first record's cover when Deezer has no portrait", async () => {
+    spies.deezer.mockResolvedValueOnce({
+      status: 'found',
+      value: { id: '27', name: 'Daft Punk', picture: null },
+    });
+
+    expect((await getArtistProfile('daft-punk', 'fr'))?.image).toBe(HOMEWORK_COVER);
   });
 
   it('keeps the radio floor when the artist matched no upstream', async () => {
