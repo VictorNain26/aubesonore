@@ -5,6 +5,7 @@ import { admin } from 'better-auth/plugins';
 import { env } from '../../config/env';
 import { db } from '../../db/index';
 import { user, session, verification, account } from '../../db/schema';
+import { AUTH_CLIENT_IP, AUTH_RATE_LIMIT } from './limits';
 import { sendBetterAuthEmail } from './sendBetterAuthEmail';
 
 const isProd = env.IS_PROD;
@@ -30,19 +31,10 @@ export const auth = betterAuth({
     },
   },
 
-  rateLimit: {
-    enabled: true,
-    window: 60,
-    max: 100,
-    customRules: {
-      '/sign-in/email': { window: 60, max: 5 },
-      '/sign-up/email': { window: 60, max: 3 },
-      '/forget-password': { window: 60, max: 3 },
-      '/verify-email': { window: 60, max: 10 },
-    },
-  },
+  rateLimit: AUTH_RATE_LIMIT,
 
   advanced: {
+    ipAddress: AUTH_CLIENT_IP,
     useSecureCookies: isProd,
     crossSubDomainCookies:
       isProd && env.COOKIE_DOMAIN
