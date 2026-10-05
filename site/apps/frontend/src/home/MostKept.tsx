@@ -37,6 +37,8 @@ function Ranking({ entries, period }: { entries: TrendEntry[]; period: Period })
             src={entry.artworkUrl}
             alt=""
             seed={`${entry.artist}|${entry.title}`}
+            // w-38 on phones; one of five columns of the page from md.
+            sizes="(min-width: 48rem) 20vw, 9.5rem"
             className="ease-out-soft hover:shadow-lift aspect-square w-full transition-[translate,box-shadow] duration-500 motion-safe:hover:-translate-y-1.5"
           />
           <span className="text-label text-text-muted flex justify-between font-mono">
