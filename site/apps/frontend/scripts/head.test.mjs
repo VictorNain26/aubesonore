@@ -21,6 +21,7 @@ describe('rewriteHead', () => {
       path: '/mentions-legales/',
       title: 'Mentions légales · AubeSonore',
       description: 'Qui édite AubeSonore.',
+      station: base.description,
     },
     { siblings: legal }
   );
@@ -36,6 +37,29 @@ describe('rewriteHead', () => {
     expect(html).toContain('<meta property="og:site_name" content="AubeSonore" />');
     expect(html).toContain('<meta name="author" content="AubeSonore" />');
     expect(html).not.toContain('"name": "Mentions légales');
+  });
+
+  it('describes the station, not the page, in the JSON-LD', () => {
+    expect(html).toContain(`"description": ${JSON.stringify(base.description)}`);
+    expect(html).toContain('content="Qui édite AubeSonore."');
+  });
+
+  it('gives the English pages an English station and site', () => {
+    const english = rewriteHead(
+      template,
+      base,
+      {
+        locale: 'en',
+        path: '/en/',
+        title: 'AubeSonore',
+        description: 'A discovery radio.',
+        station: 'A discovery radio.',
+      },
+      { siblings: legal }
+    );
+    expect(english).toContain('"description": "A discovery radio."');
+    expect(english).toContain('"inLanguage": "en-GB"');
+    expect(english).not.toContain('"inLanguage": "fr-FR"');
   });
 
   it('gives the page its address and its language versions', () => {
