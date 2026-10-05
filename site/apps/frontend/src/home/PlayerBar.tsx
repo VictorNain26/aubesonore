@@ -97,7 +97,8 @@ export function PlayerBarView({
         if (!e.currentTarget.contains(e.relatedTarget)) setHasFocus(false);
       }}
       className={cn(
-        'bg-accent text-on-accent shadow-bar bottom-safe max-w-bar fixed inset-x-3 z-40 mx-auto flex items-center gap-3 rounded-full py-1.5 pr-3 pl-1.5',
+        // On phones the gaps tighten (the 44 px targets stay) so the title keeps a few more letters.
+        'bg-accent text-on-accent shadow-bar bottom-safe max-w-bar fixed inset-x-3 z-40 mx-auto flex items-center gap-2 rounded-full py-1.5 pr-1.5 pl-1.5 md:gap-3 md:pr-3',
         'ease-spring transition-[translate,opacity] duration-500',
         hidden && 'pointer-events-none translate-y-24 opacity-0'
       )}
