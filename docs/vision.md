@@ -109,7 +109,8 @@ Dans cet ordre, chaque section seulement quand elle a quelque chose à montrer :
    encore montre ses EP). Ni single, ni best-of, compilation, live ou démo (types secondaires de
    MusicBrainz), ni bootleg (statut officiel, relevé à venir) ; pour un groupe dont la fin est
    déclarée, rien après elle, sauf ce que Wikidata classe comme album studio ou EP : un posthume
-   inédit, pas une archive. Mesuré le 2026-10-05 sur les 335 artistes joués : Protomartyr, Bloc
+   inédit, pas une archive. Un disque sans date n'est montré que si Wikidata le classe ainsi : chez
+   les artistes connus, ce sont des bootlegs. Mesuré le 2026-10-05 sur les 335 artistes joués : Protomartyr, Bloc
    Party ou Can gardent leur discographie entière, les Beatles s'arrêtent en 1970.
 4. **Vos titres gardés**, pour un auditeur connecté qui en a gardé.
 5. **D'où vient cette musique** : la carte, puis en texte les proches dans le temps, ce qui sonne

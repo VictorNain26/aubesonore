@@ -12,6 +12,8 @@ RG5 = "10000000-0000-4000-8000-0000000000f5"
 RG6 = "10000000-0000-4000-8000-0000000000f6"
 RG7 = "10000000-0000-4000-8000-0000000000f7"
 RG8 = "10000000-0000-4000-8000-0000000000f8"
+RG9 = "10000000-0000-4000-8000-0000000000f9"
+RG10 = "10000000-0000-4000-8000-0000000000fa"
 
 
 def genre(name):
@@ -109,7 +111,8 @@ def test_an_influence_absent_from_the_dump_has_no_name_to_show(tmp_path, pg):
 def test_a_page_shows_the_work_from_the_first_album_to_the_declared_end(tmp_path, pg):
     # A, a group that ended in 1985: the EP before its first album and the
     # album after its end stay out; the posthumous album Wikidata files as a
-    # studio album is new music and shows. B has no album yet: its EPs show.
+    # studio album is new music and shows. B has no dated album: its EPs show,
+    # and of its two undated records only the one Wikidata files.
     rgs = [
         synthetic_release_group(RG1, A, "1977", primary_type="EP"),
         synthetic_release_group(RG2, A, "1979"),
@@ -119,13 +122,15 @@ def test_a_page_shows_the_work_from_the_first_album_to_the_declared_end(tmp_path
         synthetic_release_group(RG6, A, "1992"),
         synthetic_release_group(RG7, B, "1995", primary_type="EP"),
         synthetic_release_group(RG8, B, "1990", primary_type="EP"),
+        synthetic_release_group(RG9, B, ""),
+        synthetic_release_group(RG10, B, "", primary_type="EP"),
     ]
     loaded(
         tmp_path,
         pg,
         [group(A, begin="1976", end="1985"), group(B, begin="1989", end=None)],
         release_groups=rgs,
-        discography=[(RG6, "studio")],
+        discography=[(RG6, "studio"), (RG10, "ep")],
     )
     assert pg_query(
         pg, f"SELECT mbid, primary_type, remix, y FROM musilogy.artist_releases('{A}')"
@@ -138,6 +143,7 @@ def test_a_page_shows_the_work_from_the_first_album_to_the_declared_end(tmp_path
     assert pg_query(pg, f"SELECT mbid, y FROM musilogy.artist_releases('{B}')") == [
         (RG8, 1990),
         (RG7, 1995),
+        (RG10, None),
     ]
     assert pg_query(
         pg, "SELECT pg_get_function_result('musilogy.artist_releases(text)'::regprocedure)"

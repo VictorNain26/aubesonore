@@ -112,7 +112,9 @@ $$;
 -- released from the first album on; an artist with no album yet shows its
 -- EPs. For a group whose end is declared, nothing released after that year
 -- but what Wikidata files as a studio album or an EP: a posthumous record of
--- new music, not an archive. A year unknown keeps its record, last.
+-- new music, not an archive. A record without a year shows only when Wikidata
+-- files it so, last: undated records are mostly bootlegs (Kinfauns Demos,
+-- Radiohead TV Covers), 3.8 % of the albums and 1.9 % of the EPs.
 CREATE FUNCTION musilogy.artist_releases(artist text)
 RETURNS TABLE (
   mbid text,
@@ -132,7 +134,8 @@ AS $$
   )
   SELECT r.rg_mbid, r.title, r.primary_type, r.soundtrack, r.remix, r.y
   FROM r, first_album f, career c
-  WHERE (r.primary_type = 'Album' OR f.y IS NULL OR r.y IS NULL OR r.y >= f.y)
+  WHERE (r.y IS NOT NULL OR r.filed_original)
+    AND (r.primary_type = 'Album' OR f.y IS NULL OR r.y IS NULL OR r.y >= f.y)
     AND (c.y_end IS NULL OR r.y IS NULL OR r.y <= c.y_end OR r.filed_original)
   ORDER BY r.y NULLS LAST, r.title, r.rg_mbid;
 $$;
