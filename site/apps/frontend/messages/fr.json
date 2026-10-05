@@ -46,7 +46,6 @@
   "auth_forgot_desc": "Recevez un lien pour en choisir un nouveau.",
   "auth_verification_title": "Vérifiez votre boîte mail",
   "auth_new_password": "Nouveau mot de passe",
-  "auth_reset_desc": "Choisissez un mot de passe d’au moins 6 caractères",
   "auth_password_show": "Afficher le mot de passe",
   "auth_password_hide": "Masquer le mot de passe",
   "auth_back_to_signin": "Retour à la connexion",
@@ -73,7 +72,6 @@
   "auth_error_password_length": "Le mot de passe doit contenir au moins 6 caractères.",
   "auth_error_password_mismatch": "Les mots de passe ne correspondent pas.",
   "toast_signin_success": "Connexion réussie.",
-  "toast_forgot_sent": "Si un compte existe, un e-mail vient d’être envoyé.",
   "toast_password_reset": "Mot de passe mis à jour. Connectez-vous.",
   "error_network": "Serveur injoignable. Vérifiez votre connexion et réessayez.",
   "error_signup_failed": "Inscription impossible pour le moment. Réessayez dans un instant.",
@@ -167,7 +165,6 @@
   "footer_free": "Gratuite, sans publicité, non commerciale.",
   "auth_keep_title": "Pour garder « {title} », connectez-vous.",
   "auth_google_stops": "La lecture s'arrête le temps de la connexion avec Google.",
-  "auth_mobile_pitch": "Gardez ce qui vous arrête. Retrouvez-le sur Deezer ou Apple Music.",
   "on_air_sr": "À l'antenne :",
   "track_unkeep_aria": "Ne plus garder « {title} »",
   "notfound_title": "Un blanc à l'antenne.",
@@ -237,5 +234,9 @@
   "auth_error_password_long": "Mot de passe trop long.",
   "auth_error_rate_limited": "Trop de tentatives. Réessayez dans une minute.",
   "page_nav_label": "Sur cette page",
-  "trail_label": "Votre parcours"
+  "trail_label": "Votre parcours",
+  "auth_reset_sent_to": "Si un compte existe pour",
+  "auth_reset_sent_rest": "un e-mail vous attend avec un lien pour choisir un nouveau mot de passe.",
+  "auth_reset_sent_hint": "Pas reçu ? Vérifiez vos spams, ou recommencez dans une minute.",
+  "auth_password_hint": "6 caractères minimum."
 }

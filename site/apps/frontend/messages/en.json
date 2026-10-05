@@ -46,7 +46,6 @@
   "auth_forgot_desc": "Get a link to choose a new one.",
   "auth_verification_title": "Check your inbox",
   "auth_new_password": "New password",
-  "auth_reset_desc": "Choose a password with at least 6 characters",
   "auth_password_show": "Show password",
   "auth_password_hide": "Hide password",
   "auth_back_to_signin": "Back to sign in",
@@ -73,7 +72,6 @@
   "auth_error_password_length": "Your password must be at least 6 characters long.",
   "auth_error_password_mismatch": "Passwords don't match.",
   "toast_signin_success": "Signed in.",
-  "toast_forgot_sent": "If an account exists, an email has just been sent.",
   "toast_password_reset": "Password updated. You can sign in now.",
   "error_network": "Can't reach the server. Check your connection and try again.",
   "error_signup_failed": "Couldn't sign you up right now. Try again in a moment.",
@@ -167,7 +165,6 @@
   "footer_free": "Free, ad-free, non-commercial.",
   "auth_keep_title": "To keep “{title}”, sign in.",
   "auth_google_stops": "Playback stops while you sign in with Google.",
-  "auth_mobile_pitch": "Keep what stops you. Find it again on Deezer or Apple Music.",
   "on_air_sr": "On air:",
   "track_unkeep_aria": "Stop keeping “{title}”",
   "notfound_title": "Dead air.",
@@ -237,5 +234,9 @@
   "auth_error_password_long": "Password too long.",
   "auth_error_rate_limited": "Too many attempts. Try again in a minute.",
   "page_nav_label": "On this page",
-  "trail_label": "Your path"
+  "trail_label": "Your path",
+  "auth_reset_sent_to": "If an account exists for",
+  "auth_reset_sent_rest": "an email is waiting for you with a link to choose a new password.",
+  "auth_reset_sent_hint": "Nothing yet? Check your spam folder, or try again in a minute.",
+  "auth_password_hint": "At least 6 characters."
 }
