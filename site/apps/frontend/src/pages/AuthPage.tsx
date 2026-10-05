@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { localizeHref } from '@/paraglide/runtime.js';
 import { usePlayer } from '../lib/player';
+import { useHeroListenVisible } from '../home/listen';
 import type { SignInState } from '../lib/signIn';
 import { takePendingKeep } from '../lib/pendingKeep';
 import { SiteHeader } from '../home/SiteHeader';
@@ -45,6 +46,10 @@ export default function AuthPage() {
   const backTo = opened.from ?? localizeHref('/');
   const isListening = usePlayer((s) => s.isPlaying);
   const [mode, setMode] = useState<AuthMode>(resetToken ? 'reset-password' : defaultMode);
+  const setListenVisible = useHeroListenVisible((s) => s.setVisible);
+
+  // No hero here: the player bar is the only way to listen.
+  useEffect(() => setListenVisible(false), [setListenVisible]);
 
   useEffect(() => {
     document.title = `${m.auth_signin_title()} · AubeSonore`;
@@ -157,8 +162,9 @@ export default function AuthPage() {
         setMode('verification-sent');
       } else if (mode === 'forgot') {
         await authApi.forgetPassword(email);
-        toast.success(m.toast_forgot_sent());
-        setMode('signin');
+        setPendingEmail(email);
+        resetForm();
+        setMode('reset-sent');
       } else if (mode === 'reset-password' && resetToken) {
         await authApi.resetPassword(resetToken, password);
         toast.success(m.toast_password_reset());
@@ -190,7 +196,7 @@ export default function AuthPage() {
   };
 
   return (
-    <>
+    <div className="min-h-page flex flex-col">
       <SiteHeader />
       <AuthView
         keepTitle={keepTitle}
@@ -241,6 +247,6 @@ export default function AuthPage() {
         onSwitchMode={switchTo}
       />
       <SiteFooter />
-    </>
+    </div>
   );
 }
