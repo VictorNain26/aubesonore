@@ -7,7 +7,7 @@ import type { Lookup } from '../lib/lookup';
 import { createSingleFlight } from '../lib/singleFlight';
 import { findTrackByIsrc, getArtist } from './deezerService';
 import { ensureMbid, normalizeArtistName, sameTitle } from './artistResolver';
-import { getArtistByMbid } from './musicbrainzService';
+import { getArtistIdentity, type ArtistIdentity } from './musilogyService';
 import { getTitlesByArtist, type PlayedTitle } from './radioPlayService';
 import { getSummary } from './wikipediaService';
 
@@ -19,6 +19,21 @@ type ArtistRow = typeof artist.$inferSelect;
 type StoredProfile = typeof artistProfile.$inferSelect;
 
 const NONE: Lookup<never> = { status: 'none' };
+
+/** The dump's word on the artist, or a failure while musilogy is not loaded or fails. */
+async function identityOf(mbid: string | null): Promise<Lookup<ArtistIdentity>> {
+  if (!mbid) return NONE;
+  try {
+    const identity = await getArtistIdentity(mbid);
+    return identity ? { status: 'found', value: identity } : NONE;
+  } catch (err) {
+    logger.warn('artistProfile.source_failed', {
+      label: 'musilogy',
+      message: (err as Error).message,
+    });
+    return { status: 'failed' };
+  }
+}
 
 // A slow source counts as a failed one: its section keeps what was stored.
 async function bounded<V>(label: string, work: Promise<Lookup<V>>): Promise<Lookup<V>> {
@@ -44,35 +59,36 @@ function settle<V, T>(lookup: Lookup<V>, read: (value: V) => T, previous: T): T 
 const refreshing = createSingleFlight<StoredProfile>();
 
 /**
- * Asks every source again and stores their answers (docs/vision.md §4.6). A
- * source that fails leaves its section as stored, and the profile keeps its
- * old date, so the next view retries.
+ * Asks the live sources again and stores their answers (docs/vision.md §4.6):
+ * the Deezer portrait, and the Wikipedia openings of the Wikidata item the
+ * dump names. A source that fails leaves its section as stored, and the
+ * profile keeps its old date, so the next view retries.
  */
-function refresh(row: ArtistRow, previous: StoredProfile | null): Promise<StoredProfile> {
+function refresh(
+  row: ArtistRow,
+  identity: Lookup<ArtistIdentity>,
+  previous: StoredProfile | null
+): Promise<StoredProfile> {
   return refreshing(row.id, async () => {
-    const mbid = await ensureMbid(row);
-    const [deezer, musicbrainz] = await Promise.all([
+    const wikidataId = identity.status === 'found' ? identity.value.wikidataId : null;
+    const [deezer, fr, en] = await Promise.all([
       row.deezerId ? bounded('deezer', getArtist(row.deezerId)) : NONE,
-      mbid ? bounded('musicbrainz', getArtistByMbid(mbid)) : NONE,
+      wikidataId ? bounded('wikipedia', getSummary(wikidataId, 'fr')) : NONE,
+      wikidataId ? bounded('wikipedia', getSummary(wikidataId, 'en')) : NONE,
     ]);
-    const wikidataId =
-      settle(musicbrainz, (page) => page.wikidataId, previous?.wikidataId ?? null) ?? null;
-    const [fr, en] = wikidataId
-      ? await Promise.all([
-          bounded('wikipedia', getSummary(wikidataId, 'fr')),
-          bounded('wikipedia', getSummary(wikidataId, 'en')),
-        ])
-      : [NONE, NONE];
-
-    const failed = [deezer, musicbrainz, fr, en].some((lookup) => lookup.status === 'failed');
+    // Without the dump's answer, the article to ask is unknown: the stored
+    // openings stay, and so does the date.
+    const unknown = identity.status === 'failed';
+    const failed = unknown || [deezer, fr, en].some((lookup) => lookup.status === 'failed');
     const next: StoredProfile = {
       artistId: row.id,
       image: settle(deezer, (found) => found.picture, previous?.image ?? null),
-      facts: settle(musicbrainz, (page) => page.facts, previous?.facts ?? null),
-      links: settle(musicbrainz, (page) => page.links, previous?.links ?? []) ?? [],
-      wikidataId,
-      summaryFr: settle(fr, (summary) => summary, previous?.summaryFr ?? null),
-      summaryEn: settle(en, (summary) => summary, previous?.summaryEn ?? null),
+      summaryFr: unknown
+        ? (previous?.summaryFr ?? null)
+        : settle(fr, (summary) => summary, previous?.summaryFr ?? null),
+      summaryEn: unknown
+        ? (previous?.summaryEn ?? null)
+        : settle(en, (summary) => summary, previous?.summaryEn ?? null),
       refreshedAt: failed ? (previous?.refreshedAt ?? new Date(0)) : new Date(),
     };
     await db
@@ -120,13 +136,15 @@ export async function getArtistProfile(
   const row = found.artist;
   const { id } = row;
 
-  // The first view waits for the sources; later ones never do.
+  // The dump is local: read on every view, cached by musilogyService. The
+  // first view waits for the live sources; later ones never do.
+  const identity = await identityOf(await ensureMbid(row));
   let stored = found.artist_profile;
   if (!stored) {
-    stored = await refresh(row, null);
+    stored = await refresh(row, identity, null);
   } else if (Date.now() - stored.refreshedAt.getTime() > FRESH_MS) {
     const previous = stored;
-    void refresh(row, previous).catch((err: unknown) => {
+    void refresh(row, identity, previous).catch((err: unknown) => {
       logger.warn('artistProfile.refresh_failed', { id, message: (err as Error).message });
     });
   }
@@ -154,13 +172,13 @@ export async function getArtistProfile(
     slug,
     mbid: row.mbid,
     image: stored.image,
-    facts: stored.facts,
+    facts: identity.status === 'found' ? identity.value.facts : null,
     summary: locale === 'fr' ? stored.summaryFr : stored.summaryEn,
     links: [
       ...(row.deezerId
         ? [{ platform: 'deezer' as const, url: `https://www.deezer.com/artist/${row.deezerId}` }]
         : []),
-      ...stored.links,
+      ...(identity.status === 'found' ? identity.value.links : []),
     ],
     playedOnRadio,
   };
