@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react';
 import * as m from '@/paraglide/messages.js';
 import { SiteHeader } from '../home/SiteHeader';
 import { SiteFooter } from '../home/SiteFooter';
+import { useHeroListenVisible } from '../home/listen';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -17,6 +18,11 @@ const LINK = 'text-text underline decoration-1 underline-offset-4';
 
 /** Legal notice and privacy policy, pre-rendered in each language and hydrated like any page. */
 export function LegalPage() {
+  const setListenVisible = useHeroListenVisible((s) => s.setVisible);
+
+  // No hero here: the player bar is the only way to listen.
+  useEffect(() => setListenVisible(false), [setListenVisible]);
+
   // Reached inside the app, the tab says where the listener is; pre-rendered, the head already does.
   useEffect(() => {
     document.title = `${m.legal_title()} · AubeSonore`;
@@ -27,9 +33,9 @@ export function LegalPage() {
     </a>
   );
   return (
-    <>
+    <div className="min-h-page flex flex-col">
       <SiteHeader />
-      <main id="main" className="px-page flex flex-col gap-12 py-16 md:py-28">
+      <main id="main" className="px-page flex flex-1 flex-col gap-12 py-16 md:py-28">
         <div className="flex flex-col gap-3">
           <h1 className="text-section m-0">{m.legal_title()}</h1>
           <p className="text-text-muted m-0">{m.legal_updated()}</p>
@@ -76,6 +82,6 @@ export function LegalPage() {
         </Section>
       </main>
       <SiteFooter />
-    </>
+    </div>
   );
 }

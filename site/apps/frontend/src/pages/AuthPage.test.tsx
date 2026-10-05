@@ -2,6 +2,8 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
+import { server } from '../mocks/server';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { AuthInit } from '../components/AuthInit';
 import { useAuthStore } from '../stores/authStore';
@@ -58,9 +60,11 @@ describe('AuthPage', () => {
   it('opens on the new password from the reset link, and flags mismatched passwords', async () => {
     open({ pathname: '/reset-password', search: '?token=some-token' });
 
-    const passwordInput = screen
-      .getAllByLabelText('Nouveau mot de passe')
-      .find((el) => el.tagName === 'INPUT') as HTMLInputElement;
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Nouveau mot de passe' })
+    ).toBeInTheDocument();
+    const passwordInput = screen.getByLabelText('Mot de passe');
+    expect(passwordInput).toHaveAccessibleDescription('6 caractères minimum.');
     const confirmInput = screen.getByLabelText('Confirmer le mot de passe');
 
     await userEvent.type(passwordInput, 'password123');
@@ -69,5 +73,34 @@ describe('AuthPage', () => {
 
     expect(screen.getByText('Les mots de passe ne correspondent pas.')).toBeInTheDocument();
     expect(confirmInput).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('says where the reset link went, and leads back to sign-in', async () => {
+    let asked: unknown = null;
+    server.use(
+      http.post('http://localhost:3000/api/auth/forget-password', async ({ request }) => {
+        asked = await request.json();
+        return HttpResponse.json({ status: true });
+      })
+    );
+    open('/connexion');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mot de passe oublié ?' }));
+    await userEvent.type(screen.getByLabelText('Adresse e-mail'), 'jane@example.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Envoyer le lien' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Vérifiez votre boîte mail' })
+    ).toBeInTheDocument();
+    expect(asked).toMatchObject({ email: 'jane@example.com' });
+    // One sentence: the address, a comma, then what waits in the inbox.
+    const sentence =
+      'Si un compte existe pour jane@example.com, un e-mail vous attend avec un lien pour choisir un nouveau mot de passe.';
+    expect(
+      screen.getByText((_, el) => el?.tagName === 'P' && el.textContent === sentence)
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Retour à la connexion' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Se connecter' })).toBeInTheDocument();
   });
 });

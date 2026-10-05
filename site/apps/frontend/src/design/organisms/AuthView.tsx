@@ -1,10 +1,17 @@
 import type { RefObject } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Heart, ListOrdered } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '../atoms/Button';
 import { TextField } from '../atoms/TextField';
 import * as m from '@/paraglide/messages.js';
 
-export type AuthMode = 'signin' | 'signup' | 'forgot' | 'verification-sent' | 'reset-password';
+export type AuthMode =
+  | 'signin'
+  | 'signup'
+  | 'forgot'
+  | 'reset-sent'
+  | 'verification-sent'
+  | 'reset-password';
 
 export interface AuthViewProps {
   /** Title the listener tried to keep: the sign-in heading names it. */
@@ -21,7 +28,7 @@ export interface AuthViewProps {
   name: string;
   /** Bascule les champs mot de passe entre `text` et `password`. */
   showPassword: boolean;
-  /** Email affiché sur l'écran de confirmation d'inscription. */
+  /** E-mail shown once a message is sent (account to confirm, password to choose). */
   pendingEmail: string;
   /** Erreurs de validation par champ (`email`, `password`, `passwordConfirm`). */
   errors: Record<string, string>;
@@ -74,25 +81,74 @@ function GoogleLogo({ className }: { className?: string }) {
 }
 
 const TEXT_LINK_CLASSES =
-  'inline-flex min-h-11 items-center rounded-sm underline decoration-1 underline-offset-4 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent active:opacity-80';
+  'ease-out-quart focus-visible:outline-accent inline-flex min-h-11 items-center rounded-sm underline decoration-1 underline-offset-4 transition-opacity duration-150 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
 
-/** What an account brings, said once, beside the form on wide screens. */
-function AuthAside() {
+const BACK_LINK_CLASSES =
+  'text-ui text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -ml-1 inline-flex min-h-11 items-center gap-2 self-start rounded-sm px-1 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
+
+/** What an account brings: beside the form on wide screens, under it on a phone. */
+function AuthPitch({ className }: { className?: string }) {
   return (
-    <aside className="hidden flex-col gap-6 self-start md:sticky md:top-10 md:flex">
-      <p className="text-section m-0 text-balance">{m.auth_aside_title()}</p>
-      <ul className="text-intro text-text-muted max-w-aside m-0 flex list-none flex-col gap-3 p-0">
-        <li>{m.auth_aside_library()}</li>
-        <li>{m.auth_aside_ranking()}</li>
+    <div className={cn('flex flex-col gap-6 md:gap-8', className)}>
+      <p className="text-section md:text-hero max-w-hero m-0 text-balance">
+        {m.auth_aside_title()}
+      </p>
+      <ul className="text-intro text-text-muted max-w-aside m-0 flex list-none flex-col gap-4 p-0">
+        <li className="flex items-start gap-3.5">
+          <Heart className="text-text mt-1 size-5 shrink-0" strokeWidth={1.6} aria-hidden="true" />
+          {m.auth_aside_library()}
+        </li>
+        <li className="flex items-start gap-3.5">
+          <ListOrdered
+            className="text-text mt-1 size-5 shrink-0"
+            strokeWidth={1.6}
+            aria-hidden="true"
+          />
+          {m.auth_aside_ranking()}
+        </li>
       </ul>
-    </aside>
+    </div>
+  );
+}
+
+/** An e-mail is on its way (account to confirm, password to choose): where, and what next. */
+function MailSentBody({
+  lead,
+  email,
+  separator,
+  rest,
+  hint,
+  action,
+  onAction,
+}: {
+  lead: string;
+  email: string;
+  /** What follows the address: a full stop before a new sentence, a comma inside the same one. */
+  separator: '.' | ',';
+  rest: string;
+  hint: string;
+  action: string;
+  onAction: () => void;
+}) {
+  return (
+    <div className="max-w-form flex flex-col gap-6">
+      <p className="text-intro text-text-muted m-0">
+        {lead} <span className="text-text font-medium wrap-break-word">{email}</span>
+        {separator} {rest}
+      </p>
+      <p className="text-ui text-text-muted m-0 font-normal">{hint}</p>
+      <Button onClick={onAction} className="h-14 w-full justify-center">
+        {action}
+      </Button>
+    </div>
   );
 }
 
 /**
- * The sign-in page's body, on the sections' 4/8 grid: what an account brings, then the form of the
- * current flow (fields by mode) or the e-mail confirmation. The form fades in at each change of
- * flow. The `AuthPage` container holds the state, the validation and every Better Auth call.
+ * The sign-in page's body, filling the screen between header and footer: what an account brings on
+ * one half, the current flow on the other (fields by mode, or the e-mail that was sent). The flow
+ * fades in at each change. The `AuthPage` container holds the state, the validation and every
+ * Better Auth call.
  */
 export function AuthView({
   keepTitle,
@@ -129,9 +185,12 @@ export function AuthView({
     },
     signup: { title: m.auth_signup_title(), desc: null },
     forgot: { title: m.auth_forgot_title(), desc: m.auth_forgot_desc() },
+    'reset-sent': { title: m.auth_verification_title(), desc: null },
     'verification-sent': { title: m.auth_verification_title(), desc: null },
-    'reset-password': { title: m.auth_new_password(), desc: m.auth_reset_desc() },
+    'reset-password': { title: m.auth_new_password(), desc: null },
   }[mode];
+  const withAccountChoice = mode === 'signin' || mode === 'signup';
+  const withBack = mode === 'forgot' || mode === 'reset-password';
 
   const passwordToggle = (
     <Button
@@ -146,186 +205,199 @@ export function AuthView({
   );
 
   return (
-    <main
-      id="main"
-      className="px-page grid gap-12 py-16 md:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] md:gap-16 md:py-28"
-    >
-      <AuthAside />
-      <div key={mode} className="panel-in max-w-form flex flex-col gap-5">
-        <h1 className="text-section m-0 text-balance">{headerCopy.title}</h1>
-        {headerCopy.desc ? <p className="text-text-muted -mt-2">{headerCopy.desc}</p> : null}
-        {mode === 'signin' || mode === 'signup' ? (
-          <p className="text-sub text-text-muted -mt-2 md:hidden">{m.auth_mobile_pitch()}</p>
-        ) : null}
+    <main id="main" className="px-page flex flex-1 items-center py-10">
+      <div className="grid w-full gap-14 md:grid-cols-2 md:items-center md:gap-0">
+        <AuthPitch className="hidden md:flex md:pr-16 lg:pr-24" />
 
-        {(mode === 'forgot' || mode === 'reset-password') && (
-          <button
-            type="button"
-            onClick={() => onSwitchMode('signin')}
-            className={`${TEXT_LINK_CLASSES} text-ui self-start font-normal`}
-          >
-            {m.auth_back_to_signin()}
-          </button>
-        )}
-
-        {mode === 'verification-sent' ? (
-          <VerificationSentBody email={pendingEmail} onDone={onDone} />
-        ) : (
-          <form onSubmit={onSubmit} className="flex flex-col gap-5">
-            {mode !== 'forgot' && mode !== 'reset-password' && (
-              <>
-                <Button
+        <div className="md:border-border md:border-l md:pl-16 lg:pl-24">
+          <div key={mode} className="panel-in flex flex-col gap-8">
+            <div className="max-w-aside flex flex-col gap-3">
+              {withBack ? (
+                <button
                   type="button"
-                  variant="ghost"
-                  onClick={onOAuthGoogle}
-                  disabled={isLoading}
-                  className="border-accent h-13 w-full justify-center gap-2.5 border hover:bg-transparent hover:opacity-80"
+                  onClick={() => onSwitchMode('signin')}
+                  className={BACK_LINK_CLASSES}
                 >
-                  <GoogleLogo className="size-4.5" />
-                  {m.auth_oauth_google()}
-                </Button>
-                {isListening ? (
-                  <p className="text-caption text-text-muted -mt-2">{m.auth_google_stops()}</p>
+                  <ArrowLeft className="size-4" strokeWidth={1.8} aria-hidden="true" />
+                  {m.auth_back_to_signin()}
+                </button>
+              ) : null}
+              <h1 className="text-section m-0 text-balance">{headerCopy.title}</h1>
+              {headerCopy.desc ? (
+                <p className="text-intro text-text-muted m-0">{headerCopy.desc}</p>
+              ) : null}
+            </div>
+
+            {mode === 'verification-sent' ? (
+              <MailSentBody
+                lead={m.auth_verification_sent_to()}
+                email={pendingEmail}
+                separator="."
+                rest={m.auth_verification_click_link()}
+                hint={m.auth_verification_spam_hint()}
+                action={m.auth_verification_dismiss()}
+                onAction={onDone}
+              />
+            ) : mode === 'reset-sent' ? (
+              <MailSentBody
+                lead={m.auth_reset_sent_to()}
+                email={pendingEmail}
+                separator=","
+                rest={m.auth_reset_sent_rest()}
+                hint={m.auth_reset_sent_hint()}
+                action={m.auth_back_to_signin()}
+                onAction={() => onSwitchMode('signin')}
+              />
+            ) : (
+              <form onSubmit={onSubmit} className="max-w-form flex flex-col gap-8">
+                {withAccountChoice ? (
+                  <div className="flex flex-col gap-6">
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={onOAuthGoogle}
+                        disabled={isLoading}
+                        className="border-accent h-13 w-full justify-center gap-2.5 border hover:bg-transparent hover:opacity-80"
+                      >
+                        <GoogleLogo className="size-4.5" />
+                        {m.auth_oauth_google()}
+                      </Button>
+                      {isListening ? (
+                        <p className="text-caption text-text-muted m-0">{m.auth_google_stops()}</p>
+                      ) : null}
+                    </div>
+                    <div className="text-ui text-text-muted flex items-center gap-4 font-normal">
+                      <span className="border-border flex-1 border-t" />
+                      {m.auth_or()}
+                      <span className="border-border flex-1 border-t" />
+                    </div>
+                  </div>
                 ) : null}
 
-                <div className="text-ui text-text-muted flex items-center gap-3.5 font-normal">
-                  <div className="border-border flex-1 border-t" />
-                  {m.auth_or()}
-                  <div className="border-border flex-1 border-t" />
+                <div className="flex flex-col gap-5">
+                  {mode === 'signup' && (
+                    <TextField
+                      id="name"
+                      label={m.auth_name_label()}
+                      type="text"
+                      placeholder={m.auth_name_placeholder()}
+                      value={name}
+                      onChange={(e) => onNameChange(e.target.value)}
+                      required
+                      autoComplete="name"
+                    />
+                  )}
+
+                  {mode !== 'reset-password' && (
+                    <TextField
+                      id="email"
+                      ref={emailRef}
+                      label={m.auth_email_label()}
+                      type="email"
+                      placeholder={m.auth_email_placeholder()}
+                      value={email}
+                      onChange={(e) => onEmailChange(e.target.value)}
+                      onBlur={onEmailBlur}
+                      required
+                      autoComplete="email"
+                      error={errors.email}
+                    />
+                  )}
+
+                  {mode !== 'forgot' && (
+                    <div className="flex flex-col gap-1">
+                      <TextField
+                        id="password"
+                        ref={passwordRef}
+                        label={m.auth_password_label()}
+                        description={mode === 'signin' ? undefined : m.auth_password_hint()}
+                        type={showPassword ? 'text' : 'password'}
+                        value={password}
+                        onChange={(e) => onPasswordChange(e.target.value)}
+                        onBlur={onPasswordBlur}
+                        required
+                        minLength={6}
+                        autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
+                        error={errors.password}
+                        trailing={passwordToggle}
+                      />
+                      {mode === 'signin' && (
+                        <button
+                          type="button"
+                          onClick={() => onSwitchMode('forgot')}
+                          className={cn(TEXT_LINK_CLASSES, 'text-ui self-end font-normal')}
+                        >
+                          {m.auth_forgot_link()}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {mode === 'reset-password' && (
+                    <TextField
+                      id="password-confirm"
+                      ref={passwordConfirmRef}
+                      label={m.auth_password_confirm_label()}
+                      type={showPassword ? 'text' : 'password'}
+                      value={passwordConfirm}
+                      onChange={(e) => onPasswordConfirmChange(e.target.value)}
+                      onBlur={onPasswordConfirmBlur}
+                      required
+                      minLength={6}
+                      autoComplete="new-password"
+                      error={errors.passwordConfirm}
+                    />
+                  )}
                 </div>
-              </>
-            )}
 
-            {mode === 'signup' && (
-              <TextField
-                id="name"
-                label={m.auth_name_label()}
-                type="text"
-                placeholder={m.auth_name_placeholder()}
-                value={name}
-                onChange={(e) => onNameChange(e.target.value)}
-                required
-                autoComplete="name"
-              />
-            )}
+                <div className="flex flex-col gap-4">
+                  <Button type="submit" loading={isLoading} className="h-14 w-full justify-center">
+                    {isLoading
+                      ? m.auth_loading()
+                      : mode === 'signin'
+                        ? m.auth_submit_signin()
+                        : mode === 'signup'
+                          ? m.auth_submit_signup()
+                          : mode === 'forgot'
+                            ? m.auth_submit_forgot()
+                            : m.auth_submit_reset()}
+                  </Button>
+                  {mode === 'signup' && (
+                    <p className="text-caption text-text-muted m-0">
+                      {m.auth_privacy_notice()}{' '}
+                      <a
+                        href={m.legal_href()}
+                        className={cn(TEXT_LINK_CLASSES, 'text-text min-h-0')}
+                      >
+                        {m.auth_privacy_link()}
+                      </a>
+                      .
+                    </p>
+                  )}
+                </div>
 
-            {mode !== 'reset-password' && (
-              <TextField
-                id="email"
-                ref={emailRef}
-                label={m.auth_email_label()}
-                type="email"
-                placeholder={m.auth_email_placeholder()}
-                value={email}
-                onChange={(e) => onEmailChange(e.target.value)}
-                onBlur={onEmailBlur}
-                required
-                autoComplete="email"
-                error={errors.email}
-              />
+                {withAccountChoice ? (
+                  <p className="border-border text-ui text-text-muted m-0 border-t pt-5 font-normal">
+                    {mode === 'signin' ? m.auth_no_account() : m.auth_have_account()}{' '}
+                    <button
+                      type="button"
+                      onClick={() => onSwitchMode(mode === 'signin' ? 'signup' : 'signin')}
+                      className={cn(TEXT_LINK_CLASSES, 'text-text font-semibold')}
+                    >
+                      {mode === 'signin' ? m.auth_create_account() : m.auth_submit_signin()}
+                    </button>
+                  </p>
+                ) : null}
+              </form>
             )}
+          </div>
+        </div>
 
-            {mode !== 'forgot' && (
-              <TextField
-                id="password"
-                ref={passwordRef}
-                label={mode === 'reset-password' ? m.auth_new_password() : m.auth_password_label()}
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => onPasswordChange(e.target.value)}
-                onBlur={onPasswordBlur}
-                required
-                minLength={6}
-                autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-                error={errors.password}
-                trailing={passwordToggle}
-              />
-            )}
-
-            {mode === 'reset-password' && (
-              <TextField
-                id="password-confirm"
-                ref={passwordConfirmRef}
-                label={m.auth_password_confirm_label()}
-                type={showPassword ? 'text' : 'password'}
-                value={passwordConfirm}
-                onChange={(e) => onPasswordConfirmChange(e.target.value)}
-                onBlur={onPasswordConfirmBlur}
-                required
-                minLength={6}
-                autoComplete="new-password"
-                error={errors.passwordConfirm}
-              />
-            )}
-
-            {mode === 'signin' && (
-              <div className="-mt-3 text-right">
-                <button
-                  type="button"
-                  onClick={() => onSwitchMode('forgot')}
-                  className={`${TEXT_LINK_CLASSES} text-ui font-normal`}
-                >
-                  {m.auth_forgot_link()}
-                </button>
-              </div>
-            )}
-
-            <Button type="submit" loading={isLoading} className="mt-2 h-14 w-full justify-center">
-              {isLoading
-                ? m.auth_loading()
-                : mode === 'signin'
-                  ? m.auth_submit_signin()
-                  : mode === 'signup'
-                    ? m.auth_submit_signup()
-                    : mode === 'forgot'
-                      ? m.auth_submit_forgot()
-                      : m.auth_submit_reset()}
-            </Button>
-
-            {mode === 'signup' && (
-              <p className="text-caption text-text-muted m-0">
-                {m.auth_privacy_notice()}{' '}
-                <a
-                  href={m.legal_href()}
-                  className="text-text underline decoration-1 underline-offset-4 hover:decoration-2"
-                >
-                  {m.auth_privacy_link()}
-                </a>
-                .
-              </p>
-            )}
-
-            {mode !== 'forgot' && mode !== 'reset-password' && (
-              <p className="text-ui text-text-muted m-0 font-normal">
-                {mode === 'signin' ? m.auth_no_account() : m.auth_have_account()}{' '}
-                <button
-                  type="button"
-                  onClick={() => onSwitchMode(mode === 'signin' ? 'signup' : 'signin')}
-                  className={`${TEXT_LINK_CLASSES} text-text font-semibold`}
-                >
-                  {mode === 'signin' ? m.auth_create_account() : m.auth_submit_signin()}
-                </button>
-              </p>
-            )}
-          </form>
-        )}
+        {withAccountChoice ? (
+          <AuthPitch className="border-border border-t pt-10 md:hidden" />
+        ) : null}
       </div>
     </main>
-  );
-}
-
-function VerificationSentBody({ email, onDone }: { email: string; onDone: () => void }) {
-  return (
-    <div className="flex flex-col gap-4">
-      <p className="text-body text-text-muted">
-        {m.auth_verification_sent_to()}{' '}
-        <span className="text-text font-medium break-all">{email}</span>.{' '}
-        {m.auth_verification_click_link()}
-      </p>
-      <p className="text-caption text-text-faint">{m.auth_verification_spam_hint()}</p>
-      <Button onClick={onDone} className="mt-2 h-14 w-full justify-center">
-        {m.auth_verification_dismiss()}
-      </Button>
-    </div>
   );
 }

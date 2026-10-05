@@ -10,6 +10,7 @@ import { fetchMusilogyArtist } from '../lib/musilogy';
 import { useScrollMemory } from '../lib/scrollMemory';
 import { seenStore } from '../lib/seenPages';
 import { useAuthStore } from '../stores/authStore';
+import * as m from '@/paraglide/messages.js';
 import { useLikedTracksStore } from '../stores/likedTracksStore';
 import { useLocaleStore } from '../stores/localeStore';
 
@@ -118,7 +119,13 @@ export default function ArtistPage() {
     };
   }, []);
 
-  const name = state.status === 'ready' ? state.profile.name : null;
+  // An unknown artist's tab says so, like the 404's.
+  const name =
+    state.status === 'ready'
+      ? state.profile.name
+      : state.status === 'missing'
+        ? m.notfound_meta_title()
+        : null;
   useEffect(() => {
     if (name) document.title = `${name} · AubeSonore`;
   }, [name]);
@@ -134,9 +141,9 @@ export default function ArtistPage() {
   }
 
   return (
-    <>
+    <div className="min-h-page flex flex-col">
       <ArtistPageView state={state} kept={kept} musilogy={musilogyArtist} trail={trail} />
       <SiteFooter />
-    </>
+    </div>
   );
 }

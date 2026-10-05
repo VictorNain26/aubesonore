@@ -3,6 +3,7 @@ import { Navigate, useLocation, useParams } from 'react-router';
 import * as m from '@/paraglide/messages.js';
 import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../home/SiteFooter';
+import { SiteHeader } from '../home/SiteHeader';
 import { MusilogyUnavailableError, searchMusilogy } from '../lib/musilogy';
 import { artistPath } from '../lib/artistProfile';
 import { MusilogyHomeView, type SearchState } from '../musilogy/MusilogyView';
@@ -39,7 +40,10 @@ function MusilogyHome() {
     if (trimmed.length < 2) return;
     const controller = new AbortController();
     const timer = setTimeout(() => {
-      setSearch({ status: 'searching' });
+      setSearch((previous) => ({
+        status: 'searching',
+        hits: previous.status === 'done' || previous.status === 'searching' ? previous.hits : [],
+      }));
       searchMusilogy(trimmed, controller.signal)
         .then((hits) => setSearch({ status: 'done', hits }))
         .catch((err: unknown) => {
@@ -56,7 +60,12 @@ function MusilogyHome() {
   return (
     <MusilogyHomeView
       query={query}
-      onQueryChange={setQuery}
+      onQueryChange={(next) => {
+        setQuery(next);
+        // Under two letters there is no search: an earlier answer must not come back as the
+        // previous one of the next search.
+        if (next.trim().length < 2) setSearch({ status: 'idle' });
+      }}
       search={query.trim().length < 2 ? { status: 'idle' } : search}
     />
   );
@@ -76,10 +85,12 @@ export default function MusilogyPage() {
     };
   }, []);
 
+  if (mbid) return <MusilogyArtist mbid={mbid} />;
   return (
-    <>
-      {mbid ? <MusilogyArtist mbid={mbid} /> : <MusilogyHome />}
+    <div className="min-h-page flex flex-col">
+      <SiteHeader />
+      <MusilogyHome />
       <SiteFooter />
-    </>
+    </div>
   );
 }

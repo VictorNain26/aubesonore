@@ -26,12 +26,14 @@ describe('ArtistPage', () => {
     await waitFor(() => expect(document.title).toBe('Hania Rani · AubeSonore'));
   });
 
-  it('shows the not-found state for a slug the API does not know', async () => {
+  it('shows the not-found state for a slug the API does not know, with the way back', async () => {
     open('/artiste/nope');
 
     expect(
       await screen.findByRole('heading', { name: 'Artiste introuvable.' })
     ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Revenir au direct' })).toHaveAttribute('href', '/');
+    await waitFor(() => expect(document.title).toBe('Page introuvable · AubeSonore'));
   });
 
   it('shows the not-found state for a slug the API rejects as malformed', async () => {
