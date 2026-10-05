@@ -47,6 +47,9 @@ interface EnvConfig {
   AZURACAST_API_KEY: string;
   AZURACAST_STATION_ID: string;
 
+  // YouTube Data API: direct links to kept tracks. Unset, they open a YouTube search.
+  YOUTUBE_API_KEY: string | undefined;
+
   // SMTP
   SMTP_HOST: string | undefined;
   SMTP_PORT: number;
@@ -128,6 +131,7 @@ export const env: EnvConfig = {
   AZURACAST_BASE_URL: Bun.env.AZURACAST_BASE_URL ?? '',
   AZURACAST_API_KEY: Bun.env.AZURACAST_API_KEY ?? '',
   AZURACAST_STATION_ID: Bun.env.AZURACAST_STATION_ID ?? '1',
+  YOUTUBE_API_KEY: optional('YOUTUBE_API_KEY'),
 
   SMTP_HOST: optional('SMTP_HOST'),
   SMTP_PORT: parseInteger('SMTP_PORT', 587),

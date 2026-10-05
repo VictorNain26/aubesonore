@@ -7,6 +7,7 @@ import { findTrackLinks } from './trackLinksService';
 import { keepCover } from './coverService';
 import { resolveArtist } from './artistResolver';
 import { findPlay } from './radioPlayService';
+import { resolveSong, songKey, youtubeUrls } from './youtubeLinks';
 import { logger } from '../lib/logger';
 
 // Hard cap on the liked-tracks listing payload. Power users with thousands
@@ -80,6 +81,9 @@ export async function likeTrack({
   void linkKeptTrack(trackId, title, artist).catch((err: unknown) => {
     logger.warn('keptTrack.link_failed', { trackId, message: (err as Error).message });
   });
+  void resolveSong(title, artist).catch((err: unknown) => {
+    logger.warn('youtube.resolve_failed', { trackId, message: (err as Error).message });
+  });
 
   return {
     message: 'Morceau liké avec succès',
@@ -144,7 +148,10 @@ async function enrichTrackInBackground(
 
 export type LikedTrackListItem = LikedTrack & { artistPage: KeptArtistPage | null };
 
-/** Each kept track with the page of the artist it is tied to, when that artist has one. */
+/**
+ * Each kept track with the page of the artist it is tied to, when that artist has one, and its
+ * YouTube Art Track in place of the search it was kept with, once one is verified.
+ */
 export async function getLikedTracks({ user }: { user: User }): Promise<LikedTrackListItem[]> {
   const rows = await db
     .select({
@@ -158,8 +165,10 @@ export async function getLikedTracks({ user }: { user: User }): Promise<LikedTra
     .where(eq(schema.likedTracks.userId, user.id))
     .orderBy(desc(schema.likedTracks.createdAt))
     .limit(LIKED_TRACKS_MAX_PAGE);
+  const direct = await youtubeUrls(rows.map(({ track }) => track));
   return rows.map(({ track, slug, name }) => ({
     ...track,
+    youtubeUrl: direct.get(songKey(track.title, track.artist)) ?? track.youtubeUrl,
     artistPage: slug !== null && name !== null ? { slug, name } : null,
   }));
 }

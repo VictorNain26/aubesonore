@@ -189,6 +189,24 @@ export const covers = pgTable('covers', {
 });
 
 // ─────────────────────────────────────────────
+// YOUTUBE_LINK TABLE — one YouTube lookup per song, shared by every listener
+// ─────────────────────────────────────────────
+export const youtubeLink = pgTable(
+  'youtube_link',
+  {
+    // youtubeLinks.songKey: the song's primary artist and title, normalized.
+    songKey: text('song_key').primaryKey(),
+    // The verified Art Track, or null when the last search found none.
+    videoId: text('video_id'),
+    // YouTube API data is refreshed or deleted within 30 days (Developer Policies III.E.4.d).
+    checkedAt: timestamp('checked_at', { withTimezone: true }).notNull(),
+  },
+  (table) => ({
+    youtubeLinkCheckedAtIdx: index('youtube_link_checked_at_idx').on(table.checkedAt),
+  })
+);
+
+// ─────────────────────────────────────────────
 // ARTIST TABLE — canonical identity only
 // ─────────────────────────────────────────────
 export const artist = pgTable(
@@ -298,3 +316,5 @@ export type NewArtist = InferInsertModel<typeof artist>;
 
 export type RadioPlayRow = InferSelectModel<typeof radioPlay>;
 export type NewRadioPlayRow = InferInsertModel<typeof radioPlay>;
+
+export type YoutubeLinkRow = InferSelectModel<typeof youtubeLink>;
