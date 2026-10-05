@@ -129,31 +129,62 @@ describe('MyTracksPage', () => {
     await waitFor(() => expect(document.title).toBe('Mes titres · AubeSonore'));
   });
 
-  it('orders by artist on demand, and keeps that order in the address', async () => {
+  it('sorts by a column on a click, reverses it on a second, and keeps it in the address', async () => {
     signIn();
     open();
 
     await screen.findByText('Nightcall');
-    await userEvent.click(screen.getByRole('button', { name: 'Par artiste' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Artiste' }));
 
     expect(titles()).toEqual(['One More Time', 'Get Lucky', 'Nightcall']);
+    expect(screen.getByRole('button', { name: 'Artiste, ordre croissant' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
     expect(screen.getByRole('status', { name: 'search' })).toHaveTextContent('?sort=artist');
 
-    await userEvent.click(screen.getByRole('button', { name: "Par date d'ajout" }));
+    await userEvent.click(screen.getByRole('button', { name: 'Artiste, ordre croissant' }));
+    expect(titles()).toEqual(['Nightcall', 'One More Time', 'Get Lucky']);
+    expect(screen.getByRole('status', { name: 'search' })).toHaveTextContent(
+      '?sort=artist&dir=desc'
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Titre' }));
+    expect(titles()).toEqual(['Get Lucky', 'Nightcall', 'One More Time']);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ajouté le' }));
     expect(titles()).toEqual(['One More Time', 'Nightcall', 'Get Lucky']);
     expect(screen.getByRole('status', { name: 'search' })).toBeEmptyDOMElement();
   });
 
   it('opens on the order its address names', async () => {
     signIn();
-    open('/mes-titres?sort=artist');
+    open('/mes-titres?sort=title&dir=desc');
 
     await screen.findByText('Nightcall');
-    expect(screen.getByRole('button', { name: 'Par artiste' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Titre, ordre décroissant' })).toHaveAttribute(
       'aria-pressed',
       'true'
     );
-    expect(titles()).toEqual(['One More Time', 'Get Lucky', 'Nightcall']);
+    expect(titles()).toEqual(['One More Time', 'Nightcall', 'Get Lucky']);
+  });
+
+  it('finds a track by title or artist, and says so when none matches', async () => {
+    signIn();
+    open();
+
+    await screen.findByText('Nightcall');
+    const search = screen.getByRole('searchbox', { name: 'Rechercher dans mes titres' });
+    await userEvent.type(search, 'pharrell');
+    expect(titles()).toEqual(['Get Lucky']);
+    expect(screen.getByText('1 sur 3')).toBeInTheDocument();
+
+    await userEvent.clear(search);
+    await userEvent.type(search, 'cassius');
+    expect(screen.getByText('Aucun titre ne correspond à « cassius ».')).toBeInTheDocument();
+
+    await userEvent.click(screen.getAllByRole('button', { name: 'Effacer la recherche' })[0]!);
+    expect(titles()).toEqual(['One More Time', 'Nightcall', 'Get Lucky']);
   });
 
   it('plays each track on YouTube and dates it', async () => {

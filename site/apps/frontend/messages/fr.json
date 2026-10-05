@@ -4,8 +4,6 @@
   "library_title": "Mes titres",
   "library_body": "Ce que vous avez gardé de l'antenne.",
   "library_order_label": "Trier mes titres",
-  "library_order_date": "Par date d'ajout",
-  "library_order_artist": "Par artiste",
   "library_signed_out": "Connectez-vous pour retrouver les titres que vous gardez.",
   "library_error": "Vos titres n'ont pas pu être chargés.",
   "library_removed": "« {title} » retiré",
@@ -126,7 +124,6 @@
   "auth_create_account": "Créer un compte",
   "library_count_one": "1 titre gardé",
   "library_count_other": "{count} titres gardés",
-  "library_remove": "Retirer",
   "library_listen": "Écouter « {title} » sur YouTube",
   "account_label": "Mon compte",
   "library_sign_out": "Se déconnecter",
@@ -238,5 +235,15 @@
   "auth_reset_sent_to": "Si un compte existe pour",
   "auth_reset_sent_rest": "un e-mail vous attend avec un lien pour choisir un nouveau mot de passe.",
   "auth_reset_sent_hint": "Pas reçu ? Vérifiez vos spams, ou recommencez dans une minute.",
-  "auth_password_hint": "6 caractères minimum."
+  "auth_password_hint": "6 caractères minimum.",
+  "library_search_label": "Rechercher dans mes titres",
+  "library_search_placeholder": "Titre ou artiste",
+  "library_search_clear": "Effacer la recherche",
+  "library_search_empty": "Aucun titre ne correspond à « {query} ».",
+  "library_count_filtered": "{shown} sur {count}",
+  "library_col_title": "Titre",
+  "library_col_artist": "Artiste",
+  "library_col_added": "Ajouté le",
+  "library_sort_asc": "ordre croissant",
+  "library_sort_desc": "ordre décroissant"
 }

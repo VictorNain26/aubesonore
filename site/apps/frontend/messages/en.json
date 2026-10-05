@@ -4,8 +4,6 @@
   "library_title": "My tracks",
   "library_body": "What you kept from the antenna.",
   "library_order_label": "Sort my tracks",
-  "library_order_date": "By date added",
-  "library_order_artist": "By artist",
   "library_signed_out": "Sign in to find the tracks you keep.",
   "library_error": "Your tracks could not be loaded.",
   "library_removed": "“{title}” removed",
@@ -126,7 +124,6 @@
   "auth_create_account": "Create an account",
   "library_count_one": "1 kept track",
   "library_count_other": "{count} kept tracks",
-  "library_remove": "Remove",
   "library_listen": "Play “{title}” on YouTube",
   "account_label": "My account",
   "library_sign_out": "Sign out",
@@ -238,5 +235,15 @@
   "auth_reset_sent_to": "If an account exists for",
   "auth_reset_sent_rest": "an email is waiting for you with a link to choose a new password.",
   "auth_reset_sent_hint": "Nothing yet? Check your spam folder, or try again in a minute.",
-  "auth_password_hint": "At least 6 characters."
+  "auth_password_hint": "At least 6 characters.",
+  "library_search_label": "Search my tracks",
+  "library_search_placeholder": "Title or artist",
+  "library_search_clear": "Clear search",
+  "library_search_empty": "No track matches “{query}”.",
+  "library_count_filtered": "{shown} of {count}",
+  "library_col_title": "Title",
+  "library_col_artist": "Artist",
+  "library_col_added": "Added",
+  "library_sort_asc": "ascending",
+  "library_sort_desc": "descending"
 }
