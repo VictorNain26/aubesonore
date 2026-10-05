@@ -108,6 +108,28 @@ def load_influences(
     )
 
 
+RAW_DISCOGRAPHY_COLUMNS = "{rg_mbid:'VARCHAR', form:'VARCHAR'}"
+
+
+def load_discography(
+    con: duckdb.DuckDBPyConnection, discography: Path | None, snapshot: str | None
+) -> None:
+    if discography is None:
+        # Always materialized, even empty, like influences: synthetic builds
+        # carry no snapshot, and 22_releases.sql reads this table anyway.
+        con.execute("CREATE OR REPLACE TABLE raw_discography (rg_mbid VARCHAR, form VARCHAR)")
+    else:
+        con.execute(
+            f"CREATE OR REPLACE TABLE raw_discography AS SELECT * FROM read_ndjson("
+            f"'{discography.as_posix()}', columns={RAW_DISCOGRAPHY_COLUMNS}, "
+            f"format='newline_delimited')"
+        )
+    con.execute(
+        "SET VARIABLE discography_snapshot = "
+        + ("NULL" if snapshot is None else f"DATE '{snapshot}'")
+    )
+
+
 def apply_corrections(con: duckdb.DuckDBPyConnection, corrections: Path | None) -> int:
     if corrections is None:
         # Always materialized, even empty: the fast suite builds
@@ -146,11 +168,14 @@ def build(
     popularity_snapshot: str | None = None,
     influences: Path | None = None,
     influences_snapshot: str | None = None,
+    discography: Path | None = None,
+    discography_snapshot: str | None = None,
 ) -> None:
     load_raw(con, artists, rgs)
     apply_corrections(con, corrections)
     load_popularity(con, popularity, popularity_snapshot)
     load_influences(con, influences, influences_snapshot)
+    load_discography(con, discography, discography_snapshot)
     con.execute(f"SET VARIABLE dump_year = {dump_year}")
     con.execute(f"SET VARIABLE min_year = {min_year}")
     for path in sorted(sql_dir.glob("*.sql")):
@@ -179,6 +204,8 @@ INVARIANTS = (
     "release_unexpected_type",
     "release_without_artist",
     "duplicate_release",
+    "release_extra_secondary_type",
+    "release_curated_mismatch",
     "release_uncredited",
     "artist_genres_out_of_order",
     "genre_source_mismatch",
@@ -191,6 +218,7 @@ INVARIANTS = (
     "link_misoriented",
     "url_without_artist",
     "duplicate_url",
+    "url_out_of_scope",
     "url_unsourced",
     "duplicate_popularity",
     "popularity_out_of_range",

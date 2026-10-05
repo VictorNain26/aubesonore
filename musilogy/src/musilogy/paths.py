@@ -50,3 +50,11 @@ def influences_snapshot(date: str) -> Path:
 
 def influences_sums(date: str) -> Path:
     return REFERENCE_DIR / f"wikidata-influences-{date}.SHA256SUMS"
+
+
+def discography_snapshot(date: str) -> Path:
+    return RAW_DIR / "wikidata" / date / "discography.jsonl"
+
+
+def discography_sums(date: str) -> Path:
+    return REFERENCE_DIR / f"wikidata-discography-{date}.SHA256SUMS"

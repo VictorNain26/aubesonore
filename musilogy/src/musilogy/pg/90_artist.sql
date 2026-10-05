@@ -107,22 +107,18 @@ AS $$
   ORDER BY 1 NULLS LAST, 2;
 $$;
 
--- The albums and EPs credited to the artist, all of them, with their
--- secondary types (live, compilation…) for the site to choose from. Oldest
--- first, a release without a year last, then by title and mbid: a total order.
+-- The artist's main records. Where Wikidata files any of them (`curated`),
+-- only those: the others are the bootlegs and reissues a curated list leaves
+-- out. Elsewhere, every main record MusicBrainz credits. Oldest first, a
+-- release without a year last, then by title and mbid: a total order.
 CREATE FUNCTION musilogy.artist_releases(artist text)
-RETURNS TABLE (
-  mbid text,
-  title text,
-  primary_type text,
-  secondary text[],
-  y integer,
-  n_credited integer
-)
+RETURNS TABLE (mbid text, title text, primary_type text, soundtrack boolean, y integer)
 LANGUAGE sql STABLE
 AS $$
-  SELECT r.rg_mbid, r.title, r.primary_type, r.secondary, r.y, r.n_credited
+  SELECT r.rg_mbid, r.title, r.primary_type, r.soundtrack, r.y
   FROM musilogy.releases r
   WHERE r.artist_mbid = artist
+    AND (r.curated OR NOT EXISTS (
+      SELECT 1 FROM musilogy.releases c WHERE c.artist_mbid = artist AND c.curated))
   ORDER BY r.y NULLS LAST, r.title, r.rg_mbid;
 $$;

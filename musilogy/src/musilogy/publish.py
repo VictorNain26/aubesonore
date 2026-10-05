@@ -11,7 +11,13 @@ from typing import Any
 import duckdb
 
 from musilogy.fetch import expected_sums, sha256_file
-from musilogy.paths import PACKAGE_DIR, REFERENCE_DIR, influences_sums, popularity_sums
+from musilogy.paths import (
+    PACKAGE_DIR,
+    REFERENCE_DIR,
+    discography_sums,
+    influences_sums,
+    popularity_sums,
+)
 
 TABLES = ("artists", "albums", "genres", "links", "popularity", "influences", "releases", "urls")
 # A delivery has to come out in a fixed order, or the same code on the same
@@ -185,6 +191,7 @@ def publish(
         "archive_sha256": expected_sums(REFERENCE_DIR / f"{dump}.SHA256SUMS"),
         "popularity": _snapshot(con, "popularity_snapshot", popularity_sums),
         "influences": _snapshot(con, "influences_snapshot", influences_sums),
+        "discography": _snapshot(con, "discography_snapshot", discography_sums),
         "counts": counts,
         "output_sha256": output_sha256,
         "parameters": _parameters(con),
@@ -203,6 +210,7 @@ def publish(
         "r2_anomalies": _counters(con, "r2_anomalies"),
         "neutralised_inferences": _counters(con, "neutralised_inferences"),
         "link_exclusions": _counters(con, "link_exclusions"),
+        "discography_exclusions": _counters(con, "discography_exclusions"),
         "git_sha": _git_sha(),
         "corrections_sha256": sha256_file(corrections) if corrections else None,
     }
