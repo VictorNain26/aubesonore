@@ -227,5 +227,6 @@
   "auth_error_exists": "Un compte existe déjà avec cette adresse. Connectez-vous.",
   "auth_error_password_long": "Mot de passe trop long.",
   "auth_error_rate_limited": "Trop de tentatives. Réessayez dans une minute.",
-  "page_nav_label": "Sur cette page"
+  "page_nav_label": "Sur cette page",
+  "trail_label": "Votre parcours"
 }

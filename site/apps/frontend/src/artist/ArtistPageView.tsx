@@ -15,6 +15,8 @@ import { SiteHeader } from '../home/SiteHeader';
 import { Section } from '../design/molecules/Section';
 import { musilogyNav, MusilogySections } from '../musilogy/MusilogyView';
 import { PageNav } from '../design/molecules/PageNav';
+import { DiscoveryTrail } from '../design/molecules/DiscoveryTrail';
+import type { TrailStep } from '../lib/discoveryTrail';
 import { ReleasesSection } from '../musilogy/Releases';
 
 export type ArtistPageState =
@@ -142,11 +144,13 @@ function Profile({
   profile,
   kept,
   musilogy,
+  trail,
   thisYear,
 }: {
   profile: ArtistProfile;
   kept: readonly KeptTrack[];
   musilogy: MusilogyArtist | null;
+  trail: readonly TrailStep[];
   thisYear: number;
 }) {
   // Without a Wikipedia article, the facts are said in a sentence rather than listed.
@@ -165,6 +169,7 @@ function Profile({
           className="aspect-square w-40 md:w-full"
         />
         <div className="flex min-w-0 flex-col gap-3 md:justify-end">
+          <DiscoveryTrail steps={trail} />
           <h1 className="text-hero m-0 break-words">{profile.name}</h1>
           {facts ? <p className="text-sub text-text-muted m-0">{facts}</p> : null}
           <div className="mt-3 flex flex-col gap-3">
@@ -248,11 +253,14 @@ export function ArtistPageView({
   state,
   kept = [],
   musilogy = null,
+  trail = [],
   thisYear = new Date().getFullYear(),
 }: {
   state: ArtistPageState;
   kept?: readonly KeptTrack[];
   musilogy?: MusilogyArtist | null;
+  /** The artists walked through to reach this one. */
+  trail?: readonly TrailStep[];
   /** Where an active artist's span ends on the map. */
   thisYear?: number;
 }) {
@@ -269,7 +277,13 @@ export function ArtistPageView({
       ) : state.status === 'error' ? (
         <Message title={m.artist_error_title()} body={m.artist_error_body()} />
       ) : (
-        <Profile profile={state.profile} kept={kept} musilogy={musilogy} thisYear={thisYear} />
+        <Profile
+          profile={state.profile}
+          kept={kept}
+          musilogy={musilogy}
+          trail={trail}
+          thisYear={thisYear}
+        />
       )}
     </main>
   );
