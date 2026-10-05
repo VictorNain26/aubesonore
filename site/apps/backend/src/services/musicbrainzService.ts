@@ -21,9 +21,13 @@ const flight = createSingleFlight<Lookup<unknown>>();
 const MAX_QUEUE_MS = 3_000;
 let nextSlotAt = 0;
 
-/** The wait before this request's slot, or null when the queue is already full. */
+/**
+ * The wait before this request's slot, or null when the queue is already full. Timed on the
+ * monotonic clock: the wall clock steps when the system sets its time (seen on WSL, 3 s back),
+ * which would read as a full queue, or, stepping forward, let a burst past MusicBrainz's limit.
+ */
 function takeSlot(): number | null {
-  const now = Date.now();
+  const now = performance.now();
   const scheduledAt = Math.max(now, nextSlotAt);
   if (scheduledAt - now > MAX_QUEUE_MS) return null;
   nextSlotAt = scheduledAt + MIN_INTERVAL_MS;

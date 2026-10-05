@@ -67,6 +67,21 @@ describe('findMbidByDeezerId', () => {
     expect((await findMbidByDeezerId('2')).status).toBe('found');
   });
 
+  it('keeps its pace when the system clock is set back', async () => {
+    spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(json(deezerUrl))
+      .mockResolvedValueOnce(json(deezerUrl));
+    const now = Date.now();
+    const wallClock = spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      expect((await findMbidByDeezerId('1')).status).toBe('found');
+      wallClock.mockReturnValue(now - 5_000);
+      expect((await findMbidByDeezerId('2')).status).toBe('found');
+    } finally {
+      wallClock.mockRestore();
+    }
+  });
+
   it('fails at once rather than queue past the caller budget', async () => {
     jest.useFakeTimers();
     try {
