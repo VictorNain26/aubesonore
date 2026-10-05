@@ -27,6 +27,7 @@
   "cast_none_body": "Turn the TV or speaker on and check it is on the same Wi-Fi as this device.",
   "cast_none_chromecast": "From Chrome: Chromecast, Google TV and Google Cast speakers. For AirPlay, open the site in Safari.",
   "cast_none_airplay": "From Safari: Apple TV and AirPlay speakers. For Chromecast, open the site in Chrome.",
+  "cast_failed": "Casting could not start. Check that the device is on and on the same Wi-Fi, then try again.",
   "library_empty_title": "Nothing kept yet.",
   "library_empty_body": "A track stops you? Keep it: it will wait for you here.",
   "liked_track_undo": "Undo",
