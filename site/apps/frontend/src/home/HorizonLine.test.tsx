@@ -46,7 +46,9 @@ beforeEach(() => {
       disconnect = vi.fn();
     }
   );
-  window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+  window.matchMedia = vi
+    .fn()
+    .mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() });
 });
 
 afterEach(() => {
@@ -183,5 +185,56 @@ describe('HorizonLine', () => {
     unmount();
 
     expect(cancelAnimationFrame).toHaveBeenCalled();
+  });
+
+  it('rests while it is off screen, and moves again once seen', () => {
+    const scheduled = new Map<number, FrameRequestCallback>();
+    let next = 0;
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      scheduled.set(++next, cb);
+      return next;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => scheduled.delete(id));
+    let seen: IntersectionObserverCallback = () => undefined;
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(callback: IntersectionObserverCallback) {
+          seen = callback;
+        }
+        observe = vi.fn();
+        disconnect = vi.fn();
+      }
+    );
+    const ctx = fakeContext();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      ctx as unknown as CanvasRenderingContext2D
+    );
+    const entry = (isIntersecting: boolean) =>
+      [{ isIntersecting }] as unknown as IntersectionObserverEntry[];
+
+    render(<HorizonLine isPlaying />);
+    expect(scheduled.size).toBe(1);
+
+    seen(entry(false), {} as IntersectionObserver);
+    expect(scheduled.size).toBe(0);
+
+    seen(entry(true), {} as IntersectionObserver);
+    expect(scheduled.size).toBe(1);
+  });
+
+  it('draws a still line once under reduced motion', () => {
+    window.matchMedia = vi
+      .fn()
+      .mockReturnValue({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() });
+    const ctx = fakeContext();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      ctx as unknown as CanvasRenderingContext2D
+    );
+
+    render(<HorizonLine isPlaying />);
+
+    expect(frames).toHaveLength(0);
+    expect(ctx.stroke).toHaveBeenCalledTimes(LAYERS.length);
   });
 });
