@@ -7,11 +7,9 @@ import { betterAuthPlugin } from './lib/auth/betterAuthPlugin';
 import { securityHeaders, applySecurityHeaders } from './lib/security/securityHeaders';
 import { logger } from './lib/logger';
 import { trackRoutes } from './routes/track.routes';
-import { preferencesRoutes } from './routes/preferences.routes';
 import { artistRoutes } from './routes/artist.routes';
 import { musilogyRoutes } from './routes/musilogy.routes';
 import { artistPageRoutes } from './routes/artistPage.routes';
-import { pushRoutes } from './routes/push.routes';
 import { statsRoutes } from './routes/stats.routes';
 import { trendsRoutes } from './routes/trends.routes';
 import { radioRoutes } from './routes/radio.routes';
@@ -24,8 +22,8 @@ import { wikipediaCache } from './services/wikipediaService';
 import { identityCache, musilogyCache } from './services/musilogyService';
 import { radioHistoryCache } from './services/radioService';
 import { trendsCache } from './services/trendsService';
-import { purgeExpiredAuthRows } from './services/pushService';
-import { startLikedArtistWatcher } from './services/likedArtistWatcher';
+import { purgeExpiredAuthRows } from './lib/auth/purgeExpiredRows';
+import { startAntennaWatcher } from './services/antennaWatcher';
 
 // Apply pending DB migrations BEFORE serving traffic. The runner tracks
 // applied migrations in __app_migrations and is idempotent across restarts.
@@ -67,7 +65,7 @@ if (typeof purgeTimer === 'object' && purgeTimer !== null && 'unref' in purgeTim
   (purgeTimer as { unref: () => void }).unref();
 }
 
-startLikedArtistWatcher();
+startAntennaWatcher();
 
 const app = new Elysia()
   // Per-request start time, available to onAfterHandle via context.
@@ -85,11 +83,9 @@ const app = new Elysia()
   )
   .use(betterAuthPlugin)
   .use(trackRoutes)
-  .use(preferencesRoutes)
   .use(artistRoutes)
   .use(musilogyRoutes)
   .use(artistPageRoutes)
-  .use(pushRoutes)
   .use(statsRoutes)
   .use(trendsRoutes)
   .use(radioRoutes)

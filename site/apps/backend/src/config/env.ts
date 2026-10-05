@@ -47,11 +47,6 @@ interface EnvConfig {
   AZURACAST_API_KEY: string;
   AZURACAST_STATION_ID: string;
 
-  // Web Push
-  VAPID_PUBLIC_KEY: string | undefined;
-  VAPID_PRIVATE_KEY: string | undefined;
-  VAPID_SUBJECT: string;
-
   // SMTP
   SMTP_HOST: string | undefined;
   SMTP_PORT: number;
@@ -134,10 +129,6 @@ export const env: EnvConfig = {
   AZURACAST_API_KEY: Bun.env.AZURACAST_API_KEY ?? '',
   AZURACAST_STATION_ID: Bun.env.AZURACAST_STATION_ID ?? '1',
 
-  VAPID_PUBLIC_KEY: optional('VAPID_PUBLIC_KEY'),
-  VAPID_PRIVATE_KEY: optional('VAPID_PRIVATE_KEY'),
-  VAPID_SUBJECT: Bun.env.VAPID_SUBJECT ?? 'mailto:contact@aubesonore.fr',
-
   SMTP_HOST: optional('SMTP_HOST'),
   SMTP_PORT: parseInteger('SMTP_PORT', 587),
   SMTP_USER: optional('SMTP_USER'),
@@ -163,12 +154,6 @@ if (env.GOOGLE_CLIENT_ID && !env.GOOGLE_CLIENT_SECRET) {
 }
 if (env.SPOTIFY_CLIENT_ID && !env.SPOTIFY_CLIENT_SECRET) {
   throw new Error('SPOTIFY_CLIENT_ID set but SPOTIFY_CLIENT_SECRET missing');
-}
-if (env.VAPID_PUBLIC_KEY && !env.VAPID_PRIVATE_KEY) {
-  throw new Error('VAPID_PUBLIC_KEY set but VAPID_PRIVATE_KEY missing');
-}
-if (env.VAPID_PRIVATE_KEY && !env.VAPID_PUBLIC_KEY) {
-  throw new Error('VAPID_PRIVATE_KEY set but VAPID_PUBLIC_KEY missing');
 }
 if (env.SMTP_HOST && (!env.SMTP_USER || !env.SMTP_PASSWORD)) {
   throw new Error('SMTP_HOST set but SMTP_USER or SMTP_PASSWORD missing');

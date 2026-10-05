@@ -31,22 +31,6 @@ export interface PlatformLinks {
   soundcloud?: string;
 }
 
-// Canonical list of preferred platforms — single source of truth.
-// Derive the `PreferredPlatform` type from this array so adding a platform
-// only takes one edit (no chance of the type and validator drifting).
-export const PREFERRED_PLATFORMS = [
-  'spotify',
-  'appleMusic',
-  'deezer',
-  'youtubeMusic',
-  'tidal',
-  'amazonMusic',
-  'soundcloud',
-  'youtube',
-] as const;
-
-export type PreferredPlatform = (typeof PREFERRED_PLATFORMS)[number];
-
 export interface ClientLikedTrack {
   id: string;
   title: string;
@@ -61,12 +45,6 @@ export interface ClientLikedTrack {
   userId: string;
   /** The artist of the play the track was kept from; null when no play is known. */
   artistId: string | null;
-}
-
-export interface UserPreferences {
-  userId: string;
-  preferredPlatform: PreferredPlatform;
-  updatedAt: string;
 }
 
 export interface LikeTrackRequest {
@@ -158,7 +136,7 @@ export interface ArtistProfile {
   playedOnRadio: ArtistRadioTitle[];
 }
 
-export const PLATFORM_NAMES: Record<PreferredPlatform, string> = {
+export const PLATFORM_NAMES: Record<keyof PlatformLinks, string> = {
   spotify: 'Spotify',
   appleMusic: 'Apple Music',
   deezer: 'Deezer',
@@ -166,13 +144,7 @@ export const PLATFORM_NAMES: Record<PreferredPlatform, string> = {
   tidal: 'Tidal',
   amazonMusic: 'Amazon Music',
   soundcloud: 'SoundCloud',
-  youtube: 'YouTube',
 };
-
-// Convenience: the same data shaped as a list for `<select>` / `<Picker>` UIs.
-// Stable ordering matches PREFERRED_PLATFORMS.
-export const PLATFORMS: ReadonlyArray<{ id: PreferredPlatform; name: string }> =
-  PREFERRED_PLATFORMS.map((id) => ({ id, name: PLATFORM_NAMES[id] }));
 
 /** The address of an artist page: only artists the antenna played have one. */
 export interface ArtistPageRef {
