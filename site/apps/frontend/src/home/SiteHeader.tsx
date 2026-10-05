@@ -1,21 +1,9 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { ErrorBoundary } from 'react-error-boundary';
 import { useAuthStore } from '../stores/authStore';
-import { ModalErrorFallback } from '../design/organisms/ErrorFallback';
 import { Menu } from '../design/molecules/Menu';
 import { Link, useLocation } from 'react-router';
 import { localizeHref } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
-
-const loadLibrary = () => import('../components/LikedTracksModal');
-const LikedTracksModal = lazy(() =>
-  loadLibrary().then((mod) => ({ default: mod.LikedTracksModal }))
-);
-
-// Once signed in, the library's code (~120 kB with the dialog) loads in the
-// background, so the first opening does not wait on the network.
-const PRELOAD_DELAY_MS = 2000;
 
 const NAV_LINK =
   'text-ui ease-out-quart focus-visible:outline-accent hidden min-h-11 items-center rounded-sm transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-97 md:inline-flex';
@@ -42,20 +30,7 @@ export function SiteHeader() {
   const isHome = ['/', '/en', '/en/'].includes(pathname);
   // The sign-in page is where Se connecter leads: the header does not offer it twice.
   const isSignInPage = [m.signin_href(), '/reset-password'].includes(pathname);
-  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
-  const closeLibrary = () => setIsLibraryOpen(false);
-  // Kept mounted after the first opening, so closing it can animate.
-  const [hasOpenedLibrary, setHasOpenedLibrary] = useState(false);
-  if (isLibraryOpen && !hasOpenedLibrary) setHasOpenedLibrary(true);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const timer = setTimeout(() => {
-      // Offline: the opening itself will try again.
-      loadLibrary().catch(() => undefined);
-    }, PRELOAD_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [isAuthenticated]);
+  const libraryHref = localizeHref('/mes-titres');
 
   // The same link on every page; on the home page it is also the page's heading.
   const brand = (
@@ -77,9 +52,13 @@ export function SiteHeader() {
           <span aria-hidden="true" className="bg-surface-raised h-11 w-32 rounded-full" />
         ) : isAuthenticated && user ? (
           <span className="flex items-center gap-3">
-            <button type="button" onClick={() => setIsLibraryOpen(true)} className={OUTLINE_PILL}>
+            <Link
+              to={libraryHref}
+              aria-current={pathname === libraryHref ? 'page' : undefined}
+              className={OUTLINE_PILL}
+            >
               {m.nav_my_tracks()}
-            </button>
+            </Link>
             <Menu
               trigger={
                 <button type="button" aria-label={m.account_label()} className={AVATAR}>
@@ -103,16 +82,6 @@ export function SiteHeader() {
           </Link>
         )}
       </nav>
-
-      {hasOpenedLibrary ? (
-        <ErrorBoundary
-          FallbackComponent={(props) => <ModalErrorFallback {...props} onClose={closeLibrary} />}
-        >
-          <Suspense fallback={null}>
-            <LikedTracksModal isOpen={isLibraryOpen} onClose={closeLibrary} />
-          </Suspense>
-        </ErrorBoundary>
-      ) : null}
     </header>
   );
 }

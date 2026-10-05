@@ -22,6 +22,11 @@ if (typeof globalThis.IntersectionObserver === 'undefined') {
   } as unknown as typeof IntersectionObserver;
 }
 
+// jsdom has no pointer capture; sonner captures the pointer when a toast is pressed.
+if (typeof Element !== 'undefined' && !('setPointerCapture' in Element.prototype)) {
+  Object.assign(Element.prototype, { setPointerCapture() {}, releasePointerCapture() {} });
+}
+
 if (typeof globalThis.matchMedia === 'undefined') {
   globalThis.matchMedia = () => ({
     matches: false,

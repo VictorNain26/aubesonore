@@ -56,12 +56,24 @@ describe('SiteHeader', () => {
     return signOut;
   }
 
-  it('opens Mes titres in a drawer named like its button', async () => {
+  it('leads to the Mes titres page, marked current once there', () => {
     signIn();
-    render(<SiteHeader />, { wrapper: MemoryRouter });
+    const { unmount } = render(<SiteHeader />, { wrapper: MemoryRouter });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Mes titres' }));
-    expect(await screen.findByRole('dialog', { name: 'Mes titres' })).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'Mes titres' });
+    expect(link).toHaveAttribute('href', '/mes-titres');
+    expect(link).not.toHaveAttribute('aria-current');
+    unmount();
+
+    render(
+      <MemoryRouter initialEntries={['/mes-titres']}>
+        <SiteHeader />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('link', { name: 'Mes titres' })).toHaveAttribute(
+      'aria-current',
+      'page'
+    );
   });
 
   it('keeps the account in its own menu, where the listener signs out', async () => {
@@ -80,12 +92,12 @@ describe('SiteHeader', () => {
     render(<SiteHeader />, { wrapper: MemoryRouter });
 
     expect(screen.queryByRole('link', { name: 'Se connecter' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Mes titres' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Mes titres' })).not.toBeInTheDocument();
   });
 
   it('opens my tracks only for a signed-in listener', () => {
     render(<SiteHeader />, { wrapper: MemoryRouter });
-    expect(screen.queryByRole('button', { name: 'Mes titres' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Mes titres' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Les plus gardés' })).not.toBeInTheDocument();
   });
 
