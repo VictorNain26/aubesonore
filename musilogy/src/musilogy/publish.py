@@ -13,7 +13,7 @@ import duckdb
 from musilogy.fetch import expected_sums, sha256_file
 from musilogy.paths import PACKAGE_DIR, REFERENCE_DIR, influences_sums, popularity_sums
 
-TABLES = ("artists", "albums", "genres", "links", "popularity", "influences")
+TABLES = ("artists", "albums", "genres", "links", "popularity", "influences", "releases", "urls")
 # A delivery has to come out in a fixed order, or the same code on the same
 # extraction writes different bytes: the tables are built by parallel joins and
 # aggregates, so their insertion order is whatever the threads produced. Each
@@ -28,6 +28,8 @@ ORDER_BY = {
     "links": "src_mbid, dst_mbid, type, y_begin NULLS LAST, y_end NULLS LAST",
     "popularity": "mbid",
     "influences": "artist_mbid, influence_mbid",
+    "releases": "artist_mbid, rg_mbid",
+    "urls": "artist_mbid, type NULLS LAST, url",
 }
 
 

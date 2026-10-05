@@ -77,6 +77,31 @@ CREATE OR REPLACE VIEW album_out_of_window AS
 CREATE OR REPLACE VIEW album_extra_secondary_type AS
   SELECT a.rg_mbid FROM albums a JOIN raw_release_groups r ON r.mbid = a.rg_mbid
   WHERE len(list_filter(coalesce(r.secondary, []), s -> s NOT IN ('Soundtrack', 'Demo'))) > 0;
+-- The extraction keeps EPs for the discography: an EP among `albums` would date
+-- an artist by a release 20_albums.sql must not count. Read back from the raw
+-- primary type, not from the filter that produced the table.
+CREATE OR REPLACE VIEW album_not_an_album AS
+  SELECT a.rg_mbid FROM albums a JOIN raw_release_groups r ON r.mbid = a.rg_mbid
+  WHERE r.primary_type IS DISTINCT FROM 'Album';
+-- 22_releases.sql. extract.py keeps {Album, EP} and nothing states it in SQL:
+-- hardcoded here like KEPT_TYPES in artist_unexpected_type, so widening the
+-- discography is a deliberate edit of this literal.
+CREATE OR REPLACE VIEW release_unexpected_type AS
+  SELECT artist_mbid, rg_mbid FROM releases
+  WHERE primary_type IS NULL OR primary_type NOT IN ('Album', 'EP');
+-- NOT EXISTS, not NOT IN: see album_without_artist above, same NULL trap.
+CREATE OR REPLACE VIEW release_without_artist AS
+  SELECT artist_mbid, rg_mbid FROM releases r
+  WHERE NOT EXISTS (SELECT 1 FROM artists a WHERE a.mbid = r.artist_mbid);
+CREATE OR REPLACE VIEW duplicate_release AS
+  SELECT artist_mbid, rg_mbid FROM releases GROUP BY ALL HAVING count(*) > 1;
+-- Each row's artist must be among the release group's own credits: a release
+-- handed to the wrong artist passes the views above and fails here.
+CREATE OR REPLACE VIEW release_uncredited AS
+  SELECT x.artist_mbid, x.rg_mbid FROM releases x
+  WHERE NOT EXISTS (
+    SELECT 1 FROM raw_release_groups r
+    WHERE r.mbid = x.rg_mbid AND list_contains(r.artists, x.artist_mbid));
 -- Independent of the sort applied at construction time (10_bands.sql):
 -- compares each adjacent pair, does not reuse artists' sort formula.
 -- Both raw lists are checked; `genres` is one of them, which
@@ -157,6 +182,20 @@ CREATE OR REPLACE VIEW link_misoriented AS
       SELECT 1 FROM raw_artists r, UNNEST(r.relations) AS t(x)
       WHERE r.mbid = l.dst_mbid AND t.x.mbid = l.src_mbid
         AND t.x.type = l.type AND t.x.direction = 'backward');
+-- 82_urls.sql. NOT EXISTS, not NOT IN: see album_without_artist above.
+CREATE OR REPLACE VIEW url_without_artist AS
+  SELECT artist_mbid, url FROM urls u
+  WHERE NOT EXISTS (SELECT 1 FROM artists a WHERE a.mbid = u.artist_mbid);
+-- The GROUP BY restated as a contract on the published rows.
+CREATE OR REPLACE VIEW duplicate_url AS
+  SELECT artist_mbid, type, url FROM urls GROUP BY ALL HAVING count(*) > 1;
+-- Each row must be a relation the dump carries on that artist, with that type:
+-- a page handed to another artist, or retyped, fails here.
+CREATE OR REPLACE VIEW url_unsourced AS
+  SELECT u.artist_mbid, u.url FROM urls u
+  WHERE NOT EXISTS (
+    SELECT 1 FROM raw_artists r, UNNEST(r.urls) AS t(x)
+    WHERE r.mbid = u.artist_mbid AND t.x.url = u.url AND t.x.type IS NOT DISTINCT FROM u.type);
 -- corrections.csv holds at most 50 rows; materialized even empty
 -- by apply_corrections, so available without depending on the dump.
 CREATE OR REPLACE VIEW corrections_file_too_large AS

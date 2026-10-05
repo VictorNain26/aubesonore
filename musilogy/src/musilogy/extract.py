@@ -13,6 +13,7 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 KEPT_TYPES = {"Group", "Orchestra", "Choir", "Person"}
+KEPT_RELEASE_TYPES = {"Album", "EP"}
 
 
 def reduce_artist(rec: dict[str, Any]) -> dict[str, Any] | None:
@@ -45,15 +46,25 @@ def reduce_artist(rec: dict[str, Any]) -> dict[str, Any] | None:
             for r in (rec.get("relations") or [])
             if r.get("target-type") == "artist"
         ],
+        "urls": [
+            {
+                "type": r.get("type"),
+                "url": (r.get("url") or {}).get("resource"),
+                "ended": r.get("ended"),
+            }
+            for r in (rec.get("relations") or [])
+            if r.get("target-type") == "url"
+        ],
     }
 
 
 def reduce_release_group(rec: dict[str, Any]) -> dict[str, Any] | None:
-    if rec.get("primary-type") != "Album":
+    if rec.get("primary-type") not in KEPT_RELEASE_TYPES:
         return None
     return {
         "mbid": rec.get("id"),
         "title": rec.get("title"),
+        "primary_type": rec.get("primary-type"),
         "date": rec.get("first-release-date"),
         "secondary": rec.get("secondary-types") or [],
         "artists": [(c.get("artist") or {}).get("id") for c in (rec.get("artist-credit") or [])],

@@ -47,6 +47,7 @@ def synthetic_artist(
     kind: str = "Group",
     country: str | None = None,
     begin_area: tuple[str, str] | None = None,
+    urls: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     return {
         "mbid": mbid,
@@ -60,6 +61,7 @@ def synthetic_artist(
         "begin_area_mbid": begin_area[0] if begin_area else None,
         "genres": genres or [],
         "relations": relations or [],
+        "urls": urls or [],
     }
 
 
@@ -70,10 +72,12 @@ def synthetic_release_group(
     secondary: list[str] | None = None,
     co_artists: list[str] | None = None,
     genres: list[dict[str, Any]] | None = None,
+    primary_type: str = "Album",
 ) -> dict[str, Any]:
     return {
         "mbid": mbid,
         "title": mbid,
+        "primary_type": primary_type,
         "date": date,
         "secondary": secondary or [],
         "artists": [artist, *(co_artists or [])],
@@ -117,7 +121,7 @@ def influences_file(path, rows):
     return path
 
 
-def published(tmp_path, artists, popularity=None, influences=None):
+def published(tmp_path, artists, popularity=None, influences=None, release_groups=()):
     """A synthetic build, published as a delivery. `popularity` maps an mbid
     to its listen count; every other artist gets the null row ListenBrainz
     sends for an artist it has no listen of, as a real snapshot asks about
@@ -145,7 +149,7 @@ def published(tmp_path, artists, popularity=None, influences=None):
         kwargs["influences"] = influences_file(tmp_path / "influences.jsonl", influences)
         kwargs["influences_snapshot"] = REFERENCE_INFLUENCES
     out = tmp_path / "out"
-    publish(build_synthetic(tmp_path, artists, **kwargs), out, REFERENCE_DUMP, None)
+    publish(build_synthetic(tmp_path, artists, release_groups, **kwargs), out, REFERENCE_DUMP, None)
     return out
 
 
@@ -157,6 +161,6 @@ def pg_query(conninfo, sql):
     return con.execute("SELECT * FROM postgres_query('pg', ?)", [sql]).fetchall()
 
 
-def loaded(tmp_path, conninfo, artists, popularity=None, influences=None):
-    load(published(tmp_path, artists, popularity, influences), conninfo)
+def loaded(tmp_path, conninfo, artists, popularity=None, influences=None, release_groups=()):
+    load(published(tmp_path, artists, popularity, influences, release_groups), conninfo)
     return conninfo

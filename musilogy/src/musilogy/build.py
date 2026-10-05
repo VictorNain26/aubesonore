@@ -34,10 +34,12 @@ RAW_ARTIST_COLUMNS = (
     "begin_area_mbid:'VARCHAR', "
     "genres:'STRUCT(mbid VARCHAR, name VARCHAR, votes INTEGER)[]', "
     "relations:'STRUCT(type VARCHAR, direction VARCHAR, mbid VARCHAR, begin VARCHAR, "
-    '"end" VARCHAR)[]\'}'
+    '"end" VARCHAR)[]\', '
+    "urls:'STRUCT(type VARCHAR, url VARCHAR, ended BOOLEAN)[]'}"
 )
 RAW_RG_COLUMNS = (
-    "{mbid:'VARCHAR', title:'VARCHAR', date:'VARCHAR', secondary:'VARCHAR[]', artists:'VARCHAR[]', "
+    "{mbid:'VARCHAR', title:'VARCHAR', primary_type:'VARCHAR', date:'VARCHAR', "
+    "secondary:'VARCHAR[]', artists:'VARCHAR[]', "
     "genres:'STRUCT(mbid VARCHAR, name VARCHAR, votes INTEGER)[]'}"
 )
 
@@ -173,6 +175,11 @@ INVARIANTS = (
     "album_without_artist",
     "album_out_of_window",
     "album_extra_secondary_type",
+    "album_not_an_album",
+    "release_unexpected_type",
+    "release_without_artist",
+    "duplicate_release",
+    "release_uncredited",
     "artist_genres_out_of_order",
     "genre_source_mismatch",
     "genres_from_albums_mismatch",
@@ -182,6 +189,9 @@ INVARIANTS = (
     "link_incomplete",
     "duplicate_link",
     "link_misoriented",
+    "url_without_artist",
+    "duplicate_url",
+    "url_unsourced",
     "duplicate_popularity",
     "popularity_out_of_range",
     "popularity_unrequested",

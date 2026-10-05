@@ -54,6 +54,27 @@ CREATE TABLE influences (
   PRIMARY KEY (artist_mbid, influence_mbid)
 );
 
+-- Every album and EP of an artist (22_releases.sql), one row per credited
+-- artist.
+CREATE TABLE releases (
+  artist_mbid text COLLATE "C" NOT NULL,
+  rg_mbid text COLLATE "C" NOT NULL,
+  title text NOT NULL,
+  primary_type text NOT NULL,
+  secondary text[] NOT NULL,
+  y integer,
+  n_credited integer NOT NULL,
+  PRIMARY KEY (artist_mbid, rg_mbid)
+);
+
+-- The web pages MusicBrainz relates to an artist (82_urls.sql).
+CREATE TABLE urls (
+  artist_mbid text COLLATE "C" NOT NULL,
+  type text,
+  url text NOT NULL,
+  ended boolean NOT NULL
+);
+
 CREATE TABLE manifest (
   dump text NOT NULL,
   popularity_snapshot date,

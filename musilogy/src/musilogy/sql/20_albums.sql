@@ -20,7 +20,10 @@ SELECT
   list_contains(coalesce(r.secondary, []), 'Soundtrack') AS soundtrack
 FROM raw_release_groups r
 JOIN artists b ON b.mbid = list_distinct(r.artists)[1]
-WHERE len(list_distinct(r.artists)) = 1
+-- The extraction keeps EPs too, for the discography (22_releases.sql); an EP
+-- does not date an artist nor give it genres.
+WHERE r.primary_type = 'Album'
+  AND len(list_distinct(r.artists)) = 1
   AND yr(r.date) IS NOT NULL
   AND yr(r.date) BETWEEN getvariable('min_year') AND getvariable('dump_year')
   AND len(list_filter(coalesce(r.secondary, []), s -> s NOT IN ('Soundtrack', 'Demo'))) = 0;

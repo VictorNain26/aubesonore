@@ -1,6 +1,6 @@
 import json
 
-from conftest import loaded, pg_query, synthetic_artist
+from conftest import loaded, pg_query, synthetic_artist, synthetic_release_group
 
 A = "00000000-0000-4000-8000-0000000000f1"
 B = "00000000-0000-4000-8000-0000000000f2"
@@ -96,3 +96,44 @@ def test_an_influence_absent_from_the_dump_has_no_name_to_show(tmp_path, pg):
     loaded(tmp_path, pg, [group(A)], influences=[(A, ABSENT, "Q1$a"), (ABSENT, A, "Q9$b")])
     assert influences(pg, A) == []
     assert influences(pg, ABSENT) == []
+
+
+def test_releases_come_oldest_first_with_their_types_for_the_site_to_choose(tmp_path, pg):
+    loaded(
+        tmp_path,
+        pg,
+        [group(A)],
+        release_groups=[
+            synthetic_release_group("rg-b", A, "1984", secondary=["Live"]),
+            synthetic_release_group("rg-c", A, "", primary_type="EP"),
+            synthetic_release_group("rg-a", A, "1981", primary_type="EP"),
+        ],
+    )
+    assert pg_query(
+        pg, f"SELECT mbid, primary_type, secondary, y FROM musilogy.artist_releases('{A}')"
+    ) == [("rg-a", "EP", [], 1981), ("rg-b", "Album", ["Live"], 1984), ("rg-c", "EP", [], None)]
+    assert pg_query(
+        pg, "SELECT pg_get_function_result('musilogy.artist_releases(text)'::regprocedure)"
+    ) == [
+        (
+            "TABLE(mbid text, title text, primary_type text, secondary text[], y integer, "
+            "n_credited integer)",
+        )
+    ]
+
+
+def test_an_ended_page_is_no_longer_the_artist_s(tmp_path, pg):
+    pages = [
+        ("social network", "https://example.invalid/old", True),
+        ("bandcamp", "https://a.bandcamp.com/", None),
+        ("allmusic", "https://www.allmusic.com/artist/a", False),
+    ]
+    urls = [{"type": kind, "url": url, "ended": ended} for kind, url, ended in pages]
+    loaded(tmp_path, pg, [synthetic_artist(A, "1978", "1985", urls=urls)])
+    assert pg_query(pg, f"SELECT type, url FROM musilogy.artist_urls('{A}')") == [
+        ("allmusic", "https://www.allmusic.com/artist/a"),
+        ("bandcamp", "https://a.bandcamp.com/"),
+    ]
+    assert pg_query(
+        pg, "SELECT pg_get_function_result('musilogy.artist_urls(text)'::regprocedure)"
+    ) == [("TABLE(type text, url text)",)]

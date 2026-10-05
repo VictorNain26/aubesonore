@@ -17,7 +17,15 @@ BASELINE = {
     # One row per pair of MBIDs Wikidata relates by "influenced by" (P737),
     # deprecated statements left out.
     "influences": 9_517,
+    # Every album and EP, one row per credited artist of the population
+    # (723 500 artists have at least one).
+    "releases": 2_824_147,
+    # The pages MusicBrainz relates to an artist (1 699 403 artists have at
+    # least one), ended ones included.
+    "urls": 5_803_842,
 }
+RELEASE_TYPE_BREAKDOWN = {"Album": 2_277_759, "EP": 546_388}
+URLS_ENDED = 67_418
 # The influences whose two ends are artists of the dump, the only ones the
 # site can name; the other 251 have an end whose MBID `artists` does not hold.
 # A drift in how MBIDs are read on either side — case, whitespace — moves this
@@ -162,6 +170,11 @@ def test_reference_dump_matches_the_baseline():
     assert dict(con.execute("SELECT type, count(*) FROM links GROUP BY type").fetchall()) == (
         LINK_TYPE_BREAKDOWN
     )
+    assert (
+        dict(con.execute("SELECT primary_type, count(*) FROM releases GROUP BY 1").fetchall())
+        == RELEASE_TYPE_BREAKDOWN
+    )
+    assert con.execute("SELECT count(*) FROM urls WHERE ended").fetchone() == (URLS_ENDED,)
 
     row = con.execute(
         "SELECT count(*) FROM artists WHERE y_end IS NOT NULL AND y0 IS NOT NULL AND y_end < y0"
@@ -175,7 +188,8 @@ def test_reference_dump_matches_the_baseline():
           SELECT list_distinct(artists)[1] AS artist_mbid, yr(date) AS y,
                  coalesce(secondary, []) AS sec
           FROM raw_release_groups
-          WHERE len(list_distinct(artists)) = 1
+          WHERE primary_type = 'Album'
+            AND len(list_distinct(artists)) = 1
             AND yr(date) BETWEEN 1850 AND 2026
         ),
         pairs AS (
@@ -198,7 +212,8 @@ def test_reference_dump_matches_the_baseline():
         SELECT count(DISTINCT l.artist_mbid) FROM (
           SELECT list_distinct(artists)[1] AS artist_mbid, yr(date) AS y
           FROM raw_release_groups
-          WHERE list_contains(coalesce(secondary, []), 'Live')
+          WHERE primary_type = 'Album'
+            AND list_contains(coalesce(secondary, []), 'Live')
             AND len(list_distinct(artists)) = 1
             AND yr(date) IS NOT NULL
             AND yr(date) BETWEEN 1850 AND 2026
