@@ -72,8 +72,15 @@ const urls = [
   { type: 'wikidata', url: 'https://www.wikidata.org/wiki/Q185828' },
 ];
 
+// Homework (1997) before its EP The New Wave (1994): the album comes first.
+const HOMEWORK = 'a7da8a4c-6e8b-3d3e-b6f1-7c0fd3ed3d5b';
+const releases = [
+  { mbid: 'b1c9a6f0-3c8f-3e5a-9a8e-2f1b4c0d9e77', primary_type: 'EP', y: 1994 },
+  { mbid: HOMEWORK, primary_type: 'Album', y: 1997 },
+];
+
 beforeEach(() => {
-  answers = { artist_card: [card()], artist_urls: urls };
+  answers = { artist_card: [card()], artist_urls: urls, artist_releases: releases };
   loaded = true;
   identityCache.dispose();
   musilogyCache.dispose();
@@ -97,7 +104,19 @@ describe('getArtistIdentity', () => {
         { platform: 'official', url: 'https://daftpunk.com/' },
       ],
       wikidataId: 'Q185828',
+      firstCover: `https://coverartarchive.org/release-group/${HOMEWORK}/front-500`,
     });
+  });
+
+  it("takes the first EP's cover when there is no album, and none without a record", async () => {
+    answers.artist_releases = [releases[0]!];
+    expect((await getArtistIdentity(DAFT_PUNK))?.firstCover).toBe(
+      `https://coverartarchive.org/release-group/${releases[0]!.mbid}/front-500`
+    );
+
+    identityCache.dispose();
+    answers.artist_releases = [];
+    expect((await getArtistIdentity(DAFT_PUNK))?.firstCover).toBeNull();
   });
 
   it('never reads a birth as a career for a person', async () => {

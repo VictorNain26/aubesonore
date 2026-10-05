@@ -171,7 +171,7 @@ export async function getArtistProfile(
     name: row.displayName,
     slug,
     mbid: row.mbid,
-    image: stored.image,
+    image: stored.image ?? (identity.status === 'found' ? identity.value.firstCover : null),
     facts: identity.status === 'found' ? identity.value.facts : null,
     summary: locale === 'fr' ? stored.summaryFr : stored.summaryEn,
     links: [
