@@ -35,23 +35,34 @@ export async function fetchArtistProfile(
   return (await response.json()) as ArtistProfile;
 }
 
+// One request per name however many parts of the page ask for it (the hero and the player bar
+// show the same artist), and a page once found is kept for the visit: /api/artist/resolve allows
+// 10 calls a minute per address, which listeners behind one address (a carrier's NAT, an office)
+// share. A name without a page yet is asked again later: an artist heard for the first time gets
+// its page a little after its first play.
+const resolving = new Map<string, Promise<ArtistPage | null>>();
+
 /**
  * The page of an artist heard on the antenna, from the raw AzuraCast string.
  * `null` when the artist has no page (yet): callers show no link then.
  */
-export async function resolveArtistPage(
-  name: string,
-  signal?: AbortSignal
-): Promise<{ id: string; slug: string } | null> {
+export function resolveArtistPage(name: string): Promise<ArtistPage | null> {
   const trimmed = name.trim();
-  if (!trimmed) return null;
+  if (!trimmed) return Promise.resolve(null);
+  const known = resolving.get(trimmed);
+  if (known) return known;
 
-  const response = await fetch(
-    `${API_BASE_URL}/api/artist/resolve?name=${encodeURIComponent(trimmed)}`,
-    { signal: signal ?? null }
+  const request = fetch(
+    `${API_BASE_URL}/api/artist/resolve?name=${encodeURIComponent(trimmed)}`
+  ).then(async (response) => (response.ok ? ((await response.json()) as ArtistPage) : null));
+  resolving.set(trimmed, request);
+  void request.then(
+    (page) => {
+      if (!page) resolving.delete(trimmed);
+    },
+    () => resolving.delete(trimmed)
   );
-  if (!response.ok) return null;
-  return (await response.json()) as { id: string; slug: string };
+  return request;
 }
 
 export interface ArtistPage {

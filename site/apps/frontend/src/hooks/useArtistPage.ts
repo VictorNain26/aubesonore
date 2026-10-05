@@ -13,13 +13,19 @@ export function useArtistPage(artist: string | undefined): { id: string; slug: s
 
   useEffect(() => {
     if (!artist) return;
-    const controller = new AbortController();
-    resolveArtistPage(artist, controller.signal)
-      .then((page) => setResolved({ artist, page }))
+    // The request is shared with every part of the page that shows this artist: the next track
+    // leaves it to them and only stops listening.
+    let current = true;
+    resolveArtistPage(artist)
+      .then((page) => {
+        if (current) setResolved({ artist, page });
+      })
       .catch(() => {
-        // Aborted by the next track, or offline: no link rather than a dead one.
+        // Offline: no link rather than a dead one.
       });
-    return () => controller.abort();
+    return () => {
+      current = false;
+    };
   }, [artist]);
 
   // Derived, so a page resolved for the previous track never shows on this one.
