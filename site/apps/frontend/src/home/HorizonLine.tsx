@@ -186,17 +186,6 @@ export function HorizonLine({ isPlaying, className }: HorizonLineProps) {
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
 
-    // Drawn in device pixels so the stroke stays crisp on dense screens.
-    let dpr = 1;
-    const resize = () => {
-      dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.max(1, Math.round(canvas.clientWidth * dpr));
-      canvas.height = Math.max(1, Math.round(canvas.clientHeight * dpr));
-    };
-    resize();
-    const resizeObserver = new ResizeObserver(resize);
-    resizeObserver.observe(canvas);
-
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const ink = getComputedStyle(document.documentElement).getPropertyValue('--color-text').trim();
     let motion: WaveMotion = {
@@ -208,9 +197,12 @@ export function HorizonLine({ isPlaying, className }: HorizonLineProps) {
     let gain: Gain | null = null;
     const horizon = canvas.closest<HTMLElement>('[data-horizon]');
     let frame = 0;
+    let looping = false;
+    let onScreen = true;
     let lastTime = performance.now();
+    let dpr = 1;
 
-    const draw = (now: number): void => {
+    const paint = (now: number): void => {
       const dt = Math.min((now - lastTime) / 1000, 0.1);
       lastTime = now;
       // Reduced motion: a still line at rest.
@@ -251,24 +243,56 @@ export function HorizonLine({ isPlaying, className }: HorizonLineProps) {
         ctx.strokeStyle = `color-mix(in srgb, ${ink} ${Math.round(layer.alpha * 100)}%, transparent)`;
         ctx.stroke();
       });
-
-      frame = requestAnimationFrame(draw);
     };
 
-    const handleVisibility = () => {
-      cancelAnimationFrame(frame);
-      if (!document.hidden) {
+    const loop = (now: number): void => {
+      paint(now);
+      frame = requestAnimationFrame(loop);
+    };
+
+    // The line moves only where it is seen: on screen, in a visible tab, with motion allowed.
+    // Otherwise it rests on its last frame, and under reduced motion it is drawn once, still.
+    const sync = (): void => {
+      const moving = onScreen && !document.hidden && !reducedMotion.matches;
+      if (moving && !looping) {
+        looping = true;
         lastTime = performance.now();
-        frame = requestAnimationFrame(draw);
+        frame = requestAnimationFrame(loop);
+      } else if (!moving && looping) {
+        looping = false;
+        cancelAnimationFrame(frame);
       }
+      if (reducedMotion.matches) paint(performance.now());
     };
-    document.addEventListener('visibilitychange', handleVisibility);
-    frame = requestAnimationFrame(draw);
+
+    // Drawn in device pixels so the stroke stays crisp on dense screens. A new size clears the
+    // canvas: a line at rest is drawn again.
+    const resize = () => {
+      dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.max(1, Math.round(canvas.clientWidth * dpr));
+      canvas.height = Math.max(1, Math.round(canvas.clientHeight * dpr));
+    };
+    resize();
+    const resizeObserver = new ResizeObserver(() => {
+      resize();
+      if (!looping) paint(performance.now());
+    });
+    resizeObserver.observe(canvas);
+    const intersectionObserver = new IntersectionObserver(([entry]) => {
+      onScreen = entry?.isIntersecting ?? true;
+      sync();
+    });
+    intersectionObserver.observe(canvas);
+    document.addEventListener('visibilitychange', sync);
+    reducedMotion.addEventListener('change', sync);
+    sync();
 
     return () => {
       cancelAnimationFrame(frame);
       resizeObserver.disconnect();
-      document.removeEventListener('visibilitychange', handleVisibility);
+      intersectionObserver.disconnect();
+      document.removeEventListener('visibilitychange', sync);
+      reducedMotion.removeEventListener('change', sync);
     };
   }, []);
 
