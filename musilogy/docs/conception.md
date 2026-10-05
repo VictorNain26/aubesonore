@@ -107,10 +107,10 @@ absente (code `42883`).
 | Fonction | État |
 |---|---|
 | `artist_card` | livrée ; `proximity_surveyed` ajoutée par #286 |
-| `artist_links` | livrée ; réduite aux relations de la page par cette PR, retirée quand la page lit les trois suivantes |
-| `artist_bands` | livrée par cette PR |
-| `artist_member_projects` | livrée par cette PR |
-| `artist_other_names` | livrée par cette PR |
+| `artist_links` | livrée ; réduite aux relations de la page par #342, retirée quand la page lit les trois suivantes |
+| `artist_bands` | livrée par #342 |
+| `artist_member_projects` | livrée par #342 |
+| `artist_other_names` | livrée par #342 |
 | `artist_influences` | livrée par #286 |
 | `search_artists` | livrée par #286 |
 | `artist_neighbours` | à livrer, après le relevé de proximité (§5) |
