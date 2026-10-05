@@ -3,9 +3,21 @@ import { object, record, safeParse, string } from 'valibot';
 import { getLocale, localizeHref } from '@/paraglide/runtime.js';
 import { API_BASE_URL } from '../utils/config';
 
+const SLUG = '__slug__';
+const pathTemplates = new Map<string, string>();
+
 /** The page path of an artist, in the current language (`/artiste/…` or `/en/artist/…`). */
 export function artistPath(page: { slug: string }): string {
-  return localizeHref(`/artiste/${encodeURIComponent(page.slug)}`);
+  // localizeHref compiles URLPatterns on every call, which showed in the profile of a list of
+  // ninety artists: the path is localized once per language, the slug filled in after.
+  const locale = getLocale();
+  let template = pathTemplates.get(locale);
+  if (template === undefined) {
+    template = localizeHref(`/artiste/${SLUG}`);
+    pathTemplates.set(locale, template);
+  }
+  const slug = encodeURIComponent(page.slug);
+  return template.replace(SLUG, () => slug);
 }
 
 /** The profile in the page language: its summary is the Wikipedia article in that language. */
