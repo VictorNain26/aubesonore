@@ -1,8 +1,19 @@
 import pytest
 
-from musilogy import REFERENCE_DUMP, REFERENCE_INFLUENCES, REFERENCE_POPULARITY
+from musilogy import (
+    REFERENCE_DISCOGRAPHY,
+    REFERENCE_DUMP,
+    REFERENCE_INFLUENCES,
+    REFERENCE_POPULARITY,
+)
 from musilogy.build import build, check_invariants, connect
-from musilogy.paths import SQL_DIR, influences_snapshot, popularity_snapshot, work_dir
+from musilogy.paths import (
+    SQL_DIR,
+    discography_snapshot,
+    influences_snapshot,
+    popularity_snapshot,
+    work_dir,
+)
 
 # artists: 682 447 groups, orchestras and choirs, plus 1 599 244 persons. Every
 # count the persons moved splits along type: restricted to the other types, the
@@ -17,15 +28,19 @@ BASELINE = {
     # One row per pair of MBIDs Wikidata relates by "influenced by" (P737),
     # deprecated statements left out.
     "influences": 9_517,
-    # Every album and EP, one row per credited artist of the population
-    # (723 500 artists have at least one).
-    "releases": 2_824_147,
-    # The pages MusicBrainz relates to an artist (1 699 403 artists have at
-    # least one), ended ones included.
-    "urls": 5_803_842,
+    # Albums and EPs whose secondary types are at most Soundtrack and Remix, one
+    # row per credited artist of the population.
+    "releases": 2_319_152,
+    # The pages an artist page uses among those MusicBrainz relates, ended
+    # ones included.
+    "urls": 1_793_436,
 }
-RELEASE_TYPE_BREAKDOWN = {"Album": 2_277_759, "EP": 546_388}
-URLS_ENDED = 67_418
+RELEASE_TYPE_BREAKDOWN = {"Album": 1_807_234, "EP": 511_918}
+# Wikidata files 60 334 of the album rows and 9 465 of the EP rows as a studio
+# album or an EP (discography snapshot of 2026-10-05).
+RELEASES_FILED_ORIGINAL = 69_799
+URLS_ENDED = 23_287
+DISCOGRAPHY_EXCLUSIONS = {"malformed": 1, "not_album_or_ep": 1_274, "secondary_type": 1_498}
 # The influences whose two ends are artists of the dump, the only ones the
 # site can name; the other 251 have an end whose MBID `artists` does not hold.
 # A drift in how MBIDs are read on either side — case, whitespace — moves this
@@ -101,6 +116,7 @@ BANDS_WITHOUT_ALBUM = 1_801_156
 WORK = work_dir(REFERENCE_DUMP)
 POPULARITY = popularity_snapshot(REFERENCE_POPULARITY)
 INFLUENCES = influences_snapshot(REFERENCE_INFLUENCES)
+DISCOGRAPHY = discography_snapshot(REFERENCE_DISCOGRAPHY)
 
 
 def test_the_baseline_looks_for_the_extractions_at_an_absolute_path():
@@ -123,6 +139,8 @@ def test_reference_dump_matches_the_baseline():
         pytest.skip(f"ListenBrainz snapshot {REFERENCE_POPULARITY} missing")
     if not INFLUENCES.exists():
         pytest.skip(f"Wikidata snapshot {REFERENCE_INFLUENCES} missing")
+    if not DISCOGRAPHY.exists():
+        pytest.skip(f"Wikidata snapshot {REFERENCE_DISCOGRAPHY} missing")
     con = connect()
     build(
         con,
@@ -134,6 +152,8 @@ def test_reference_dump_matches_the_baseline():
         popularity_snapshot=REFERENCE_POPULARITY,
         influences=INFLUENCES,
         influences_snapshot=REFERENCE_INFLUENCES,
+        discography=DISCOGRAPHY,
+        discography_snapshot=REFERENCE_DISCOGRAPHY,
     )
     assert check_invariants(con, SQL_DIR) == []
     for table, expected in BASELINE.items():
@@ -167,6 +187,10 @@ def test_reference_dump_matches_the_baseline():
     assert single_row(con, "r2_anomalies") == DATE_ANOMALIES
     assert single_row(con, "neutralised_inferences") == NEUTRALISED_INFERENCES
     assert single_row(con, "link_exclusions") == LINK_EXCLUSIONS
+    assert single_row(con, "discography_exclusions") == DISCOGRAPHY_EXCLUSIONS
+    assert con.execute("SELECT count(*) FROM releases WHERE filed_original").fetchone() == (
+        RELEASES_FILED_ORIGINAL,
+    )
     assert dict(con.execute("SELECT type, count(*) FROM links GROUP BY type").fetchall()) == (
         LINK_TYPE_BREAKDOWN
     )
