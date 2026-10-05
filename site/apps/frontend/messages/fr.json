@@ -25,6 +25,7 @@
   "cast_none_body": "Allumez la TV ou l'enceinte et vérifiez qu'elle est sur le même Wi-Fi que cet appareil.",
   "cast_none_chromecast": "Depuis Chrome : Chromecast, Google TV et enceintes Google Cast. Pour AirPlay, ouvrez le site dans Safari.",
   "cast_none_airplay": "Depuis Safari : Apple TV et enceintes AirPlay. Pour Chromecast, ouvrez le site dans Chrome.",
+  "cast_failed": "La diffusion n'a pas pu démarrer. Vérifiez que l'appareil est allumé et sur le même Wi-Fi, puis réessayez.",
   "library_empty_title": "Rien de gardé pour l'instant.",
   "library_empty_body": "Un titre vous arrête ? Gardez-le : il vous attendra ici.",
   "liked_track_undo": "Annuler",
