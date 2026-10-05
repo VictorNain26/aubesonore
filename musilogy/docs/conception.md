@@ -111,7 +111,7 @@ absente (code `42883`).
 | `artist_influences` | livrée par #286 |
 | `search_artists` | livrée par #286 |
 | `artist_neighbours` | à livrer, après le relevé de proximité (§5) |
-| `artist_releases` | livrée par #337, règle de la page par cette PR |
+| `artist_releases` | livrée par #337, règle de la page par #338 |
 | `artist_urls` | livrée par #337 |
 
 ```sql
