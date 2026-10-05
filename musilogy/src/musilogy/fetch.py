@@ -13,6 +13,7 @@ import urllib.parse
 import urllib.request
 from collections.abc import Callable, Iterable, Iterator
 from email.message import Message
+from functools import partial
 from http import HTTPStatus
 from pathlib import Path
 from typing import Any
@@ -329,6 +330,43 @@ def fetch_influences(dest: Path) -> int:
     """Written aside and renamed, like the ListenBrainz snapshots: a run that
     fails leaves no file that looks like a complete one."""
     rows = influences()
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    partial = dest.with_name(dest.name + ".partial")
+    partial.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    partial.replace(dest)
+    return len(rows)
+
+
+# The release groups Wikidata files as a studio album, an EP or a soundtrack
+# album (P31 "instance of" or P7937 "form of creative work"), by their
+# MusicBrainz release group ID (P436): what its editors state a record is,
+# which tells a posthumous record of new music from an archive
+# (22_releases.sql).
+# One query per form: the three in one VALUES clause took 26.6 s on
+# 2026-10-05, near the service's 60-second cap (see INFLUENCES_QUERY); apart
+# they took 5.1, 0.9 and 0.7 s.
+DISCOGRAPHY_FORMS = {"Q208569": "studio", "Q169930": "ep", "Q4176708": "soundtrack"}
+DISCOGRAPHY_QUERY = "SELECT ?rg WHERE {{ ?album wdt:P436 ?rg ; wdt:P31|wdt:P7937 wd:{form} . }}"
+
+
+def discography() -> list[dict[str, str]]:
+    """One row per release group and form, sorted and de-duplicated. The IDs
+    are written as Wikidata holds them, a malformed one included: telling a
+    release group from a typo is a rule, and rules live in the SQL."""
+    rows: set[tuple[str, str]] = set()
+    for qid, form in DISCOGRAPHY_FORMS.items():
+        params = {"query": DISCOGRAPHY_QUERY.format(form=qid), "format": "json"}
+        answer, _ = _with_retries(partial(_get, WDQS_URL, params), "Wikidata")
+        try:
+            rows |= {(b["rg"]["value"], form) for b in answer["results"]["bindings"]}
+        except (KeyError, TypeError) as e:
+            raise DownloadError(f"Wikidata answered an unexpected shape: {e!r}") from e
+    return [{"rg_mbid": rg, "form": form} for rg, form in sorted(rows)]
+
+
+def fetch_discography(dest: Path) -> int:
+    """Written aside and renamed, like the influences snapshot."""
+    rows = discography()
     dest.parent.mkdir(parents=True, exist_ok=True)
     partial = dest.with_name(dest.name + ".partial")
     partial.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")

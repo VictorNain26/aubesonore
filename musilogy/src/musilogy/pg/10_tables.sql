@@ -54,20 +54,20 @@ CREATE TABLE influences (
   PRIMARY KEY (artist_mbid, influence_mbid)
 );
 
--- Every album and EP of an artist (22_releases.sql), one row per credited
--- artist.
+-- An artist's records (22_releases.sql), one row per credited artist.
 CREATE TABLE releases (
   artist_mbid text COLLATE "C" NOT NULL,
   rg_mbid text COLLATE "C" NOT NULL,
   title text NOT NULL,
   primary_type text NOT NULL,
-  secondary text[] NOT NULL,
+  soundtrack boolean NOT NULL,
+  remix boolean NOT NULL,
   y integer,
-  n_credited integer NOT NULL,
+  filed_original boolean NOT NULL,
   PRIMARY KEY (artist_mbid, rg_mbid)
 );
 
--- The web pages MusicBrainz relates to an artist (82_urls.sql).
+-- The web pages an artist page uses (82_urls.sql).
 CREATE TABLE urls (
   artist_mbid text COLLATE "C" NOT NULL,
   type text,
@@ -79,6 +79,7 @@ CREATE TABLE manifest (
   dump text NOT NULL,
   popularity_snapshot date,
   influences_snapshot date,
+  discography_snapshot date,
   git_sha text NOT NULL,
   loaded_at timestamptz NOT NULL DEFAULT now()
 );

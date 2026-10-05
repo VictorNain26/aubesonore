@@ -1,6 +1,6 @@
 # musilogy
 
-Produit, hors ligne et depuis des sources épinglées et datées, les données de **Musilogy** (`docs/vision.md` à la racine, §2) : pour un artiste, qui faisait cette musique avant lui, en même temps, après lui ; qui il a cité comme influence ; dans quels groupes ses membres ont joué. Un dump JSON MusicBrainz, un relevé ListenBrainz et un relevé Wikidata deviennent six tables reproductibles et testées, publiées en Parquet ; `musilogy load` les copie dans le schéma `musilogy` de la base du site, qui ne lit que des fonctions SQL. La conception en vigueur, avec la feuille de route des tables et le contrat de ces fonctions, est `docs/conception.md`.
+Produit, hors ligne et depuis des sources épinglées et datées, les données de **Musilogy** (`docs/vision.md` à la racine, §2) : pour un artiste, qui faisait cette musique avant lui, en même temps, après lui ; qui il a cité comme influence ; dans quels groupes ses membres ont joué. Un dump JSON MusicBrainz, un relevé ListenBrainz et un relevé Wikidata deviennent huit tables reproductibles et testées, publiées en Parquet ; `musilogy load` les copie dans le schéma `musilogy` de la base du site, qui ne lit que des fonctions SQL. La conception en vigueur, avec la feuille de route des tables et le contrat de ces fonctions, est `docs/conception.md`.
 
 ## Principe directeur
 
@@ -20,8 +20,8 @@ Mesurées sur le dump de référence `20260909-001002` :
 | `links` | un lien typé entre deux artistes — appartenance, pseudonyme, changement de nom, sous-groupe, professeur, famille… —, avec ses années | 771 147 |
 | `popularity` | les écoutes ListenBrainz d'un artiste, relevées à une date | 989 488 |
 | `influences` | une influence déclarée sur Wikidata entre deux MBID, avec la déclaration qui l'affirme | 9 517 |
-| `releases` | un album ou un EP crédité à un artiste, quels que soient ses types secondaires ; une ligne par artiste crédité | 2 824 147 |
-| `urls` | une page web que MusicBrainz relie à un artiste (plateforme d'écoute, site officiel, Wikidata…), terminées comprises | 5 803 842 |
+| `releases` | un album ou un EP crédité à un artiste, dont les types secondaires se limitent à bande originale et remix ; une ligne par artiste crédité | 2 319 152 |
+| `urls` | une page web qu'une page artiste utilise parmi celles que MusicBrainz relie à un artiste (plateforme d'écoute, site officiel, Wikidata, Wikipédia, image), terminées comprises | 1 793 436 |
 
 Colonnes réelles (voir `src/musilogy/sql/`) :
 
@@ -31,7 +31,7 @@ Colonnes réelles (voir `src/musilogy/sql/`) :
 - **`links`** : `src_mbid`, `dst_mbid`, `type`, `y_begin`, `y_end`.
 - **`popularity`** : `mbid`, `listen_count`, `user_count`, `snapshot`.
 - **`influences`** : `artist_mbid`, `influence_mbid`, `statement`.
-- **`releases`** : `artist_mbid`, `rg_mbid`, `title`, `primary_type` (`Album` ou `EP`), `secondary` (types secondaires), `y`, `n_credited`.
+- **`releases`** : `artist_mbid`, `rg_mbid`, `title`, `primary_type` (`Album` ou `EP`), `soundtrack`, `remix`, `y`, `filed_original` (Wikidata le classe album studio ou EP).
 - **`urls`** : `artist_mbid`, `type` (type de relation MusicBrainz), `url`, `ended`.
 
 `name_key` est la clé de recherche d'un nom tapé : `strip_accents(lower(name))`, « bjork » trouve Björk.
@@ -64,7 +64,7 @@ Chaque règle vit dans son fichier SQL numéroté (`src/musilogy/sql/`) ; **la n
 
 - **`50_genres` — Vocabulaire.** Les genres effectivement portés par `artists.genres`, y compris ceux qu'aucun artiste ne déclare et que seuls des albums portent.
 
-- **`22_releases` — Discographie.** Chaque release-group de type primaire `Album` ou `EP`, une ligne par artiste crédité présent dans `artists`, quels que soient ses types secondaires (live, compilation, remix…) et sa date, illisible comprise (`y` NULL). `n_credited` compte tous les artistes crédités, y compris hors population. Ce que la page montre est le choix du site (`artist_releases` rend tout, avec les types secondaires) : la table garde la population entière. Sur le dump de référence, 2 277 759 lignes d'albums et 546 388 d'EP, pour 723 500 artistes.
+- **`22_releases` — Discographie.** Chaque release-group de type primaire `Album` ou `EP` dont les types secondaires se limitent à `Soundtrack` et `Remix` (une bande originale composée par l'artiste, un album de remix font partie de l'œuvre ; live, compilation, démo, DJ-mix, interview n'en font pas), une ligne par artiste crédité présent dans `artists`, sa date illisible comprise (`y` NULL). `filed_original` dit que le relevé Wikidata `discography` le classe album studio ou EP : sa forme « bande originale » couvre aussi des compilations de chansons d'un film, elle ne compte pas. Les disques que la page montre (`artist_releases`, docs/vision.md §2.4) se choisissent dans la fonction ; la table les garde tous. Sur le dump de référence, 1 807 234 lignes d'albums et 511 918 d'EP, dont 69 799 classés par Wikidata ; les exclusions du relevé sont comptées dans `manifest.json` (`discography_exclusions`).
 
 - **`80_links` — Liens.** Toutes les relations d'artiste à artiste, **typées** : `type` garde le nom MusicBrainz (`member of band`, `is person`, `artist rename`, `subgroup`, `teacher`, `parent`…), pour que le consommateur sache ce qu'un lien affirme sans se fier à une catégorie de musilogy. Le dump porte chaque relation sur ses deux artistes, orientée par `direction` ; elle est lue source → cible des deux côtés, puis dédoublonnée, avec ses années lues par la même macro stricte que partout ailleurs. Les deux extrémités doivent être des artistes de `artists` : un lien vers un personnage ou un artiste sans type n'aurait nulle part où arriver, et ces 38 442 liens écartés sont comptés dans `manifest.json` (`link_exclusions`). **Ce n'est pas de l'influence** : MusicBrainz n'en porte aucune ; un lien est un fait vérifiable, qui a joué où, qui a enseigné à qui. Les influences déclarées viennent de Wikidata (`88_influences`).
 
@@ -78,7 +78,7 @@ Deux bornes sont des variables de session posées par `build()` : `dump_year` et
 
 Les corrections manuelles (`src/musilogy/corrections.csv`, colonnes `mbid, field, value, justification, source`) sont appliquées avant la lecture des dates ; chaque ligne cite une source vérifiable, et un garde-fou échoue au-delà de 50 lignes.
 
-- **`82_urls` — Pages web.** Chaque relation URL d'un artiste de `artists`, avec son type MusicBrainz (`free streaming`, `streaming`, `bandcamp`, `official homepage`, `wikidata`, `wikipedia`, `discogs`…) : le site choisit les plateformes qu'il montre sans se fier à une catégorie de musilogy. Une relation terminée (`ended`, la page n'est plus celle de l'artiste) reste dans la table, marquée ; une même page reliée deux fois sous un même type est une ligne, terminée seulement si toutes le sont. Sur le dump de référence, 5 803 842 pages pour 1 699 403 artistes, dont 67 418 terminées.
+- **`82_urls` — Pages web.** Parmi les relations URL d'un artiste de `artists`, celles qu'une page artiste utilise : les plateformes d'écoute par leur domaine (Deezer, Spotify, Apple Music, Bandcamp, SoundCloud), quel que soit le type de relation, et les types `official homepage`, `wikidata`, `wikipedia` et `image`, avec le type MusicBrainz. Discogs, VIAF, IMDb, les réseaux sociaux et les autres bases — 4 des 5,8 millions de pages du dump — restent dans le dump. Une relation terminée (`ended`) reste dans la table, marquée ; une même page reliée deux fois sous un même type est une ligne, terminée seulement si toutes le sont. Sur le dump de référence, 1 793 436 pages pour 864 351 artistes, dont 23 287 terminées.
 
 ## Proximité ListenBrainz (relevé)
 
@@ -89,6 +89,12 @@ Les corrections manuelles (`src/musilogy/corrections.csv`, colonnes `mbid, field
 `musilogy snapshot-influences` pose une seule requête SPARQL au Wikidata Query Service (`query.wikidata.org/sparql`, avec l'en-tête `User-Agent` de contact qu'exige le service) : chaque déclaration « influencé par » (P737) non dépréciée dont le sujet et l'objet portent un MBID artiste (P434, valeurs de meilleur rang). Le service coupe une requête à 60 s et accorde 60 s de calcul par minute à chaque client ; celle-ci répond en 3 à 5 s, sans pagination. Le relevé, trié, va dans `data/raw/wikidata/<date>/influences.jsonl` (`{artist_mbid, influence_mbid, statement}`), son empreinte dans `reference/wikidata-influences-<date>.SHA256SUMS`, et `REFERENCE_INFLUENCES` épingle celui que `run` lit ; `run` s'arrête s'il manque. Les données de Wikidata sont sous CC0.
 
 Relevé du 2026-10-04 : 9 517 paires issues de 8 612 déclarations, 5 661 MBID distincts (2 589 qui citent, 3 728 cités). Des 288 artistes joués par l'antenne à cette date (285 dans le dump), `artist_influences` en rend au moins une pour 61 : 24 en citent, 49 sont cités.
+
+## Discographie Wikidata (relevé)
+
+`musilogy snapshot-discography` demande au même service les release groups (MBID, P436) que Wikidata classe album studio, EP ou bande originale, par « nature de l'élément » (P31) ou « forme de l'œuvre » (P7937) : une requête par forme, car les trois réunies prenaient 26,6 s, près de la limite de 60 s, et séparées 5,1, 0,9 et 0,7 s (2026-10-05). Le relevé, trié et dédoublonné, va dans `data/raw/wikidata/<date>/discography.jsonl` (`{rg_mbid, form}`), son empreinte dans `reference/wikidata-discography-<date>.SHA256SUMS`, et `REFERENCE_DISCOGRAPHY` épingle celui que `run` lit. Les identifiants y sont écrits tels que Wikidata les porte : distinguer un MBID d'une faute de saisie (« 12-inch single ») est une règle, comptée dans `discography_exclusions`.
+
+Relevé du 2026-10-05 : 72 397 lignes, 72 170 release groups.
 
 ## Ce que reçoit le site
 
@@ -102,13 +108,13 @@ Ces empreintes de sortie sont opposables parce que la livraison est reproductibl
 
 `uv run musilogy load` vérifie les Parquet publiés contre leur manifeste, les copie dans un schéma `musilogy_next` de la base du site, compare les comptes copiés à ceux du manifeste, puis bascule `musilogy_next` en `musilogy` en une transaction : le site ne lit jamais un chargement partiel, et un chargement raté laisse le précédent en place. La connexion vient de l'environnement libpq (`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGSSLMODE`, `PGSSLROOTCERT`). Le SQL côté Postgres vit dans `src/musilogy/pg/`, numéroté comme `sql/` : `10_tables` avant la copie, les suivants sur le schéma de transit, `90_` une fois la bascule faite.
 
-Sept tables sont chargées — `artists`, `genres`, `links`, `popularity`, `influences`, `releases`, `urls` — plus `manifest` (dump, relevés, commit) ; `albums` reste en Parquet. Les listes de genres, que Postgres ne sait pas typer en structures anonymes, deviennent du `jsonb`. `20_search.sql` en tire `search`, la projection étroite de la recherche (`name_key` en collation C, nombre d'auditeurs, MBID), rangée par `name_key`. Mesuré sur un Postgres 16 jetable, avec le dump de référence : 408 s de chargement, 1 259 Mo en tout, dont 192 Mo et 68 Mo d'index pour la projection de recherche. Avec `releases` et `urls` (2026-10-05, sur victorserv) : 281 s, 3 504 Mo, dont 820 Mo pour `urls` et 716 Mo pour `releases`.
+Sept tables sont chargées — `artists`, `genres`, `links`, `popularity`, `influences`, `releases`, `urls` — plus `manifest` (dump, relevés, commit) ; `albums` reste en Parquet. Les listes de genres, que Postgres ne sait pas typer en structures anonymes, deviennent du `jsonb`. `20_search.sql` en tire `search`, la projection étroite de la recherche (`name_key` en collation C, nombre d'auditeurs, MBID), rangée par `name_key`. Mesuré sur un Postgres 16 jetable, avec le dump de référence : 408 s de chargement, 1 259 Mo en tout, dont 192 Mo et 68 Mo d'index pour la projection de recherche. Avec `releases` et `urls` (2026-10-05, sur victorserv) : 214 s, 2 667 Mo, dont 549 Mo pour `releases` et 274 Mo pour `urls`.
 
 **Ce que lit le site : des fonctions, pas des tables.** Il appelle les fonctions de `pg/90_*.sql`, testées ici contre Postgres, et dépend de leurs signatures, pas de la disposition des tables. Le contrat complet, fonctions à venir comprises, est `docs/conception.md` §4.
 
 - `artist_card(mbid)` donne la fiche ; sa colonne `proximity_surveyed` dira si l'artiste a été interrogé dans le relevé de proximité épinglé, et vaut NULL tant qu'aucun relevé n'est chargé, c'est-à-dire partout aujourd'hui : un artiste non relevé n'est pas un artiste sans voisin. `artist_links(mbid)` chaque lien lu depuis l'artiste (`forward` s'il en est la source MusicBrainz).
 - `artist_influences(mbid)` donne les influences déclarées dans les deux sens, `cited` (l'artiste cite l'autre) puis `cited_by`, chacune dans l'ordre du temps et avec sa déclaration Wikidata. Un artiste absent du dump n'en a aucune, comme il n'a pas de fiche.
-- `artist_releases(mbid)` donne les albums et EP de l'artiste, tous, avec leurs types secondaires pour que le site choisisse, du plus ancien au plus récent ; `artist_urls(mbid)` ses pages encore à lui (relation non terminée), par type puis URL. Mesurés sur les 765 sorties des Beatles, cache chaud : 5 ms et 4 ms.
+- `artist_releases(mbid)` donne l'œuvre que la page montre (docs/vision.md §2.4) : albums studio, bandes originales et remix, EP à partir du premier album (tous les EP d'un artiste sans album), rien après la fin déclarée d'un groupe sauf ce que Wikidata classe album studio ou EP, et un disque sans année seulement s'il est ainsi classé ; du plus ancien au plus récent. Pour les Beatles, de *Please Please Me* à *Let It Be* (1963-1970). `artist_urls(mbid)` ses pages encore à lui (relation non terminée), par type puis URL. Moins d'une milliseconde, cache chaud, sur les Rolling Stones.
 - `search_artists(requête, taille)` cherche par préfixe du nom normalisé, les plus écoutés d'abord (`user_count`), ceux que ListenBrainz ne connaît pas en dernier, puis par nom et MBID. La requête est normalisée comme `name_key` (`strip_accents(lower(name))` dans DuckDB) par `musilogy.name_key(text)` : minuscules, décomposition canonique, retrait des marques combinantes — la catégorie Unicode M entière, 2 450 points, mesurée en interrogeant DuckDB sur chaque point de code —, recomposition. Sur le dump de référence, elle redonne le `name_key` de tous les noms sauf 6, des lettres cerclées (Ⓐ) que la libc du Postgres du site ne met pas en minuscule ; le seul bloc des diacritiques latins en manquait 12 987. Une requête vide ne trouve personne. Temps mesurés sur le Postgres jetable, cache chaud, médiane de 7 appels : « a » (157 112 noms) 78 ms, « the » 46 ms, « bjork », « radiohead » ou « sigur ros » moins de 4 ms ; le premier appel après le chargement, cache froid, a pris 1,8 s pour « a ». Lue directement dans `artists`, « a » prenait environ 1 s cache chaud.
 
 ## Chiffres de référence
@@ -158,6 +164,7 @@ uv run musilogy run                 # fetch → extract → transform → valida
 uv run musilogy snapshot-popularity # relevé ListenBrainz daté, à épingler (~1 h)
 uv run musilogy snapshot-proximity  # voisins ListenBrainz des artistes d'au moins 500 auditeurs (plusieurs jours, reprenable)
 uv run musilogy snapshot-influences # relevé Wikidata daté des influences déclarées, à épingler (quelques secondes)
+uv run musilogy snapshot-discography # relevé Wikidata daté des disques classés album studio, EP ou BO, à épingler
 uv run musilogy make-fixtures       # régénère les témoins depuis les extractions
 uv run musilogy load                # charge data/out/ dans la base du site (environnement libpq)
 ```
@@ -193,6 +200,6 @@ docs/research/           notes de recherche datées
 
 Les données de base MusicBrainz (artistes, dates, albums, relations) sont **CC0**. Les genres et tags sont des données supplémentaires sous **CC-BY-NC-SA 3.0**. Comme `artists` et `genres` en dépendent, **le jeu de données produit par ce pipeline est distribué sous CC-BY-NC-SA 3.0** : attribution à MusicBrainz obligatoire, usage non commercial uniquement, et partage à l'identique imposé à toute redistribution.
 
-Les comptes d'écoute de ListenBrainz et les données de Wikidata sont sous **CC0** et n'ajoutent aucune contrainte. `tests/fixtures/influences.jsonl` est un extrait du relevé Wikidata du 2026-10-04 : les déclarations qui touchent un artiste des témoins.
+Les comptes d'écoute de ListenBrainz et les données de Wikidata sont sous **CC0** et n'ajoutent aucune contrainte. `tests/fixtures/influences.jsonl` est un extrait du relevé Wikidata du 2026-10-04 : les déclarations qui touchent un artiste des témoins ; `tests/fixtures/discography.jsonl` celui du 2026-10-05, pour les release groups des témoins.
 
 Les fixtures versionnées dans `tests/fixtures/` sont des extraits réels du dump MusicBrainz de référence, soumis à la même licence (voir `tests/fixtures/ATTRIBUTION.md`).

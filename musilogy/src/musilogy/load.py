@@ -82,16 +82,14 @@ def load(published: Path, conninfo: str = "") -> dict[str, int]:
             f"SELECT {PROJECTIONS.get(table, '*')} FROM read_parquet(?)",
             [(published / f"{table}.parquet").as_posix()],
         )
-    popularity, influences = manifest["popularity"], manifest["influences"]
+    snapshots = [
+        manifest[name]["snapshot"] if isinstance(manifest[name], dict) else None
+        for name in ("popularity", "influences", "discography")
+    ]
     con.execute(
-        f"INSERT INTO site.{STAGING}.manifest "
-        "(dump, popularity_snapshot, influences_snapshot, git_sha) VALUES (?, ?, ?, ?)",
-        [
-            manifest["dump"],
-            popularity["snapshot"] if isinstance(popularity, dict) else None,
-            influences["snapshot"] if isinstance(influences, dict) else None,
-            manifest["git_sha"],
-        ],
+        f"INSERT INTO site.{STAGING}.manifest (dump, popularity_snapshot, influences_snapshot, "
+        "discography_snapshot, git_sha) VALUES (?, ?, ?, ?, ?)",
+        [manifest["dump"], *snapshots, manifest["git_sha"]],
     )
     # Everything after the copy, on the staging schema; 90_ reads the final
     # schema and runs once it is swapped in.

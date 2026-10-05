@@ -48,7 +48,13 @@ def test_the_fixture_files_are_not_ignored_by_git():
     # pipeline/tests/fixtures/, removed by the restructuring: the witnesses
     # survived only because they were already in the index. On a fresh clone,
     # `musilogy make-fixtures` followed by `git add` would drop them silently.
-    for name in ("artists.jsonl", "release_groups.jsonl", "popularity.jsonl", "influences.jsonl"):
+    for name in (
+        "artists.jsonl",
+        "release_groups.jsonl",
+        "popularity.jsonl",
+        "influences.jsonl",
+        "discography.jsonl",
+    ):
         result = subprocess.run(
             ["git", "check-ignore", "--no-index", f"tests/fixtures/{name}"],
             cwd=REPO_ROOT,

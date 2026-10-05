@@ -23,6 +23,7 @@ groupes ses membres ont joué. `musilogy load` les copie dans le schéma
 | popularité ListenBrainz (`/1/popularity/artist`) | `REFERENCE_POPULARITY` | CC0 |
 | proximité ListenBrainz (`labs…/similar-artists`) | `REFERENCE_PROXIMITY` | dérivée des données ListenBrainz (CC0) ; le service ne précise pas de licence |
 | influences Wikidata (P737 « influencé par », entre deux éléments qui portent un MBID, P434) | `REFERENCE_INFLUENCES` | CC0 |
+| discographie Wikidata (release groups, P436, classés album studio, EP ou bande originale par P31 ou P7937) | `REFERENCE_DISCOGRAPHY` | CC0 |
 
 Chaque relevé est pris une fois, son empreinte versionnée sous `reference/`,
 et `run` lit celui que la constante épingle.
@@ -43,17 +44,19 @@ albums), `genres` (vocabulaire), `links` (relations typées entre artistes),
 
 **Ajoutées** :
 
-- `releases(artist_mbid, rg_mbid, title, primary_type, secondary, y,
-  n_credited)` : chaque album et EP du dump, une ligne par artiste crédité de
-  la population, quels que soient ses types secondaires (live, compilation,
-  remix…) et sa date ; `n_credited` dit combien d'artistes le partagent. Le
-  site choisit ce qu'il montre (`docs/vision.md` §2.4). L'extraction garde
-  désormais les EP à côté des albums ; `albums` reste limitée aux albums.
-- `urls(artist_mbid, type, url, ended)` : les pages que MusicBrainz relie à un
-  artiste (plateformes d'écoute, site officiel, Wikidata, Discogs…), avec le
-  type de relation de MusicBrainz ; `ended` marque une page qui n'est plus
-  celle de l'artiste. Une même page reliée deux fois sous un même type est une
-  ligne.
+- `releases(artist_mbid, rg_mbid, title, primary_type, soundtrack, remix, y,
+  filed_original)` : chaque album et EP du dump dont les types secondaires se
+  limitent à Soundtrack et Remix, une ligne par artiste crédité de la
+  population. `filed_original` dit que Wikidata le classe album studio ou EP
+  (relevé `discography`, daté et épinglé) : un posthume ainsi classé est de la
+  musique nouvelle. L'extraction garde désormais les EP à côté des albums ;
+  `albums` reste limitée aux albums.
+- `urls(artist_mbid, type, url, ended)` : parmi les pages que MusicBrainz relie
+  à un artiste, celles qu'une page artiste utilise (Deezer, Spotify, Apple
+  Music, Bandcamp, SoundCloud, site officiel, Wikidata, Wikipédia, images),
+  avec le type de relation de MusicBrainz ; `ended` marque une page qui n'est
+  plus celle de l'artiste. Une même page reliée deux fois sous un même type est
+  une ligne.
 
 - `proximity(artist_mbid, neighbour_mbid, score, rank)` *(à livrer, après
   le relevé)* : les voisins ListenBrainz de chaque artiste relevé, `rank` de 1
@@ -108,7 +111,7 @@ absente (code `42883`).
 | `artist_influences` | livrée par #286 |
 | `search_artists` | livrée par #286 |
 | `artist_neighbours` | à livrer, après le relevé de proximité (§5) |
-| `artist_releases` | livrée par #337 |
+| `artist_releases` | livrée par #337, règle de la page par #338 |
 | `artist_urls` | livrée par #337 |
 
 ```sql
@@ -144,12 +147,14 @@ musilogy.search_artists(query text, page_size integer) RETURNS TABLE (
   mbid text, name text, disambiguation text, type text, y0 integer,
   user_count bigint)
 
--- Albums et EP de l'artiste, tous, avec leurs types secondaires pour que le
--- site choisisse ; du plus ancien au plus récent, sans année en dernier, puis
--- par titre et MBID.
+-- Ce que la page montre de l'œuvre (docs/vision.md §2.4) : les albums (studio,
+-- bande originale, remix) et les EP à partir du premier album, ou tous les EP
+-- d'un artiste sans album ; pour un groupe dont la fin est déclarée, rien
+-- après elle sauf ce que Wikidata classe album studio ou EP. Du plus ancien au
+-- plus récent, sans année en dernier, puis par titre et MBID.
 musilogy.artist_releases(artist text) RETURNS TABLE (
-  mbid text, title text, primary_type text, secondary text[], y integer,
-  n_credited integer)
+  mbid text, title text, primary_type text, soundtrack boolean, remix boolean,
+  y integer)
 
 -- Pages que MusicBrainz relie à l'artiste et qui sont encore les siennes
 -- (relation non terminée), avec le type de relation de MusicBrainz ; par

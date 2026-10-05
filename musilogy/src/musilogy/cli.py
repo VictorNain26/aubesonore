@@ -9,13 +9,14 @@ from pathlib import Path
 
 import duckdb
 
+from musilogy import REFERENCE_DISCOGRAPHY, REFERENCE_INFLUENCES, REFERENCE_POPULARITY
 from musilogy import REFERENCE_DUMP as DUMP
-from musilogy import REFERENCE_INFLUENCES, REFERENCE_POPULARITY
 from musilogy.build import build, check_invariants, connect
 from musilogy.extract import extract, reduce_artist, reduce_release_group
 from musilogy.fetch import (
     POPULARITY_BATCH,
     expected_sums,
+    fetch_discography,
     fetch_dump,
     fetch_influences,
     fetch_popularity,
@@ -30,6 +31,8 @@ from musilogy.paths import (
     RAW_DIR,
     REFERENCE_DIR,
     SQL_DIR,
+    discography_snapshot,
+    discography_sums,
     influences_snapshot,
     influences_sums,
     out_dir,
@@ -47,6 +50,7 @@ ARTISTS_JSONL = WORK_DIR / "artists.jsonl"
 RELEASE_GROUPS_JSONL = WORK_DIR / "release_groups.jsonl"
 POPULARITY_JSONL = popularity_snapshot(REFERENCE_POPULARITY)
 INFLUENCES_JSONL = influences_snapshot(REFERENCE_INFLUENCES)
+DISCOGRAPHY_JSONL = discography_snapshot(REFERENCE_DISCOGRAPHY)
 
 WITNESSES = [
     "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d",  # The Beatles
@@ -186,6 +190,31 @@ def verified_influences() -> Path:
     return INFLUENCES_JSONL
 
 
+def snapshot_discography() -> None:
+    """Asks Wikidata for the release groups it files as a studio album, an EP
+    or a soundtrack. Taken once and pinned, like the influences."""
+    date = datetime.now(UTC).date().isoformat()
+    dest = discography_snapshot(date)
+    if dest.exists():
+        raise SystemExit(
+            f"Wikidata discography {date} already taken at {dest}: it is never taken again"
+        )
+    n = fetch_discography(dest)
+    discography_sums(date).write_text(f"{sha256_file(dest)}  {dest.name}\n", encoding="utf-8")
+    print(f"{n} rows; pin it: REFERENCE_DISCOGRAPHY = {date!r}")
+
+
+def verified_discography() -> Path:
+    if not DISCOGRAPHY_JSONL.exists():
+        raise SystemExit(
+            f"Wikidata snapshot {REFERENCE_DISCOGRAPHY} missing at {DISCOGRAPHY_JSONL}; "
+            "it cannot be taken again: `musilogy snapshot-discography`, then pin the new one"
+        )
+    sums = expected_sums(discography_sums(REFERENCE_DISCOGRAPHY))
+    verify(DISCOGRAPHY_JSONL, sums[DISCOGRAPHY_JSONL.name])
+    return DISCOGRAPHY_JSONL
+
+
 def verified_popularity() -> Path:
     if not POPULARITY_JSONL.exists():
         raise SystemExit(
@@ -221,6 +250,7 @@ def run() -> None:
 
     popularity = verified_popularity()
     influences = verified_influences()
+    discography = verified_discography()
 
     con = connect()
     build(
@@ -233,6 +263,8 @@ def run() -> None:
         popularity_snapshot=REFERENCE_POPULARITY,
         influences=influences,
         influences_snapshot=REFERENCE_INFLUENCES,
+        discography=discography,
+        discography_snapshot=REFERENCE_DISCOGRAPHY,
     )
 
     violations = check_invariants(con, SQL_DIR)
@@ -275,6 +307,7 @@ def make_fixtures() -> None:
                 fh.write(line)
                 kept.append(rec["mbid"])
 
+    fixture_rgs: set[str] = set()
     with (
         (out / "release_groups.jsonl").open("w", encoding="utf-8") as fh,
         (work / "release_groups.jsonl").open(encoding="utf-8") as src,
@@ -283,6 +316,7 @@ def make_fixtures() -> None:
             rec = json.loads(line)
             if wanted & set(rec["artists"]):
                 fh.write(line)
+                fixture_rgs.add(rec["mbid"])
 
     # Every fixture artist, as the snapshot asked about every artist: a
     # witness with no row would fail popularity_unrequested.
@@ -304,6 +338,15 @@ def make_fixtures() -> None:
         for line in src:
             row = json.loads(line)
             if row["artist_mbid"] in kept_set or row["influence_mbid"] in kept_set:
+                fh.write(line)
+
+    # What Wikidata files about the fixture release groups.
+    with (
+        (out / "discography.jsonl").open("w", encoding="utf-8") as fh,
+        verified_discography().open(encoding="utf-8") as src,
+    ):
+        for line in src:
+            if json.loads(line)["rg_mbid"] in fixture_rgs:
                 fh.write(line)
 
     print("witnesses found:", len(wanted & set(kept)), "linked artists:", len(set(kept) - wanted))
@@ -331,6 +374,10 @@ def main() -> None:
         "snapshot-influences",
         help="take a dated Wikidata snapshot of the influences between MusicBrainz artists",
     )
+    subparsers.add_parser(
+        "snapshot-discography",
+        help="take a dated Wikidata snapshot of the release groups filed as main records",
+    )
     subparsers.add_parser("make-fixtures", help="extract witness records for the test fixtures")
     subparsers.add_parser(
         "load", help="load the published tables into the site's Postgres (libpq environment)"
@@ -345,6 +392,8 @@ def main() -> None:
         snapshot_proximity()
     elif args.command == "snapshot-influences":
         snapshot_influences()
+    elif args.command == "snapshot-discography":
+        snapshot_discography()
     elif args.command == "make-fixtures":
         make_fixtures()
     elif args.command == "load":
