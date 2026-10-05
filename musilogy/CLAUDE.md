@@ -84,6 +84,7 @@ uv run musilogy run           # fetch → extract → transform → validate →
 uv run musilogy snapshot-popularity  # relevé ListenBrainz daté, à épingler
 uv run musilogy snapshot-proximity   # voisins ListenBrainz, plusieurs jours, reprenable
 uv run musilogy snapshot-influences  # influences Wikidata, quelques secondes, à épingler
+uv run musilogy snapshot-discography # disques classés par Wikidata, quelques secondes, à épingler
 uv run musilogy make-fixtures
 uv run musilogy load          # charge data/out/ dans la base du site (environnement libpq)
 MUSILOGY_TEST_PG='host=… dbname=…' uv run pytest  # tests Postgres compris : un Postgres jetable, jamais celui du site
