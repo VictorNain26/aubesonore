@@ -73,6 +73,14 @@ const titles = () =>
     .getAllByRole('listitem')
     .map((row) => library.find((track) => row.textContent?.includes(track.title))?.title);
 
+// A closed toast leaves the page 200 ms later on a timer of its own: a test waits for it, or the
+// timer outlives the test environment.
+async function toastGone() {
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: 'Annuler' })).not.toBeInTheDocument()
+  );
+}
+
 function signIn() {
   useAuthStore.setState({
     user: {
@@ -177,6 +185,8 @@ describe('MyTracksPage', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Annuler' }));
     expect(screen.getByText('Nightcall')).toBeInTheDocument();
+    // Even once the toast has left, nothing was removed.
+    await toastGone();
     expect(deleted).toBe(false);
   });
 
@@ -200,6 +210,7 @@ describe('MyTracksPage', () => {
     });
 
     await waitFor(() => expect(deletedId).toBe('3'));
+    await toastGone();
     await waitFor(() =>
       expect(useLikedTracksStore.getState().tracks.map((t) => t.id)).toEqual(['1', '2'])
     );
