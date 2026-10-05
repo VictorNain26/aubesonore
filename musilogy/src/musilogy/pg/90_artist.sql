@@ -139,3 +139,107 @@ AS $$
     AND (c.y_end IS NULL OR r.y IS NULL OR r.y <= c.y_end OR r.filed_original)
   ORDER BY r.y NULLS LAST, r.title, r.rg_mbid;
 $$;
+
+-- Members of a group, or groups of a person: member of band, founder and
+-- collaboration are one relation, being part of it (docs/vision.md §2.4).
+-- `role` reads from the artist's side: 'member' when the other is part of the
+-- artist, 'group' when the artist is part of the other. Several relations
+-- between the same two (two stints, a founder also a member) are one row, from
+-- the earliest year declared to the latest: the dump says when a link ended,
+-- not whether it did, so a stint still open beside a closed one reads closed.
+-- Earliest first, an undated one last.
+CREATE FUNCTION musilogy.artist_bands(artist text)
+RETURNS TABLE (
+  role text,
+  mbid text,
+  name text,
+  disambiguation text,
+  y0 integer,
+  y_begin integer,
+  y_end integer
+)
+LANGUAGE sql STABLE
+AS $$
+  WITH part AS (
+    SELECT 'member' AS role, l.src_mbid AS other, l.y_begin, l.y_end
+    FROM musilogy.links l
+    WHERE l.dst_mbid = artist AND l.type IN ('member of band', 'founder', 'collaboration')
+    UNION ALL
+    SELECT 'group', l.dst_mbid, l.y_begin, l.y_end
+    FROM musilogy.links l
+    WHERE l.src_mbid = artist AND l.type IN ('member of band', 'founder', 'collaboration')
+  )
+  SELECT p.role, o.mbid, o.name, o.disambiguation, o.y0, min(p.y_begin), max(p.y_end)
+  FROM part p JOIN musilogy.artists o ON o.mbid = p.other
+  GROUP BY p.role, o.mbid, o.name, o.disambiguation, o.y0
+  ORDER BY 1, 6 NULLS LAST, 3, 2;
+$$;
+
+-- The members' other groups and projects, two steps from a group: the other
+-- groups each member is part of, and the names a member performs under. Only
+-- those with a record a page shows (artist_releases), so that every link
+-- leads to music; neither the artist itself, one of its members, nor one of
+-- its former or later names (Warsaw for Joy Division). `via` names the
+-- members who lead there. Oldest first, by the year each began.
+CREATE FUNCTION musilogy.artist_member_projects(artist text)
+RETURNS TABLE (
+  mbid text,
+  name text,
+  disambiguation text,
+  y0 integer,
+  via text[]
+)
+LANGUAGE sql STABLE
+AS $$
+  WITH member AS (
+    SELECT DISTINCT l.src_mbid AS mbid
+    FROM musilogy.links l
+    WHERE l.dst_mbid = artist AND l.type IN ('member of band', 'founder', 'collaboration')
+  ),
+  project AS (
+    SELECT DISTINCT l.dst_mbid AS mbid, l.src_mbid AS via
+    FROM musilogy.links l JOIN member m ON m.mbid = l.src_mbid
+    WHERE l.type IN ('member of band', 'founder', 'collaboration', 'is person')
+      AND l.dst_mbid <> artist
+      AND NOT EXISTS (SELECT 1 FROM member o WHERE o.mbid = l.dst_mbid)
+      AND NOT EXISTS (
+        SELECT 1 FROM musilogy.links r
+        WHERE r.type = 'artist rename'
+          AND ((r.src_mbid = artist AND r.dst_mbid = l.dst_mbid)
+            OR (r.dst_mbid = artist AND r.src_mbid = l.dst_mbid)))
+  )
+  SELECT o.mbid, o.name, o.disambiguation, o.y0, array_agg(v.name ORDER BY v.name, v.mbid)
+  FROM project p
+  JOIN musilogy.artists o ON o.mbid = p.mbid
+  JOIN musilogy.artists v ON v.mbid = p.via
+  WHERE EXISTS (SELECT 1 FROM musilogy.artist_releases(p.mbid))
+  GROUP BY o.mbid, o.name, o.disambiguation, o.y0
+  ORDER BY 4 NULLS LAST, 2, 1;
+$$;
+
+-- The artist's other names: the names a person performs under ('alias'), the
+-- person behind a performance name ('person'), the name an artist bore before
+-- ('former') and after ('later'). Oldest first.
+CREATE FUNCTION musilogy.artist_other_names(artist text)
+RETURNS TABLE (
+  kind text,
+  mbid text,
+  name text,
+  disambiguation text,
+  y0 integer
+)
+LANGUAGE sql STABLE
+AS $$
+  WITH n AS (
+    SELECT CASE l.type WHEN 'is person' THEN 'alias' ELSE 'later' END AS kind, l.dst_mbid AS other
+    FROM musilogy.links l
+    WHERE l.src_mbid = artist AND l.type IN ('is person', 'artist rename')
+    UNION
+    SELECT CASE l.type WHEN 'is person' THEN 'person' ELSE 'former' END, l.src_mbid
+    FROM musilogy.links l
+    WHERE l.dst_mbid = artist AND l.type IN ('is person', 'artist rename')
+  )
+  SELECT n.kind, o.mbid, o.name, o.disambiguation, o.y0
+  FROM n JOIN musilogy.artists o ON o.mbid = n.other
+  ORDER BY 5 NULLS LAST, 3, 2;
+$$;

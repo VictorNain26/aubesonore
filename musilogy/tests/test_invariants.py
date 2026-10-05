@@ -479,6 +479,17 @@ def test_link_misoriented_catches_a_reversed_link(con):
     assert violations.get("link_misoriented")
 
 
+def test_link_unexpected_type_is_reported(con):
+    # A teacher link is in the dump but not on a page: widening 80_links.sql
+    # without saying so here would publish it in silence.
+    row = con.execute("SELECT src_mbid, dst_mbid FROM links LIMIT 1").fetchone()
+    undo = ("DELETE FROM links WHERE type = 'teacher' AND src_mbid = ? AND dst_mbid = ?", list(row))
+    with restored(con, undo):
+        con.execute("INSERT INTO links VALUES (?, ?, 'teacher', NULL, NULL)", list(row))
+        violations = dict(check_invariants(con, SQL))
+    assert violations.get("link_unexpected_type") == 1
+
+
 def test_corrections_file_too_large_is_reported(con):
     with restored(con, ("DELETE FROM corrections", [])):
         con.execute(

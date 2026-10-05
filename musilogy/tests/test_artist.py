@@ -170,3 +170,133 @@ def test_an_ended_page_is_no_longer_the_artist_s(tmp_path, pg):
     assert pg_query(
         pg, "SELECT pg_get_function_result('musilogy.artist_urls(text)'::regprocedure)"
     ) == [("TABLE(type text, url text)",)]
+
+
+GROUP = "00000000-0000-4000-8000-0000000000b1"
+FORMER = "00000000-0000-4000-8000-0000000000b2"
+OTHER_BAND = "00000000-0000-4000-8000-0000000000b3"
+SILENT_BAND = "00000000-0000-4000-8000-0000000000b4"
+ALIAS = "00000000-0000-4000-8000-0000000000b5"
+SINGER = "00000000-0000-4000-8000-0000000000c1"
+DRUMMER = "00000000-0000-4000-8000-0000000000c2"
+
+
+def part_of(kind, target, begin=None, end=None):
+    return {"type": kind, "direction": "forward", "mbid": target, "begin": begin, "end": end}
+
+
+def band_history(tmp_path, pg):
+    """A group renamed from FORMER, whose singer also plays in OTHER_BAND and
+    SILENT_BAND and performs as ALIAS; the drummer joined OTHER_BAND too and
+    founded the group besides playing in it. SILENT_BAND has no record."""
+    people = [
+        synthetic_artist(
+            SINGER,
+            "1960",
+            None,
+            name="Singer",
+            kind="Person",
+            relations=[
+                part_of("member of band", GROUP, "1990", "1999"),
+                part_of("member of band", FORMER, "1988", "1990"),
+                part_of("member of band", OTHER_BAND, "2001"),
+                part_of("collaboration", SILENT_BAND),
+                part_of("is person", ALIAS),
+            ],
+        ),
+        synthetic_artist(
+            DRUMMER,
+            "1962",
+            None,
+            name="Drummer",
+            kind="Person",
+            relations=[
+                part_of("member of band", GROUP, "1992", "1995"),
+                part_of("founder", GROUP),
+                part_of("member of band", OTHER_BAND, "2001"),
+            ],
+        ),
+    ]
+    groups = [
+        group(GROUP, begin="1990", end="1999"),
+        group(FORMER, begin="1988", end="1990", relations=[part_of("artist rename", GROUP)]),
+        group(OTHER_BAND, begin="2001", end=None),
+        group(SILENT_BAND, begin="2005", end=None),
+        synthetic_artist(ALIAS, "2010", None, name="Alias"),
+    ]
+    rgs = [
+        synthetic_release_group(RG1, GROUP, "1991"),
+        synthetic_release_group(RG2, FORMER, "1989"),
+        synthetic_release_group(RG3, OTHER_BAND, "2003"),
+        synthetic_release_group(RG4, ALIAS, "2011", primary_type="EP"),
+    ]
+    loaded(tmp_path, pg, [*people, *groups], release_groups=rgs)
+
+
+def test_being_part_of_a_group_is_one_relation_read_from_either_side(tmp_path, pg):
+    # Breaks if founder and member of band land as two rows for the drummer,
+    # or if a person's groups read as its members.
+    band_history(tmp_path, pg)
+    assert pg_query(
+        pg, f"SELECT role, mbid, y_begin, y_end FROM musilogy.artist_bands('{GROUP}')"
+    ) == [("member", SINGER, 1990, 1999), ("member", DRUMMER, 1992, 1995)]
+    assert pg_query(pg, f"SELECT role, mbid, y_begin FROM musilogy.artist_bands('{SINGER}')") == [
+        ("group", FORMER, 1988),
+        ("group", GROUP, 1990),
+        ("group", OTHER_BAND, 2001),
+        ("group", SILENT_BAND, None),
+    ]
+
+
+def test_the_members_projects_lead_only_to_music(tmp_path, pg):
+    # OTHER_BAND is reached through both members, ALIAS is the singer's solo
+    # name. SILENT_BAND has no record, FORMER is the group's own former name:
+    # neither shows, nor the group itself.
+    band_history(tmp_path, pg)
+    assert pg_query(pg, f"SELECT mbid, via FROM musilogy.artist_member_projects('{GROUP}')") == [
+        (OTHER_BAND, ["Drummer", "Singer"]),
+        (ALIAS, ["Singer"]),
+    ]
+    assert pg_query(pg, f"SELECT mbid FROM musilogy.artist_member_projects('{SINGER}')") == []
+
+
+def test_other_names_read_both_ways(tmp_path, pg):
+    band_history(tmp_path, pg)
+    assert pg_query(pg, f"SELECT kind, mbid FROM musilogy.artist_other_names('{GROUP}')") == [
+        ("former", FORMER)
+    ]
+    assert pg_query(pg, f"SELECT kind, mbid FROM musilogy.artist_other_names('{FORMER}')") == [
+        ("later", GROUP)
+    ]
+    assert pg_query(pg, f"SELECT kind, mbid FROM musilogy.artist_other_names('{SINGER}')") == [
+        ("alias", ALIAS)
+    ]
+    assert pg_query(pg, f"SELECT kind, mbid FROM musilogy.artist_other_names('{ALIAS}')") == [
+        ("person", SINGER)
+    ]
+
+
+def test_the_band_sections_keep_the_signatures_the_site_reads(tmp_path, pg):
+    # The contract of docs/conception.md §4.
+    band_history(tmp_path, pg)
+    assert pg_query(
+        pg,
+        "SELECT p.proname, pg_get_function_result(p.oid) FROM pg_proc p "
+        "JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'musilogy' "
+        "AND p.proname IN ('artist_bands', 'artist_member_projects', 'artist_other_names') "
+        "ORDER BY 1",
+    ) == [
+        (
+            "artist_bands",
+            "TABLE(role text, mbid text, name text, disambiguation text, y0 integer, "
+            "y_begin integer, y_end integer)",
+        ),
+        (
+            "artist_member_projects",
+            "TABLE(mbid text, name text, disambiguation text, y0 integer, via text[])",
+        ),
+        (
+            "artist_other_names",
+            "TABLE(kind text, mbid text, name text, disambiguation text, y0 integer)",
+        ),
+    ]
