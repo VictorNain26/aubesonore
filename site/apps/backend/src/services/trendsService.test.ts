@@ -3,18 +3,36 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import * as realSchema from '../db/schema';
 import type { TrendEntry } from './trendsService';
 
-const weekRows: TrendEntry[] = [
-  { title: 'Week Hit', artist: 'Artist A', artworkUrl: 'https://cdn.example.com/a.jpg', likes: 4 },
+// What the aggregate answers: the page's slug and name, null when the track is not tied to an
+// artist with a page.
+type Row = Omit<TrendEntry, 'artistPage'> & { slug: string | null; name: string | null };
+
+const weekRows: Row[] = [
+  {
+    title: 'Week Hit',
+    artist: 'Daft Punk feat. Pharrell Williams',
+    artworkUrl: 'https://cdn.example.com/a.jpg',
+    likes: 4,
+    slug: 'daft-punk',
+    name: 'Daft Punk',
+  },
 ];
-const allTimeRows: TrendEntry[] = [
-  { title: 'All-Time Hit', artist: 'Artist B', artworkUrl: null, likes: 42 },
+const allTimeRows: Row[] = [
+  {
+    title: 'All-Time Hit',
+    artist: 'Artist B',
+    artworkUrl: null,
+    likes: 42,
+    slug: null,
+    name: null,
+  },
 ];
 
 let selectCalls = 0;
 let whereCalls = 0;
 
 // Chainable fake matching the exact query shape trendsService builds:
-// select().from().$dynamic()[.where()].groupBy().orderBy().limit().
+// select().from().leftJoin().leftJoin().$dynamic()[.where()].groupBy().orderBy().limit().
 // Rows with a `where` clause stand in for the week query, rows without for all-time.
 const fakeDb = {
   select: () => {
@@ -22,6 +40,7 @@ const fakeDb = {
     let filtered = false;
     const builder = {
       from: () => builder,
+      leftJoin: () => builder,
       $dynamic: () => builder,
       where: () => {
         whereCalls++;
@@ -30,7 +49,7 @@ const fakeDb = {
       },
       groupBy: () => builder,
       orderBy: () => builder,
-      limit: (): Promise<TrendEntry[]> => Promise.resolve(filtered ? weekRows : allTimeRows),
+      limit: (): Promise<Row[]> => Promise.resolve(filtered ? weekRows : allTimeRows),
     };
     return builder;
   },
@@ -50,8 +69,18 @@ describe('getTrends', () => {
   it('returns week and all-time rankings from two aggregate queries', async () => {
     const result = await getTrends();
 
-    expect(result.week).toEqual(weekRows);
-    expect(result.allTime).toEqual(allTimeRows);
+    expect(result.week).toEqual([
+      {
+        title: 'Week Hit',
+        artist: 'Daft Punk feat. Pharrell Williams',
+        artworkUrl: 'https://cdn.example.com/a.jpg',
+        likes: 4,
+        artistPage: { slug: 'daft-punk', name: 'Daft Punk' },
+      },
+    ]);
+    expect(result.allTime).toEqual([
+      { title: 'All-Time Hit', artist: 'Artist B', artworkUrl: null, likes: 42, artistPage: null },
+    ]);
     expect(selectCalls).toBe(2);
     expect(whereCalls).toBe(1);
   });
@@ -61,7 +90,7 @@ describe('getTrends', () => {
     const second = await getTrends();
 
     expect(selectCalls).toBe(2);
-    expect(second.week).toEqual(weekRows);
+    expect(second.week[0]?.artistPage).toEqual({ slug: 'daft-punk', name: 'Daft Punk' });
   });
 
   it('re-queries after the cache entry is evicted', async () => {

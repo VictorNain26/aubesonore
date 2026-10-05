@@ -1,4 +1,5 @@
-import { count, desc, gt, max } from 'drizzle-orm';
+import { count, desc, eq, gt, max } from 'drizzle-orm';
+import type { KeptArtistPage } from '@aubesonore/shared-types/client';
 import { db, schema } from '../db/index';
 import { TtlCache } from '../lib/cache/ttlCache';
 
@@ -7,6 +8,8 @@ export interface TrendEntry {
   artist: string;
   artworkUrl: string | null;
   likes: number;
+  /** The page of the artist the kept track is tied to, when that artist has one. */
+  artistPage: KeptArtistPage | null;
 }
 
 export interface TrendsResult {
@@ -30,18 +33,28 @@ async function topLikedTracks(since?: Date): Promise<TrendEntry[]> {
       // never artwork_base64 (payload size rule).
       artworkUrl: max(schema.likedTracks.artworkUrl),
       likes: count(),
+      // Both joins match at most one row (the artist's key, its one slug), so they leave the
+      // counts as they are; MAX keeps the page of a group whose tracks are tied.
+      slug: max(schema.artistSlug.slug),
+      name: max(schema.artist.displayName),
     })
     .from(schema.likedTracks)
+    .leftJoin(schema.artist, eq(schema.artist.id, schema.likedTracks.artistId))
+    .leftJoin(schema.artistSlug, eq(schema.artistSlug.artistId, schema.likedTracks.artistId))
     .$dynamic();
 
   if (since) {
     query = query.where(gt(schema.likedTracks.createdAt, since));
   }
 
-  return query
+  const rows = await query
     .groupBy(schema.likedTracks.title, schema.likedTracks.artist)
     .orderBy(desc(count()), desc(max(schema.likedTracks.createdAt)))
     .limit(TOP_LIMIT);
+  return rows.map(({ slug, name, ...entry }) => ({
+    ...entry,
+    artistPage: slug !== null && name !== null ? { slug, name } : null,
+  }));
 }
 
 export async function getTrends(): Promise<TrendsResult> {
