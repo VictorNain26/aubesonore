@@ -35,15 +35,11 @@ export default defineConfig(({ mode }) => {
         // Pages go to the network (nginx: no-cache); hashed scripts and styles stay precached.
         injectManifest: {
           globPatterns: ['**/*.{js,css}'],
+          // Every page inlines its stylesheet (scripts/prerender.mjs), so main.css is never
+          // fetched; the Cast receiver's files are for TVs, not listeners.
+          globIgnores: ['**/main-*.css', '**/receiver-*'],
         },
-        includeAssets: [
-          'favicon.svg',
-          'favicon.ico',
-          'robots.txt',
-          'sitemap.xml',
-          'llms.txt',
-          'icon-180.png',
-        ],
+        includeAssets: ['favicon.svg', 'favicon.ico', 'icon-180.png'],
         manifest: {
           name: 'AubeSonore',
           short_name: 'AubeSonore',

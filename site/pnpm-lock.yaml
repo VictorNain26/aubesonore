@@ -265,24 +265,12 @@ importers:
       vitest:
         specifier: ^4.1.11
         version: 4.1.11(@types/node@25.8.0)(@vitest/coverage-v8@4.1.11)(jsdom@29.1.1(@noble/hashes@2.2.0))(msw@2.14.6(@types/node@25.8.0)(typescript@5.9.3))(vite@8.0.16(@types/node@25.8.0)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.51.2)(tsx@4.21.0)(yaml@2.9.1))
-      workbox-cacheable-response:
-        specifier: ^7.4.1
-        version: 7.4.1
       workbox-core:
-        specifier: ^7.4.1
-        version: 7.4.1
-      workbox-expiration:
         specifier: ^7.4.1
         version: 7.4.1
       workbox-precaching:
         specifier: ^7.4.0
         version: 7.4.0
-      workbox-routing:
-        specifier: ^7.4.1
-        version: 7.4.1
-      workbox-strategies:
-        specifier: ^7.4.1
-        version: 7.4.1
 
   packages/core:
     dependencies:
@@ -5247,9 +5235,6 @@ packages:
   workbox-cacheable-response@7.4.0:
     resolution: {integrity: sha512-0Fb8795zg/x23ISFkAc7lbWes6vbw34DGFIMw31cwuHPgDEC/5EYm6m/ZkylLX0EnEbbOyOCLjKgFS/Z5g0HeQ==}
 
-  workbox-cacheable-response@7.4.1:
-    resolution: {integrity: sha512-8xaFoJdDc2OjrlbbL3gEeBO1WKcMwRqwLRupgqahYXu75yXajPLuwrbXMrIGZuWYXrQwk0xDjOxZ/ujCy/oJYw==}
-
   workbox-core@7.4.0:
     resolution: {integrity: sha512-6BMfd8tYEnN4baG4emG9U0hdXM4gGuDU3ectXuVHnj71vwxTFI7WOpQJC4siTOlVtGqCUtj0ZQNsrvi6kZZTAQ==}
 
@@ -5258,9 +5243,6 @@ packages:
 
   workbox-expiration@7.4.0:
     resolution: {integrity: sha512-V50p4BxYhtA80eOvulu8xVfPBgZbkxJ1Jr8UUn0rvqjGhLDqKNtfrDfjJKnLz2U8fO2xGQJTx/SKXNTzHOjnHw==}
-
-  workbox-expiration@7.4.1:
-    resolution: {integrity: sha512-lRKUF7b+OGbeXkQk1s6MHXOa3d7Xxf7Of31W6c6hCfipfIyrtdWZ89stq21AHZMaoG7VNFoHply4Ox+rU31TWg==}
 
   workbox-google-analytics@7.4.0:
     resolution: {integrity: sha512-MVPXQslRF6YHkzGoFw1A4GIB8GrKym/A5+jYDUSL+AeJw4ytQGrozYdiZqUW1TPQHW8isBCBtyFJergUXyNoWQ==}
@@ -5280,14 +5262,8 @@ packages:
   workbox-routing@7.4.0:
     resolution: {integrity: sha512-C/ooj5uBWYAhAqwmU8HYQJdOjjDKBp9MzTQ+otpMmd+q0eF59K+NuXUek34wbL0RFrIXe/KKT+tUWcZcBqxbHQ==}
 
-  workbox-routing@7.4.1:
-    resolution: {integrity: sha512-yubJGErZOusuidAenaL5ypfhQOa7urxP/f8E0ws7FPb4039RiWXUWBAyUkmUoOL/BcQGen3h0J8872d51IYxtA==}
-
   workbox-strategies@7.4.0:
     resolution: {integrity: sha512-T4hVqIi5A4mHi92+5EppMX3cLaVywDp8nsyUgJhOZxcfSV/eQofcOA6/EMo5rnTNmNTpw0rUgjAI6LaVullPpg==}
-
-  workbox-strategies@7.4.1:
-    resolution: {integrity: sha512-GZxpaw9NbmOelj7667uZ2kpk5BFpOGbO4X0qjwh5ls8XQ8C+Lha5LQchTiUzsTFSS+NlUpftYAyOVXvQUrcqOQ==}
 
   workbox-streams@7.4.0:
     resolution: {integrity: sha512-QHPBQrey7hQbnTs5GrEVoWz7RhHJXnPT+12qqWM378orDMo5VMJLCkCM1cnCk+8Eq92lccx/VgRZ7WAzZWbSLg==}
@@ -10431,10 +10407,6 @@ snapshots:
     dependencies:
       workbox-core: 7.4.0
 
-  workbox-cacheable-response@7.4.1:
-    dependencies:
-      workbox-core: 7.4.1
-
   workbox-core@7.4.0: {}
 
   workbox-core@7.4.1: {}
@@ -10443,11 +10415,6 @@ snapshots:
     dependencies:
       idb: 7.1.1
       workbox-core: 7.4.0
-
-  workbox-expiration@7.4.1:
-    dependencies:
-      idb: 7.1.1
-      workbox-core: 7.4.1
 
   workbox-google-analytics@7.4.0:
     dependencies:
@@ -10483,17 +10450,9 @@ snapshots:
     dependencies:
       workbox-core: 7.4.0
 
-  workbox-routing@7.4.1:
-    dependencies:
-      workbox-core: 7.4.1
-
   workbox-strategies@7.4.0:
     dependencies:
       workbox-core: 7.4.0
-
-  workbox-strategies@7.4.1:
-    dependencies:
-      workbox-core: 7.4.1
 
   workbox-streams@7.4.0:
     dependencies:
