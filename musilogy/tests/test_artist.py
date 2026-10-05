@@ -177,6 +177,7 @@ FORMER = "00000000-0000-4000-8000-0000000000b2"
 OTHER_BAND = "00000000-0000-4000-8000-0000000000b3"
 SILENT_BAND = "00000000-0000-4000-8000-0000000000b4"
 ALIAS = "00000000-0000-4000-8000-0000000000b5"
+JOINT = "00000000-0000-4000-8000-0000000000b6"
 SINGER = "00000000-0000-4000-8000-0000000000c1"
 DRUMMER = "00000000-0000-4000-8000-0000000000c2"
 
@@ -202,6 +203,7 @@ def band_history(tmp_path, pg):
                 part_of("member of band", OTHER_BAND, "2001"),
                 part_of("collaboration", SILENT_BAND),
                 part_of("is person", ALIAS),
+                part_of("member of band", JOINT, "1995"),
             ],
         ),
         synthetic_artist(
@@ -218,7 +220,15 @@ def band_history(tmp_path, pg):
         ),
     ]
     groups = [
-        group(GROUP, begin="1990", end="1999"),
+        # The group itself took part in OTHER_BAND: one of its own projects,
+        # not one of its members'.
+        group(
+            GROUP,
+            begin="1990",
+            end="1999",
+            relations=[part_of("collaboration", JOINT)],
+        ),
+        group(JOINT, begin="1995", end=None),
         group(FORMER, begin="1988", end="1990", relations=[part_of("artist rename", GROUP)]),
         group(OTHER_BAND, begin="2001", end=None),
         group(SILENT_BAND, begin="2005", end=None),
@@ -229,6 +239,7 @@ def band_history(tmp_path, pg):
         synthetic_release_group(RG2, FORMER, "1989"),
         synthetic_release_group(RG3, OTHER_BAND, "2003"),
         synthetic_release_group(RG4, ALIAS, "2011", primary_type="EP"),
+        synthetic_release_group(RG5, JOINT, "1996"),
     ]
     loaded(tmp_path, pg, [*people, *groups], release_groups=rgs)
 
@@ -239,10 +250,15 @@ def test_being_part_of_a_group_is_one_relation_read_from_either_side(tmp_path, p
     band_history(tmp_path, pg)
     assert pg_query(
         pg, f"SELECT role, mbid, y_begin, y_end FROM musilogy.artist_bands('{GROUP}')"
-    ) == [("member", SINGER, 1990, 1999), ("member", DRUMMER, 1992, 1995)]
+    ) == [
+        ("group", JOINT, None, None),
+        ("member", SINGER, 1990, 1999),
+        ("member", DRUMMER, 1992, 1995),
+    ]
     assert pg_query(pg, f"SELECT role, mbid, y_begin FROM musilogy.artist_bands('{SINGER}')") == [
         ("group", FORMER, 1988),
         ("group", GROUP, 1990),
+        ("group", JOINT, 1995),
         ("group", OTHER_BAND, 2001),
         ("group", SILENT_BAND, None),
     ]

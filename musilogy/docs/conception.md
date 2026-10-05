@@ -171,8 +171,9 @@ musilogy.artist_bands(artist text) RETURNS TABLE (
 -- Projets des membres, à deux pas d'un groupe : les autres groupes de ses
 -- membres et les noms sous lesquels ils jouent, seulement ceux qui ont un
 -- disque (artist_releases) ; ni l'artiste, ni un de ses membres, ni un de ses
--- anciens ou nouveaux noms. `via` : les membres qui y mènent. Du plus ancien
--- au plus récent (y0).
+-- anciens ou nouveaux noms, ni un projet auquel il prend part lui-même (ses
+-- groupes le disent). `via` : les membres qui y mènent. Du plus ancien au plus
+-- récent (y0).
 musilogy.artist_member_projects(artist text) RETURNS TABLE (
   mbid text, name text, disambiguation text, y0 integer, via text[])
 

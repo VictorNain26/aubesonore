@@ -178,9 +178,10 @@ $$;
 -- The members' other groups and projects, two steps from a group: the other
 -- groups each member is part of, and the names a member performs under. Only
 -- those with a record a page shows (artist_releases), so that every link
--- leads to music; neither the artist itself, one of its members, nor one of
--- its former or later names (Warsaw for Joy Division). `via` names the
--- members who lead there. Oldest first, by the year each began.
+-- leads to music; neither the artist itself, one of its members, one of its
+-- former or later names (Warsaw for Joy Division), nor a project the artist
+-- takes part in itself, which its own groups list (Stereolab in Uilab). `via`
+-- names the members who lead there. Oldest first, by the year each began.
 CREATE FUNCTION musilogy.artist_member_projects(artist text)
 RETURNS TABLE (
   mbid text,
@@ -202,6 +203,10 @@ AS $$
     WHERE l.type IN ('member of band', 'founder', 'collaboration', 'is person')
       AND l.dst_mbid <> artist
       AND NOT EXISTS (SELECT 1 FROM member o WHERE o.mbid = l.dst_mbid)
+      AND NOT EXISTS (
+        SELECT 1 FROM musilogy.links g
+        WHERE g.src_mbid = artist AND g.dst_mbid = l.dst_mbid
+          AND g.type IN ('member of band', 'founder', 'collaboration'))
       AND NOT EXISTS (
         SELECT 1 FROM musilogy.links r
         WHERE r.type = 'artist rename'
