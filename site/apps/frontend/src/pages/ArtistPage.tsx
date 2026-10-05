@@ -143,7 +143,9 @@ export default function ArtistPage() {
   return (
     <div className="min-h-page flex flex-col">
       <ArtistPageView state={state} kept={kept} musilogy={musilogyArtist} trail={trail} />
-      <SiteFooter />
+      {/* Once the page has its content: shown while it loads, the footer sat in view and was
+          pushed down by the profile, then by Musilogy's sections (a CLS of 0.29). */}
+      {settled ? <SiteFooter /> : null}
     </div>
   );
 }

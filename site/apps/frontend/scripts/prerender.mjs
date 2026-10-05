@@ -38,7 +38,13 @@ function inlineStyles(html) {
 
 async function write(page, body, { siblings, noindex = false }) {
   const { title, description } = meta(page.locale, page.kind);
-  let html = rewriteHead(template, base, { ...page, title, description }, { siblings, noindex });
+  const station = meta(page.locale).description;
+  let html = rewriteHead(
+    template,
+    base,
+    { ...page, title, description, station },
+    { siblings, noindex }
+  );
   html = inlineStyles(html);
   html = replaceOrFail(html, '<div id="root"></div>', `<div id="root">${body}</div>`);
   await mkdir(dirname(page.file), { recursive: true });

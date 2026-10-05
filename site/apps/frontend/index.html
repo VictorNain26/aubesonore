@@ -25,9 +25,10 @@
     <meta name="color-scheme" content="light" />
     <link rel="canonical" href="https://aubesonore.fr/" />
 
-    <!-- Structured data — RadioStation + WebSite (schema.org).
-         Improves understanding by Google Search, AI Overviews, Perplexity,
-         ChatGPT search, Claude web. -->
+    <!-- Structured data (schema.org): the station is the organisation, its live stream the
+         broadcast service it runs, the site the website it publishes. Each property sits on a
+         type that defines it (schema.org/RadioStation, /BroadcastService, /WebSite). The
+         pre-render puts the English description and language on /en/ (scripts/head.mjs). -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -38,12 +39,17 @@
             "name": "AubeSonore",
             "alternateName": "AubeSonore Webradio",
             "url": "https://aubesonore.fr/",
-            "description": "Une radio de découverte, un titre après l'autre. Gratuite, sans publicité, en continu jour et nuit.",
+            "description": "Une radio de découverte, un titre après l'autre, gratuite et sans publicité. Gardez ceux qui vous arrêtent, retrouvez-les sur votre plateforme.",
             "logo": "https://aubesonore.fr/icon-512.png",
-            "image": "https://aubesonore.fr/og-fr.png",
-            "inLanguage": "fr-FR",
+            "image": "https://aubesonore.fr/og-fr.png"
+          },
+          {
+            "@id": "https://aubesonore.fr/#broadcast",
+            "@type": "BroadcastService",
+            "name": "AubeSonore",
             "broadcastDisplayName": "AubeSonore",
             "broadcastTimezone": "Europe/Paris",
+            "broadcaster": { "@id": "https://aubesonore.fr/#org" },
             "potentialAction": {
               "@type": "ListenAction",
               "target": "https://radio.aubesonore.fr/listen/aubesonore/radio.mp3"

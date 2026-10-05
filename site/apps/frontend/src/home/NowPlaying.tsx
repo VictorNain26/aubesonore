@@ -46,6 +46,8 @@ export interface NowPlayingViewProps {
     art: string | undefined;
   } | null;
   isOnline: boolean;
+  /** No answer from the station yet: the hero says so rather than wait in silence. */
+  isUnreachable?: boolean;
   listen: ListenState;
   onToggleListen: () => void;
   /** Ref on the Écouter button, watched to hide the player bar while it is visible. */
@@ -73,6 +75,7 @@ export interface NowPlayingViewProps {
 export function NowPlayingView({
   track,
   isOnline,
+  isUnreachable = false,
   listen,
   onToggleListen,
   listenRef,
@@ -138,6 +141,10 @@ export function NowPlayingView({
               </p>
             ) : null}
           </div>
+        ) : isUnreachable ? (
+          <p className="text-intro text-text-muted m-0" aria-live="polite">
+            {m.now_unreachable()}
+          </p>
         ) : (
           <div aria-busy="true" className="flex flex-col gap-2">
             <span className="bg-surface-raised h-16 w-3/4 rounded-sm" />
@@ -184,13 +191,15 @@ export function NowPlayingView({
 }
 
 export function NowPlaying() {
-  const { title, artist, album, art, isOnline } = useNowPlayingStore(
+  const { title, artist, album, art, isOnline, isUnreachable } = useNowPlayingStore(
     useShallow((s) => ({
       title: s.data?.now_playing?.song.title,
       artist: s.data?.now_playing?.song.artist,
       album: s.data?.now_playing?.song.album,
       art: s.data?.now_playing?.song.art,
       isOnline: s.data?.is_online ?? true,
+      // The store keeps polling, with backoff: the track replaces this once it answers.
+      isUnreachable: !s.data && s.error !== null,
     }))
   );
   const { isPlaying, isConnecting, toggle, volume, isMuted, setVolume, toggleMute } = usePlayer(
@@ -230,6 +239,7 @@ export function NowPlaying() {
     <NowPlayingView
       track={title && artist ? { title, artist, album: album ?? '', art } : null}
       isOnline={isOnline}
+      isUnreachable={isUnreachable}
       listen={listenState(isPlaying, isConnecting)}
       onToggleListen={toggle}
       listenRef={listenRef}
