@@ -137,10 +137,7 @@ describe('MyTracksPage', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Artiste' }));
 
     expect(titles()).toEqual(['One More Time', 'Get Lucky', 'Nightcall']);
-    expect(screen.getByRole('button', { name: 'Artiste, ordre croissant' })).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    );
+    expect(screen.getByRole('button', { name: 'Artiste, ordre croissant' })).toBeInTheDocument();
     expect(screen.getByRole('status', { name: 'search' })).toHaveTextContent('?sort=artist');
 
     await userEvent.click(screen.getByRole('button', { name: 'Artiste, ordre croissant' }));
@@ -162,10 +159,7 @@ describe('MyTracksPage', () => {
     open('/mes-titres?sort=title&dir=desc');
 
     await screen.findByText('Nightcall');
-    expect(screen.getByRole('button', { name: 'Titre, ordre décroissant' })).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    );
+    expect(screen.getByRole('button', { name: 'Titre, ordre décroissant' })).toBeInTheDocument();
     expect(titles()).toEqual(['One More Time', 'Nightcall', 'Get Lucky']);
   });
 
@@ -176,6 +170,9 @@ describe('MyTracksPage', () => {
     await screen.findByText('Nightcall');
     const search = screen.getByRole('searchbox', { name: 'Rechercher dans mes titres' });
     await userEvent.type(search, 'pharrell');
+    // The clear button sits beside the field, not in its label.
+    expect(search).toHaveAccessibleName('Rechercher dans mes titres');
+    expect(screen.getByRole('search')).toContainElement(search);
     expect(titles()).toEqual(['Get Lucky']);
     expect(screen.getByText('1 sur 3')).toBeInTheDocument();
 

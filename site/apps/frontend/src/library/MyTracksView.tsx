@@ -158,24 +158,26 @@ function SearchField({
   onQueryChange: (query: string) => void;
 }) {
   return (
-    <label role="search" className="relative block w-full sm:max-w-md">
-      <span className="sr-only">{m.library_search_label()}</span>
-      <Search
-        className="text-text-muted pointer-events-none absolute top-1/2 left-4 size-4.5 -translate-y-1/2"
-        strokeWidth={1.8}
-        aria-hidden="true"
-      />
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => onQueryChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') onQueryChange('');
-        }}
-        placeholder={m.library_search_placeholder()}
-        autoComplete="off"
-        className="text-ui border-accent ease-out-quart placeholder:text-text-faint hover:bg-surface-raised focus-visible:outline-accent h-11 w-full rounded-full border bg-transparent pr-12 pl-11 transition-colors duration-150 focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-search-cancel-button]:hidden"
-      />
+    <div role="search" className="relative w-full sm:max-w-md">
+      <label>
+        <span className="sr-only">{m.library_search_label()}</span>
+        <Search
+          className="text-text-muted pointer-events-none absolute top-1/2 left-4 size-4.5 -translate-y-1/2"
+          strokeWidth={1.8}
+          aria-hidden="true"
+        />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') onQueryChange('');
+          }}
+          placeholder={m.library_search_placeholder()}
+          autoComplete="off"
+          className="text-ui border-accent ease-out-quart placeholder:text-text-faint hover:bg-surface-raised focus-visible:outline-accent h-11 w-full rounded-full border bg-transparent pr-12 pl-11 transition-colors duration-150 focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-search-cancel-button]:hidden"
+        />
+      </label>
       {query ? (
         <button
           type="button"
@@ -186,12 +188,12 @@ function SearchField({
           <X className="size-4" strokeWidth={1.8} aria-hidden="true" />
         </button>
       ) : null}
-    </label>
+    </div>
   );
 }
 
 const SORT_BUTTON =
-  'group text-label text-text-muted aria-pressed:text-text ease-out-quart hover:text-text focus-visible:outline-accent -mx-1 inline-flex min-h-11 items-center gap-1.5 justify-self-start rounded-sm px-1 font-mono uppercase transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
+  'group text-label text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -mx-1 inline-flex min-h-11 items-center gap-1.5 justify-self-start rounded-sm px-1 font-mono uppercase transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
 
 /**
  * The columns' names, each a sort: a click orders the list by it, a second click reverses it. On a
@@ -223,9 +225,8 @@ function SortHeader({
           <button
             key={key}
             type="button"
-            aria-pressed={active}
             onClick={() => onSortChange(nextSort(sort, key))}
-            className={SORT_BUTTON}
+            className={cn(SORT_BUTTON, active && 'text-text')}
           >
             {label}
             {active ? (
