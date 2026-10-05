@@ -10,18 +10,31 @@ const { pageHtml, meta } = await import('../dist-ssr/entry-server.js');
 const template = await readFile('dist/index.html', 'utf8');
 const base = meta('fr');
 
-// The stylesheet (~10 KB compressed) is inlined: a <link> would block the first
-// paint for one more round trip, and the fonts would only be found after it.
+// The stylesheets (~10 KB compressed) are inlined, in their order: a <link> would block the first
+// paint for one more round trip, and the fonts would only be found after it. Vite splits a
+// stylesheet the Cast receiver shares (the font) from the page's own, so there can be several.
 // The title font is preloaded for the same reason.
-const stylesheet = template.match(/<link rel="stylesheet"[^>]*href="(\/assets\/[^"]+\.css)"[^>]*>/);
-if (!stylesheet) throw new Error('prerender: no stylesheet link in index.html');
-const css = await readFile(`dist${stylesheet[1]}`, 'utf8');
+const stylesheets = [
+  ...template.matchAll(/<link rel="stylesheet"[^>]*href="(\/assets\/[^"]+\.css)"[^>]*>/g),
+];
+if (stylesheets.length === 0) throw new Error('prerender: no stylesheet link in index.html');
+const css = (
+  await Promise.all(stylesheets.map(([, href]) => readFile(`dist${href}`, 'utf8')))
+).join('\n');
 const titleFont = (await readdir('dist/assets')).find((f) =>
-  f.startsWith('bricolage-grotesque-latin-wdth-normal-')
+  f.startsWith('bricolage-grotesque-latin-wght-normal-')
 );
 if (!titleFont) throw new Error('prerender: title font not found in dist/assets');
 const head = `<link rel="preload" href="/assets/${titleFont}" as="font" type="font/woff2" crossorigin />
     <style>${css}</style>`;
+
+/** The page's stylesheet links replaced by the inlined styles, where the first one was. */
+function inlineStyles(html) {
+  const [first, ...rest] = stylesheets.map(([link]) => link);
+  let out = replaceOrFail(html, first, head);
+  for (const link of rest) out = replaceOrFail(out, link, '');
+  return out;
+}
 
 async function write(page, body, { siblings, noindex = false }) {
   const { title, description } = meta(page.locale, page.kind);
@@ -32,7 +45,7 @@ async function write(page, body, { siblings, noindex = false }) {
     { ...page, title, description, station },
     { siblings, noindex }
   );
-  html = replaceOrFail(html, stylesheet[0], head);
+  html = inlineStyles(html);
   html = replaceOrFail(html, '<div id="root"></div>', `<div id="root">${body}</div>`);
   await mkdir(dirname(page.file), { recursive: true });
   await writeFile(page.file, html);
@@ -70,7 +83,7 @@ for (const page of notFound) {
 // Artist pages are not pre-rendered: the backend reads this empty shell from
 // the container and rewrites its head tags per artist (artistPage.routes.ts),
 // then the client renders the page.
-await writeFile('dist/app.html', replaceOrFail(template, stylesheet[0], head));
+await writeFile('dist/app.html', inlineStyles(template));
 console.log('wrote dist/app.html');
 
 await rm('dist-ssr', { recursive: true, force: true });
