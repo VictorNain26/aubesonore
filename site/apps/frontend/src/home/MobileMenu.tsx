@@ -7,7 +7,7 @@ import { Logo } from '../design/atoms/Logo';
 import { localizeHref } from '@/paraglide/runtime.js';
 import { useAuthStore } from '../stores/authStore';
 import { useLocaleStore } from '../stores/localeStore';
-import { TEXT_ACTION } from './styles';
+import { CLOSE_BUTTON, TEXT_ACTION } from './styles';
 import * as m from '@/paraglide/messages.js';
 
 const TRIGGER =
@@ -15,9 +15,6 @@ const TRIGGER =
 
 const PAGE_LINK =
   'text-section ease-out-quart focus-visible:outline-accent flex min-h-14 items-center rounded-sm transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:underline-offset-8';
-
-const CLOSE =
-  'ease-out-quart hover:bg-surface-raised focus-visible:outline-accent inline-flex size-11 shrink-0 items-center justify-center rounded-full transition-[background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90';
 
 /**
  * The site's pages on a phone, where the header has no room for them: a Menu button opens them
@@ -51,7 +48,7 @@ export function MobileMenu() {
               <Logo className="block h-[0.795em]" />
               <span className="sr-only">AubeSonore</span>
             </Dialog.Title>
-            <Dialog.Close aria-label={m.close()} className={CLOSE}>
+            <Dialog.Close aria-label={m.close()} className={CLOSE_BUTTON}>
               <X className="size-4.5" strokeWidth={1.8} aria-hidden="true" />
             </Dialog.Close>
           </div>

@@ -9,3 +9,7 @@ export const ARTIST_LINK =
 /** The ink pill back to the live, where a page has nothing to show (404, an unknown artist). */
 export const BACK_TO_LIVE =
   'bg-accent text-on-accent text-ui ease-spring focus-visible:outline-accent inline-flex h-14 items-center rounded-full px-6 font-semibold transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95';
+
+/** A round 44px close button, for a full-screen menu or a sheet. */
+export const CLOSE_BUTTON =
+  'ease-out-quart hover:bg-surface-raised focus-visible:outline-accent inline-flex size-11 shrink-0 items-center justify-center rounded-full transition-[background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90';
