@@ -74,6 +74,23 @@ export default defineConfig(({ mode }) => {
           ],
         },
       }),
+      // vite-plugin-pwa injects its manifest and service worker into every page (BuildPlugin's
+      // transformIndexHtml, v1.3.0): a TV opening the Cast receiver would install the site's
+      // worker and precache all of it. The receiver page goes without them.
+      {
+        name: 'cast-receiver-without-pwa',
+        apply: 'build',
+        enforce: 'post',
+        transformIndexHtml: {
+          order: 'post',
+          handler(html, { path: page }) {
+            if (page !== '/cast/receiver.html') return html;
+            return html
+              .replace(/<link rel="manifest"[^>]*>/, '')
+              .replace(/<script id="vite-plugin-pwa:register-sw"[^>]*><\/script>/, '');
+          },
+        },
+      } satisfies PluginOption,
       ...(analyze
         ? [
             visualizer({
@@ -103,6 +120,11 @@ export default defineConfig(({ mode }) => {
     build: {
       sourcemap: false,
       rollupOptions: {
+        // The Cast receiver is a page of its own, which a TV opens (vite.dev/guide/build#multi-page-app).
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          receiver: path.resolve(__dirname, 'cast/receiver.html'),
+        },
         output: {
           manualChunks(id: string) {
             if (id.includes('node_modules')) {

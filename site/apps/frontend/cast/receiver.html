@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AubeSonore</title>
+    <!-- The Cast receiver framework, from Google's host as its guide asks
+         (developers.google.com/cast/docs/web_receiver/basic). -->
+    <script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+    <style>
+      /* Hex, not the site's oklch tokens: older Cast devices run a Chrome without oklch. */
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #1f1d24;
+      }
+      cast-media-player {
+        --background-color: #1f1d24;
+        --font-family: 'Bricolage Grotesque Variable', sans-serif;
+        --logo-image: url('/icon-512.png');
+        --splash-image: url('/icon-512.png');
+        --splash-size: 12rem;
+        --progress-color: #e8e0d7;
+      }
+    </style>
+  </head>
+  <body>
+    <cast-media-player></cast-media-player>
+    <script type="module" src="/src/cast/receiver.ts"></script>
+  </body>
+</html>
