@@ -28,7 +28,9 @@ export function loadCastSdk(): Promise<boolean> {
     script.src = SDK_URL;
     script.async = true;
     script.onerror = () => resolve(false);
-    document.head.append(script);
+    // Once the page is idle, within 3 s: its two scripts and their 70 ms task are not what the
+    // page shows first. Chromium, the only browser that gets here, has requestIdleCallback.
+    requestIdleCallback(() => document.head.append(script), { timeout: 3_000 });
   });
   return loading;
 }
