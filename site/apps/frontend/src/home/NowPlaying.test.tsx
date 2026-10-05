@@ -112,6 +112,11 @@ describe('NowPlayingView', () => {
     expect(screen.getByText('Silence radio. Retour dans un instant.')).toBeInTheDocument();
   });
 
+  it('says the live is not answering, rather than load forever, when the station is unreachable', () => {
+    render(<NowPlayingView {...props({ track: null, isUnreachable: true })} />);
+    expect(screen.getByText('Le direct ne répond pas pour le moment.')).toBeInTheDocument();
+  });
+
   it('beats the heart when a track is kept, not when it loads kept', () => {
     const { rerender } = render(<NowPlayingView {...props({ isKept: true })} />);
     const keep = () => screen.getByRole('button', { name: 'Garder' });

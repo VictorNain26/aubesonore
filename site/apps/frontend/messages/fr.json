@@ -93,6 +93,7 @@
   "track_kept": "Gardé",
   "track_keep_aria": "Garder « {title} »",
   "off_air": "Silence radio. Retour dans un instant.",
+  "now_unreachable": "Le direct ne répond pas pour le moment.",
   "since_dawn_title": "Depuis l'aube",
   "since_dawn_body": "Tout ce qui est passé à l'antenne aujourd'hui. Un titre vous a arrêté ? Gardez-le.",
   "since_dawn_more": "Plus tôt dans la journée",
