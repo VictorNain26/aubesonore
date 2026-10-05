@@ -169,6 +169,19 @@ function reconnect(): void {
   }, delay);
 }
 
+/** A device the stream is cast to (Chromecast): while one is set, play, stop and volume go to it. */
+export interface RemotePlayback {
+  play: () => void;
+  stop: () => void;
+  setVolume: (value: number) => void;
+}
+
+let remote: RemotePlayback | null = null;
+
+export function setRemotePlayback(next: RemotePlayback | null): void {
+  remote = next;
+}
+
 let prevVolume = 0.5;
 // Each play() gets a number; a stop() or a newer play() makes older attempts
 // stale, so a late resolve or reject cannot overwrite the current state.
@@ -183,6 +196,12 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
 
   play: async () => {
     const attempt = ++playAttempt;
+    // Cast: the device plays; its state comes back through the cast store.
+    if (remote) {
+      set({ playError: null, isConnecting: true });
+      remote.play();
+      return;
+    }
     // A play during the stop's fade-out keeps the stream it was about to cut.
     if (stopTimer) {
       clearTimeout(stopTimer);
@@ -215,6 +234,11 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
 
   stop: () => {
     playAttempt++;
+    if (remote) {
+      remote.stop();
+      set({ isPlaying: false, isConnecting: false, playError: null });
+      return;
+    }
     wantsPlayback = false;
     clearStallTimer();
     reconnectAttempts = 0;
@@ -247,6 +271,7 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
   setVolume: (value: number) => {
     const clamped = Math.max(0, Math.min(1, value));
     getAudioElement().volume = clamped;
+    remote?.setVolume(clamped);
     // Silence is not kept: the next visit starts at the last audible level,
     // never on a mute the listener has forgotten.
     if (clamped > 0) {

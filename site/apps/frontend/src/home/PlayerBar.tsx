@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
-import { Airplay } from 'lucide-react';
+import { Airplay, Cast } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { KeepHeart } from './KeepHeart';
 import { useNowPlayingStore } from '../lib/azuracast';
 import { usePlayer } from '../lib/player';
 import { useAirPlayStore } from '../stores/airplayStore';
+import { useCastStore } from '../stores/castStore';
 import { useTrackActions } from '../hooks/player/useTrackActions';
 import { useArtistPage } from '../hooks/useArtistPage';
 import { artistPath } from '../lib/artistProfile';
@@ -45,6 +46,8 @@ export interface PlayerBarViewProps {
   onVolumeChange: (value: number) => void;
   onToggleMute: () => void;
   airPlay: { isActive: boolean; onOpen: () => void } | null;
+  /** Chromecast, once a device is on the network; `deviceName` while the stream is cast to it. */
+  chromecast: { deviceName: string | null; onOpen: () => void } | null;
   /** The page of the artist on air, once it exists: the track leads there. */
   artistHref: string | null;
   isOnline: boolean;
@@ -75,6 +78,7 @@ export function PlayerBarView({
   onVolumeChange,
   onToggleMute,
   airPlay,
+  chromecast,
   artistHref,
   isOnline,
   hasChanged = false,
@@ -121,6 +125,7 @@ export function PlayerBarView({
               isKept={isKept}
               onToggleKeep={onToggleKeep}
               airPlay={airPlay}
+              chromecast={chromecast}
             >
               <TrackLine track={track} hasChanged={hasChanged} />
             </NowPlayingSheet>
@@ -179,6 +184,20 @@ export function PlayerBarView({
           className={ICON_BUTTON}
         >
           <Airplay className="size-4" aria-hidden="true" />
+        </button>
+      ) : null}
+
+      {chromecast ? (
+        <button
+          type="button"
+          onClick={chromecast.onOpen}
+          aria-label={
+            chromecast.deviceName ? m.cast_active({ device: chromecast.deviceName }) : m.cast_open()
+          }
+          aria-pressed={chromecast.deviceName !== null}
+          className={ICON_BUTTON}
+        >
+          <Cast className="size-4" aria-hidden="true" />
         </button>
       ) : null}
     </section>
@@ -248,15 +267,25 @@ export function PlayerBar() {
       openPicker: s.openPicker,
     }))
   );
+  const chromecast = useCastStore(
+    useShallow((s) => ({
+      available: s.available,
+      deviceName: s.deviceName,
+      initialize: s.initialize,
+      openPicker: s.openPicker,
+    }))
+  );
   const { isLiked, handleToggleLike } = useTrackActions();
   const heroListenVisible = useHeroListenVisible((s) => s.visible);
   const { restoreVolume } = player;
   const { initialize } = airPlay;
+  const { initialize: initializeCast } = chromecast;
 
   useEffect(() => {
     restoreVolume();
     initialize();
-  }, [restoreVolume, initialize]);
+    initializeCast();
+  }, [restoreVolume, initialize, initializeCast]);
 
   return (
     <PlayerBarView
@@ -276,6 +305,11 @@ export function PlayerBar() {
       onToggleMute={player.toggleMute}
       airPlay={
         airPlay.available ? { isActive: airPlay.isActive, onOpen: airPlay.openPicker } : null
+      }
+      chromecast={
+        chromecast.available || chromecast.deviceName
+          ? { deviceName: chromecast.deviceName, onOpen: chromecast.openPicker }
+          : null
       }
       artistHref={artistPage ? artistPath(artistPage) : null}
       isOnline={isOnline}

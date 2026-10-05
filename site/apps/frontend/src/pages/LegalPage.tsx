@@ -61,6 +61,7 @@ export function LegalPage() {
             </a>
             .
           </p>
+          <p className="m-0">{m.legal_cast()}</p>
           <p className="m-0">{m.legal_data_retention()}</p>
           <p className="m-0">
             {m.legal_data_rights()} {mail}. {m.legal_data_cnil()}

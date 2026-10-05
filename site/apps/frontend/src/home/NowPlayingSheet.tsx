@@ -1,6 +1,6 @@
 import { Drawer } from '@base-ui/react/drawer';
 import { Link } from 'react-router';
-import { Airplay } from 'lucide-react';
+import { Airplay, Cast } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Cover } from './Cover';
 import { KeepHeart } from './KeepHeart';
@@ -16,13 +16,14 @@ export interface NowPlayingSheetProps {
   isKept: boolean;
   onToggleKeep: () => void;
   airPlay: { isActive: boolean; onOpen: () => void } | null;
+  chromecast: { deviceName: string | null; onOpen: () => void } | null;
   /** The bar's track line, which opens the sheet. */
   children: React.ReactNode;
 }
 
 /**
  * The track on air, whole, on a phone: a tap on the bar's track line raises a sheet with the large
- * cover, the full title, the artist (a link to their page), the album, Écouter, Garder and AirPlay.
+ * cover, the full title, the artist (a link to their page), the album, Écouter, Garder, AirPlay and Chromecast.
  * It closes by a swipe down, a tap outside, Escape or Fermer. Base UI's Drawer brings the gesture,
  * the focus trap and iOS's quirks; the motion is its bottom-sheet example's.
  */
@@ -34,6 +35,7 @@ export function NowPlayingSheet({
   isKept,
   onToggleKeep,
   airPlay,
+  chromecast,
   children,
 }: NowPlayingSheetProps) {
   const album = track.album.trim();
@@ -109,6 +111,19 @@ export function NowPlayingSheet({
                     >
                       <Airplay className="size-4" aria-hidden="true" />
                       {airPlay.isActive ? m.airplay_active() : m.airplay_open()}
+                    </button>
+                  ) : null}
+                  {chromecast ? (
+                    <button
+                      type="button"
+                      onClick={chromecast.onOpen}
+                      aria-pressed={chromecast.deviceName !== null}
+                      className={TEXT_ACTION}
+                    >
+                      <Cast className="size-4" aria-hidden="true" />
+                      {chromecast.deviceName
+                        ? m.cast_active({ device: chromecast.deviceName })
+                        : m.cast_open()}
                     </button>
                   ) : null}
                   <Drawer.Close className={cn(TEXT_ACTION, 'ml-auto')}>{m.close()}</Drawer.Close>

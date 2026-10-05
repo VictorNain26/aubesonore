@@ -97,6 +97,13 @@ Musilogy is the artist page's part that leads elsewhere (its close artists, infl
 - **The map** (`MusilogyMap`) draws the 40 closest neighbours in time, laid out by `layoutMap` (a pure function): years left to right, the artist's span on the axis with its name, each neighbour at its start year, the closest on the rows nearest the axis; a label with no free row is left to the lists. Labels are Geist Mono at 12 units, whose advance (0.6 em, measured in Chromium) makes their width known — a CSS letter-spacing on the SVG would break that. The drawing is `aria-hidden`: the lists below are its accessible form. On a narrow screen it keeps its size, scrolls sideways and opens on the artist.
 - The search page is the app shell, `X-Robots-Tag: noindex` (nginx).
 
+## Casting
+
+- **AirPlay** is Safari's own picker on the `<audio>` element (`lib/cast/airplay.ts`). **Chromecast** goes to AubeSonore's Custom Web Receiver, app id `E913507F` in the Cast SDK Developer Console (`lib/cast/chromecast.ts`), never the Default Media Receiver: the receiver follows the track on air itself, from the static now-playing file, and sets the media information again at each track, so the TV's title and cover change while the stream plays on (Music Assistant's receiver does the same).
+- **The receiver is `cast/receiver.html`**, a second Vite entry: no React, no service worker (a small plugin in `vite.config.ts` strips what vite-plugin-pwa injects into every page), hex colours (older Cast devices lack oklch). It plays the station whatever the sender asks, as a LIVE stream, without Pause: resuming a live stream plays the buffer behind the antenna. nginx serves it with its own CSP (gstatic, ajax.googleapis, blob:).
+- **The sender SDK loads in Chromium only**, and the button shows once a device is on the network. While a session lasts, `player.ts` relays play, stop and volume to the device (`setRemotePlayback`), and the cast store mirrors the device's state back into the player. The legal page names the SDK.
+- The app is tested on the devices registered in the console before it is published; publishing makes it reachable from every Cast device.
+
 ## SSRF, headers, and other security baselines
 
 - Never `fetch()` a user-supplied URL without `assertSafeUrl()` from `lib/security/urlValidation`. It blocks private IPv4/IPv6, link-local (`169.254.0.0/16` = cloud metadata), and enforces `https` in prod.

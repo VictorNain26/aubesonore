@@ -24,6 +24,7 @@ aubesonore/
 - **Page artiste** (artistes joués seulement) : portrait Deezer, faits MusicBrainz, ouverture de l'article Wikipédia ou, sans article, les faits dits en une phrase ; vos titres gardés de l'artiste ; où l'écouter ; les sections de Musilogy qui ont du contenu. L'artiste est identifié par l'ISRC du titre joué, vérifié contre le titre et le nom.
 - **Musilogy** : pour tout artiste de MusicBrainz, qui faisait cette musique avant lui, en même temps, après lui (proximité ListenBrainz rangée par les dates), ses influences déclarées (Wikidata) et ses groupes (MusicBrainz), en carte et en listes ; recherche par nom.
 - **Pochettes** : à l'enrichissement, la pochette iTunes est retenue quand l'artiste correspond ; à défaut, un visuel « onde » déterministe est généré côté client.
+- **Diffusion** : AirPlay dans Safari ; Chromecast dans Chrome, vers le récepteur AubeSonore (`cast/receiver.html`), qui suit lui-même le titre en cours.
 - **PWA** installable.
 
 ## Stack

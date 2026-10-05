@@ -24,6 +24,7 @@ function props(overrides: Partial<PlayerBarViewProps> = {}): PlayerBarViewProps 
     onVolumeChange: vi.fn(),
     onToggleMute: vi.fn(),
     airPlay: null,
+    chromecast: null,
     artistHref: null,
     isOnline: true,
     ...overrides,
@@ -95,6 +96,24 @@ describe('PlayerBarView', () => {
     rerender(<PlayerBarView {...props({ airPlay: { isActive: false, onOpen } })} />);
     await userEvent.click(screen.getByRole('button', { name: 'Diffuser via AirPlay' }));
     expect(onOpen).toHaveBeenCalledOnce();
+  });
+
+  it('offers Chromecast once a device is on the network, and names the one it casts to', async () => {
+    const onOpen = vi.fn();
+    const { rerender } = render(<PlayerBarView {...props()} />);
+    expect(
+      screen.queryByRole('button', { name: 'Diffuser sur un appareil' })
+    ).not.toBeInTheDocument();
+
+    rerender(<PlayerBarView {...props({ chromecast: { deviceName: null, onOpen } })} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Diffuser sur un appareil' }));
+    expect(onOpen).toHaveBeenCalledOnce();
+
+    rerender(<PlayerBarView {...props({ chromecast: { deviceName: 'TV', onOpen } })} />);
+    expect(screen.getByRole('button', { name: 'Diffusion sur TV' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
   });
 
   it("leads from the track to the artist's page once it exists", () => {
