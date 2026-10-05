@@ -167,17 +167,17 @@ function Profile({
   return (
     <>
       {/* The sections' 4/8 grid: the portrait in the title column, who they are beside it. */}
-      <div className="lift-in px-page grid gap-6 pt-10 md:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] md:gap-16 md:pt-16">
+      <div className="lift-in px-page wide:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] wide:gap-16 grid gap-6 pt-10 md:pt-16">
         <Cover
           src={profile.image}
           alt={m.artist_portrait_alt({ name: profile.name })}
           seed={profile.name}
           priority
-          // w-40 on phones; the 4/12 title column from md.
-          sizes="(min-width: 48rem) 33vw, 10rem"
-          className="aspect-square w-40 md:w-full"
+          // w-40 on phones, w-64 on upright tablets; the 4/12 title column where it is wide.
+          sizes="(min-width: 64rem) 33vw, (min-width: 48rem) and (orientation: landscape) 33vw, (min-width: 48rem) 16rem, 10rem"
+          className="wide:w-full aspect-square w-40 md:w-64"
         />
-        <div className="flex min-w-0 flex-col gap-3 md:justify-end">
+        <div className="wide:justify-end flex min-w-0 flex-col gap-3">
           <DiscoveryTrail steps={trail} />
           <h1 className="text-hero m-0 break-words">{profile.name}</h1>
           {facts ? <p className="text-sub text-text-muted m-0">{facts}</p> : null}

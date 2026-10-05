@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * A section of a page: its title and intro in the title column (4 parts of 12 from 768px), its
+ * A section of a page: its title and intro in the title column (4 parts of 12 where the screen is wide, tokens.css; stacked on phones and upright tablets), its
  * content in the other 8. Its id is an anchor (PageNav). `sticky` keeps the title in view beside
  * long content, as « Depuis l'aube » does on the home page.
  */
@@ -23,12 +23,12 @@ export function Section({
     <section
       id={id}
       aria-labelledby={`${id}-title`}
-      className="grid scroll-mt-10 gap-6 md:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] md:gap-16"
+      className="wide:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] wide:gap-16 grid scroll-mt-10 gap-6"
     >
       <div
         className={cn(
           'reveal flex flex-col gap-2 self-start md:gap-3',
-          sticky && 'md:sticky md:top-10'
+          sticky && 'wide:sticky wide:top-10'
         )}
       >
         <h2 id={`${id}-title`} className="text-section m-0">

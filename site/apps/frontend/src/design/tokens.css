@@ -461,6 +461,14 @@
   min-height: calc(100dvh - var(--bar-space));
 }
 
+/* Room for the 4/12 title column beside the content: a large screen, or a landscape one from md. A
+   tablet held upright stacks them, as a phone does, rather than squeeze a 208 px cover. */
+@custom-variant wide {
+  @media (width >= 64rem), (width >= 48rem) and (orientation: landscape) {
+    @slot;
+  }
+}
+
 /* The logo (design/atoms/Logo.tsx): ink in the text colour, the sun in the dawn. */
 @utility logo-sun {
   fill: var(--dawn);

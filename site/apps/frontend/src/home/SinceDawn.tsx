@@ -45,9 +45,9 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
     <section
       id="depuis-l-aube"
       aria-labelledby="since-dawn-title"
-      className="grid scroll-mt-10 gap-6 md:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] md:gap-16"
+      className="wide:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] wide:gap-16 grid scroll-mt-10 gap-6"
     >
-      <div className="reveal flex flex-col gap-2 self-start md:sticky md:top-10 md:gap-3">
+      <div className="reveal wide:sticky wide:top-10 flex flex-col gap-2 self-start md:gap-3">
         <h2 id="since-dawn-title" className="text-section m-0">
           {m.since_dawn_title()}
         </h2>
