@@ -461,8 +461,75 @@
   min-height: calc(100dvh - var(--bar-space));
 }
 
-@utility condensed {
-  font-stretch: 75%;
+/* The logo (design/atoms/Logo.tsx): ink in the text colour, the sun in the dawn. */
+@utility logo-sun {
+  fill: var(--dawn);
+}
+@utility logo-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@utility logo-letter {
+  fill: currentColor;
+}
+
+/* Its intro, once per page load: the horizon is drawn left to right (a dash the length of the
+   line, pathLength 1, pushed just past its start so no round cap shows), the sun rises from
+   behind it, the letters rise from the baseline one after another. 1.6 s in all. */
+@utility logo-intro {
+  @media (prefers-reduced-motion: no-preference) {
+    & .logo-line {
+      stroke-dasharray: 1 3;
+      animation: logo-draw 0.9s var(--ease-out-soft) both;
+    }
+    & .logo-sun {
+      transform-box: fill-box;
+      animation: logo-rise 1.1s var(--ease-out-soft) 0.35s both;
+    }
+    & .logo-letter {
+      transform-box: fill-box;
+      animation: logo-letter 0.7s var(--ease-out-soft) calc(0.55s + var(--i) * 45ms) both;
+    }
+  }
+}
+
+/* A link holding the logo answers the pointer: the wave swells once. On the wave's group, not
+   the line, so the intro's animation is left alone. */
+@utility logo-wave {
+  transform-box: fill-box;
+  transform-origin: center;
+
+  @media (prefers-reduced-motion: no-preference) {
+    a:hover & {
+      animation: logo-swell 0.7s cubic-bezier(0.45, 0, 0.55, 1);
+    }
+  }
+}
+
+@keyframes logo-draw {
+  from {
+    stroke-dashoffset: 1.05;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes logo-rise {
+  from {
+    transform: translateY(55%);
+  }
+}
+@keyframes logo-letter {
+  from {
+    transform: translateY(105%);
+  }
+}
+@keyframes logo-swell {
+  50% {
+    transform: scaleY(1.7);
+  }
 }
 
 /* Each block comes forward as it enters the screen, fading in from 98% of its

@@ -1,6 +1,7 @@
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '../stores/authStore';
 import { Menu } from '../design/molecules/Menu';
+import { Logo } from '../design/atoms/Logo';
 import { MobileMenu } from './MobileMenu';
 import { Link, useLocation } from 'react-router';
 import { localizeHref } from '@/paraglide/runtime.js';
@@ -11,7 +12,7 @@ const NAV_LINK =
   'text-ui ease-out-quart focus-visible:outline-accent hidden min-h-11 items-center rounded-sm transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-97 md:inline-flex';
 
 const BRAND_LINK =
-  'ease-out-quart focus-visible:outline-accent flex flex-col gap-1.5 rounded-sm transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4';
+  'focus-visible:outline-accent flex flex-col gap-2 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4';
 
 const OUTLINE_PILL =
   'text-ui border-accent ease-out-quart hover:bg-accent hover:text-on-accent focus-visible:outline-accent inline-flex min-h-11 items-center rounded-full border px-4.5 transition-[color,background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
@@ -44,8 +45,8 @@ export function SiteHeader() {
   // The same link on every page; on the home page it is also the page's heading.
   const brand = (
     <Link to={localizeHref('/')} className={BRAND_LINK}>
-      <span className="text-mark condensed">aubesonore</span>
-      <span className="sr-only">, </span>
+      <Logo intro className="text-mark h-[0.795em] self-start" />
+      <span className="sr-only">AubeSonore, </span>
       <span className="text-sub text-text-muted font-normal text-balance">{m.hero_title()}</span>
     </Link>
   );

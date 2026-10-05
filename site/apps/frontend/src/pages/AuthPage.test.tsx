@@ -29,7 +29,7 @@ describe('AuthPage', () => {
     open('/connexion');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'Se connecter' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /aubesonore/ })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: /^AubeSonore/ })).toHaveAttribute('href', '/');
     expect(screen.getByLabelText('Adresse e-mail')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Se connecter' })).not.toBeInTheDocument();
   });
