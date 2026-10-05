@@ -45,14 +45,18 @@ export function SiteHeader() {
   // The same link on every page; on the home page it is also the page's heading.
   const brand = (
     <Link to={localizeHref('/')} className={BRAND_LINK}>
-      <Logo intro className="text-mark h-[0.795em] self-start" />
+      {/* Under 22rem the lockup steps down a size, so Menu keeps the page's right gutter. */}
+      <Logo intro className="text-mark max-[22rem]:text-title h-[0.795em] self-start" />
       <span className="sr-only">AubeSonore, </span>
-      <span className="text-sub text-text-muted font-normal text-balance">{m.hero_title()}</span>
+      {/* On phones the line costs two rows above Écouter: it stays in the link's name only. */}
+      <span className="text-sub text-text-muted sr-only font-normal text-balance md:not-sr-only">
+        {m.hero_title()}
+      </span>
     </Link>
   );
 
   return (
-    <header className="px-page relative z-10 flex items-start justify-between gap-6 pt-5 md:pt-7">
+    <header className="px-page relative z-10 flex items-center justify-between gap-6 pt-4 md:items-start md:pt-7">
       {isHome ? <h1 className="m-0">{brand}</h1> : brand}
       {/* Phones get the pages in a menu: the header has no room for them. */}
       <span className="shrink-0 md:hidden">
