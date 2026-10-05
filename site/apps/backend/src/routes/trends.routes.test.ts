@@ -5,12 +5,14 @@ import { __resetRateLimits } from '../lib/rateLimit';
 import type { TrendEntry, TrendsResult } from '../services/trendsService';
 
 const weekRows: TrendEntry[] = [
-  { title: 'Week Hit', artist: 'Artist A', artworkUrl: null, likes: 3 },
+  { title: 'Week Hit', artist: 'Artist A', artworkUrl: null, likes: 3, artistPage: null },
 ];
 const allTimeRows: TrendEntry[] = [
-  { title: 'All-Time Hit', artist: 'Artist B', artworkUrl: null, likes: 42 },
+  { title: 'All-Time Hit', artist: 'Artist B', artworkUrl: null, likes: 42, artistPage: null },
 ];
 const payload: TrendsResult = { week: weekRows, allTime: allTimeRows };
+// The aggregate's rows: the service turns slug and name into artistPage.
+const row = ({ artistPage: _page, ...entry }: TrendEntry) => ({ ...entry, slug: null, name: null });
 
 // Stub the database boundary, not `../services/trendsService`: Bun keeps module
 // mocks for the whole run even under `--isolate`, so a partial mock of the
@@ -20,6 +22,7 @@ const fakeDb = {
     let filtered = false;
     const builder = {
       from: () => builder,
+      leftJoin: () => builder,
       $dynamic: () => builder,
       where: () => {
         filtered = true;
@@ -27,7 +30,7 @@ const fakeDb = {
       },
       groupBy: () => builder,
       orderBy: () => builder,
-      limit: (): Promise<TrendEntry[]> => Promise.resolve(filtered ? weekRows : allTimeRows),
+      limit: () => Promise.resolve((filtered ? weekRows : allTimeRows).map(row)),
     };
     return builder;
   },

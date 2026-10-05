@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { KeptArtistPage } from '@aubesonore/shared-types/client';
 import { API_BASE_URL } from '../utils/config';
 
 export interface TrendEntry {
@@ -6,6 +7,8 @@ export interface TrendEntry {
   artist: string;
   artworkUrl: string | null;
   likes: number;
+  /** The page of the artist the track is tied to, when that artist has one. */
+  artistPage: KeptArtistPage | null;
 }
 
 export interface TrendsResult {

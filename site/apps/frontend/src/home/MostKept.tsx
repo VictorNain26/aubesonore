@@ -1,6 +1,10 @@
 import { Tabs } from '@base-ui/react/tabs';
+import { Link } from 'react-router';
+import { cn } from '@/lib/utils';
 import { useTrends, type TrendEntry } from '../hooks/useTrends';
+import { artistPath } from '../lib/artistProfile';
 import { Cover } from './Cover';
+import { ARTIST_LINK } from './styles';
 import * as m from '@/paraglide/messages.js';
 
 type Period = 'week' | 'allTime';
@@ -46,7 +50,20 @@ function Ranking({ entries, period }: { entries: TrendEntry[]; period: Period })
             <span className="text-row truncate" title={entry.title}>
               {entry.title}
             </span>
-            <span className="text-sub text-text-muted truncate">{entry.artist}</span>
+            {entry.artistPage ? (
+              // Negative margins grow the tap target to 44px without moving the card.
+              <Link
+                to={artistPath(entry.artistPage)}
+                className={cn(
+                  ARTIST_LINK,
+                  'text-sub text-text-muted -my-3 max-w-full self-start truncate py-3 underline-offset-4'
+                )}
+              >
+                {entry.artistPage.name}
+              </Link>
+            ) : (
+              <span className="text-sub text-text-muted truncate">{entry.artist}</span>
+            )}
           </span>
         </li>
       ))}
