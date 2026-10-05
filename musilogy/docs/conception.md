@@ -32,7 +32,7 @@ et `run` lit celui que la constante épingle.
 
 **Gardées** : `artists` (identité, type, dates et leur provenance, lieu,
 genres), `albums` (non chargée : elle sert les dates, et ne compte que les
-albums), `genres` (vocabulaire), `links` (relations typées entre artistes),
+albums), `genres` (vocabulaire), `links` (appartenances, pseudonymes et changements de nom),
 `popularity`.
 
 **Retirées**, avec leurs étapes SQL, leurs invariants et leurs tests :
@@ -107,7 +107,10 @@ absente (code `42883`).
 | Fonction | État |
 |---|---|
 | `artist_card` | livrée ; `proximity_surveyed` ajoutée par #286 |
-| `artist_links` | livrée |
+| `artist_links` | livrée ; réduite aux relations de la page par cette PR, retirée quand la page lit les trois suivantes |
+| `artist_bands` | livrée par cette PR |
+| `artist_member_projects` | livrée par cette PR |
+| `artist_other_names` | livrée par cette PR |
 | `artist_influences` | livrée par #286 |
 | `search_artists` | livrée par #286 |
 | `artist_neighbours` | à livrer, après le relevé de proximité (§5) |
@@ -125,7 +128,7 @@ musilogy.artist_card(artist text) RETURNS TABLE (
   y_end_source text, ended boolean, genres jsonb, genre_source text,
   listen_count bigint, user_count bigint, proximity_surveyed boolean)
 
--- Liens typés (inchangée) ; le site garde les types de groupe.
+-- Liens typés : appartenances, pseudonymes, changements de nom.
 musilogy.artist_links(artist text) RETURNS TABLE (
   type text, direction text, other_mbid text, other_name text,
   other_disambiguation text, other_y0 integer, y_begin integer, y_end integer)
@@ -155,6 +158,29 @@ musilogy.search_artists(query text, page_size integer) RETURNS TABLE (
 musilogy.artist_releases(artist text) RETURNS TABLE (
   mbid text, title text, primary_type text, soundtrack boolean, remix boolean,
   y integer)
+
+-- Membres d'un groupe ('member' : l'autre en fait partie) ou groupes d'une
+-- personne ('group' : l'artiste fait partie de l'autre) ; membre, fondateur et
+-- collaboration sont une seule relation (docs/vision.md §2.4). Plusieurs
+-- relations entre les deux font une ligne, de la première année déclarée à la
+-- dernière. Rôle, puis année de début (sans année en dernier), puis nom.
+musilogy.artist_bands(artist text) RETURNS TABLE (
+  role text, mbid text, name text, disambiguation text, y0 integer,
+  y_begin integer, y_end integer)
+
+-- Projets des membres, à deux pas d'un groupe : les autres groupes de ses
+-- membres et les noms sous lesquels ils jouent, seulement ceux qui ont un
+-- disque (artist_releases) ; ni l'artiste, ni un de ses membres, ni un de ses
+-- anciens ou nouveaux noms. `via` : les membres qui y mènent. Du plus ancien
+-- au plus récent (y0).
+musilogy.artist_member_projects(artist text) RETURNS TABLE (
+  mbid text, name text, disambiguation text, y0 integer, via text[])
+
+-- Autres noms : 'alias' (nom sous lequel la personne joue), 'person' (la
+-- personne derrière un nom de scène), 'former' et 'later' (changement de
+-- nom). Du plus ancien au plus récent.
+musilogy.artist_other_names(artist text) RETURNS TABLE (
+  kind text, mbid text, name text, disambiguation text, y0 integer)
 
 -- Pages que MusicBrainz relie à l'artiste et qui sont encore les siennes
 -- (relation non terminée), avec le type de relation de MusicBrainz ; par

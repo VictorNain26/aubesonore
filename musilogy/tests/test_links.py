@@ -59,18 +59,31 @@ def test_a_relation_without_a_target_is_dropped_and_its_siblings_kept(tmp_path):
 
 
 def test_a_link_to_an_artist_outside_the_population_is_counted_not_published(tmp_path):
-    # A character voiced by the person is not extracted: the link has nowhere
-    # to land, and the cut stays visible in the manifest counter.
-    voice = {
-        "type": "voice actor",
-        "direction": "forward",
-        "mbid": "character",
-        "begin": None,
-        "end": None,
-    }
-    c = band_and_member(tmp_path, [membership("backward", PERSON)], [voice])
+    # A group that is not extracted: the link has nowhere to land, and the cut
+    # stays visible in the manifest counter.
+    c = band_and_member(
+        tmp_path, [membership("backward", PERSON)], [membership("forward", "unextracted")]
+    )
     assert links(c) == [(PERSON, GROUP, "member of band", 1990, None)]
-    assert c.execute("SELECT to_unextracted_artist FROM link_exclusions").fetchone() == (1,)
+    assert c.execute(
+        "SELECT not_on_page, to_unextracted_artist FROM link_exclusions"
+    ).fetchone() == (
+        0,
+        1,
+    )
+
+
+def test_a_relation_of_a_life_rather_than_of_the_music_is_counted_not_published(tmp_path):
+    # Teaching links two artists of the population, yet no page shows it.
+    teacher = {"type": "teacher", "direction": "forward", "mbid": GROUP, "begin": None, "end": None}
+    c = band_and_member(tmp_path, [membership("backward", PERSON)], [teacher])
+    assert links(c) == [(PERSON, GROUP, "member of band", 1990, None)]
+    assert c.execute(
+        "SELECT not_on_page, to_unextracted_artist FROM link_exclusions"
+    ).fetchone() == (
+        1,
+        0,
+    )
 
 
 DISINCARNATE = "a9424175-8b06-44ad-a1f4-319e92a50879"

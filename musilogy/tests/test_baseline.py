@@ -23,7 +23,7 @@ BASELINE = {
     "artists": 2_281_691,
     "albums": 1_290_584,
     "genres": 1_729,
-    "links": 771_147,
+    "links": 674_186,
     "popularity": 989_488,
     # One row per pair of MBIDs Wikidata relates by "influenced by" (P737),
     # deprecated statements left out.
@@ -46,36 +46,24 @@ DISCOGRAPHY_EXCLUSIONS = {"malformed": 1, "not_album_or_ep": 1_274, "secondary_t
 # A drift in how MBIDs are read on either side — case, whitespace — moves this
 # first.
 INFLUENCES_BETWEEN_ARTISTS = 9_266
-# links: every artist-to-artist relation, oriented source -> target and
+# links: the relations a page shows, oriented source -> target and
 # de-duplicated across the two artists that carry it. Memberships replace the
 # former `members` table (601 759 rows), which read them from the band's side:
 # it kept members that are not artists of this pipeline, now cut and counted,
-# and published 2 397 group-in-group memberships reversed.
+# and published 2 397 group-in-group memberships reversed. Each count is the
+# one the type had before the table kept only these five: narrowing it moved
+# no row of a type kept.
 LINK_TYPE_BREAKDOWN = {
     "member of band": 588_501,
     "is person": 68_334,
-    "teacher": 29_242,
-    "parent": 15_520,
-    "sibling": 14_961,
-    "married": 9_719,
     "collaboration": 8_176,
     "founder": 7_328,
-    "conductor position": 7_062,
-    "instrumental supporting musician": 5_487,
-    "subgroup": 3_424,
-    "tribute": 2_780,
-    "supporting musician": 2_512,
-    "vocal supporting musician": 2_138,
     "artist rename": 1_847,
-    "involved with": 1_770,
-    "artistic director": 1_212,
-    "named after artist": 666,
-    "voice actor": 235,
-    "composer-in-residence": 227,
-    "artist-in-residence": 6,
 }
-# Links with an end outside `artists` (characters, untyped artists...).
-LINK_EXCLUSIONS = {"to_unextracted_artist": 38_442}
+# Of the 809 589 artist-to-artist relations of the dump: those of a life
+# rather than of the music (teacher, family, touring musician, tribute…), and
+# those of the five types with an end outside `artists`.
+LINK_EXCLUSIONS = {"not_on_page": 109_749, "to_unextracted_artist": 25_654}
 Y0_SOURCE_BREAKDOWN = {"declared": 235_246, "first_album": 346_442, None: 1_700_003}
 Y_END_SOURCE_BREAKDOWN = {"declared": 147_025, "last_album": 438_801, None: 1_695_865}
 # 25_band_genres.sql: the declared genres win, the albums take over.

@@ -214,6 +214,7 @@ INVARIANTS = (
     "genre_n_artists_mismatch",
     "link_endpoint_missing",
     "link_incomplete",
+    "link_unexpected_type",
     "duplicate_link",
     "link_misoriented",
     "url_without_artist",

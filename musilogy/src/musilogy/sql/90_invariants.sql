@@ -174,6 +174,11 @@ CREATE OR REPLACE VIEW link_endpoint_missing AS
   SELECT src_mbid, dst_mbid, type FROM links l
   WHERE NOT EXISTS (SELECT 1 FROM artists a WHERE a.mbid = l.src_mbid)
      OR NOT EXISTS (SELECT 1 FROM artists a WHERE a.mbid = l.dst_mbid);
+-- The relations a page shows, restated as a literal rather than through the
+-- macro that filtered them: widening the links is a deliberate edit of both.
+CREATE OR REPLACE VIEW link_unexpected_type AS
+  SELECT src_mbid, dst_mbid, type FROM links
+  WHERE type NOT IN ('member of band', 'founder', 'collaboration', 'is person', 'artist rename');
 -- A link names two artists and what relates them; none of the three may be
 -- absent. Stated on the published columns, not on the WHERE that filtered.
 CREATE OR REPLACE VIEW link_incomplete AS
