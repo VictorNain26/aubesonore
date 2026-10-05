@@ -17,7 +17,7 @@ The README has setup details; this file is for Claude.
 - **Commits** — enforced by `.husky/commit-msg` + `commitlint.config.js`. Scope = app or module touched.
 - **Branches** — short kebab-case (`feat/like-track-batch`, `fix/cors-prod`). The default branch is `master`; changes land through a PR.
 - **Code style** — Prettier (`.prettierrc.json`). Named exports preferred over default. TypeScript strict everywhere (see `tsconfig.base.json`).
-- **File naming** — backend uses dotted (`track.routes.ts`, `trackService.ts`), frontend uses PascalCase for components (`LikedTracksModal.tsx`) and camelCase for lib/hooks. Each layer is consistent internally.
+- **File naming** — backend uses dotted (`track.routes.ts`, `trackService.ts`), frontend uses PascalCase for components (`MyTracksView.tsx`) and camelCase for lib/hooks. Each layer is consistent internally.
 
 ## Workflow rules
 

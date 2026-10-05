@@ -1,18 +1,16 @@
-import { useRef, type ReactNode, type RefObject } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import * as m from '@/paraglide/messages.js';
 
-type ModalVariant = 'center' | 'split' | 'drawer';
+type ModalVariant = 'center' | 'split';
 
 const POPUP: Record<ModalVariant, string> = {
   center:
     'border-border bg-surface top-1/2 left-1/2 max-h-[calc(100dvh-2rem)] w-[min(92vw,28rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-md border p-6 data-[ending-style]:scale-95 data-[starting-style]:scale-95 starting:scale-95',
   split:
     'bg-surface inset-0 md:grid md:grid-cols-[minmax(0,1fr)_35rem] data-[ending-style]:translate-y-2 data-[starting-style]:translate-y-2 starting:translate-y-2',
-  drawer:
-    'bg-surface shadow-lift inset-y-0 right-0 w-full md:max-w-drawer data-[ending-style]:translate-x-8 data-[starting-style]:translate-x-8 starting:translate-x-8',
 };
 
 const CLOSE =
@@ -26,16 +24,11 @@ export interface ModalProps {
   onOpenChange: (open: boolean) => void;
   /**
    * `center` : petite fenêtre (à propos, erreurs). `split` : plein écran, panneau
-   * d'ambiance `aside` à gauche sur grand écran (connexion). `drawer` : panneau à
-   * droite, plein écran sur téléphone (Mes titres).
+   * d'ambiance `aside` à gauche sur grand écran (connexion).
    */
   variant?: ModalVariant;
   /** Panneau d'ambiance de la variante `split`, masqué sur téléphone. */
   aside?: ReactNode;
-  /** Contenu de la ligne du haut de la variante `drawer` (compte), face au bouton fermer. */
-  header?: ReactNode;
-  /** Petite ligne en capitales au-dessus du titre de la variante `drawer`. */
-  eyebrow?: string;
   /** Élément focalisé à l'ouverture (par défaut : le premier élément focalisable). */
   initialFocus?: RefObject<HTMLElement | null>;
 }
@@ -47,13 +40,8 @@ export function Modal({
   onOpenChange,
   variant = 'center',
   aside,
-  header,
-  eyebrow,
   initialFocus,
 }: ModalProps) {
-  // The drawer opens on its close button, not on the first link of its header.
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const focusTarget = initialFocus ?? (variant === 'drawer' ? closeRef : undefined);
   // Base UI sets data-starting-style only when `open` toggles; `starting:`
   // (@starting-style) also lets a dialog mounted already open enter.
   return (
@@ -61,7 +49,7 @@ export function Modal({
       <Dialog.Portal>
         <Dialog.Backdrop className="bg-scrim ease-out-quart fixed inset-0 z-50 transition-opacity duration-300 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 starting:opacity-0" />
         <Dialog.Popup
-          {...(focusTarget ? { initialFocus: focusTarget } : {})}
+          {...(initialFocus ? { initialFocus } : {})}
           className={cn(
             'text-text ease-out-soft fixed z-50 flex flex-col overflow-hidden transition-[opacity,translate,scale] duration-300 focus-visible:outline-none data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 starting:opacity-0',
             POPUP[variant]
@@ -84,26 +72,6 @@ export function Modal({
                   {children}
                 </div>
               </div>
-            </>
-          ) : variant === 'drawer' ? (
-            <>
-              <div className="dawn-rise relative px-6 pt-4 pb-8 md:px-8 md:pt-6">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="min-w-0">{header}</div>
-                  <Dialog.Close ref={closeRef} aria-label={m.close()} className={CLOSE}>
-                    <X className="size-4.5" strokeWidth={1.8} aria-hidden="true" />
-                  </Dialog.Close>
-                </div>
-                <div className="mt-10 flex flex-col gap-1.5">
-                  {eyebrow ? (
-                    <span className="text-label text-text-muted font-mono uppercase">
-                      {eyebrow}
-                    </span>
-                  ) : null}
-                  <Dialog.Title className="text-section m-0">{title}</Dialog.Title>
-                </div>
-              </div>
-              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">{children}</div>
             </>
           ) : (
             <>

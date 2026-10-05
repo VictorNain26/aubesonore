@@ -6,14 +6,21 @@ export const paraglideOptions = {
   project: './project.inlang',
   outdir: './src/paraglide',
   strategy: ['url', 'baseLocale'],
-  // First match wins (paraglidejs.com/i18n-routing): the artist, sign-in and legal pages have a
-  // path per language, every other page the /en/ prefix.
+  // First match wins (paraglidejs.com/i18n-routing): the artist, sign-in, library and legal pages
+  // have a path per language, every other page the /en/ prefix.
   urlPatterns: [
     {
       pattern: '/connexion',
       localized: [
         ['en', '/en/sign-in'],
         ['fr', '/connexion'],
+      ],
+    },
+    {
+      pattern: '/mes-titres',
+      localized: [
+        ['en', '/en/my-tracks'],
+        ['fr', '/mes-titres'],
       ],
     },
     {

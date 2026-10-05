@@ -45,6 +45,14 @@ export interface ClientLikedTrack {
   userId: string;
   /** The artist of the play the track was kept from; null when no play is known. */
   artistId: string | null;
+  /** That artist's page, in the listing only: a track just kept is tied a moment later. */
+  artistPage?: KeptArtistPage | null;
+}
+
+/** Where a kept track's artist lives on the site, under the name the antenna gave it. */
+export interface KeptArtistPage {
+  slug: string;
+  name: string;
 }
 
 export interface LikeTrackRequest {

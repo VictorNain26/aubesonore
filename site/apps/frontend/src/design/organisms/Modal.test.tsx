@@ -48,20 +48,4 @@ describe('Modal', () => {
     expect(screen.getByText('Ambiance')).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: 'Se connecter' })).toHaveTextContent('Formulaire');
   });
-
-  it('puts the custom header above the title in the drawer variant', () => {
-    render(
-      <Modal
-        title="Ma bibliothèque"
-        open
-        onOpenChange={vi.fn()}
-        variant="drawer"
-        header={<p>Jane</p>}
-      >
-        <p>Liste</p>
-      </Modal>
-    );
-    expect(screen.getByText('Jane')).toBeInTheDocument();
-    expect(screen.getByRole('dialog', { name: 'Ma bibliothèque' })).toHaveTextContent('Liste');
-  });
 });

@@ -27,8 +27,10 @@ export function createTrackApi(client: ApiClient): {
       }),
 
     unlikeTrack: (trackId: string): Promise<{ message: string; track: ClientLikedTrack }> =>
+      // keepalive: a removal sent as the page closes still reaches the server.
       client.fetch(`/api/track/like/${trackId}`, {
         method: 'DELETE',
+        keepalive: true,
       }),
 
     checkLiked: (data: CheckLikedRequest): Promise<CheckLikedResponse> =>

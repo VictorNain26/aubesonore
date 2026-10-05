@@ -11,6 +11,7 @@ import Layout from './layout/Layout';
 import HomePage from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { LegalPage } from './pages/LegalPage';
+import { MyTracksPage } from './pages/MyTracksPage';
 import { useLocaleStore } from './stores/localeStore';
 
 const ArtistPage = lazy(() => import('./pages/ArtistPage'));
@@ -65,6 +66,8 @@ export default function App() {
           <Route path="/en/musilogy" element={musilogy} />
           <Route path="/musilogy/:mbid/:slug?" element={musilogy} />
           <Route path="/en/musilogy/:mbid/:slug?" element={musilogy} />
+          <Route path="/mes-titres" element={<MyTracksPage />} />
+          <Route path="/en/my-tracks" element={<MyTracksPage />} />
           <Route path="/connexion" element={auth} />
           <Route path="/en/sign-in" element={auth} />
           <Route path="/reset-password" element={auth} />

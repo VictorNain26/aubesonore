@@ -2,6 +2,7 @@ import { db, schema } from '../db/index';
 import { eq, and, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import type { User, LikedTrack } from '../db/schema';
+import type { KeptArtistPage } from '@aubesonore/shared-types/client';
 import { findTrackLinks } from './trackLinksService';
 import { keepCover } from './coverService';
 import { resolveArtist } from './artistResolver';
@@ -141,15 +142,26 @@ async function enrichTrackInBackground(
   await db.update(schema.likedTracks).set(update).where(eq(schema.likedTracks.id, trackId));
 }
 
-export type LikedTrackListItem = LikedTrack;
+export type LikedTrackListItem = LikedTrack & { artistPage: KeptArtistPage | null };
 
-export async function getLikedTracks({ user }: { user: User }): Promise<LikedTrack[]> {
-  return db
-    .select()
+/** Each kept track with the page of the artist it is tied to, when that artist has one. */
+export async function getLikedTracks({ user }: { user: User }): Promise<LikedTrackListItem[]> {
+  const rows = await db
+    .select({
+      track: schema.likedTracks,
+      slug: schema.artistSlug.slug,
+      name: schema.artist.displayName,
+    })
     .from(schema.likedTracks)
+    .leftJoin(schema.artist, eq(schema.artist.id, schema.likedTracks.artistId))
+    .leftJoin(schema.artistSlug, eq(schema.artistSlug.artistId, schema.likedTracks.artistId))
     .where(eq(schema.likedTracks.userId, user.id))
     .orderBy(desc(schema.likedTracks.createdAt))
     .limit(LIKED_TRACKS_MAX_PAGE);
+  return rows.map(({ track, slug, name }) => ({
+    ...track,
+    artistPage: slug !== null && name !== null ? { slug, name } : null,
+  }));
 }
 
 // ─────────────────────────────────────────────
