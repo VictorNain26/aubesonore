@@ -1,11 +1,12 @@
 import { Drawer } from '@base-ui/react/drawer';
 import { Link } from 'react-router';
+import { Share2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Diffusion } from '../hooks/useDiffusion';
 import { CastControl } from './CastControl';
 import { Cover } from './Cover';
 import { KeepHeart } from './KeepHeart';
-import { ARTIST_LINK, TEXT_ACTION } from './styles';
+import { ARTIST_LINK, CLOSE_BUTTON, TEXT_ACTION } from './styles';
 import { LISTEN_PILL, ListenDisc, listenAria, listenLabel, type ListenState } from './listen';
 import * as m from '@/paraglide/messages.js';
 
@@ -16,6 +17,7 @@ export interface NowPlayingSheetProps {
   onToggleListen: () => void;
   isKept: boolean;
   onToggleKeep: () => void;
+  onShare: () => void;
   diffusion: Diffusion | null;
   /** The bar's track line, which opens the sheet. */
   children: React.ReactNode;
@@ -23,8 +25,9 @@ export interface NowPlayingSheetProps {
 
 /**
  * The track on air, whole, on a phone: a tap on the bar's track line raises a sheet with the large
- * cover, the full title, the artist (a link to their page), the album, Écouter, Garder and Diffuser.
- * It closes by a swipe down, a tap outside, Escape or Fermer. Base UI's Drawer brings the gesture,
+ * cover, the full title, the artist (a link to their page), the album, Écouter, Garder, Partager and
+ * Diffuser, as the hero has them.
+ * It closes by a swipe down, a tap outside, Escape or its close button, top right as in the Menu. Base UI's Drawer brings the gesture,
  * the focus trap and iOS's quirks; the motion is its bottom-sheet example's.
  */
 export function NowPlayingSheet({
@@ -34,6 +37,7 @@ export function NowPlayingSheet({
   onToggleListen,
   isKept,
   onToggleKeep,
+  onShare,
   diffusion,
   children,
 }: NowPlayingSheetProps) {
@@ -53,17 +57,25 @@ export function NowPlayingSheet({
       <Drawer.Portal>
         <Drawer.Backdrop className="sheet-backdrop bg-accent fixed inset-0 z-50 min-h-dvh" />
         <Drawer.Viewport className="fixed inset-0 z-50 flex items-end justify-center">
-          <Drawer.Popup className="sheet-popup bg-surface text-text shadow-lift w-full rounded-t-md px-6 pt-3 outline-none">
+          <Drawer.Popup className="sheet-popup bg-surface text-text shadow-lift relative w-full rounded-t-md px-6 pt-3 outline-none">
             <span
               aria-hidden="true"
               className="bg-border mx-auto mb-6 block h-1 w-10 rounded-full"
             />
+            <Drawer.Close
+              aria-label={m.close()}
+              className={cn(CLOSE_BUTTON, 'absolute top-2 right-3')}
+            >
+              <X className="size-4.5" strokeWidth={1.8} aria-hidden="true" />
+            </Drawer.Close>
             <Drawer.Content className="mx-auto flex w-full max-w-sm flex-col gap-2">
               <Cover
                 src={track.art}
                 alt=""
                 seed={`${track.artist}|${track.title}`}
-                className="shadow-cover mb-4 aspect-square w-full"
+                // At most a third of the screen's height: on a 360×640 phone the whole sheet,
+                // down to its actions, then holds without scrolling.
+                className="shadow-cover mb-4 aspect-square w-[min(100%,36svh)] self-center"
               />
               <Drawer.Title className="text-section m-0 text-balance">{track.title}</Drawer.Title>
               <p className="text-headline text-text-muted m-0 font-normal">
@@ -101,8 +113,11 @@ export function NowPlayingSheet({
                     <KeepHeart isKept={isKept} className="size-4" />
                     {m.track_keep()}
                   </button>
+                  <button type="button" onClick={onShare} className={TEXT_ACTION}>
+                    <Share2 className="size-4" strokeWidth={1.6} aria-hidden="true" />
+                    {m.track_share()}
+                  </button>
                   {diffusion ? <CastControl diffusion={diffusion} variant="text" /> : null}
-                  <Drawer.Close className={cn(TEXT_ACTION, 'ml-auto')}>{m.close()}</Drawer.Close>
                 </span>
               </div>
             </Drawer.Content>

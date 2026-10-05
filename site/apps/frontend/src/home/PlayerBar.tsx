@@ -42,6 +42,7 @@ export interface PlayerBarViewProps {
   } | null;
   isKept: boolean;
   onToggleKeep: () => void;
+  onShare: () => void;
   volume: number;
   isMuted: boolean;
   onVolumeChange: (value: number) => void;
@@ -73,6 +74,7 @@ export function PlayerBarView({
   track,
   isKept,
   onToggleKeep,
+  onShare,
   volume,
   isMuted,
   onVolumeChange,
@@ -123,6 +125,7 @@ export function PlayerBarView({
               onToggleListen={onToggleListen}
               isKept={isKept}
               onToggleKeep={onToggleKeep}
+              onShare={onShare}
               diffusion={diffusion}
             >
               <TrackLine track={track} hasChanged={hasChanged} />
@@ -237,7 +240,7 @@ export function PlayerBar() {
   const initializeAirPlay = useAirPlayStore((s) => s.initialize);
   const initializeCast = useCastStore((s) => s.initialize);
   const diffusion = useDiffusion();
-  const { isLiked, handleToggleLike } = useTrackActions();
+  const { isLiked, handleToggleLike, handleShare } = useTrackActions();
   const heroListenVisible = useHeroListenVisible((s) => s.visible);
   const { restoreVolume } = player;
   useEffect(() => {
@@ -258,6 +261,7 @@ export function PlayerBar() {
       }
       isKept={isLiked}
       onToggleKeep={handleToggleLike}
+      onShare={handleShare}
       volume={player.volume}
       isMuted={player.isMuted}
       onVolumeChange={player.setVolume}

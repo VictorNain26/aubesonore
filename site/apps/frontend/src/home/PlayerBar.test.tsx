@@ -19,6 +19,7 @@ function props(overrides: Partial<PlayerBarViewProps> = {}): PlayerBarViewProps 
     track: { title: 'Mimoun', artist: 'Mickey 3D', album: '', art: undefined, playedAt },
     isKept: false,
     onToggleKeep: vi.fn(),
+    onShare: vi.fn(),
     volume: 0.8,
     isMuted: false,
     onVolumeChange: vi.fn(),
@@ -31,6 +32,17 @@ function props(overrides: Partial<PlayerBarViewProps> = {}): PlayerBarViewProps 
 }
 
 describe('PlayerBarView', () => {
+  it("shares the track from the phone's sheet, as the hero does", async () => {
+    const user = userEvent.setup();
+    const onShare = vi.fn();
+    render(<PlayerBarView {...props({ onShare })} />);
+
+    await user.click(screen.getByRole('button', { name: /Ouvrir « Mimoun »/ }));
+    await user.click(await screen.findByRole('button', { name: 'Partager' }));
+
+    expect(onShare).toHaveBeenCalledOnce();
+  });
+
   it('puts the title and the artist forward, without the time', async () => {
     const onToggleListen = vi.fn();
     render(<PlayerBarView {...props({ onToggleListen })} />);
