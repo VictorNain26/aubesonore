@@ -41,7 +41,10 @@ function artist(
     },
     neighbours,
     influences: null,
-    links: [],
+    releases: [],
+    bands: { members: [], groups: [] },
+    memberProjects: [],
+    otherNames: [],
   };
 }
 

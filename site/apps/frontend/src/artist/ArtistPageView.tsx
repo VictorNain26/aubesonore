@@ -13,7 +13,9 @@ import { ARTIST_LINK } from '../home/styles';
 import * as m from '@/paraglide/messages.js';
 import { SiteHeader } from '../home/SiteHeader';
 import { Section } from '../design/molecules/Section';
-import { MusilogySections } from '../musilogy/MusilogyView';
+import { musilogyNav, MusilogySections } from '../musilogy/MusilogyView';
+import { PageNav } from '../design/molecules/PageNav';
+import { ReleasesSection } from '../musilogy/Releases';
 
 export type ArtistPageState =
   | { status: 'loading' }
@@ -169,30 +171,26 @@ function Profile({
             {profile.summary ? <Summary summary={profile.summary} /> : null}
             {portrait ? <Portrait text={portrait} /> : null}
           </div>
+          <div className="mt-3">
+            <PageNav
+              items={[
+                ...(profile.links.length > 0
+                  ? [{ id: 'listen', label: m.artist_listen_title() }]
+                  : []),
+                ...(musilogy?.releases && musilogy.releases.length > 0
+                  ? [{ id: 'records', label: m.artist_records_title() }]
+                  : []),
+                ...(kept.length > 0 ? [{ id: 'kept', label: m.artist_kept_title() }] : []),
+                ...(musilogy ? musilogyNav(musilogy) : []),
+              ]}
+            />
+          </div>
         </div>
       </div>
 
       <div className="px-page flex flex-col gap-16 py-16 md:gap-28 md:py-28">
-        {kept.length > 0 ? (
-          <Section id="kept" title={m.artist_kept_title()} body={m.artist_kept_body()}>
-            <ol className="m-0 list-none p-0">
-              {kept.map((track) => (
-                <li
-                  key={track.id}
-                  className="border-border reveal grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1"
-                >
-                  <span className="text-row truncate">{track.title}</span>
-                  <span className="text-ui text-text-muted font-mono whitespace-nowrap tabular-nums">
-                    {formatKeptAt(track.createdAt)}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </Section>
-        ) : null}
-
         {profile.links.length > 0 ? (
-          <Section id="listen" title={m.artist_listen_title()} body={m.artist_listen_body()}>
+          <Section id="listen" title={m.artist_listen_title()}>
             <ul className="m-0 flex list-none flex-wrap gap-x-8 gap-y-2 p-0">
               {profile.links.map((link) => (
                 <li key={link.url} className="reveal">
@@ -212,6 +210,28 @@ function Profile({
           </Section>
         ) : null}
 
+        {musilogy?.releases && musilogy.releases.length > 0 ? (
+          <ReleasesSection releases={musilogy.releases} />
+        ) : null}
+
+        {kept.length > 0 ? (
+          <Section id="kept" title={m.artist_kept_title()}>
+            <ol className="m-0 list-none p-0">
+              {kept.map((track) => (
+                <li
+                  key={track.id}
+                  className="border-border reveal grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1"
+                >
+                  <span className="text-row truncate">{track.title}</span>
+                  <span className="text-ui text-text-muted font-mono whitespace-nowrap tabular-nums">
+                    {formatKeptAt(track.createdAt)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </Section>
+        ) : null}
+
         {musilogy ? <MusilogySections artist={musilogy} thisYear={thisYear} /> : null}
       </div>
     </>
@@ -219,9 +239,10 @@ function Profile({
 }
 
 /**
- * An artist heard on the antenna, on one page: who they are, what the listener kept of them, where
- * to hear more, then what Musilogy holds of them (their place in time, the influences they
- * declared, their bands), each section only when it has something.
+ * An artist heard on the antenna, on one page, in the order of docs/vision.md §2.4: who they are,
+ * where to hear more, their albums and EPs, what the listener kept of them, then where to go next
+ * (their place in time, the influences they declared, their bands and their members' projects),
+ * each section only when it has something.
  */
 export function ArtistPageView({
   state,
