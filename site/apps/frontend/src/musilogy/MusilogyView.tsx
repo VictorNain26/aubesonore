@@ -4,39 +4,21 @@ import type {
   MusilogyArtist,
   MusilogyArtistRef,
   MusilogyBandmate,
-  MusilogyCard,
   MusilogyOtherName,
   MusilogySearchHit,
 } from '@aubesonore/shared-types/client';
-import { getLocale } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
-import { PageNav, type PageNavItem } from '../design/molecules/PageNav';
+import type { PageNavItem } from '../design/molecules/PageNav';
 import { Section } from '../design/molecules/Section';
 import { SiteHeader } from '../home/SiteHeader';
 import { ARTIST_LINK, TEXT_ACTION } from '../home/styles';
 import { cn } from '@/lib/utils';
-import { DISCOVERY, type TrailStep } from '../lib/discoveryTrail';
+import { DISCOVERY } from '../lib/discoveryTrail';
 import { pagePathOf } from '../lib/musilogy';
-import { DiscoveryTrail } from '../design/molecules/DiscoveryTrail';
 import { MusilogyMap } from './MusilogyMap';
-import { ReleasesSection } from './Releases';
-
-export type MusilogyState =
-  | { status: 'loading' }
-  | { status: 'missing' }
-  | { status: 'unavailable' }
-  | { status: 'error' }
-  | { status: 'ready'; artist: MusilogyArtist };
 
 // A list shows its closest first; the rest opens on demand.
 const FIRST_SHOWN = 12;
-
-const KIND_LABELS: Record<string, () => string> = {
-  Person: () => m.artist_kind_person(),
-  Group: () => m.artist_kind_group(),
-  Orchestra: () => m.artist_kind_orchestra(),
-  Choir: () => m.artist_kind_choir(),
-};
 
 const NAME_KINDS: Record<MusilogyOtherName['kind'], () => string> = {
   alias: () => m.musilogy_name_alias(),
@@ -44,31 +26,6 @@ const NAME_KINDS: Record<MusilogyOtherName['kind'], () => string> = {
   former: () => m.musilogy_name_former(),
   later: () => m.musilogy_name_later(),
 };
-
-/** "Groupe · Royaume-Uni · 1967 – 1977": what MusicBrainz states, nothing more. */
-export function cardLine(card: MusilogyCard): string {
-  const kind = KIND_LABELS[card.type]?.() ?? '';
-  const country = card.country
-    ? new Intl.DisplayNames([getLocale()], { type: 'region' }).of(card.country)
-    : '';
-  const where = [card.beginArea, country].filter(Boolean).join(', ');
-  // A start read from the first album says so; an end is shown only when
-  // declared: a last album is not the end of a band still active.
-  const end = card.yEnd && card.yEndSource === 'declared' ? String(card.yEnd) : null;
-  const when = !card.y0
-    ? ''
-    : card.y0Source === 'first_album'
-      ? [
-          m.musilogy_first_album({ year: String(card.y0) }),
-          end ? m.musilogy_until({ year: end }) : '',
-        ]
-          .filter(Boolean)
-          .join(', ')
-      : end
-        ? m.years_range({ from: String(card.y0), to: end })
-        : String(card.y0);
-  return [kind, where, when].filter(Boolean).join(' · ');
-}
 
 function ArtistRow({
   artist,
@@ -263,11 +220,6 @@ export function musilogyNav(artist: MusilogyArtist): PageNavItem[] {
   ].filter((item) => item !== null);
 }
 
-/** Whether Musilogy holds anything to show about an artist. */
-export function hasMusilogySections(artist: MusilogyArtist): boolean {
-  return musilogyNav(artist).length > 0 || (artist.releases?.length ?? 0) > 0;
-}
-
 /**
  * Where to go next from an artist, one section per thing Musilogy holds: the close artists (the
  * map, then before, alongside, after), the influences, the bands and their projects. A section
@@ -318,96 +270,6 @@ export function MusilogySections({
         </Section>
       ) : null}
     </>
-  );
-}
-
-/** An artist the antenna never played: who Musilogy says they are, and what it holds of them. */
-function ArtistView({
-  artist,
-  thisYear,
-  trail,
-}: {
-  artist: MusilogyArtist;
-  thisYear: number;
-  trail: readonly TrailStep[];
-}) {
-  const { card } = artist;
-  const line = cardLine(card);
-  return (
-    <>
-      <div className="lift-in px-page flex flex-col gap-3 pt-10 md:pt-16">
-        <DiscoveryTrail steps={trail} />
-        <h1 className="text-hero m-0 break-words">{card.name}</h1>
-        {card.disambiguation ? (
-          <p className="text-sub text-text-muted m-0">{card.disambiguation}</p>
-        ) : null}
-        {line ? <p className="text-sub text-text-muted m-0">{line}</p> : null}
-        <div className="mt-3">
-          <PageNav
-            items={[
-              ...(artist.releases && artist.releases.length > 0
-                ? [{ id: 'records', label: m.artist_records_title() }]
-                : []),
-              ...musilogyNav(artist),
-            ]}
-          />
-        </div>
-      </div>
-      <div className="px-page flex flex-col gap-16 py-16 md:gap-28 md:py-28">
-        {hasMusilogySections(artist) ? (
-          <>
-            {artist.releases && artist.releases.length > 0 ? (
-              <ReleasesSection releases={artist.releases} />
-            ) : null}
-            <MusilogySections artist={artist} thisYear={thisYear} />
-          </>
-        ) : (
-          <Empty text={m.musilogy_nothing_yet()} />
-        )}
-      </div>
-    </>
-  );
-}
-
-function Message({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="lift-in px-page flex flex-col gap-4 py-24">
-      <h1 className="text-hero m-0">{title}</h1>
-      <p className="text-intro text-text-muted max-w-blurb m-0">{body}</p>
-    </div>
-  );
-}
-
-/** An artist's place in the history of its music: before, alongside, after, and its bands. */
-export function MusilogyArtistView({
-  state,
-  trail = [],
-  thisYear = new Date().getFullYear(),
-}: {
-  state: MusilogyState;
-  /** The artists walked through to reach this one. */
-  trail?: readonly TrailStep[];
-  /** Where an active artist's span ends on the map. */
-  thisYear?: number;
-}) {
-  return (
-    <main id="main" className="min-h-dvh">
-      <SiteHeader />
-      {state.status === 'loading' ? (
-        <div aria-busy="true" className="px-page flex flex-col gap-6 pt-10 md:pt-16">
-          <span className="bg-surface-raised h-12 w-2/3 rounded-sm" />
-          <span className="bg-surface-raised h-6 w-1/3 rounded-sm" />
-        </div>
-      ) : state.status === 'missing' ? (
-        <Message title={m.musilogy_missing_title()} body={m.musilogy_missing_body()} />
-      ) : state.status === 'unavailable' ? (
-        <Message title={m.musilogy_unavailable_title()} body={m.musilogy_unavailable_body()} />
-      ) : state.status === 'error' ? (
-        <Message title={m.musilogy_error_title()} body={m.musilogy_error_body()} />
-      ) : (
-        <ArtistView artist={state.artist} thisYear={thisYear} trail={trail} />
-      )}
-    </main>
   );
 }
 

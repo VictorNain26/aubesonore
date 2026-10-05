@@ -3,32 +3,18 @@ import type {
   MusilogyArtistRef,
   MusilogySearchHit,
 } from '@aubesonore/shared-types/client';
-import { localizeHref } from '@/paraglide/runtime.js';
 import { API_BASE_URL } from '../utils/config';
 import { artistPath } from './artistProfile';
 
 /** Musilogy is not loaded on the server, or is being reloaded. */
 export class MusilogyUnavailableError extends Error {}
 
-/** A readable tail for the URL; the MBID alone identifies the artist. */
-function slugOf(name: string): string {
-  return name
-    .normalize('NFKD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-/** The Musilogy page of an artist, in the current language. */
-export function musilogyPath(artist: { mbid: string; name: string }): string {
-  const slug = slugOf(artist.name);
-  return localizeHref(`/musilogy/${artist.mbid}${slug ? `/${slug}` : ''}`);
-}
-
-/** One page per artist: the antenna's page when it played them, Musilogy's otherwise. */
+/**
+ * One page per artist: at its slug when the antenna played it, at its MBID
+ * otherwise (docs/vision.md §5).
+ */
 export function pagePathOf(artist: MusilogyArtistRef): string {
-  return artist.played ? artistPath(artist.played) : musilogyPath(artist);
+  return artistPath(artist.played ?? { slug: artist.mbid });
 }
 
 async function read<T>(path: string, signal?: AbortSignal): Promise<T | null> {

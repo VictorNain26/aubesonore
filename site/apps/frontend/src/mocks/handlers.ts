@@ -138,6 +138,7 @@ export function makeArtistProfile(overrides: Partial<ArtistProfile> = {}): Artis
     name: 'Hania Rani',
     slug: 'hania-rani',
     mbid: null,
+    played: true,
     image: null,
     facts: {
       kind: 'person',

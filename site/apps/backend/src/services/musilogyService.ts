@@ -411,14 +411,25 @@ function firstCoverOf(releases: ReleaseRow[]): string | null {
   return first ? `https://coverartarchive.org/release-group/${first.mbid}/front-500` : null;
 }
 
+const DEEZER_ARTIST = /^https:\/\/www\.deezer\.com\/artist\/(\d+)$/;
+
+function deezerIdOf(rows: UrlRow[]): string | null {
+  const ids = new Set(rows.flatMap((row) => DEEZER_ARTIST.exec(row.url)?.[1] ?? []));
+  const [only] = ids;
+  return ids.size === 1 && only ? only : null;
+}
+
 /** Who the artist is, as the dump states it: the profile's facts and links. */
 export interface ArtistIdentity {
+  name: string;
   facts: ArtistFacts;
   links: ArtistLink[];
   /** The Wikidata item, the way to the artist's Wikipedia articles. */
   wikidataId: string | null;
   /** The cover of the first record, hotlinked from the Cover Art Archive. */
   firstCover: string | null;
+  /** The Deezer artist the dump declares, when it declares exactly one. */
+  deezerId: string | null;
 }
 
 export const identityCache = new TtlCache<ArtistIdentity | null>(ONE_HOUR_MS);
@@ -440,10 +451,12 @@ export function getArtistIdentity(mbid: string): Promise<ArtistIdentity | null> 
     const card = cards[0];
     const identity = card
       ? {
+          name: card.name,
           facts: toFacts(card),
           links: toLinks(urls),
           wikidataId: wikidataIdOf(urls),
           firstCover: firstCoverOf(releases),
+          deezerId: deezerIdOf(urls),
         }
       : null;
     identityCache.set(mbid, identity);

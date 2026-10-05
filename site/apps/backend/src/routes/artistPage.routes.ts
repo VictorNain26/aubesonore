@@ -3,7 +3,8 @@ import { Elysia } from 'elysia';
 import { env } from '../config/env';
 import { logger } from '../lib/logger';
 import { checkRate, getClientIp } from '../lib/rateLimit';
-import { getArtistProfile } from '../services/artistProfileService';
+import { getArtistProfile, isMbid } from '../services/artistProfileService';
+import { MusilogyUnavailable } from '../services/musilogyService';
 import { slugOfArtist } from '../services/artistPages';
 import { renderArtistShell } from '../services/templates/artistShell';
 import { isValidArtistId, isValidArtistSlug } from '../validators/artistValidator';
@@ -82,15 +83,31 @@ async function handle(
   set.headers['cache-control'] = 'no-cache';
 
   // A malformed slug (a truncated link) is an unknown artist: no lookup.
-  const profile = isValidArtistSlug(params.slug)
-    ? await getArtistProfile(params.slug, locale)
-    : null;
+  let profile;
+  try {
+    profile = isValidArtistSlug(params.slug) ? await getArtistProfile(params.slug, locale) : null;
+  } catch (err) {
+    // A page by MBID is made from Musilogy: while it is not loaded, the SPA
+    // says the page is unavailable.
+    if (!(err instanceof MusilogyUnavailable)) throw err;
+    set.status = 503;
+    return html;
+  }
   // Unknown artist: a real 404, or crawlers index it as a soft 404. The SPA
   // still boots and renders its own not-found state.
   if (!profile) {
     set.status = 404;
     return html;
   }
+  // An artist the antenna played has one address, its slug.
+  if (isMbid(params.slug) && profile.played) {
+    set.status = 301;
+    set.headers.location = artistPagePath(locale, profile.slug);
+    return '';
+  }
+  // A page by MBID stays out of search results until the richness threshold
+  // decides which earn a slug (docs/vision.md §7, step 7.5).
+  if (!profile.played) set.headers['x-robots-tag'] = 'noindex';
 
   const pageUrl = `${env.FRONTEND_BASE_URL}${artistPagePath(locale, profile.slug)}`;
   return renderArtistShell(html, profile, pageUrl, locale);

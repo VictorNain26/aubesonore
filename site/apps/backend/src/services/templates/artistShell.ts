@@ -35,8 +35,8 @@ export function renderArtistShell(
   const description = profile.summary
     ? truncate(profile.summary.text, OG_DESCRIPTION_MAX)
     : locale === 'en'
-      ? `${profile.name}, played on AubeSonore, a music discovery radio.`
-      : `${profile.name}, passé sur AubeSonore, radio de découverte musicale.`;
+      ? `${profile.name}${profile.played ? ', played' : ''} on AubeSonore, a music discovery radio.`
+      : `${profile.name}${profile.played ? ', passé' : ''} sur AubeSonore, radio de découverte musicale.`;
   const image = isAllowedImage(profile.image) ? profile.image : null;
 
   const content: Record<string, string> = {

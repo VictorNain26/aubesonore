@@ -1,5 +1,6 @@
 import { Elysia } from 'elysia';
 import { getArtistProfile } from '../services/artistProfileService';
+import { MusilogyUnavailable } from '../services/musilogyService';
 import { resolveArtist } from '../services/artistResolver';
 import { findArtistPages } from '../services/artistPages';
 import { artistPagesSchema, isValidArtistSlug } from '../validators/artistValidator';
@@ -9,6 +10,9 @@ import { hasError } from '../lib/routeHelpers';
 
 const ARTIST_LIMIT = 10;
 const ARTIST_WINDOW_MS = 60_000;
+// Walking from artist to artist opens a page every few seconds; a page reads
+// the stored profile or Musilogy, the live sources only once, behind caches.
+const PAGE_LIMIT = 60;
 // One request per page load and one per new track: a DB read, no upstream call.
 const PAGES_LIMIT = 30;
 
@@ -54,7 +58,7 @@ export const artistRoutes = new Elysia({ prefix: '/api/artist' })
   })
   .get('/page/:slug', async ({ request, params, query, set }) => {
     const ip = getClientIp(request.headers);
-    if (!checkRate('artist', ip, ARTIST_LIMIT, ARTIST_WINDOW_MS)) {
+    if (!checkRate('artist-page', ip, PAGE_LIMIT, ARTIST_WINDOW_MS)) {
       set.status = 429;
       set.headers['retry-after'] = '60';
       return { error: 'Trop de requêtes, réessayez dans 1 minute' };
@@ -71,7 +75,15 @@ export const artistRoutes = new Elysia({ prefix: '/api/artist' })
       return { error: 'Langue invalide' };
     }
 
-    const profile = await getArtistProfile(params.slug, lang);
+    let profile;
+    try {
+      profile = await getArtistProfile(params.slug, lang);
+    } catch (err) {
+      // An artist page by MBID is made from Musilogy: unknown until it is loaded.
+      if (!(err instanceof MusilogyUnavailable)) throw err;
+      set.status = 503;
+      return { error: 'Page indisponible pour le moment' };
+    }
     if (!profile) {
       set.status = 404;
       return { error: 'Artiste non trouvé' };

@@ -22,6 +22,7 @@ const spies = [
             facts: null,
             summary: null,
             links: [],
+            played: true,
             playedOnRadio: [],
           }
         : null
@@ -93,12 +94,13 @@ describe('GET /api/artist/page/:slug', () => {
         headers: { 'x-forwarded-for': '203.0.113.9' },
       });
 
-    let last = await app.handle(request());
-    for (let i = 0; i < 12 && last.status !== 429; i++) {
-      last = await app.handle(request());
-    }
+    // A walk from artist to artist opens many pages: 60 a minute, apart from
+    // the resolver's 10.
+    const statuses: number[] = [];
+    for (let i = 0; i < 61; i++) statuses.push((await app.handle(request())).status);
 
-    expect(last.status).toBe(429);
+    expect(statuses.slice(0, 60).every((status) => status !== 429)).toBe(true);
+    expect(statuses[60]).toBe(429);
   });
 });
 

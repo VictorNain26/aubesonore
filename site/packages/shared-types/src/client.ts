@@ -132,6 +132,11 @@ export interface ArtistProfile {
   /** The MusicBrainz id, the way into Musilogy; null when none is known. */
   mbid: string | null;
   /**
+   * False for an artist the antenna never played: a page by MBID, made from
+   * what Musilogy knows, whose slug is its MBID (docs/vision.md §5).
+   */
+  played: boolean;
+  /**
    * The Deezer portrait, else the cover of the first record at the Cover Art
    * Archive; absolute https, hotlinked, never re-hosted. The page shows its
    * generated wave when it is null or fails to load.

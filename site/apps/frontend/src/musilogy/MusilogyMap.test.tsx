@@ -109,7 +109,7 @@ describe('MusilogyMap', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { hidden: true })).toHaveAttribute(
       'href',
-      `/musilogy/${neighbour(1, 1960).mbid}/artist-number-1`
+      `/artiste/${neighbour(1, 1960).mbid}`
     );
   });
 });

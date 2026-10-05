@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useParams } from 'react-router';
+import { Navigate, useLocation, useParams } from 'react-router';
 import { ArtistPageView, type ArtistPageState } from '../artist/ArtistPageView';
 import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../home/SiteFooter';
 import type { MusilogyArtist } from '@aubesonore/shared-types/client';
-import { fetchArtistProfile } from '../lib/artistProfile';
+import { artistPath, fetchArtistProfile } from '../lib/artistProfile';
 import { useDiscoveryTrail } from '../lib/discoveryTrail';
 import { fetchMusilogyArtist } from '../lib/musilogy';
 import { useScrollMemory } from '../lib/scrollMemory';
@@ -102,9 +102,13 @@ export default function ArtistPage() {
   const settled = state.status !== 'loading' && (!mbid || musilogySeen !== undefined);
   useScrollMemory(settled);
 
-  const { pathname } = useLocation();
+  // A played artist reached at its MBID has one address, its slug.
+  const location = useLocation();
+  const elsewhere = state.status === 'ready' && state.profile.slug !== slug;
   const trail = useDiscoveryTrail(
-    state.status === 'ready' ? { path: pathname, name: state.profile.name } : null
+    state.status === 'ready' && !elsewhere
+      ? { path: location.pathname, name: state.profile.name }
+      : null
   );
 
   useEffect(() => {
@@ -118,6 +122,16 @@ export default function ArtistPage() {
   useEffect(() => {
     if (name) document.title = `${name} · AubeSonore`;
   }, [name]);
+
+  if (elsewhere) {
+    return (
+      <Navigate
+        to={artistPath(state.profile)}
+        replace
+        state={location.state as { discovery?: boolean } | null}
+      />
+    );
+  }
 
   return (
     <>
