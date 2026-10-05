@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router';
+import { useLocation, useSearchParams } from 'react-router';
+import { getLocale } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
 import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../home/SiteFooter';
-import { groupByArtist } from '../library/groups';
+import { orderKept, type KeptOrder } from '../library/order';
 import { MyTracksView, type MyTracksState } from '../library/MyTracksView';
 import { removeKeptTrack, useRemovingTracks } from '../library/removal';
 import { useAuthStore } from '../stores/authStore';
@@ -11,6 +12,9 @@ import { useLikedTracksStore } from '../stores/likedTracksStore';
 
 export function MyTracksPage() {
   const { pathname } = useLocation();
+  // In the address, so a reload or a shared link keeps the order.
+  const [params, setParams] = useSearchParams();
+  const order: KeptOrder = params.get('sort') === 'artist' ? 'artist' : 'date';
   const signedIn = useAuthStore((s) => s.isAuthenticated);
   const authLoading = useAuthStore((s) => s.isLoading);
   const tracks = useLikedTracksStore((s) => s.tracks);
@@ -41,30 +45,32 @@ export function MyTracksPage() {
     };
   }, []);
 
-  // Grouped before hiding, so a removal waiting for its Annuler does not move the artists.
-  const groups = useMemo(
-    () =>
-      groupByArtist(tracks)
-        .map((group) => ({ ...group, tracks: group.tracks.filter((t) => !removing.has(t.id)) }))
-        .filter((group) => group.tracks.length > 0),
-    [tracks, removing]
+  const shown = useMemo(
+    () => orderKept(tracks, order, getLocale()).filter((t) => !removing.has(t.id)),
+    [tracks, order, removing]
   );
-  const count = tracks.length - tracks.filter((t) => removing.has(t.id)).length;
 
   const state: MyTracksState =
     !authLoading && !signedIn
       ? { status: 'signed-out', signInHref: m.signin_href(), from: pathname }
       : tracks.length > 0
-        ? { status: 'ready', groups, count }
+        ? { status: 'ready', tracks: shown }
         : authLoading || !settled
           ? { status: 'loading' }
           : failed
             ? { status: 'error', onRetry: () => void useLikedTracksStore.getState().refresh() }
-            : { status: 'ready', groups, count: 0 };
+            : { status: 'ready', tracks: [] };
 
   return (
     <>
-      <MyTracksView state={state} onRemove={removeKeptTrack} />
+      <MyTracksView
+        state={state}
+        order={order}
+        onOrderChange={(next) =>
+          setParams(next === 'artist' ? { sort: 'artist' } : {}, { replace: true })
+        }
+        onRemove={removeKeptTrack}
+      />
       <SiteFooter />
     </>
   );
