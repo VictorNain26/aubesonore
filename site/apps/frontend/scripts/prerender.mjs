@@ -4,8 +4,8 @@
 // Pre-rendering pattern: https://vite.dev/guide/ssr#pre-rendering-ssg
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { replaceOrFail, rewriteHead } from './head.mjs';
 
-const SITE = 'https://aubesonore.fr';
 const { pageHtml, meta } = await import('../dist-ssr/entry-server.js');
 const template = await readFile('dist/index.html', 'utf8');
 const base = meta('fr');
@@ -28,11 +28,6 @@ if (!titleFont) throw new Error('prerender: title font not found in dist/assets'
 const head = `<link rel="preload" href="/assets/${titleFont}" as="font" type="font/woff2" crossorigin />
     <style>${css}</style>`;
 
-function replaceOrFail(html, from, to) {
-  if (!html.includes(from)) throw new Error(`prerender: "${from}" not found in index.html`);
-  return html.replaceAll(from, to);
-}
-
 /** The page's stylesheet links replaced by the inlined styles, where the first one was. */
 function inlineStyles(html) {
   const [first, ...rest] = stylesheets.map(([link]) => link);
@@ -41,37 +36,9 @@ function inlineStyles(html) {
   return out;
 }
 
-function alternates(pages) {
-  return [
-    ...pages.map((p) => `<link rel="alternate" hreflang="${p.locale}" href="${SITE}${p.path}" />`),
-    `<link rel="alternate" hreflang="x-default" href="${SITE}${pages[0].path}" />`,
-  ].join('\n    ');
-}
-
 async function write(page, body, { siblings, noindex = false }) {
   const { title, description } = meta(page.locale, page.kind);
-  let html = template;
-  html = replaceOrFail(html, '<html lang="fr">', `<html lang="${page.locale}">`);
-  html = replaceOrFail(html, base.title, title);
-  html = replaceOrFail(html, base.description, description);
-  html = replaceOrFail(html, `${SITE}/og-fr.png`, `${SITE}/og-${page.locale}.png`);
-  html = replaceOrFail(
-    html,
-    '<meta property="og:locale" content="fr_FR" />',
-    `<meta property="og:locale" content="${page.locale === 'fr' ? 'fr_FR' : 'en_GB'}" />`
-  );
-  html = replaceOrFail(
-    html,
-    `<meta property="og:url" content="${SITE}/" />`,
-    `<meta property="og:url" content="${SITE}${page.path}" />`
-  );
-  html = replaceOrFail(
-    html,
-    `<link rel="canonical" href="${SITE}/" />`,
-    noindex
-      ? '<meta name="robots" content="noindex" />'
-      : `<link rel="canonical" href="${SITE}${page.path}" />\n    ${alternates(siblings)}`
-  );
+  let html = rewriteHead(template, base, { ...page, title, description }, { siblings, noindex });
   html = inlineStyles(html);
   html = replaceOrFail(html, '<div id="root"></div>', `<div id="root">${body}</div>`);
   await mkdir(dirname(page.file), { recursive: true });

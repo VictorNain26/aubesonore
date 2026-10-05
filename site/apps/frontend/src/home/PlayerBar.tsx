@@ -193,6 +193,7 @@ function TrackLine({
         src={track.art}
         alt=""
         seed={key}
+        sizes="2.5rem"
         className={cn('size-10 shrink-0', hasChanged && 'swap-in')}
       />
       <span
