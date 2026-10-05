@@ -386,24 +386,26 @@ export function MusilogyHomeView({
       </div>
 
       <div className="flex flex-col gap-8">
-        <label role="search" className="relative block w-full max-w-2xl">
-          <span className="sr-only">{m.musilogy_search_label()}</span>
-          <Search
-            className="text-text-muted pointer-events-none absolute top-1/2 left-5 size-5 -translate-y-1/2"
-            strokeWidth={1.8}
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') onQueryChange('');
-            }}
-            placeholder={m.musilogy_search_placeholder()}
-            autoComplete="off"
-            className="text-row border-accent ease-out-quart placeholder:text-text-faint hover:bg-surface-raised focus-visible:outline-accent h-14 w-full rounded-full border bg-transparent pr-14 pl-13 font-normal transition-colors duration-150 focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-search-cancel-button]:hidden"
-          />
+        <div role="search" className="relative w-full max-w-2xl">
+          <label>
+            <span className="sr-only">{m.musilogy_search_label()}</span>
+            <Search
+              className="text-text-muted pointer-events-none absolute top-1/2 left-5 size-5 -translate-y-1/2"
+              strokeWidth={1.8}
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') onQueryChange('');
+              }}
+              placeholder={m.musilogy_search_placeholder()}
+              autoComplete="off"
+              className="text-row border-accent ease-out-quart placeholder:text-text-faint hover:bg-surface-raised focus-visible:outline-accent h-14 w-full rounded-full border bg-transparent pr-14 pl-13 font-normal transition-colors duration-150 focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-search-cancel-button]:hidden"
+            />
+          </label>
           {query ? (
             <button
               type="button"
@@ -414,7 +416,7 @@ export function MusilogyHomeView({
               <X className="size-4.5" strokeWidth={1.8} aria-hidden="true" />
             </button>
           ) : null}
-        </label>
+        </div>
 
         <div aria-live="polite">
           {search.status === 'idle' ? (

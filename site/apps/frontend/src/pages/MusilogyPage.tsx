@@ -60,7 +60,12 @@ function MusilogyHome() {
   return (
     <MusilogyHomeView
       query={query}
-      onQueryChange={setQuery}
+      onQueryChange={(next) => {
+        setQuery(next);
+        // Under two letters there is no search: an earlier answer must not come back as the
+        // previous one of the next search.
+        if (next.trim().length < 2) setSearch({ status: 'idle' });
+      }}
       search={query.trim().length < 2 ? { status: 'idle' } : search}
     />
   );
