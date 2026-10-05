@@ -265,7 +265,10 @@ score choisit seulement qui est promu. La passe hebdomadaire applique ces règle
   Un fichier prêt voté « non » n'est jamais publié. Un repère voté « non » n'est jamais tiré.
 - **Fin du premier séjour** (`stay_weeks`, 6 semaines, KEXP) : la part `promotion_share` (12 %)
   la meilleure de la cohorte, un « oui » d'abord puis la note du modèle, part au repos ; le reste
-  sort.
+  sort. Un titre qui donnerait un troisième titre à son artiste n'est pas promu : il est compté
+  et sa place va au suivant. Sans cette règle, la cohorte du 2026-10-01, entrée avant la règle
+  d'un titre par artiste, aurait mis au fond pour 18 mois 3 titres de Holy Wave et 3 de Ventre
+  De Biche (simulation sur la base du 2026-10-05).
 - **Fond, par auto-platooning** (MusicMaster) : un recurrent présent au fond depuis 6 semaines
   part au repos ; les places libres du fond reviennent à ceux qui se reposent depuis le plus
   longtemps, au moins `rest_weeks` (12 semaines).
