@@ -4,7 +4,7 @@ import { db } from '../db';
 import { artist, artistProfile, artistSlug, likedTracks, radioPlay } from '../db/schema';
 import { logger } from '../lib/logger';
 import { findTrackByIsrc, searchArtist } from './deezerService';
-import { findMbidByDeezerId, findRecordingsByIsrc, getArtistByMbid } from './musicbrainzService';
+import { findDeezerIdByMbid, findMbidByDeezerId, findRecordingsByIsrc } from './musicbrainzService';
 import { fetchNowPlaying } from './nowPlaying';
 
 // Only explicit featuring markers. Splitting on `&`, `+`, `x` or `,` would
@@ -189,9 +189,9 @@ async function identifyByIsrc(
 
   let deezerId: string | null = null;
   if (mbid) {
-    const page = await getArtistByMbid(mbid);
-    if (page.status === 'failed') return 'failed';
-    deezerId = page.status === 'found' ? page.value.deezerId : null;
+    const declared = await findDeezerIdByMbid(mbid);
+    if (declared.status === 'failed') return 'failed';
+    deezerId = declared.status === 'found' ? declared.value : null;
   }
   if (!deezerId) {
     const track = await findTrackByIsrc(isrc);

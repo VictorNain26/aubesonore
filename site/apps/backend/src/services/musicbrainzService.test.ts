@@ -1,14 +1,13 @@
 import { describe, it, expect, spyOn, afterEach, beforeEach, jest } from 'bun:test';
 // Real MusicBrainz answers (2026-10-02), relations trimmed to the types the service reads.
 import group from './__fixtures__/musicbrainz-artist-group.json';
-import person from './__fixtures__/musicbrainz-artist-person.json';
 import deezerUrl from './__fixtures__/musicbrainz-url-deezer.json';
 import isrcAnswer from './__fixtures__/musicbrainz-isrc.json';
 
 const {
   findMbidByDeezerId,
   findRecordingsByIsrc,
-  getArtistByMbid,
+  findDeezerIdByMbid,
   musicbrainzCache,
   __resetMusicbrainzThrottle,
 } = await import('./musicbrainzService');
@@ -88,36 +87,9 @@ describe('findMbidByDeezerId', () => {
   });
 });
 
-describe('getArtistByMbid', () => {
-  it('reads a group: where and when it formed, one link per platform, https only, site last', async () => {
-    spyOn(globalThis, 'fetch').mockResolvedValueOnce(json(group));
-
-    expect(await getArtistByMbid(group.id)).toEqual({
-      status: 'found',
-      value: {
-        facts: {
-          kind: 'group',
-          place: 'Paris',
-          country: 'FR',
-          formed: 1993,
-          ended: 2021,
-          active: false,
-        },
-        links: [
-          { platform: 'spotify', url: 'https://open.spotify.com/artist/4tZwfgrHOc3mvqYlEYSvVi' },
-          { platform: 'appleMusic', url: 'https://music.apple.com/fr/artist/5468295' },
-          { platform: 'soundcloud', url: 'https://soundcloud.com/daftpunkofficialmusic' },
-          { platform: 'official', url: 'https://daftpunk.com/' },
-        ],
-        wikidataId: 'Q185828',
-        // The page declares two Deezer artists (27 and 1477045): neither for sure.
-        deezerId: null,
-      },
-    });
-  });
-
+describe('findDeezerIdByMbid', () => {
   it('reads the Deezer artist the page declares when it declares one', async () => {
-    spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+    const fetchSpy = spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       json({
         ...group,
         relations: group.relations.filter(
@@ -126,85 +98,15 @@ describe('getArtistByMbid', () => {
       })
     );
 
-    const found = await getArtistByMbid(group.id);
-
-    expect(found.status === 'found' && found.value.deezerId).toBe('27');
+    expect(await findDeezerIdByMbid(group.id)).toEqual({ status: 'found', value: '27' });
+    expect(fetchSpy.mock.calls[0]?.[0]).toContain(`/artist/${group.id}?inc=url-rels`);
   });
 
-  it('skips a former address and lists an address once', async () => {
-    const official = (url: string, ended: boolean) => ({
-      type: 'official homepage',
-      ended,
-      url: { resource: url },
-    });
-    spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      json({
-        ...group,
-        relations: [
-          official('https://old-domain.example/', true),
-          official('https://daftpunk.bandcamp.com/', false),
-          { type: 'bandcamp', ended: false, url: { resource: 'https://daftpunk.bandcamp.com/' } },
-        ],
-      })
-    );
+  it('binds none when the page declares two Deezer artists', async () => {
+    // Daft Punk's page links 27 and 1477045 (2026-10-02).
+    spyOn(globalThis, 'fetch').mockResolvedValueOnce(json(group));
 
-    const found = await getArtistByMbid(group.id);
-
-    expect(found.status === 'found' && found.value.links).toEqual([
-      { platform: 'bandcamp', url: 'https://daftpunk.bandcamp.com/' },
-    ]);
-  });
-
-  it('reads no career for an artist without a type, who may be a person', async () => {
-    spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ ...group, type: null }));
-
-    const found = await getArtistByMbid(group.id);
-
-    expect(found.status === 'found' && found.value.facts).toEqual({
-      kind: null,
-      place: null,
-      country: 'FR',
-      formed: null,
-      ended: null,
-      active: false,
-    });
-  });
-
-  it('names no country for a dissolved one or a MusicBrainz region', async () => {
-    const soviet = {
-      name: 'Soviet Union',
-      'iso-3166-1-codes': ['SU'],
-      'iso-3166-3-codes': ['SUHH'],
-    };
-    const worldwide = { name: 'Worldwide', 'iso-3166-1-codes': ['XW'] };
-    spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(json({ ...group, area: soviet, 'begin-area': soviet }))
-      .mockResolvedValueOnce(json({ ...group, id: 'other', area: worldwide }));
-
-    const dissolved = await getArtistByMbid(group.id);
-    const region = await getArtistByMbid('other');
-
-    expect(dissolved.status === 'found' && dissolved.value.facts.country).toBeNull();
-    expect(dissolved.status === 'found' && dissolved.value.facts.place).toBeNull();
-    expect(region.status === 'found' && region.value.facts).toMatchObject({
-      place: 'Paris',
-      country: null,
-    });
-  });
-
-  it('never reads a birth as a career for a person', async () => {
-    spyOn(globalThis, 'fetch').mockResolvedValueOnce(json(person));
-
-    const found = await getArtistByMbid(person.id);
-
-    expect(found.status === 'found' && found.value.facts).toEqual({
-      kind: 'person',
-      place: null,
-      country: 'GB',
-      formed: null,
-      ended: null,
-      active: false,
-    });
+    expect(await findDeezerIdByMbid(group.id)).toEqual({ status: 'none' });
   });
 });
 

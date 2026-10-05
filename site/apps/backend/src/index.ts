@@ -21,7 +21,7 @@ import { linksCache, itunesCache } from './services/trackLinksService';
 import { deezerCache } from './services/deezerService';
 import { musicbrainzCache } from './services/musicbrainzService';
 import { wikipediaCache } from './services/wikipediaService';
-import { musilogyCache } from './services/musilogyService';
+import { identityCache, musilogyCache } from './services/musilogyService';
 import { radioHistoryCache } from './services/radioService';
 import { trendsCache } from './services/trendsService';
 import { purgeExpiredAuthRows } from './services/pushService';
@@ -46,6 +46,7 @@ deezerCache.startSweep();
 musicbrainzCache.startSweep();
 wikipediaCache.startSweep();
 musilogyCache.startSweep();
+identityCache.startSweep();
 
 // Periodic purge of Better Auth's expired session/verification rows.
 // Without this they accumulate indefinitely — Better Auth does not self-clean.
