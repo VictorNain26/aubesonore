@@ -13,6 +13,8 @@ import { artistPath } from '../lib/artistProfile';
 import { Cover } from './Cover';
 import { VolumeControl, type VolumeControlProps } from './VolumeControl';
 import { ARTIST_LINK, TEXT_ACTION } from './styles';
+import { CastControl } from './CastControl';
+import { useDiffusion, type Diffusion } from '../hooks/useDiffusion';
 import {
   LISTEN_PILL,
   ListenDisc,
@@ -52,6 +54,8 @@ export interface NowPlayingViewProps {
   isKeeping: boolean;
   onToggleKeep: () => void;
   onShare: () => void;
+  /** AirPlay or Chromecast, where the browser can cast. */
+  diffusion?: Diffusion | null;
   /** The artist's page, once it exists: no link rather than a dead one. */
   artistHref: string | null;
   /** True once the live has moved past the track shown at load: changes then animate. */
@@ -63,7 +67,7 @@ export interface NowPlayingViewProps {
 /**
  * What plays now, the biggest thing on the page: the cover, the title, the
  * artist (a link to their page once it exists), its album, and Écouter right
- * under it, beside Garder and Partager. What played before is the thread just
+ * under it, beside Garder, Partager and Diffuser. What played before is the thread just
  * below.
  */
 export function NowPlayingView({
@@ -76,6 +80,7 @@ export function NowPlayingView({
   isKeeping,
   onToggleKeep,
   onShare,
+  diffusion = null,
   artistHref,
   hasChanged = false,
   volume,
@@ -168,6 +173,7 @@ export function NowPlayingView({
                 <Share2 className="size-4" strokeWidth={1.6} aria-hidden="true" />
                 {m.track_share()}
               </button>
+              {diffusion ? <CastControl diffusion={diffusion} variant="text" /> : null}
             </span>
           ) : null}
           {volume && listen !== 'idle' ? <VolumeControl {...volume} tone="surface" /> : null}
@@ -199,6 +205,7 @@ export function NowPlaying() {
     }))
   );
   const { isLiked, isLiking, handleToggleLike, handleShare } = useTrackActions();
+  const diffusion = useDiffusion();
   const artistPage = useArtistPage(artist);
   const setListenVisible = useHeroListenVisible((s) => s.setVisible);
   const listenRef = useRef<HTMLButtonElement>(null);
@@ -230,6 +237,7 @@ export function NowPlaying() {
       isKeeping={isLiking}
       onToggleKeep={handleToggleLike}
       onShare={handleShare}
+      diffusion={diffusion}
       artistHref={artistPage ? artistPath(artistPage) : null}
       hasChanged={firstTrackKey !== null && trackKey !== firstTrackKey}
       volume={{ volume, isMuted, onVolumeChange: setVolume, onToggleMute: toggleMute }}

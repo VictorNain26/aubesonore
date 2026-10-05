@@ -23,8 +23,7 @@ function props(overrides: Partial<PlayerBarViewProps> = {}): PlayerBarViewProps 
     isMuted: false,
     onVolumeChange: vi.fn(),
     onToggleMute: vi.fn(),
-    airPlay: null,
-    chromecast: null,
+    diffusion: null,
     artistHref: null,
     isOnline: true,
     ...overrides,
@@ -83,37 +82,64 @@ describe('PlayerBarView', () => {
     expect(onToggleKeep).toHaveBeenCalledOnce();
   });
 
-  it('keeps the volume in view and offers AirPlay only when available', async () => {
-    const onOpen = vi.fn();
+  it('keeps the volume in view', async () => {
     const onToggleMute = vi.fn();
-    const { rerender } = render(<PlayerBarView {...props({ onToggleMute })} />);
+    render(<PlayerBarView {...props({ onToggleMute })} />);
 
     expect(screen.getByRole('slider', { name: 'Volume' })).toHaveAttribute('aria-valuenow', '80');
     await userEvent.click(screen.getByRole('button', { name: 'Couper le son' }));
     expect(onToggleMute).toHaveBeenCalledOnce();
-    expect(screen.queryByRole('button', { name: 'Diffuser via AirPlay' })).not.toBeInTheDocument();
-
-    rerender(<PlayerBarView {...props({ airPlay: { isActive: false, onOpen } })} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Diffuser via AirPlay' }));
-    expect(onOpen).toHaveBeenCalledOnce();
   });
 
-  it('offers Chromecast once a device is on the network, and names the one it casts to', async () => {
-    const onOpen = vi.fn();
-    const { rerender } = render(<PlayerBarView {...props()} />);
+  const diffusion = (overrides = {}) => ({
+    kind: 'chromecast' as const,
+    found: true,
+    device: null,
+    connecting: false,
+    onOpen: vi.fn(),
+    ...overrides,
+  });
+
+  it('offers Diffuser only where the browser can cast', () => {
+    render(<PlayerBarView {...props()} />);
     expect(
       screen.queryByRole('button', { name: 'Diffuser sur un appareil' })
     ).not.toBeInTheDocument();
+  });
 
-    rerender(<PlayerBarView {...props({ chromecast: { deviceName: null, onOpen } })} />);
+  it('opens the device picker once a device is on the network', async () => {
+    const cast = diffusion();
+    render(<PlayerBarView {...props({ diffusion: cast })} />);
+
     await userEvent.click(screen.getByRole('button', { name: 'Diffuser sur un appareil' }));
-    expect(onOpen).toHaveBeenCalledOnce();
+    expect(cast.onOpen).toHaveBeenCalledOnce();
+    expect(screen.queryByText('Aucun appareil trouvé')).not.toBeInTheDocument();
+  });
 
-    rerender(<PlayerBarView {...props({ chromecast: { deviceName: 'TV', onOpen } })} />);
-    expect(screen.getByRole('button', { name: 'Diffusion sur TV' })).toHaveAttribute(
-      'aria-pressed',
+  it('says what to check when no device is found, rather than opening an empty picker', async () => {
+    const cast = diffusion({ found: false });
+    render(<PlayerBarView {...props({ diffusion: cast })} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Diffuser sur un appareil' }));
+    expect(cast.onOpen).not.toHaveBeenCalled();
+    expect(await screen.findByText('Aucun appareil trouvé')).toBeInTheDocument();
+    expect(screen.getByText(/même Wi-Fi/)).toBeInTheDocument();
+    expect(screen.getByText(/Pour AirPlay, ouvrez le site dans Safari/)).toBeInTheDocument();
+  });
+
+  it('names the device the stream plays on, and shows the connection under way', () => {
+    const { rerender } = render(
+      <PlayerBarView {...props({ diffusion: diffusion({ connecting: true }) })} />
+    );
+    expect(screen.getByRole('button', { name: 'Diffuser sur un appareil' })).toHaveAttribute(
+      'aria-busy',
       'true'
     );
+
+    rerender(<PlayerBarView {...props({ diffusion: diffusion({ device: 'TV' }) })} />);
+    const button = screen.getByRole('button', { name: 'Diffusion sur TV' });
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+    expect(button).toHaveTextContent('Sur TV');
   });
 
   it("leads from the track to the artist's page once it exists", () => {

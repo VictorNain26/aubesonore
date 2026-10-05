@@ -1,6 +1,7 @@
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '../stores/authStore';
 import { Menu } from '../design/molecules/Menu';
+import { MobileMenu } from './MobileMenu';
 import { Link, useLocation } from 'react-router';
 import { localizeHref } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
@@ -44,7 +45,11 @@ export function SiteHeader() {
   return (
     <header className="px-page relative z-10 flex items-start justify-between gap-6 pt-5 md:pt-7">
       {isHome ? <h1 className="m-0">{brand}</h1> : brand}
-      <nav aria-label={m.nav_label()} className="flex shrink-0 items-center gap-7">
+      {/* Phones get the pages in a menu: the header has no room for them. */}
+      <span className="shrink-0 md:hidden">
+        <MobileMenu />
+      </span>
+      <nav aria-label={m.nav_label()} className="hidden shrink-0 items-center gap-7 md:flex">
         <Link to={localizeHref('/musilogy')} className={NAV_LINK}>
           {m.musilogy_title()}
         </Link>

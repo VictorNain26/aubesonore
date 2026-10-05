@@ -1,7 +1,8 @@
 import { Drawer } from '@base-ui/react/drawer';
 import { Link } from 'react-router';
-import { Airplay, Cast } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import type { Diffusion } from '../hooks/useDiffusion';
+import { CastControl } from './CastControl';
 import { Cover } from './Cover';
 import { KeepHeart } from './KeepHeart';
 import { ARTIST_LINK, TEXT_ACTION } from './styles';
@@ -15,15 +16,14 @@ export interface NowPlayingSheetProps {
   onToggleListen: () => void;
   isKept: boolean;
   onToggleKeep: () => void;
-  airPlay: { isActive: boolean; onOpen: () => void } | null;
-  chromecast: { deviceName: string | null; onOpen: () => void } | null;
+  diffusion: Diffusion | null;
   /** The bar's track line, which opens the sheet. */
   children: React.ReactNode;
 }
 
 /**
  * The track on air, whole, on a phone: a tap on the bar's track line raises a sheet with the large
- * cover, the full title, the artist (a link to their page), the album, Écouter, Garder, AirPlay and Chromecast.
+ * cover, the full title, the artist (a link to their page), the album, Écouter, Garder and Diffuser.
  * It closes by a swipe down, a tap outside, Escape or Fermer. Base UI's Drawer brings the gesture,
  * the focus trap and iOS's quirks; the motion is its bottom-sheet example's.
  */
@@ -34,8 +34,7 @@ export function NowPlayingSheet({
   onToggleListen,
   isKept,
   onToggleKeep,
-  airPlay,
-  chromecast,
+  diffusion,
   children,
 }: NowPlayingSheetProps) {
   const album = track.album.trim();
@@ -102,30 +101,7 @@ export function NowPlayingSheet({
                     <KeepHeart isKept={isKept} className="size-4" />
                     {m.track_keep()}
                   </button>
-                  {airPlay ? (
-                    <button
-                      type="button"
-                      onClick={airPlay.onOpen}
-                      aria-pressed={airPlay.isActive}
-                      className={TEXT_ACTION}
-                    >
-                      <Airplay className="size-4" aria-hidden="true" />
-                      {airPlay.isActive ? m.airplay_active() : m.airplay_open()}
-                    </button>
-                  ) : null}
-                  {chromecast ? (
-                    <button
-                      type="button"
-                      onClick={chromecast.onOpen}
-                      aria-pressed={chromecast.deviceName !== null}
-                      className={TEXT_ACTION}
-                    >
-                      <Cast className="size-4" aria-hidden="true" />
-                      {chromecast.deviceName
-                        ? m.cast_active({ device: chromecast.deviceName })
-                        : m.cast_open()}
-                    </button>
-                  ) : null}
+                  {diffusion ? <CastControl diffusion={diffusion} variant="text" /> : null}
                   <Drawer.Close className={cn(TEXT_ACTION, 'ml-auto')}>{m.close()}</Drawer.Close>
                 </span>
               </div>

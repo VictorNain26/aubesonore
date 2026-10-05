@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
-import { Airplay, Cast } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { KeepHeart } from './KeepHeart';
 import { useNowPlayingStore } from '../lib/azuracast';
 import { usePlayer } from '../lib/player';
 import { useAirPlayStore } from '../stores/airplayStore';
 import { useCastStore } from '../stores/castStore';
+import { useDiffusion, type Diffusion } from '../hooks/useDiffusion';
+import { CastControl } from './CastControl';
 import { useTrackActions } from '../hooks/player/useTrackActions';
 import { useArtistPage } from '../hooks/useArtistPage';
 import { artistPath } from '../lib/artistProfile';
@@ -45,9 +46,8 @@ export interface PlayerBarViewProps {
   isMuted: boolean;
   onVolumeChange: (value: number) => void;
   onToggleMute: () => void;
-  airPlay: { isActive: boolean; onOpen: () => void } | null;
-  /** Chromecast, once a device is on the network; `deviceName` while the stream is cast to it. */
-  chromecast: { deviceName: string | null; onOpen: () => void } | null;
+  /** AirPlay or Chromecast, where the browser can cast; null elsewhere. */
+  diffusion: Diffusion | null;
   /** The page of the artist on air, once it exists: the track leads there. */
   artistHref: string | null;
   isOnline: boolean;
@@ -77,8 +77,7 @@ export function PlayerBarView({
   isMuted,
   onVolumeChange,
   onToggleMute,
-  airPlay,
-  chromecast,
+  diffusion,
   artistHref,
   isOnline,
   hasChanged = false,
@@ -124,8 +123,7 @@ export function PlayerBarView({
               onToggleListen={onToggleListen}
               isKept={isKept}
               onToggleKeep={onToggleKeep}
-              airPlay={airPlay}
-              chromecast={chromecast}
+              diffusion={diffusion}
             >
               <TrackLine track={track} hasChanged={hasChanged} />
             </NowPlayingSheet>
@@ -175,31 +173,7 @@ export function PlayerBarView({
         tone="accent"
       />
 
-      {airPlay ? (
-        <button
-          type="button"
-          onClick={airPlay.onOpen}
-          aria-label={airPlay.isActive ? m.airplay_active() : m.airplay_open()}
-          aria-pressed={airPlay.isActive}
-          className={ICON_BUTTON}
-        >
-          <Airplay className="size-4" aria-hidden="true" />
-        </button>
-      ) : null}
-
-      {chromecast ? (
-        <button
-          type="button"
-          onClick={chromecast.onOpen}
-          aria-label={
-            chromecast.deviceName ? m.cast_active({ device: chromecast.deviceName }) : m.cast_open()
-          }
-          aria-pressed={chromecast.deviceName !== null}
-          className={ICON_BUTTON}
-        >
-          <Cast className="size-4" aria-hidden="true" />
-        </button>
-      ) : null}
+      {diffusion ? <CastControl diffusion={diffusion} variant="bar" /> : null}
     </section>
   );
 }
@@ -259,33 +233,17 @@ export function PlayerBar() {
       restoreVolume: s.restoreVolume,
     }))
   );
-  const airPlay = useAirPlayStore(
-    useShallow((s) => ({
-      available: s.available,
-      isActive: s.isActive,
-      initialize: s.initialize,
-      openPicker: s.openPicker,
-    }))
-  );
-  const chromecast = useCastStore(
-    useShallow((s) => ({
-      available: s.available,
-      deviceName: s.deviceName,
-      initialize: s.initialize,
-      openPicker: s.openPicker,
-    }))
-  );
+  const initializeAirPlay = useAirPlayStore((s) => s.initialize);
+  const initializeCast = useCastStore((s) => s.initialize);
+  const diffusion = useDiffusion();
   const { isLiked, handleToggleLike } = useTrackActions();
   const heroListenVisible = useHeroListenVisible((s) => s.visible);
   const { restoreVolume } = player;
-  const { initialize } = airPlay;
-  const { initialize: initializeCast } = chromecast;
-
   useEffect(() => {
     restoreVolume();
-    initialize();
+    initializeAirPlay();
     initializeCast();
-  }, [restoreVolume, initialize, initializeCast]);
+  }, [restoreVolume, initializeAirPlay, initializeCast]);
 
   return (
     <PlayerBarView
@@ -303,14 +261,7 @@ export function PlayerBar() {
       isMuted={player.isMuted}
       onVolumeChange={player.setVolume}
       onToggleMute={player.toggleMute}
-      airPlay={
-        airPlay.available ? { isActive: airPlay.isActive, onOpen: airPlay.openPicker } : null
-      }
-      chromecast={
-        chromecast.available || chromecast.deviceName
-          ? { deviceName: chromecast.deviceName, onOpen: chromecast.openPicker }
-          : null
-      }
+      diffusion={diffusion}
       artistHref={artistPage ? artistPath(artistPage) : null}
       isOnline={isOnline}
       hasChanged={firstTrackKey !== null && trackKey !== firstTrackKey}

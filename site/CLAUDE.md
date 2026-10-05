@@ -97,11 +97,15 @@ Musilogy is the artist page's part that leads elsewhere (its close artists, infl
 - **The map** (`MusilogyMap`) draws the 40 closest neighbours in time, laid out by `layoutMap` (a pure function): years left to right, the artist's span on the axis with its name, each neighbour at its start year, the closest on the rows nearest the axis; a label with no free row is left to the lists. Labels are Geist Mono at 12 units, whose advance (0.6 em, measured in Chromium) makes their width known — a CSS letter-spacing on the SVG would break that. The drawing is `aria-hidden`: the lists below are its accessible form. On a narrow screen it keeps its size, scrolls sideways and opens on the artist.
 - The search page is the app shell, `X-Robots-Tag: noindex` (nginx).
 
+## Navigation on phones
+
+- Below `md`, the header's links give way to a Menu button (`MobileMenu`, Base UI Dialog, full screen): Le direct, Musilogy, Mes titres or Se connecter, the account and the language. Above `md` the header is unchanged.
+
 ## Casting
 
 - **AirPlay** is Safari's own picker on the `<audio>` element (`lib/cast/airplay.ts`). **Chromecast** goes to AubeSonore's Custom Web Receiver, app id `E913507F` in the Cast SDK Developer Console (`lib/cast/chromecast.ts`), never the Default Media Receiver: the receiver follows the track on air itself, from the static now-playing file, and sets the media information again at each track, so the TV's title and cover change while the stream plays on (Music Assistant's receiver does the same).
 - **The receiver is `cast/receiver.html`**, a second Vite entry: no React, no service worker (a small plugin in `vite.config.ts` strips what vite-plugin-pwa injects into every page), hex colours (older Cast devices lack oklch). It plays the station whatever the sender asks, as a LIVE stream, without Pause: resuming a live stream plays the buffer behind the antenna. nginx serves it with its own CSP (gstatic, ajax.googleapis, blob:).
-- **The sender SDK loads in Chromium only**, and the button shows once a device is on the network. While a session lasts, `player.ts` relays play, stop and volume to the device (`setRemotePlayback`), and the cast store mirrors the device's state back into the player. The legal page names the SDK.
+- **One Diffuser button** (`CastControl`, `useDiffusion`) for AirPlay in Safari and Chromecast in Chromium, shown wherever the browser can cast (hero, player bar, phone sheet), as Google's checklist asks of the Cast button: Google's own `<google-cast-launcher>` hides itself without a device and knows no AirPlay. With no device found it opens a help popover (Base UI Popover) instead of an empty picker; connecting, its icon pulses; connected, it fills and names the device. The sender SDK loads in Chromium only. While a session lasts, `player.ts` relays play, stop and volume to the device (`setRemotePlayback`), and the cast store mirrors the device's state back into the player. The legal page names the SDK.
 - The app is tested on the devices registered in the console before it is published; publishing makes it reachable from every Cast device.
 
 ## SSRF, headers, and other security baselines
