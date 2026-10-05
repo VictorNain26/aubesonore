@@ -16,13 +16,12 @@ import type {
   ArtistLink,
   ArtistSummary,
   PlatformLinks,
-  PreferredPlatform,
 } from '@aubesonore/shared-types/client';
 import type { StatsState } from '@aubesonore/shared-types/stats';
 
 // Re-export so existing imports (`from '../db/schema'`) keep working.
 // Source of truth lives in @aubesonore/shared-types/client.
-export type { PlatformLinks, PreferredPlatform };
+export type { PlatformLinks };
 
 // ─────────────────────────────────────────────
 // USER TABLE
@@ -165,41 +164,6 @@ export const likedTracks = pgTable(
 );
 
 // ─────────────────────────────────────────────
-// USER_PREFERENCES TABLE
-// ─────────────────────────────────────────────
-export const userPreferences = pgTable('user_preferences', {
-  userId: text('user_id')
-    .primaryKey()
-    .references(() => user.id, { onDelete: 'cascade' }),
-  preferredPlatform: text('preferred_platform')
-    .$type<PreferredPlatform>()
-    .notNull()
-    .default('spotify'),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
-
-// ─────────────────────────────────────────────
-// PUSH_SUBSCRIPTIONS TABLE
-// ─────────────────────────────────────────────
-export const pushSubscriptions = pgTable(
-  'push_subscriptions',
-  {
-    id: text('id').primaryKey(),
-    userId: text('user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    endpoint: text('endpoint').notNull(),
-    p256dh: text('p256dh').notNull(),
-    auth: text('auth').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => ({
-    pushSubsUserIdIdx: index('push_subscriptions_user_id_idx').on(table.userId),
-    pushSubsEndpointUnique: unique('push_subscriptions_endpoint_unique').on(table.endpoint),
-  })
-);
-
-// ─────────────────────────────────────────────
 // USER_STATS TABLE
 // ─────────────────────────────────────────────
 export const userStats = pgTable('user_stats', {
@@ -332,12 +296,6 @@ export type NewVerification = InferInsertModel<typeof verification>;
 
 export type LikedTrack = InferSelectModel<typeof likedTracks>;
 export type NewLikedTrack = InferInsertModel<typeof likedTracks>;
-
-export type UserPreferences = InferSelectModel<typeof userPreferences>;
-export type NewUserPreferences = InferInsertModel<typeof userPreferences>;
-
-export type PushSubscription = InferSelectModel<typeof pushSubscriptions>;
-export type NewPushSubscription = InferInsertModel<typeof pushSubscriptions>;
 
 export type UserStats = InferSelectModel<typeof userStats>;
 export type NewUserStats = InferInsertModel<typeof userStats>;

@@ -1,5 +1,4 @@
-import { PLATFORM_NAMES } from '@aubesonore/shared-types/client';
-import type { PreferredPlatform } from '@aubesonore/shared-types/client';
+import { PLATFORM_NAMES, type PlatformLinks } from '@aubesonore/shared-types/client';
 import type { TrackLinks } from '../trackLinksService';
 import { env } from '../../config/env';
 
@@ -68,7 +67,7 @@ export function renderSharePage({
   const copy = COPY[locale];
   const artworkUrl = songlink?.artworkUrl?.startsWith('https://') ? songlink.artworkUrl : undefined;
   const platformLinks = songlink
-    ? (Object.entries(songlink.platformLinks) as Array<[PreferredPlatform, string]>)
+    ? (Object.entries(songlink.platformLinks) as Array<[keyof PlatformLinks, string]>)
         .filter(([, url]) => url.startsWith('https://'))
         .slice(0, 4)
     : [];

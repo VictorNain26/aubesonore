@@ -43,32 +43,3 @@ registerRoute(
     ] as unknown as WorkboxPlugin[],
   })
 );
-
-// Alert "un artiste gardé repasse à l'antenne": the backend sends
-// { title, body, url } (pushService.sendToUsers).
-self.addEventListener('push', (event) => {
-  const { title, body, url } = (event.data?.json() ?? {}) as {
-    title?: string;
-    body?: string;
-    url?: string;
-  };
-  event.waitUntil(
-    self.registration.showNotification(title ?? 'AubeSonore', {
-      body: body ?? '',
-      icon: '/icon-192.png',
-      badge: '/icon-32.png',
-      data: { url: url ?? '/' },
-    })
-  );
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const target = new URL((event.notification.data as { url: string }).url, self.location.origin);
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
-      const open = windows.find((w) => new URL(w.url).origin === target.origin);
-      return open ? open.focus() : self.clients.openWindow(target.href);
-    })
-  );
-});

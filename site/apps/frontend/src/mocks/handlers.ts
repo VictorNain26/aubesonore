@@ -45,14 +45,6 @@ export const handlers = [
   http.delete(`${API}/api/track/like/:id`, () => HttpResponse.json({ message: 'ok' })),
   http.post(`${API}/api/track/check-liked`, () => HttpResponse.json({ liked: false })),
 
-  // Preferences
-  http.get(`${API}/api/preferences`, () =>
-    HttpResponse.json({ id: 'p1', userId: 'u1', preferredPlatform: 'spotify' })
-  ),
-  http.put(`${API}/api/preferences`, () =>
-    HttpResponse.json({ preferences: { id: 'p1', userId: 'u1', preferredPlatform: 'spotify' } })
-  ),
-
   // Artist pages: every name resolves except "Unknown", which the antenna never played.
   http.get(`${API}/api/artist/resolve`, ({ request }) => {
     const name = new URL(request.url).searchParams.get('name') ?? '';

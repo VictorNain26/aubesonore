@@ -1,15 +1,13 @@
 import { useEffect } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { useLikedTracksStore } from '../stores/likedTracksStore';
-import { usePreferencesStore } from '../stores/preferencesStore';
 import { isTrackLiked } from '../stores/likedTracksStore';
 import { takePendingKeep } from '../lib/pendingKeep';
 import { toast } from 'sonner';
 import * as m from '@/paraglide/messages.js';
 
 // Invisible side-effect host that hydrates the auth session once and
-// bridges auth transitions to the auth-dependent stores (liked tracks,
-// preferences). Replaces the previous AuthProvider mount + AuthDataSync
+// bridges auth transitions to the liked-tracks store. Replaces the previous AuthProvider mount + AuthDataSync
 // pairing — same observable behavior, one mounted component instead of
 // two and zero React Context.
 
@@ -28,13 +26,12 @@ export function AuthInit(): null {
     let cancelled = false;
 
     // Hydrate session once. After init resolves, fire the initial sync
-    // pass: signed-in users get their liked tracks + preferences fetched
+    // pass: signed-in users get their liked tracks fetched
     // before the first interactive frame.
     void (async () => {
       await useAuthStore.getState().init();
       if (cancelled) return;
       if (useAuthStore.getState().isAuthenticated) {
-        void usePreferencesStore.getState().refresh();
         void keepPendingTrack().then(() => useLikedTracksStore.getState().refresh());
       }
     })();
@@ -46,11 +43,9 @@ export function AuthInit(): null {
       if (state.isLoading || prevState.isLoading) return;
       if (state.isAuthenticated === prevState.isAuthenticated) return;
       if (state.isAuthenticated) {
-        void usePreferencesStore.getState().refresh();
         void keepPendingTrack().then(() => useLikedTracksStore.getState().refresh());
       } else {
         useLikedTracksStore.getState().clear();
-        usePreferencesStore.getState().clear();
       }
     });
 

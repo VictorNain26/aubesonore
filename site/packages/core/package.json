@@ -19,10 +19,6 @@
       "types": "./dist/api.d.ts",
       "default": "./dist/api.js"
     },
-    "./share": {
-      "types": "./dist/share.d.ts",
-      "default": "./dist/share.js"
-    },
     "./lru-cache": {
       "types": "./dist/lruCache.d.ts",
       "default": "./dist/lruCache.js"

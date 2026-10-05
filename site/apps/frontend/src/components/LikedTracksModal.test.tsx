@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import { useAuthStore } from '../stores/authStore';
 import { LikedTracksModal } from './LikedTracksModal';
 import { useLikedTracksStore } from '../stores/likedTracksStore';
-import { usePreferencesStore } from '../stores/preferencesStore';
 import type { LikedTrack } from '../lib/api';
 
 function makeTrack(index: number): LikedTrack {
@@ -49,13 +48,6 @@ beforeEach(() => {
     isLoading: false,
     error: null,
     likingTrackId: null,
-  });
-  usePreferencesStore.setState({
-    preferences: {
-      userId: 'u1',
-      preferredPlatform: 'spotify',
-      updatedAt: new Date().toISOString(),
-    },
   });
   // The modal refetches liked tracks on open; keep the mocked GET consistent
   // with whatever the test placed in the store so the refetch is a no-op.
@@ -113,73 +105,20 @@ describe('LikedTracksModal', () => {
     expect(screen.queryByRole('button', { name: 'Se déconnecter' })).not.toBeInTheDocument();
   });
 
-  it('dates each kept track and links it to the preferred platform', () => {
-    useLikedTracksStore.setState({
-      tracks: [
-        {
-          ...makeTrack(0),
-          songlinkUrl: null,
-          platformLinks: { spotify: 'https://open.spotify.com/track/x' },
-        },
-      ],
-    });
-    render(<LikedTracksModal isOpen={true} onClose={vi.fn()} />);
-
-    expect(screen.getByText('gardé le 1 janvier')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ouvrir « Track 0 » sur Spotify' })).toHaveAttribute(
-      'href',
-      'https://open.spotify.com/track/x'
-    );
-  });
-
-  it('names the platform a track really opens on when it is not on the chosen one', () => {
-    usePreferencesStore.setState({
-      preferences: {
-        userId: 'u1',
-        preferredPlatform: 'appleMusic',
-        updatedAt: new Date().toISOString(),
-      },
-    });
-    useLikedTracksStore.setState({
-      tracks: [
-        { ...makeTrack(0), platformLinks: { deezer: 'https://www.deezer.com/track/y' } },
-        { ...makeTrack(1), platformLinks: { appleMusic: 'https://music.apple.com/z' } },
-      ],
-    });
-    render(<LikedTracksModal isOpen={true} onClose={vi.fn()} />);
-
-    expect(screen.getByRole('link', { name: 'Ouvrir « Track 0 » sur Deezer' })).toHaveAttribute(
-      'href',
-      'https://www.deezer.com/track/y'
-    );
-    expect(screen.getByText("gardé le 1 janvier · s'ouvre sur Deezer")).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Ne plus garder « Track 0 »' })).toHaveTextContent(
-      'Retirer'
-    );
-  });
-
-  it('opens on Deezer when the saved platform links no kept track', () => {
+  it('dates each kept track and plays it on YouTube', () => {
     useLikedTracksStore.setState({
       tracks: [{ ...makeTrack(0), platformLinks: { deezer: 'https://www.deezer.com/track/y' } }],
     });
     render(<LikedTracksModal isOpen={true} onClose={vi.fn()} />);
 
-    expect(screen.getByRole('link', { name: 'Ouvrir « Track 0 » sur Deezer' })).toBeInTheDocument();
     expect(screen.getByText('gardé le 1 janvier')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: "Choisir la plateforme d'écoute" })
-    ).not.toBeInTheDocument();
-  });
-
-  it('offers only the platforms the kept tracks open on, and Deezer always', async () => {
-    useLikedTracksStore.setState({
-      tracks: [{ ...makeTrack(0), platformLinks: { appleMusic: 'https://music.apple.com/z' } }],
-    });
-    render(<LikedTracksModal isOpen={true} onClose={vi.fn()} />);
-
-    await userEvent.click(screen.getByRole('button', { name: "Choisir la plateforme d'écoute" }));
-    const options = await screen.findAllByRole('menuitemradio');
-    expect(options.map((option) => option.textContent)).toEqual(['Apple Music', 'Deezer']);
+    expect(screen.getByRole('link', { name: 'Écouter « Track 0 » sur YouTube' })).toHaveAttribute(
+      'href',
+      'https://youtube.com/watch?v=0'
+    );
+    expect(screen.getByRole('button', { name: 'Ne plus garder « Track 0 »' })).toHaveTextContent(
+      'Retirer'
+    );
   });
 
   it('counts nothing when the library is empty', async () => {
@@ -187,19 +126,6 @@ describe('LikedTracksModal', () => {
 
     expect(await screen.findByText("Rien de gardé pour l'instant.")).toBeInTheDocument();
     expect(screen.queryByText(/titres? gardés?$/)).not.toBeInTheDocument();
-  });
-
-  it('explains why the alert cannot be switched on when the browser has no push', async () => {
-    render(<LikedTracksModal isOpen={true} onClose={vi.fn()} />);
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole('switch', {
-          name: "Me prévenir quand un de vos artistes repasse à l'antenne",
-        })
-      ).toBeDisabled()
-    );
-    expect(screen.getByText(/ajoutez d'abord le site à l'écran d'accueil/)).toBeInTheDocument();
   });
 
   it('keeps the track visible with an inline Undo on delete, and cancels the removal on undo', async () => {

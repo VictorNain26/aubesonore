@@ -103,9 +103,6 @@ services:
       AZURACAST_BASE_URL: ${AZURACAST_BASE_URL:-http://host.docker.internal:8080}
       AZURACAST_API_KEY: ${AZURACAST_API_KEY:-}
       AZURACAST_STATION_ID: ${AZURACAST_STATION_ID:-1}
-      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
-      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
-      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:contact@aubesonore.fr}
     volumes:
       - pg_certs:/certs:ro
     ports:

@@ -83,7 +83,6 @@ function AuthAside() {
       <p className="text-section m-0 text-balance">{m.auth_aside_title()}</p>
       <ul className="text-intro text-text-muted max-w-aside m-0 flex list-none flex-col gap-3 p-0">
         <li>{m.auth_aside_library()}</li>
-        <li>{m.auth_aside_alert()}</li>
         <li>{m.auth_aside_ranking()}</li>
       </ul>
     </aside>

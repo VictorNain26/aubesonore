@@ -1,13 +1,11 @@
 import { API_BASE_URL } from '../utils/config';
-import { createTrackApi, createPreferencesApi } from '@aubesonore/core/api';
+import { createTrackApi } from '@aubesonore/core/api';
 import type { ApiClient } from '@aubesonore/core/api';
 import type { AuthResponse } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
 
 export type {
   ClientLikedTrack as LikedTrack,
-  PreferredPlatform,
-  UserPreferences,
   LikeTrackRequest,
 } from '@aubesonore/shared-types/client';
 
@@ -59,7 +57,6 @@ async function authError(response: Response, fallback: () => string): Promise<Er
 }
 
 export const trackApi = createTrackApi(apiClient);
-export const preferencesApi = createPreferencesApi(apiClient);
 
 export const authApi = {
   getSession: async (): Promise<AuthResponse | null> => {

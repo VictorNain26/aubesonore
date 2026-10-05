@@ -1,10 +1,8 @@
-import { ChevronDown, ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getLocale } from '@/paraglide/runtime.js';
 import { Modal } from './Modal';
-import { Menu } from '../molecules/Menu';
 import { Cover } from '../../home/Cover';
-import type { AlertState } from '../../lib/push';
 import * as m from '@/paraglide/messages.js';
 
 interface LikedTrackViewModel {
@@ -14,32 +12,22 @@ interface LikedTrackViewModel {
   artworkUrl?: string;
   /** ISO date the track was kept. */
   keptAt: string;
-  /** Direct platform link, or `null` while links are still resolving; `isPreferred`
-   *  is false when the track is not on the chosen platform and opens elsewhere. */
-  link: { href: string; platform: string; isPreferred: boolean } | null;
+  /** Where the track plays on YouTube. */
+  listenHref: string;
   /** Row is pending removal (grayed, showing Undo). */
   pendingRemoval: boolean;
   /** Remaining share of the removal grace period (1 → 0), drives the countdown bar. */
   removalFraction?: number;
 }
 
-interface PlatformOption {
-  id: string;
-  name: string;
-}
-
 export interface LikedTracksModalViewProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  alert: { state: AlertState | null; isBusy: boolean; onToggle: () => void };
   totalCount: number;
   isLoading: boolean;
   tracks: LikedTrackViewModel[];
   hiddenCount: number;
   onShowMore: () => void;
-  platforms: readonly PlatformOption[];
-  selectedPlatformId: string;
-  onSelectPlatform: (platformId: string) => void;
   onDeleteTrack: (id: string) => void;
   onUndoTrack: (id: string) => void;
 }
@@ -61,62 +49,21 @@ function keptOn(iso: string): string {
   return m.library_kept_on({ date: format.format(new Date(iso)) });
 }
 
-function AlertSwitch({ alert }: Pick<LikedTracksModalViewProps, 'alert'>) {
-  const isOn = alert.state === 'on';
-  const blocked = alert.state === 'unsupported' || alert.state === 'denied';
-  return (
-    <div className="border-border flex flex-col gap-2 border-b px-6 py-4.5 md:px-8">
-      <div className="flex items-center justify-between gap-4">
-        <span className="flex flex-col">
-          <span className="font-semibold">{m.alert_title()}</span>
-          <span className="text-ui text-text-muted font-normal">{m.alert_body()}</span>
-        </span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={isOn}
-          aria-label={m.alert_aria()}
-          onClick={alert.onToggle}
-          disabled={alert.state === null || alert.isBusy || blocked}
-          className={cn(
-            'ease-out-quart focus-visible:outline-accent flex h-8 w-13 shrink-0 rounded-full p-0.75 transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50',
-            isOn ? 'bg-accent justify-end' : 'bg-border justify-start'
-          )}
-        >
-          <span className="bg-surface size-6.5 rounded-full" />
-        </button>
-      </div>
-      {blocked ? (
-        <p className="text-caption text-text-muted m-0">
-          {alert.state === 'denied' ? m.alert_denied() : m.alert_unsupported()}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
 /**
- * "Mes titres": the alert switch, the preferred
- * platform, and every kept track with a link to open it there. The container
- * owns the stores, link resolution, the removal timer and the push subscription.
+ * "Mes titres": every kept track with a link to play it on YouTube. The container
+ * owns the stores and the removal timer.
  */
 export function LikedTracksModalView({
   open,
   onOpenChange,
-  alert,
   totalCount,
   isLoading,
   tracks,
   hiddenCount,
   onShowMore,
-  platforms,
-  selectedPlatformId,
-  onSelectPlatform,
   onDeleteTrack,
   onUndoTrack,
 }: LikedTracksModalViewProps) {
-  const platformName = platforms.find((p) => p.id === selectedPlatformId)?.name ?? '';
-
   return (
     <Modal
       title={m.library_modal_title()}
@@ -130,37 +77,6 @@ export function LikedTracksModalView({
           }
         : {})}
     >
-      <AlertSwitch alert={alert} />
-
-      {totalCount > 0 ? (
-        <div className="border-border text-ui text-text-muted flex items-center justify-between border-b px-6 py-1.5 font-normal md:px-8">
-          <span>{m.library_open_with()}</span>
-          {platforms.length < 2 ? (
-            <span className="text-text flex min-h-11 items-center font-semibold">
-              {platformName}
-            </span>
-          ) : (
-            <Menu
-              trigger={
-                <button
-                  type="button"
-                  aria-label={m.library_platform_picker()}
-                  className="text-text focus-visible:outline-accent flex min-h-11 items-center gap-1.5 rounded-sm font-semibold focus-visible:outline-2 [&[data-popup-open]>svg]:rotate-180"
-                >
-                  {platformName}
-                  <ChevronDown className="ease-out-quart size-3.5 transition-transform duration-150" />
-                </button>
-              }
-              items={platforms.map((platform) => ({
-                label: platform.name,
-                onSelect: () => onSelectPlatform(platform.id),
-                selected: platform.id === selectedPlatformId,
-              }))}
-            />
-          )}
-        </div>
-      ) : null}
-
       {isLoading ? (
         <ul aria-busy="true" className="m-0 list-none px-6 md:px-8">
           {Array.from({ length: 4 }, (_, i) => (
@@ -198,9 +114,6 @@ export function LikedTracksModalView({
                 <span className="text-text-muted truncate">{track.artist}</span>
                 <span className="text-caption text-text-muted mt-0.5 font-normal">
                   {track.pendingRemoval ? m.liked_track_removed() : keptOn(track.keptAt)}
-                  {!track.pendingRemoval && track.link && !track.link.isPreferred
-                    ? ` · ${m.library_only_on({ platform: track.link.platform })}`
-                    : null}
                 </span>
                 {track.pendingRemoval ? (
                   <span
@@ -228,33 +141,16 @@ export function LikedTracksModalView({
                 </button>
               ) : (
                 <>
-                  {track.link ? (
-                    <a
-                      href={track.link.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={m.library_open_on({
-                        title: track.title,
-                        platform: track.link.platform,
-                      })}
-                      title={m.library_open_on({
-                        title: track.title,
-                        platform: track.link.platform,
-                      })}
-                      className={ICON_ACTION}
-                    >
-                      <ExternalLink className="size-4.5" strokeWidth={1.6} aria-hidden="true" />
-                    </a>
-                  ) : (
-                    <span
-                      role="img"
-                      aria-label={m.library_links_resolving({ title: track.title })}
-                      title={m.library_links_resolving({ title: track.title })}
-                      className={cn(ICON_ACTION, 'cursor-help opacity-40')}
-                    >
-                      <ExternalLink className="size-4.5" strokeWidth={1.6} aria-hidden="true" />
-                    </span>
-                  )}
+                  <a
+                    href={track.listenHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={m.library_listen({ title: track.title })}
+                    title={m.library_listen({ title: track.title })}
+                    className={ICON_ACTION}
+                  >
+                    <ExternalLink className="size-4.5" strokeWidth={1.6} aria-hidden="true" />
+                  </a>
                   <button
                     type="button"
                     onClick={() => onDeleteTrack(track.id)}
