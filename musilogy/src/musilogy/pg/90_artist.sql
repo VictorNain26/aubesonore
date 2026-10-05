@@ -94,3 +94,35 @@ AS $$
   WHERE a.mbid = artist
   ORDER BY 1, 5 NULLS LAST, 2;
 $$;
+
+-- The pages MusicBrainz relates to the artist and still holds as its own (an
+-- ended relation is a page that no longer is). The type keeps MusicBrainz's
+-- name; the site picks the platforms it shows.
+CREATE FUNCTION musilogy.artist_urls(artist text)
+RETURNS TABLE (type text, url text)
+LANGUAGE sql STABLE
+AS $$
+  SELECT u.type, u.url FROM musilogy.urls u
+  WHERE u.artist_mbid = artist AND NOT u.ended
+  ORDER BY 1 NULLS LAST, 2;
+$$;
+
+-- The albums and EPs credited to the artist, all of them, with their
+-- secondary types (live, compilation…) for the site to choose from. Oldest
+-- first, a release without a year last, then by title and mbid: a total order.
+CREATE FUNCTION musilogy.artist_releases(artist text)
+RETURNS TABLE (
+  mbid text,
+  title text,
+  primary_type text,
+  secondary text[],
+  y integer,
+  n_credited integer
+)
+LANGUAGE sql STABLE
+AS $$
+  SELECT r.rg_mbid, r.title, r.primary_type, r.secondary, r.y, r.n_credited
+  FROM musilogy.releases r
+  WHERE r.artist_mbid = artist
+  ORDER BY r.y NULLS LAST, r.title, r.rg_mbid;
+$$;
