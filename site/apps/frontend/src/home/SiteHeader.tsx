@@ -1,8 +1,10 @@
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '../stores/authStore';
 import { Menu } from '../design/molecules/Menu';
+import { MobileMenu } from './MobileMenu';
 import { Link, useLocation } from 'react-router';
 import { localizeHref } from '@/paraglide/runtime.js';
+import { cn } from '@/lib/utils';
 import * as m from '@/paraglide/messages.js';
 
 const NAV_LINK =
@@ -13,6 +15,10 @@ const BRAND_LINK =
 
 const OUTLINE_PILL =
   'text-ui border-accent ease-out-quart hover:bg-accent hover:text-on-accent focus-visible:outline-accent inline-flex min-h-11 items-center rounded-full border px-4.5 transition-[color,background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
+
+// The page the listener is on: marked, not hidden, and not reacting to the pointer.
+const CURRENT_LINK = 'underline decoration-2 underline-offset-8 hover:opacity-100';
+const CURRENT_PILL = 'bg-accent text-on-accent';
 
 const AVATAR =
   'bg-accent text-on-accent ease-out-quart focus-visible:outline-accent flex size-11 items-center justify-center rounded-full font-semibold transition-[scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95';
@@ -31,6 +37,9 @@ export function SiteHeader() {
   // The sign-in page is where Se connecter leads: the header does not offer it twice.
   const isSignInPage = [m.signin_href(), '/reset-password'].includes(pathname);
   const libraryHref = localizeHref('/mes-titres');
+  const musilogyHref = localizeHref('/musilogy');
+  const onMusilogy = pathname === musilogyHref || pathname.startsWith(`${musilogyHref}/`);
+  const onLibrary = pathname === libraryHref;
 
   // The same link on every page; on the home page it is also the page's heading.
   const brand = (
@@ -44,8 +53,16 @@ export function SiteHeader() {
   return (
     <header className="px-page relative z-10 flex items-start justify-between gap-6 pt-5 md:pt-7">
       {isHome ? <h1 className="m-0">{brand}</h1> : brand}
-      <nav aria-label={m.nav_label()} className="flex shrink-0 items-center gap-7">
-        <Link to={localizeHref('/musilogy')} className={NAV_LINK}>
+      {/* Phones get the pages in a menu: the header has no room for them. */}
+      <span className="shrink-0 md:hidden">
+        <MobileMenu />
+      </span>
+      <nav aria-label={m.nav_label()} className="hidden shrink-0 items-center gap-7 md:flex">
+        <Link
+          to={musilogyHref}
+          aria-current={onMusilogy ? 'page' : undefined}
+          className={cn(NAV_LINK, onMusilogy && CURRENT_LINK)}
+        >
           {m.musilogy_title()}
         </Link>
         {isLoading ? (
@@ -54,8 +71,8 @@ export function SiteHeader() {
           <span className="flex items-center gap-3">
             <Link
               to={libraryHref}
-              aria-current={pathname === libraryHref ? 'page' : undefined}
-              className={OUTLINE_PILL}
+              aria-current={onLibrary ? 'page' : undefined}
+              className={cn(OUTLINE_PILL, onLibrary && CURRENT_PILL)}
             >
               {m.nav_my_tracks()}
             </Link>

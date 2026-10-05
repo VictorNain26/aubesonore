@@ -7,8 +7,12 @@ import { setRemotePlayback, usePlayer } from '../lib/player';
 import { STREAM_URL } from '../utils/config';
 
 interface CastStore {
-  /** A Cast device is on the network: the button shows. */
+  /** The browser can cast (Chromium, the SDK loaded). */
+  supported: boolean;
+  /** A Cast device is on the network. */
   available: boolean;
+  /** Between the choice of a device and the session it opens. */
+  connecting: boolean;
   /** The device the stream is cast to, by the name its owner gave it. */
   deviceName: string | null;
   initialize: () => void;
@@ -69,6 +73,7 @@ function start(set: (state: Partial<CastStore>) => void): void {
 
   context.addEventListener(cast.framework.CastContextEventType.SESSION_STATE_CHANGED, (event) => {
     const session = context.getCurrentSession();
+    set({ connecting: event.sessionState === cast.framework.SessionState.SESSION_STARTING });
     const started = event.sessionState === cast.framework.SessionState.SESSION_STARTED;
     if (started || event.sessionState === cast.framework.SessionState.SESSION_RESUMED) {
       if (!session) return;
@@ -93,13 +98,17 @@ function start(set: (state: Partial<CastStore>) => void): void {
 }
 
 export const useCastStore = create<CastStore>((set) => ({
+  supported: false,
   available: false,
+  connecting: false,
   deviceName: null,
   initialize: () => {
     if (initialized) return;
     initialized = true;
     void loadCastSdk().then((isAvailable) => {
-      if (isAvailable) start(set);
+      if (!isAvailable) return;
+      set({ supported: true });
+      start(set);
     });
   },
   openPicker: () => {
