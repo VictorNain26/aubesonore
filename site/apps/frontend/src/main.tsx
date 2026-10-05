@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import App from './App';
-import '@fontsource-variable/bricolage-grotesque/wdth.css';
+import '@fontsource-variable/bricolage-grotesque';
 import '@fontsource-variable/geist-mono';
 import './index.css';
 import { handlePreloadError } from './lib/preloadReload';
