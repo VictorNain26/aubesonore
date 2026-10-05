@@ -1,6 +1,9 @@
 import { DrizzleQueryError, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import type {
+  ArtistFacts,
+  ArtistLink,
   ArtistPageRef,
+  ArtistPlatform,
   MusilogyArtist,
   MusilogyArtistRef,
   MusilogyInfluence,
@@ -207,7 +210,7 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
     card: {
       ...ref(card.mbid, card.name, card.disambiguation, card.y0),
       type: card.type,
-      country: card.country,
+      country: regionOf(card.country),
       beginArea: card.begin_area,
       y0Source: card.y0_source,
       yEnd: card.y_end,
@@ -247,4 +250,145 @@ export async function searchMusilogy(query: string): Promise<MusilogySearchHit[]
     y0: row.y0,
     listeners: toCount(row.user_count),
   }));
+}
+
+/**
+ * A country the page can name. MusicBrainz also files dissolved countries,
+ * which Intl names as today's (SU as Russia, YU as Serbia: their likely
+ * region is another), and regions of its own (XW Worldwide, XE Europe),
+ * which Intl cannot name; XK, Kosovo, it can. On the loaded dump this leaves
+ * out 4 343 artists' codes of 1 411 607, and no current country (2026-10-05).
+ */
+function regionOf(code: string | null): string | null {
+  if (!code) return null;
+  try {
+    const likely = new Intl.Locale(`und-${code}`).maximize().region;
+    const name = new Intl.DisplayNames(['en'], { type: 'region' }).of(code);
+    return likely === code && name !== code ? code : null;
+  } catch {
+    return null;
+  }
+}
+
+const KINDS: Record<string, ArtistFacts['kind']> = {
+  Person: 'person',
+  Group: 'group',
+  Orchestra: 'orchestra',
+  Choir: 'choir',
+};
+
+/**
+ * Only a group's dates and begin area are a career; a person's are a birth.
+ * A begin area that only repeats the country is left out: 11 % of groups
+ * have one (2 168 of 20 000 sampled, 2026-10-05).
+ */
+function toFacts(card: CardRow): ArtistFacts {
+  const kind = KINDS[card.type] ?? null;
+  const isGroup = kind !== null && kind !== 'person';
+  const country = regionOf(card.country);
+  const countryName = country && new Intl.DisplayNames(['en'], { type: 'region' }).of(country);
+  return {
+    kind,
+    place: isGroup && card.begin_area !== countryName ? card.begin_area : null,
+    country,
+    formed: isGroup && card.y0_source === 'declared' ? card.y0 : null,
+    ended: isGroup && card.y_end_source === 'declared' ? card.y_end : null,
+    active: isGroup && card.ended === false,
+  };
+}
+
+interface UrlRow extends Record<string, unknown> {
+  type: string | null;
+  url: string;
+}
+
+// Listening platforms first, the official site last. Deezer is left out: the
+// artist's own Deezer id is already known, exactly.
+const LINK_ORDER: ArtistPlatform[] = [
+  'spotify',
+  'appleMusic',
+  'bandcamp',
+  'soundcloud',
+  'official',
+];
+
+const LINK_HOSTS: Array<[string, ArtistPlatform]> = [
+  ['open.spotify.com', 'spotify'],
+  ['music.apple.com', 'appleMusic'],
+  ['bandcamp.com', 'bandcamp'],
+  ['soundcloud.com', 'soundcloud'],
+];
+
+function platformOf(url: URL, relationType: string | null): ArtistPlatform | null {
+  if (relationType === 'official homepage') return 'official';
+  const host = url.hostname;
+  const entry = LINK_HOSTS.find(([suffix]) => host === suffix || host.endsWith(`.${suffix}`));
+  return entry ? entry[1] : null;
+}
+
+/**
+ * One link per platform and per address, https only. artist_urls gives the
+ * pages still the artist's: a former address may belong to someone else now.
+ */
+function toLinks(rows: UrlRow[]): ArtistLink[] {
+  const links = new Map<ArtistPlatform, string>();
+  for (const row of rows) {
+    if (!row.url.startsWith('https://') || !URL.canParse(row.url)) continue;
+    const platform = platformOf(new URL(row.url), row.type);
+    if (platform && !links.has(platform)) links.set(platform, row.url);
+  }
+  // In LINK_ORDER the official site comes last: when it is the Bandcamp page,
+  // it is listed once, as Bandcamp.
+  const listed = new Set<string>();
+  return LINK_ORDER.flatMap((platform) => {
+    const url = links.get(platform);
+    if (!url || listed.has(url)) return [];
+    listed.add(url);
+    return [{ platform, url }];
+  });
+}
+
+const WIKIDATA_ITEM = /^https?:\/\/www\.wikidata\.org\/wiki\/(Q\d+)$/;
+
+function wikidataIdOf(rows: UrlRow[]): string | null {
+  const ids = new Set(
+    rows.flatMap((row) => {
+      const match = row.type === 'wikidata' ? WIKIDATA_ITEM.exec(row.url) : null;
+      return match?.[1] ? [match[1]] : [];
+    })
+  );
+  const [only] = ids;
+  return ids.size === 1 && only ? only : null;
+}
+
+/** Who the artist is, as the dump states it: the profile's facts and links. */
+export interface ArtistIdentity {
+  facts: ArtistFacts;
+  links: ArtistLink[];
+  /** The Wikidata item, the way to the artist's Wikipedia articles. */
+  wikidataId: string | null;
+}
+
+export const identityCache = new TtlCache<ArtistIdentity | null>(ONE_HOUR_MS);
+const identityFlight = createSingleFlight<ArtistIdentity | null>();
+
+/**
+ * The facts, listening links and Wikidata item of an artist, null when the
+ * dump does not know its MBID. Throws MusilogyUnavailable before a load.
+ */
+export function getArtistIdentity(mbid: string): Promise<ArtistIdentity | null> {
+  const cached = identityCache.get(mbid);
+  if (cached !== undefined) return Promise.resolve(cached);
+  return identityFlight(mbid, async () => {
+    const [cards, urls] = await Promise.all([
+      call<CardRow>(sql`SELECT * FROM musilogy.artist_card(${mbid})`),
+      call<UrlRow>(sql`SELECT * FROM musilogy.artist_urls(${mbid})`),
+    ]);
+    const card = cards[0];
+    const identity = card
+      ? { facts: toFacts(card), links: toLinks(urls), wikidataId: wikidataIdOf(urls) }
+      : null;
+    identityCache.set(mbid, identity);
+    return identity;
+  });
 }

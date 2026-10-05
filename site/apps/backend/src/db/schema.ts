@@ -11,12 +11,7 @@ import {
   customType,
 } from 'drizzle-orm/pg-core';
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
-import type {
-  ArtistFacts,
-  ArtistLink,
-  ArtistSummary,
-  PlatformLinks,
-} from '@aubesonore/shared-types/client';
+import type { ArtistSummary, PlatformLinks } from '@aubesonore/shared-types/client';
 import type { StatsState } from '@aubesonore/shared-types/stats';
 
 // Re-export so existing imports (`from '../db/schema'`) keep working.
@@ -235,18 +230,16 @@ export const artistSlug = pgTable('artist_slug', {
 });
 
 // ─────────────────────────────────────────────
-// ARTIST_PROFILE TABLE — the last known answer of each source
+// ARTIST_PROFILE TABLE — the last known answer of each live source
 // ─────────────────────────────────────────────
 // A restart or a deploy keeps every page answering at once; a source that
-// fails during a refresh leaves its stored section as it was.
+// fails during a refresh leaves its stored section as it was. Facts and
+// listening links are the dump's, read from musilogy at each view.
 export const artistProfile = pgTable('artist_profile', {
   artistId: text('artist_id')
     .primaryKey()
     .references(() => artist.id, { onDelete: 'cascade' }),
   image: text('image'),
-  facts: jsonb('facts').$type<ArtistFacts>(),
-  links: jsonb('links').$type<ArtistLink[]>().notNull().default([]),
-  wikidataId: text('wikidata_id'),
   summaryFr: jsonb('summary_fr').$type<ArtistSummary>(),
   summaryEn: jsonb('summary_en').$type<ArtistSummary>(),
   // When every source last answered; a refresh cut short keeps the old date.
