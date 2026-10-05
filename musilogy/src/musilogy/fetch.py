@@ -253,6 +253,98 @@ def fetch_proximity(mbids: Iterable[str], dest: Path) -> int:
     return n
 
 
+RELEASE_GROUPS_URL = "https://musicbrainz.org/ws/2/release-group"
+# A browse answers 100 release groups at most (musicbrainz.org/doc/MusicBrainz_API,
+# "Browse"). "website-default" leaves out the release groups whose releases
+# are all promotions, bootlegs or pseudo-releases, as the artist's page on
+# musicbrainz.org does (same page, "release-group-status"). The service allows
+# one request a second on average, and answers 503 above it
+# (musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting): _with_retries waits.
+BROWSE_LIMIT = 100
+
+
+def _get_known(url: str, params: dict[str, str]) -> tuple[Any, Message]:
+    """MusicBrainz answers 404 for an artist it no longer holds: an answer,
+    not a refusal."""
+    try:
+        return _get(url, params)
+    except urllib.error.HTTPError as e:
+        if e.code == HTTPStatus.NOT_FOUND:
+            return None, e.headers
+        raise
+
+
+def _credits(group: Any) -> set[str]:
+    if not isinstance(group, dict) or not isinstance(group.get("id"), str):
+        raise DownloadError("MusicBrainz answered a release group without an id")
+    return {
+        c["artist"]["id"]
+        for c in group.get("artist-credit") or []
+        if isinstance(c, dict) and isinstance(c.get("artist"), dict)
+    }
+
+
+def official_release_groups(mbid: str) -> dict[str, Any]:
+    """The album and EP release groups MusicBrainz shows for one artist, as
+    one snapshot row, every page asked at most once a second.
+
+    An external payload: every release group must credit the artist asked.
+    When none does, MusicBrainz answered for the artist this one was merged
+    into since the dump, and when it no longer knows the artist it answers
+    404: in both cases the row holds null, the artist left unsurveyed rather
+    than given another's records. A mixed answer, or pages that do not add
+    up to the count the service announces, is refused."""
+    ids: list[str] = []
+    count: int | None = None
+    while count is None or len(ids) < count:
+        started = time.monotonic()
+        params = {
+            "artist": mbid,
+            "type": "album|ep",
+            "release-group-status": "website-default",
+            "inc": "artist-credits",
+            "limit": str(BROWSE_LIMIT),
+            "offset": str(len(ids)),
+            "fmt": "json",
+        }
+        page, _ = _with_retries(partial(_get_known, RELEASE_GROUPS_URL, params), "MusicBrainz")
+        time.sleep(max(0.0, MIN_INTERVAL - (time.monotonic() - started)))
+        if page is None:
+            return {"artist_mbid": mbid, "release_groups": None}
+        groups = page.get("release-groups") if isinstance(page, dict) else None
+        total = page.get("release-group-count") if isinstance(page, dict) else None
+        if not isinstance(groups, list) or not isinstance(total, int):
+            raise DownloadError(f"MusicBrainz answered an unexpected shape for {mbid}")
+        if count is not None and total != count:
+            raise DownloadError(f"MusicBrainz's count for {mbid} moved between pages")
+        count = total
+        credited = [mbid in _credits(g) for g in groups]
+        if groups and not any(credited) and not ids:
+            return {"artist_mbid": mbid, "release_groups": None}
+        if not all(credited):
+            raise DownloadError(f"MusicBrainz answered records of another artist than {mbid}")
+        if not groups and len(ids) < count:
+            raise DownloadError(f"MusicBrainz's pages for {mbid} stop short of its count")
+        ids += [g["id"] for g in groups]
+    if len(set(ids)) != len(ids) or len(ids) != count:
+        raise DownloadError(f"MusicBrainz's pages for {mbid} do not add up to its count")
+    return {"artist_mbid": mbid, "release_groups": sorted(ids)}
+
+
+def fetch_official(mbids: Iterable[str], dest: Path) -> int:
+    """One line per artist asked, written as answered, aside then renamed and
+    resumable like the proximity snapshot: about 100 000 requests for the
+    artists with 500 listeners or more, more than a day."""
+    partial_file, n, rest = _resume(dest, ([m] for m in mbids))
+    with partial_file.open("a", encoding="utf-8") as out:
+        for (mbid,) in rest:
+            out.write(json.dumps(official_release_groups(mbid)) + "\n")
+            out.flush()
+            n += 1
+    partial_file.replace(dest)
+    return n
+
+
 def fetch_popularity(batches: Iterable[list[str]], dest: Path) -> int:
     """Writes the answers as received, one row per line. Written aside and
     renamed at the end: an interrupted snapshot leaves no file that looks like

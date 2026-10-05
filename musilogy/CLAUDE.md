@@ -83,6 +83,7 @@ uv run pytest -m slow         # ligne de base sur le dump réel, exige data/work
 uv run musilogy run           # fetch → extract → transform → validate → publish
 uv run musilogy snapshot-popularity  # relevé ListenBrainz daté, à épingler
 uv run musilogy snapshot-proximity   # voisins ListenBrainz, plusieurs jours, reprenable
+uv run musilogy snapshot-official    # disques officiels MusicBrainz, ~30 h, reprenable
 uv run musilogy snapshot-influences  # influences Wikidata, quelques secondes, à épingler
 uv run musilogy snapshot-discography # disques classés par Wikidata, quelques secondes, à épingler
 uv run musilogy make-fixtures

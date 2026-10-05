@@ -19,6 +19,7 @@ from musilogy.fetch import (
     fetch_discography,
     fetch_dump,
     fetch_influences,
+    fetch_official,
     fetch_popularity,
     fetch_proximity,
     sha256_file,
@@ -35,6 +36,8 @@ from musilogy.paths import (
     discography_sums,
     influences_snapshot,
     influences_sums,
+    official_snapshot,
+    official_sums,
     out_dir,
     popularity_snapshot,
     popularity_sums,
@@ -162,6 +165,39 @@ def snapshot_proximity() -> None:
     n = fetch_proximity((r[0] for r in iter(cur.fetchone, None)), dest)
     proximity_sums(date).write_text(f"{sha256_file(dest)}  {dest.name}\n", encoding="utf-8")
     print(f"{n} artists asked; pin it: REFERENCE_PROXIMITY = {date!r}")
+
+
+# The artists whose records a page filters by MusicBrainz's official status:
+# those with at least this many listeners and at least one album or EP in the
+# extraction, 97 628 artists for about 100 000 requests (2026-10-05). Below
+# it, bootlegs are rare: the 31 played artists under 500 listeners show 112
+# records, one of them a promotional EP (Cignol, The Cosmic Garden EP).
+OFFICIAL_MIN_USERS = 500
+
+
+def snapshot_official() -> None:
+    """Asks MusicBrainz which album and EP release groups it shows for every
+    artist with at least OFFICIAL_MIN_USERS listeners. MusicBrainz moves every
+    day: taken once and pinned, and resumed like the proximity."""
+    if not RELEASE_GROUPS_JSONL.exists():
+        fetch_and_extract()
+    partials = sorted(RAW_DIR.glob("musicbrainz/*/official-release-groups.jsonl.partial"))
+    date = partials[-1].parent.name if partials else datetime.now(UTC).date().isoformat()
+    dest = official_snapshot(date)
+    if dest.exists():
+        raise SystemExit(
+            f"MusicBrainz official status {date} already taken at {dest}: it is never taken again"
+        )
+    cur = connect().execute(
+        f"SELECT p.artist_mbid FROM read_ndjson('{verified_popularity().as_posix()}', "
+        "columns={artist_mbid:'VARCHAR', total_user_count:'BIGINT'}) p "
+        f"WHERE p.total_user_count >= {OFFICIAL_MIN_USERS} AND p.artist_mbid IN ("
+        f"SELECT UNNEST(artists) FROM read_ndjson('{RELEASE_GROUPS_JSONL.as_posix()}', "
+        "columns={artists:'VARCHAR[]'})) ORDER BY p.artist_mbid"
+    )
+    n = fetch_official((r[0] for r in iter(cur.fetchone, None)), dest)
+    official_sums(date).write_text(f"{sha256_file(dest)}  {dest.name}\n", encoding="utf-8")
+    print(f"{n} artists asked; pin it: REFERENCE_OFFICIAL = {date!r}")
 
 
 def snapshot_influences() -> None:
@@ -371,6 +407,10 @@ def main() -> None:
         help="take a dated ListenBrainz snapshot of each popular artist's neighbours",
     )
     subparsers.add_parser(
+        "snapshot-official",
+        help="take a dated MusicBrainz snapshot of the release groups each popular artist shows",
+    )
+    subparsers.add_parser(
         "snapshot-influences",
         help="take a dated Wikidata snapshot of the influences between MusicBrainz artists",
     )
@@ -390,6 +430,8 @@ def main() -> None:
         snapshot_popularity()
     elif args.command == "snapshot-proximity":
         snapshot_proximity()
+    elif args.command == "snapshot-official":
+        snapshot_official()
     elif args.command == "snapshot-influences":
         snapshot_influences()
     elif args.command == "snapshot-discography":
