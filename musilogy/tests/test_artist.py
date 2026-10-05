@@ -123,11 +123,12 @@ def test_releases_come_oldest_first_with_their_types_for_the_site_to_choose(tmp_
 
 
 def test_an_ended_page_is_no_longer_the_artist_s(tmp_path, pg):
-    urls = [
-        {"type": "social network", "url": "https://example.invalid/old", "ended": True},
-        {"type": "bandcamp", "url": "https://a.bandcamp.com/", "ended": None},
-        {"type": "allmusic", "url": "https://www.allmusic.com/artist/a", "ended": False},
+    pages = [
+        ("social network", "https://example.invalid/old", True),
+        ("bandcamp", "https://a.bandcamp.com/", None),
+        ("allmusic", "https://www.allmusic.com/artist/a", False),
     ]
+    urls = [{"type": kind, "url": url, "ended": ended} for kind, url, ended in pages]
     loaded(tmp_path, pg, [synthetic_artist(A, "1978", "1985", urls=urls)])
     assert pg_query(pg, f"SELECT type, url FROM musilogy.artist_urls('{A}')") == [
         ("allmusic", "https://www.allmusic.com/artist/a"),
