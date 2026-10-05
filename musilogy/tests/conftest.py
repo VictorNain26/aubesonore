@@ -6,7 +6,12 @@ from typing import Any
 import duckdb
 import pytest
 
-from musilogy import REFERENCE_DUMP, REFERENCE_INFLUENCES, REFERENCE_POPULARITY
+from musilogy import (
+    REFERENCE_DISCOGRAPHY,
+    REFERENCE_DUMP,
+    REFERENCE_INFLUENCES,
+    REFERENCE_POPULARITY,
+)
 from musilogy.build import build
 from musilogy.load import load
 from musilogy.paths import SQL_DIR
@@ -29,6 +34,8 @@ def con():
         popularity_snapshot=REFERENCE_POPULARITY,
         influences=FIX / "influences.jsonl",
         influences_snapshot=REFERENCE_INFLUENCES,
+        discography=FIX / "discography.jsonl",
+        discography_snapshot=REFERENCE_DISCOGRAPHY,
     )
     return c
 
@@ -121,7 +128,9 @@ def influences_file(path, rows):
     return path
 
 
-def published(tmp_path, artists, popularity=None, influences=None, release_groups=()):
+def published(
+    tmp_path, artists, popularity=None, influences=None, release_groups=(), discography=None
+):
     """A synthetic build, published as a delivery. `popularity` maps an mbid
     to its listen count; every other artist gets the null row ListenBrainz
     sends for an artist it has no listen of, as a real snapshot asks about
@@ -148,6 +157,14 @@ def published(tmp_path, artists, popularity=None, influences=None, release_group
     if influences is not None:
         kwargs["influences"] = influences_file(tmp_path / "influences.jsonl", influences)
         kwargs["influences_snapshot"] = REFERENCE_INFLUENCES
+    if discography is not None:
+        path = tmp_path / "discography.jsonl"
+        path.write_text(
+            "".join(json.dumps({"rg_mbid": rg, "form": form}) + "\n" for rg, form in discography),
+            encoding="utf-8",
+        )
+        kwargs["discography"] = path
+        kwargs["discography_snapshot"] = REFERENCE_DISCOGRAPHY
     out = tmp_path / "out"
     publish(build_synthetic(tmp_path, artists, release_groups, **kwargs), out, REFERENCE_DUMP, None)
     return out
@@ -161,6 +178,17 @@ def pg_query(conninfo, sql):
     return con.execute("SELECT * FROM postgres_query('pg', ?)", [sql]).fetchall()
 
 
-def loaded(tmp_path, conninfo, artists, popularity=None, influences=None, release_groups=()):
-    load(published(tmp_path, artists, popularity, influences, release_groups), conninfo)
+def loaded(
+    tmp_path,
+    conninfo,
+    artists,
+    popularity=None,
+    influences=None,
+    release_groups=(),
+    discography=None,
+):
+    load(
+        published(tmp_path, artists, popularity, influences, release_groups, discography),
+        conninfo,
+    )
     return conninfo

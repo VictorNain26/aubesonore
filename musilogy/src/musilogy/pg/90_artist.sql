@@ -107,18 +107,32 @@ AS $$
   ORDER BY 1 NULLS LAST, 2;
 $$;
 
--- The artist's main records. Where Wikidata files any of them (`curated`),
--- only those: the others are the bootlegs and reissues a curated list leaves
--- out. Elsewhere, every main record MusicBrainz credits. Oldest first, a
--- release without a year last, then by title and mbid: a total order.
+-- The records a page shows of the artist's work (docs/vision.md §2.4), in the
+-- order it was published: albums — studio, soundtrack, remix — and the EPs
+-- released from the first album on; an artist with no album yet shows its
+-- EPs. For a group whose end is declared, nothing released after that year
+-- but what Wikidata files as a studio album or an EP: a posthumous record of
+-- new music, not an archive. A year unknown keeps its record, last.
 CREATE FUNCTION musilogy.artist_releases(artist text)
-RETURNS TABLE (mbid text, title text, primary_type text, soundtrack boolean, y integer)
+RETURNS TABLE (
+  mbid text,
+  title text,
+  primary_type text,
+  soundtrack boolean,
+  remix boolean,
+  y integer
+)
 LANGUAGE sql STABLE
 AS $$
-  SELECT r.rg_mbid, r.title, r.primary_type, r.soundtrack, r.y
-  FROM musilogy.releases r
-  WHERE r.artist_mbid = artist
-    AND (r.curated OR NOT EXISTS (
-      SELECT 1 FROM musilogy.releases c WHERE c.artist_mbid = artist AND c.curated))
+  WITH r AS (SELECT * FROM musilogy.releases WHERE artist_mbid = artist),
+  first_album AS (SELECT min(y) AS y FROM r WHERE primary_type = 'Album'),
+  career AS (
+    SELECT CASE WHEN y_end_source = 'declared' THEN y_end END AS y_end
+    FROM musilogy.artists WHERE mbid = artist
+  )
+  SELECT r.rg_mbid, r.title, r.primary_type, r.soundtrack, r.remix, r.y
+  FROM r, first_album f, career c
+  WHERE (r.primary_type = 'Album' OR f.y IS NULL OR r.y IS NULL OR r.y >= f.y)
+    AND (c.y_end IS NULL OR r.y IS NULL OR r.y <= c.y_end OR r.filed_original)
   ORDER BY r.y NULLS LAST, r.title, r.rg_mbid;
 $$;

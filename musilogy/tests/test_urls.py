@@ -18,7 +18,7 @@ def test_a_page_related_twice_is_one_row_ended_only_when_every_relation_is(tmp_p
                 urls=[
                     url("bandcamp", "https://a.bandcamp.com/", ended=True),
                     url("bandcamp", "https://a.bandcamp.com/"),
-                    url("social network", "https://example.invalid/a", ended=True),
+                    url("official homepage", "https://example.invalid/a", ended=True),
                     url("streaming", None),
                 ],
             )
@@ -27,13 +27,13 @@ def test_a_page_related_twice_is_one_row_ended_only_when_every_relation_is(tmp_p
     # A relation without a page points at nothing: dropped.
     assert con.execute("SELECT type, url, ended FROM urls ORDER BY type").fetchall() == [
         ("bandcamp", "https://a.bandcamp.com/", False),
-        ("social network", "https://example.invalid/a", True),
+        ("official homepage", "https://example.invalid/a", True),
     ]
 
 
-def test_the_same_page_under_two_types_stays_two_rows(tmp_path):
-    # MusicBrainz relates one page as both "streaming" and "purchase for
-    # download" when it is both; each type is a statement of its own.
+def test_only_the_pages_an_artist_page_uses_are_kept(tmp_path):
+    # Case this must catch: the scope widening back to every page, or a
+    # listening platform reached under an unexpected relation type dropped.
     con = build_synthetic(
         tmp_path,
         [
@@ -42,30 +42,38 @@ def test_the_same_page_under_two_types_stays_two_rows(tmp_path):
                 "1980",
                 None,
                 urls=[
-                    url("streaming", "https://a.bandcamp.com/"),
-                    url("purchase for download", "https://a.bandcamp.com/"),
+                    url("free streaming", "https://www.deezer.com/artist/1"),
+                    url("purchase for download", "https://itunes.apple.com/gb/artist/id1"),
+                    url("other databases", "https://rateyourmusic.com/artist/a"),
+                    url("discogs", "https://www.discogs.com/artist/1"),
+                    url("social network", "https://twitter.com/a"),
+                    url("image", "https://commons.wikimedia.org/wiki/File:A.jpg"),
+                    url("streaming", "https://notdeezer.com/a"),
                 ],
             )
         ],
     )
-    assert con.execute("SELECT count(*) FROM urls").fetchone() == (2,)
+    assert con.execute("SELECT url FROM urls ORDER BY url").fetchall() == [
+        ("https://commons.wikimedia.org/wiki/File:A.jpg",),
+        ("https://itunes.apple.com/gb/artist/id1",),
+        ("https://www.deezer.com/artist/1",),
+    ]
 
 
 BEATLES = "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"
 
 
-def test_the_beatles_keep_their_pages_and_the_ones_that_are_no_longer_theirs(con):
-    # 73 pages in the dump, 6 of them ended: kept and flagged, so the
-    # population stays whole and artist_urls leaves them out.
+def test_the_beatles_keep_their_listening_pages_their_site_and_their_items(con):
     assert con.execute(
-        "SELECT count(*), count(*) FILTER (WHERE ended) FROM urls WHERE artist_mbid = ?",
-        [BEATLES],
-    ).fetchone() == (73, 6)
-    assert con.execute(
-        "SELECT type, url FROM urls WHERE artist_mbid = ? "
-        "AND type IN ('official homepage', 'wikidata') ORDER BY type",
-        [BEATLES],
+        "SELECT type, url FROM urls WHERE artist_mbid = ? ORDER BY type, url", [BEATLES]
     ).fetchall() == [
+        ("free streaming", "https://open.spotify.com/artist/3WrFJ7ztbogyGnTHbHJFl2"),
+        ("free streaming", "https://www.deezer.com/artist/1"),
+        ("image", "https://commons.wikimedia.org/wiki/File:The_Fabs.JPG"),
         ("official homepage", "https://www.thebeatles.com/"),
+        ("purchase for download", "https://itunes.apple.com/gb/artist/id136975"),
+        ("purchase for download", "https://music.apple.com/gb/artist/136975"),
+        ("soundcloud", "https://soundcloud.com/thebeatles"),
+        ("streaming", "https://music.apple.com/gb/artist/136975"),
         ("wikidata", "https://www.wikidata.org/wiki/Q1299"),
     ]

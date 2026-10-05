@@ -339,8 +339,9 @@ def fetch_influences(dest: Path) -> int:
 
 # The release groups Wikidata files as a studio album, an EP or a soundtrack
 # album (P31 "instance of" or P7937 "form of creative work"), by their
-# MusicBrainz release group ID (P436): an artist's main records, as curated by
-# Wikidata's editors, without the bootlegs and reissues MusicBrainz also holds.
+# MusicBrainz release group ID (P436): what its editors state a record is,
+# which tells a posthumous record of new music from an archive
+# (22_releases.sql).
 # One query per form: the three in one VALUES clause took 26.6 s on
 # 2026-10-05, near the service's 60-second cap (see INFLUENCES_QUERY); apart
 # they took 5.1, 0.9 and 0.7 s.

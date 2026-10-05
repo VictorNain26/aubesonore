@@ -95,19 +95,23 @@ CREATE OR REPLACE VIEW release_without_artist AS
   WHERE NOT EXISTS (SELECT 1 FROM artists a WHERE a.mbid = r.artist_mbid);
 CREATE OR REPLACE VIEW duplicate_release AS
   SELECT artist_mbid, rg_mbid FROM releases GROUP BY ALL HAVING count(*) > 1;
--- 22_releases.sql keeps the main records: no secondary type but Soundtrack.
--- Read back from the raw secondary types, not from the soundtrack column.
+-- 22_releases.sql keeps the records whose secondary types are at most
+-- Soundtrack and Remix. Read back from the raw secondary types, not from the
+-- two flags.
 CREATE OR REPLACE VIEW release_extra_secondary_type AS
   SELECT x.artist_mbid, x.rg_mbid FROM releases x
   JOIN raw_release_groups r ON r.mbid = x.rg_mbid
-  WHERE len(list_filter(coalesce(r.secondary, []), s -> s <> 'Soundtrack')) > 0
-     OR x.soundtrack <> list_contains(coalesce(r.secondary, []), 'Soundtrack');
--- `curated` restated against the snapshot with a join, not the EXISTS that
--- produced it.
-CREATE OR REPLACE VIEW release_curated_mismatch AS
+  WHERE len(list_filter(coalesce(r.secondary, []), s -> s NOT IN ('Soundtrack', 'Remix'))) > 0
+     OR x.soundtrack <> list_contains(coalesce(r.secondary, []), 'Soundtrack')
+     OR x.remix <> list_contains(coalesce(r.secondary, []), 'Remix');
+-- `filed_original` restated against the snapshot with a join, not the EXISTS
+-- that produced it.
+CREATE OR REPLACE VIEW release_filed_mismatch AS
   SELECT x.artist_mbid, x.rg_mbid FROM releases x
-  LEFT JOIN (SELECT DISTINCT rg_mbid FROM raw_discography) d ON d.rg_mbid = x.rg_mbid
-  WHERE x.curated <> (d.rg_mbid IS NOT NULL);
+  LEFT JOIN (
+    SELECT DISTINCT rg_mbid FROM raw_discography WHERE form IN ('studio', 'ep')
+  ) d ON d.rg_mbid = x.rg_mbid
+  WHERE x.filed_original <> (d.rg_mbid IS NOT NULL);
 -- Each row's artist must be among the release group's own credits: a release
 -- handed to the wrong artist passes the views above and fails here.
 CREATE OR REPLACE VIEW release_uncredited AS
@@ -209,16 +213,16 @@ CREATE OR REPLACE VIEW duplicate_url AS
 CREATE OR REPLACE VIEW url_out_of_scope AS
   SELECT u.artist_mbid, u.url FROM (
     SELECT artist_mbid, type, url,
-      split_part(split_part(split_part(split_part(
-        split_part(lower(url), '://', 2), '/', 1), '?', 1), '#', 1), ':', 1) AS host
+      string_split(split_part(split_part(split_part(split_part(
+        split_part(lower(url), '://', 2), '/', 1), '?', 1), '#', 1), ':', 1), '.') AS labels
     FROM urls
   ) u
   WHERE u.type NOT IN ('official homepage', 'wikidata', 'wikipedia', 'image')
-    AND NOT EXISTS (
-      SELECT 1
-      FROM unnest(['deezer.com', 'spotify.com', 'apple.com', 'bandcamp.com', 'soundcloud.com'])
-        AS t(domain)
-      WHERE u.host = t.domain OR ends_with(u.host, '.' || t.domain));
+    -- Every suffix of the host, "music.apple.com" -> [music.apple.com,
+    -- apple.com, com]: a list test, where a join on LIKE would be a nested loop.
+    AND NOT list_has_any(
+      list_transform(range(1, len(u.labels) + 1), i -> array_to_string(u.labels[i:], '.')),
+      ['deezer.com', 'spotify.com', 'apple.com', 'bandcamp.com', 'soundcloud.com']);
 -- Each row must be a relation the dump carries on that artist, with that type:
 -- a page handed to another artist, or retyped, fails here.
 CREATE OR REPLACE VIEW url_unsourced AS

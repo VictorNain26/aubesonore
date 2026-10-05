@@ -103,7 +103,14 @@ Dans cet ordre, chaque section seulement quand elle a quelque chose à montrer :
    les faits dits en une phrase.
 2. **Écouter ailleurs** : les liens que MusicBrainz déclare (Deezer, Spotify, Bandcamp, site
    officiel…).
-3. **Albums et EP**, chacun avec sa pochette et son année.
+3. **Albums et EP**, chacun avec sa pochette et son année : l'œuvre que l'artiste a voulue, dans
+   l'ordre où il l'a publiée. Les albums studio, les bandes originales qu'il a composées, les
+   albums et EP de remix, et les EP sortis à partir du premier album (un artiste sans album
+   encore montre ses EP). Ni single, ni best-of, compilation, live ou démo (types secondaires de
+   MusicBrainz), ni bootleg (statut officiel, relevé à venir) ; pour un groupe dont la fin est
+   déclarée, rien après elle, sauf ce que Wikidata classe comme album studio ou EP : un posthume
+   inédit, pas une archive. Mesuré le 2026-10-05 sur les 335 artistes joués : Protomartyr, Bloc
+   Party ou Can gardent leur discographie entière, les Beatles s'arrêtent en 1970.
 4. **Vos titres gardés**, pour un auditeur connecté qui en a gardé.
 5. **D'où vient cette musique** : la carte, puis en texte les proches dans le temps, ce qui sonne
    pareil, les influences, les groupes.

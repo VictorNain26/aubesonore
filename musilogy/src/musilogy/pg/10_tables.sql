@@ -54,15 +54,16 @@ CREATE TABLE influences (
   PRIMARY KEY (artist_mbid, influence_mbid)
 );
 
--- An artist's main records (22_releases.sql), one row per credited artist.
+-- An artist's records (22_releases.sql), one row per credited artist.
 CREATE TABLE releases (
   artist_mbid text COLLATE "C" NOT NULL,
   rg_mbid text COLLATE "C" NOT NULL,
   title text NOT NULL,
   primary_type text NOT NULL,
   soundtrack boolean NOT NULL,
+  remix boolean NOT NULL,
   y integer,
-  curated boolean NOT NULL,
+  filed_original boolean NOT NULL,
   PRIMARY KEY (artist_mbid, rg_mbid)
 );
 

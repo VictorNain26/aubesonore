@@ -205,7 +205,7 @@ INVARIANTS = (
     "release_without_artist",
     "duplicate_release",
     "release_extra_secondary_type",
-    "release_curated_mismatch",
+    "release_filed_mismatch",
     "release_uncredited",
     "artist_genres_out_of_order",
     "genre_source_mismatch",

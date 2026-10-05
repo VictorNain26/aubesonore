@@ -67,6 +67,7 @@ def test_run_refuses_to_publish_when_the_extraction_disagrees(tmp_path, monkeypa
     monkeypatch.setattr(cli, "WORK_DIR", tmp_path)
     monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
     monkeypatch.setattr(cli, "verified_influences", lambda: FIX / "influences.jsonl")
+    monkeypatch.setattr(cli, "verified_discography", lambda: FIX / "discography.jsonl")
 
     def record_publish(*args):
         # Returns a plausible manifest on purpose: a double returning None
