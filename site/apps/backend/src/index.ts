@@ -81,6 +81,9 @@ const app = new Elysia()
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
+      // The plugin's default (true) lists the request's own header names, Cloudflare's included;
+      // the site reads no response header beyond the safelisted ones.
+      exposeHeaders: [],
     })
   )
   .use(betterAuthPlugin)
