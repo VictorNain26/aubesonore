@@ -1,7 +1,7 @@
 # AubeSonore — vision produit et architecture
 
-Refonte du 2026-10-04, révisée le 2026-10-05 (un artiste, une page : §1, §2.4, §4.5, §5, §7), à
-valider par Victor. Elle remplace la version du 2026-10-03, dont le
+Refonte du 2026-10-04, révisée le 2026-10-05 (un artiste, une page : §1, §2.4, §4.5, §5, §7 ; le
+fil de la refonte : §3, principes 8 à 10 ; affiliations : §2.2, §2.4), à valider par Victor. Elle remplace la version du 2026-10-03, dont le
 geste « Explorer » (frise des genres, filiation tirée de MusicBrainz, contemporains par lieu de
 début) ne répondait pas à la question posée et reposait sur des données qui ne la remplissaient
 pas. Validé, ce document fait autorité sur ce qui traverse les pièces : les produits, qui possède
@@ -73,8 +73,8 @@ marchant d'un artiste à l'autre.
 | Couche | Source | Couverture mesurée | Ce que le site en dit |
 |---|---|---|---|
 | **Proximité × temps** | artistes proches selon ListenBrainz (co-écoute), rangés par leurs dates MusicBrainz | 15 des 16 artistes joués échantillonnés ont 100 voisins, des plus confidentiels (1 045 auditeurs) aux plus connus (2026-10-04) | « avant lui, en même temps, après lui, dans la même veine » — jamais « influencé par » |
-| **Influences déclarées** | Wikidata (P737), puis citations extraites de Wikipédia avec leur phrase | 61 des 288 artistes joués via Wikidata (2026-10-04) | « a cité X comme influence » ; la déclaration reste en base, sans lien à l'écran (§1.2) |
-| **Liens de groupe** | relations entre artistes de MusicBrainz | 75 % des artistes joués ont au moins un autre projet à deux pas, médiane 2 (2026-10-04) | « membre de », « autre projet de » |
+| **Influences déclarées** | Wikidata (P737) seulement : une déclaration, jamais une déduction (l'extraction de citations de Wikipédia, qui supposerait un modèle de langage, est retirée le 2026-10-05) | 61 des 288 artistes joués via Wikidata (2026-10-04) | « a cité X comme influence » ; la déclaration reste en base, sans lien à l'écran (§1.2) |
+| **Groupes et projets** | appartenances déclarées dans MusicBrainz (membre, fondateur, collaboration), pseudonymes et changements de nom ; rien d'autre (§2.4) | 178 des 329 artistes joués ont au moins un projet de leurs membres qui a un disque, médiane 3, 44 au plus (2026-10-05) ; 74 % des appartenances que Wikidata déclare sont aussi dans MusicBrainz, aucune inversée | « membres », « groupes », « projets des membres », « aussi connu comme » |
 | **Couleur du son** | empreinte Discogs-EffNet de quelques extraits Deezer de 30 s par artiste, comme le pipeline le fait déjà pour l'antenne ; voisins les plus proches, styles Discogs | bornée par les artistes dont l'identifiant Deezer est connu : 45 % des 111 402 artistes à 500 auditeurs ou plus par le lien que MusicBrainz déclare (2026-10-05, §2.4) | « sonne comme », jamais « influencé par » ni « dans la même veine » |
 
 La proximité seule ne dit pas qui a inspiré qui ; le temps lui donne un sens (avant, pendant,
@@ -114,7 +114,21 @@ Dans cet ordre, chaque section seulement quand elle a quelque chose à montrer :
    Party ou Can gardent leur discographie entière, les Beatles s'arrêtent en 1970.
 4. **Vos titres gardés**, pour un auditeur connecté qui en a gardé.
 5. **D'où vient cette musique** : la carte, puis en texte les proches dans le temps, ce qui sonne
-   pareil, les influences, les groupes.
+   pareil, les influences, et les groupes et projets en trois rubriques au lieu des douze types de
+   MusicBrainz :
+   - **Membres** d'un groupe, ou **Groupes** d'une personne, avec leurs années (membre, fondateur et
+     collaboration sont une seule relation : en faire partie) ;
+   - **Projets des membres** : les autres groupes et projets solo des membres, à deux pas, seulement
+     ceux qui ont un disque (§2.4 point 3) pour que chaque lien mène à de la musique, du plus ancien
+     au plus récent, repliés au-delà d'une dizaine. C'est le chemin de découverte : de Stereolab à
+     McCarthy, Monade, Cavern of Anti-Matter ; de The Notwist à Lali Puna, 13 & God ;
+   - **Autres noms**, sur une ligne : pseudonymes et changements de nom.
+
+   Ni groupe « issu de » (les membres partagés le disent), ni musicien de tournée, professeur,
+   famille, groupe hommage ou relation anecdotique : ils parlent de la vie, pas de l'œuvre.
+
+On entre dans une page par un artiste que l'antenne a joué ou qu'un auditeur a gardé, ou par
+n'importe quel artiste choisi dans la recherche ; chaque nom cité mène à la page suivante.
 
 **Le portrait, en cascade**, puisqu'aucune source ne couvre tous les artistes (mesuré le
 2026-10-05 sur le dump du 2026-09-09 et Wikidata) :
@@ -156,6 +170,18 @@ le portrait et la couleur du son au-delà de 45 %.
 6. **Mesurer avant de décider**, et écrire la mesure là où la décision est prise.
 7. **Un seul style**, sobre et doux, en français et en anglais ; aucune interface expliquée par
    une légende.
+8. **Montrer l'œuvre, pas le catalogue.** Une page dit ce qui aide à comprendre et à découvrir la
+   musique d'un artiste, rien de superflu : sa discographie voulue (§2.4), ses projets, où
+   l'écouter ; pas les rééditions, la vie privée ni les fiches de bases de données.
+9. **Des données déclarées, pas des heuristiques.** Une règle repose sur ce que des humains ont
+   déclaré (types et statuts de MusicBrainz, natures de Wikidata), dont on dit la fiabilité ;
+   l'algorithme d'un autre projet ou un classement par popularité ne décident pas pour nous. Une
+   mesure (la co-écoute, la couleur du son) se présente comme telle, jamais comme un fait déclaré.
+   Le profil par défaut de Lidarr fait le même choix sur MusicBrainz (albums sans type secondaire,
+   statut officiel).
+10. **Garder ce que la page utilise.** musilogy publie ce que les pages montrent ; le reste demeure
+    dans les sources, rechargeable. Chaque règle est mesurée sur les artistes joués, avec des
+    exemples gardés et écartés, avant d'être figée.
 
 ## 4. Architecture
 
@@ -309,8 +335,8 @@ alertes « artiste aimé » sont résolus par les étapes 2 à 4, dans l'histori
    autres) ; un artiste jamais joué n'a ni portrait, ni ouverture de Wikipédia, ni liens d'écoute.
 8. **Deux sources pour les mêmes faits** : MusicBrainz en direct pour la page artiste, le dump pour
    Musilogy (§4.5).
-9. **Ni albums ni EP** : musilogy n'extrait que les albums, pour dater les artistes, et ne les
-   charge pas.
+9. **Ni albums ni EP sur la page** : musilogy les publie selon la règle du §2.4 (#338, en
+   production le 2026-10-05), la page ne les montre pas encore (étape 7.2).
 
 ## 7. Feuille de route
 
@@ -327,8 +353,11 @@ Dans cet ordre ; chaque étape est une ou plusieurs PR courtes, fusionnées avan
 6. **Musilogy, le produit** — page texte (#281, #289) et carte (#285) en ligne, URL des pages
    artiste par slug (#332).
 7. **Un artiste, une page** (écarts 5, 7, 8, 9), en cascade :
-   1. musilogy extrait du dump les liens d'un artiste (relations URL) et ses albums et EP, et les
-      expose par le contrat (§4.3) ;
+   1. musilogy extrait du dump les liens d'un artiste et ses albums et EP — fait (#337), réduit à
+      ce que la page utilise et à la règle du §2.4 (#338), chargé en production le 2026-10-05 ;
+      reste le relevé du statut officiel MusicBrainz (bootlegs, ~37 h, reprenable, comme la
+      proximité), et les affiliations du §2.4 point 5 : `links` réduite aux appartenances, aux
+      pseudonymes et aux changements de nom, les deux pas calculés par une fonction SQL ;
    2. le site range le profil par MBID, lit faits et liens dans musilogy (fin des appels
       MusicBrainz en direct pour le profil) et compose le portrait en cascade (§2.4) ;
    3. une seule page, `/artiste/…`, sections dans l'ordre du §2.4 ; `/musilogy/:mbid` en 301 ;
@@ -346,8 +375,11 @@ Dans cet ordre ; chaque étape est une ou plusieurs PR courtes, fusionnées avan
    des artistes à 500 auditeurs ou plus, daté et épinglé comme la proximité ; les identifiants
    Deezer complétés par les ISRC du dump des enregistrements. Plusieurs jours de calcul en tâche
    plafonnée.
-9. **Influences tirées de Wikipédia**, chaque citation avec sa phrase, après mesure du coût.
-10. **Liens d'œuvre** : featurings (écart 4), remixes, producteurs, tirés du dump MusicBrainz.
+9. **Liens d'œuvre** : featurings (écart 4), remixes, producteurs, tirés du dump MusicBrainz.
+10. **Les données à jour** : un nouveau dump MusicBrainz deux fois par semaine (MetaBrainz n'en
+    garde que deux). La référence reste figée pour les tests ; la production se rafraîchit chaque
+    semaine par un timer (dump, relevés rapides, invariants, publication, chargement), et les
+    relevés longs (proximité, statut officiel) avancent en incrémental, sur les nouveaux artistes.
 
 En parallèle : la copie hors site dès qu'un compte de stockage existe, le test du disque de
 sauvegarde sur un port USB natif.
