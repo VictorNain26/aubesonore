@@ -139,9 +139,10 @@ n'importe quel artiste choisi dans la recherche ; chaque nom cité mène à la p
 | image Wikidata (P18) | 70 % | 32 % | ~4 % |
 | pochette d'un album (Cover Art Archive) | à mesurer | à mesurer | à mesurer |
 
-Le portrait Deezer d'abord, l'image Wikidata ensuite (sa licence, propre à chaque image, est à
-lire avant de l'afficher), la pochette d'un album enfin, et sinon le visuel « onde » que le site
-génère déjà : chaque page a une image, toutes ne sont pas des photos. L'union des sources n'est
+Le portrait Deezer d'abord, la pochette du premier album de la discographie ensuite (Cover Art
+Archive, chargée par le navigateur), et sinon le visuel « onde » que le site génère déjà : chaque
+page a une image, toutes ne sont pas des photos. L'image Wikidata/Commons est écartée pour
+l'instant : chaque image a sa licence et son auteur à créditer à côté d'elle (2026-10-05). L'union des sources n'est
 pas encore mesurée. Les identifiants Deezer peuvent aussi venir des ISRC des enregistrements du
 dump, vérifiés comme ceux de l'antenne (§4.4), au lieu du seul lien déclaré : c'est ce qui élargit
 le portrait et la couleur du son au-delà de 45 %.
