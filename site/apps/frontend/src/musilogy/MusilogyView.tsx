@@ -197,7 +197,10 @@ function Bands({ artist }: { artist: MusilogyArtist }) {
         </SubList>
       ) : null}
       {bands && bands.groups.length > 0 ? (
-        <SubList label={m.musilogy_groups()}>
+        // A person's bands; for a group, the projects it took part in (Stereolab in Uilab).
+        <SubList
+          label={artist.card.type === 'Person' ? m.musilogy_groups() : m.musilogy_joint_projects()}
+        >
           <ArtistList artists={bands.groups} yearsOf={linkYears} />
         </SubList>
       ) : null}

@@ -144,6 +144,23 @@ describe('MusilogyArtistView', () => {
     expect(screen.getByText('Record 19')).toBeInTheDocument();
   });
 
+  it("calls a person's groups its bands, and a group's its joint projects", () => {
+    const uilab = { ...neighbour(60, { name: 'Uilab' }), yBegin: 1997, yEnd: 1997 };
+    const { rerender } = show({
+      status: 'ready',
+      artist: artist({ bands: { members: [], groups: [uilab] } }),
+    });
+    expect(screen.getByRole('heading', { name: 'Projets communs' })).toBeInTheDocument();
+
+    const person = artist({ bands: { members: [], groups: [uilab] } });
+    rerender(
+      <MusilogyArtistView
+        state={{ status: 'ready', artist: { ...person, card: { ...person.card, type: 'Person' } } }}
+      />
+    );
+    expect(screen.getByRole('heading', { name: 'Groupes' })).toBeInTheDocument();
+  });
+
   it("names who leads to each member's project, and what each other name is", () => {
     show({
       status: 'ready',
