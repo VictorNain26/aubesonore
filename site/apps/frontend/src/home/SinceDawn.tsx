@@ -73,7 +73,7 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
               <li
                 key={row.id}
                 className={cn(
-                  'border-border ease-out-soft hover:bg-accent/3 grid min-h-16 grid-cols-[3.75rem_2.75rem_minmax(0,1fr)_2.75rem] items-center gap-x-3 border-b py-2 transition-colors duration-300 md:px-1 lg:min-h-15 lg:grid-cols-[4.5rem_2.75rem_minmax(0,1.2fr)_minmax(0,1fr)_2.75rem] lg:gap-x-6',
+                  'border-border ease-out-soft hover:bg-accent/3 grid min-h-16 grid-cols-[3rem_2.75rem_minmax(0,1fr)_2.75rem] items-center gap-x-3 border-b py-2 transition-colors duration-300 md:px-1 lg:min-h-15 lg:grid-cols-[4.5rem_2.75rem_minmax(0,1.2fr)_minmax(0,1fr)_2.75rem] lg:gap-x-6',
                   initialIds !== null && !initialIds.has(row.id) ? 'thread-in' : 'reveal'
                 )}
               >
@@ -135,7 +135,7 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
           <button
             type="button"
             onClick={() => setVisible((v) => v + PAGE)}
-            className={cn(TEXT_ACTION, 'mt-5 self-start md:ml-33 lg:ml-42')}
+            className={cn(TEXT_ACTION, 'mt-5 self-start md:ml-29 lg:ml-42')}
           >
             {m.since_dawn_more()}
           </button>

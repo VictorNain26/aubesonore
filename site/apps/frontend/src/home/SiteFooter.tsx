@@ -42,11 +42,11 @@ export function SiteFooterView({
   onInstall,
 }: SiteFooterViewProps) {
   return (
-    <footer className="border-border text-ui mx-page flex flex-wrap items-center justify-between gap-6 border-t pt-7 pb-7 font-normal">
+    <footer className="border-border text-ui mx-page flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t pt-5 pb-5 font-normal md:gap-y-6 md:pt-7 md:pb-7">
       <span className="text-text-muted">
         © {new Date().getFullYear()} AubeSonore · {m.footer_free()}
       </span>
-      <div className="flex flex-wrap items-center gap-x-7">
+      <div className="flex flex-wrap items-center gap-x-5 md:gap-x-7">
         <Link to={localizeHref('/musilogy')} className={LINK}>
           {m.musilogy_title()}
         </Link>
@@ -75,7 +75,7 @@ export function SiteFooterView({
                 onClick={() => onLocaleChange(code)}
                 aria-pressed={locale === code}
                 className={cn(
-                  'ease-out-quart focus-visible:outline-accent min-h-11 min-w-8 rounded-sm uppercase focus-visible:outline-2',
+                  'ease-out-quart focus-visible:outline-accent min-h-11 min-w-11 rounded-sm uppercase focus-visible:outline-2 md:min-w-8',
                   locale === code
                     ? 'font-bold'
                     : 'underline decoration-1 underline-offset-4 hover:decoration-2'
