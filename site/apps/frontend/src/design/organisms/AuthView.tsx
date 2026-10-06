@@ -86,13 +86,18 @@ const TEXT_LINK_CLASSES =
 const BACK_LINK_CLASSES =
   'text-ui text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -ml-1 inline-flex min-h-11 items-center gap-2 self-start rounded-sm px-1 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
 
-/** What an account brings: beside the form on wide screens, under it on a phone. */
-function AuthPitch({ className }: { className?: string }) {
+/**
+ * What an account brings: beside the form on wide screens, under it on a phone. A phone that
+ * already shows the promise under the form's title gets the list alone.
+ */
+function AuthPitch({ className, withTitle = true }: { className?: string; withTitle?: boolean }) {
   return (
     <div className={cn('flex flex-col gap-6 md:gap-8', className)}>
-      <p className="text-section md:text-hero max-w-hero m-0 text-balance">
-        {m.auth_aside_title()}
-      </p>
+      {withTitle ? (
+        <p className="text-section md:text-hero max-w-hero m-0 text-balance">
+          {m.auth_aside_title()}
+        </p>
+      ) : null}
       <ul className="text-intro text-text-muted max-w-aside m-0 flex list-none flex-col gap-4 p-0">
         <li className="flex items-start gap-3.5">
           <Heart className="text-text mt-1 size-5 shrink-0" strokeWidth={1.6} aria-hidden="true" />
@@ -191,6 +196,8 @@ export function AuthView({
   }[mode];
   const withAccountChoice = mode === 'signin' || mode === 'signup';
   const withBack = mode === 'forgot' || mode === 'reset-password';
+  // A title that already says why (« Pour garder … ») needs no promise under it.
+  const promiseOnPhone = withAccountChoice && !(mode === 'signin' && keepTitle);
 
   const passwordToggle = (
     <Button
@@ -225,6 +232,9 @@ export function AuthView({
               <h1 className="text-section m-0 text-balance">{headerCopy.title}</h1>
               {headerCopy.desc ? (
                 <p className="text-intro text-text-muted m-0">{headerCopy.desc}</p>
+              ) : null}
+              {promiseOnPhone ? (
+                <p className="text-intro text-text-muted m-0 md:hidden">{m.auth_aside_title()}</p>
               ) : null}
             </div>
 
@@ -395,7 +405,10 @@ export function AuthView({
         </div>
 
         {withAccountChoice ? (
-          <AuthPitch className="border-border border-t pt-10 md:hidden" />
+          <AuthPitch
+            className="border-border border-t pt-10 md:hidden"
+            withTitle={!promiseOnPhone}
+          />
         ) : null}
       </div>
     </main>

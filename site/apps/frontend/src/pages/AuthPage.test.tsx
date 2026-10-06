@@ -41,6 +41,16 @@ describe('AuthPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('says what an account brings under the title, unless the title already says why', () => {
+    const promise = () =>
+      screen.getByRole('heading', { level: 1 }).parentElement?.textContent ?? '';
+    const { unmount } = open('/connexion');
+    expect(promise()).toContain('Gardez ce qui vous arrête.');
+    unmount();
+    open({ pathname: '/connexion', state: { keepTitle: 'Mimoun' } });
+    expect(promise()).not.toContain('Gardez ce qui vous arrête.');
+  });
+
   it('switches to sign-up', async () => {
     open('/connexion');
     await userEvent.click(screen.getByRole('button', { name: 'Créer un compte' }));
