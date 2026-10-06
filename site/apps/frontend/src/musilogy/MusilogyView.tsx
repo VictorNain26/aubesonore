@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
+import { flushSync } from 'react-dom';
 import { Link } from 'react-router';
 import { Search, X } from 'lucide-react';
 import type {
@@ -369,6 +370,11 @@ function SearchHits({ hits, stale }: { hits: MusilogySearchHit[]; stale: boolean
   );
 }
 
+// Less visual viewport than layout viewport by this much: an on-screen keyboard covers the page
+// (a desktop or a hardware keyboard never does). The margin absorbs iOS 26.0, whose visual
+// viewport stays ~24 px short after the keyboard closes (https://bugs.webkit.org/show_bug.cgi?id=297779).
+const KEYBOARD_MIN = 100;
+
 /** Musilogy's entry: what it is, and a search for any artist, its answers in columns. */
 export function MusilogyHomeView({
   query,
@@ -379,6 +385,23 @@ export function MusilogyHomeView({
   onQueryChange: (value: string) => void;
   search: SearchState;
 }) {
+  const searchRef = useRef<HTMLDivElement>(null);
+  const liftedThisFocus = useRef(false);
+  const [lifted, setLifted] = useState(false);
+
+  // On a phone the keyboard hides the answers under the field: at the first letter of each focus
+  // (the keyboard is open by then, Safari's own focus scroll is over), the field goes to the top.
+  const liftAboveKeyboard = () => {
+    if (liftedThisFocus.current) return;
+    liftedThisFocus.current = true;
+    const viewport = window.visualViewport;
+    if (!viewport || window.innerHeight - viewport.height < KEYBOARD_MIN) return;
+    // The answers hold a screen's height, or a short page could not scroll the field that far.
+    flushSync(() => setLifted(true));
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    searchRef.current?.scrollIntoView({ block: 'start', behavior: reduce ? 'auto' : 'smooth' });
+  };
+
   return (
     <main
       id="main"
@@ -390,7 +413,7 @@ export function MusilogyHomeView({
       </div>
 
       <div className="flex flex-col gap-8">
-        <div role="search" className="relative w-full max-w-2xl">
+        <div ref={searchRef} role="search" className="relative w-full max-w-2xl scroll-mt-4">
           <label>
             <span className="sr-only">{m.musilogy_search_label()}</span>
             <Search
@@ -401,7 +424,13 @@ export function MusilogyHomeView({
             <input
               type="search"
               value={query}
-              onChange={(event) => onQueryChange(event.target.value)}
+              onChange={(event) => {
+                onQueryChange(event.target.value);
+                liftAboveKeyboard();
+              }}
+              onFocus={() => {
+                liftedThisFocus.current = false;
+              }}
               onKeyDown={(event) => {
                 if (event.key === 'Escape') onQueryChange('');
               }}
@@ -426,7 +455,7 @@ export function MusilogyHomeView({
           ) : null}
         </div>
 
-        <div aria-live="polite">
+        <div aria-live="polite" className={cn(lifted && query && 'min-h-svh')}>
           {search.status === 'idle' ? (
             <p className="text-text-muted m-0">{m.musilogy_search_hint()}</p>
           ) : search.status === 'unavailable' ? (
