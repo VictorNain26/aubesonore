@@ -47,6 +47,24 @@ RUN pnpm --filter @aubesonore/shared-types build && \
     pnpm --filter @aubesonore/frontend build
 
 # -----------------------------------------------------------------------------
+# Renderer: the artist pages' server render, for the backend (scripts/renderer.mjs).
+# Built from the same build as the static assets: the markup it writes is the
+# one the client hydrates. dist-ssr bundles its dependencies (vite.config.ts).
+# -----------------------------------------------------------------------------
+FROM node:22-alpine AS renderer
+
+WORKDIR /app
+COPY --from=builder /app/apps/frontend/dist-ssr ./dist-ssr
+COPY apps/frontend/scripts/renderer.mjs ./
+USER node
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+
+CMD ["node", "renderer.mjs"]
+
+# -----------------------------------------------------------------------------
 # Stage 3: nginx runtime (static assets only, no Node in the final image)
 # -----------------------------------------------------------------------------
 FROM nginx:alpine AS runner

@@ -2,7 +2,7 @@
 // crawlers included) read the real pages. Runs after `vite build` (client)
 // and `vite build --ssr src/entry-server.tsx`.
 // Pre-rendering pattern: https://vite.dev/guide/ssr#pre-rendering-ssg
-import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { replaceOrFail, rewriteHead } from './head.mjs';
 
@@ -86,4 +86,3 @@ for (const page of notFound) {
 await writeFile('dist/app.html', inlineStyles(template));
 console.log('wrote dist/app.html');
 
-await rm('dist-ssr', { recursive: true, force: true });

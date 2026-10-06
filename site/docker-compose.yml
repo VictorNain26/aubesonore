@@ -132,6 +132,7 @@ services:
     build:
       context: .
       dockerfile: apps/frontend/Dockerfile
+      target: runner
       args:
         VITE_API_URL: ${VITE_API_URL:-https://api.aubesonore.fr}
         VITE_AZURACAST_BASE_URL: ${VITE_AZURACAST_BASE_URL:-https://radio.aubesonore.fr}
@@ -149,6 +150,29 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    logging:
+      options: { max-size: '10m', max-file: '3' }
+
+  # The artist pages' server render, which the backend asks for
+  # (artistPage.routes.ts). Built with the frontend, from the same build stage,
+  # so its markup is the one the client hydrates. Not published: the backend
+  # reaches it on the compose network.
+  renderer:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      target: renderer
+      args:
+        VITE_API_URL: ${VITE_API_URL:-https://api.aubesonore.fr}
+        VITE_AZURACAST_BASE_URL: ${VITE_AZURACAST_BASE_URL:-https://radio.aubesonore.fr}
+        VITE_STATION_SHORTCODE: ${VITE_STATION_SHORTCODE:-aubesonore}
+    container_name: aubesonore-renderer
+    restart: unless-stopped
+    # A render is ~100 ms of CPU: at 0.5 the quota throttles it to 285–485 ms,
+    # past the backend's 300 ms budget (measured 2026-10-06).
+    cpus: 1.0
+    mem_limit: 256m
+    pids_limit: 64
     logging:
       options: { max-size: '10m', max-file: '3' }
 

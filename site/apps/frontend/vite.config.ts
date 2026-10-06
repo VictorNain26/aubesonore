@@ -113,6 +113,9 @@ export default defineConfig(({ mode }) => {
         credentials: true,
       },
     },
+    // The server render ships as dist-ssr alone, in the renderer image: no node_modules there.
+    // https://vite.dev/config/ssr-options#ssr-noexternal
+    ssr: { noExternal: true },
     build: {
       sourcemap: false,
       rollupOptions: {
