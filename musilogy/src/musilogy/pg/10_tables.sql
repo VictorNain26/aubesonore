@@ -65,6 +65,7 @@ CREATE TABLE releases (
   remix boolean NOT NULL,
   y integer,
   filed_original boolean NOT NULL,
+  official boolean,
   PRIMARY KEY (artist_mbid, rg_mbid)
 );
 
@@ -91,6 +92,7 @@ CREATE TABLE manifest (
   influences_snapshot date,
   discography_snapshot date,
   proximity_snapshots date[],
+  official_snapshots date[],
   git_sha text NOT NULL,
   loaded_at timestamptz NOT NULL DEFAULT now()
 );

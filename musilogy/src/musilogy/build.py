@@ -160,6 +160,29 @@ def load_proximity(
     )
 
 
+def load_official(
+    con: duckdb.DuckDBPyConnection, parts: Sequence[Path], snapshots: Sequence[str] | None
+) -> None:
+    """The album and EP release groups MusicBrainz shows for each artist asked,
+    in parts like the proximity; NULL for an artist it no longer holds or
+    answered as merged (fetch.official_release_groups)."""
+    # Always materialized, even empty: 22_releases.sql reads it, and an empty
+    # table leaves every record's status unknown.
+    con.execute(
+        "CREATE OR REPLACE TABLE raw_official (artist_mbid VARCHAR, release_groups VARCHAR[])"
+    )
+    for part in parts:
+        con.execute(
+            f"INSERT INTO raw_official SELECT artist_mbid, release_groups FROM read_ndjson("
+            f"'{part.as_posix()}', columns={{artist_mbid:'VARCHAR', release_groups:'VARCHAR[]'}}, "
+            "format='newline_delimited')"
+        )
+    con.execute(
+        "SET VARIABLE official_snapshots = "
+        + ("NULL" if snapshots is None else f"{[*snapshots]}::DATE[]")
+    )
+
+
 def apply_corrections(con: duckdb.DuckDBPyConnection, corrections: Path | None) -> int:
     if corrections is None:
         # Always materialized, even empty: the fast suite builds
@@ -202,6 +225,8 @@ def build(
     discography_snapshot: str | None = None,
     proximity: Sequence[Path] = (),
     proximity_snapshots: Sequence[str] | None = None,
+    official: Sequence[Path] = (),
+    official_snapshots: Sequence[str] | None = None,
 ) -> None:
     load_raw(con, artists, rgs)
     apply_corrections(con, corrections)
@@ -209,6 +234,7 @@ def build(
     load_influences(con, influences, influences_snapshot)
     load_discography(con, discography, discography_snapshot)
     load_proximity(con, proximity, proximity_snapshots)
+    load_official(con, official, official_snapshots)
     con.execute(f"SET VARIABLE dump_year = {dump_year}")
     con.execute(f"SET VARIABLE min_year = {min_year}")
     for path in sorted(sql_dir.glob("*.sql")):
@@ -268,6 +294,8 @@ INVARIANTS = (
     "proximity_asked_twice",
     "duplicate_proximity",
     "proximity_unsourced",
+    "official_asked_twice",
+    "official_unsourced",
     "corrections_file_too_large",
     "corrections_invalid",
     "corrections_duplicate",

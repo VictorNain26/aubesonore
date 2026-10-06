@@ -4,6 +4,7 @@ from musilogy import (
     REFERENCE_DISCOGRAPHY,
     REFERENCE_DUMP,
     REFERENCE_INFLUENCES,
+    REFERENCE_OFFICIAL,
     REFERENCE_POPULARITY,
     REFERENCE_PROXIMITY,
 )
@@ -12,6 +13,7 @@ from musilogy.paths import (
     SQL_DIR,
     discography_snapshot,
     influences_snapshot,
+    official_snapshot,
     popularity_snapshot,
     proximity_snapshot,
     work_dir,
@@ -50,6 +52,10 @@ URLS_ENDED = 24_789
 PROXIMITY_EXCLUSIONS = {"repeated_neighbour": 675, "self_neighbour": 84}
 # Every artist asked, 16 515 of them without a neighbour.
 PROXIMITY_SURVEYED = 111_402
+# Distinct records by official status (part of 2026-10-05: 93 665 artists asked,
+# 2 of them no longer held). Unknown dominates: only artists with 500 listeners
+# or more and an album or an EP are asked.
+RELEASE_STATUS = {"official": 741_258, "not_official": 11_827, "unknown": 1_434_297}
 DISCOGRAPHY_EXCLUSIONS = {"malformed": 1, "not_album_or_ep": 1_274, "secondary_type": 1_498}
 # The influences whose two ends are artists of the dump, the only ones the
 # site can name; the other 207 have an end whose MBID `artists` does not hold.
@@ -117,6 +123,7 @@ POPULARITY = popularity_snapshot(REFERENCE_POPULARITY)
 INFLUENCES = influences_snapshot(REFERENCE_INFLUENCES)
 DISCOGRAPHY = discography_snapshot(REFERENCE_DISCOGRAPHY)
 PROXIMITY = [proximity_snapshot(date) for date in REFERENCE_PROXIMITY]
+OFFICIAL = [official_snapshot(date) for date in REFERENCE_OFFICIAL]
 
 
 def test_the_baseline_looks_for_the_extractions_at_an_absolute_path():
@@ -143,6 +150,8 @@ def test_reference_dump_matches_the_baseline():
         pytest.skip(f"Wikidata snapshot {REFERENCE_DISCOGRAPHY} missing")
     if not all(part.exists() for part in PROXIMITY):
         pytest.skip(f"ListenBrainz proximity {REFERENCE_PROXIMITY} missing")
+    if not all(part.exists() for part in OFFICIAL):
+        pytest.skip(f"MusicBrainz official status {REFERENCE_OFFICIAL} missing")
     con = connect()
     build(
         con,
@@ -158,6 +167,8 @@ def test_reference_dump_matches_the_baseline():
         discography_snapshot=REFERENCE_DISCOGRAPHY,
         proximity=PROXIMITY,
         proximity_snapshots=REFERENCE_PROXIMITY,
+        official=OFFICIAL,
+        official_snapshots=REFERENCE_OFFICIAL,
     )
     assert check_invariants(con, SQL_DIR) == []
     for table, expected in BASELINE.items():
@@ -204,6 +215,7 @@ def test_reference_dump_matches_the_baseline():
     )
     assert con.execute("SELECT count(*) FROM urls WHERE ended").fetchone() == (URLS_ENDED,)
     assert single_row(con, "proximity_exclusions") == PROXIMITY_EXCLUSIONS
+    assert single_row(con, "release_status") == RELEASE_STATUS
     assert con.execute("SELECT count(*) FROM artists WHERE proximity_surveyed").fetchone() == (
         PROXIMITY_SURVEYED,
     )

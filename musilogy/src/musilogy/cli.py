@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
+from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -13,6 +14,7 @@ import duckdb
 from musilogy import (
     REFERENCE_DISCOGRAPHY,
     REFERENCE_INFLUENCES,
+    REFERENCE_OFFICIAL,
     REFERENCE_POPULARITY,
     REFERENCE_PROXIMITY,
 )
@@ -192,8 +194,9 @@ OFFICIAL_MIN_USERS = 500
 
 def snapshot_official() -> None:
     """Asks MusicBrainz which album and EP release groups it shows for every
-    artist with at least OFFICIAL_MIN_USERS listeners. MusicBrainz moves every
-    day: taken once and pinned, and resumed like the proximity."""
+    artist with at least OFFICIAL_MIN_USERS listeners and an album or EP in
+    the extraction that no pinned part asked yet. MusicBrainz moves every
+    day: a part is taken once and pinned, and resumed like the proximity."""
     if not RELEASE_GROUPS_JSONL.exists():
         fetch_and_extract()
     partials = sorted(RAW_DIR.glob("musicbrainz/*/official-release-groups.jsonl.partial"))
@@ -203,16 +206,19 @@ def snapshot_official() -> None:
         raise SystemExit(
             f"MusicBrainz official status {date} already taken at {dest}: it is never taken again"
         )
+    asked = [part.as_posix() for part in verified_official()]
     cur = connect().execute(
         f"SELECT p.artist_mbid FROM read_ndjson('{verified_popularity().as_posix()}', "
         "columns={artist_mbid:'VARCHAR', total_user_count:'BIGINT'}) p "
         f"WHERE p.total_user_count >= {OFFICIAL_MIN_USERS} AND p.artist_mbid IN ("
         f"SELECT UNNEST(artists) FROM read_ndjson('{RELEASE_GROUPS_JSONL.as_posix()}', "
-        "columns={artists:'VARCHAR[]'})) ORDER BY p.artist_mbid"
+        "columns={artists:'VARCHAR[]'})) AND p.artist_mbid NOT IN ("
+        f"SELECT artist_mbid FROM read_ndjson({asked}, columns={{artist_mbid:'VARCHAR'}})) "
+        "ORDER BY p.artist_mbid"
     )
     n = fetch_official((r[0] for r in iter(cur.fetchone, None)), dest)
     official_sums(date).write_text(f"{sha256_file(dest)}  {dest.name}\n", encoding="utf-8")
-    print(f"{n} artists asked; pin it: REFERENCE_OFFICIAL = {date!r}")
+    print(f"{n} artists asked; pin it: add {date!r} to REFERENCE_OFFICIAL")
 
 
 def snapshot_influences() -> None:
@@ -266,18 +272,45 @@ def verified_discography() -> Path:
     return DISCOGRAPHY_JSONL
 
 
-def verified_proximity() -> list[Path]:
+def verified_parts(
+    dates: Sequence[str],
+    snapshot: Callable[[str], Path],
+    sums: Callable[[str], Path],
+    survey: str,
+    command: str,
+) -> list[Path]:
+    """The pinned parts of a long survey, each checked against its digest."""
     parts = []
-    for date in REFERENCE_PROXIMITY:
-        part = proximity_snapshot(date)
+    for date in dates:
+        part = snapshot(date)
         if not part.exists():
             raise SystemExit(
-                f"ListenBrainz proximity {date} missing at {part}; it cannot be taken "
-                "again: `musilogy snapshot-proximity`, then pin the new part"
+                f"{survey} {date} missing at {part}; it cannot be taken again: "
+                f"`musilogy {command}`, then pin the new part"
             )
-        verify(part, expected_sums(proximity_sums(date))[part.name])
+        verify(part, expected_sums(sums(date))[part.name])
         parts.append(part)
     return parts
+
+
+def verified_proximity() -> list[Path]:
+    return verified_parts(
+        REFERENCE_PROXIMITY,
+        proximity_snapshot,
+        proximity_sums,
+        "ListenBrainz proximity",
+        "snapshot-proximity",
+    )
+
+
+def verified_official() -> list[Path]:
+    return verified_parts(
+        REFERENCE_OFFICIAL,
+        official_snapshot,
+        official_sums,
+        "MusicBrainz official status",
+        "snapshot-official",
+    )
 
 
 def verified_popularity() -> Path:
@@ -317,6 +350,7 @@ def run() -> None:
     influences = verified_influences()
     discography = verified_discography()
     proximity = verified_proximity()
+    official = verified_official()
 
     con = connect()
     build(
@@ -333,6 +367,8 @@ def run() -> None:
         discography_snapshot=REFERENCE_DISCOGRAPHY,
         proximity=proximity,
         proximity_snapshots=REFERENCE_PROXIMITY,
+        official=official,
+        official_snapshots=REFERENCE_OFFICIAL,
     )
 
     violations = check_invariants(con, SQL_DIR)
@@ -344,6 +380,13 @@ def run() -> None:
 
     manifest = publish(con, out_dir(DUMP), DUMP, CORRECTIONS_CSV, extraction)
     print(manifest["counts"])
+
+
+def _lines_about(parts: Sequence[Path], artists: set[str]) -> Iterator[str]:
+    """The lines of a survey's parts that ask about one of `artists`."""
+    for part in parts:
+        with part.open(encoding="utf-8") as src:
+            yield from (line for line in src if json.loads(line)["artist_mbid"] in artists)
 
 
 def make_fixtures() -> None:
@@ -425,6 +468,9 @@ def make_fixtures() -> None:
         verified_proximity()[0].open(encoding="utf-8") as src,
     ):
         fh.writelines(itertools.islice(src, PROXIMITY_FIXTURE_LINES))
+    # What MusicBrainz shows of the fixture artists it was asked about.
+    with (out / "official.jsonl").open("w", encoding="utf-8") as fh:
+        fh.writelines(_lines_about(verified_official(), kept_set))
 
     print("witnesses found:", len(wanted & set(kept)), "linked artists:", len(set(kept) - wanted))
     missing = wanted - set(kept)

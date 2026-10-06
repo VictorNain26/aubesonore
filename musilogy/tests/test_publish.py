@@ -2,7 +2,13 @@ import json
 import subprocess
 
 import pytest
-from conftest import build_synthetic, proximity_file, synthetic_artist
+from conftest import (
+    build_synthetic,
+    official_file,
+    proximity_file,
+    synthetic_artist,
+    synthetic_release_group,
+)
 
 from musilogy import REFERENCE_DUMP as DUMP
 from musilogy import REFERENCE_INFLUENCES, REFERENCE_POPULARITY
@@ -87,6 +93,27 @@ def test_manifest_names_every_part_of_the_proximity_survey(tmp_path, monkeypatch
         {"snapshot": "2026-10-04", "sha256": {"artist-similar.jsonl": "4" * 64}},
         {"snapshot": "2026-10-07", "sha256": {"artist-similar.jsonl": "7" * 64}},
     ]
+
+
+def test_manifest_names_the_official_parts_and_counts_the_statuses(tmp_path, monkeypatch):
+    def sums(date):
+        path = tmp_path / f"musicbrainz-official-{date}.SHA256SUMS"
+        path.write_text(f"{'5' * 64}  official-release-groups.jsonl\n", encoding="utf-8")
+        return path
+
+    monkeypatch.setattr("musilogy.publish.official_sums", sums)
+    con = build_synthetic(
+        tmp_path,
+        [synthetic_artist("a", "1990", None)],
+        [synthetic_release_group(m, "a", "1991") for m in ("rg-1", "rg-2")],
+        official=[official_file(tmp_path / "o.jsonl", {"a": ["rg-1"]})],
+        official_snapshots=["2026-10-05"],
+    )
+    manifest = publish(con, tmp_path / "out", DUMP, None)
+    assert manifest["official"] == [
+        {"snapshot": "2026-10-05", "sha256": {"official-release-groups.jsonl": "5" * 64}}
+    ]
+    assert manifest["release_status"] == {"official": 1, "not_official": 1, "unknown": 0}
 
 
 def test_manifest_counts_the_repeated_neighbours_it_dropped(con, tmp_path):

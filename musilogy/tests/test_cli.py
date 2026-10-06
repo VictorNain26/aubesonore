@@ -69,6 +69,7 @@ def test_run_refuses_to_publish_when_the_extraction_disagrees(tmp_path, monkeypa
     monkeypatch.setattr(cli, "verified_influences", lambda: FIX / "influences.jsonl")
     monkeypatch.setattr(cli, "verified_discography", lambda: FIX / "discography.jsonl")
     monkeypatch.setattr(cli, "verified_proximity", lambda: [FIX / "proximity.jsonl"])
+    monkeypatch.setattr(cli, "verified_official", lambda: [FIX / "official.jsonl"])
 
     def record_publish(*args):
         # Returns a plausible manifest on purpose: a double returning None
@@ -176,3 +177,45 @@ def test_a_new_part_of_the_proximity_asks_only_the_artists_no_part_asked(tmp_pat
     monkeypatch.setattr(cli, "fetch_proximity", fetch)
     cli.snapshot_proximity()
     assert asked == ["new"]
+
+
+def test_a_new_part_of_the_official_survey_asks_only_the_artists_no_part_asked(
+    tmp_path, monkeypatch
+):
+    # An artist is eligible with 500 listeners or more and an album or EP in
+    # the extraction; the 5 632 artists with EPs only, missed by the first
+    # part, are the reason this exists.
+    popularity = tmp_path / "artist-popularity.jsonl"
+    popularity.write_text(
+        "".join(
+            json.dumps({"artist_mbid": m, "total_listen_count": 1, "total_user_count": n}) + "\n"
+            for m, n in (("asked", 900), ("eps-only", 600), ("no-record", 900), ("small", 499))
+        ),
+        encoding="utf-8",
+    )
+    rgs = tmp_path / "release_groups.jsonl"
+    rgs.write_text(
+        "".join(json.dumps({"artists": [m]}) + "\n" for m in ("asked", "eps-only", "small")),
+        encoding="utf-8",
+    )
+    first = tmp_path / "first.jsonl"
+    first.write_text(
+        json.dumps({"artist_mbid": "asked", "release_groups": []}) + "\n", encoding="utf-8"
+    )
+    monkeypatch.setattr(cli, "RAW_DIR", tmp_path)
+    monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", rgs)
+    monkeypatch.setattr(cli, "verified_popularity", lambda: popularity)
+    monkeypatch.setattr(cli, "verified_official", lambda: [first])
+    monkeypatch.setattr(cli, "official_snapshot", lambda date: tmp_path / date / "part.jsonl")
+    monkeypatch.setattr(cli, "official_sums", lambda date: tmp_path / f"{date}.SHA256SUMS")
+    asked = []
+
+    def fetch(mbids, dest):
+        asked.extend(mbids)
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_text("", encoding="utf-8")
+        return len(asked)
+
+    monkeypatch.setattr(cli, "fetch_official", fetch)
+    cli.snapshot_official()
+    assert asked == ["eps-only"]

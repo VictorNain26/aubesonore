@@ -41,6 +41,35 @@ FROM (
 ) c
 WHERE EXISTS (SELECT 1 FROM artists a WHERE a.mbid = c.artist_mbid);
 
+-- `official` says whether MusicBrainz shows the record as the artist's work:
+-- the official status snapshot asks, for each artist surveyed, the album and
+-- EP release groups its website lists by default, those whose releases are
+-- not all promotions, bootlegs or pseudo-releases. A record is official when
+-- one of its credited artists so surveyed lists it, not official when its
+-- credited artists were surveyed and none lists it, and unknown (NULL) when
+-- none was surveyed. A declared status, not a guess: on the played artists
+-- (2026-10-06) it leaves out 476 of 4 980 records — Place Pigalle, The Cocaine
+-- Sessions, promotional EPs — and leaves 149 unknown.
+ALTER TABLE releases ADD COLUMN official BOOLEAN;
+UPDATE releases SET official = s.official
+FROM (
+  SELECT r.rg_mbid,
+    CASE WHEN count(o.release_groups) = 0 THEN NULL
+         ELSE coalesce(bool_or(list_contains(o.release_groups, r.rg_mbid)), false) END AS official
+  FROM releases r LEFT JOIN raw_official o USING (artist_mbid)
+  GROUP BY r.rg_mbid
+) s
+WHERE s.rg_mbid = releases.rg_mbid;
+
+-- How many records each status holds, for the manifest.
+CREATE OR REPLACE TABLE release_status AS
+WITH records AS (SELECT DISTINCT rg_mbid, official FROM releases)
+SELECT
+  count(*) FILTER (WHERE official) AS official,
+  count(*) FILTER (WHERE NOT official) AS not_official,
+  count(*) FILTER (WHERE official IS NULL) AS unknown
+FROM records;
+
 -- What the snapshot names and the discography cannot use, counted rather than
 -- hidden: an ID that is not one (Wikidata holds "12-inch single" as a release
 -- group ID on 2026-10-05), a release group the extraction does not hold
