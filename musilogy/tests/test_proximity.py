@@ -41,7 +41,7 @@ def test_a_repeated_neighbour_keeps_its_best_occurrence(con):
     rows = neighbours(con, REPEATER)
     assert [rank for m, _, rank in rows if m == REPEATED] == [10]
     assert 11 not in {rank for _, _, rank in rows}
-    assert con.execute("SELECT * FROM proximity_exclusions").fetchone() == (1,)
+    assert con.execute("SELECT * FROM proximity_exclusions").fetchone() == (1, 0)
 
 
 def test_the_best_occurrence_is_the_smallest_rank_whatever_the_order_of_the_file(tmp_path):
@@ -51,6 +51,18 @@ def test_the_best_occurrence_is_the_smallest_rank_whatever_the_order_of_the_file
         proximity=proximity_file(tmp_path / "p.jsonl", {A: [(B, 50), (C, 40), (B, 30)]}),
     )
     assert neighbours(c, A) == [(B, 50, 1), (C, 40, 2)]
+    assert check_invariants(c, SQL) == []
+
+
+def test_an_artist_given_as_its_own_neighbour_is_dropped_and_counted(tmp_path):
+    # Usurper is its own first neighbour in the 2026-10-04 snapshot.
+    c = build_synthetic(
+        tmp_path,
+        [synthetic_artist(m, "1970", None) for m in (A, B)],
+        proximity=proximity_file(tmp_path / "p.jsonl", {A: [(A, 90), (B, 50)]}),
+    )
+    assert neighbours(c, A) == [(B, 50, 2)]
+    assert c.execute("SELECT * FROM proximity_exclusions").fetchone() == (0, 1)
     assert check_invariants(c, SQL) == []
 
 
@@ -101,6 +113,17 @@ def test_proximity_malformed_is_reported(con):
         con.execute(undo, [neighbour.upper(), artist, neighbour])
         violations = dict(check_invariants(con, SQL))
     assert violations.get("proximity_malformed") == 1
+
+
+def test_proximity_self_is_reported(con):
+    artist, neighbour = con.execute(
+        "SELECT artist_mbid, neighbour_mbid FROM proximity LIMIT 1"
+    ).fetchone()
+    undo = "UPDATE proximity SET neighbour_mbid = ? WHERE artist_mbid = ? AND neighbour_mbid = ?"
+    with restored(con, (undo, [neighbour, artist, artist])):
+        con.execute(undo, [artist, artist, neighbour])
+        violations = dict(check_invariants(con, SQL))
+    assert violations.get("proximity_self") == 1
 
 
 def test_duplicate_proximity_is_reported(con):

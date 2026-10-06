@@ -85,7 +85,10 @@ def test_manifest_names_the_proximity_snapshot_the_build_loaded(tmp_path, monkey
 
 def test_manifest_counts_the_repeated_neighbours_it_dropped(con, tmp_path):
     # The first 120 lines of the snapshot repeat one neighbour once (line 119).
-    assert publish(con, tmp_path, DUMP, None)["proximity_exclusions"] == {"repeated_neighbour": 1}
+    assert publish(con, tmp_path, DUMP, None)["proximity_exclusions"] == {
+        "repeated_neighbour": 1,
+        "self_neighbour": 0,
+    }
 
 
 def test_a_build_without_snapshot_says_so_in_the_manifest(tmp_path):

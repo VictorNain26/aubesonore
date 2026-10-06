@@ -69,7 +69,9 @@ albums), `genres` (vocabulaire), `links` (appartenances, pseudonymes et changeme
   remonte jamais le long des rangs sur ces 4 000 artistes) ; le rang laissé
   libre n'est pas comblé. C'est un dédoublonnage, compté dans le manifeste
   (`proximity_exclusions`), pas une violation ; un doublon de paire restant
-  après lui en serait une. Seuls les artistes d'au moins 500 auditeurs sont
+  après lui en serait une. Le service donne aussi certains artistes pour leur
+  propre voisin (84 des 111 402 artistes relevés) : cette occurrence est
+  écartée et comptée de même, son rang laissé libre. Seuls les artistes d'au moins 500 auditeurs sont
   interrogés : `artists.proximity_surveyed` vaut vrai pour chaque artiste dont
   le relevé porte une ligne, même sans voisin (12 % des 4 000 premiers), faux
   pour les autres, NULL si aucun relevé n'est chargé. Un artiste non relevé

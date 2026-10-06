@@ -325,6 +325,9 @@ CREATE OR REPLACE VIEW proximity_malformed AS
      OR NOT coalesce(regexp_full_match(
           neighbour_mbid, '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'), false)
      OR score IS NULL;
+-- An artist is never its own neighbour.
+CREATE OR REPLACE VIEW proximity_self AS
+  SELECT artist_mbid, neighbour_mbid FROM proximity WHERE neighbour_mbid = artist_mbid;
 -- One row per pair, once the repeats are gone.
 CREATE OR REPLACE VIEW duplicate_proximity AS
   SELECT artist_mbid, neighbour_mbid FROM proximity GROUP BY ALL HAVING count(*) > 1;

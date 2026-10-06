@@ -260,6 +260,7 @@ INVARIANTS = (
     "influence_unsourced",
     "proximity_rank_out_of_range",
     "proximity_malformed",
+    "proximity_self",
     "duplicate_proximity",
     "proximity_unsourced",
     "corrections_file_too_large",
