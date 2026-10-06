@@ -4,6 +4,7 @@ import { StaticRouter } from 'react-router';
 import { overwriteGetLocale, type Locale } from './paraglide/runtime.js';
 import * as m from './paraglide/messages.js';
 import { useLocaleStore } from './stores/localeStore';
+import { seedArtistPage, type ArtistPageData } from './lib/artistPageData';
 import App from './App';
 
 async function toHtml(element: ReactElement): Promise<string> {
@@ -25,6 +26,15 @@ export function pageHtml(locale: Locale, path = locale === 'en' ? '/en/' : '/'):
       <App />
     </StaticRouter>
   );
+}
+
+/**
+ * An artist page at its path, drawn from the data the backend holds, as a crawler without
+ * JavaScript should read it. The page embeds the same data: the client starts from it.
+ */
+export function artistPageHtml(data: ArtistPageData, path: string): Promise<string> {
+  seedArtistPage(data);
+  return pageHtml(data.locale, path);
 }
 
 export function meta(

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { useHeroListenVisible } from '../home/listen';
+import { ARTIST_PAGE_DATA_ID, readArtistPageData, seedArtistPage } from '../lib/artistPageData';
 import ArtistPage from './ArtistPage';
 
 function open(path: string) {
@@ -33,6 +34,38 @@ describe('ArtistPage', () => {
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
     await screen.findByRole('heading', { level: 1 });
     expect(await screen.findByRole('contentinfo')).toBeInTheDocument();
+  });
+
+  it('draws a server-rendered page from the data it embeds, before any request answers', () => {
+    const script = document.createElement('script');
+    script.type = 'application/json';
+    script.id = ARTIST_PAGE_DATA_ID;
+    script.textContent = JSON.stringify({
+      locale: 'fr',
+      profile: {
+        id: 'a9',
+        name: 'Rendu Serveur',
+        slug: 'rendu-serveur',
+        mbid: null,
+        played: true,
+        image: null,
+        facts: null,
+        summary: null,
+        links: [],
+        playedOnRadio: [],
+      },
+      musilogy: null,
+    });
+    document.body.append(script);
+    const data = readArtistPageData(document);
+    script.remove();
+    if (!data) throw new Error('no embedded data');
+    seedArtistPage(data);
+
+    open('/artiste/rendu-serveur');
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Rendu Serveur' })).toBeInTheDocument();
+    expect(screen.getByRole('contentinfo')).toBeInTheDocument();
   });
 
   it('shows the not-found state for a slug the API does not know, with the way back', async () => {
