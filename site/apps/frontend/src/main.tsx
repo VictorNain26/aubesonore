@@ -7,6 +7,7 @@ import '@fontsource-variable/geist-mono';
 import './index.css';
 import { handlePreloadError } from './lib/preloadReload';
 import { readLocaleChoice } from './stores/localeStore';
+import { readArtistPageData, seedArtistPage } from './lib/artistPageData';
 
 const root = document.getElementById('root');
 
@@ -35,8 +36,10 @@ window.addEventListener('vite:preloadError', () => {
   handlePreloadError(sessionStorage, () => window.location.reload(), Date.now());
 });
 
-// The production home arrives pre-rendered (scripts/prerender.mjs): hydrate it.
-// Artist pages (app.html) and the dev server serve an empty root.
+// The production home arrives pre-rendered (scripts/prerender.mjs), an artist page rendered by the
+// backend with its data: hydrate them from it. The dev server serves an empty root.
+const artistPage = readArtistPageData(document);
+if (artistPage) seedArtistPage(artistPage);
 const app = (
   <StrictMode>
     <BrowserRouter>

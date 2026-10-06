@@ -5,18 +5,14 @@ import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../home/SiteFooter';
 import type { MusilogyArtist } from '@aubesonore/shared-types/client';
 import { artistPath, fetchArtistProfile } from '../lib/artistProfile';
+import { profileKey, seenMusilogy, seenProfiles } from '../lib/artistPageData';
 import { useDiscoveryTrail } from '../lib/discoveryTrail';
 import { fetchMusilogyArtist } from '../lib/musilogy';
 import { useScrollMemory } from '../lib/scrollMemory';
-import { seenStore } from '../lib/seenPages';
 import { useAuthStore } from '../stores/authStore';
 import * as m from '@/paraglide/messages.js';
 import { useLikedTracksStore } from '../stores/likedTracksStore';
 import { useLocale } from '../stores/localeStore';
-
-const seenProfiles = seenStore<ArtistPageState>();
-// null: the dump does not know the MBID, or Musilogy failed; the page shows without its sections.
-const seenMusilogy = seenStore<MusilogyArtist | null>();
 
 export default function ArtistPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -25,7 +21,7 @@ export default function ArtistPage() {
     key: string;
     state: ArtistPageState;
   } | null>(null);
-  const key = `${slug}:${locale}`;
+  const key = profileKey(slug ?? '', locale);
   const setListenVisible = useHeroListenVisible((s) => s.setVisible);
   // The listener's kept tracks: this artist's, newest first. Loaded again on
   // each page, since a track kept a moment ago is tied to its artist after the
@@ -52,6 +48,8 @@ export default function ArtistPage() {
       })
       .catch((err: unknown) => {
         if (err instanceof Error && err.name === 'AbortError') return;
+        // A page already drawn (rendered by the server, or seen in this tab) stays as it is.
+        if (seenProfiles.get(key)) return;
         setLoaded({ key, state: { status: 'error' } });
       });
     return () => controller.abort();
