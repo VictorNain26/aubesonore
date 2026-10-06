@@ -5,6 +5,7 @@ from musilogy import (
     REFERENCE_DUMP,
     REFERENCE_INFLUENCES,
     REFERENCE_POPULARITY,
+    REFERENCE_PROXIMITY,
 )
 from musilogy.build import build, check_invariants, connect
 from musilogy.paths import (
@@ -12,6 +13,7 @@ from musilogy.paths import (
     discography_snapshot,
     influences_snapshot,
     popularity_snapshot,
+    proximity_snapshot,
     work_dir,
 )
 
@@ -34,12 +36,19 @@ BASELINE = {
     # The pages an artist page uses among those MusicBrainz relates, ended
     # ones included.
     "urls": 1_793_436,
+    # The ListenBrainz neighbours of the 111 402 artists with 500 listeners or
+    # more (snapshot of 2026-10-04), once the repeats and the artists given as
+    # their own neighbour are dropped.
+    "proximity": 4_973_236,
 }
 RELEASE_TYPE_BREAKDOWN = {"Album": 1_807_234, "EP": 511_918}
 # Wikidata files 60 334 of the album rows and 9 465 of the EP rows as a studio
 # album or an EP (discography snapshot of 2026-10-05).
 RELEASES_FILED_ORIGINAL = 69_799
 URLS_ENDED = 23_287
+PROXIMITY_EXCLUSIONS = {"repeated_neighbour": 675, "self_neighbour": 84}
+# Every artist asked, 16 515 of them without a neighbour.
+PROXIMITY_SURVEYED = 111_402
 DISCOGRAPHY_EXCLUSIONS = {"malformed": 1, "not_album_or_ep": 1_274, "secondary_type": 1_498}
 # The influences whose two ends are artists of the dump, the only ones the
 # site can name; the other 251 have an end whose MBID `artists` does not hold.
@@ -105,6 +114,7 @@ WORK = work_dir(REFERENCE_DUMP)
 POPULARITY = popularity_snapshot(REFERENCE_POPULARITY)
 INFLUENCES = influences_snapshot(REFERENCE_INFLUENCES)
 DISCOGRAPHY = discography_snapshot(REFERENCE_DISCOGRAPHY)
+PROXIMITY = proximity_snapshot(REFERENCE_PROXIMITY)
 
 
 def test_the_baseline_looks_for_the_extractions_at_an_absolute_path():
@@ -129,6 +139,8 @@ def test_reference_dump_matches_the_baseline():
         pytest.skip(f"Wikidata snapshot {REFERENCE_INFLUENCES} missing")
     if not DISCOGRAPHY.exists():
         pytest.skip(f"Wikidata snapshot {REFERENCE_DISCOGRAPHY} missing")
+    if not PROXIMITY.exists():
+        pytest.skip(f"ListenBrainz proximity {REFERENCE_PROXIMITY} missing")
     con = connect()
     build(
         con,
@@ -142,6 +154,8 @@ def test_reference_dump_matches_the_baseline():
         influences_snapshot=REFERENCE_INFLUENCES,
         discography=DISCOGRAPHY,
         discography_snapshot=REFERENCE_DISCOGRAPHY,
+        proximity=PROXIMITY,
+        proximity_snapshot=REFERENCE_PROXIMITY,
     )
     assert check_invariants(con, SQL_DIR) == []
     for table, expected in BASELINE.items():
@@ -187,6 +201,10 @@ def test_reference_dump_matches_the_baseline():
         == RELEASE_TYPE_BREAKDOWN
     )
     assert con.execute("SELECT count(*) FROM urls WHERE ended").fetchone() == (URLS_ENDED,)
+    assert single_row(con, "proximity_exclusions") == PROXIMITY_EXCLUSIONS
+    assert con.execute("SELECT count(*) FROM artists WHERE proximity_surveyed").fetchone() == (
+        PROXIMITY_SURVEYED,
+    )
 
     row = con.execute(
         "SELECT count(*) FROM artists WHERE y_end IS NOT NULL AND y0 IS NOT NULL AND y_end < y0"
