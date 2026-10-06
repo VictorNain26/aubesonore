@@ -6,7 +6,7 @@ CREATE TABLE artists (
   name text NOT NULL,
   disambiguation text,
   name_key text,
-  type text NOT NULL,
+  type text,
   y0_declared integer,
   y_end_declared integer,
   y_birth integer,
