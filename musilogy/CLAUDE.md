@@ -105,7 +105,7 @@ PGPASSWORD="$(grep '^POSTGRES_PASSWORD=' ~/aubesonore/site/.env | cut -d= -f2-)"
 PGHOST=localhost PGPORT=5433 PGUSER=aubesonore PGDATABASE=aubesonore \
 PGSSLMODE=verify-full PGSSLROOTCERT=~/aubesonore/site/certs/ca.crt \
 systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=0 \
-  nice -n 10 uv run musilogy load   # ~7 min sur un Postgres jetable, sans la proximité (2026-10-04)
+  nice -n 10 uv run musilogy load   # ~9 min 30 sur un Postgres jetable, proximité comprise (2026-10-06)
 ```
 
 Sur victorserv, `pytest -m slow` et `musilogy run` partent dans un scope

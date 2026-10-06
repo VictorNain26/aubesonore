@@ -62,18 +62,18 @@ albums), `genres` (vocabulaire), `links` (appartenances, pseudonymes et changeme
   remplie quand le relevé est épinglé) : les voisins ListenBrainz de chaque
   artiste relevé, `rank` de 1 à 100 dans l'ordre du service. Un voisin absent
   du dump reste dans la table (il n'a pas de fiche). Le service répète parfois
-  un voisin pour un même artiste (29 fois sur les 4 000 premiers artistes du
+  un voisin pour un même artiste (675 fois sur les 111 402 artistes du
   relevé du 2026-10-04 ; will.i.am aux rangs 58 et 100, scores 45 et 35, chez
   Chuckie, `0145e155…`) : **un voisin répété garde sa meilleure occurrence**,
   le rang le plus petit, qui porte aussi le score le plus haut (le score ne
-  remonte jamais le long des rangs sur ces 4 000 artistes) ; le rang laissé
+  remonte jamais le long des rangs du relevé) ; le rang laissé
   libre n'est pas comblé. C'est un dédoublonnage, compté dans le manifeste
   (`proximity_exclusions`), pas une violation ; un doublon de paire restant
   après lui en serait une. Le service donne aussi certains artistes pour leur
   propre voisin (84 des 111 402 artistes relevés) : cette occurrence est
-  écartée et comptée de même, son rang laissé libre. Seuls les artistes d'au moins 500 auditeurs sont
-  interrogés : `artists.proximity_surveyed` vaut vrai pour chaque artiste dont
-  le relevé porte une ligne, même sans voisin (12 % des 4 000 premiers), faux
+  écartée et comptée de même, son rang laissé libre. Seuls les artistes d'au
+  moins 500 auditeurs sont interrogés : `artists.proximity_surveyed` vaut vrai pour chaque artiste dont
+  le relevé porte une ligne, même sans voisin (14,8 % des 111 402), faux
   pour les autres, NULL si aucun relevé n'est chargé. Un artiste non relevé
   n'est pas un artiste sans voisin.
 - `influences(artist_mbid, influence_mbid, statement)` : `artist_mbid` cite
@@ -201,11 +201,10 @@ musilogy.artist_urls(artist text) RETURNS TABLE (type text, url text)
 Un voisin ou une influence absents du dump n'apparaissent pas : la fonction
 joint `artists`, faute de nom à montrer.
 
-`artist_neighbours`, mesurée sur un Postgres jetable chargé du dump de
-référence et des 4 000 premiers artistes du relevé, pour un artiste à 100
-voisins : environ 2 ms cache chaud, 0,9 s au premier appel après le
-chargement. La table pèsera environ 1 Go dans la base du site (37 Mo, index
-compris, pour ces 4 000 artistes).
+`artist_neighbours`, mesurée le 2026-10-06 sur un Postgres jetable chargé du
+dump de référence et du relevé entier, pour Joy Division (100 voisins) :
+environ 1 ms d'exécution, cache chaud. La table pèse 877 Mo dans la base,
+index compris (555 Mo sans).
 
 `artist_influences` rend chaque direction dans l'ordre du temps (`y0`, les
 artistes sans année en dernier, puis le MBID). `statement` est l'identifiant
