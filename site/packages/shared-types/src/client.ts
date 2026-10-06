@@ -182,8 +182,8 @@ export interface MusilogyArtistRef {
 }
 
 export interface MusilogyCard extends MusilogyArtistRef {
-  /** MusicBrainz's type: Group, Person, Orchestra, Choir. */
-  type: string;
+  /** MusicBrainz's type: Group, Person, Orchestra, Choir, Character, Other; null when it names none. */
+  type: string | null;
   country: string | null;
   beginArea: string | null;
   /** `declared` or `first_album`: an inferred start is not a stated one. */
@@ -280,7 +280,7 @@ export interface MusilogySearchHit {
   mbid: string;
   name: string;
   disambiguation: string | null;
-  type: string;
+  type: string | null;
   y0: number | null;
   listeners: number | null;
 }

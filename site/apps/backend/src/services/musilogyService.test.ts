@@ -136,6 +136,27 @@ describe('getArtistIdentity', () => {
     });
   });
 
+  it('says no kind, place nor year for an artist without a type', async () => {
+    answers.artist_card = [
+      card({
+        type: null,
+        begin_area: 'Strasbourg',
+        y0: 2012,
+        y0_source: 'first_album',
+        ended: false,
+      }),
+    ];
+
+    expect((await getArtistIdentity(DAFT_PUNK))?.facts).toEqual({
+      kind: null,
+      place: null,
+      country: 'FR',
+      formed: null,
+      ended: null,
+      active: false,
+    });
+  });
+
   it('says no year it inferred, and an ongoing group is active', async () => {
     answers.artist_card = [
       card({ y0_source: 'first_album', y_end: 2024, y_end_source: 'last_album', ended: false }),

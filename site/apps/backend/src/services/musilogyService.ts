@@ -68,7 +68,7 @@ interface CardRow extends Record<string, unknown> {
   mbid: string;
   name: string;
   disambiguation: string | null;
-  type: string;
+  type: string | null;
   country: string | null;
   begin_area: string | null;
   y0: number | null;
@@ -130,7 +130,7 @@ interface SearchRow extends Record<string, unknown> {
   mbid: string;
   name: string;
   disambiguation: string | null;
-  type: string;
+  type: string | null;
   y0: number | null;
   user_count: Int8 | null;
 }
@@ -306,12 +306,14 @@ const KINDS: Record<string, ArtistFacts['kind']> = {
 };
 
 /**
- * Only a group's dates and begin area are a career; a person's are a birth.
+ * Only a group's dates and begin area are a career; a person's are a birth,
+ * and those of an artist without a type, a character or an "other" may be
+ * either: neither is said.
  * A begin area that only repeats the country is left out: 11 % of groups
  * have one (2 168 of 20 000 sampled, 2026-10-05).
  */
 function toFacts(card: CardRow): ArtistFacts {
-  const kind = KINDS[card.type] ?? null;
+  const kind = card.type ? (KINDS[card.type] ?? null) : null;
   const isGroup = kind !== null && kind !== 'person';
   const country = regionOf(card.country);
   const countryName = country && new Intl.DisplayNames(['en'], { type: 'region' }).of(country);

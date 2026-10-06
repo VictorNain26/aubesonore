@@ -286,7 +286,7 @@ export type SearchState =
   | { status: 'error' }
   | { status: 'done'; hits: MusilogySearchHit[] };
 
-// MusicBrainz's artist types the site has a word for; a character or "Other" says nothing.
+// MusicBrainz's artist types the site has a word for; a character, "Other" or no type says nothing.
 const HIT_KINDS: Record<string, () => string> = {
   Person: () => m.artist_kind_person(),
   Group: () => m.artist_kind_group(),
@@ -299,7 +299,7 @@ const HIT_COLUMNS =
   'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 md:grid-cols-[minmax(0,1fr)_9rem_5rem]';
 
 function SearchHitRow({ hit }: { hit: MusilogySearchHit }) {
-  const kind = HIT_KINDS[hit.type]?.() ?? null;
+  const kind = hit.type ? (HIT_KINDS[hit.type]?.() ?? null) : null;
   return (
     <li className={cn(HIT_COLUMNS, 'border-border relative min-h-18 border-b py-2.5')}>
       <span className="flex min-w-0 flex-col gap-0.5">
