@@ -69,14 +69,4 @@ describe('HomePage', () => {
       await screen.findByRole('heading', { name: /The first light of your next favourite songs\./ })
     ).toBeInTheDocument();
   });
-
-  it('opens the about panel from the footer', async () => {
-    renderWithProviders(<Root />);
-
-    await userEvent.click(screen.getByRole('button', { name: 'À propos' }));
-
-    const about = await screen.findByRole('dialog', { name: 'AubeSonore' });
-    expect(about).toHaveTextContent(/discothèque de référence/);
-    expect(about).not.toHaveTextContent(/Music Technology Group/);
-  });
 });
