@@ -9,13 +9,17 @@ une par une par un modèle de goût entraîné sur une bibliothèque de référe
 l'aveugle. Seul le haut du classement entre à l'antenne.
 
 Sur le site, on écoute le direct, on voit les titres passés depuis l'aube et on garde les morceaux
-qui nous arrêtent. Un morceau gardé se retrouve sur Spotify, Apple Music, Deezer et les autres
-plateformes. Le classement « Les plus gardés » réunit les choix des auditeurs, cette semaine ou
-depuis le début. Avec un compte, on peut être prévenu quand un artiste gardé repasse à l'antenne.
+qui nous arrêtent ; avec un compte, ils se réécoutent sur YouTube depuis « Mes titres ». Le
+classement « Les plus gardés » réunit les choix des auditeurs, cette semaine ou depuis le début.
 
-Le site s'installe sur l'écran d'accueil et fonctionne avec AirPlay. L'analyse audio repose sur les
-modèles Essentia Discogs-EffNet du Music Technology Group (Universitat Pompeu Fabra), sous licence
-CC BY-NC-SA 4.0. AubeSonore est un projet non commercial.
+Chaque artiste passé à l'antenne a sa page : qui il est, ses albums et EP, où l'écouter, ce que la
+radio a joué de lui, puis les artistes proches de lui dans le temps, ses influences déclarées et
+ses groupes. Ces données viennent de MusicBrainz, ListenBrainz, Wikidata et Wikipédia. Musilogy
+cherche n'importe quel artiste et mène à sa page.
+
+Le site s'installe sur l'écran d'accueil et diffuse vers AirPlay et Chromecast. L'analyse audio
+repose sur les modèles Essentia Discogs-EffNet du Music Technology Group (Universitat Pompeu Fabra),
+sous licence CC BY-NC-SA 4.0. AubeSonore est un projet non commercial.
 
 ## Écouter
 
@@ -23,3 +27,9 @@ CC BY-NC-SA 4.0. AubeSonore est un projet non commercial.
 - [Site in English](https://aubesonore.fr/en/): the same page in English
 - [Flux MP3](https://radio.aubesonore.fr/listen/aubesonore/radio.mp3): le direct, sans le site
 - [Titre en cours (JSON)](https://radio.aubesonore.fr/api/nowplaying_static/aubesonore.json): métadonnées du direct
+
+## Explorer
+
+- [Musilogy](https://aubesonore.fr/musilogy): chercher un artiste et ceux qui l'entourent
+- [Une page d'artiste](https://aubesonore.fr/artiste/cassius): par exemple Cassius
+- [Pages d'artistes (sitemap)](https://aubesonore.fr/sitemap-artists.xml): tous les artistes passés à l'antenne, en français et en anglais
