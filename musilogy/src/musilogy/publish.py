@@ -159,6 +159,17 @@ def _snapshot(
     return {"snapshot": row[0], "sha256": expected_sums(sums(row[0]))}
 
 
+def _parts(
+    con: duckdb.DuckDBPyConnection, variable: str, sums: Callable[[str], Path]
+) -> list[dict[str, Any]] | None:
+    """The parts of a survey the build loaded, each with its pinned digest."""
+    row = con.execute(f"SELECT getvariable('{variable}')::VARCHAR[]").fetchone()
+    assert row is not None  # a single-row projection always returns one row
+    if row[0] is None:
+        return None
+    return [{"snapshot": d, "sha256": expected_sums(sums(d))} for d in row[0]]
+
+
 def publish(
     con: duckdb.DuckDBPyConnection,
     out_dir: Path,
@@ -204,7 +215,7 @@ def publish(
         "popularity": _snapshot(con, "popularity_snapshot", popularity_sums),
         "influences": _snapshot(con, "influences_snapshot", influences_sums),
         "discography": _snapshot(con, "discography_snapshot", discography_sums),
-        "proximity": _snapshot(con, "proximity_snapshot", proximity_sums),
+        "proximity": _parts(con, "proximity_snapshots", proximity_sums),
         "counts": counts,
         "output_sha256": output_sha256,
         "parameters": _parameters(con),

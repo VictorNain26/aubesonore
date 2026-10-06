@@ -60,7 +60,6 @@ RELEASE_GROUPS_JSONL = WORK_DIR / "release_groups.jsonl"
 POPULARITY_JSONL = popularity_snapshot(REFERENCE_POPULARITY)
 INFLUENCES_JSONL = influences_snapshot(REFERENCE_INFLUENCES)
 DISCOGRAPHY_JSONL = discography_snapshot(REFERENCE_DISCOGRAPHY)
-PROXIMITY_JSONL = proximity_snapshot(REFERENCE_PROXIMITY)
 
 WITNESSES = [
     "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d",  # The Beatles
@@ -158,9 +157,11 @@ PROXIMITY_FIXTURE_LINES = 120
 
 def snapshot_proximity() -> None:
     """Asks ListenBrainz for the neighbours of every artist with at least
-    PROXIMITY_MIN_USERS listeners. Like the popularity, a snapshot is taken
-    once and pinned. A run stopped before the end resumes the snapshot it left
-    partial, whatever day it started."""
+    PROXIMITY_MIN_USERS listeners in the pinned popularity that no pinned part
+    of the survey asked yet: about one artist a second, so a survey is never
+    taken again whole, it grows by parts. A part is taken once and pinned; a
+    run stopped before the end resumes the part it left partial, whatever day
+    it started."""
     partials = sorted(RAW_DIR.glob("listenbrainz/*/artist-similar.jsonl.partial"))
     date = partials[-1].parent.name if partials else datetime.now(UTC).date().isoformat()
     dest = proximity_snapshot(date)
@@ -168,14 +169,17 @@ def snapshot_proximity() -> None:
         raise SystemExit(
             f"ListenBrainz proximity {date} already taken at {dest}: it is never taken again"
         )
+    asked = [part.as_posix() for part in verified_proximity()]
     cur = connect().execute(
         f"SELECT artist_mbid FROM read_ndjson('{verified_popularity().as_posix()}', "
         "columns={artist_mbid:'VARCHAR', total_user_count:'BIGINT'}) "
-        f"WHERE total_user_count >= {PROXIMITY_MIN_USERS} ORDER BY artist_mbid"
+        f"WHERE total_user_count >= {PROXIMITY_MIN_USERS} AND artist_mbid NOT IN ("
+        f"SELECT artist_mbid FROM read_ndjson({asked}, columns={{artist_mbid:'VARCHAR'}})) "
+        "ORDER BY artist_mbid"
     )
     n = fetch_proximity((r[0] for r in iter(cur.fetchone, None)), dest)
     proximity_sums(date).write_text(f"{sha256_file(dest)}  {dest.name}\n", encoding="utf-8")
-    print(f"{n} artists asked; pin it: REFERENCE_PROXIMITY = {date!r}")
+    print(f"{n} artists asked; pin it: add {date!r} to REFERENCE_PROXIMITY")
 
 
 # The artists whose records a page filters by MusicBrainz's official status:
@@ -262,15 +266,18 @@ def verified_discography() -> Path:
     return DISCOGRAPHY_JSONL
 
 
-def verified_proximity() -> Path:
-    if not PROXIMITY_JSONL.exists():
-        raise SystemExit(
-            f"ListenBrainz proximity {REFERENCE_PROXIMITY} missing at {PROXIMITY_JSONL}; "
-            "it cannot be taken again: `musilogy snapshot-proximity`, then pin the new one"
-        )
-    sums = expected_sums(proximity_sums(REFERENCE_PROXIMITY))
-    verify(PROXIMITY_JSONL, sums[PROXIMITY_JSONL.name])
-    return PROXIMITY_JSONL
+def verified_proximity() -> list[Path]:
+    parts = []
+    for date in REFERENCE_PROXIMITY:
+        part = proximity_snapshot(date)
+        if not part.exists():
+            raise SystemExit(
+                f"ListenBrainz proximity {date} missing at {part}; it cannot be taken "
+                "again: `musilogy snapshot-proximity`, then pin the new part"
+            )
+        verify(part, expected_sums(proximity_sums(date))[part.name])
+        parts.append(part)
+    return parts
 
 
 def verified_popularity() -> Path:
@@ -325,7 +332,7 @@ def run() -> None:
         discography=discography,
         discography_snapshot=REFERENCE_DISCOGRAPHY,
         proximity=proximity,
-        proximity_snapshot=REFERENCE_PROXIMITY,
+        proximity_snapshots=REFERENCE_PROXIMITY,
     )
 
     violations = check_invariants(con, SQL_DIR)
@@ -409,13 +416,13 @@ def make_fixtures() -> None:
         for line in src:
             if json.loads(line)["rg_mbid"] in fixture_rgs:
                 fh.write(line)
-    # The first lines of the proximity snapshot, whoever they ask about: few of
+    # The first lines of the survey's first part, whoever they ask about: few of
     # them are witnesses (artists are asked in mbid order), but they hold every
     # shape the rule reads — 100 neighbours, none at all, a repeated one (line
     # 119). A prefix, so the partial snapshot already held these very bytes.
     with (
         (out / "proximity.jsonl").open("w", encoding="utf-8") as fh,
-        verified_proximity().open(encoding="utf-8") as src,
+        verified_proximity()[0].open(encoding="utf-8") as src,
     ):
         fh.writelines(itertools.islice(src, PROXIMITY_FIXTURE_LINES))
 

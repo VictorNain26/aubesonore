@@ -48,7 +48,7 @@ def test_the_best_occurrence_is_the_smallest_rank_whatever_the_order_of_the_file
     c = build_synthetic(
         tmp_path,
         [synthetic_artist(A, "1970", None)],
-        proximity=proximity_file(tmp_path / "p.jsonl", {A: [(B, 50), (C, 40), (B, 30)]}),
+        proximity=[proximity_file(tmp_path / "p.jsonl", {A: [(B, 50), (C, 40), (B, 30)]})],
     )
     assert neighbours(c, A) == [(B, 50, 1), (C, 40, 2)]
     assert check_invariants(c, SQL) == []
@@ -59,7 +59,7 @@ def test_an_artist_given_as_its_own_neighbour_is_dropped_and_counted(tmp_path):
     c = build_synthetic(
         tmp_path,
         [synthetic_artist(m, "1970", None) for m in (A, B)],
-        proximity=proximity_file(tmp_path / "p.jsonl", {A: [(A, 90), (B, 50)]}),
+        proximity=[proximity_file(tmp_path / "p.jsonl", {A: [(A, 90), (B, 50)]})],
     )
     assert neighbours(c, A) == [(B, 50, 2)]
     assert c.execute("SELECT * FROM proximity_exclusions").fetchone() == (0, 1)
@@ -70,7 +70,7 @@ def test_a_neighbour_absent_from_the_dump_stays_in_the_table(tmp_path):
     c = build_synthetic(
         tmp_path,
         [synthetic_artist(A, "1970", None)],
-        proximity=proximity_file(tmp_path / "p.jsonl", {A: [(ELSEWHERE, 50)]}),
+        proximity=[proximity_file(tmp_path / "p.jsonl", {A: [(ELSEWHERE, 50)]})],
     )
     assert neighbours(c, A) == [(ELSEWHERE, 50, 1)]
 
@@ -84,7 +84,7 @@ def test_an_artist_asked_is_surveyed_even_without_a_neighbour(tmp_path):
     # only C is unsurveyed, and its empty list is no answer.
     artists = [synthetic_artist(m, "1970", None) for m in (A, B, C)]
     snapshot = proximity_file(tmp_path / "p.jsonl", {A: [], B: [(A, 50)]})
-    c = build_synthetic(tmp_path, artists, proximity=snapshot)
+    c = build_synthetic(tmp_path, artists, proximity=[snapshot])
     assert surveyed(c) == {A: True, B: True, C: False}
 
 
@@ -143,3 +143,25 @@ def test_proximity_unsourced_catches_the_repeat_kept_at_its_worse_rank(con):
         con.execute(undo, [11, REPEATER, REPEATED])
         violations = dict(check_invariants(con, SQL))
     assert violations.get("proximity_unsourced") == 1
+
+
+def test_the_parts_of_the_survey_read_as_one(tmp_path):
+    artists = [synthetic_artist(m, "1970", None) for m in (A, B, C)]
+    parts = [
+        proximity_file(tmp_path / "p1.jsonl", {A: [(B, 50)]}),
+        proximity_file(tmp_path / "p2.jsonl", {B: [(C, 40)]}),
+    ]
+    c = build_synthetic(tmp_path, artists, proximity=parts)
+    assert neighbours(c, A) == [(B, 50, 1)]
+    assert neighbours(c, B) == [(C, 40, 1)]
+    assert surveyed(c) == {A: True, B: True, C: False}
+    assert check_invariants(c, SQL) == []
+
+
+def test_an_artist_asked_by_two_parts_is_reported(tmp_path):
+    parts = [
+        proximity_file(tmp_path / "p1.jsonl", {A: [(B, 50)]}),
+        proximity_file(tmp_path / "p2.jsonl", {A: [(C, 40)]}),
+    ]
+    c = build_synthetic(tmp_path, [synthetic_artist(A, "1970", None)], proximity=parts)
+    assert dict(check_invariants(c, SQL)).get("proximity_asked_twice") == 1

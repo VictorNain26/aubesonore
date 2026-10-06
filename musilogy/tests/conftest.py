@@ -39,7 +39,7 @@ def con():
         # The first lines of the proximity snapshot. No date: the manifest
         # would then name a snapshot and its pinned digest, which the
         # publication tests set up themselves (test_publish.py).
-        proximity=FIX / "proximity.jsonl",
+        proximity=[FIX / "proximity.jsonl"],
     )
     return c
 
@@ -196,7 +196,7 @@ def published(
         kwargs["discography"] = path
         kwargs["discography_snapshot"] = REFERENCE_DISCOGRAPHY
     if proximity is not None:
-        kwargs["proximity"] = proximity_file(tmp_path / "proximity.jsonl", proximity)
+        kwargs["proximity"] = [proximity_file(tmp_path / "proximity.jsonl", proximity)]
     out = tmp_path / "out"
     publish(build_synthetic(tmp_path, artists, release_groups, **kwargs), out, REFERENCE_DUMP, None)
     return out

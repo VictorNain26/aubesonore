@@ -63,24 +63,30 @@ def test_manifest_names_the_influences_snapshot_the_build_loaded(con, tmp_path):
     }
 
 
-def test_manifest_names_the_proximity_snapshot_the_build_loaded(tmp_path, monkeypatch):
-    # The digest is the one pinned for the snapshot's date, read from its
-    # reference file; here a file of this test's own, so the wiring is checked
-    # without depending on which snapshot is pinned.
-    sums = tmp_path / "listenbrainz-similar.SHA256SUMS"
-    sums.write_text(f"{'0' * 64}  artist-similar.jsonl\n", encoding="utf-8")
-    monkeypatch.setattr("musilogy.publish.proximity_sums", lambda _date: sums)
+def test_manifest_names_every_part_of_the_proximity_survey(tmp_path, monkeypatch):
+    # Each part's digest is the one pinned for its date, read from its
+    # reference file; here files of this test's own, so the wiring is checked
+    # without depending on which parts are pinned.
+    def sums(date):
+        path = tmp_path / f"listenbrainz-similar-{date}.SHA256SUMS"
+        path.write_text(f"{date[-1] * 64}  artist-similar.jsonl\n", encoding="utf-8")
+        return path
+
+    monkeypatch.setattr("musilogy.publish.proximity_sums", sums)
     con = build_synthetic(
         tmp_path,
-        [synthetic_artist("a", "1990", None)],
-        proximity=proximity_file(tmp_path / "proximity.jsonl", {"a": []}),
-        proximity_snapshot="2026-10-04",
+        [synthetic_artist(m, "1990", None) for m in ("a", "b")],
+        proximity=[
+            proximity_file(tmp_path / "p1.jsonl", {"a": []}),
+            proximity_file(tmp_path / "p2.jsonl", {"b": []}),
+        ],
+        proximity_snapshots=["2026-10-04", "2026-10-07"],
     )
     manifest = publish(con, tmp_path / "out", DUMP, None)
-    assert manifest["proximity"] == {
-        "snapshot": "2026-10-04",
-        "sha256": {"artist-similar.jsonl": "0" * 64},
-    }
+    assert manifest["proximity"] == [
+        {"snapshot": "2026-10-04", "sha256": {"artist-similar.jsonl": "4" * 64}},
+        {"snapshot": "2026-10-07", "sha256": {"artist-similar.jsonl": "7" * 64}},
+    ]
 
 
 def test_manifest_counts_the_repeated_neighbours_it_dropped(con, tmp_path):
