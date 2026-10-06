@@ -46,12 +46,16 @@ albums), `genres` (vocabulaire), `links` (appartenances, pseudonymes et changeme
 **Ajoutées** :
 
 - `releases(artist_mbid, rg_mbid, title, primary_type, soundtrack, remix, y,
-  filed_original)` : chaque album et EP du dump dont les types secondaires se
+  filed_original, official)` : chaque album et EP du dump dont les types secondaires se
   limitent à Soundtrack et Remix, une ligne par artiste crédité de la
   population. `filed_original` dit que Wikidata le classe album studio ou EP
   (relevé `discography`, daté et épinglé) : un posthume ainsi classé est de la
-  musique nouvelle. L'extraction garde désormais les EP à côté des albums ;
-  `albums` reste limitée aux albums.
+  musique nouvelle. `official` dit que MusicBrainz le montre comme l'œuvre
+  de l'artiste (relevé `official`, en parties épinglées) : vrai si un artiste
+  crédité relevé le liste, faux si les artistes crédités relevés ne le
+  listent pas, NULL si aucun n'a été relevé ; `artist_releases` écarte les
+  faux. L'extraction garde désormais les EP à côté des albums ; `albums` reste
+  limitée aux albums.
 - `urls(artist_mbid, type, url, ended)` : parmi les pages que MusicBrainz relie
   à un artiste, celles qu'une page artiste utilise (Deezer, Spotify, Apple
   Music, Bandcamp, SoundCloud, site officiel, Wikidata, Wikipédia, images),
