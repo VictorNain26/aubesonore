@@ -8,7 +8,13 @@ import { seedArtistPage, type ArtistPageData } from './lib/artistPageData';
 import App from './App';
 
 async function toHtml(element: ReactElement): Promise<string> {
-  const { prelude } = await prerenderToNodeStream(<StrictMode>{element}</StrictMode>);
+  // In one piece: past progressiveChunkSize (12,800 bytes by default) React sends a finished
+  // Suspense boundary hidden, with an inline script to reveal it, which the site's CSP blocks
+  // (script-src 'self'). An artist page is ~85 KB.
+  // https://react.dev/reference/react-dom/static/prerenderToNodeStream#parameters
+  const { prelude } = await prerenderToNodeStream(<StrictMode>{element}</StrictMode>, {
+    progressiveChunkSize: Number.POSITIVE_INFINITY,
+  });
   const chunks: Buffer[] = [];
   for await (const chunk of prelude) chunks.push(Buffer.from(chunk as Uint8Array));
   return Buffer.concat(chunks).toString('utf8');

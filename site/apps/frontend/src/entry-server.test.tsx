@@ -80,6 +80,21 @@ describe('entry-server', () => {
     expect(en).toContain('href="/en/legal/"');
   });
 
+  it('writes a large artist page in one piece, with no inline script the CSP would block', async () => {
+    const long = {
+      ...PROFILE,
+      summary: { ...PROFILE.summary!, text: 'Groupe de rock. '.repeat(2000) },
+    };
+    const html = await artistPageHtml(
+      { locale: 'fr', profile: long, musilogy: null },
+      '/artiste/%D0%BA%D0%B8%D0%BD%D0%BE'
+    );
+    expect(html.length).toBeGreaterThan(12_800);
+    expect(html).not.toContain('<script');
+    expect(html).not.toContain('<template');
+    expect(html).not.toMatch(/<div hidden/);
+  });
+
   it('gives each language its own title and description', () => {
     expect(meta('fr').title).toBe('AubeSonore');
     expect(meta('en').description).toMatch(/^A discovery radio/);
