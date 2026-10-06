@@ -168,7 +168,9 @@ services:
         VITE_STATION_SHORTCODE: ${VITE_STATION_SHORTCODE:-aubesonore}
     container_name: aubesonore-renderer
     restart: unless-stopped
-    cpus: 0.5
+    # A render is ~100 ms of CPU: at 0.5 the quota throttles it to 285–485 ms,
+    # past the backend's 300 ms budget (measured 2026-10-06).
+    cpus: 1.0
     mem_limit: 256m
     pids_limit: 64
     logging:
