@@ -54,6 +54,7 @@ def test_the_fixture_files_are_not_ignored_by_git():
         "popularity.jsonl",
         "influences.jsonl",
         "discography.jsonl",
+        "proximity.jsonl",
     ):
         result = subprocess.run(
             ["git", "check-ignore", "--no-index", f"tests/fixtures/{name}"],

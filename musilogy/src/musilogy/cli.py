@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 from datetime import UTC, datetime
 from pathlib import Path
 
 import duckdb
 
-from musilogy import REFERENCE_DISCOGRAPHY, REFERENCE_INFLUENCES, REFERENCE_POPULARITY
+from musilogy import (
+    REFERENCE_DISCOGRAPHY,
+    REFERENCE_INFLUENCES,
+    REFERENCE_POPULARITY,
+    REFERENCE_PROXIMITY,
+)
 from musilogy import REFERENCE_DUMP as DUMP
 from musilogy.build import build, check_invariants, connect
 from musilogy.extract import extract, reduce_artist, reduce_release_group
@@ -54,6 +60,7 @@ RELEASE_GROUPS_JSONL = WORK_DIR / "release_groups.jsonl"
 POPULARITY_JSONL = popularity_snapshot(REFERENCE_POPULARITY)
 INFLUENCES_JSONL = influences_snapshot(REFERENCE_INFLUENCES)
 DISCOGRAPHY_JSONL = discography_snapshot(REFERENCE_DISCOGRAPHY)
+PROXIMITY_JSONL = proximity_snapshot(REFERENCE_PROXIMITY)
 
 WITNESSES = [
     "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d",  # The Beatles
@@ -143,6 +150,7 @@ def snapshot_popularity() -> None:
 # or more. At most one request a second, but about 0.6 artist a second
 # measured with the service's outages (2026-10-04): several days.
 PROXIMITY_MIN_USERS = 500
+PROXIMITY_FIXTURE_LINES = 120
 
 
 def snapshot_proximity() -> None:
@@ -251,6 +259,17 @@ def verified_discography() -> Path:
     return DISCOGRAPHY_JSONL
 
 
+def verified_proximity() -> Path:
+    if not PROXIMITY_JSONL.exists():
+        raise SystemExit(
+            f"ListenBrainz proximity {REFERENCE_PROXIMITY} missing at {PROXIMITY_JSONL}; "
+            "it cannot be taken again: `musilogy snapshot-proximity`, then pin the new one"
+        )
+    sums = expected_sums(proximity_sums(REFERENCE_PROXIMITY))
+    verify(PROXIMITY_JSONL, sums[PROXIMITY_JSONL.name])
+    return PROXIMITY_JSONL
+
+
 def verified_popularity() -> Path:
     if not POPULARITY_JSONL.exists():
         raise SystemExit(
@@ -287,6 +306,7 @@ def run() -> None:
     popularity = verified_popularity()
     influences = verified_influences()
     discography = verified_discography()
+    proximity = verified_proximity()
 
     con = connect()
     build(
@@ -301,6 +321,8 @@ def run() -> None:
         influences_snapshot=REFERENCE_INFLUENCES,
         discography=discography,
         discography_snapshot=REFERENCE_DISCOGRAPHY,
+        proximity=proximity,
+        proximity_snapshot=REFERENCE_PROXIMITY,
     )
 
     violations = check_invariants(con, SQL_DIR)
@@ -384,6 +406,15 @@ def make_fixtures() -> None:
         for line in src:
             if json.loads(line)["rg_mbid"] in fixture_rgs:
                 fh.write(line)
+    # The first lines of the proximity snapshot, whoever they ask about: few of
+    # them are witnesses (artists are asked in mbid order), but they hold every
+    # shape the rule reads — 100 neighbours, none at all, a repeated one (line
+    # 119). A prefix, so the partial snapshot already held these very bytes.
+    with (
+        (out / "proximity.jsonl").open("w", encoding="utf-8") as fh,
+        verified_proximity().open(encoding="utf-8") as src,
+    ):
+        fh.writelines(itertools.islice(src, PROXIMITY_FIXTURE_LINES))
 
     print("witnesses found:", len(wanted & set(kept)), "linked artists:", len(set(kept) - wanted))
     missing = wanted - set(kept)

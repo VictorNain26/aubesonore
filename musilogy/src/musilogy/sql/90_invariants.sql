@@ -312,3 +312,39 @@ CREATE OR REPLACE VIEW influence_unsourced AS
     SELECT 1 FROM raw_influences r
     WHERE r.artist_mbid = i.artist_mbid AND r.influence_mbid = i.influence_mbid
       AND r.statement = i.statement);
+-- 89_proximity.sql: the service answers at most 100 neighbours, ranked from 1.
+CREATE OR REPLACE VIEW proximity_rank_out_of_range AS
+  SELECT artist_mbid, neighbour_mbid FROM proximity
+  WHERE rank IS NULL OR rank < 1 OR rank > 100;
+-- Same shape as influence_malformed: an MBID that is not a lowercase UUID
+-- joins nothing, in silence; a neighbour without a score cannot be ranked.
+CREATE OR REPLACE VIEW proximity_malformed AS
+  SELECT artist_mbid, neighbour_mbid FROM proximity
+  WHERE NOT coalesce(regexp_full_match(
+          artist_mbid, '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'), false)
+     OR NOT coalesce(regexp_full_match(
+          neighbour_mbid, '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'), false)
+     OR score IS NULL;
+-- An artist is never its own neighbour.
+CREATE OR REPLACE VIEW proximity_self AS
+  SELECT artist_mbid, neighbour_mbid FROM proximity WHERE neighbour_mbid = artist_mbid;
+-- One row per pair, once the repeats are gone.
+CREATE OR REPLACE VIEW duplicate_proximity AS
+  SELECT artist_mbid, neighbour_mbid FROM proximity GROUP BY ALL HAVING count(*) > 1;
+-- The deduplication, restated against the snapshot with a GROUP BY rather
+-- than the window that produced it: a published row must be an occurrence the
+-- snapshot holds, at the pair's smallest rank, with its score. Keeping the
+-- last occurrence instead, or a score shifted by one rank, fails here.
+CREATE OR REPLACE VIEW proximity_unsourced AS
+  WITH occurrences AS (
+    SELECT r.artist_mbid, t.n.artist_mbid AS neighbour_mbid, t.n.score AS score, t.i AS rank
+    FROM raw_proximity r, UNNEST(r.neighbours) WITH ORDINALITY AS t(n, i)
+  ),
+  best AS (
+    SELECT artist_mbid, neighbour_mbid, min(rank) AS rank FROM occurrences GROUP BY ALL
+  )
+  SELECT p.artist_mbid, p.neighbour_mbid FROM proximity p
+  WHERE NOT EXISTS (
+    SELECT 1 FROM occurrences o JOIN best b USING (artist_mbid, neighbour_mbid, rank)
+    WHERE o.artist_mbid = p.artist_mbid AND o.neighbour_mbid = p.neighbour_mbid
+      AND o.rank = p.rank AND o.score = p.score);

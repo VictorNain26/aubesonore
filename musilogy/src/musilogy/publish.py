@@ -17,9 +17,20 @@ from musilogy.paths import (
     discography_sums,
     influences_sums,
     popularity_sums,
+    proximity_sums,
 )
 
-TABLES = ("artists", "albums", "genres", "links", "popularity", "influences", "releases", "urls")
+TABLES = (
+    "artists",
+    "albums",
+    "genres",
+    "links",
+    "popularity",
+    "influences",
+    "releases",
+    "urls",
+    "proximity",
+)
 # A delivery has to come out in a fixed order, or the same code on the same
 # extraction writes different bytes: the tables are built by parallel joins and
 # aggregates, so their insertion order is whatever the threads produced. Each
@@ -36,6 +47,7 @@ ORDER_BY = {
     "influences": "artist_mbid, influence_mbid",
     "releases": "artist_mbid, rg_mbid",
     "urls": "artist_mbid, type NULLS LAST, url",
+    "proximity": "artist_mbid, rank",
 }
 
 
@@ -192,6 +204,7 @@ def publish(
         "popularity": _snapshot(con, "popularity_snapshot", popularity_sums),
         "influences": _snapshot(con, "influences_snapshot", influences_sums),
         "discography": _snapshot(con, "discography_snapshot", discography_sums),
+        "proximity": _snapshot(con, "proximity_snapshot", proximity_sums),
         "counts": counts,
         "output_sha256": output_sha256,
         "parameters": _parameters(con),
@@ -211,6 +224,7 @@ def publish(
         "neutralised_inferences": _counters(con, "neutralised_inferences"),
         "link_exclusions": _counters(con, "link_exclusions"),
         "discography_exclusions": _counters(con, "discography_exclusions"),
+        "proximity_exclusions": _counters(con, "proximity_exclusions"),
         "git_sha": _git_sha(),
         "corrections_sha256": sha256_file(corrections) if corrections else None,
     }

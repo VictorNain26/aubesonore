@@ -130,6 +130,34 @@ def load_discography(
     )
 
 
+# "similar" is the snapshot's key, and a reserved word in SQL: renamed on read.
+RAW_PROXIMITY_COLUMNS = (
+    "{artist_mbid:'VARCHAR', \"similar\":'STRUCT(artist_mbid VARCHAR, score INTEGER)[]'}"
+)
+
+
+def load_proximity(
+    con: duckdb.DuckDBPyConnection, proximity: Path | None, snapshot: str | None
+) -> None:
+    if proximity is None:
+        # Always materialized, even empty: 89_proximity.sql reads it, and an
+        # empty table is how it knows that no snapshot was loaded.
+        con.execute(
+            "CREATE OR REPLACE TABLE raw_proximity (artist_mbid VARCHAR, "
+            "neighbours STRUCT(artist_mbid VARCHAR, score INTEGER)[])"
+        )
+    else:
+        con.execute(
+            f"CREATE OR REPLACE TABLE raw_proximity AS SELECT artist_mbid, "
+            f"\"similar\" AS neighbours FROM read_ndjson('{proximity.as_posix()}', "
+            f"columns={RAW_PROXIMITY_COLUMNS}, format='newline_delimited')"
+        )
+    con.execute(
+        "SET VARIABLE proximity_snapshot = "
+        + ("NULL" if snapshot is None else f"DATE '{snapshot}'")
+    )
+
+
 def apply_corrections(con: duckdb.DuckDBPyConnection, corrections: Path | None) -> int:
     if corrections is None:
         # Always materialized, even empty: the fast suite builds
@@ -170,12 +198,15 @@ def build(
     influences_snapshot: str | None = None,
     discography: Path | None = None,
     discography_snapshot: str | None = None,
+    proximity: Path | None = None,
+    proximity_snapshot: str | None = None,
 ) -> None:
     load_raw(con, artists, rgs)
     apply_corrections(con, corrections)
     load_popularity(con, popularity, popularity_snapshot)
     load_influences(con, influences, influences_snapshot)
     load_discography(con, discography, discography_snapshot)
+    load_proximity(con, proximity, proximity_snapshot)
     con.execute(f"SET VARIABLE dump_year = {dump_year}")
     con.execute(f"SET VARIABLE min_year = {min_year}")
     for path in sorted(sql_dir.glob("*.sql")):
@@ -227,6 +258,11 @@ INVARIANTS = (
     "duplicate_influence",
     "influence_malformed",
     "influence_unsourced",
+    "proximity_rank_out_of_range",
+    "proximity_malformed",
+    "proximity_self",
+    "duplicate_proximity",
+    "proximity_unsourced",
     "corrections_file_too_large",
     "corrections_invalid",
     "corrections_duplicate",

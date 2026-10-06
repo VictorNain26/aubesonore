@@ -3,11 +3,9 @@
 -- laid out, and every query it runs is tested here against Postgres.
 
 -- proximity_surveyed says whether the artist was asked about in the pinned
--- proximity snapshot: only artists with 500 listeners or more are, so an
--- artist not surveyed is not an artist without neighbours. NULL while no
--- snapshot is loaded, which is the case until the proximity table lands
--- (docs/conception.md, section 2): it will then read true or false from the
--- artists the snapshot asked about.
+-- proximity snapshot (89_proximity.sql): only artists with 500 listeners or
+-- more are, so an artist not surveyed is not an artist without neighbours.
+-- NULL when the load carries no snapshot.
 CREATE FUNCTION musilogy.artist_card(artist text)
 RETURNS TABLE (
   mbid text,
@@ -32,7 +30,7 @@ LANGUAGE sql STABLE
 AS $$
   SELECT a.mbid, a.name, a.disambiguation, a.type, a.country, a.begin_area, a.y_birth,
          a.y0, a.y0_source, a.y_end, a.y_end_source, a.ended, a.genres, a.genre_source,
-         p.listen_count, p.user_count, NULL::boolean
+         p.listen_count, p.user_count, a.proximity_surveyed
   FROM musilogy.artists a
   LEFT JOIN musilogy.popularity p USING (mbid)
   WHERE a.mbid = artist;
@@ -247,4 +245,40 @@ AS $$
   SELECT n.kind, o.mbid, o.name, o.disambiguation, o.y0
   FROM n JOIN musilogy.artists o ON o.mbid = n.other
   ORDER BY 5 NULLS LAST, 3, 2;
+$$;
+
+-- An artist's ListenBrainz neighbours in the service's order, each with its
+-- side in time (docs/conception.md, section 3): 'before' when it began more
+-- than 3 years before the artist, 'after' more than 3 years after, 'during'
+-- otherwise, NULL when either has no y0. Co-listening, never influence: the
+-- side is the only reading time gives it. A neighbour absent from the dump has
+-- no name to show and is left out, as is every neighbour of an artist the dump
+-- lacks.
+CREATE FUNCTION musilogy.artist_neighbours(artist text)
+RETURNS TABLE (
+  mbid text,
+  name text,
+  disambiguation text,
+  type text,
+  y0 integer,
+  y_end integer,
+  ended boolean,
+  score integer,
+  rank integer,
+  side text
+)
+LANGUAGE sql STABLE
+AS $$
+  SELECT o.mbid, o.name, o.disambiguation, o.type, o.y0, o.y_end, o.ended, p.score, p.rank,
+         CASE
+           WHEN a.y0 IS NULL OR o.y0 IS NULL THEN NULL
+           WHEN o.y0 < a.y0 - 3 THEN 'before'
+           WHEN o.y0 > a.y0 + 3 THEN 'after'
+           ELSE 'during'
+         END
+  FROM musilogy.artists a
+  JOIN musilogy.proximity p ON p.artist_mbid = a.mbid
+  JOIN musilogy.artists o ON o.mbid = p.neighbour_mbid
+  WHERE a.mbid = artist
+  ORDER BY p.rank;
 $$;

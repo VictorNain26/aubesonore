@@ -58,17 +58,24 @@ albums), `genres` (vocabulaire), `links` (appartenances, pseudonymes et changeme
   plus celle de l'artiste. Une même page reliée deux fois sous un même type est
   une ligne.
 
-- `proximity(artist_mbid, neighbour_mbid, score, rank)` *(à livrer, après
-  le relevé)* : les voisins ListenBrainz de chaque artiste relevé, `rank` de 1
-  à 100 dans l'ordre du service. Un voisin absent du dump reste dans la table
-  (il n'a pas de fiche). Le service répète parfois un voisin pour un même
-  artiste (5 des 1 039 premiers artistes du relevé, revue du 2026-10-04 ;
-  will.i.am deux fois, scores 45 et 35, chez `0145e155…`) : **un voisin répété garde sa meilleure
-  occurrence**, le rang le plus petit. C'est un dédoublonnage, compté dans le
-  manifeste, pas une violation ; un doublon de paire restant après lui en
-  serait une. Les artistes interrogés sont gardés à part, y compris ceux qui
-  n'ont aucun voisin : seuls ceux d'au moins 500 auditeurs le sont, et un
-  artiste non relevé n'est pas un artiste sans voisin.
+- `proximity(artist_mbid, neighbour_mbid, score, rank)` (`89_proximity.sql`,
+  remplie quand le relevé est épinglé) : les voisins ListenBrainz de chaque
+  artiste relevé, `rank` de 1 à 100 dans l'ordre du service. Un voisin absent
+  du dump reste dans la table (il n'a pas de fiche). Le service répète parfois
+  un voisin pour un même artiste (675 fois sur les 111 402 artistes du
+  relevé du 2026-10-04 ; will.i.am aux rangs 58 et 100, scores 45 et 35, chez
+  Chuckie, `0145e155…`) : **un voisin répété garde sa meilleure occurrence**,
+  le rang le plus petit, qui porte aussi le score le plus haut (le score ne
+  remonte jamais le long des rangs du relevé) ; le rang laissé
+  libre n'est pas comblé. C'est un dédoublonnage, compté dans le manifeste
+  (`proximity_exclusions`), pas une violation ; un doublon de paire restant
+  après lui en serait une. Le service donne aussi certains artistes pour leur
+  propre voisin (84 des 111 402 artistes relevés) : cette occurrence est
+  écartée et comptée de même, son rang laissé libre. Seuls les artistes d'au
+  moins 500 auditeurs sont interrogés : `artists.proximity_surveyed` vaut vrai pour chaque artiste dont
+  le relevé porte une ligne, même sans voisin (14,8 % des 111 402), faux
+  pour les autres, NULL si aucun relevé n'est chargé. Un artiste non relevé
+  n'est pas un artiste sans voisin.
 - `influences(artist_mbid, influence_mbid, statement)` : `artist_mbid` cite
   `influence_mbid` comme influence selon Wikidata ; `statement` est
   l'identifiant complet de la déclaration (`Q123$GUID`), pour la citer. Les déclarations
@@ -113,14 +120,14 @@ absente (code `42883`).
 | `artist_other_names` | livrée par #342 |
 | `artist_influences` | livrée par #286 |
 | `search_artists` | livrée par #286 |
-| `artist_neighbours` | à livrer, après le relevé de proximité (§5) |
+| `artist_neighbours` | livrée avec la table `proximity` ; vide en production jusqu'au premier `musilogy load` qui suit l'épinglage du relevé (§5) |
 | `artist_releases` | livrée par #337, règle de la page par #338 |
 | `artist_urls` | livrée par #337 |
 
 ```sql
 -- Fiche. proximity_surveyed : vrai si l'artiste a été interrogé dans le
--- relevé de proximité épinglé, faux sinon, NULL tant qu'aucun relevé n'est
--- chargé (NULL partout aujourd'hui). Un artiste non relevé n'est pas un
+-- relevé de proximité épinglé, même sans voisin, faux sinon, NULL si le
+-- chargement ne porte aucun relevé. Un artiste non relevé n'est pas un
 -- artiste sans voisin.
 musilogy.artist_card(artist text) RETURNS TABLE (
   mbid text, name text, disambiguation text, type text, country text,
@@ -133,7 +140,9 @@ musilogy.artist_links(artist text) RETURNS TABLE (
   type text, direction text, other_mbid text, other_name text,
   other_disambiguation text, other_y0 integer, y_begin integer, y_end integer)
 
--- À livrer. Voisins ListenBrainz, rangés, avec leur côté dans le temps (§3).
+-- Voisins ListenBrainz dans l'ordre du service (rang), avec leur côté dans
+-- le temps (§3) ; les rangs ne sont pas renumérotés quand un voisin absent du
+-- dump est écarté.
 musilogy.artist_neighbours(artist text) RETURNS TABLE (
   mbid text, name text, disambiguation text, type text, y0 integer,
   y_end integer, ended boolean, score integer, rank integer, side text)
@@ -192,6 +201,11 @@ musilogy.artist_urls(artist text) RETURNS TABLE (type text, url text)
 Un voisin ou une influence absents du dump n'apparaissent pas : la fonction
 joint `artists`, faute de nom à montrer.
 
+`artist_neighbours`, mesurée le 2026-10-06 sur un Postgres jetable chargé du
+dump de référence et du relevé entier, pour Joy Division (100 voisins) :
+environ 1 ms d'exécution, cache chaud. La table pèse 877 Mo dans la base,
+index compris (555 Mo sans).
+
 `artist_influences` rend chaque direction dans l'ordre du temps (`y0`, les
 artistes sans année en dernier, puis le MBID). `statement` est l'identifiant
 complet de la déclaration Wikidata, `Q123$GUID`, tel que Wikidata l'écrit (un
@@ -223,5 +237,8 @@ moins de 4 ms pour un nom complet.
   deux jours, davantage si les pannes s'allongent. Il tourne en service
   systemd transitoire plafonné
   (`systemd-run --user --unit=musilogy-proximity -p MemoryMax=1G`), et reprend
-  le relevé partiel s'il est interrompu.
+  le relevé partiel s'il est interrompu. À la fin, la commande renomme le
+  relevé et écrit son empreinte dans `reference/` de la copie de travail d'où
+  elle tourne : versionner ce fichier épingle le relevé (`REFERENCE_PROXIMITY`),
+  et `run` le lit.
 - La construction reste plafonnée comme avant (`musilogy/CLAUDE.md`).
