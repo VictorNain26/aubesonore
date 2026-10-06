@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react';
 import { create } from 'zustand';
 import {
   baseLocale,
@@ -58,3 +59,17 @@ export const useLocaleStore = create<LocaleState>((set, get) => ({
     set({ locale });
   },
 }));
+
+/**
+ * The page's language, for a component that redraws when it changes. While the server renders and
+ * while the client hydrates, React reads a store's server snapshot, which zustand takes from the
+ * store's initial state (zustand/esm/react.mjs): the language of the first module load, French on
+ * the server. getLocale() is the page's at both moments.
+ */
+export function useLocale(): Locale {
+  return useSyncExternalStore(
+    useLocaleStore.subscribe,
+    () => useLocaleStore.getState().locale,
+    getLocale
+  );
+}

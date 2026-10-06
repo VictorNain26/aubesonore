@@ -17,6 +17,16 @@ describe('entry-server', () => {
     expect(html).toContain('Most kept');
   });
 
+  it('marks the language of the page as the current one, not the language of the first render', async () => {
+    await pageHtml('fr');
+    expect(await pageHtml('en')).toMatch(
+      /<a href="\/en\/" hrefLang="en" lang="en" aria-current="true"/
+    );
+    expect(await pageHtml('fr')).toMatch(
+      /<a href="\/" hrefLang="fr" lang="fr" aria-current="true"/
+    );
+  });
+
   it('renders the legal page with the publisher and the data controller, under the header', async () => {
     const fr = await pageHtml('fr', '/mentions-legales/');
     expect(fr).toContain('Mentions légales et confidentialité');

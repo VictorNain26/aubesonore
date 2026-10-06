@@ -12,7 +12,7 @@ import { seenStore } from '../lib/seenPages';
 import { useAuthStore } from '../stores/authStore';
 import * as m from '@/paraglide/messages.js';
 import { useLikedTracksStore } from '../stores/likedTracksStore';
-import { useLocaleStore } from '../stores/localeStore';
+import { useLocale } from '../stores/localeStore';
 
 const seenProfiles = seenStore<ArtistPageState>();
 // null: the dump does not know the MBID, or Musilogy failed; the page shows without its sections.
@@ -20,7 +20,7 @@ const seenMusilogy = seenStore<MusilogyArtist | null>();
 
 export default function ArtistPage() {
   const { slug } = useParams<{ slug: string }>();
-  const locale = useLocaleStore((s) => s.locale);
+  const locale = useLocale();
   const [loaded, setLoaded] = useState<{
     key: string;
     state: ArtistPageState;

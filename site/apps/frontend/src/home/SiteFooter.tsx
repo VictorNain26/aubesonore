@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { localizeHref } from '@/paraglide/runtime.js';
 import { cn } from '@/lib/utils';
-import { useLocaleStore } from '../stores/localeStore';
+import { useLocale, useLocaleStore } from '../stores/localeStore';
 import { AboutModal } from '../design/organisms/AboutModal';
 import * as m from '@/paraglide/messages.js';
 
@@ -108,7 +108,7 @@ export function SiteFooterView({
 }
 
 export function SiteFooter() {
-  const locale = useLocaleStore((s) => s.locale);
+  const locale = useLocale();
   const setLocale = useLocaleStore((s) => s.setLocale);
   const { pathname, search } = useLocation();
   const languageHrefs = {
