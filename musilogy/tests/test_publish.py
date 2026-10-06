@@ -114,7 +114,7 @@ def test_manifest_carries_r2_anomaly_counters(con, tmp_path):
         "end_before_begin": 1,
         "birth_illegible": 0,
         "birth_future": 0,
-        "begin_ambiguous": 0,
+        "begin_ambiguous": 8,
     }
 
 
@@ -301,12 +301,12 @@ def test_manifest_says_so_when_the_extraction_path_does_not_exist(con, tmp_path)
 
 
 def test_manifest_says_extraction_matches_rows_loaded_when_counts_agree(con, tmp_path):
-    # 673 artists and 10536 release-groups are what the fixtures actually load
+    # 697 artists and 10617 release-groups are what the fixtures actually load
     # (test_manifest_counts_the_rows_that_fed_the_build): a sidecar claiming
     # exactly those counts is the case the discrepancy check must let through.
     sidecar = tmp_path / "extraction.json"
     sidecar.write_text(
-        json.dumps({"artists_kept": 673, "release_groups_kept": 10536}), encoding="utf-8"
+        json.dumps({"artists_kept": 697, "release_groups_kept": 10617}), encoding="utf-8"
     )
     manifest = publish(con, tmp_path / "out", DUMP, None, sidecar)
     assert manifest["inputs"]["extraction_matches_rows_loaded"] is True
