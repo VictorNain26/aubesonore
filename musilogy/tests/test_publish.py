@@ -114,6 +114,7 @@ def test_manifest_carries_r2_anomaly_counters(con, tmp_path):
         "end_before_begin": 1,
         "birth_illegible": 0,
         "birth_future": 0,
+        "begin_ambiguous": 0,
     }
 
 
@@ -181,6 +182,8 @@ def test_r2_anomaly_counters_are_not_mismapped_between_subrules(tmp_path):
         # A person's begin never feeds the begin counters: these must stay out
         # of begin_illegible, begin_future and begin_below_min_year.
         + [synthetic_artist(f"birth-early-{i}", "1685", None, kind="Person") for i in range(11)]
+        # A begin that may be a birth is counted apart, and in no begin counter.
+        + [synthetic_artist(f"ambiguous-{i}", "2090", None, kind=None) for i in range(12)]
     )
     c = build_synthetic(tmp_path, records)
     manifest = publish(c, tmp_path / "out", DUMP, None)
@@ -195,6 +198,7 @@ def test_r2_anomaly_counters_are_not_mismapped_between_subrules(tmp_path):
         "end_before_begin": 6,
         "birth_illegible": 9,
         "birth_future": 10,
+        "begin_ambiguous": 12,
     }
 
 
