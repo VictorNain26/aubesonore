@@ -6,8 +6,14 @@
 // - Deezer's image CDN (`…/1000x1000-000000-80-0-0.jpg`), artist portraits and album covers: 17 of
 //   18 portraits of artists the antenna played and 4 of 4 album covers load at 320×320, a fifth
 //   of the bytes; the 18th redirects at its own size as well.
-// Other hosts (AzuraCast, the Cover Art Archive, our own store) keep their URL.
+// - The station's covers: AzuraCast serves one 1000 px art (~95 KB); nginx shrinks it at /covers/ to
+//   96, 192 and 384 px, 2.4, 6.2 and 18.9 KB (nginx.conf, measured 2026-10-06).
+// Other hosts (the Cover Art Archive, our own store) keep their URL.
 const APPLE_SIZED = /^(https:\/\/is\d+-ssl\.mzstatic\.com\/image\/thumb\/.+)\/\d+x\d+bb\.jpg$/;
+// Only this station's art: nginx fetches it from radio.aubesonore.fr.
+const STATION_ART =
+  /^https:\/\/radio\.aubesonore\.fr\/api\/station\/aubesonore\/art\/([0-9a-f]+-\d+)\.jpg$/;
+const STATION_WIDTHS = [96, 192, 384] as const;
 const DEEZER_SIZED =
   /^(https:\/\/cdn-images\.dzcdn\.net\/images\/(?:artist|cover)\/[0-9a-f]+)\/\d+x\d+(-[^/]+\.jpg)$/;
 
@@ -34,6 +40,15 @@ function sizer(url: string): Sizer | null {
     return {
       at: (pixels) => `${deezer[1]}/${pixels}x${pixels}${deezer[2]}`,
       widths: [250, 500, 1000],
+    };
+  }
+  const art = STATION_ART.exec(url);
+  if (art) {
+    return {
+      // nginx makes these three widths only: another size takes the next one up.
+      at: (pixels) =>
+        `/covers/${STATION_WIDTHS.find((width) => width >= pixels) ?? STATION_WIDTHS.at(-1)}/${art[1]}.jpg`,
+      widths: STATION_WIDTHS,
     };
   }
   return null;
