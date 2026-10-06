@@ -116,7 +116,7 @@ WORK = work_dir(REFERENCE_DUMP)
 POPULARITY = popularity_snapshot(REFERENCE_POPULARITY)
 INFLUENCES = influences_snapshot(REFERENCE_INFLUENCES)
 DISCOGRAPHY = discography_snapshot(REFERENCE_DISCOGRAPHY)
-PROXIMITY = proximity_snapshot(REFERENCE_PROXIMITY)
+PROXIMITY = [proximity_snapshot(date) for date in REFERENCE_PROXIMITY]
 
 
 def test_the_baseline_looks_for_the_extractions_at_an_absolute_path():
@@ -141,7 +141,7 @@ def test_reference_dump_matches_the_baseline():
         pytest.skip(f"Wikidata snapshot {REFERENCE_INFLUENCES} missing")
     if not DISCOGRAPHY.exists():
         pytest.skip(f"Wikidata snapshot {REFERENCE_DISCOGRAPHY} missing")
-    if not PROXIMITY.exists():
+    if not all(part.exists() for part in PROXIMITY):
         pytest.skip(f"ListenBrainz proximity {REFERENCE_PROXIMITY} missing")
     con = connect()
     build(
@@ -157,7 +157,7 @@ def test_reference_dump_matches_the_baseline():
         discography=DISCOGRAPHY,
         discography_snapshot=REFERENCE_DISCOGRAPHY,
         proximity=PROXIMITY,
-        proximity_snapshot=REFERENCE_PROXIMITY,
+        proximity_snapshots=REFERENCE_PROXIMITY,
     )
     assert check_invariants(con, SQL_DIR) == []
     for table, expected in BASELINE.items():

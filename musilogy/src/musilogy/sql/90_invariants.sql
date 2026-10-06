@@ -337,6 +337,10 @@ CREATE OR REPLACE VIEW proximity_malformed AS
      OR NOT coalesce(regexp_full_match(
           neighbour_mbid, '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'), false)
      OR score IS NULL;
+-- The parts of the survey never ask the same artist twice: each part asks
+-- only the artists the earlier ones did not (cli.snapshot_proximity).
+CREATE OR REPLACE VIEW proximity_asked_twice AS
+  SELECT artist_mbid FROM raw_proximity GROUP BY artist_mbid HAVING count(*) > 1;
 -- An artist is never its own neighbour.
 CREATE OR REPLACE VIEW proximity_self AS
   SELECT artist_mbid, neighbour_mbid FROM proximity WHERE neighbour_mbid = artist_mbid;

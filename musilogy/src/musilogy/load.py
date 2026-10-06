@@ -84,12 +84,14 @@ def load(published: Path, conninfo: str = "") -> dict[str, int]:
         )
     snapshots = [
         manifest[name]["snapshot"] if isinstance(manifest[name], dict) else None
-        for name in ("popularity", "influences", "discography", "proximity")
+        for name in ("popularity", "influences", "discography")
     ]
+    parts = [part["snapshot"] for part in manifest["proximity"] or []] or None
     con.execute(
         f"INSERT INTO site.{STAGING}.manifest (dump, popularity_snapshot, influences_snapshot, "
-        "discography_snapshot, proximity_snapshot, git_sha) VALUES (?, ?, ?, ?, ?, ?)",
-        [manifest["dump"], *snapshots, manifest["git_sha"]],
+        "discography_snapshot, proximity_snapshots, git_sha) "
+        "VALUES (?, ?, ?, ?, ?::DATE[], ?)",
+        [manifest["dump"], *snapshots, parts, manifest["git_sha"]],
     )
     # Everything after the copy, on the staging schema; 90_ reads the final
     # schema and runs once it is swapped in.

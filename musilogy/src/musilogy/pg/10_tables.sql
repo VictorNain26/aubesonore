@@ -90,7 +90,7 @@ CREATE TABLE manifest (
   popularity_snapshot date,
   influences_snapshot date,
   discography_snapshot date,
-  proximity_snapshot date,
+  proximity_snapshots date[],
   git_sha text NOT NULL,
   loaded_at timestamptz NOT NULL DEFAULT now()
 );

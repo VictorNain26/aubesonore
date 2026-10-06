@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import duckdb
@@ -137,24 +138,25 @@ RAW_PROXIMITY_COLUMNS = (
 
 
 def load_proximity(
-    con: duckdb.DuckDBPyConnection, proximity: Path | None, snapshot: str | None
+    con: duckdb.DuckDBPyConnection, parts: Sequence[Path], snapshots: Sequence[str] | None
 ) -> None:
-    if proximity is None:
-        # Always materialized, even empty: 89_proximity.sql reads it, and an
-        # empty table is how it knows that no snapshot was loaded.
+    """A survey too long to take again is taken in parts: each asks the artists
+    no earlier part asked (cli.snapshot_proximity). The parts are read as one
+    table; proximity_asked_twice holds them apart."""
+    # Always materialized, even empty: 89_proximity.sql reads it, and an empty
+    # table is how it knows that no snapshot was loaded.
+    con.execute(
+        "CREATE OR REPLACE TABLE raw_proximity (artist_mbid VARCHAR, "
+        "neighbours STRUCT(artist_mbid VARCHAR, score INTEGER)[])"
+    )
+    for part in parts:
         con.execute(
-            "CREATE OR REPLACE TABLE raw_proximity (artist_mbid VARCHAR, "
-            "neighbours STRUCT(artist_mbid VARCHAR, score INTEGER)[])"
-        )
-    else:
-        con.execute(
-            f"CREATE OR REPLACE TABLE raw_proximity AS SELECT artist_mbid, "
-            f"\"similar\" AS neighbours FROM read_ndjson('{proximity.as_posix()}', "
-            f"columns={RAW_PROXIMITY_COLUMNS}, format='newline_delimited')"
+            f'INSERT INTO raw_proximity SELECT artist_mbid, "similar" FROM read_ndjson('
+            f"'{part.as_posix()}', columns={RAW_PROXIMITY_COLUMNS}, format='newline_delimited')"
         )
     con.execute(
-        "SET VARIABLE proximity_snapshot = "
-        + ("NULL" if snapshot is None else f"DATE '{snapshot}'")
+        "SET VARIABLE proximity_snapshots = "
+        + ("NULL" if snapshots is None else f"{[*snapshots]}::DATE[]")
     )
 
 
@@ -198,15 +200,15 @@ def build(
     influences_snapshot: str | None = None,
     discography: Path | None = None,
     discography_snapshot: str | None = None,
-    proximity: Path | None = None,
-    proximity_snapshot: str | None = None,
+    proximity: Sequence[Path] = (),
+    proximity_snapshots: Sequence[str] | None = None,
 ) -> None:
     load_raw(con, artists, rgs)
     apply_corrections(con, corrections)
     load_popularity(con, popularity, popularity_snapshot)
     load_influences(con, influences, influences_snapshot)
     load_discography(con, discography, discography_snapshot)
-    load_proximity(con, proximity, proximity_snapshot)
+    load_proximity(con, proximity, proximity_snapshots)
     con.execute(f"SET VARIABLE dump_year = {dump_year}")
     con.execute(f"SET VARIABLE min_year = {min_year}")
     for path in sorted(sql_dir.glob("*.sql")):
@@ -263,6 +265,7 @@ INVARIANTS = (
     "proximity_rank_out_of_range",
     "proximity_malformed",
     "proximity_self",
+    "proximity_asked_twice",
     "duplicate_proximity",
     "proximity_unsourced",
     "corrections_file_too_large",

@@ -76,7 +76,9 @@ albums), `genres` (vocabulaire), `links` (appartenances, pseudonymes et changeme
   moins 500 auditeurs sont interrogés : `artists.proximity_surveyed` vaut vrai pour chaque artiste dont
   le relevé porte une ligne, même sans voisin (14,8 % des 111 402), faux
   pour les autres, NULL si aucun relevé n'est chargé. Un artiste non relevé
-  n'est pas un artiste sans voisin.
+  n'est pas un artiste sans voisin. Le relevé se fait en parties épinglées : chacune
+  interroge les artistes éligibles qu'aucune autre n'a interrogés, et aucun
+  artiste n'est dans deux parties (invariant `proximity_asked_twice`).
 - `influences(artist_mbid, influence_mbid, statement)` : `artist_mbid` cite
   `influence_mbid` comme influence selon Wikidata ; `statement` est
   l'identifiant complet de la déclaration (`Q123$GUID`), pour la citer. Les déclarations
