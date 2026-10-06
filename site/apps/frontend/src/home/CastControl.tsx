@@ -71,7 +71,14 @@ export function CastControl({
         }
       />
       <Popover.Portal>
-        <Popover.Positioner side="top" sideOffset={8} className="z-60">
+        {/* 16 px from the screen's edges, the page's gutter (Base UI's default is 5). In the hero
+            and the sheet it opens under the button, off the title; the bar sits at the bottom. */}
+        <Popover.Positioner
+          side={variant === 'bar' ? 'top' : 'bottom'}
+          sideOffset={8}
+          collisionPadding={16}
+          className="z-60"
+        >
           <Popover.Popup className="border-border bg-surface-raised text-text ease-out-quart flex w-[min(20rem,calc(100vw-2rem))] origin-(--transform-origin) flex-col gap-2 rounded-md border p-4 transition-[opacity,scale] duration-150 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
             <Popover.Title className="text-ui m-0 font-semibold">
               {m.cast_none_title()}
