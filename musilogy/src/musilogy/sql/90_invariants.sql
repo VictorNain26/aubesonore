@@ -341,6 +341,26 @@ CREATE OR REPLACE VIEW proximity_malformed AS
 -- only the artists the earlier ones did not (cli.snapshot_proximity).
 CREATE OR REPLACE VIEW proximity_asked_twice AS
   SELECT artist_mbid FROM raw_proximity GROUP BY artist_mbid HAVING count(*) > 1;
+-- 22_releases.sql: the official status survey asks each artist once.
+CREATE OR REPLACE VIEW official_asked_twice AS
+  SELECT artist_mbid FROM raw_official GROUP BY artist_mbid HAVING count(*) > 1;
+-- The status restated record by record with EXISTS rather than the aggregate
+-- that produced it: official only when a surveyed credited artist lists the
+-- record, not official only when one was surveyed and none lists it, unknown
+-- only when none was surveyed.
+CREATE OR REPLACE VIEW official_unsourced AS
+  SELECT DISTINCT r.rg_mbid FROM releases r
+  WHERE CASE
+    WHEN EXISTS (
+      SELECT 1 FROM releases c JOIN raw_official o USING (artist_mbid)
+      WHERE c.rg_mbid = r.rg_mbid AND list_contains(o.release_groups, r.rg_mbid))
+    THEN r.official IS DISTINCT FROM true
+    WHEN EXISTS (
+      SELECT 1 FROM releases c JOIN raw_official o USING (artist_mbid)
+      WHERE c.rg_mbid = r.rg_mbid AND o.release_groups IS NOT NULL)
+    THEN r.official IS DISTINCT FROM false
+    ELSE r.official IS NOT NULL
+  END;
 -- An artist is never its own neighbour.
 CREATE OR REPLACE VIEW proximity_self AS
   SELECT artist_mbid, neighbour_mbid FROM proximity WHERE neighbour_mbid = artist_mbid;

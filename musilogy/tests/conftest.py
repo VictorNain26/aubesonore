@@ -40,6 +40,7 @@ def con():
         # would then name a snapshot and its pinned digest, which the
         # publication tests set up themselves (test_publish.py).
         proximity=[FIX / "proximity.jsonl"],
+        official=[FIX / "official.jsonl"],
     )
     return c
 
@@ -151,6 +152,20 @@ def proximity_file(path, rows):
     return path
 
 
+def official_file(path, rows):
+    """A synthetic official status snapshot: `rows` maps each artist asked to
+    the release groups MusicBrainz shows for it, None when it no longer
+    holds the artist."""
+    path.write_text(
+        "".join(
+            json.dumps({"artist_mbid": artist, "release_groups": groups}) + "\n"
+            for artist, groups in rows.items()
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
 def published(
     tmp_path,
     artists,
@@ -159,6 +174,7 @@ def published(
     release_groups=(),
     discography=None,
     proximity=None,
+    official=None,
 ):
     """A synthetic build, published as a delivery. `popularity` maps an mbid
     to its listen count; every other artist gets the null row ListenBrainz
@@ -197,6 +213,8 @@ def published(
         kwargs["discography_snapshot"] = REFERENCE_DISCOGRAPHY
     if proximity is not None:
         kwargs["proximity"] = [proximity_file(tmp_path / "proximity.jsonl", proximity)]
+    if official is not None:
+        kwargs["official"] = [official_file(tmp_path / "official.jsonl", official)]
     out = tmp_path / "out"
     publish(build_synthetic(tmp_path, artists, release_groups, **kwargs), out, REFERENCE_DUMP, None)
     return out
@@ -219,10 +237,18 @@ def loaded(
     release_groups=(),
     discography=None,
     proximity=None,
+    official=None,
 ):
     load(
         published(
-            tmp_path, artists, popularity, influences, release_groups, discography, proximity
+            tmp_path,
+            artists,
+            popularity,
+            influences,
+            release_groups,
+            discography,
+            proximity,
+            official,
         ),
         conninfo,
     )

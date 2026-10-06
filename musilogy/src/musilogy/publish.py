@@ -16,6 +16,7 @@ from musilogy.paths import (
     REFERENCE_DIR,
     discography_sums,
     influences_sums,
+    official_sums,
     popularity_sums,
     proximity_sums,
 )
@@ -216,6 +217,7 @@ def publish(
         "influences": _snapshot(con, "influences_snapshot", influences_sums),
         "discography": _snapshot(con, "discography_snapshot", discography_sums),
         "proximity": _parts(con, "proximity_snapshots", proximity_sums),
+        "official": _parts(con, "official_snapshots", official_sums),
         "counts": counts,
         "output_sha256": output_sha256,
         "parameters": _parameters(con),
@@ -236,6 +238,7 @@ def publish(
         "link_exclusions": _counters(con, "link_exclusions"),
         "discography_exclusions": _counters(con, "discography_exclusions"),
         "proximity_exclusions": _counters(con, "proximity_exclusions"),
+        "release_status": _counters(con, "release_status"),
         "git_sha": _git_sha(),
         "corrections_sha256": sha256_file(corrections) if corrections else None,
     }

@@ -5,5 +5,7 @@ REFERENCE_DUMP = "20260909-001002"
 REFERENCE_POPULARITY = "2026-10-06"
 REFERENCE_INFLUENCES = "2026-10-04"
 REFERENCE_DISCOGRAPHY = "2026-10-05"
-# The parts of the proximity survey, oldest first (cli.snapshot_proximity).
+# The parts of each long survey, oldest first: each asks only the artists no
+# earlier part asked (cli.snapshot_proximity, cli.snapshot_official).
 REFERENCE_PROXIMITY = ("2026-10-04",)
+REFERENCE_OFFICIAL = ("2026-10-05",)

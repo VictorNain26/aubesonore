@@ -112,7 +112,10 @@ $$;
 -- but what Wikidata files as a studio album or an EP: a posthumous record of
 -- new music, not an archive. A record without a year shows only when Wikidata
 -- files it so, last: undated records are mostly bootlegs (Kinfauns Demos,
--- Radiohead TV Covers), 3.8 % of the albums and 1.9 % of the EPs.
+-- Radiohead TV Covers), 3.8 % of the albums and 1.9 % of the EPs. Nothing
+-- MusicBrainz does not show as the artist's work (`official` false, a bootleg
+-- or a promotion) is on the page, nor dates its first album; a record whose
+-- status is unknown stays.
 CREATE FUNCTION musilogy.artist_releases(artist text)
 RETURNS TABLE (
   mbid text,
@@ -124,7 +127,7 @@ RETURNS TABLE (
 )
 LANGUAGE sql STABLE
 AS $$
-  WITH r AS (SELECT * FROM musilogy.releases WHERE artist_mbid = artist),
+  WITH r AS (SELECT * FROM musilogy.releases WHERE artist_mbid = artist AND official IS NOT FALSE),
   first_album AS (SELECT min(y) AS y FROM r WHERE primary_type = 'Album'),
   career AS (
     SELECT CASE WHEN y_end_source = 'declared' THEN y_end END AS y_end
