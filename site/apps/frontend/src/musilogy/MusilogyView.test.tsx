@@ -283,6 +283,28 @@ describe('MusilogyHomeView', () => {
     expect(screen.getByText('Aucun artiste de ce nom.')).toBeInTheDocument();
   });
 
+  it('lifts the field above an on-screen keyboard at the first letter of each focus only', async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    const keyboard = (height: number) =>
+      vi.stubGlobal('visualViewport', { height: window.innerHeight - height });
+    render(<MusilogyHomeView query="" onQueryChange={vi.fn()} search={{ status: 'idle' }} />, {
+      wrapper: MemoryRouter,
+    });
+    const field = screen.getByRole('searchbox', { name: 'Chercher un artiste' });
+
+    keyboard(0);
+    await userEvent.type(field, 'ab');
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    keyboard(300);
+    field.blur();
+    await userEvent.type(field, 'cd');
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start', behavior: 'smooth' });
+    vi.unstubAllGlobals();
+  });
+
   it('clears the search on its button', async () => {
     const onQueryChange = vi.fn();
     render(
