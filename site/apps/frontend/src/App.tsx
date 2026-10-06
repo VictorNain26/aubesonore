@@ -12,7 +12,7 @@ import HomePage from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { LegalPage } from './pages/LegalPage';
 import { MyTracksPage } from './pages/MyTracksPage';
-import { useLocaleStore } from './stores/localeStore';
+import { useLocale, useLocaleStore } from './stores/localeStore';
 
 const ArtistPage = lazy(() => import('./pages/ArtistPage'));
 const MusilogyPage = lazy(() => import('./pages/MusilogyPage'));
@@ -23,7 +23,7 @@ const AuthPage = lazy(() => import('./pages/AuthPage'));
 export default function App() {
   // Subscribing to the locale at the root re-renders the tree on language
   // change (no remount, no page reload — the stream keeps playing).
-  useLocaleStore((s) => s.locale);
+  useLocale();
   const syncWithUrl = useLocaleStore((s) => s.syncWithUrl);
   const { pathname } = useLocation();
   useEffect(() => syncWithUrl(), [pathname, syncWithUrl]);
