@@ -1,4 +1,5 @@
-"""Downloads and verifies the MusicBrainz archives, the ListenBrainz and Wikidata snapshots."""
+"""Downloads and verifies the MusicBrainz and Discogs archives, the ListenBrainz and Wikidata
+snapshots."""
 
 from __future__ import annotations
 
@@ -69,6 +70,18 @@ def fetch_dump(date: str, name: str, raw_dir: Path, sums_path: Path) -> Path:
     if not dest.exists():
         download(f"{BASE}/{date}/{name}", dest)
     verify(dest, expected_sums(sums_path)[name])
+    return dest
+
+
+# data.discogs.com serves each monthly dump under data/<year>/ (read 2026-10-07;
+# "made available under the CC0 No Rights Reserved license").
+DISCOGS_URL = "https://data.discogs.com/?download=data%2F{year}%2F{name}"
+
+
+def fetch_discogs(date: str, dest: Path, sums_path: Path) -> Path:
+    if not dest.exists():
+        download(DISCOGS_URL.format(year=date[:4], name=dest.name), dest)
+    verify(dest, expected_sums(sums_path)[dest.name])
     return dest
 
 
