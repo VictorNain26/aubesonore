@@ -76,10 +76,14 @@ const pages = await import('../services/artistPages');
 const slugSpy = spyOn(pages, 'slugOfArtist').mockImplementation((id: string) =>
   Promise.resolve(id === VALID_ID ? 'daft-punk' : null)
 );
+const slugsSpy = spyOn(pages, 'listArtistSlugs').mockImplementation(() =>
+  Promise.resolve(['daft-punk', 'кино'])
+);
 
 afterAll(() => {
   profileSpy.mockRestore();
   slugSpy.mockRestore();
+  slugsSpy.mockRestore();
 });
 
 const { artistPageRoutes, __resetArtistShell } = await import('./artistPage.routes');
@@ -385,5 +389,24 @@ describe('the addresses pages had before slugs', () => {
     const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
     expect(res.headers.get('cache-control')).toBe('no-cache');
+  });
+});
+
+describe('GET /sitemap-artists.xml', () => {
+  it('lists every artist page in both languages, each with its versions', async () => {
+    const res = await app.handle(new Request('http://localhost/sitemap-artists.xml'));
+    const xml = await res.text();
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('application/xml; charset=utf-8');
+    expect(count(xml, '<url>')).toBe(4);
+    const fr = `${env.FRONTEND_BASE_URL}/artiste/%D0%BA%D0%B8%D0%BD%D0%BE`;
+    const en = `${env.FRONTEND_BASE_URL}/en/artist/%D0%BA%D0%B8%D0%BD%D0%BE`;
+    const versions =
+      `<xhtml:link rel="alternate" hreflang="fr" href="${fr}"/>` +
+      `<xhtml:link rel="alternate" hreflang="en" href="${en}"/>` +
+      `<xhtml:link rel="alternate" hreflang="x-default" href="${fr}"/>`;
+    expect(xml).toContain(`<url><loc>${fr}</loc>${versions}</url>`);
+    expect(xml).toContain(`<url><loc>${en}</loc>${versions}</url>`);
   });
 });
