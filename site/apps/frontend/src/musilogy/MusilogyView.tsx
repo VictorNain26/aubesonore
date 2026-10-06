@@ -407,7 +407,11 @@ export function MusilogyHomeView({
               }}
               placeholder={m.musilogy_search_placeholder()}
               autoComplete="off"
-              className="text-row border-accent ease-out-quart placeholder:text-text-faint hover:bg-surface-raised focus-visible:outline-accent h-14 w-full rounded-full border bg-transparent pr-14 pl-13 font-normal transition-colors duration-150 focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-search-cancel-button]:hidden"
+              className={cn(
+                'text-row border-accent ease-out-quart placeholder:text-text-faint hover:bg-surface-raised focus-visible:outline-accent h-14 w-full rounded-full border bg-transparent pl-13 font-normal transition-colors duration-150 focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-search-cancel-button]:hidden',
+                // The clear button's room is kept only while it shows: a phone needs it for the placeholder.
+                query ? 'pr-14' : 'pr-5'
+              )}
             />
           </label>
           {query ? (
