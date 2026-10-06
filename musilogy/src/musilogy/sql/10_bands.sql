@@ -1,11 +1,12 @@
--- Population. Every artist extracted by extract.py (Group, Orchestra, Choir,
--- Person) is published, whatever its type, dates or genres: the
--- timeline-specific filtering of the previous model now lives with the
--- consumer, not here.
+-- Population. Every artist extracted by extract.py, special purpose artists
+-- aside, is published, whatever its type (none included), dates or genres.
 --
--- A person's begin is a birth, not the start of an activity: it never becomes
--- y0_declared, and travels as y_birth instead. A person's end is a death,
--- which does end the activity, so it is read like any other end.
+-- Only a formation becomes y0_declared (formed(), 00_macros.sql). A person's
+-- begin is a birth: it travels as y_birth instead. The begin of an artist
+-- without a type, a character or an "other" may be either: it is dropped and
+-- counted (begin_ambiguous), and its start comes from its first album, as a
+-- person's does. Every end — a death, a split — ends the activity, so it is
+-- read alike for every type.
 -- dump_year and min_year are provided by build() via SET VARIABLE.
 -- The boolean columns carry the date sub-rules: they decide nothing beyond
 -- y0_declared/y_end_declared/y_birth, they just name the same decision so
@@ -18,10 +19,10 @@ SELECT
   -- "none" in one way only.
   nullif(disambiguation, '') AS disambiguation,
   type, ended, country, begin_area, begin_area_mbid, genres,
-  CASE WHEN type <> 'Person'
+  CASE WHEN formed(type)
         AND yr(begin) BETWEEN getvariable('min_year') AND getvariable('dump_year')
        THEN yr(begin) END AS y0_declared,
-  CASE WHEN type = 'Person' AND yr(begin) <= getvariable('dump_year')
+  CASE WHEN person(type) AND yr(begin) <= getvariable('dump_year')
        THEN yr(begin) END AS y_birth,
   -- Same window as the begin, at both ends: an end below min_year is as
   -- unusable as one in the future.
@@ -30,23 +31,25 @@ SELECT
        THEN yr("end") END AS y_end_declared,
   -- The begin sub-rules only describe a begin read as a formation: a birth
   -- in 1685 is a fact, not an anomaly.
-  type <> 'Person' AND begin IS NOT NULL AND yr(begin) IS NULL AS begin_illegible,
+  formed(type) AND begin IS NOT NULL AND yr(begin) IS NULL AS begin_illegible,
+  NOT formed(type) AND NOT person(type) AND yr(begin) IS NOT NULL
+    AS begin_ambiguous,
   "end" IS NOT NULL AND yr("end") IS NULL AS end_illegible,
   -- A birth that cannot be read, or lies in the future, is lost like any
   -- other date and counted like one. A birth below min_year is not an
   -- anomaly — Bach was born in 1685 — and is kept.
-  type = 'Person' AND begin IS NOT NULL AND yr(begin) IS NULL AS birth_illegible,
+  person(type) AND begin IS NOT NULL AND yr(begin) IS NULL AS birth_illegible,
   -- yr(begin) IS NOT NULL keeps these false rather than NULL without a
   -- birth: 30_bands_lifespan.sql negates birth_below_min_year, and a NULL
   -- there refused the albums of every person with no birth.
-  type = 'Person' AND yr(begin) IS NOT NULL AND yr(begin) > getvariable('dump_year')
+  person(type) AND yr(begin) IS NOT NULL AND yr(begin) > getvariable('dump_year')
     AS birth_future,
-  type = 'Person' AND yr(begin) IS NOT NULL AND yr(begin) < getvariable('min_year')
+  person(type) AND yr(begin) IS NOT NULL AND yr(begin) < getvariable('min_year')
     AS birth_below_min_year,
-  type <> 'Person' AND yr(begin) IS NOT NULL AND yr(begin) > getvariable('dump_year')
+  formed(type) AND yr(begin) IS NOT NULL AND yr(begin) > getvariable('dump_year')
     AS begin_future,
   yr("end") IS NOT NULL AND yr("end") > getvariable('dump_year') AS end_future,
-  type <> 'Person' AND yr(begin) IS NOT NULL AND yr(begin) < getvariable('min_year')
+  formed(type) AND yr(begin) IS NOT NULL AND yr(begin) < getvariable('min_year')
     AS begin_below_min_year,
   yr("end") IS NOT NULL AND yr("end") < getvariable('min_year') AS end_below_min_year,
   yr(begin) IS NOT NULL AND yr("end") IS NOT NULL
@@ -69,7 +72,8 @@ SELECT
   sum(end_below_min_year::INTEGER) AS end_below_min_year,
   sum(end_before_begin::INTEGER) AS end_before_begin,
   sum(birth_illegible::INTEGER) AS birth_illegible,
-  sum(birth_future::INTEGER) AS birth_future
+  sum(birth_future::INTEGER) AS birth_future,
+  sum(begin_ambiguous::INTEGER) AS begin_ambiguous
 FROM dated;
 
 CREATE OR REPLACE TABLE artists AS

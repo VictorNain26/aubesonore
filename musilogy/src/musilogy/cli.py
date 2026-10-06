@@ -96,6 +96,9 @@ WITNESSES = [
     "5441c29d-3602-4898-b1a1-b77fa23b8e50",  # David Bowie: albums released after his death
     "24f1766e-9635-4d58-a4d4-9413f9f98a4c",  # Johann Sebastian Bach: dead before min_year
     "6fa2e161-200e-475a-8492-3755594581f9",  # Bernard Sumner: member of two witness bands
+    "f38ed14d-07db-4a4b-9270-53435358898a",  # Buzz Kull: played, no type
+    "b614843c-bec3-421f-9af1-03169cdd4b63",  # Quasimoto: a character
+    "da02dddc-60fa-4ca4-88bb-8012598f1f86",  # Two Steps From Hell: an "other"
 ]
 
 

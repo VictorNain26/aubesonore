@@ -546,24 +546,43 @@ def test_birth_misread_catches_a_birth_that_never_reached_y_birth(con):
 
 
 def test_artist_unexpected_type_is_reported(con):
-    # extract.py keeps {Group, Orchestra, Choir, Person} and nothing else
-    # states that contract: a change to KEPT_TYPES would move the population
-    # in silence.
+    # A seventh MusicBrainz type would reach the dates unread.
     mbid = con.execute("SELECT mbid FROM artists LIMIT 1").fetchone()[0]
     original = con.execute("SELECT type FROM artists WHERE mbid = ?", [mbid]).fetchone()[0]
     with restored(con, ("UPDATE artists SET type = ? WHERE mbid = ?", [original, mbid])):
-        con.execute("UPDATE artists SET type = 'Character' WHERE mbid = ?", [mbid])
+        con.execute("UPDATE artists SET type = 'Robot' WHERE mbid = ?", [mbid])
         violations = dict(check_invariants(con, SQL))
     assert violations.get("artist_unexpected_type") == 1
 
 
-def test_artist_unexpected_type_catches_a_null_type(con):
+def test_an_artist_without_a_type_is_expected(con):
     mbid = con.execute("SELECT mbid FROM artists LIMIT 1").fetchone()[0]
     original = con.execute("SELECT type FROM artists WHERE mbid = ?", [mbid]).fetchone()[0]
     with restored(con, ("UPDATE artists SET type = ? WHERE mbid = ?", [original, mbid])):
+        con.execute("UPDATE artists SET type = NULL, y0_declared = NULL WHERE mbid = ?", [mbid])
+        violations = dict(check_invariants(con, SQL))
+    assert "artist_unexpected_type" not in violations
+
+
+def test_special_purpose_artist_is_reported(con):
+    mbid = con.execute("SELECT mbid FROM artists LIMIT 1").fetchone()[0]
+    various = "89ad4ac3-39f7-470e-963a-56509c546377"
+    undo = "UPDATE artists SET mbid = ? WHERE mbid = ?"
+    with restored(con, (undo, [mbid, various])):
+        con.execute(undo, [various, mbid])
+        violations = dict(check_invariants(con, SQL))
+    assert violations.get("special_purpose_artist") == 1
+
+
+def test_begin_misread_is_reported(con):
+    # A begin that may be a birth never starts the activity.
+    mbid = con.execute(
+        "SELECT mbid FROM artists WHERE type = 'Group' AND y0_declared IS NOT NULL LIMIT 1"
+    ).fetchone()[0]
+    with restored(con, ("UPDATE artists SET type = 'Group' WHERE mbid = ?", [mbid])):
         con.execute("UPDATE artists SET type = NULL WHERE mbid = ?", [mbid])
         violations = dict(check_invariants(con, SQL))
-    assert violations.get("artist_unexpected_type") == 1
+    assert violations.get("begin_misread") == 1
 
 
 def test_corrections_duplicate_is_reported(con):
