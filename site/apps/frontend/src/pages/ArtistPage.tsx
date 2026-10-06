@@ -48,6 +48,8 @@ export default function ArtistPage() {
       })
       .catch((err: unknown) => {
         if (err instanceof Error && err.name === 'AbortError') return;
+        // A page already drawn (rendered by the server, or seen in this tab) stays as it is.
+        if (seenProfiles.get(key)) return;
         setLoaded({ key, state: { status: 'error' } });
       });
     return () => controller.abort();
