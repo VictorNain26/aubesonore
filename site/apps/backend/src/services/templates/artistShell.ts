@@ -20,6 +20,40 @@ function truncate(value: string, max: number): string {
   return value.length <= max ? value : `${value.slice(0, max - 1).trimEnd()}…`;
 }
 
+function isHttps(url: string): boolean {
+  try {
+    return new URL(url).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The artist as schema.org reads it: MusicGroup "can also be a solo musician"
+ * (https://schema.org/MusicGroup); sameAs ties the page to the same artist on
+ * MusicBrainz, Wikipedia and the platforms.
+ */
+function artistJsonLd(profile: ArtistProfile, pageUrl: string, image: string | null): string {
+  const sameAs = [
+    ...(profile.mbid ? [`https://musicbrainz.org/artist/${profile.mbid}`] : []),
+    ...(profile.summary ? [profile.summary.url] : []),
+    ...profile.links.map((link) => link.url),
+  ].filter(isHttps);
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'MusicGroup',
+    name: profile.name,
+    url: pageUrl,
+    ...(image ? { image } : {}),
+    ...(profile.summary ? { description: profile.summary.text } : {}),
+    ...(sameAs.length > 0 ? { sameAs } : {}),
+    ...(profile.facts?.formed ? { foundingDate: String(profile.facts.formed) } : {}),
+    ...(profile.facts?.ended ? { dissolutionDate: String(profile.facts.ended) } : {}),
+  };
+  // `<` escaped: a name holding "</script>" cannot close the element.
+  return `<script type="application/ld+json">${JSON.stringify(data).replaceAll('<', '\\u003c')}</script>`;
+}
+
 /**
  * Rewrites the site's own head tags in place rather than appending: the shell
  * already carries the home page's canonical, og:url and og:image, and a page
@@ -28,9 +62,10 @@ function truncate(value: string, max: number): string {
 export function renderArtistShell(
   shell: string,
   profile: ArtistProfile,
-  pageUrl: string,
+  pageUrls: Record<SiteLocale, string>,
   locale: SiteLocale
 ): Promise<string> {
+  const pageUrl = pageUrls[locale];
   const title = `${profile.name} · AubeSonore`;
   const description = profile.summary
     ? truncate(profile.summary.text, OG_DESCRIPTION_MAX)
@@ -72,6 +107,26 @@ export function renderArtistShell(
     .on('link[rel="canonical"]', {
       element(element) {
         element.setAttribute('href', pageUrl.replaceAll('&', '&amp;'));
+        // Each language lists both, itself included, French by default
+        // (https://developers.google.com/search/docs/specialty/international/localized-versions).
+        // A page kept out of search results has no versions to declare.
+        if (profile.played) {
+          const alternate = (lang: string, url: string) =>
+            `<link rel="alternate" hreflang="${lang}" href="${url.replaceAll('&', '&amp;')}" />`;
+          element.after(
+            [
+              alternate('fr', pageUrls.fr),
+              alternate('en', pageUrls.en),
+              alternate('x-default', pageUrls.fr),
+            ].join(''),
+            { html: true }
+          );
+        }
+      },
+    })
+    .on('head', {
+      element(element) {
+        element.append(artistJsonLd(profile, pageUrl, image), { html: true });
       },
     });
   for (const [selector, value] of Object.entries(content)) {

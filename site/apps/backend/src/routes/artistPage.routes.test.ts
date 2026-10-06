@@ -110,6 +110,12 @@ function count(html: string, needle: string): number {
   return html.split(needle).length - 1;
 }
 
+function jsonLd(html: string): Record<string, unknown> {
+  const script = /<script type="application\/ld\+json">(.*?)<\/script>/s.exec(html);
+  if (!script?.[1]) throw new Error('no JSON-LD in the page');
+  return JSON.parse(script[1]) as Record<string, unknown>;
+}
+
 describe('GET /artiste/:slug', () => {
   it('rewrites the head tags of the empty shell in place', async () => {
     mockShell();
@@ -162,6 +168,45 @@ describe('GET /artiste/:slug', () => {
     expect(html).toContain(
       '<title>AT&amp;T "&gt;&lt;script&gt;alert(1)&lt;/script&gt; · AubeSonore</title>'
     );
+  });
+
+  it('declares its French and English versions, French by default', async () => {
+    mockShell();
+
+    for (const path of ['/artiste/daft-punk', '/en/artist/daft-punk']) {
+      const html = await (await app.handle(new Request(`http://localhost${path}`))).text();
+      expect(html).toContain(
+        `<link rel="alternate" hreflang="fr" href="${env.FRONTEND_BASE_URL}/artiste/daft-punk" />` +
+          `<link rel="alternate" hreflang="en" href="${env.FRONTEND_BASE_URL}/en/artist/daft-punk" />` +
+          `<link rel="alternate" hreflang="x-default" href="${env.FRONTEND_BASE_URL}/artiste/daft-punk" />`
+      );
+    }
+  });
+
+  it('describes the artist as a schema.org MusicGroup, tied to Wikipedia', async () => {
+    mockShell();
+
+    const html = await (await app.handle(new Request('http://localhost/artiste/daft-punk'))).text();
+
+    expect(jsonLd(html)).toEqual({
+      '@context': 'https://schema.org',
+      '@type': 'MusicGroup',
+      name: 'Daft Punk',
+      url: `${env.FRONTEND_BASE_URL}/artiste/daft-punk`,
+      image: 'https://cdn-images.dzcdn.net/images/artist/dp.jpg',
+      description: 'Un duo français.',
+      sameAs: ['https://fr.wikipedia.org/wiki/Daft_Punk'],
+    });
+  });
+
+  it('keeps a name holding </script> inside the JSON-LD', async () => {
+    mockShell();
+    profileName = 'X</script><script>alert(1)</script>';
+
+    const html = await (await app.handle(new Request('http://localhost/artiste/daft-punk'))).text();
+
+    expect(html).toContain('X\\u003c/script>');
+    expect(jsonLd(html).name).toBe(profileName);
   });
 
   it('keeps the default share image when the artist image is not on an allowed host', async () => {
@@ -237,6 +282,8 @@ describe('GET /artiste/:slug', () => {
       `<link rel="canonical" href="${env.FRONTEND_BASE_URL}/artiste/${UNPLAYED_MBID}"`
     );
     expect(html).toContain('Protomartyr sur AubeSonore, radio de découverte musicale.');
+    expect(html).not.toContain('hreflang');
+    expect(jsonLd(html).sameAs).toEqual([`https://musicbrainz.org/artist/${UNPLAYED_MBID}`]);
   });
 
   it('answers 503 while Musilogy, which makes a page by MBID, is not loaded', async () => {
