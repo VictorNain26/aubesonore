@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, isNotNull } from 'drizzle-orm';
 import { db } from '../db';
 import { artist, artistSlug } from '../db/schema';
 import { normalizeArtistName, primaryArtistName } from './artistResolver';
@@ -43,6 +43,16 @@ export async function findArtistPages(
     .innerJoin(artistSlug, eq(artistSlug.artistId, artist.id))
     .where(inArray(artist.normalizedName, keys));
   return matchPages(names, rows);
+}
+
+/** The MBIDs of the artists the antenna played: the pages Musilogy's links start from. */
+export async function listPlayedMbids(): Promise<string[]> {
+  const rows = await db
+    .select({ mbid: artist.mbid })
+    .from(artist)
+    .innerJoin(artistSlug, eq(artistSlug.artistId, artist.id))
+    .where(isNotNull(artist.mbid));
+  return rows.flatMap((row) => (row.mbid ? [row.mbid] : []));
 }
 
 /** Every artist page's slug, in a stable order: the pages the sitemap lists. */

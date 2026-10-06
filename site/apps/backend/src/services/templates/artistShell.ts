@@ -76,7 +76,8 @@ export function renderArtistShell(
   profile: ArtistProfile,
   pageUrls: Record<SiteLocale, string>,
   locale: SiteLocale,
-  page: RenderedPage | null = null
+  page: RenderedPage | null = null,
+  indexable = profile.played
 ): Promise<string> {
   const pageUrl = pageUrls[locale];
   const title = `${profile.name} · AubeSonore`;
@@ -123,7 +124,7 @@ export function renderArtistShell(
         // Each language lists both, itself included, French by default
         // (https://developers.google.com/search/docs/specialty/international/localized-versions).
         // A page kept out of search results has no versions to declare.
-        if (profile.played) {
+        if (indexable) {
           const alternate = (lang: string, url: string) =>
             `<link rel="alternate" hreflang="${lang}" href="${url.replaceAll('&', '&amp;')}" />`;
           element.after(
