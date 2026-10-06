@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Search, X } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Play, Search, X } from 'lucide-react';
 import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
 import { getLocale } from '@/paraglide/runtime.js';
@@ -101,14 +101,14 @@ const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
         sizes="2.75rem"
       />
       <span className="text-row self-end truncate md:self-center">{track.title}</span>
-      {/* On a phone the artist and the date share the line under the title; on a wide screen the
-          wrapper steps aside and each takes its column. */}
+      {/* Under the title, the artist, then from `sm` the date: a phone's line is too short for both.
+          On a wide screen the wrapper steps aside and each takes its column. */}
       <span className="text-sub text-text-muted col-start-2 row-start-2 flex min-w-0 items-baseline gap-1.5 self-start md:contents">
         <ArtistName track={track} />
-        <span aria-hidden="true" className="md:hidden">
+        <span aria-hidden="true" className="hidden sm:inline md:hidden">
           ·
         </span>
-        <time dateTime={track.createdAt} className="shrink-0 whitespace-nowrap">
+        <time dateTime={track.createdAt} className="hidden shrink-0 whitespace-nowrap sm:inline">
           {keptOn(track.createdAt, thisYear)}
         </time>
       </span>
@@ -121,7 +121,7 @@ const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
           title={m.library_listen({ title: track.title })}
           className={ICON_ACTION}
         >
-          <ExternalLink className="size-4.5" strokeWidth={1.6} aria-hidden="true" />
+          <Play className="size-4.5" strokeWidth={1.6} aria-hidden="true" />
         </a>
         <button
           type="button"
