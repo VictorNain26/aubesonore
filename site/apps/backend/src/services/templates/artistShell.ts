@@ -1,4 +1,15 @@
-import type { ArtistProfile, SiteLocale } from '@aubesonore/shared-types/client';
+import type { ArtistProfile, MusilogyArtist, SiteLocale } from '@aubesonore/shared-types/client';
+
+/** An artist page drawn by the renderer: the body of #root, and the data the client starts from. */
+export interface RenderedPage {
+  body: string;
+  data: { locale: SiteLocale; profile: ArtistProfile; musilogy: MusilogyArtist | null };
+}
+
+/** `<` escaped: a value holding "</script>" cannot close the element. */
+function scriptJson(value: unknown): string {
+  return JSON.stringify(value).replaceAll('<', '\\u003c');
+}
 
 // Only Deezer's CDN may end up in og:image: an attacker-controlled host there
 // would let a poisoned profile dictate what social networks display for us.
@@ -50,20 +61,22 @@ function artistJsonLd(profile: ArtistProfile, pageUrl: string, image: string | n
     ...(profile.facts?.formed ? { foundingDate: String(profile.facts.formed) } : {}),
     ...(profile.facts?.ended ? { dissolutionDate: String(profile.facts.ended) } : {}),
   };
-  // `<` escaped: a name holding "</script>" cannot close the element.
-  return `<script type="application/ld+json">${JSON.stringify(data).replaceAll('<', '\\u003c')}</script>`;
+  return `<script type="application/ld+json">${scriptJson(data)}</script>`;
 }
 
 /**
  * Rewrites the site's own head tags in place rather than appending: the shell
  * already carries the home page's canonical, og:url and og:image, and a page
  * that keeps them declares itself a copy of the home page.
+ * With a rendered page, #root holds its body and the data it was drawn from
+ * follows; without one, the client fills the empty root.
  */
 export function renderArtistShell(
   shell: string,
   profile: ArtistProfile,
   pageUrls: Record<SiteLocale, string>,
-  locale: SiteLocale
+  locale: SiteLocale,
+  page: RenderedPage | null = null
 ): Promise<string> {
   const pageUrl = pageUrls[locale];
   const title = `${profile.name} · AubeSonore`;
@@ -133,6 +146,18 @@ export function renderArtistShell(
     rewriter = rewriter.on(selector, {
       element(element) {
         element.setAttribute('content', value.replaceAll('&', '&amp;'));
+      },
+    });
+  }
+  // The id matches ARTIST_PAGE_DATA_ID in apps/frontend/src/lib/artistPageData.ts.
+  if (page) {
+    rewriter = rewriter.on('div#root', {
+      element(element) {
+        element.setInnerContent(page.body, { html: true });
+        element.after(
+          `<script type="application/json" id="artist-page-data">${scriptJson(page.data)}</script>`,
+          { html: true }
+        );
       },
     });
   }

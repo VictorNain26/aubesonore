@@ -46,6 +46,10 @@ const unplayed = {
   links: [],
   playedOnRadio: [],
 };
+let musilogyAnswer: unknown = null;
+const musilogySpy = spyOn(musilogyService, 'getMusilogyArtist').mockImplementation(() =>
+  Promise.resolve(musilogyAnswer as never)
+);
 const profileSpy = spyOn(profileService, 'getArtistProfile').mockImplementation((slug: string) => {
   if (slug === UNPLAYED_MBID) return Promise.resolve(unplayed);
   if (slug === NOT_LOADED_MBID)
@@ -82,6 +86,7 @@ const slugsSpy = spyOn(pages, 'listArtistSlugs').mockImplementation(() =>
 
 afterAll(() => {
   profileSpy.mockRestore();
+  musilogySpy.mockRestore();
   slugSpy.mockRestore();
   slugsSpy.mockRestore();
 });
@@ -99,15 +104,33 @@ afterEach(() => {
   __resetRateLimits();
   profileName = 'Daft Punk';
   profileImage = 'https://cdn-images.dzcdn.net/images/artist/dp.jpg';
+  musilogyAnswer = null;
+  renderAnswer = () => Promise.resolve(new Response(null, { status: 503 }));
 });
 
 let shellUrl = '';
+// The renderer's answer; by default it is down and the page goes out empty, as before it existed.
+let renderAnswer: (request: { path: string; data: unknown }) => Promise<Response> = () =>
+  Promise.resolve(new Response(null, { status: 503 }));
+
+/** The frontend's shell from `shell`, the renderer's answers from `renderAnswer`. */
+function setFetch(shell: (input: string, init?: RequestInit) => Promise<Response>): void {
+  globalThis.fetch = ((input: string | URL, init?: RequestInit) =>
+    String(input).endsWith('/render')
+      ? renderAnswer(
+          JSON.parse(typeof init?.body === 'string' ? init.body : 'null') as {
+            path: string;
+            data: unknown;
+          }
+        )
+      : shell(String(input), init)) as unknown as typeof fetch;
+}
 
 function mockShell(): void {
-  globalThis.fetch = ((input: string | URL) => {
-    shellUrl = String(input);
+  setFetch((input) => {
+    shellUrl = input;
     return Promise.resolve(new Response(SHELL, { headers: { 'content-type': 'text/html' } }));
-  }) as unknown as typeof fetch;
+  });
 }
 
 function count(html: string, needle: string): number {
@@ -330,8 +353,7 @@ describe('the addresses pages had before slugs', () => {
   });
 
   it('returns 502 when the frontend shell cannot be read', async () => {
-    globalThis.fetch = (() =>
-      Promise.resolve(new Response(null, { status: 500 }))) as unknown as typeof fetch;
+    setFetch(() => Promise.resolve(new Response(null, { status: 500 })));
 
     const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
@@ -340,7 +362,7 @@ describe('the addresses pages had before slugs', () => {
 
   it('revalidates the shell with its ETag and reuses it on 304', async () => {
     const seen: Array<string | null> = [];
-    globalThis.fetch = ((_: string, init?: RequestInit) => {
+    setFetch((_, init) => {
       const etag = new Headers(init?.headers).get('if-none-match');
       seen.push(etag);
       return Promise.resolve(
@@ -348,7 +370,7 @@ describe('the addresses pages had before slugs', () => {
           ? new Response(null, { status: 304 })
           : new Response(SHELL, { headers: { etag: '"v1"' } })
       );
-    }) as unknown as typeof fetch;
+    });
 
     await app.handle(new Request('http://localhost/artiste/daft-punk'));
     const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
@@ -359,12 +381,13 @@ describe('the addresses pages had before slugs', () => {
 
   it('serves the new shell as soon as a deploy changes it', async () => {
     let version = 'old';
-    globalThis.fetch = (() =>
+    setFetch(() =>
       Promise.resolve(
         new Response(SHELL.replace('<div id="root">', `<div data-build="${version}" id="root">`), {
           headers: { etag: `"${version}"` },
         })
-      )) as unknown as typeof fetch;
+      )
+    );
 
     await app.handle(new Request('http://localhost/artiste/daft-punk'));
     version = 'new';
@@ -376,11 +399,74 @@ describe('the addresses pages had before slugs', () => {
   it('keeps the last shell when the frontend container is briefly unreachable', async () => {
     mockShell();
     await app.handle(new Request('http://localhost/artiste/daft-punk'));
-    globalThis.fetch = (() => Promise.reject(new Error('ECONNREFUSED'))) as unknown as typeof fetch;
+    setFetch(() => Promise.reject(new Error('ECONNREFUSED')));
 
     const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
     expect(res.status).toBe(200);
+  });
+
+  it("puts the renderer's page in the root, followed by the data it was drawn from", async () => {
+    mockShell();
+    const asked: Array<{ path: string; data: unknown }> = [];
+    renderAnswer = (request) => {
+      asked.push(request);
+      return Promise.resolve(new Response('<main><h1>Daft Punk</h1></main>'));
+    };
+
+    const res = await app.handle(new Request('http://localhost/en/artist/daft-punk'));
+    const html = await res.text();
+
+    expect(res.status).toBe(200);
+    expect(html).toContain('<div id="root"><main><h1>Daft Punk</h1></main></div>');
+    const script = /<script type="application\/json" id="artist-page-data">(.*?)<\/script>/s.exec(
+      html
+    );
+    const data = JSON.parse(script?.[1] ?? 'null') as { locale: string; profile: { slug: string } };
+    expect(data.locale).toBe('en');
+    expect(data.profile.slug).toBe('daft-punk');
+    expect(asked).toEqual([{ path: '/en/artist/daft-punk', data }]);
+  });
+
+  it("embeds Musilogy's answer for an artist it knows", async () => {
+    mockShell();
+    musilogyAnswer = { mbid: UNPLAYED_MBID, card: { name: 'Protomartyr' } };
+    const asked: Array<{ data: { musilogy: unknown } }> = [];
+    renderAnswer = (request) => {
+      asked.push(request as { data: { musilogy: unknown } });
+      return Promise.resolve(new Response('<main></main>'));
+    };
+
+    await app.handle(new Request(`http://localhost/artiste/${UNPLAYED_MBID}`));
+
+    expect(asked.map((request) => request.data.musilogy)).toEqual([musilogyAnswer]);
+  });
+
+  it('keeps a value holding </script> inside the embedded data', async () => {
+    mockShell();
+    profileName = 'X</script><script>alert(1)</script>';
+    renderAnswer = () => Promise.resolve(new Response('<main></main>'));
+
+    const html = await (await app.handle(new Request('http://localhost/artiste/daft-punk'))).text();
+
+    const script = /<script type="application\/json" id="artist-page-data">(.*?)<\/script>/s.exec(
+      html
+    );
+    expect(script?.[1]).toContain('X\\u003c/script>');
+    const data = JSON.parse(script?.[1] ?? 'null') as { profile: { name: string } };
+    expect(data.profile.name).toBe(profileName);
+  });
+
+  it('sends the empty shell when the renderer fails or is too slow', async () => {
+    mockShell();
+    renderAnswer = () => Promise.reject(new DOMException('timed out', 'TimeoutError'));
+
+    const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
+    const html = await res.text();
+
+    expect(res.status).toBe(200);
+    expect(html).toContain('<div id="root"></div>');
+    expect(html).not.toContain('artist-page-data');
   });
 
   it('asks browsers to revalidate the page', async () => {
