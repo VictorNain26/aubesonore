@@ -21,6 +21,13 @@ def test_a_new_load_replaces_the_previous_one(tmp_path, pg):
     assert pg_query(pg, "SELECT mbid FROM musilogy.artists") == [(B,)]
 
 
+def test_an_artist_without_a_type_loads(tmp_path, pg):
+    # The site's table kept type NOT NULL after the population took every type:
+    # the production load of 2026-10-06 stopped on the first untyped artist.
+    loaded(tmp_path, pg, [synthetic_artist(ME, None, None, kind=None)])
+    assert pg_query(pg, "SELECT mbid, type FROM musilogy.artists") == [(ME, None)]
+
+
 def test_a_load_that_falls_short_leaves_the_previous_one_in_place(tmp_path, pg):
     # The swap is the point: a staging schema that does not hold the whole
     # delivery must never replace what the site reads.
