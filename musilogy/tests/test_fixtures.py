@@ -30,7 +30,7 @@ def test_release_groups_file_is_well_formed_and_complete():
         lines = fh.readlines()
     records = [json.loads(line) for line in lines]
     # Number frozen at extraction time: any truncation or dropped line changes it.
-    assert len(records) == 10536
+    assert len(records) == 10617
 
 
 def test_every_release_group_credits_a_witness():

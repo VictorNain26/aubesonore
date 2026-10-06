@@ -7,6 +7,8 @@ import pytest
 
 from musilogy.extract import extract, iter_records, reduce_artist, reduce_release_group
 
+VARIOUS_ARTISTS = "89ad4ac3-39f7-470e-963a-56509c546377"
+
 GROUP = {
     "id": "a9424175-8b06-44ad-a1f4-319e92a50879",
     "name": "Disincarnate",
@@ -114,12 +116,19 @@ def test_reduce_artist_keeps_persons():
     assert out["type"] == "Person"
 
 
-def test_reduce_artist_drops_the_types_outside_the_population():
-    # On the reference dump untyped artists carry almost no links (2.6 %),
-    # "Other" few (11.7 %), against a third of the persons; characters are
-    # linked, but almost only to the persons who voice them.
+def test_reduce_artist_keeps_every_type_none_included():
+    # 698 614 artists of the reference dump: 75 387 untyped artists have an
+    # album, and 16 080 of the co-listening neighbours were among them.
     for kind in ("Character", "Other", None):
-        assert reduce_artist({"id": "x", "name": "y", "type": kind}) is None
+        out = reduce_artist({"id": "x", "name": "y", "type": kind})
+        assert out is not None
+        assert out["type"] == kind
+
+
+def test_reduce_artist_drops_the_special_purpose_artists():
+    various = {"id": VARIOUS_ARTISTS, "name": "Various Artists", "type": "Other"}
+    assert reduce_artist(various) is None
+    assert reduce_artist({"id": "x", "name": "Two Steps From Hell", "type": "Other"}) is not None
 
 
 def test_reduce_artist_refuses_a_genre_without_a_vote_count():

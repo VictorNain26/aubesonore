@@ -31,7 +31,8 @@ et `run` lit celui que la constante épingle.
 ## 2. Tables
 
 **Gardées** : `artists` (identité, type, dates et leur provenance, lieu,
-genres), `albums` (non chargée : elle sert les dates, et ne compte que les
+genres ; tout artiste du dump, de tout type ou sans type, hors artistes à usage
+spécial, et seule une formation donne un début déclaré : README, `10_bands`), `albums` (non chargée : elle sert les dates, et ne compte que les
 albums), `genres` (vocabulaire), `links` (appartenances, pseudonymes et changements de nom),
 `popularity`.
 

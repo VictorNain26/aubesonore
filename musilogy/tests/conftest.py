@@ -55,7 +55,7 @@ def synthetic_artist(
     relations: list[dict[str, Any]] | None = None,
     genres: list[dict[str, Any]] | None = None,
     name: str | None = None,
-    kind: str = "Group",
+    kind: str | None = "Group",
     country: str | None = None,
     begin_area: tuple[str, str] | None = None,
     urls: list[dict[str, Any]] | None = None,

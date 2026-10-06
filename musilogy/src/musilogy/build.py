@@ -219,6 +219,8 @@ INVARIANTS = (
     "duplicate_artist",
     "empty_disambiguation",
     "artist_unexpected_type",
+    "special_purpose_artist",
+    "begin_misread",
     "birth_misread",
     "artist_out_of_window",
     "end_before_begin",

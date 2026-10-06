@@ -249,22 +249,34 @@ CREATE OR REPLACE VIEW corrections_invalid AS
   SELECT c.mbid, c.field FROM corrections c
   WHERE c.field NOT IN ('begin', 'end')
      OR NOT EXISTS (SELECT 1 FROM raw_artists r WHERE r.mbid = c.mbid);
--- extract.py projects {Group, Orchestra, Choir, Person} and nothing else, and
--- nothing states it in SQL: a change to KEPT_TYPES would move the population in
--- silence. Hardcoded here like every other contractual bound: widening the
--- population must be a deliberate edit of this literal.
+-- MusicBrainz's six artist types, or none. A seventh would reach the dates
+-- unread: formed() and the person rules know only these.
 CREATE OR REPLACE VIEW artist_unexpected_type AS
   SELECT mbid FROM artists
-  WHERE type IS NULL OR type NOT IN ('Group', 'Orchestra', 'Choir', 'Person');
+  WHERE type NOT IN ('Group', 'Orchestra', 'Choir', 'Person', 'Character', 'Other');
+-- extract.py leaves out the special purpose artists, and nothing states it in
+-- SQL: hardcoded here like every other contractual bound.
+CREATE OR REPLACE VIEW special_purpose_artist AS
+  SELECT mbid FROM artists WHERE mbid IN (
+    'f731ccc4-e22a-43af-a747-64213329e088', '33cf029c-63b0-41a0-9855-be2a3665fb3b',
+    '314e1c25-dde7-4e4d-b2f4-0a7b9f7c56dc', 'eec63d3c-3b81-4ad4-b1e4-7c147d4d2b61',
+    '9be7f096-97ec-4615-8957-8d40b5dcbc41', '125ec42a-7229-4250-afc5-e057484327fe',
+    '89ad4ac3-39f7-470e-963a-56509c546377', '7e84f845-ac16-41fe-9ff8-df12eb32af55',
+    '66ea0139-149f-4a0c-8fbf-5ea9ec4a6e49', 'a0ef7e1d-44ff-4039-9435-7d5fefdeecc9',
+    '90068d37-bae7-4292-be4a-704c145bd616', '80a8851f-444c-4539-892b-ad2a49292aa9');
+-- 10_bands.sql: only a formation is a declared start. A begin that is a
+-- birth, or may be one, never lands in y0_declared.
+CREATE OR REPLACE VIEW begin_misread AS
+  SELECT mbid FROM artists WHERE NOT formed(type) AND y0_declared IS NOT NULL;
 -- 10_bands.sql: a person's begin is a birth. It must land in y_birth and never
 -- in y0_declared, and no other type carries a y_birth. The readable birth is
 -- read back from raw_artists, with 2026 hardcoded like every contractual
 -- bound, so a y_birth that is dropped fails here as well as one that leaks.
 CREATE OR REPLACE VIEW birth_misread AS
   SELECT a.mbid FROM artists a JOIN raw_artists r USING (mbid)
-  WHERE (a.type = 'Person' AND a.y0_declared IS NOT NULL)
-     OR (a.type <> 'Person' AND a.y_birth IS NOT NULL)
-     OR (a.type = 'Person'
+  WHERE (person(a.type) AND a.y0_declared IS NOT NULL)
+     OR (NOT person(a.type) AND a.y_birth IS NOT NULL)
+     OR (person(a.type)
          AND a.y_birth IS DISTINCT FROM
              CASE WHEN yr(r.begin) <= 2026 THEN yr(r.begin) END);
 -- apply_corrections runs UPDATE ... FROM corrections: two rows for the same
