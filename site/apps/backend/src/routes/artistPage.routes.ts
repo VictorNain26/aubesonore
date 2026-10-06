@@ -5,7 +5,7 @@ import { logger } from '../lib/logger';
 import { checkRate, getClientIp } from '../lib/rateLimit';
 import { getArtistProfile, isMbid } from '../services/artistProfileService';
 import { MusilogyUnavailable } from '../services/musilogyService';
-import { slugOfArtist } from '../services/artistPages';
+import { listArtistSlugs, slugOfArtist } from '../services/artistPages';
 import { renderArtistShell } from '../services/templates/artistShell';
 import { isValidArtistId, isValidArtistSlug } from '../validators/artistValidator';
 
@@ -116,6 +116,41 @@ async function handle(
 type ResponseSet = HandlerContext['set'];
 
 /**
+ * Every artist page, in French and in English, each with its versions, as the
+ * site's own sitemap.xml lists the home pages
+ * (https://developers.google.com/search/docs/specialty/international/localized-versions#sitemap).
+ * A slug is percent-encoded by artistPagePath: nothing in it needs escaping in XML.
+ */
+export function artistSitemap(slugs: readonly string[]): string {
+  const entries = slugs.flatMap((slug) => {
+    const fr = `${env.FRONTEND_BASE_URL}${artistPagePath('fr', slug)}`;
+    const en = `${env.FRONTEND_BASE_URL}${artistPagePath('en', slug)}`;
+    const versions = [
+      `<xhtml:link rel="alternate" hreflang="fr" href="${fr}"/>`,
+      `<xhtml:link rel="alternate" hreflang="en" href="${en}"/>`,
+      `<xhtml:link rel="alternate" hreflang="x-default" href="${fr}"/>`,
+    ].join('');
+    return [fr, en].map((loc) => `<url><loc>${loc}</loc>${versions}</url>`);
+  });
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+${entries.join('\n')}
+</urlset>
+`;
+}
+
+async function sitemap({ request, set }: { request: Request; set: ResponseSet }) {
+  if (!checkRate('artistSitemap', getClientIp(request.headers), PAGE_LIMIT, PAGE_WINDOW_MS)) {
+    set.status = 429;
+    set.headers['retry-after'] = '60';
+    return 'Too many requests, retry in 1 minute';
+  }
+  set.headers['content-type'] = 'application/xml; charset=utf-8';
+  set.headers['cache-control'] = 'public, max-age=3600';
+  return artistSitemap(await listArtistSlugs());
+}
+
+/**
  * The addresses pages had before slugs (/artist/<id>/<slug>), still in shares
  * and search results: a permanent redirect hands them to the page's address.
  */
@@ -140,6 +175,7 @@ async function english(context: HandlerContext): Promise<string> {
 // The router wants one parameter name per position: the English old address
 // carries its id in `slug`.
 export const artistPageRoutes = new Elysia()
+  .get('/sitemap-artists.xml', sitemap)
   .get('/artiste/:slug', (context) => handle('fr', context))
   .get('/en/artist/:slug', english)
   .get('/en/artist/:slug/:old', ({ params, set }) => legacy('en', params.slug, set))

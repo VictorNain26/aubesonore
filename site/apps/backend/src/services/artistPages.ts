@@ -45,6 +45,12 @@ export async function findArtistPages(
   return matchPages(names, rows);
 }
 
+/** Every artist page's slug, in a stable order: the pages the sitemap lists. */
+export async function listArtistSlugs(): Promise<string[]> {
+  const rows = await db.select({ slug: artistSlug.slug }).from(artistSlug).orderBy(artistSlug.slug);
+  return rows.map((row) => row.slug);
+}
+
 /** The slug of an artist's page, for the addresses it had before slugs (/artist/<id>/…). */
 export async function slugOfArtist(id: string): Promise<string | null> {
   const rows = await db

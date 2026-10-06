@@ -8,3 +8,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://aubesonore.fr/sitemap.xml
+Sitemap: https://aubesonore.fr/sitemap-artists.xml
