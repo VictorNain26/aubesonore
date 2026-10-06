@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router';
 import { localizeHref } from '@/paraglide/runtime.js';
 import { cn } from '@/lib/utils';
 import { useLocale, useLocaleStore } from '../stores/localeStore';
-import { AboutModal } from '../design/organisms/AboutModal';
 import * as m from '@/paraglide/messages.js';
 
 const LINK =
@@ -33,7 +32,6 @@ export interface SiteFooterViewProps {
   /** This page in each language: a link crawlers follow, a new tab on a modified click. */
   languageHrefs: Record<'fr' | 'en', string>;
   onLocaleChange: (locale: 'fr' | 'en') => void;
-  onOpenAbout: () => void;
   onInstall: (() => void) | null;
 }
 
@@ -41,7 +39,6 @@ export function SiteFooterView({
   locale,
   languageHrefs,
   onLocaleChange,
-  onOpenAbout,
   onInstall,
 }: SiteFooterViewProps) {
   return (
@@ -53,9 +50,6 @@ export function SiteFooterView({
         <Link to={localizeHref('/musilogy')} className={LINK}>
           {m.musilogy_title()}
         </Link>
-        <button type="button" onClick={onOpenAbout} className={LINK}>
-          {m.footer_about()}
-        </button>
         <Link to={m.legal_href()} className={LINK}>
           {m.footer_legal()}
         </Link>
@@ -116,22 +110,13 @@ export function SiteFooter() {
     en: localizeHref(pathname + search, { locale: 'en' }),
   };
   const onInstall = useInstallPrompt();
-  const [isAboutOpen, setIsAboutOpen] = useState(false);
-  const [hasOpenedAbout, setHasOpenedAbout] = useState(false);
-  if (isAboutOpen && !hasOpenedAbout) setHasOpenedAbout(true);
 
   return (
-    <>
-      <SiteFooterView
-        locale={locale}
-        languageHrefs={languageHrefs}
-        onLocaleChange={setLocale}
-        onOpenAbout={() => setIsAboutOpen(true)}
-        onInstall={onInstall}
-      />
-      {hasOpenedAbout ? (
-        <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
-      ) : null}
-    </>
+    <SiteFooterView
+      locale={locale}
+      languageHrefs={languageHrefs}
+      onLocaleChange={setLocale}
+      onInstall={onInstall}
+    />
   );
 }

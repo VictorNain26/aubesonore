@@ -18,7 +18,6 @@ describe('SiteFooterView', () => {
         locale="fr"
         languageHrefs={HREFS}
         onLocaleChange={onLocaleChange}
-        onOpenAbout={vi.fn()}
         onInstall={null}
       />
     );
@@ -44,13 +43,7 @@ describe('SiteFooterView', () => {
   it('offers installation only when the browser allows it', async () => {
     const onInstall = vi.fn();
     const { rerender } = render(
-      <SiteFooterView
-        locale="fr"
-        languageHrefs={HREFS}
-        onLocaleChange={vi.fn()}
-        onOpenAbout={vi.fn()}
-        onInstall={null}
-      />
+      <SiteFooterView locale="fr" languageHrefs={HREFS} onLocaleChange={vi.fn()} onInstall={null} />
     );
     expect(
       screen.queryByRole('button', { name: "Ajouter à l'écran d'accueil" })
@@ -61,7 +54,6 @@ describe('SiteFooterView', () => {
         locale="fr"
         languageHrefs={HREFS}
         onLocaleChange={vi.fn()}
-        onOpenAbout={vi.fn()}
         onInstall={onInstall}
       />
     );
