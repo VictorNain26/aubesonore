@@ -15,6 +15,7 @@ from musilogy.paths import (
     PACKAGE_DIR,
     REFERENCE_DIR,
     discography_sums,
+    discogs_sums,
     influences_sums,
     official_sums,
     popularity_sums,
@@ -31,6 +32,8 @@ TABLES = (
     "releases",
     "urls",
     "proximity",
+    "labels",
+    "styles",
 )
 # A delivery has to come out in a fixed order, or the same code on the same
 # extraction writes different bytes: the tables are built by parallel joins and
@@ -49,6 +52,8 @@ ORDER_BY = {
     "releases": "artist_mbid, rg_mbid",
     "urls": "artist_mbid, type NULLS LAST, url",
     "proximity": "artist_mbid, rank",
+    "labels": "artist_mbid, label_id",
+    "styles": "artist_mbid, decade NULLS LAST, style",
 }
 
 
@@ -171,6 +176,15 @@ def _parts(
     return [{"snapshot": d, "sha256": expected_sums(sums(d))} for d in row[0]]
 
 
+def _discogs(con: duckdb.DuckDBPyConnection) -> dict[str, Any] | None:
+    """The Discogs dump the build read, with its pinned digest."""
+    row = con.execute("SELECT getvariable('discogs_dump')").fetchone()
+    assert row is not None  # a single-row projection always returns one row
+    if row[0] is None:
+        return None
+    return {"dump": row[0], "sha256": expected_sums(discogs_sums(row[0]))}
+
+
 def publish(
     con: duckdb.DuckDBPyConnection,
     out_dir: Path,
@@ -218,6 +232,7 @@ def publish(
         "discography": _snapshot(con, "discography_snapshot", discography_sums),
         "proximity": _parts(con, "proximity_snapshots", proximity_sums),
         "official": _parts(con, "official_snapshots", official_sums),
+        "discogs": _discogs(con),
         "counts": counts,
         "output_sha256": output_sha256,
         "parameters": _parameters(con),
@@ -239,6 +254,7 @@ def publish(
         "discography_exclusions": _counters(con, "discography_exclusions"),
         "proximity_exclusions": _counters(con, "proximity_exclusions"),
         "release_status": _counters(con, "release_status"),
+        "discogs_coverage": _counters(con, "discogs_coverage"),
         "git_sha": _git_sha(),
         "corrections_sha256": sha256_file(corrections) if corrections else None,
     }

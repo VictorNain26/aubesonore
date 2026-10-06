@@ -70,6 +70,7 @@ def test_run_refuses_to_publish_when_the_extraction_disagrees(tmp_path, monkeypa
     monkeypatch.setattr(cli, "verified_discography", lambda: FIX / "discography.jsonl")
     monkeypatch.setattr(cli, "verified_proximity", lambda: [FIX / "proximity.jsonl"])
     monkeypatch.setattr(cli, "verified_official", lambda: [FIX / "official.jsonl"])
+    monkeypatch.setattr(cli, "verified_discogs", lambda: FIX / "discogs.jsonl")
 
     def record_publish(*args):
         # Returns a plausible manifest on purpose: a double returning None

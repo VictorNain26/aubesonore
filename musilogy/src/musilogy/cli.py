@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
+import re
 from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -13,6 +14,7 @@ import duckdb
 
 from musilogy import (
     REFERENCE_DISCOGRAPHY,
+    REFERENCE_DISCOGS,
     REFERENCE_INFLUENCES,
     REFERENCE_OFFICIAL,
     REFERENCE_POPULARITY,
@@ -20,11 +22,12 @@ from musilogy import (
 )
 from musilogy import REFERENCE_DUMP as DUMP
 from musilogy.build import build, check_invariants, connect
-from musilogy.extract import extract, reduce_artist, reduce_release_group
+from musilogy.extract import extract, extract_discogs, reduce_artist, reduce_release_group
 from musilogy.fetch import (
     POPULARITY_BATCH,
     expected_sums,
     fetch_discography,
+    fetch_discogs,
     fetch_dump,
     fetch_influences,
     fetch_official,
@@ -42,6 +45,9 @@ from musilogy.paths import (
     SQL_DIR,
     discography_snapshot,
     discography_sums,
+    discogs_dump,
+    discogs_releases,
+    discogs_sums,
     influences_snapshot,
     influences_sums,
     official_snapshot,
@@ -62,6 +68,7 @@ RELEASE_GROUPS_JSONL = WORK_DIR / "release_groups.jsonl"
 POPULARITY_JSONL = popularity_snapshot(REFERENCE_POPULARITY)
 INFLUENCES_JSONL = influences_snapshot(REFERENCE_INFLUENCES)
 DISCOGRAPHY_JSONL = discography_snapshot(REFERENCE_DISCOGRAPHY)
+DISCOGS_JSONL = discogs_releases(REFERENCE_DISCOGS)
 
 WITNESSES = [
     "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d",  # The Beatles
@@ -101,6 +108,17 @@ WITNESSES = [
     "b614843c-bec3-421f-9af1-03169cdd4b63",  # Quasimoto: a character
     "da02dddc-60fa-4ca4-88bb-8012598f1f86",  # Two Steps From Hell: an "other"
 ]
+# The witnesses whose Discogs releases the fixtures carry: the whole catalogue of
+# the Beatles or of Bach would weigh tens of megabytes. Joy Division and New
+# Order share Factory, a label two witnesses call home.
+DISCOGS_WITNESSES = [
+    "9a58fda3-f4ed-4080-a3a5-f457aac9fcdd",  # Joy Division
+    "f1106b17-dcbb-45f6-b938-199ccfab50cc",  # New Order
+    "e598d30e-4ce1-402e-94a7-6f44779da6b7",  # Orange Juice
+    "f7338f2a-136b-4d5e-b099-5504cf997f58",  # Cardiacs
+    "f38ed14d-07db-4a4b-9270-53435358898a",  # Buzz Kull
+]
+DISCOGS_ID = re.compile(r"discogs\.com/(?:[a-z]{2}/)?artist/([0-9]+)")
 
 
 def fetch_and_extract() -> None:
@@ -324,6 +342,17 @@ def verified_popularity() -> Path:
     return POPULARITY_JSONL
 
 
+def verified_discogs() -> Path:
+    """The projection of the pinned Discogs dump, extracted from the verified
+    archive when missing (about two hours)."""
+    if not DISCOGS_JSONL.exists():
+        archive = fetch_discogs(
+            REFERENCE_DISCOGS, discogs_dump(REFERENCE_DISCOGS), discogs_sums(REFERENCE_DISCOGS)
+        )
+        extract_discogs(archive, DISCOGS_JSONL)
+    return DISCOGS_JSONL
+
+
 def _stop_on_extraction_mismatch(con: duckdb.DuckDBPyConnection, extraction: Path) -> None:
     """Called before publish(), never after: a run that wrote its Parquet and
     only then failed would have replaced a sound delivery with a truncated
@@ -351,6 +380,7 @@ def run() -> None:
     discography = verified_discography()
     proximity = verified_proximity()
     official = verified_official()
+    discogs = verified_discogs()
 
     con = connect()
     build(
@@ -369,6 +399,8 @@ def run() -> None:
         proximity_snapshots=REFERENCE_PROXIMITY,
         official=official,
         official_snapshots=REFERENCE_OFFICIAL,
+        discogs=discogs,
+        discogs_dump=REFERENCE_DISCOGS,
     )
 
     violations = check_invariants(con, SQL_DIR)
@@ -387,6 +419,23 @@ def _lines_about(parts: Sequence[Path], artists: set[str]) -> Iterator[str]:
     for part in parts:
         with part.open(encoding="utf-8") as src:
             yield from (line for line in src if json.loads(line)["artist_mbid"] in artists)
+
+
+def _discogs_fixture(artists: Path, out: Path) -> None:
+    """Every release of the Discogs witnesses, through the Discogs pages
+    MusicBrainz relates to them."""
+    discogs_ids: set[int] = set()
+    with artists.open(encoding="utf-8") as src:
+        for line in src:
+            rec = json.loads(line)
+            if rec["mbid"] in DISCOGS_WITNESSES:
+                discogs_ids |= {
+                    int(m.group(1))
+                    for u in rec["urls"]
+                    if u["type"] == "discogs" and (m := DISCOGS_ID.search(u["url"] or ""))
+                }
+    with out.open("w", encoding="utf-8") as fh, verified_discogs().open(encoding="utf-8") as src:
+        fh.writelines(line for line in src if discogs_ids & set(json.loads(line)["artists"]))
 
 
 def make_fixtures() -> None:
@@ -471,6 +520,7 @@ def make_fixtures() -> None:
     # What MusicBrainz shows of the fixture artists it was asked about.
     with (out / "official.jsonl").open("w", encoding="utf-8") as fh:
         fh.writelines(_lines_about(verified_official(), kept_set))
+    _discogs_fixture(work / "artists.jsonl", out / "discogs.jsonl")
 
     print("witnesses found:", len(wanted & set(kept)), "linked artists:", len(set(kept) - wanted))
     missing = wanted - set(kept)
