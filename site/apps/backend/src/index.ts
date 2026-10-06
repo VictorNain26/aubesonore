@@ -25,6 +25,7 @@ import { trendsCache } from './services/trendsService';
 import { purgeExpiredAuthRows } from './lib/auth/purgeExpiredRows';
 import { startAntennaWatcher } from './services/antennaWatcher';
 import { startYouTubeLinks } from './services/youtubeLinks';
+import { startDiscoveredArtists } from './services/discoveredArtists';
 
 // Apply pending DB migrations BEFORE serving traffic. The runner tracks
 // applied migrations in __app_migrations and is idempotent across restarts.
@@ -68,6 +69,7 @@ if (typeof purgeTimer === 'object' && purgeTimer !== null && 'unref' in purgeTim
 
 startAntennaWatcher();
 startYouTubeLinks();
+startDiscoveredArtists();
 
 const app = new Elysia()
   // Per-request start time, available to onAfterHandle via context.

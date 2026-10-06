@@ -97,7 +97,15 @@ rendent impossibles sur les 2,98 millions d'artistes. Il ne choisit pas ce qu'un
 - **Le texte** : la même chose en phrases et en listes. C'est ce que lisent les lecteurs d'écran
   et les moteurs de recherche, et ce qui doit suffire seul.
 - **Indexée quand elle est riche** : une page est proposée aux moteurs de recherche au-delà d'un
-  seuil de contenu à mesurer ; en deçà, elle existe mais n'est pas listée.
+  seuil de contenu ; en deçà, elle existe mais n'est pas listée. La page d'un artiste joué l'est
+  toujours. Celle d'un artiste jamais joué l'est quand au moins 10 pages d'artistes joués y
+  mènent, qu'elle a un élément Wikidata (le chemin vers son article Wikipédia) et au moins 3
+  albums ou EP (`services/discoveredArtists.ts`). Mesuré le 2026-10-06 : les 398 pages jouées
+  mènent à 8 126 artistes jamais joués, 522 depuis au moins 10 pages, environ 490 passent. La
+  règle tient la page dans le graphe de la radio : Google traite comme abus les pages assemblées
+  en masse depuis d'autres sites, et une masse de pages faibles pèse sur tout le site. Elles ont
+  leur propre sitemap, `sitemap-artists-discovered.xml`, pour suivre leur sort dans la Search
+  Console avant d'abaisser le seuil.
 
 ### 2.4 La page
 
@@ -295,8 +303,8 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
    (2026-10-05), en attendant la fin du relevé du statut officiel.
 2. **Les proches ne sont pas encore en ligne** : la carte ne s'affiche pas tant que le relevé n'est
    pas chargé.
-3. **Les pages d'artistes jamais joués ne sont pas indexées** : `/artiste/<mbid>`, `noindex`
-   jusqu'au seuil d'indexation (étape 7.5).
+3. **Les pages d'artistes jamais joués qui passent le seuil restent à leur MBID** :
+   `/artiste/<mbid>`, sans slug (étape 7.5).
 4. **Identité incomplète** : 39 des 332 artistes joués n'ont pas de MBID ; 22 des 91 titres gardés
    ne retrouvent ni leur passage ni leur titre exact chez Deezer.
 5. **Les featurings ne relient que l'artiste principal** (§4.4).
@@ -320,11 +328,13 @@ l'historique git.
       (#348), une page pour tout MBID et `/musilogy/:mbid` en 301 (#352) — fait ;
    4. le serveur écrit le titre, la description et le canonique de chaque page, répond 404 pour un
       MBID inconnu et `noindex` pour une page par MBID — fait (#352) ;
-   5. une fois les proches en ligne : le seuil d'indexation mesuré, un slug pour chaque page qui
-      le passe.
+   5. une fois les proches en ligne : le seuil d'indexation mesuré (§2.3) — fait ; un slug pour
+      chaque page qui le passe — à faire.
 
-   Le rendu React complet côté serveur n'en fait pas partie : Google rend le JavaScript. Il se
-   décide sur une mesure (pages indexées sans leur contenu, inspection d'URL de la Search Console).
+   Le rendu React côté serveur des pages artistes est fait (#394 à #398) : les robots des
+   assistants IA ne rendent pas le JavaScript, et la page arrive dessinée (LCP sur un téléphone
+   simulé, document servi en local : ~2,9 s → ~0,6 s). Un service `renderer`, construit avec le site, dessine la page ;
+   au-delà de 300 ms le backend envoie la page vide, que le client remplit.
 8. **Les proches en ligne** (écart 2) : la PR de la proximité attend la fin de son relevé, puis la
    carte se juge à l'usage (§2.3).
 9. **Les données à jour** : un dump MusicBrainz plus récent et les relevés rapides refaits

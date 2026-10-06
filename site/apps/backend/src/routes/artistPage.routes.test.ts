@@ -80,6 +80,14 @@ const pages = await import('../services/artistPages');
 const slugSpy = spyOn(pages, 'slugOfArtist').mockImplementation((id: string) =>
   Promise.resolve(id === VALID_ID ? 'daft-punk' : null)
 );
+const discoveredService = await import('../services/discoveredArtists');
+let discovered: string[] = [];
+const discoveredSpy = spyOn(discoveredService, 'isDiscovered').mockImplementation(
+  (mbid: string | null) => mbid !== null && discovered.includes(mbid)
+);
+const discoveredListSpy = spyOn(discoveredService, 'listDiscovered').mockImplementation(
+  () => discovered
+);
 const slugsSpy = spyOn(pages, 'listArtistSlugs').mockImplementation(() =>
   Promise.resolve(['daft-punk', 'кино'])
 );
@@ -89,6 +97,8 @@ afterAll(() => {
   musilogySpy.mockRestore();
   slugSpy.mockRestore();
   slugsSpy.mockRestore();
+  discoveredSpy.mockRestore();
+  discoveredListSpy.mockRestore();
 });
 
 const { artistPageRoutes, __resetArtistShell } = await import('./artistPage.routes');
@@ -105,6 +115,7 @@ afterEach(() => {
   profileName = 'Daft Punk';
   profileImage = 'https://cdn-images.dzcdn.net/images/artist/dp.jpg';
   musilogyAnswer = null;
+  discovered = [];
   renderAnswer = () => Promise.resolve(new Response(null, { status: 503 }));
 });
 
@@ -313,6 +324,19 @@ describe('GET /artiste/:slug', () => {
     expect(jsonLd(html).sameAs).toEqual([`https://musicbrainz.org/artist/${UNPLAYED_MBID}`]);
   });
 
+  it('offers a page by MBID that passes the threshold to search engines, in both languages', async () => {
+    mockShell();
+    discovered = [UNPLAYED_MBID];
+
+    const res = await app.handle(new Request(`http://localhost/artiste/${UNPLAYED_MBID}`));
+    const html = await res.text();
+
+    expect(res.headers.get('x-robots-tag')).toBeNull();
+    expect(html).toContain(
+      `<link rel="alternate" hreflang="en" href="${env.FRONTEND_BASE_URL}/en/artist/${UNPLAYED_MBID}" />`
+    );
+  });
+
   it('answers 503 while Musilogy, which makes a page by MBID, is not loaded', async () => {
     mockShell();
 
@@ -494,5 +518,19 @@ describe('GET /sitemap-artists.xml', () => {
       `<xhtml:link rel="alternate" hreflang="x-default" href="${fr}"/>`;
     expect(xml).toContain(`<url><loc>${fr}</loc>${versions}</url>`);
     expect(xml).toContain(`<url><loc>${en}</loc>${versions}</url>`);
+  });
+});
+
+describe('GET /sitemap-artists-discovered.xml', () => {
+  it('lists the pages by MBID that pass the threshold, in both languages', async () => {
+    discovered = [UNPLAYED_MBID];
+
+    const xml = await (
+      await app.handle(new Request('http://localhost/sitemap-artists-discovered.xml'))
+    ).text();
+
+    expect(count(xml, '<url>')).toBe(2);
+    expect(xml).toContain(`<loc>${env.FRONTEND_BASE_URL}/artiste/${UNPLAYED_MBID}</loc>`);
+    expect(xml).toContain(`<loc>${env.FRONTEND_BASE_URL}/en/artist/${UNPLAYED_MBID}</loc>`);
   });
 });

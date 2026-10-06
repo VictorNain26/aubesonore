@@ -6,6 +6,7 @@ import { checkRate, getClientIp } from '../lib/rateLimit';
 import { getArtistProfile, isMbid } from '../services/artistProfileService';
 import { getMusilogyArtist, MusilogyUnavailable } from '../services/musilogyService';
 import { listArtistSlugs, slugOfArtist } from '../services/artistPages';
+import { isDiscovered, listDiscovered } from '../services/discoveredArtists';
 import { renderArtistShell, type RenderedPage } from '../services/templates/artistShell';
 import { isValidArtistId, isValidArtistSlug } from '../validators/artistValidator';
 
@@ -137,16 +138,17 @@ async function handle(
     set.headers.location = artistPagePath(locale, profile.slug);
     return '';
   }
-  // A page by MBID stays out of search results until the richness threshold
-  // decides which earn a slug (docs/vision.md §7, step 7.5).
-  if (!profile.played) set.headers['x-robots-tag'] = 'noindex';
+  // A page by MBID stays out of search results unless it passes the
+  // threshold (services/discoveredArtists.ts, docs/vision.md §2.3).
+  const indexable = profile.played || isDiscovered(profile.mbid);
+  if (!indexable) set.headers['x-robots-tag'] = 'noindex';
 
   const pageUrls = {
     fr: `${env.FRONTEND_BASE_URL}${artistPagePath('fr', profile.slug)}`,
     en: `${env.FRONTEND_BASE_URL}${artistPagePath('en', profile.slug)}`,
   };
   const page = await renderPage(locale, artistPagePath(locale, profile.slug), profile);
-  return renderArtistShell(html, profile, pageUrls, locale, page);
+  return renderArtistShell(html, profile, pageUrls, locale, page, indexable);
 }
 
 type ResponseSet = HandlerContext['set'];
@@ -175,15 +177,18 @@ ${entries.join('\n')}
 `;
 }
 
-async function sitemap({ request, set }: { request: Request; set: ResponseSet }) {
-  if (!checkRate('artistSitemap', getClientIp(request.headers), PAGE_LIMIT, PAGE_WINDOW_MS)) {
-    set.status = 429;
-    set.headers['retry-after'] = '60';
-    return 'Too many requests, retry in 1 minute';
-  }
-  set.headers['content-type'] = 'application/xml; charset=utf-8';
-  set.headers['cache-control'] = 'public, max-age=3600';
-  return artistSitemap(await listArtistSlugs());
+/** A sitemap of the pages `list` gives, at their slug or, never played, their MBID. */
+function sitemapOf(list: () => string[] | Promise<string[]>) {
+  return async ({ request, set }: { request: Request; set: ResponseSet }) => {
+    if (!checkRate('artistSitemap', getClientIp(request.headers), PAGE_LIMIT, PAGE_WINDOW_MS)) {
+      set.status = 429;
+      set.headers['retry-after'] = '60';
+      return 'Too many requests, retry in 1 minute';
+    }
+    set.headers['content-type'] = 'application/xml; charset=utf-8';
+    set.headers['cache-control'] = 'public, max-age=3600';
+    return artistSitemap(await list());
+  };
 }
 
 /**
@@ -211,7 +216,9 @@ async function english(context: HandlerContext): Promise<string> {
 // The router wants one parameter name per position: the English old address
 // carries its id in `slug`.
 export const artistPageRoutes = new Elysia()
-  .get('/sitemap-artists.xml', sitemap)
+  .get('/sitemap-artists.xml', sitemapOf(listArtistSlugs))
+  // Its own file: Search Console reports how these pages fare apart from the played ones.
+  .get('/sitemap-artists-discovered.xml', sitemapOf(listDiscovered))
   .get('/artiste/:slug', (context) => handle('fr', context))
   .get('/en/artist/:slug', english)
   .get('/en/artist/:slug/:old', ({ params, set }) => legacy('en', params.slug, set))
