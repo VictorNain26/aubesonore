@@ -100,14 +100,16 @@ export default defineConfig(({ mode }) => {
     server: {
       host: '0.0.0.0',
       port: 5173,
-      proxy: apiBaseUrl
-        ? {
-            '/api': {
-              target: apiBaseUrl,
-              changeOrigin: true,
-            },
-          }
-        : undefined,
+      proxy: {
+        ...(apiBaseUrl ? { '/api': { target: apiBaseUrl, changeOrigin: true } } : {}),
+        // nginx shrinks the station's covers at /covers/ (nginx.conf); here they come full size.
+        // preview.proxy defaults to this one (https://vite.dev/config/preview-options#preview-proxy).
+        '/covers': {
+          target: 'https://radio.aubesonore.fr',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/covers\/\d+\//, '/api/station/aubesonore/art/'),
+        },
+      },
       cors: {
         origin: true,
         credentials: true,
