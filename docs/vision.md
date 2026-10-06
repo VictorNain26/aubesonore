@@ -313,8 +313,10 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 
 ## 6. Écarts actuels
 
-1. **Les bootlegs sont encore sur la page** : 409 des 4 526 disques des artistes joués
-   (2026-10-05), en attendant la fin du relevé du statut officiel.
+1. **Statut officiel incomplet** : la page écarte les disques que MusicBrainz ne montre pas
+   comme l'œuvre de l'artiste (476 des 4 980 disques des artistes joués, 2026-10-06), mais 149
+   restent de statut inconnu, et le relevé n'a pas encore interrogé les artistes qui n'ont que des
+   EP ni les nouveaux types d'artistes.
 2. **La découverte ne suit qu'un signal** : la co-écoute ; le courant et le label restent à
    faire, et les influences sont encore sur la page (§7, étape 9).
 3. **Les pages d'artistes jamais joués qui passent le seuil restent à leur MBID** :
@@ -339,8 +341,7 @@ l'historique git.
 
 7. **Un artiste, une page** (écarts 1 et 3) :
    1. musilogy : albums et EP et liens d'écoute — fait (#337, #338) ; le relevé du statut
-      officiel MusicBrainz pour retirer les bootlegs (#340, en cours, environ 38 h), puis la règle
-      qui s'en sert ; les groupes et projets du §2.4 : `links` réduite aux appartenances, aux
+      officiel MusicBrainz (#340, pris le 2026-10-05) et la règle qui s'en sert (#408) — fait ; les groupes et projets du §2.4 : `links` réduite aux appartenances, aux
       pseudonymes et aux changements de nom, et une fonction SQL par rubrique ;
    2. le site lit faits et liens d'écoute dans musilogy (#344), le portrait en cascade (#346) —
       fait ;
