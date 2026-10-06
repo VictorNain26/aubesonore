@@ -27,6 +27,10 @@ const NAME_KINDS: Record<MusilogyOtherName['kind'], () => string> = {
   later: () => m.musilogy_name_later(),
 };
 
+// A row's link covers the whole row, the years and the line under the name included: a phone gets a
+// 56 px target instead of the name's 21 px. The row is the link's positioned ancestor.
+const STRETCHED = "after:absolute after:inset-0 after:content-['']";
+
 function ArtistRow({
   artist,
   years,
@@ -40,12 +44,12 @@ function ArtistRow({
   const when = years === undefined ? (artist.y0 ? String(artist.y0) : null) : years;
   const under = detail === undefined ? artist.disambiguation : detail;
   return (
-    <li className="border-border reveal grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1">
+    <li className="border-border reveal relative grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1">
       <span className="flex min-w-0 flex-col">
         <Link
           to={pagePathOf(artist)}
           state={DISCOVERY}
-          className={cn(ARTIST_LINK, 'text-row self-start truncate underline-offset-4')}
+          className={cn(ARTIST_LINK, STRETCHED, 'text-row self-start truncate underline-offset-4')}
         >
           {artist.name}
         </Link>
@@ -296,12 +300,12 @@ const HIT_COLUMNS =
 function SearchHitRow({ hit }: { hit: MusilogySearchHit }) {
   const kind = HIT_KINDS[hit.type]?.() ?? null;
   return (
-    <li className={cn(HIT_COLUMNS, 'border-border min-h-18 border-b py-2.5')}>
+    <li className={cn(HIT_COLUMNS, 'border-border relative min-h-18 border-b py-2.5')}>
       <span className="flex min-w-0 flex-col gap-0.5">
         <Link
           to={pagePathOf({ ...hit, played: null })}
           state={DISCOVERY}
-          className={cn(ARTIST_LINK, 'text-row self-start truncate underline-offset-4')}
+          className={cn(ARTIST_LINK, STRETCHED, 'text-row self-start truncate underline-offset-4')}
         >
           {hit.name}
         </Link>
