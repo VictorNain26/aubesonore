@@ -1,12 +1,12 @@
-import type { SiteLocale } from '@aubesonore/shared-types/client';
+import type { ArtistProfile, SiteLocale } from '@aubesonore/shared-types/client';
 import { Elysia } from 'elysia';
 import { env } from '../config/env';
 import { logger } from '../lib/logger';
 import { checkRate, getClientIp } from '../lib/rateLimit';
 import { getArtistProfile, isMbid } from '../services/artistProfileService';
-import { MusilogyUnavailable } from '../services/musilogyService';
+import { getMusilogyArtist, MusilogyUnavailable } from '../services/musilogyService';
 import { listArtistSlugs, slugOfArtist } from '../services/artistPages';
-import { renderArtistShell } from '../services/templates/artistShell';
+import { renderArtistShell, type RenderedPage } from '../services/templates/artistShell';
 import { isValidArtistId, isValidArtistSlug } from '../validators/artistValidator';
 
 // Higher than the JSON budget: this is a document route, and a single visit
@@ -14,6 +14,8 @@ import { isValidArtistId, isValidArtistSlug } from '../validators/artistValidato
 const PAGE_LIMIT = 60;
 const PAGE_WINDOW_MS = 60_000;
 const SHELL_TIMEOUT_MS = 3_000;
+// Past this, the page goes out empty and the client fills it, as before the server render.
+const RENDER_TIMEOUT_MS = 300;
 
 let shell: { html: string; etag: string | null } | null = null;
 
@@ -45,6 +47,36 @@ async function loadShell(): Promise<string | null> {
 /** Test seam: the shell is module state and would leak between tests. */
 export function __resetArtistShell(): void {
   shell = null;
+}
+
+/**
+ * The page's body from the renderer, with the data it was drawn from, which the client starts
+ * from. null on any failure: the empty shell still works, the client fills it.
+ */
+async function renderPage(
+  locale: SiteLocale,
+  path: string,
+  profile: ArtistProfile
+): Promise<RenderedPage | null> {
+  try {
+    // Unknown to the dump, or Musilogy not loaded: the page shows without its sections.
+    const musilogy = profile.mbid ? await getMusilogyArtist(profile.mbid).catch(() => null) : null;
+    const data = { locale, profile, musilogy };
+    const response = await fetch(`${env.RENDERER_ORIGIN_INTERNAL}/render`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ path, data }),
+      signal: AbortSignal.timeout(RENDER_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      logger.warn('artistPage.render_failed', { status: response.status });
+      return null;
+    }
+    return { body: await response.text(), data };
+  } catch (err) {
+    logger.warn('artistPage.render_unavailable', { message: (err as Error).message });
+    return null;
+  }
 }
 
 interface HandlerContext {
@@ -113,7 +145,8 @@ async function handle(
     fr: `${env.FRONTEND_BASE_URL}${artistPagePath('fr', profile.slug)}`,
     en: `${env.FRONTEND_BASE_URL}${artistPagePath('en', profile.slug)}`,
   };
-  return renderArtistShell(html, profile, pageUrls, locale);
+  const page = await renderPage(locale, artistPagePath(locale, profile.slug), profile);
+  return renderArtistShell(html, profile, pageUrls, locale, page);
 }
 
 type ResponseSet = HandlerContext['set'];

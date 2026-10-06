@@ -41,6 +41,8 @@ interface EnvConfig {
   // Frontend service on the compose network. The artist page reads the deployed
   // index.html from it to inject OG tags; a shared volume would go stale.
   FRONTEND_ORIGIN_INTERNAL: string;
+  // The artist pages' server render on the compose network (apps/frontend/scripts/renderer.mjs).
+  RENDERER_ORIGIN_INTERNAL: string;
 
   // AzuraCast (radio history proxy — key must stay server-side)
   AZURACAST_BASE_URL: string;
@@ -127,6 +129,7 @@ export const env: EnvConfig = {
 
   OUTBOUND_USER_AGENT: optional('OUTBOUND_USER_AGENT') ?? 'AubeSonore/1.0 (https://aubesonore.fr)',
   FRONTEND_ORIGIN_INTERNAL: Bun.env.FRONTEND_ORIGIN_INTERNAL ?? 'http://frontend',
+  RENDERER_ORIGIN_INTERNAL: Bun.env.RENDERER_ORIGIN_INTERNAL ?? 'http://renderer:3000',
 
   AZURACAST_BASE_URL: Bun.env.AZURACAST_BASE_URL ?? '',
   AZURACAST_API_KEY: Bun.env.AZURACAST_API_KEY ?? '',
