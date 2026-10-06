@@ -17,83 +17,85 @@ from musilogy.paths import (
     work_dir,
 )
 
-# artists: 682 447 groups, orchestras and choirs, plus 1 599 244 persons. Every
-# count the persons moved splits along type: restricted to the other types, the
-# source breakdowns, placeable, the anomalies, the demo and live measurements and
-# the count without album give back the figures they had before persons joined.
+# artists: 682 447 groups, orchestras and choirs, 1 599 244 persons, and 698 602
+# artists without a type (674 240), characters (17 790) and others (6 572).
+# Restricted to the first two, the source breakdowns, placeable, the anomalies,
+# the demo and live measurements, the count without album and popularity give
+# back the figures they had before the other types joined.
 BASELINE = {
-    "artists": 2_281_691,
-    "albums": 1_290_584,
-    "genres": 1_729,
-    "links": 674_186,
-    "popularity": 989_488,
+    "artists": 2_980_293,
+    "albums": 1_419_423,
+    "genres": 1_740,
+    "links": 701_614,
+    "popularity": 1_366_777,
     # One row per pair of MBIDs Wikidata relates by "influenced by" (P737),
     # deprecated statements left out.
     "influences": 9_517,
     # Albums and EPs whose secondary types are at most Soundtrack and Remix, one
     # row per credited artist of the population.
-    "releases": 2_319_152,
+    "releases": 2_556_274,
     # The pages an artist page uses among those MusicBrainz relates, ended
     # ones included.
-    "urls": 1_793_436,
+    "urls": 2_036_294,
     # The ListenBrainz neighbours of the 111 402 artists with 500 listeners or
     # more (snapshot of 2026-10-04), once the repeats and the artists given as
     # their own neighbour are dropped.
     "proximity": 4_973_236,
 }
-RELEASE_TYPE_BREAKDOWN = {"Album": 1_807_234, "EP": 511_918}
-# Wikidata files 60 334 of the album rows and 9 465 of the EP rows as a studio
+RELEASE_TYPE_BREAKDOWN = {"Album": 1_968_255, "EP": 588_019}
+# Wikidata files 60 688 of the album rows and 9 508 of the EP rows as a studio
 # album or an EP (discography snapshot of 2026-10-05).
-RELEASES_FILED_ORIGINAL = 69_799
-URLS_ENDED = 23_287
+RELEASES_FILED_ORIGINAL = 70_196
+URLS_ENDED = 24_789
 PROXIMITY_EXCLUSIONS = {"repeated_neighbour": 675, "self_neighbour": 84}
 # Every artist asked, 16 515 of them without a neighbour.
 PROXIMITY_SURVEYED = 111_402
 DISCOGRAPHY_EXCLUSIONS = {"malformed": 1, "not_album_or_ep": 1_274, "secondary_type": 1_498}
 # The influences whose two ends are artists of the dump, the only ones the
-# site can name; the other 251 have an end whose MBID `artists` does not hold.
+# site can name; the other 207 have an end whose MBID `artists` does not hold.
 # A drift in how MBIDs are read on either side — case, whitespace — moves this
 # first.
-INFLUENCES_BETWEEN_ARTISTS = 9_266
+INFLUENCES_BETWEEN_ARTISTS = 9_310
 # links: the relations a page shows, oriented source -> target and
 # de-duplicated across the two artists that carry it. Memberships replace the
 # former `members` table (601 759 rows), which read them from the band's side:
 # it kept members that are not artists of this pipeline, now cut and counted,
 # and published 2 397 group-in-group memberships reversed. Each count is the
-# one the type had before the table kept only these five: narrowing it moved
-# no row of a type kept.
+# one the type had before the table kept only these five, plus the links the
+# artists without a type, characters and others brought.
 LINK_TYPE_BREAKDOWN = {
-    "member of band": 588_501,
-    "is person": 68_334,
-    "collaboration": 8_176,
-    "founder": 7_328,
-    "artist rename": 1_847,
+    "member of band": 607_195,
+    "is person": 75_222,
+    "collaboration": 9_257,
+    "founder": 7_915,
+    "artist rename": 2_025,
 }
-# Of the 809 589 artist-to-artist relations of the dump: those of a life
+# Of the 811 844 artist-to-artist relations of the dump: those of a life
 # rather than of the music (teacher, family, touring musician, tribute…), and
 # those of the five types with an end outside `artists`.
-LINK_EXCLUSIONS = {"not_on_page": 109_749, "to_unextracted_artist": 25_654}
-Y0_SOURCE_BREAKDOWN = {"declared": 235_246, "first_album": 346_442, None: 1_700_003}
-Y_END_SOURCE_BREAKDOWN = {"declared": 147_025, "last_album": 438_801, None: 1_695_865}
+LINK_EXCLUSIONS = {"not_on_page": 110_205, "to_unextracted_artist": 25}
+Y0_SOURCE_BREAKDOWN = {"declared": 235_246, "first_album": 420_208, None: 2_324_839}
+Y_END_SOURCE_BREAKDOWN = {"declared": 148_933, "last_album": 512_131, None: 2_319_229}
 # 25_band_genres.sql: the declared genres win, the albums take over.
-GENRE_SOURCE_BREAKDOWN = {"declared": 199_611, "albums": 153_624, None: 1_928_456}
-PLACEABLE = 581_688
+GENRE_SOURCE_BREAKDOWN = {"declared": 211_764, "albums": 176_210, None: 2_592_319}
+PLACEABLE = 655_454
 # The date readings the dump loses, and the album inferences the guards of
 # 30_bands_lifespan.sql refuse. Frozen here too: a guard that stops firing is
 # as much a regression as a count that moves.
 DATE_ANOMALIES = {
     "begin_illegible": 34,
-    "end_illegible": 35,
+    "end_illegible": 39,
     "begin_future": 15,
-    "end_future": 11,
+    "end_future": 14,
     "begin_below_min_year": 258,
-    "end_below_min_year": 6_493,
+    "end_below_min_year": 6_526,
     "end_before_begin": 3,
     "birth_illegible": 8_962,
     "birth_future": 2,
+    "begin_ambiguous": 13_277,
 }
 NEUTRALISED_INFERENCES = {
-    "first_album_after_declared_end": 2_000,
+    "first_album_after_declared_end": 2_039,
     "last_album_before_declared_begin": 271,
     "first_album_with_begin_below_min_year": 73,
     "album_with_end_below_min_year": 235,
@@ -105,11 +107,11 @@ NEUTRALISED_INFERENCES = {
 # an output: accepting Demo and excluding Live are decisions these numbers
 # justify, and the README used to be their only home — where they drifted.
 # (release-groups both demo and studio, of which demo first, median years earlier)
-DEMO_BEFORE_STUDIO = (3_723, 2_297, 3.0)
+DEMO_BEFORE_STUDIO = (3_894, 2_402, 3.0)
 # Artists carrying a live release dated more than 20 years after their last studio
 # album: the reason a live date is not evidence of activity.
-LIVE_LONG_AFTER_LAST_STUDIO = 914
-BANDS_WITHOUT_ALBUM = 1_801_156
+LIVE_LONG_AFTER_LAST_STUDIO = 925
+BANDS_WITHOUT_ALBUM = 2_425_953
 WORK = work_dir(REFERENCE_DUMP)
 POPULARITY = popularity_snapshot(REFERENCE_POPULARITY)
 INFLUENCES = influences_snapshot(REFERENCE_INFLUENCES)

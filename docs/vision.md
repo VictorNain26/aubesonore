@@ -323,10 +323,9 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
    Deezer déclaré dans Wikidata en rattrape 3 (Tocotronic, Talulah Gosh, Romane Santarelli) ; les
    autres n'ont aucun lien vers Deezer dans MusicBrainz, ce qui se corrige à la source. 22 des 91
    titres gardés ne retrouvent ni leur passage ni leur titre exact chez Deezer.
-5. **Population incomplète** : musilogy n'extrait que les groupes, orchestres, chœurs et
-   personnes. Les 674 240 artistes sans type, 17 790 personnages et 6 584 « autres » du dump
-   manquent, dont 3 artistes joués (Buzz Kull, Office Dog, Supershy) et 16 080 des 16 177 voisins
-   absents de la co-écoute.
+5. **Relevés incomplets** : musilogy publie tous les types d'artistes, sauf les 12 artistes à
+   usage spécial (les 674 240 sans type, 17 790 personnages et 6 572 « autres » s'ajoutent), mais
+   le relevé de co-écoute du 2026-10-04 n'a interrogé que les groupes et les personnes.
 6. **Les featurings ne relient que l'artiste principal** (§4.4).
 7. **Licences à régulariser** : la similarité ListenBrainz à confirmer, le portrait et les
    pochettes Deezer (§2.5).
