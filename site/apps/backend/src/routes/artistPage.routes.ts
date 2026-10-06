@@ -109,8 +109,11 @@ async function handle(
   // decides which earn a slug (docs/vision.md §7, step 7.5).
   if (!profile.played) set.headers['x-robots-tag'] = 'noindex';
 
-  const pageUrl = `${env.FRONTEND_BASE_URL}${artistPagePath(locale, profile.slug)}`;
-  return renderArtistShell(html, profile, pageUrl, locale);
+  const pageUrls = {
+    fr: `${env.FRONTEND_BASE_URL}${artistPagePath('fr', profile.slug)}`,
+    en: `${env.FRONTEND_BASE_URL}${artistPagePath('en', profile.slug)}`,
+  };
+  return renderArtistShell(html, profile, pageUrls, locale);
 }
 
 type ResponseSet = HandlerContext['set'];
