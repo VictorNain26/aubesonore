@@ -63,7 +63,7 @@ describe('HomePage', () => {
   it('switches the page to English from the footer', async () => {
     renderWithProviders(<Root />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'en' }));
+    await userEvent.click(screen.getByRole('link', { name: 'en' }));
 
     expect(
       await screen.findByRole('heading', { name: /The first light of your next favourite songs\./ })

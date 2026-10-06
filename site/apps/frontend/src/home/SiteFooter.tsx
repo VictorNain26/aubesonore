@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { localizeHref } from '@/paraglide/runtime.js';
 import { cn } from '@/lib/utils';
 import { useLocaleStore } from '../stores/localeStore';
@@ -30,6 +30,8 @@ function useInstallPrompt(): (() => void) | null {
 
 export interface SiteFooterViewProps {
   locale: 'fr' | 'en';
+  /** This page in each language: a link crawlers follow, a new tab on a modified click. */
+  languageHrefs: Record<'fr' | 'en', string>;
   onLocaleChange: (locale: 'fr' | 'en') => void;
   onOpenAbout: () => void;
   onInstall: (() => void) | null;
@@ -37,6 +39,7 @@ export interface SiteFooterViewProps {
 
 export function SiteFooterView({
   locale,
+  languageHrefs,
   onLocaleChange,
   onOpenAbout,
   onInstall,
@@ -69,20 +72,33 @@ export function SiteFooterView({
           {(['fr', 'en'] as const).map((code, i) => (
             <span key={code} className="flex items-center gap-1">
               {i > 0 ? <span aria-hidden="true">/</span> : null}
-              <button
-                type="button"
+              <a
+                href={languageHrefs[code]}
+                hrefLang={code}
                 lang={code}
-                onClick={() => onLocaleChange(code)}
-                aria-pressed={locale === code}
+                onClick={(event) => {
+                  // A plain click swaps the language in place: the live stream keeps playing.
+                  if (
+                    event.button !== 0 ||
+                    event.metaKey ||
+                    event.ctrlKey ||
+                    event.shiftKey ||
+                    event.altKey
+                  )
+                    return;
+                  event.preventDefault();
+                  onLocaleChange(code);
+                }}
+                aria-current={locale === code ? 'true' : undefined}
                 className={cn(
-                  'ease-out-quart focus-visible:outline-accent min-h-11 min-w-11 rounded-sm uppercase focus-visible:outline-2 md:min-w-8',
+                  'ease-out-quart focus-visible:outline-accent inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm uppercase focus-visible:outline-2 md:min-w-8',
                   locale === code
                     ? 'font-bold'
                     : 'underline decoration-1 underline-offset-4 hover:decoration-2'
                 )}
               >
                 {code}
-              </button>
+              </a>
             </span>
           ))}
         </span>
@@ -94,6 +110,11 @@ export function SiteFooterView({
 export function SiteFooter() {
   const locale = useLocaleStore((s) => s.locale);
   const setLocale = useLocaleStore((s) => s.setLocale);
+  const { pathname, search } = useLocation();
+  const languageHrefs = {
+    fr: localizeHref(pathname + search, { locale: 'fr' }),
+    en: localizeHref(pathname + search, { locale: 'en' }),
+  };
   const onInstall = useInstallPrompt();
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [hasOpenedAbout, setHasOpenedAbout] = useState(false);
@@ -103,6 +124,7 @@ export function SiteFooter() {
     <>
       <SiteFooterView
         locale={locale}
+        languageHrefs={languageHrefs}
         onLocaleChange={setLocale}
         onOpenAbout={() => setIsAboutOpen(true)}
         onInstall={onInstall}
