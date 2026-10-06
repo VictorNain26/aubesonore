@@ -1,8 +1,10 @@
 # Robots policy for aubesonore.fr
-# Public webradio — open access for all crawlers, including AI/LLM agents
-# (GPTBot, ClaudeBot, PerplexityBot, OAI-SearchBot, ChatGPT-User,
-# Google-Extended, Applebot-Extended, etc.). The default Allow below applies
-# to every user-agent that respects robots.txt.
+# Search engines and the agents that search or answer for AI assistants
+# (OAI-SearchBot, ChatGPT-User, PerplexityBot, …) may read everything: the
+# Allow below applies to every user-agent that respects robots.txt.
+# Crawlers that collect AI training data (GPTBot, ClaudeBot, CCBot, …) are
+# turned away by Cloudflare's AI bot blocking before they read this file
+# (answered 403, checked 2026-10-06): the station is quoted, not trained on.
 
 User-agent: *
 Allow: /
