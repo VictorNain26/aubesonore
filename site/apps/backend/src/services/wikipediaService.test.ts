@@ -6,11 +6,13 @@ import disambiguation from './__fixtures__/wikipedia-summary-disambiguation.json
 import summaryEn from './__fixtures__/wikipedia-summary-en.json';
 import summaryFr from './__fixtures__/wikipedia-summary-fr.json';
 
-const { getSummary, firstSentences, wikipediaCache } = await import('./wikipediaService');
+const { getSummary, firstSentences, titlesCache, wikipediaCache } =
+  await import('./wikipediaService');
 
 afterEach(() => {
   spyOn(globalThis, 'fetch').mockRestore?.();
   wikipediaCache.dispose();
+  titlesCache.dispose();
 });
 
 function json(body: unknown, status = 200): Response {
@@ -75,6 +77,28 @@ describe('getSummary', () => {
     });
 
     expect(await getSummary('Q7919286', 'en')).toEqual({ status: 'none' });
+  });
+
+  it('asks Wikidata once for both languages, at once or one after the other', async () => {
+    const fetchSpy = serve({
+      [WIKIDATA]: sitelinksFrEn,
+      'https://fr.wikipedia.org/api/rest_v1/page/summary/Joshua_Tillman': summaryFr,
+      'https://en.wikipedia.org/api/rest_v1/page/summary/Father_John_Misty': summaryEn,
+    });
+    const wikidataCalls = () =>
+      fetchSpy.mock.calls.filter(([url]) => typeof url === 'string' && url.startsWith(WIKIDATA))
+        .length;
+
+    const [fr, en] = await Promise.all([
+      getSummary('Q6107266', 'fr'),
+      getSummary('Q6107266', 'en'),
+    ]);
+    expect([fr.status, en.status]).toEqual(['found', 'found']);
+    expect(wikidataCalls()).toBe(1);
+
+    wikipediaCache.dispose();
+    expect((await getSummary('Q6107266', 'en')).status).toBe('found');
+    expect(wikidataCalls()).toBe(1);
   });
 
   it('never caches a failure as "no article"', async () => {

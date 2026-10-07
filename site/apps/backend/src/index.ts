@@ -19,7 +19,7 @@ import { coversRoutes } from './routes/covers.routes';
 import { linksCache, itunesCache } from './services/trackLinksService';
 import { deezerCache } from './services/deezerService';
 import { musicbrainzCache } from './services/musicbrainzService';
-import { wikipediaCache } from './services/wikipediaService';
+import { titlesCache, wikipediaCache } from './services/wikipediaService';
 import { coreCache, identityCache, musilogyCache } from './services/musilogyService';
 import { radioHistoryCache } from './services/radioService';
 import { trendsCache } from './services/trendsService';
@@ -46,6 +46,7 @@ trendsCache.startSweep();
 deezerCache.startSweep();
 musicbrainzCache.startSweep();
 wikipediaCache.startSweep();
+titlesCache.startSweep();
 musilogyCache.startSweep();
 identityCache.startSweep();
 coreCache.startSweep();
@@ -146,6 +147,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
   deezerCache.dispose();
   musicbrainzCache.dispose();
   wikipediaCache.dispose();
+  titlesCache.dispose();
 
   try {
     await pool.end();

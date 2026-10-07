@@ -93,6 +93,14 @@ describe('getTrends', () => {
     expect(second.week[0]?.artistPage).toEqual({ slug: 'daft-punk', name: 'Daft Punk' });
   });
 
+  it('runs the two queries once for concurrent calls on a cold cache', async () => {
+    const [a, b, c] = await Promise.all([getTrends(), getTrends(), getTrends()]);
+
+    expect(selectCalls).toBe(2);
+    expect(b).toBe(a);
+    expect(c).toBe(a);
+  });
+
   it('re-queries after the cache entry is evicted', async () => {
     await getTrends();
     trendsCache.dispose();

@@ -2,6 +2,7 @@ import { count, desc, eq, gt, max } from 'drizzle-orm';
 import type { KeptArtistPage } from '@aubesonore/shared-types/client';
 import { db, schema } from '../db/index';
 import { TtlCache } from '../lib/cache/ttlCache';
+import { createSingleFlight } from '../lib/singleFlight';
 
 export interface TrendEntry {
   title: string;
@@ -23,6 +24,7 @@ const TOP_LIMIT = 10;
 const CACHE_KEY = 'trends';
 
 export const trendsCache = new TtlCache<TrendsResult>(FIVE_MINUTES_MS);
+const flight = createSingleFlight<TrendsResult>();
 
 async function topLikedTracks(since?: Date): Promise<TrendEntry[]> {
   let query = db
@@ -61,10 +63,11 @@ export async function getTrends(): Promise<TrendsResult> {
   const cached = trendsCache.get(CACHE_KEY);
   if (cached) return cached;
 
-  const sevenDaysAgo = new Date(Date.now() - WEEK_MS);
-  const [week, allTime] = await Promise.all([topLikedTracks(sevenDaysAgo), topLikedTracks()]);
-
-  const result: TrendsResult = { week, allTime };
-  trendsCache.set(CACHE_KEY, result);
-  return result;
+  return flight(CACHE_KEY, async () => {
+    const sevenDaysAgo = new Date(Date.now() - WEEK_MS);
+    const [week, allTime] = await Promise.all([topLikedTracks(sevenDaysAgo), topLikedTracks()]);
+    const result: TrendsResult = { week, allTime };
+    trendsCache.set(CACHE_KEY, result);
+    return result;
+  });
 }
