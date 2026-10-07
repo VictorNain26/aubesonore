@@ -27,6 +27,10 @@ CREATE OR REPLACE MACRO discogs_year(released) AS
 
 -- The only read of the 19 million JSON lines: every table below, coverage
 -- included, reads this one. A release out of the work keeps only its flag.
+-- Insertion order kept, these rows and the joins after them reached the 2 GB
+-- connect() allows, one build in two (2026-10-07); nothing in this file reads
+-- an order, and the publication sorts every table on its own key.
+SET preserve_insertion_order = false;
 CREATE OR REPLACE TABLE discogs_work AS
 SELECT in_work,
   CASE WHEN coalesce(master_id, 0) > 0 THEN master_id ELSE -id END AS record,
@@ -62,6 +66,19 @@ SELECT record, l.id AS label_id, l.name FROM (
 )
 WHERE NOT starts_with(l.name, 'Not On Label')
 GROUP BY ALL;
+
+CREATE OR REPLACE TABLE discogs_coverage AS
+SELECT
+  count(*) AS releases,
+  count(*) FILTER (WHERE NOT in_work) AS releases_out_of_work,
+  (SELECT count(*) FROM discogs_record_years) AS records,
+  (SELECT count(DISTINCT discogs_id) FROM discogs_related
+   WHERE discogs_id NOT IN (SELECT discogs_id FROM discogs_links)) AS discogs_ids_ambiguous,
+  (SELECT count(DISTINCT mbid) FROM discogs_links) AS artists_linked
+FROM discogs_work;
+
+-- discogs_work held 1.8 GB of the buffer: what follows reads the record tables.
+DROP TABLE discogs_work;
 
 -- The bridge every artist-side table reads: an MBID's records, through its
 -- Discogs artists.
@@ -125,12 +142,4 @@ SELECT count(*) AS first_record_before_formation FROM (
 ) f JOIN artists a ON a.mbid = f.mbid
 WHERE f.y < a.y0_declared - 1;
 
-CREATE OR REPLACE TABLE discogs_coverage AS
-SELECT
-  count(*) AS releases,
-  count(*) FILTER (WHERE NOT in_work) AS releases_out_of_work,
-  (SELECT count(*) FROM discogs_record_years) AS records,
-  (SELECT count(DISTINCT discogs_id) FROM discogs_related
-   WHERE discogs_id NOT IN (SELECT discogs_id FROM discogs_links)) AS discogs_ids_ambiguous,
-  (SELECT count(DISTINCT mbid) FROM discogs_links) AS artists_linked
-FROM discogs_work;
+RESET preserve_insertion_order;
