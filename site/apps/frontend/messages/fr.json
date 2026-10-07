@@ -195,11 +195,8 @@
   "musilogy_search_label": "Chercher un artiste",
   "musilogy_search_placeholder": "Un artiste ou un groupe",
   "musilogy_search_empty": "Aucun artiste de ce nom.",
-  "musilogy_neighbours_note": "Ceux qu'écoutent les mêmes auditeurs, placés selon leurs débuts.",
+  "musilogy_neighbours_note": "Ce qu'écoutent aussi ses auditeurs, par décennie de leurs débuts. En gras, les plus proches ; en relief, les années de {name}.",
   "musilogy_close_title": "Artistes proches",
-  "musilogy_before_title": "Avant",
-  "musilogy_during_title": "En même temps",
-  "musilogy_after_title": "Après",
   "musilogy_influences_title": "Influences",
   "musilogy_cites": "Ses influences",
   "musilogy_cited_by": "A inspiré",
@@ -248,5 +245,10 @@
   "musilogy_search_hint": "Tapez au moins deux lettres d'un nom.",
   "musilogy_col_artist": "Artiste",
   "musilogy_col_kind": "Type",
-  "musilogy_col_start": "Débuts"
+  "musilogy_col_start": "Débuts",
+  "musilogy_mark_influence": "l'a influencé",
+  "musilogy_mark_inspired": "s'en est inspiré",
+  "musilogy_decade": "Années {decade}",
+  "musilogy_closest_hint": "parmi les plus proches",
+  "musilogy_neighbours_note_undated": "Ce qu'écoutent aussi ses auditeurs, par décennie de leurs débuts. En gras, les plus proches."
 }

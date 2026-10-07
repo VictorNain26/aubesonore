@@ -17,7 +17,7 @@ import { ARTIST_LINK, TEXT_ACTION } from '../home/styles';
 import { cn } from '@/lib/utils';
 import { DISCOVERY } from '../lib/discoveryTrail';
 import { pagePathOf } from '../lib/musilogy';
-import { MusilogyMap } from './MusilogyMap';
+import { closestOf, MusilogyMap } from './MusilogyMap';
 
 // A list shows its closest first; the rest opens on demand.
 const FIRST_SHOWN = 12;
@@ -192,21 +192,8 @@ function bandCount({ bands, memberProjects, otherNames }: MusilogyArtist): numbe
   );
 }
 
-/** The close artists Musilogy holds, by when they started against the artist. */
-function closeOf({ neighbours }: MusilogyArtist) {
-  return neighbours
-    ? (
-        [
-          [m.musilogy_before_title(), neighbours.before],
-          [m.musilogy_during_title(), neighbours.during],
-          [m.musilogy_after_title(), neighbours.after],
-          [m.musilogy_undated_title(), neighbours.undated],
-        ] as const
-      ).filter(([, list]) => list.length > 0)
-    : [];
-}
-
-function citedOf({ influences }: MusilogyArtist) {
+/** The influences declared either way, for an artist the map cannot show: the artist's own first. */
+function influencesOf({ influences }: MusilogyArtist) {
   return influences
     ? (
         [
@@ -217,19 +204,66 @@ function citedOf({ influences }: MusilogyArtist) {
     : [];
 }
 
+/** Names on wrapping lines, each a link: the closest first, the rest on demand. */
+function InlineNames({ artists }: { artists: readonly MusilogyArtistRef[] }) {
+  const [open, setOpen] = useState(false);
+  const shown = open ? artists : artists.slice(0, FIRST_SHOWN);
+  return (
+    <ul className="m-0 flex list-none flex-wrap items-center gap-x-6 p-0">
+      {shown.map((artist) => (
+        <li
+          key={artist.mbid}
+          className="reveal inline-flex min-h-11 items-center focus-within:animate-none"
+        >
+          <Link
+            to={pagePathOf(artist)}
+            state={DISCOVERY}
+            className={cn(ARTIST_LINK, 'text-ui underline-offset-4')}
+          >
+            {artist.name}
+          </Link>
+        </li>
+      ))}
+      {artists.length > shown.length ? (
+        <li className="inline-flex">
+          <button type="button" onClick={() => setOpen(true)} className={TEXT_ACTION}>
+            {m.musilogy_show_more({ count: String(artists.length - shown.length) })}
+          </button>
+        </li>
+      ) : null}
+    </ul>
+  );
+}
+
+function Influences({ lines }: { lines: ReturnType<typeof influencesOf> }) {
+  return (
+    <div className="flex flex-col gap-4">
+      {lines.map(([label, list]) => (
+        <SubList key={label} label={label}>
+          <InlineNames artists={list} />
+        </SubList>
+      ))}
+    </div>
+  );
+}
+
 /** The sections MusilogySections shows, for the page's anchors (PageNav). */
 export function musilogyNav(artist: MusilogyArtist): PageNavItem[] {
+  const close = closestOf(artist).length > 0;
   return [
-    closeOf(artist).length > 0 ? { id: 'close', label: m.musilogy_close_title() } : null,
-    citedOf(artist).length > 0 ? { id: 'influences', label: m.musilogy_influences_title() } : null,
+    close ? { id: 'close', label: m.musilogy_close_title() } : null,
+    !close && influencesOf(artist).length > 0
+      ? { id: 'influences', label: m.musilogy_influences_title() }
+      : null,
     bandCount(artist) > 0 ? { id: 'bands', label: m.musilogy_links_title() } : null,
   ].filter((item) => item !== null);
 }
 
 /**
- * Where to go next from an artist, one section per thing Musilogy holds: the close artists (the
- * map, then before, alongside, after), the influences, the bands and their projects. A section
- * with nothing in it is left out: no « nothing yet » under a title.
+ * Where to go next from an artist: its close artists in time, the whole width of the page, the
+ * influences among them marked; the influences alone for an artist without close artists; then
+ * the bands and their projects. A section with nothing in it is left out: no « nothing yet »
+ * under a title.
  */
 export function MusilogySections({
   artist,
@@ -238,36 +272,26 @@ export function MusilogySections({
   artist: MusilogyArtist;
   thisYear: number;
 }) {
-  const close = closeOf(artist);
-  const cited = citedOf(artist);
+  const close = closestOf(artist).length > 0;
+  const influences = influencesOf(artist);
   return (
     <>
-      {close.length > 0 ? (
+      {close ? (
         <Section
           id="close"
           title={m.musilogy_close_title()}
-          body={m.musilogy_neighbours_note()}
-          sticky
+          body={
+            artist.card.y0 === null
+              ? m.musilogy_neighbours_note_undated()
+              : m.musilogy_neighbours_note({ name: artist.card.name })
+          }
+          full
         >
-          <div className="flex flex-col gap-10">
-            <MusilogyMap artist={artist} thisYear={thisYear} />
-            {close.map(([label, list]) => (
-              <SubList key={label} label={label}>
-                <ArtistList artists={list} />
-              </SubList>
-            ))}
-          </div>
+          <MusilogyMap artist={artist} thisYear={thisYear} />
         </Section>
-      ) : null}
-      {cited.length > 0 ? (
+      ) : influences.length > 0 ? (
         <Section id="influences" title={m.musilogy_influences_title()} sticky>
-          <div className="flex flex-col gap-8">
-            {cited.map(([label, list]) => (
-              <SubList key={label} label={label}>
-                <ArtistList artists={list} />
-              </SubList>
-            ))}
-          </div>
+          <Influences lines={influences} />
         </Section>
       ) : null}
       {bandCount(artist) > 0 ? (
@@ -294,7 +318,12 @@ const HIT_COLUMNS =
 function SearchHitRow({ hit }: { hit: MusilogySearchHit }) {
   const kind = hit.kind ? KIND_LABELS[hit.kind]() : null;
   return (
-    <li className={cn(HIT_COLUMNS, 'border-border relative min-h-18 border-b py-2.5')}>
+    <li
+      className={cn(
+        HIT_COLUMNS,
+        'border-border reveal relative min-h-18 border-b py-2.5 focus-within:animate-none'
+      )}
+    >
       <span className="flex min-w-0 flex-col gap-0.5">
         <Link
           to={pagePathOf({ ...hit, played: null })}

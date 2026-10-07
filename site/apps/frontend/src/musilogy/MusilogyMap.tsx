@@ -1,180 +1,276 @@
-import { useEffect, useRef } from 'react';
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
-import type { MusilogyArtist, MusilogyNeighbour } from '@aubesonore/shared-types/client';
+import type {
+  MusilogyArtist,
+  MusilogyCard,
+  MusilogyNeighbour,
+} from '@aubesonore/shared-types/client';
+import * as m from '@/paraglide/messages.js';
+import { cn } from '@/lib/utils';
+import { ARTIST_LINK } from '../home/styles';
 import { DISCOVERY } from '../lib/discoveryTrail';
 import { pagePathOf } from '../lib/musilogy';
 
-// Drawing units of the viewBox; the SVG scales to its column.
-const WIDTH = 960;
-const PAD = 24;
-const ROW = 26;
-const ROWS = 6;
-// The closest neighbours only: the lists below hold every one.
-const SHOWN = 40;
-// Labels are set in the monospaced face at FONT units, so their width is
-// known: Geist Mono's advance is 0.6 em.
-const FONT = 12;
-const CHAR = FONT * 0.6;
+// A decade's column holds this many names; a fuller decade gets more columns, and more width.
+const PER_COLUMN = 20;
 
-export interface PlacedNeighbour {
-  neighbour: MusilogyNeighbour;
-  x: number;
-  y: number;
-  anchor: 'start' | 'end';
+/** What Wikidata adds about a neighbour: the artist cites it, or it cites the artist. */
+export type Mark = 'influence' | 'inspired';
+
+/** How close: the ten closest, the next twenty, the rest. */
+export type Tier = 1 | 2 | 3;
+
+export interface Close {
+  artist: MusilogyNeighbour;
+  mark: Mark | null;
+  tier: Tier;
 }
 
-export interface MapLayout {
-  height: number;
-  axisY: number;
-  ticks: Array<{ year: number; x: number }>;
-  center: { x0: number; x1: number; labelX: number; anchor: 'start' | 'end' };
-  placed: PlacedNeighbour[];
-}
+const MARK_LABELS: Record<Mark, () => string> = {
+  influence: () => m.musilogy_mark_influence(),
+  inspired: () => m.musilogy_mark_inspired(),
+};
 
-/**
- * Where everything sits: time runs left to right, the artist spans its years
- * on the axis, each close neighbour stands at the year it started, the
- * closest on the rows nearest the axis. A neighbour whose label finds no free
- * row is left to the lists. Null without a start year to place the artist.
- */
-export function layoutMap(artist: MusilogyArtist, thisYear: number): MapLayout | null {
-  const { card, neighbours } = artist;
-  if (card.y0 === null || neighbours === null) return null;
+// Closeness reads in steps of weight and ink, never in type size, which reads as fame.
+const TIER_CLASSES: Record<Tier, string> = {
+  1: 'text-text font-bold',
+  2: 'text-text font-normal',
+  3: 'text-text-muted font-normal',
+};
 
-  const close = [...neighbours.before, ...neighbours.during, ...neighbours.after]
-    .filter((n): n is MusilogyNeighbour & { y0: number } => n.y0 !== null)
+/** Every neighbour, the closest first, marked when it is also a declared influence. */
+export function closestOf({ neighbours, influences }: MusilogyArtist): Close[] {
+  if (!neighbours) return [];
+  const cites = new Set(influences?.cites.map((influence) => influence.mbid));
+  const citedBy = new Set(influences?.citedBy.map((influence) => influence.mbid));
+  return [...neighbours.before, ...neighbours.during, ...neighbours.after, ...neighbours.undated]
     .sort((a, b) => b.score - a.score)
-    .slice(0, SHOWN);
-  if (close.length === 0) return null;
+    .map((artist, rank) => ({
+      artist,
+      mark: cites.has(artist.mbid) ? 'influence' : citedBy.has(artist.mbid) ? 'inspired' : null,
+      tier: rank < 10 ? 1 : rank < 30 ? 2 : 3,
+    }));
+}
 
-  const end = card.yEnd ?? (card.ended ? card.y0 : thisYear);
-  const years = [card.y0, end, ...close.map((n) => n.y0)];
-  const from = Math.floor((Math.min(...years) - 2) / 10) * 10;
-  const to = Math.ceil((Math.max(...years) + 2) / 10) * 10;
-  const x = (year: number) => PAD + ((year - from) / (to - from)) * (WIDTH - 2 * PAD);
+export interface Decade {
+  /** Its first year: 1990 for the 1990s. */
+  decade: number;
+  /** The neighbours who started in it, by year, the closest first within a year. */
+  close: Close[];
+  /** Whether the artist was active in it. */
+  own: boolean;
+  /** Columns its names take where the decades stand side by side. */
+  columns: number;
+}
 
-  const axisY = PAD + ROWS * ROW;
-  // A label starts 8 units past its point, or ends 8 units before it near the right edge.
-  const label = (at: number, name: string) => {
-    const width = name.length * CHAR + 16;
-    const anchor: 'start' | 'end' = at + width > WIDTH - PAD ? 'end' : 'start';
-    const span: [number, number] = anchor === 'start' ? [at, at + width] : [at - width, at];
-    return { anchor, span };
-  };
-
-  // The artist's own name ends its span, on the axis row that no neighbour takes.
-  const x0 = x(card.y0);
-  const x1 = Math.max(x(end), x0 + 4);
-  const own = label(x1, card.name);
-
-  const order = Array.from({ length: ROWS }, (_, i) => [i + 1, -(i + 1)]).flat();
-  const taken = new Map<number, Array<[number, number]>>();
-  const placed: PlacedNeighbour[] = [];
-  for (const neighbour of close) {
-    const at = x(neighbour.y0);
-    const { anchor, span } = label(at, neighbour.name);
-    const row = order.find((r) =>
-      (taken.get(r) ?? []).every(([a, b]) => span[1] < a || span[0] > b)
-    );
-    if (row === undefined) continue;
-    taken.set(row, [...(taken.get(row) ?? []), span]);
-    placed.push({ neighbour, x: at, y: axisY + row * ROW, anchor });
-  }
-
-  const ticks = [];
-  for (let year = from; year <= to; year += 10) ticks.push({ year, x: x(year) });
-
-  return {
-    height: axisY * 2 + PAD,
-    axisY,
-    ticks,
-    center: { x0, x1, labelX: own.anchor === 'start' ? x1 + 8 : x0 - 8, anchor: own.anchor },
-    placed,
-  };
+export interface Decades {
+  decades: Decade[];
+  /** Neighbours whose start is unknown, the closest first. */
+  undated: Close[];
 }
 
 /**
- * The map of an artist's neighbourhood in time. It repeats the lists below,
- * which are what screen readers read: the drawing is hidden from them.
+ * The neighbours by the decade they started in, each decade a little chronology; the decades with
+ * a neighbour, and the one the artist started in, where its name stands.
+ */
+export function byDecade(artist: MusilogyArtist, thisYear: number): Decades {
+  const all = closestOf(artist);
+  const { card } = artist;
+  const decadeOf = (year: number) => Math.floor(year / 10) * 10;
+  const own = new Set<number>();
+  if (card.y0 !== null) {
+    const end = card.ended ? (card.yEnd ?? card.y0) : thisYear;
+    for (let decade = decadeOf(card.y0); decade <= decadeOf(end); decade += 10) own.add(decade);
+  }
+  const groups = new Map<number, Close[]>();
+  for (const close of all) {
+    if (close.artist.y0 === null) continue;
+    const decade = decadeOf(close.artist.y0);
+    groups.set(decade, [...(groups.get(decade) ?? []), close]);
+  }
+  for (const close of groups.values()) {
+    // Stable: within a year, the closest stays first.
+    close.sort((a, b) => (a.artist.y0 as number) - (b.artist.y0 as number));
+  }
+  const first = card.y0 === null ? null : decadeOf(card.y0);
+  // An active decade with no neighbour would be an empty column, but the first holds the name.
+  const shown = [...own].filter((decade) => decade === first || groups.has(decade));
+  const decades = [...new Set([...groups.keys(), ...shown])]
+    .sort((a, b) => a - b)
+    .map((decade) => {
+      const close = groups.get(decade) ?? [];
+      return {
+        decade,
+        close,
+        own: own.has(decade),
+        columns: Math.max(1, Math.ceil(close.length / PER_COLUMN)),
+      };
+    });
+  return { decades, undated: all.filter((close) => close.artist.y0 === null) };
+}
+
+/** A neighbour's name, a link to its page; `quiet`, underlined only when pointed at or focused. */
+function NameLink({ close, quiet = false }: { close: Close; quiet?: boolean }) {
+  return (
+    <Link
+      to={pagePathOf(close.artist)}
+      state={DISCOVERY}
+      className={cn(
+        ARTIST_LINK,
+        'underline-offset-4',
+        // A hundred underlines side by side read as noise; a pointer finds the links on its own.
+        quiet && 'no-underline hover:underline focus-visible:underline',
+        TIER_CLASSES[close.tier]
+      )}
+    >
+      {close.artist.name}
+      {close.artist.y0 === null ? null : <span className="sr-only">, {close.artist.y0}</span>}
+      {close.tier === 1 ? <span className="sr-only">, {m.musilogy_closest_hint()}</span> : null}
+    </Link>
+  );
+}
+
+/** The artist itself, where it stands among its neighbours. */
+function Own({ card }: { card: MusilogyCard }) {
+  return (
+    <p className="text-ui m-0 flex items-baseline gap-2 font-semibold">
+      <span aria-hidden="true" className="bg-accent size-2 shrink-0 self-center rounded-full" />
+      {card.name}
+      {card.y0 === null ? null : (
+        <span className="text-text-muted font-mono font-normal tabular-nums">{card.y0}</span>
+      )}
+    </p>
+  );
+}
+
+/** Side by side where the container is 60rem wide or more: time runs left to right. */
+function Columns({ card, decades }: { card: MusilogyCard; decades: Decade[] }) {
+  const firstOwn = decades.find((decade) => decade.own)?.decade;
+  const template: CSSProperties = {
+    gridTemplateColumns: decades.map((decade) => `minmax(0, ${decade.columns}fr)`).join(' '),
+  };
+  return (
+    <div className="grid gap-x-1" style={template}>
+      {decades.map((decade) => (
+        <section
+          key={decade.decade}
+          aria-label={m.musilogy_decade({ decade: String(decade.decade) })}
+          className={cn(
+            'border-text-muted flex min-w-0 flex-col gap-3 border-t px-3 pt-2 pb-4',
+            decade.own && 'bg-surface-raised border-accent rounded-b-sm border-t-2'
+          )}
+        >
+          <h3 className="text-label text-text-muted m-0 font-mono font-normal">{decade.decade}</h3>
+          {decade.decade === firstOwn ? <Own card={card} /> : null}
+          {decade.close.length > 0 ? (
+            <ol
+              className="text-ui m-0 list-none gap-x-4 p-0"
+              style={{ columnCount: decade.columns }}
+            >
+              {decade.close.map((close) => (
+                <li
+                  key={close.artist.mbid}
+                  className="reveal-early grid break-inside-avoid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-2 py-1 leading-snug"
+                >
+                  <span aria-hidden="true" className="text-caption text-text-muted font-mono">
+                    {close.artist.y0}
+                  </span>
+                  <span className="min-w-0">
+                    <NameLink close={close} quiet />
+                    {close.mark ? (
+                      <span className="text-caption text-text-muted block">
+                        {MARK_LABELS[close.mark]()}
+                      </span>
+                    ) : null}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          ) : null}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+/** One decade under the other for a narrower container, its names running on as text. */
+function Stacked({ card, decades }: { card: MusilogyCard; decades: Decade[] }) {
+  const firstOwn = decades.find((decade) => decade.own)?.decade;
+  return (
+    <div className="flex flex-col">
+      {decades.map((decade) => (
+        <section
+          key={decade.decade}
+          aria-label={m.musilogy_decade({ decade: String(decade.decade) })}
+          className={cn(
+            'border-border flex flex-col gap-2 border-t py-4',
+            decade.own && 'bg-surface-raised border-accent -mx-3 border-t-2 px-3'
+          )}
+        >
+          <h3 className="text-label text-text-muted m-0 font-mono font-normal">{decade.decade}</h3>
+          {decade.decade === firstOwn ? <Own card={card} /> : null}
+          {decade.close.length > 0 ? (
+            <ol className="text-ui m-0 flex list-none flex-wrap gap-x-1 gap-y-2 p-0 leading-snug">
+              {decade.close.map((close, i) => (
+                <li key={close.artist.mbid} className="reveal-early">
+                  <NameLink close={close} />
+                  <span aria-hidden="true" className="text-caption text-text-muted font-mono">
+                    {' '}
+                    {close.artist.y0}
+                  </span>
+                  {close.mark ? (
+                    <span className="text-text-muted"> ({MARK_LABELS[close.mark]()})</span>
+                  ) : null}
+                  {i < decade.close.length - 1 ? (
+                    <span aria-hidden="true" className="text-text-muted">
+                      {' '}
+                      ·
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ol>
+          ) : null}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Every close neighbour of the artist, by the decade it started in: the decades side by side
+ * where the container is wide, one under the other where it is not, the artist's own decades
+ * marked; in each, the closest first and in bold. Those whose start is unknown close the section.
  */
 export function MusilogyMap({ artist, thisYear }: { artist: MusilogyArtist; thisYear: number }) {
-  const layout = layoutMap(artist, thisYear);
-  const scroller = useRef<HTMLDivElement>(null);
-  const centerAt = layout ? layout.center.x0 / WIDTH : 0;
-
-  // On a narrow screen the map scrolls sideways: open it on the artist, not on its first decade.
-  useEffect(() => {
-    const el = scroller.current;
-    if (el) el.scrollLeft = Math.max(0, centerAt * el.scrollWidth - el.clientWidth / 3);
-  }, [centerAt]);
-
-  if (!layout) return null;
-  const { height, axisY, ticks, center, placed } = layout;
+  const { decades, undated } = byDecade(artist, thisYear);
+  if (decades.every((decade) => decade.close.length === 0) && undated.length === 0) return null;
 
   return (
-    <div ref={scroller} className="reveal overflow-x-auto">
-      <svg
-        viewBox={`0 0 ${WIDTH} ${height}`}
-        aria-hidden="true"
-        fontSize={FONT}
-        className="w-full min-w-240 font-mono"
-      >
-        {ticks.map((tick) => (
-          <g key={tick.year} className="text-border">
-            <line x1={tick.x} x2={tick.x} y1={PAD} y2={height - PAD} stroke="currentColor" />
-            <text
-              x={tick.x}
-              y={height - 6}
-              textAnchor="middle"
-              className="text-text-muted"
-              fill="currentColor"
-            >
-              {tick.year}
-            </text>
-          </g>
-        ))}
-
-        {placed.map(({ neighbour, x, y, anchor }) => (
-          <Link
-            key={neighbour.mbid}
-            to={pagePathOf(neighbour)}
-            state={DISCOVERY}
-            tabIndex={-1}
-            className="ease-out-quart transition-opacity duration-150 hover:opacity-60"
-          >
-            <line x1={x} x2={x} y1={y} y2={axisY} stroke="currentColor" className="text-border" />
-            <circle cx={x} cy={y} r={4} fill="currentColor" className="text-text-muted" />
-            <text
-              x={anchor === 'start' ? x + 8 : x - 8}
-              y={y + 4}
-              textAnchor={anchor}
-              fill="currentColor"
-              className={neighbour.played ? 'text-text font-semibold' : 'text-text'}
-            >
-              {neighbour.name}
-            </text>
-          </Link>
-        ))}
-
-        <rect
-          x={center.x0}
-          y={axisY - 4}
-          width={center.x1 - center.x0}
-          height={8}
-          rx={4}
-          fill="currentColor"
-          className="text-accent"
-        />
-        <text
-          x={center.labelX}
-          y={axisY + 4}
-          textAnchor={center.anchor}
-          fill="currentColor"
-          className="text-text font-semibold"
+    <div className="@container flex flex-col gap-6">
+      <div className="hidden @min-[60rem]:block">
+        <Columns card={artist.card} decades={decades} />
+      </div>
+      <div className="@min-[60rem]:hidden">
+        <Stacked card={artist.card} decades={decades} />
+      </div>
+      {undated.length > 0 ? (
+        <section
+          aria-label={m.musilogy_undated_title()}
+          className="text-ui flex flex-wrap items-baseline gap-x-4 gap-y-2"
         >
-          {artist.card.name}
-        </text>
-      </svg>
+          <h3 className="text-label text-text-muted m-0 font-mono font-normal">
+            {m.musilogy_undated_title()}
+          </h3>
+          <ol className="m-0 flex list-none flex-wrap gap-x-4 gap-y-2 p-0">
+            {undated.map((close) => (
+              <li key={close.artist.mbid} className="reveal-early">
+                <NameLink close={close} quiet />
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
     </div>
   );
 }

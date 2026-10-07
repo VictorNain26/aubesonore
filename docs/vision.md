@@ -113,12 +113,13 @@ rendent impossibles sur les 2,98 millions d'artistes. Il ne choisit pas ce qu'un
 
 ### 2.3 La carte et le texte
 
-- **La carte, seule à l'écran** : le temps de gauche à droite, l'artiste au centre sur ses années
-  d'activité, ses proches posés à leur année de début, d'autant plus près qu'ils sont proches. Un
-  sélecteur passe de « Même son » (environ huit artistes, les influences marquées) à « Même label »
-  (les artistes regroupés par label). Un artiste sans année de début a sa rangée au bord. Un clic
-  recentre. Elle remplace les listes « avant, pendant, après » et la rubrique des influences : plus
-  visuelle et plus courte.
+- **La carte, seule à l'écran** : le temps de gauche à droite, par décennie, l'artiste sur ses
+  décennies d'activité, tous ses proches rangés à la décennie de leurs débuts, les plus proches en
+  tête et en gras (2026-10-07 : quarante noms posés sur une frise ne se lisaient plus, cent en
+  colonnes se lisent). Un sélecteur passe de « Même son » (les influences marquées) à « Même
+  label » (les artistes regroupés par label). Les proches sans année de début ferment la section.
+  Un clic mène à la page de l'artiste. Elle remplace les listes « avant, pendant, après » et la
+  rubrique des influences : plus visuelle et plus courte.
 - **Lisible sans la voir** : chaque nom de la carte est un lien textuel, que lisent les lecteurs
   d'écran et les moteurs de recherche.
 - **Indexée quand elle est riche** : une page est proposée aux moteurs de recherche au-delà d'un
@@ -136,10 +137,12 @@ rendent impossibles sur les 2,98 millions d'artistes. Il ne choisit pas ce qu'un
 
 Un ordre de départ, chaque section seulement quand elle a quelque chose à montrer :
 
-1. **Qui** : le portrait, le nom, une ligne de faits, une ligne de genres (les styles Discogs par
-   époque, sinon les genres MusicBrainz), l'ouverture de Wikipédia ou, sans article, les faits dits
-   en une phrase.
-2. **Écouter ailleurs** : Deezer, Spotify, Bandcamp, site officiel…
+1. **Qui** : le portrait, une ligne de faits au-dessus du nom, le nom, une ligne de genres dessous
+   (les styles Discogs par époque, sinon les genres MusicBrainz), l'ouverture de Wikipédia ou, sans
+   article, les faits dits en une phrase ; puis où l'écouter ailleurs (Deezer, Spotify, Bandcamp,
+   site officiel…), un bouton par plateforme.
+2. **Vos titres gardés**, pour un auditeur connecté qui en a gardé, chacun avec l'album d'où il
+   vient : ce que la page a de plus personnel, juste sous le haut de page.
 3. **Albums et EP**, avec pochette et année, du plus récent au plus ancien : ce que l'artiste a
    voulu sortir. Les albums (studio, bandes originales qu'il a composées, remix) et les EP ; pas
    les singles, compilations, lives, démos ni bootlegs, qui noient l'œuvre dans le catalogue. Une
@@ -147,8 +150,7 @@ Un ordre de départ, chaque section seulement quand elle a quelque chose à mont
    musilogy (`musilogy/README.md`, `22_releases`), mesurée sur les artistes joués : elle s'ajuste
    quand un cas réel la contredit. Le 2026-10-05, Protomartyr, Bloc Party ou Can gardent leur
    discographie entière, les Beatles s'arrêtent en 1970.
-4. **Vos titres gardés**, pour un auditeur connecté qui en a gardé.
-5. **Où aller ensuite** : la carte (§2.3), « Même son » ou « Même label », chaque artiste avec sa
+4. **Où aller ensuite** : la carte (§2.3), « Même son » ou « Même label », chaque artiste avec sa
    raison et sa place dans le temps ; puis les groupes et projets en trois rubriques plutôt que
    les douze types de relation de MusicBrainz :
    - **Membres** d'un groupe, ou **Groupes** d'une personne, avec leurs années ;
