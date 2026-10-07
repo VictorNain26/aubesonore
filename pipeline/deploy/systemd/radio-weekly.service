@@ -12,6 +12,11 @@ EnvironmentFile=%h/aubesonore/pipeline/.env
 Nice=19
 CPUWeight=20
 IOSchedulingClass=idle
+# Pic mesuré : 2,9 Go (passe du 2026-10-01). Au-delà de MemoryHigh la passe est ralentie,
+# quitte à passer en swap ; MemoryMax est la dernière ligne de défense et l'arrête
+# (systemd.resource-control(5)).
+MemoryHigh=3584M
+MemoryMax=4608M
 TimeoutStartSec=12h
 # Config Sockseek (mot de passe Soulseek) sur tmpfs, sous $XDG_RUNTIME_DIR ; exportée en
 # $RUNTIME_DIRECTORY et supprimée à l'arrêt de l'unité, même tuée au délai (systemd.exec(5)).

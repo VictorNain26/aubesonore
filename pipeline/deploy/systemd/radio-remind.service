@@ -9,4 +9,5 @@ After=radio-weekly.service
 [Service]
 Type=oneshot
 WorkingDirectory=%h/aubesonore/pipeline
+Nice=19
 ExecStart=%h/aubesonore/pipeline/.venv/bin/radio votes-remind
