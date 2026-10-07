@@ -14,6 +14,12 @@ const MAX_LENGTH = 300;
 export const wikipediaCache = new TtlCache<ArtistSummary | null>(TTL_MS);
 const flight = createSingleFlight<ArtistSummary | null | 'failed'>();
 
+type Titles = Record<SiteLocale, string | undefined>;
+// The item's articles, asked once for both languages: a played artist's refresh opens both at
+// once, and a crawler walks /artiste/… then /en/artist/…, a Wikidata request (~250 ms) each.
+export const titlesCache = new TtlCache<Titles>(TTL_MS);
+const titlesFlight = createSingleFlight<Titles>();
+
 // Wikimedia blocks scripts without a contact in their User-Agent.
 // https://foundation.wikimedia.org/wiki/Policy:Wikimedia_Foundation_User-Agent_Policy
 async function getJson<T>(url: string): Promise<T> {
@@ -25,15 +31,21 @@ async function getJson<T>(url: string): Promise<T> {
   return (await response.json()) as T;
 }
 
-async function articleTitles(wikidataId: string): Promise<Record<SiteLocale, string | undefined>> {
-  const body = await getJson<{
-    entities?: Record<string, { sitelinks?: Record<string, { title?: string }> }>;
-  }>(
-    `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${wikidataId}` +
-      '&props=sitelinks&sitefilter=frwiki|enwiki&format=json'
-  );
-  const sitelinks = body.entities?.[wikidataId]?.sitelinks ?? {};
-  return { fr: sitelinks.frwiki?.title, en: sitelinks.enwiki?.title };
+async function articleTitles(wikidataId: string): Promise<Titles> {
+  const cached = titlesCache.get(wikidataId);
+  if (cached) return cached;
+  return titlesFlight(wikidataId, async () => {
+    const body = await getJson<{
+      entities?: Record<string, { sitelinks?: Record<string, { title?: string }> }>;
+    }>(
+      `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${wikidataId}` +
+        '&props=sitelinks&sitefilter=frwiki|enwiki&format=json'
+    );
+    const sitelinks = body.entities?.[wikidataId]?.sitelinks ?? {};
+    const titles = { fr: sitelinks.frwiki?.title, en: sitelinks.enwiki?.title };
+    titlesCache.set(wikidataId, titles);
+    return titles;
+  });
 }
 
 // An initial ("J. Tillman") or a short title ("Dr. Dre", "Mr. Oizo", "St.
