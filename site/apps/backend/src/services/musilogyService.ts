@@ -437,10 +437,8 @@ function firstCoverOf(releases: ReleaseRow[]): string | null {
       (best, r) => (r.y !== null && (best?.y == null || r.y < best.y) ? r : best),
       undefined
     );
-  const first =
-    earliest(releases.filter((r) => r.primary_type === 'Album')) ??
-    earliest(releases) ??
-    releases[0];
+  const albums = releases.filter((r) => r.primary_type === 'Album');
+  const first = earliest(albums) ?? albums[0] ?? earliest(releases) ?? releases[0];
   return first ? coverArtUrl(first.mbid, 500) : null;
 }
 

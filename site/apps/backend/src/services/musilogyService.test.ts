@@ -134,6 +134,14 @@ describe('getArtistIdentity', () => {
     expect((await getArtistIdentity(DAFT_PUNK))?.firstCover).toBeNull();
   });
 
+  it('prefers an undated album to a dated EP', async () => {
+    const undated = { ...releases[1]!, y: null };
+    answers.artist_releases = [releases[2]!, undated];
+    expect((await getArtistIdentity(DAFT_PUNK))?.firstCover).toBe(
+      `https://coverartarchive.org/release-group/${HOMEWORK}/front-500`
+    );
+  });
+
   it('never reads a birth as a career for a person', async () => {
     answers.artist_card = [
       card({ type: 'Person', begin_area: 'Reykjavík', country: 'IS', y0: 1977, ended: false }),
