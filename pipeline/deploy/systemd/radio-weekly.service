@@ -40,4 +40,7 @@ ExecStart=-%h/aubesonore/pipeline/.venv/bin/radio grille --aujourdhui
 ExecStart=%h/aubesonore/pipeline/.venv/bin/radio check
 # Battement de cœur vers Gatus, même en échec : $SERVICE_RESULT vaut « success » ou la cause
 # (systemd.exec(5), « Environment Variables Set or Propagated by the Service Manager »).
-ExecStopPost=/bin/sh -c 'curl -fsS -m 10 -X POST -H "Authorization: Bearer $GATUS_TOKEN" "http://127.0.0.1:8050/api/v1/endpoints/radio_passe-hebdo/external?success=$([ "$SERVICE_RESULT" = success ] && echo true || echo false)&error=$SERVICE_RESULT"'
+# Préfixé de « - » (systemd.service(5), « Command lines ») : un Gatus injoignable ou qui
+# répond 404 ne fait pas échouer une passe réussie (radio-grille, 2026-10-02) ; le battement
+# manqué déclenche quand même l'alerte de silence.
+ExecStopPost=-/bin/sh -c 'curl -fsS -m 10 -X POST -H "Authorization: Bearer $GATUS_TOKEN" "http://127.0.0.1:8050/api/v1/endpoints/radio_passe-hebdo/external?success=$([ "$SERVICE_RESULT" = success ] && echo true || echo false)&error=$SERVICE_RESULT"'
