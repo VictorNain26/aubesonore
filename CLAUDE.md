@@ -90,7 +90,7 @@ When this file disagrees with the running system, the system is right — correc
   win against batch workloads for a reason.
 - **Scheduling is systemd *user* timers**, not cron, and depends on lingering being enabled.
   Deploying AubeSonore is merging to `master`: `aubesonore-deploy.timer` promotes it.
-- **Secrets are untracked `.env` files in `site/`, `pipeline/` and `azuracast/`** (plus `azuracast/azuracast.env`), and the broadcast runtime also
+- **Secrets are untracked `.env` files in `site/`, `pipeline/` and `azuracast/`** (plus `azuracast/azuracast.env` and `azuracast/gatus.env`, mode 600), and the broadcast runtime also
   holds listener access logs. Keep all of it out of diffs, pastes, and issue reports.
 - **Language**: commits are English Conventional Commits everywhere (commitlint). Documentation
   follows the piece: the pipeline, azuracast and musilogy document in French, the site in English.

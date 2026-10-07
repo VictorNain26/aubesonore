@@ -50,6 +50,9 @@ docker compose up -d
 # la copie du mot de passe reprend sa place, puis la sauvegarde quotidienne :
 install -m 600 <copie du mot de passe> ~/.config/restic/password
 ln -s ~/aubesonore/azuracast/scripts/systemd/* ~/.config/systemd/user/
+# jeton du battement : la valeur de GATUS_AZURACAST_TOKEN de pipeline/.env (étape 2)
+install -m 600 /dev/null gatus.env && echo 'GATUS_TOKEN=<jeton>' > gatus.env
+chmod 600 .env azuracast.env
 systemctl --user enable --now azuracast-backup.timer
 ```
 

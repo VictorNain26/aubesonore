@@ -3,8 +3,8 @@ Description=AubeSonore : sauvegarde restic chiffrée des médias et de la config
 
 [Service]
 Type=oneshot
-# Seul GATUS_TOKEN sert ici, pour le battement de cœur.
-EnvironmentFile=%h/aubesonore/pipeline/.env
+# Le jeton du battement de cœur seul (GATUS_TOKEN), à part de .env que lit le conteneur.
+EnvironmentFile=%h/aubesonore/azuracast/gatus.env
 Nice=19
 IOSchedulingClass=idle
 ExecStart=%h/aubesonore/azuracast/scripts/backup-media.sh
