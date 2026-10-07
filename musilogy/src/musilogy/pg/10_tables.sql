@@ -27,12 +27,6 @@ CREATE TABLE artists (
   proximity_surveyed boolean
 );
 
-CREATE TABLE genres (
-  genre_mbid text COLLATE "C" PRIMARY KEY,
-  name text NOT NULL,
-  n_artists bigint NOT NULL
-);
-
 CREATE TABLE links (
   src_mbid text COLLATE "C" NOT NULL,
   dst_mbid text COLLATE "C" NOT NULL,

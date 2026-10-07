@@ -36,32 +36,6 @@ AS $$
   WHERE a.mbid = artist;
 $$;
 
--- Every typed link of an artist, read from its side: `forward` when the
--- artist is the source of the MusicBrainz relation, `backward` when it is the
--- target. The type keeps MusicBrainz's name; the front words it.
-CREATE FUNCTION musilogy.artist_links(artist text)
-RETURNS TABLE (
-  type text,
-  direction text,
-  other_mbid text,
-  other_name text,
-  other_disambiguation text,
-  other_y0 integer,
-  y_begin integer,
-  y_end integer
-)
-LANGUAGE sql STABLE
-AS $$
-  SELECT l.type, 'forward', o.mbid, o.name, o.disambiguation, o.y0, l.y_begin, l.y_end
-  FROM musilogy.links l JOIN musilogy.artists o ON o.mbid = l.dst_mbid
-  WHERE l.src_mbid = artist
-  UNION ALL
-  SELECT l.type, 'backward', o.mbid, o.name, o.disambiguation, o.y0, l.y_begin, l.y_end
-  FROM musilogy.links l JOIN musilogy.artists o ON o.mbid = l.src_mbid
-  WHERE l.dst_mbid = artist
-  ORDER BY 1, 2, 7 NULLS LAST, 3;
-$$;
-
 -- The influences Wikidata declares, both ways: 'cited' when the artist cites
 -- the other, 'cited_by' when the other cites it. `statement` is the Wikidata
 -- statement that says so, to cite it. Both ends are read from `artists`: an

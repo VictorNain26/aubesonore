@@ -77,7 +77,7 @@ albums), `genres` (vocabulaire), `links` (appartenances, pseudonymes et changeme
   dans le site tant qu'aucune fonction ne les lit.
 - `urls(artist_mbid, type, url, ended)` : parmi les pages que MusicBrainz relie
   à un artiste, celles qu'une page artiste utilise (Deezer, Spotify, Apple
-  Music, Bandcamp, SoundCloud, site officiel, Wikidata, Wikipédia, images),
+  Music, Bandcamp, SoundCloud, site officiel, Wikidata),
   avec le type de relation de MusicBrainz ; `ended` marque une page qui n'est
   plus celle de l'artiste. Une même page reliée deux fois sous un même type est
   une ligne.
@@ -140,7 +140,6 @@ absente (code `42883`).
 | Fonction | État |
 |---|---|
 | `artist_card` | livrée ; `proximity_surveyed` ajoutée par #286 |
-| `artist_links` | livrée ; réduite aux relations de la page par #342, retirée quand la page lit les trois suivantes |
 | `artist_bands` | livrée par #342 |
 | `artist_member_projects` | livrée par #342 |
 | `artist_other_names` | livrée par #342 |
@@ -160,11 +159,6 @@ musilogy.artist_card(artist text) RETURNS TABLE (
   begin_area text, y_birth integer, y0 integer, y0_source text, y_end integer,
   y_end_source text, ended boolean, genres jsonb, genre_source text,
   listen_count bigint, user_count bigint, proximity_surveyed boolean)
-
--- Liens typés : appartenances, pseudonymes, changements de nom.
-musilogy.artist_links(artist text) RETURNS TABLE (
-  type text, direction text, other_mbid text, other_name text,
-  other_disambiguation text, other_y0 integer, y_begin integer, y_end integer)
 
 -- Voisins ListenBrainz dans l'ordre du service (rang), avec leur côté dans
 -- le temps (§3) ; les rangs ne sont pas renumérotés quand un voisin absent du

@@ -54,7 +54,6 @@ def test_only_the_pages_an_artist_page_uses_are_kept(tmp_path):
         ],
     )
     assert con.execute("SELECT url FROM urls ORDER BY url").fetchall() == [
-        ("https://commons.wikimedia.org/wiki/File:A.jpg",),
         ("https://itunes.apple.com/gb/artist/id1",),
         ("https://www.deezer.com/artist/1",),
     ]
@@ -69,7 +68,6 @@ def test_the_beatles_keep_their_listening_pages_their_site_and_their_items(con):
     ).fetchall() == [
         ("free streaming", "https://open.spotify.com/artist/3WrFJ7ztbogyGnTHbHJFl2"),
         ("free streaming", "https://www.deezer.com/artist/1"),
-        ("image", "https://commons.wikimedia.org/wiki/File:The_Fabs.JPG"),
         ("official homepage", "https://www.thebeatles.com/"),
         ("purchase for download", "https://itunes.apple.com/gb/artist/id136975"),
         ("purchase for download", "https://music.apple.com/gb/artist/136975"),

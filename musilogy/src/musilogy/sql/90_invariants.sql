@@ -222,7 +222,7 @@ CREATE OR REPLACE VIEW url_out_of_scope AS
         split_part(lower(url), '://', 2), '/', 1), '?', 1), '#', 1), ':', 1), '.') AS labels
     FROM urls
   ) u
-  WHERE u.type NOT IN ('official homepage', 'wikidata', 'wikipedia', 'image')
+  WHERE u.type NOT IN ('official homepage', 'wikidata')
     -- Every suffix of the host, "music.apple.com" -> [music.apple.com,
     -- apple.com, com]: a list test, where a join on LIKE would be a nested loop.
     AND NOT list_has_any(
