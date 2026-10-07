@@ -9,4 +9,4 @@ EnvironmentFile=%h/aubesonore/pipeline/.env
 Nice=19
 ExecStart=%h/aubesonore/pipeline/.venv/bin/radio grille
 # Battement de cœur vers Gatus, même en échec (même mécanisme que radio-weekly).
-ExecStopPost=/bin/sh -c 'curl -fsS -m 10 -X POST -H "Authorization: Bearer $GATUS_TOKEN" "http://127.0.0.1:8050/api/v1/endpoints/radio_grille/external?success=$([ "$SERVICE_RESULT" = success ] && echo true || echo false)&error=$SERVICE_RESULT"'
+ExecStopPost=-/bin/sh -c 'curl -fsS -m 10 -X POST -H "Authorization: Bearer $GATUS_TOKEN" "http://127.0.0.1:8050/api/v1/endpoints/radio_grille/external?success=$([ "$SERVICE_RESULT" = success ] && echo true || echo false)&error=$SERVICE_RESULT"'
