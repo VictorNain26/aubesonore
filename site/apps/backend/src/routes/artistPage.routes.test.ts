@@ -335,6 +335,28 @@ describe('GET /artiste/:slug', () => {
     );
   });
 
+  it('serves the English page of an artist never played at its MBID', async () => {
+    mockShell();
+    discovered = [UNPLAYED_MBID];
+
+    const res = await app.handle(new Request(`http://localhost/en/artist/${UNPLAYED_MBID}`));
+    const html = await res.text();
+
+    expect(res.status).toBe(200);
+    expect(html).toContain(
+      `<link rel="canonical" href="${env.FRONTEND_BASE_URL}/en/artist/${UNPLAYED_MBID}"`
+    );
+  });
+
+  it("sends an MBID the antenna played to the artist's English slug", async () => {
+    mockShell();
+
+    const res = await app.handle(new Request(`http://localhost/en/artist/${DAFT_PUNK_MBID}`));
+
+    expect(res.status).toBe(301);
+    expect(res.headers.get('location')).toBe('/en/artist/daft-punk');
+  });
+
   it('answers 503 while Musilogy, which makes a page by MBID, is not loaded', async () => {
     mockShell();
 

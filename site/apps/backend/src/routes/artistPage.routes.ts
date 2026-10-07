@@ -207,11 +207,17 @@ async function legacy(locale: SiteLocale, id: string, set: ResponseSet): Promise
   return '';
 }
 
-/** /en/artist/<x> is an old address when <x> is an artist id, the page of slug <x> otherwise. */
+/**
+ * /en/artist/<x> is an old address when <x> is an artist id, the page of slug <x> otherwise. An
+ * MBID is a UUID too: one no artist id matches is the page by MBID.
+ */
 async function english(context: HandlerContext): Promise<string> {
-  return isValidArtistId(context.params.slug)
-    ? legacy('en', context.params.slug, context.set)
-    : handle('en', context);
+  const { params, set } = context;
+  const slug = isValidArtistId(params.slug) ? await slugOfArtist(params.slug) : null;
+  if (!slug) return handle('en', context);
+  set.status = 301;
+  set.headers.location = artistPagePath('en', slug);
+  return '';
 }
 
 // The router wants one parameter name per position: the English old address
