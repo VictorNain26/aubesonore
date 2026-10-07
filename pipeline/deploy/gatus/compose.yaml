@@ -13,6 +13,8 @@ services:
       WHATSAPP_PHONE: ${WHATSAPP_PHONE}
       CALLMEBOT_APIKEY: ${CALLMEBOT_APIKEY}
       GATUS_TOKEN: ${GATUS_TOKEN}
+      # Jeton des battements du site (site/.env), à part de celui du pipeline.
+      GATUS_SITE_TOKEN: ${GATUS_SITE_TOKEN}
       NTFY_TOPIC: ${NTFY_TOPIC}
     volumes:
       # Le dossier, pas le fichier : un fichier monté seul garde son ancien inode quand git le
