@@ -104,6 +104,20 @@ JOIN discogs_record_years ry USING (record)
 JOIN discogs_record_styles rs USING (record)
 GROUP BY ALL;
 
+-- MusicBrainz is the authority on an artist's dates and Discogs never moves
+-- them: a first record dated before the declared formation is counted, not
+-- corrected. A one-year margin leaves out a formation dated at the end of the
+-- year of its first single.
+CREATE OR REPLACE TABLE discogs_date_disagreements AS
+SELECT count(*) AS first_record_before_formation FROM (
+  SELECT l.mbid, min(ry.y) AS y
+  FROM discogs_links l
+  JOIN discogs_record_artists ra ON ra.discogs_id = l.discogs_id
+  JOIN discogs_record_years ry USING (record)
+  GROUP BY l.mbid
+) f JOIN artists a ON a.mbid = f.mbid
+WHERE f.y < a.y0_declared - 1;
+
 CREATE OR REPLACE TABLE discogs_coverage AS
 SELECT
   count(*) AS releases,

@@ -42,6 +42,7 @@ def con():
         # publication tests set up themselves (test_publish.py).
         proximity=[FIX / "proximity.jsonl"],
         official=[FIX / "official.jsonl"],
+        discogs=FIX / "discogs.jsonl",
     )
     return c
 

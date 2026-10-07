@@ -255,6 +255,7 @@ def publish(
         "proximity_exclusions": _counters(con, "proximity_exclusions"),
         "release_status": _counters(con, "release_status"),
         "discogs_coverage": _counters(con, "discogs_coverage"),
+        "discogs_date_disagreements": _counters(con, "discogs_date_disagreements"),
         "git_sha": _git_sha(),
         "corrections_sha256": sha256_file(corrections) if corrections else None,
     }

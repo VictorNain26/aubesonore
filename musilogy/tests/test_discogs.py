@@ -184,3 +184,93 @@ def test_a_build_without_discogs_has_no_label_and_no_style(tmp_path):
     c = build_synthetic(tmp_path, [linked(A, 1)])
     assert c.execute("SELECT count(*) FROM labels").fetchone() == (0,)
     assert c.execute("SELECT count(*) FROM styles").fetchone() == (0,)
+
+
+def test_a_first_record_before_the_declared_formation_is_counted_not_corrected(tmp_path):
+    # MusicBrainz says A formed in 1990: a Discogs record of 1985 is a
+    # disagreement to show, never a new start date.
+    c = built(
+        tmp_path,
+        [linked(A, 1), synthetic_artist(B, "1990", None, urls=[discogs_url(2)])],
+        [
+            discogs_release(1, [1], released="1989"),
+            discogs_release(2, [2], released="1985"),
+        ],
+    )
+    assert c.execute(
+        "SELECT first_record_before_formation FROM discogs_date_disagreements"
+    ).fetchone() == (1,)
+    assert c.execute("SELECT y0_declared FROM artists WHERE mbid = ?", [B]).fetchone() == (1990,)
+
+
+JOY_DIVISION = "9a58fda3-f4ed-4080-a3a5-f457aac9fcdd"
+NEW_ORDER = "f1106b17-dcbb-45f6-b938-199ccfab50cc"
+OUT_OF_WORK = {
+    "Compilation",
+    "Unofficial Release",
+    "Partially Unofficial",
+    "Promo",
+    "Sampler",
+    "Mixed",
+    "Mixtape",
+    "Partially Mixed",
+}
+
+
+def recount_labels(discogs_ids):
+    """The labels rule restated in Python over the fixture lines, for one artist."""
+    import json  # noqa: PLC0415
+    from collections import defaultdict  # noqa: PLC0415
+
+    from conftest import FIX  # noqa: PLC0415
+
+    first_year: dict[str, int | None] = {}
+    editions = []
+    with (FIX / "discogs.jsonl").open(encoding="utf-8") as fh:
+        for line in fh:
+            r = json.loads(line)
+            if OUT_OF_WORK & set(r["descriptions"]) or not discogs_ids & set(r["artists"]):
+                continue
+            record = f"m{r['master_id']}" if r["master_id"] else f"r{r['id']}"
+            y = int(r["released"][:4]) if (r["released"] or "")[:4].isdigit() else None
+            y = y if y and 1850 <= y <= 2026 else None
+            editions.append((record, y, r["labels"]))
+            earliest = first_year.get(record)
+            if y is not None and (earliest is None or y < earliest):
+                first_year[record] = y
+            first_year.setdefault(record, None)
+    records = defaultdict(set)
+    for record, y, labels in editions:
+        if y == first_year[record]:
+            for lab in labels:
+                if not lab["name"].startswith("Not On Label"):
+                    records[lab["id"]].add(record)
+    return {label: len(rs) for label, rs in records.items() if len(rs) >= 2}
+
+
+def discogs_ids_of(con, mbid):
+    return {
+        r[0]
+        for r in con.execute(
+            "SELECT discogs_id FROM discogs_links WHERE mbid = ?", [mbid]
+        ).fetchall()
+    }
+
+
+def test_the_witnesses_labels_match_a_recount_of_the_fixture(con):
+    for mbid in (JOY_DIVISION, NEW_ORDER):
+        got = dict(
+            con.execute(
+                "SELECT label_id, records FROM labels WHERE artist_mbid = ?", [mbid]
+            ).fetchall()
+        )
+        assert got == recount_labels(discogs_ids_of(con, mbid)), mbid
+
+
+def test_joy_division_and_new_order_share_factory(con):
+    shared = con.execute(
+        "SELECT a.label FROM labels a JOIN labels b USING (label_id) "
+        "WHERE a.artist_mbid = ? AND b.artist_mbid = ?",
+        [JOY_DIVISION, NEW_ORDER],
+    ).fetchall()
+    assert any(name.startswith("Factory") for (name,) in shared), shared
