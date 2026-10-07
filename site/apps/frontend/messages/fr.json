@@ -195,7 +195,7 @@
   "musilogy_search_label": "Chercher un artiste",
   "musilogy_search_placeholder": "Un artiste ou un groupe",
   "musilogy_search_empty": "Aucun artiste de ce nom.",
-  "musilogy_neighbours_note": "Ceux qu'on écoute aussi, à leur place dans le temps.",
+  "musilogy_neighbours_note": "Ceux qu'on écoute aussi, par décennie de leurs débuts. En gras, les plus proches.",
   "musilogy_close_title": "Artistes proches",
   "musilogy_influences_title": "Influences",
   "musilogy_cites": "Ses influences",
@@ -247,5 +247,6 @@
   "musilogy_col_kind": "Type",
   "musilogy_col_start": "Débuts",
   "musilogy_mark_influence": "son influence",
-  "musilogy_mark_inspired": "s'en inspire"
+  "musilogy_mark_inspired": "s'en inspire",
+  "musilogy_decade": "Années {decade}"
 }

@@ -195,7 +195,7 @@
   "musilogy_search_label": "Find an artist",
   "musilogy_search_placeholder": "An artist or band name",
   "musilogy_search_empty": "No artist by that name.",
-  "musilogy_neighbours_note": "Who their listeners also play, in their place in time.",
+  "musilogy_neighbours_note": "Who their listeners also play, by the decade they started. The closest in bold.",
   "musilogy_close_title": "Close artists",
   "musilogy_influences_title": "Influences",
   "musilogy_cites": "Their influences",
@@ -247,5 +247,6 @@
   "musilogy_col_kind": "Kind",
   "musilogy_col_start": "Started",
   "musilogy_mark_influence": "an influence",
-  "musilogy_mark_inspired": "inspired by them"
+  "musilogy_mark_inspired": "inspired by them",
+  "musilogy_decade": "The {decade}s"
 }

@@ -113,12 +113,13 @@ rendent impossibles sur les 2,98 millions d'artistes. Il ne choisit pas ce qu'un
 
 ### 2.3 La carte et le texte
 
-- **La carte, seule à l'écran** : le temps de gauche à droite, l'artiste au centre sur ses années
-  d'activité, ses proches posés à leur année de début, d'autant plus près qu'ils sont proches. Un
-  sélecteur passe de « Même son » (environ huit artistes, les influences marquées) à « Même label »
-  (les artistes regroupés par label). Un artiste sans année de début a sa rangée au bord. Un clic
-  recentre. Elle remplace les listes « avant, pendant, après » et la rubrique des influences : plus
-  visuelle et plus courte.
+- **La carte, seule à l'écran** : le temps de gauche à droite, par décennie, l'artiste sur ses
+  décennies d'activité, tous ses proches rangés à la décennie de leurs débuts, les plus proches en
+  tête et en gras (2026-10-07 : quarante noms posés sur une frise ne se lisaient plus, cent en
+  colonnes se lisent). Un sélecteur passe de « Même son » (les influences marquées) à « Même
+  label » (les artistes regroupés par label). Les proches sans année de début ferment la section.
+  Un clic mène à la page de l'artiste. Elle remplace les listes « avant, pendant, après » et la
+  rubrique des influences : plus visuelle et plus courte.
 - **Lisible sans la voir** : chaque nom de la carte est un lien textuel, que lisent les lecteurs
   d'écran et les moteurs de recherche.
 - **Indexée quand elle est riche** : une page est proposée aux moteurs de recherche au-delà d'un

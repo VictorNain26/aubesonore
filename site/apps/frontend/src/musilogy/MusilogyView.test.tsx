@@ -74,7 +74,7 @@ function show(shown: MusilogyArtist) {
 }
 
 describe('MusilogySections', () => {
-  it('places the close artists in time, each a link to its page, with no lists apart', () => {
+  it('places the close artists by decade, each a link to its page, with no lists apart', () => {
     show(artist());
 
     expect(screen.getByRole('heading', { name: 'Artistes proches' })).toBeInTheDocument();
@@ -83,7 +83,7 @@ describe('MusilogySections', () => {
     }
     expect(screen.getAllByRole('link', { name: /Ramones/ }).length).toBeGreaterThan(0);
     expect(screen.queryByRole('heading', { name: 'Avant' })).not.toBeInTheDocument();
-    expect(screen.getByText(/à leur place dans le temps/)).toBeInTheDocument();
+    expect(screen.getByText(/par décennie de leurs débuts/)).toBeInTheDocument();
   });
 
   it('leads straight to the page of a neighbour the antenna played', () => {
@@ -157,13 +157,12 @@ describe('MusilogySections', () => {
     expect(screen.getByText('ancien nom')).toBeInTheDocument();
   });
 
-  it('shows the closest first and the next ones on demand', async () => {
-    const before = Array.from({ length: 15 }, (_, i) => neighbour(i));
+  it('shows every close artist at once, with nothing to open', () => {
+    const before = Array.from({ length: 40 }, (_, i) => neighbour(i));
     show(artist({ neighbours: { before, during: [], after: [], undated: [] } }));
 
-    expect(screen.queryByRole('link', { name: /Artist 14/ })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Voir 5 de plus' }));
-    expect(screen.getAllByRole('link', { name: /Artist 14/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /Artist 39/ }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: /Voir/ })).not.toBeInTheDocument();
   });
 
   it('marks the influences on the map, and lists them alone only without close artists', () => {
