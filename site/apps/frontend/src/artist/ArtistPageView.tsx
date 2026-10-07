@@ -173,7 +173,7 @@ function Portrait({ text }: { text: string }) {
   return <p className="text-intro m-0 max-w-prose">{text}</p>;
 }
 
-type KeptTrack = Pick<ClientLikedTrack, 'id' | 'title' | 'createdAt'>;
+type KeptTrack = Pick<ClientLikedTrack, 'id' | 'title' | 'album' | 'createdAt'>;
 
 function Profile({
   profile,
@@ -193,10 +193,10 @@ function Profile({
   const facts = profile.facts && !portrait ? factsLine(profile.facts) : null;
   const genres = musilogy?.card.genres.slice(0, GENRES_SHOWN) ?? [];
   const sections = [
+    ...(kept.length > 0 ? [{ id: 'kept', label: m.artist_kept_title() }] : []),
     ...(musilogy?.releases && musilogy.releases.length > 0
       ? [{ id: 'records', label: m.artist_records_title() }]
       : []),
-    ...(kept.length > 0 ? [{ id: 'kept', label: m.artist_kept_title() }] : []),
     ...(musilogy ? musilogyNav(musilogy) : []),
   ];
 
@@ -242,10 +242,6 @@ function Profile({
       </div>
 
       <div className="px-page flex flex-col gap-16 py-16 md:gap-28 md:py-28">
-        {musilogy?.releases && musilogy.releases.length > 0 ? (
-          <ReleasesSection releases={musilogy.releases} />
-        ) : null}
-
         {kept.length > 0 ? (
           <Section id="kept" title={m.artist_kept_title()}>
             <ol className="m-0 list-none p-0">
@@ -254,7 +250,12 @@ function Profile({
                   key={track.id}
                   className="border-border reveal grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1"
                 >
-                  <span className="text-row truncate">{track.title}</span>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="text-row truncate">{track.title}</span>
+                    {track.album ? (
+                      <span className="text-ui text-text-muted truncate">{track.album}</span>
+                    ) : null}
+                  </span>
                   <span className="text-ui text-text-muted font-mono whitespace-nowrap tabular-nums">
                     {formatKeptAt(track.createdAt)}
                   </span>
@@ -262,6 +263,10 @@ function Profile({
               ))}
             </ol>
           </Section>
+        ) : null}
+
+        {musilogy?.releases && musilogy.releases.length > 0 ? (
+          <ReleasesSection releases={musilogy.releases} />
         ) : null}
 
         {musilogy ? <MusilogySections artist={musilogy} thisYear={thisYear} /> : null}

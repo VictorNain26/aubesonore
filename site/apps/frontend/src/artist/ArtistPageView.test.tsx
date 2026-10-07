@@ -115,7 +115,7 @@ describe('ArtistPageView', () => {
     expect(screen.queryByRole('link', { name: 'Explorer dans Musilogy' })).not.toBeInTheDocument();
   });
 
-  it('says who, their music and where to hear them first, then records, kept and where next', () => {
+  it('says who, their music and where to hear them first, then what was kept, records, where next', () => {
     const record = (n: number, type: 'album' | 'ep') => ({
       mbid: `rg-${n}`,
       title: `Record ${n}`,
@@ -145,8 +145,8 @@ describe('ArtistPageView', () => {
 
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
       'Écouter ailleurs',
-      'Albums et EP',
       'Vos titres gardés',
+      'Albums et EP',
       'Artistes proches',
     ]);
     expect(
@@ -154,7 +154,7 @@ describe('ArtistPageView', () => {
         .getAllByRole('link')
         .filter((link) => link.getAttribute('href')?.startsWith('#'))
         .map((link) => link.textContent)
-    ).toEqual(['Albums et EP', 'Vos titres gardés', 'Artistes proches']);
+    ).toEqual(['Vos titres gardés', 'Albums et EP', 'Artistes proches']);
     expect(screen.getByRole('list', { name: 'Écouter ailleurs' })).toContainElement(
       screen.getByRole('link', { name: 'Bandcamp' })
     );
@@ -170,13 +170,16 @@ describe('ArtistPageView', () => {
     expect(screen.queryByText('Artiste · Pologne')).not.toBeInTheDocument();
   });
 
-  it('shows what the listener kept of the artist', () => {
+  it('shows what the listener kept of the artist, with the album each track is from', () => {
     show({ status: 'ready', profile: makeArtistProfile() }, [
-      { id: 'k-1', title: 'Glass', createdAt: '2026-09-12T08:00:00.000Z' },
+      { id: 'k-1', title: 'Glass', album: 'Home', createdAt: '2026-09-12T08:00:00.000Z' },
+      { id: 'k-2', title: 'Eden', album: null, createdAt: '2026-09-13T08:00:00.000Z' },
     ]);
 
     expect(screen.getByRole('heading', { name: 'Vos titres gardés' })).toBeInTheDocument();
     expect(screen.getByText('Glass')).toBeInTheDocument();
+    expect(screen.getByText('Home')).toBeInTheDocument();
+    expect(screen.getByText('Eden')).toBeInTheDocument();
   });
 
   it('quotes the Wikipedia summary and links its article, naming no licence on the page', () => {
