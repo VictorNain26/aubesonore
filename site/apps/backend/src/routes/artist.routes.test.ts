@@ -23,7 +23,6 @@ const spies = [
             summary: null,
             links: [],
             played: true,
-            playedOnRadio: [],
           }
         : null
     )

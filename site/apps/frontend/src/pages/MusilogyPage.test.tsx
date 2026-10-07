@@ -13,7 +13,6 @@ const DAFT_PUNK = {
   disambiguation: 'French electronic duo',
   type: 'Group',
   y0: 1993,
-  listeners: 1,
 };
 
 describe('MusilogyPage', () => {

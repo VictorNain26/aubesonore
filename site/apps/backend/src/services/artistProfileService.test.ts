@@ -87,7 +87,6 @@ void mock.module('../db', () => ({
 const deezer = await import('./deezerService');
 const musicbrainz = await import('./musicbrainzService');
 const musilogy = await import('./musilogyService');
-const radioPlays = await import('./radioPlayService');
 const wikipedia = await import('./wikipediaService');
 
 const spies = {
@@ -110,35 +109,6 @@ const spies = {
   summary: spyOn(wikipedia, 'getSummary').mockImplementation((_id, locale) =>
     Promise.resolve({ status: 'found', value: locale === 'fr' ? summaryFr : summaryEn })
   ),
-  titles: spyOn(radioPlays, 'getTitlesByArtist').mockResolvedValue([
-    {
-      title: 'Around the World',
-      artist: 'Daft Punk',
-      isrc: 'GBDUW9700012',
-      plays: 3,
-      lastPlayedAt: new Date('2026-07-27T10:00:00.000Z'),
-    },
-  ]),
-  isrcTrack: spyOn(deezer, 'findTrackByIsrc').mockResolvedValue({
-    status: 'found',
-    value: {
-      title: 'Around the World (Radio Edit)',
-      artists: [{ id: '27', name: 'Daft Punk', picture: null }],
-      link: 'https://www.deezer.com/track/3135553',
-      cover: 'https://cdn-images.dzcdn.net/images/cover/aw/250x250-000000-80-0-0.jpg',
-    },
-  }),
-};
-
-const AROUND_THE_WORLD = {
-  title: 'Around the World',
-  artist: 'Daft Punk',
-  plays: 3,
-  lastPlayedAt: '2026-07-27T10:00:00.000Z',
-  deezer: {
-    link: 'https://www.deezer.com/track/3135553',
-    cover: 'https://cdn-images.dzcdn.net/images/cover/aw/250x250-000000-80-0-0.jpg',
-  },
 };
 
 afterAll(() => {
@@ -185,7 +155,6 @@ describe('getArtistProfile', () => {
         { platform: 'deezer', url: 'https://www.deezer.com/artist/27' },
         { platform: 'official', url: 'https://daftpunk.com/' },
       ],
-      playedOnRadio: [AROUND_THE_WORLD],
     });
     expect(stored).toHaveLength(1);
     expect(stored[0]).toMatchObject({ summaryFr, summaryEn });
@@ -294,7 +263,7 @@ describe('getArtistProfile', () => {
     expect((await getArtistProfile('daft-punk', 'fr'))?.image).toBe(HOMEWORK_COVER);
   });
 
-  it('keeps the radio floor when the artist matched no upstream', async () => {
+  it('still answers when the artist matched no upstream', async () => {
     rows = [{ artist: { ...baseRow, deezerId: null }, artist_profile: null }];
 
     const profile = await getArtistProfile('daft-punk', 'fr');
@@ -302,34 +271,6 @@ describe('getArtistProfile', () => {
     expect(profile?.image).toBeNull();
     expect(profile?.facts).toBeNull();
     expect(profile?.links).toEqual([]);
-    expect(profile?.playedOnRadio).toHaveLength(1);
-  });
-
-  it('lists each title once, with its plays and its very recording on Deezer', async () => {
-    const profile = await getArtistProfile('daft-punk', 'fr');
-
-    expect(profile?.playedOnRadio).toEqual([AROUND_THE_WORLD]);
-    expect(spies.isrcTrack).toHaveBeenCalledWith('GBDUW9700012');
-  });
-
-  it('links no recording the ISRC answer does not show to be this title by this artist', async () => {
-    const other = (title: string, id: string, name: string) => ({
-      status: 'found' as const,
-      value: {
-        title,
-        artists: [{ id, name, picture: null }],
-        link: 'https://www.deezer.com/track/1',
-        cover: null,
-      },
-    });
-    spies.isrcTrack.mockResolvedValueOnce(other('Lirik Banzay', '27', 'Daft Punk'));
-    expect((await getArtistProfile('daft-punk', 'fr'))?.playedOnRadio[0]?.deezer).toBeNull();
-
-    spies.isrcTrack.mockResolvedValueOnce(other('Around the World', '99', 'Someone Else'));
-    expect((await getArtistProfile('daft-punk', 'fr'))?.playedOnRadio[0]?.deezer).toBeNull();
-
-    spies.isrcTrack.mockResolvedValueOnce({ status: 'failed' });
-    expect((await getArtistProfile('daft-punk', 'fr'))?.playedOnRadio[0]?.deezer).toBeNull();
   });
 
   it('makes the page of an artist the antenna never played from Musilogy, at its MBID', async () => {
@@ -351,7 +292,6 @@ describe('getArtistProfile', () => {
         { platform: 'deezer', url: 'https://www.deezer.com/artist/27' },
         { platform: 'official', url: 'https://daftpunk.com/' },
       ],
-      playedOnRadio: [],
     });
     expect(spies.identity).toHaveBeenCalledWith(MBID);
     expect(stored).toEqual([]);

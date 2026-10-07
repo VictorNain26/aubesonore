@@ -17,7 +17,6 @@ const PROFILE: ArtistProfile = {
     url: 'https://fr.wikipedia.org/wiki/Kino_(groupe)',
   },
   links: [],
-  playedOnRadio: [],
 };
 
 // Runs without window, document or localStorage, like the build-time

@@ -44,7 +44,6 @@ const unplayed = {
   facts: null,
   summary: null,
   links: [],
-  playedOnRadio: [],
 };
 let musilogyAnswer: unknown = null;
 const musilogySpy = spyOn(musilogyService, 'getMusilogyArtist').mockImplementation(() =>
@@ -70,7 +69,6 @@ const profileSpy = spyOn(profileService, 'getArtistProfile').mockImplementation(
             url: 'https://fr.wikipedia.org/wiki/Daft_Punk',
           },
           links: [],
-          playedOnRadio: [],
         }
       : null
   );

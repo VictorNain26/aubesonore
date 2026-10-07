@@ -31,15 +31,11 @@ function artist(overrides: Partial<MusilogyArtist> = {}): MusilogyArtist {
       y0: 1967,
       played: null,
       type: 'Group',
-      country: 'GB',
-      beginArea: 'London',
       y0Source: 'declared',
       yEnd: 1977,
       yEndSource: 'declared',
       ended: true,
       genres: ['glam rock', 'rock'],
-      listeners: 31415,
-      proximitySurveyed: true,
     },
     neighbours: {
       before: [neighbour(3, { name: 'The Kinks' })],
@@ -217,7 +213,7 @@ describe('MusilogySections', () => {
 
 describe('linkYears', () => {
   it('gives the years in the group, open on the side it is not known', () => {
-    const link = { ...neighbour(1), kind: 'members' as const, yBegin: 1971, yEnd: 1975 };
+    const link = { ...neighbour(1), yBegin: 1971, yEnd: 1975 };
     expect(linkYears(link)).toBe('de 1971 à 1975');
     expect(linkYears({ ...link, yEnd: null })).toBe('depuis 1971');
     expect(linkYears({ ...link, yBegin: null })).toBe("jusqu'en 1975");
@@ -241,7 +237,6 @@ describe('MusilogyHomeView', () => {
               disambiguation: null,
               type: 'Group',
               y0: 1967,
-              listeners: 1,
             },
           ],
         }}
@@ -264,7 +259,6 @@ describe('MusilogyHomeView', () => {
       disambiguation: 'glam rock band',
       type: 'Group',
       y0: 1967,
-      listeners: 1,
     };
     const view = (search: Parameters<typeof MusilogyHomeView>[0]['search']) => (
       <MusilogyHomeView query="t. r" onQueryChange={vi.fn()} search={search} />

@@ -1,6 +1,6 @@
 import { afterAll, describe, it, expect, spyOn } from 'bun:test';
 import * as nowPlaying from './nowPlaying';
-import { buildPlayRow, groupTitles, playOnAir } from './radioPlayService';
+import { buildPlayRow, playOnAir } from './radioPlayService';
 
 // spyOn, not mock.module: a mocked module leaks into the other test files (Bun 1.3).
 const onAir = spyOn(nowPlaying, 'fetchNowPlaying');
@@ -73,42 +73,5 @@ describe('buildPlayRow', () => {
 
   it('yields an empty normalised name for a blank artist', () => {
     expect(buildPlayRow(6, 'A', '   ', null).artistNormalized).toBe('');
-  });
-});
-
-describe('groupTitles', () => {
-  const play = (title: string, hoursAgo: number, isrc: string | null = null) => ({
-    title,
-    artist: 'Supergrass',
-    isrc,
-    playedAt: new Date(Date.UTC(2026, 9, 4, 16) - hoursAgo * 3_600_000),
-  });
-
-  it('folds the plays of one title into a row, the latest title first', () => {
-    const rows = groupTitles(
-      [
-        play('The Word', 0),
-        play('The Bird is on Fire', 21, 'GBAAA0000002'),
-        play('The word', 29),
-        play('The Bird Is On Fire', 33),
-      ],
-      20
-    );
-
-    expect(rows.map((row) => [row.title, row.plays])).toEqual([
-      ['The Word', 2],
-      ['The Bird is on Fire', 2],
-    ]);
-    expect(rows[0]?.lastPlayedAt).toEqual(new Date(Date.UTC(2026, 9, 4, 16)));
-  });
-
-  it('keeps the latest ISRC a title was played with, and at most `limit` titles', () => {
-    const rows = groupTitles(
-      [play('A', 0), play('A', 1, 'GBAAA0000001'), play('B', 2), play('C', 3)],
-      2
-    );
-
-    expect(rows.map((row) => row.title)).toEqual(['A', 'B']);
-    expect(rows[0]?.isrc).toBe('GBAAA0000001');
   });
 });
