@@ -1,4 +1,5 @@
-"""Pipeline that reproduces the MusicBrainz musical aggregates."""
+"""Musilogy's data, built offline from a pinned MusicBrainz dump, the Discogs
+releases dump and dated ListenBrainz, MusicBrainz and Wikidata surveys."""
 
 REFERENCE_DUMP = "20260909-001002"
 # A ListenBrainz snapshot is never taken again: its date pins the one a run reads.

@@ -2,8 +2,8 @@
 -- the tables: the site depends on these signatures, not on how the tables are
 -- laid out, and every query it runs is tested here against Postgres.
 
--- proximity_surveyed says whether the artist was asked about in the pinned
--- proximity snapshot (89_proximity.sql): only artists with 500 listeners or
+-- proximity_surveyed says whether the artist was asked about by a pinned
+-- part of the proximity survey (89_proximity.sql): only artists with 500 listeners or
 -- more are, so an artist not surveyed is not an artist without neighbours.
 -- NULL when the load carries no snapshot.
 CREATE FUNCTION musilogy.artist_card(artist text)

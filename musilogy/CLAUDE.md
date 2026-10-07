@@ -1,8 +1,9 @@
 # musilogy
 
 Les données de Musilogy (`docs/vision.md` à la racine, §2), produites hors
-ligne depuis des sources épinglées et datées : un dump JSON MusicBrainz et des
-relevés ListenBrainz et Wikidata transformés en tables Parquet reproductibles, que
+ligne depuis des sources épinglées et datées : un dump JSON MusicBrainz, le dump
+des sorties Discogs et des relevés ListenBrainz, MusicBrainz et Wikidata
+transformés en tables Parquet reproductibles, que
 `musilogy load` copie dans le schéma `musilogy` de la base du site. La
 conception en vigueur, dont le contrat des fonctions SQL que le site appelle,
 est `docs/conception.md` ; les règles métier et les chiffres sont dans le

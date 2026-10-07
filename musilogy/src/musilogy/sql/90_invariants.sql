@@ -84,7 +84,7 @@ CREATE OR REPLACE VIEW album_not_an_album AS
   SELECT a.rg_mbid FROM albums a JOIN raw_release_groups r ON r.mbid = a.rg_mbid
   WHERE r.primary_type IS DISTINCT FROM 'Album';
 -- 22_releases.sql. extract.py keeps {Album, EP} and nothing states it in SQL:
--- hardcoded here like KEPT_TYPES in artist_unexpected_type, so widening the
+-- hardcoded here like the list in artist_unexpected_type, so widening the
 -- discography is a deliberate edit of this literal.
 CREATE OR REPLACE VIEW release_unexpected_type AS
   SELECT artist_mbid, rg_mbid FROM releases

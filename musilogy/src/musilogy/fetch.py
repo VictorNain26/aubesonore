@@ -217,8 +217,7 @@ def similar_artists(mbid: str) -> dict[str, Any]:
 def _skip_written(partial: Path, batches: Iterator[list[str]]) -> tuple[int, Iterator[list[str]]]:
     """A run cut short resumes where it stopped. The batches whose answers the
     partial file holds whole, artist by artist and in order, are not asked
-    again; the file is cut after the last of them. The snapshot directory
-    carries its date, so only a run of the same day resumes."""
+    again; the file is cut after the last of them."""
     kept_bytes, kept_rows = 0, 0
     pending: list[str] | None = None
     with partial.open("rb") as fh:

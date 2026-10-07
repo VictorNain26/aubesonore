@@ -1,11 +1,9 @@
 # musilogy — conception
 
-Conception du 2026-10-04. Elle remplace la spec de la frise et de la filiation
-(`docs/superpowers/specs/2026-10-02-frieze-lineage-design.md`, retirée ; son
-texte reste dans l'historique git) : la vision du 2026-10-04 (`docs/vision.md`
-à la racine, §2) abandonne la frise des genres, la filiation tirée de
-MusicBrainz et les contemporains par lieu de début. Les chiffres cités ici
-sont descriptifs ; le contrat exécutable reste `tests/test_baseline.py`.
+Conception du 2026-10-04, qui remplace celle de la frise et de la filiation
+(dans l'historique git). La feuille de route est `docs/vision.md` §7, à la
+racine. Les chiffres cités ici sont descriptifs ; le contrat exécutable reste
+`tests/test_baseline.py`.
 
 ## Rôle
 
@@ -37,7 +35,7 @@ vers une autre base est une table à part (`discogs_links`), et un pont ambigu
 Quand deux sources se recoupent, une seule fait foi : MusicBrainz pour les
 dates, que Discogs ne déplace jamais ; leurs désaccords sont comptés dans le
 manifeste (`discogs_date_disagreements`), pas corrigés. Ce qui combine
-plusieurs sources — les artistes liés de la feuille de route — vit dans une
+plusieurs sources — les artistes liés (`docs/vision.md` §7, étape 9.5) — vit dans une
 couche dérivée qui lit les tables sources, garde la raison de chaque lien et
 ne réécrit jamais une source.
 
@@ -46,15 +44,8 @@ ne réécrit jamais une source.
 **Gardées** : `artists` (identité, type, dates et leur provenance, lieu,
 genres ; tout artiste du dump, de tout type ou sans type, hors artistes à usage
 spécial, et seule une formation donne un début déclaré : README, `10_bands`), `albums` (non chargée : elle sert les dates, et ne compte que les
-albums), `genres` (vocabulaire), `links` (appartenances, pseudonymes et changements de nom),
-`popularity`.
-
-**Retirées**, avec leurs étapes SQL, leurs invariants et leurs tests :
-`presence`, la fiabilité des genres pour la densité (`55_genre_reliability`),
-`density`, `activity`, `lineage`, et côté Postgres `scenes`,
-`contemporaries()`, `frieze_*()`, `artist_lineage()`. Les colonnes de
-`genres` qui ne servaient que la densité (`n_candidate_credits`,
-`multi_artist_drop_pct`, `density_eligible`) partent aussi.
+albums), `genres` (vocabulaire, publié, non chargé), `links` (appartenances, pseudonymes et changements de nom),
+`popularity`. Les tables de la frise et de la filiation sont retirées (historique git).
 
 **Ajoutées** :
 
@@ -83,7 +74,7 @@ albums), `genres` (vocabulaire), `links` (appartenances, pseudonymes et changeme
   une ligne.
 
 - `proximity(artist_mbid, neighbour_mbid, score, rank)` (`89_proximity.sql`,
-  remplie quand le relevé est épinglé) : les voisins ListenBrainz de chaque
+  sur les parties épinglées du relevé) : les voisins ListenBrainz de chaque
   artiste relevé, `rank` de 1 à 100 dans l'ordre du service. Un voisin absent
   du dump reste dans la table (il n'a pas de fiche). Le service répète parfois
   un voisin pour un même artiste (675 fois sur les 111 402 artistes du
@@ -110,7 +101,7 @@ albums), `genres` (vocabulaire), `links` (appartenances, pseudonymes et changeme
   déclaration par paire (la plus petite si deux déclarations donnent la même
   paire). Une extrémité absente du dump reste dans la table. Relevé du
   2026-10-04 : 9 517 paires (8 612 déclarations), 5 661 MBID distincts
-  (2 589 qui citent, 3 728 cités), dont 9 266 paires entre deux artistes du
+  (2 589 qui citent, 3 728 cités), dont 9 310 paires entre deux artistes du
   dump ; `artist_influences` en rend au moins une pour 61 des 288 artistes
   joués à cette date (24 en citent, 49 sont cités).
 
@@ -124,7 +115,7 @@ Le temps lui donne un sens. Un voisin est :
 - `during` sinon ;
 - `NULL` quand l'un des deux n'a pas de `y0`.
 
-Le seuil de 3 ans est un calcul nommé, à juger sur des artistes connus (T. Rex,
+Le seuil de 3 ans (`pg/90_artist.sql`, `artist_neighbours`) est à juger sur des artistes connus (T. Rex,
 1967 : Kinks et Beatles avant, Bowie et Roxy Music pendant, Ramones et Clash
 après) et à mesurer avant d'être changé.
 
@@ -145,7 +136,7 @@ absente (code `42883`).
 | `artist_other_names` | livrée par #342 |
 | `artist_influences` | livrée par #286 |
 | `search_artists` | livrée par #286 |
-| `artist_neighbours` | livrée avec la table `proximity` ; vide en production jusqu'au premier `musilogy load` qui suit l'épinglage du relevé (§5) |
+| `artist_neighbours` | livrée avec la table `proximity` |
 | `artist_releases` | livrée par #337, règle de la page par #338 |
 | `artist_urls` | livrée par #337 |
 
@@ -229,36 +220,23 @@ index compris (555 Mo sans).
 `artist_influences` rend chaque direction dans l'ordre du temps (`y0`, les
 artistes sans année en dernier, puis le MBID). `statement` est l'identifiant
 complet de la déclaration Wikidata, `Q123$GUID`, tel que Wikidata l'écrit (un
-« q » minuscule sur certaines déclarations anciennes). Le lien qui y mène est
-`https://www.wikidata.org/wiki/Q123#Q123$GUID` : la page de l'élément (son
-identifiant en majuscule ; `wiki/q19848` redirige vers `wiki/Q19848`), et pour
-ancre la déclaration telle quelle. Vérifié le 2026-10-04 sur la page de U2
-(`https://www.wikidata.org/wiki/Q396`), dont le HTML porte
-`<div id="Q396$f3eaf34b-4149-e380-038a-5141879aadff" class="wikibase-statementview …">`,
-et sur `Q19848`, où la déclaration ancienne garde son « q » :
-`id="q19848$bbc07573-44e4-3526-c337-998471c7f0d4"`.
+« q » minuscule sur certaines déclarations anciennes) : la provenance de
+l'influence, que la page ne montre pas.
 
 `search_artists` normalise la requête comme `name_key` l'est dans DuckDB
 (`strip_accents(lower(name))`), par une fonction Postgres interne,
-`musilogy.name_key(text)`, que le site n'a pas à appeler : sur le dump de
-référence, elle redonne le `name_key` de tous les noms sauf 6 (des lettres
-cerclées, Ⓐ, que la libc du Postgres du site ne met pas en minuscule). Une
-requête vide ne trouve personne. Le préfixe se lit dans `search`, une
-projection étroite créée au chargement (`name_key` en collation C, nombre
-d'auditeurs, MBID) : mesuré sur un Postgres 16 jetable chargé du dump de
-référence, cache chaud, 78 ms pour « a » (157 112 noms), 46 ms pour « the »,
-moins de 4 ms pour un nom complet.
+`musilogy.name_key(text)`, que le site n'a pas à appeler ; le préfixe se lit
+dans `search`, une projection étroite créée au chargement (README,
+« Chargement dans le site », pour la normalisation et ses mesures).
 
 ## 5. Exécution
 
-- Le relevé de proximité prend plusieurs jours : 111 402 artistes, une
-  requête par seconde au plus, mais un débit réel mesuré d'environ 0,6
-  artiste par seconde (2026-10-04), pannes du service comprises, soit plus de
-  deux jours, davantage si les pannes s'allongent. Il tourne en service
-  systemd transitoire plafonné
-  (`systemd-run --user --unit=musilogy-proximity -p MemoryMax=1G`), et reprend
-  le relevé partiel s'il est interrompu. À la fin, la commande renomme le
-  relevé et écrit son empreinte dans `reference/` de la copie de travail d'où
-  elle tourne : versionner ce fichier épingle le relevé (`REFERENCE_PROXIMITY`),
-  et `run` le lit.
+- Les relevés longs (proximité, statut officiel) se font en parties, une
+  requête par seconde au plus : une partie interroge les artistes qu'aucune
+  partie épinglée n'a interrogés et reprend le fichier partiel si elle est
+  interrompue. Ils tournent en service systemd transitoire plafonné
+  (`systemd-run --user --unit=musilogy-proximity -p MemoryMax=1G`). À la fin,
+  la commande écrit l'empreinte de la partie dans `reference/` : versionner ce
+  fichier et ajouter sa date à `REFERENCE_PROXIMITY` ou `REFERENCE_OFFICIAL`
+  épingle la partie, et `run` les lit toutes.
 - La construction reste plafonnée comme avant (`musilogy/CLAUDE.md`).
