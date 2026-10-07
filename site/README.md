@@ -12,8 +12,8 @@ aubesonore/
 ├── packages/
 │   ├── core/             # Logique agnostique de plateforme (partagée entre apps)
 │   └── shared-types/     # Types partagés backend ↔ clients
-├── docker-compose.yml        # Stack de production
-└── docker-compose.dev.yml    # PostgreSQL local (dev)
+├── compose.yaml          # La pile : production, et poste de dev (profil dev)
+└── scripts/              # Déploiement, sauvegardes, certificats de Postgres
 ```
 
 ## Fonctionnalités
@@ -41,32 +41,24 @@ Auth : Better Auth (email vérifié + OAuth Google/Spotify). Liens d'écoute : A
 
 ### Prérequis
 
-- Node.js ≥ 20, pnpm ≥ 10, Bun (backend)
-- Docker (optionnel, pour PostgreSQL local)
+- Docker avec Compose v2.22 ou plus (profils, `develop.watch`), OpenSSL
+- Node.js ≥ 20 et pnpm ≥ 10 pour les commandes du dépôt (tests, lint)
 
-### Installation
+### La pile locale, en une commande
 
 ```bash
-pnpm install
-
-# Environnements (voir les .env.example pour la liste complète)
-cp apps/backend/.env.example apps/backend/.env
-cp apps/frontend/.env.example apps/frontend/.env
-
-# PostgreSQL local (option Docker), sur 127.0.0.1:5432
-# Port déjà pris : POSTGRES_DEV_PORT=5433 docker compose -f docker-compose.dev.yml up -d,
-# et le même port dans DATABASE_URL (apps/backend/.env)
-docker compose -f docker-compose.dev.yml up -d
-
-# Appliquer le schéma
-cd apps/backend && bun run db:push && cd -
-
-# Tout démarrer (Turbo)
-pnpm dev
+./scripts/make-certs.sh   # une fois : certificats TLS de Postgres (certs/, non versionné)
+cp .env.example .env      # une fois : valeurs de dev prêtes à l'emploi
+pnpm stack                # Postgres, backend, front, sur http://localhost:5173
 ```
 
-- Frontend : http://localhost:5173
-- Backend : http://localhost:3000
+`pnpm stack` lance le même `compose.yaml` que la production, avec le profil `dev` :
+
+- **dev-init** crée le schéma de la base vide (`db:push`) puis un auditeur de test vérifié avec quelques titres gardés (`apps/backend/src/scripts/seed-dev.ts`) : `dev@aubesonore.test`, mot de passe `dev-listener-password` (`.env.example`, valeurs de test, jamais un vrai compte) ;
+- **frontend-dev** sert la SPA avec Vite et son rechargement à chaud ; le backend redémarre à chaque sauvegarde de `apps/backend/src` (Compose Watch) ;
+- les lectures publiques qu'une base neuve ne peut pas fournir (Musilogy, pages artistes, titres du jour, tendances) viennent de l'API de production, en lecture seule (`PUBLIC_API_PROXY_TARGET`, vide pour tout garder en local) ; la session et les titres gardés restent locaux.
+
+`docker compose down` arrête la pile ; `docker compose down -v` efface aussi la base locale.
 
 ## Commandes
 
@@ -108,6 +100,9 @@ Aucun runner self-hosted ni webhook entrant : le dépôt est public, et le polli
 Installation, une fois, sur le serveur (unités et script supposent le dépôt AubeSonore cloné dans `~/aubesonore`, le site dans `~/aubesonore/site` ; ailleurs, ajuster `ExecStart` et définir `REPO_DIR`) :
 
 ```bash
+cd ~/aubesonore/site
+./scripts/make-certs.sh            # TLS de Postgres, si certs/ n'existe pas déjà
+cp .env.example .env               # puis les vraies valeurs : chaque ligne dit celle de la production
 ln -s ~/aubesonore/site/scripts/systemd/* ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now aubesonore-deploy.timer aubesonore-backup.timer

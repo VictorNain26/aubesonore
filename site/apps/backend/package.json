@@ -11,6 +11,7 @@
     "db:generate": "bunx drizzle-kit generate",
     "db:push": "DRIZZLE_KIT_NO_PROMPT=true bunx drizzle-kit push",
     "seed:admin": "bun run src/scripts/seed-admin.ts",
+    "seed:dev": "bun run src/scripts/seed-dev.ts",
     "artists:resolve": "bun run src/scripts/resolve-played-artists.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

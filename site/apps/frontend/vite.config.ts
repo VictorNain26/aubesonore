@@ -8,9 +8,25 @@ import { visualizer } from 'rollup-plugin-visualizer';
 import type { PluginOption } from 'vite';
 import path from 'path';
 
+// What a fresh database has no answer to: Musilogy, the artist pages, today's plays and the
+// trends, and the covers stored with plays. A listener's own data (session, kept tracks) and the
+// artist links of the thread stay on the local backend.
+const PUBLIC_READS = [
+  '^/api/musilogy/',
+  '^/api/artist/page/',
+  '^/api/radio/history',
+  '^/api/trends',
+  '^/api/covers/',
+];
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const apiBaseUrl = env.VITE_API_URL;
+  // In compose.yaml's frontend-dev the page calls /api on its own origin and the backend sits
+  // at API_PROXY_TARGET; PUBLIC_API_PROXY_TARGET answers the public reads a fresh database
+  // cannot (production's, read only).
+  const apiTarget = env.API_PROXY_TARGET || apiBaseUrl;
+  const publicApi = env.PUBLIC_API_PROXY_TARGET;
   const analyze = env.ANALYZE === 'true';
 
   return {
@@ -101,7 +117,14 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port: 5173,
       proxy: {
-        ...(apiBaseUrl ? { '/api': { target: apiBaseUrl, changeOrigin: true } } : {}),
+        // First match wins (https://vite.dev/config/server-options#server-proxy): the public
+        // reads before the rest of /api.
+        ...(publicApi
+          ? Object.fromEntries(
+              PUBLIC_READS.map((path) => [path, { target: publicApi, changeOrigin: true }])
+            )
+          : {}),
+        ...(apiTarget ? { '/api': { target: apiTarget, changeOrigin: true } } : {}),
         // nginx shrinks the station's covers at /covers/ (nginx.conf); here they come full size.
         // preview.proxy defaults to this one (https://vite.dev/config/preview-options#preview-proxy).
         '/covers': {
