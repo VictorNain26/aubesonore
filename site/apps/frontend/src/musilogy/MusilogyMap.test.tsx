@@ -131,8 +131,8 @@ describe('byDecade', () => {
     ).toEqual([2000, 2010]);
   });
 
-  it('gives a fuller decade more columns, fifteen names each', () => {
-    const crowd = Array.from({ length: 40 }, (_, i) => neighbour(i, 1970 + (i % 10)));
+  it('gives a fuller decade more columns, twenty names each', () => {
+    const crowd = Array.from({ length: 45 }, (_, i) => neighbour(i, 1970 + (i % 10)));
     const { decades } = byDecade(artist(around(crowd)), 2026);
 
     expect(decades.find((decade) => decade.decade === 1970)?.columns).toBe(3);
