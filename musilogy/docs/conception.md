@@ -173,8 +173,8 @@ musilogy.search_artists(query text, page_size integer) RETURNS TABLE (
 -- Ce que la page montre de l'œuvre (docs/vision.md §2.4) : les albums (studio,
 -- bande originale, remix) et les EP à partir du premier album, ou tous les EP
 -- d'un artiste sans album ; pour un groupe dont la fin est déclarée, rien
--- après elle sauf ce que Wikidata classe album studio ou EP. Du plus ancien au
--- plus récent, sans année en dernier, puis par titre et MBID.
+-- après elle sauf ce que Wikidata classe album studio ou EP. Du plus récent au
+-- plus ancien, sans année en dernier, puis par titre et MBID.
 musilogy.artist_releases(artist text) RETURNS TABLE (
   mbid text, title text, primary_type text, soundtrack boolean, remix boolean,
   y integer)
