@@ -39,8 +39,9 @@ BASELINE = {
     # row per credited artist of the population.
     "releases": 2_556_274,
     # The pages an artist page uses among those MusicBrainz relates, ended
-    # ones included.
-    "urls": 2_036_294,
+    # ones included: 44 848 Wikipedia and image pages left out since no page
+    # reads them.
+    "urls": 1_991_446,
     # The ListenBrainz neighbours of the artists with 500 listeners or more,
     # over both parts (2026-10-04: 111 402 groups and persons; 2026-10-06: the
     # 6 614 artists of the other types, 122 031 rows), once the repeats and the
@@ -55,7 +56,7 @@ RELEASE_TYPE_BREAKDOWN = {"Album": 1_968_255, "EP": 588_019}
 # Wikidata files 60 688 of the album rows and 9 508 of the EP rows as a studio
 # album or an EP (discography snapshot of 2026-10-05).
 RELEASES_FILED_ORIGINAL = 70_196
-URLS_ENDED = 24_789
+URLS_ENDED = 24_671
 # 17 of the repeats come from the part of 2026-10-06.
 PROXIMITY_EXCLUSIONS = {"repeated_neighbour": 692, "self_neighbour": 84}
 # Every artist asked by either part, 18 375 of them without a neighbour (1 860
