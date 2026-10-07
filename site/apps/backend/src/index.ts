@@ -5,6 +5,7 @@ import { pool } from './db';
 import { runMigrations } from './db/migrate';
 import { betterAuthPlugin } from './lib/auth/betterAuthPlugin';
 import { securityHeaders, applySecurityHeaders } from './lib/security/securityHeaders';
+import { requestLog } from './lib/requestLog';
 import { logger } from './lib/logger';
 import { trackRoutes } from './routes/track.routes';
 import { artistRoutes } from './routes/artist.routes';
@@ -73,10 +74,7 @@ startYouTubeLinks();
 startDiscoveredArtists();
 
 const app = new Elysia()
-  // Per-request start time, available to onAfterHandle via context.
-  // `derive` runs after onRequest and before the handler, giving us a
-  // closure value per-request without mutating shared state.
-  .derive(() => ({ startedAt: performance.now() }))
+  .use(requestLog)
   .use(securityHeaders)
   .use(
     cors({
@@ -110,15 +108,6 @@ const app = new Elysia()
     applySecurityHeaders(set.headers);
     set.status = 500;
     return { error: 'Internal server error' };
-  })
-  .onAfterHandle(({ request, set, startedAt }) => {
-    const durationMs = Math.round(performance.now() - startedAt);
-    logger.info('http', {
-      method: request.method,
-      path: new URL(request.url).pathname,
-      status: set.status ?? 200,
-      durationMs,
-    });
   });
 
 const server = app.listen({ port: env.PORT, hostname: '0.0.0.0' });
