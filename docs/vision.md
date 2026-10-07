@@ -61,9 +61,11 @@ du direct.
 
 Partir d'un artiste qu'on aime, ou qu'on vient d'entendre, et creuser : trouver d'autres artistes
 par l'esthétique du son et les courants musicaux, en comprenant pourquoi ils sont là. Ils sont
-du même courant à la même époque, ils sortent sur le même label, le même public les écoute, ses
-membres y ont joué. Chaque nom se suit : on apprend en marchant d'un artiste à l'autre. Qui a
-cité qui n'aide pas à creuser : ce n'est pas sur la page.
+du même courant à la même époque, le même public les écoute, l'un a cité l'autre comme influence,
+ils sortent sur le même label, ses membres y ont joué. Chaque nom se suit : on apprend en marchant
+d'un artiste à l'autre. La promesse vaut pour tous les artistes, anciens comme récents, connus
+comme confidentiels ; là où aucune source fiable ne parle d'un artiste, la page ne propose rien
+plutôt que du bruit.
 
 ### 2.2 Ce que chaque information apporte
 
@@ -71,24 +73,38 @@ Une information a sa place sur la page si elle répond à une question d'auditeu
 de la musique. Elle se dit avec le niveau de preuve qu'elle a : une mesure se présente comme une
 mesure, une déclaration comme une déclaration.
 
+Mesuré le 2026-10-07 sur 20 artistes de la bibliothèque de Victor et 515 candidats, chacun jugé
+sur la couleur du son avec ses sources (même son, parenté, lointain, étranger ; jugement de Claude
+documenté, à confirmer à l'oreille, `~/musilogy-data/study/eval_verdicts2/`). « Bon » veut dire
+même son ou parenté.
+
 | Information | Question de l'auditeur | Source | Ce qui lui donne du sens | État |
 |---|---|---|---|---|
-| **Écoutés par le même public** | « Qui écouter ensuite ? » | ListenBrainz : les artistes que les mêmes auditeurs écoutent (co-écoute), relevé daté | de vrais auditeurs ; le meilleur signal pour un artiste connu et pour une scène (Die Sterne → Tocotronic, Blumfeld, Kante). Vide pour un petit artiste : 2 voisins pour Ventre De Biche, aucun pour Sababa 5. 303 des 346 artistes joués ont des voisins (2026-10-06) | en ligne |
-| **Du même courant** | « Dans quel courant, avec qui ? » | les styles Discogs de ses disques (dump CC0), par époque, et les genres MusicBrainz | juste quand le courant est net (Can → Faust, Neu!, Harmonia en krautrock ; Lalalar et Sababa 5 en « anatolian rock » selon MusicBrainz), du bruit quand il est large (« Indie Rock ») : explique et classe les autres signaux plus qu'il ne cherche seul | à faire (§7) |
-| **Du même label** | « Quelle scène ? » | Discogs : les labels où l'artiste sort ses disques, comptés, hors compilations et sociétés de gestion | la scène d'un petit artiste, là où rien d'autre ne répond : Sababa 5 → El Khat, Şatellites ; Ventre De Biche → Tête De Cerf, Noir Boy George. Sans valeur pour un artiste de catalogue (Can : rééditions et remix) | à faire (§7) |
-| **Qui sonne pareil** | « Qui a le même son, même inconnu ? » | aucune source à la fois libre et juste | mesuré le 2026-10-06 sur 1 694 artistes : l'empreinte EffNet d'extraits Deezer suit la co-écoute (AUC 0,78) mais les conditions de Deezer l'interdisent (§2.5) ; AcousticBrainz, libre, ne la suit qu'à 0,65 et rapproche Can de Tiësto, Ventre De Biche de Debussy | écarté ; se rouvre avec une source libre et juste, ou un accord écrit de Deezer |
-| **Groupes et projets** | « Où sont allés ses membres ? » | MusicBrainz : appartenances, pseudonymes, changements de nom | des faits déclarés, et un chemin sûr dans une scène : de Stereolab à McCarthy, Monade, Cavern of Anti-Matter ; de The Notwist à Lali Puna, 13 & God. 129 des 161 groupes joués ont au moins un projet de membre qui a un disque, médiane 5 (2026-10-05) | en ligne |
+| **Même son** | « Qui écouter ensuite ? » | la fusion des signaux ci-dessous, chaque lien avec sa raison | le seul classement montré. Voisins de co-écoute en commun et styles par époque : 64 % de bons sur les 5 premiers, contre 54 % pour la co-écoute seule, et deux fois plus d'artistes moins connus que l'artiste de départ | à faire (§7) |
+| **Écoutés par le même public** | (signal) | ListenBrainz : le service des artistes similaires (relevé daté), et notre propre co-écoute calculée sur les tops d'écoute de 97 053 auditeurs (export du 2026-10-01, CC0) | de vrais auditeurs. Le service n'a aucune correction de popularité (`listenbrainz_spark/similarity/artist.py`) : 80 % de ses voisins sont plus connus que l'artiste, et il s'arrête vers 1 000 auditeurs. Notre calcul, corrigé de la popularité, peut couvrir jusqu'à 281 311 artistes | service en ligne ; notre calcul à mesurer (§7) |
+| **Du même courant** | (signal) | les styles Discogs de ses disques (dump CC0), par décennie, et les genres MusicBrainz | aussi juste que la co-écoute (48 % de bons) et trois fois meilleur pour trouver des artistes moins connus. Seul signal de son pour l'underground : 64 % des artistes de 100 à 999 auditeurs, 32 % de ceux de 1 à 99 | à faire (§7) |
+| **Influences déclarées** | « Qui l'a inspiré, qui a-t-il inspiré ? » | Wikidata (P737) | rare (9 517 paires), mais sûr : 14 des 17 liens d'influence de l'évaluation ont le même son ou une parenté | en ligne, à porter sur la carte (§2.3) |
+| **Du même label** | « Quelle scène ? » | Discogs : les labels de première édition qui portent au moins deux de ses disques | un fait, pas une proximité de son : 26 % de bons seulement, quelle que soit la taille du label. Montré pour ce qu'il est, dans sa propre vue, sans les majors (plus de 400 artistes) | à faire (§7) |
+| **Genres** | « Qu'est-ce que c'est ? » | les styles Discogs par époque, sinon les genres MusicBrainz | la première réponse sur la fiche, et ce qui explique un lien | à faire (§7) |
+| **Qui sonne pareil** | « Qui a le même son, même inconnu ? » | l'audio | les extraits Deezer sont exclus par leurs conditions (§2.5), AcousticBrainz mesuré trop faible (AUC 0,65). Les fichiers de la bibliothèque Plex sont la seule source légale : une piste pour les artistes de la bibliothèque, pas pour tous | écarté pour la population ; à étudier pour la bibliothèque |
+| **Groupes et projets** | « Où sont allés ses membres ? » | MusicBrainz : appartenances, pseudonymes, changements de nom | des faits déclarés, et un chemin sûr dans une scène : de Stereolab à McCarthy, Monade, Cavern of Anti-Matter. 129 des 161 groupes joués ont au moins un projet de membre qui a un disque (2026-10-05) | en ligne |
 | **Albums et EP** | « Qu'a-t-il sorti, par où commencer ? » | MusicBrainz | l'œuvre, dans l'ordre, sans le bruit du catalogue (§2.4) | en ligne |
 | **Écouter ailleurs** | « Où l'écouter en entier ? » | les liens que MusicBrainz déclare | passer de la découverte à l'écoute | en ligne |
 
-**Aucun signal ne suffit seul, chaque artiste en a au moins un qui tombe juste.** Mesuré le
-2026-10-06 sur dix artistes joués de courants différents : quand plusieurs signaux convergent, le
-lien est sûr (Dopplereffekt : Der Zyklus, DJ Stingray, Drexciya par la co-écoute, le courant et
-le label) ; un petit artiste n'est servi que par le label et les genres MusicBrainz. Un artiste
-lié s'affiche donc s'il repose sur un signal déclaré fort ou sur deux signaux qui concordent, et
-il dit sa raison (« même label : Batov Records », « krautrock, 1971 »). Le temps lui donne sa place : avant, pendant, après. Chaque
-signal et leur fusion se mesurent contre le jugement de Victor sur une vingtaine d'artistes avant
-d'être en ligne. Un classement est un calcul nommé et documenté, jamais un jugement.
+**Aucun signal ne suffit seul ; leur accord est sûr.** Un candidat trouvé par deux signaux est bon
+86 fois sur 100. Le classement « Même son » est donc une fusion : la co-écoute corrigée de la
+popularité, les voisins en commun, les styles par époque pondérés par leur rareté, les influences
+déclarées ; quand un artiste a trop peu d'auditeurs, le contenu (styles, genres, liens déclarés)
+prend le relais. Chaque lien garde sa raison (« même courant, années 2000 », « écoutés par les
+mêmes », « l'a cité comme influence ») et en affiche une. On en montre peu, mais sûrs : environ
+huit. Un classement est un calcul nommé et documenté, jamais un jugement.
+
+**Une règle n'entre en ligne que mesurée.** Le jeu d'évaluation se juge par artiste de référence,
+jamais par paire ; un écart se donne avec son intervalle de confiance ; une règle qui gagne en
+moyenne mais perd sur les artistes peu écoutés est rejetée. Vingt références ne séparent que des
+écarts d'environ dix points : le jeu passe à une soixantaine, surtout des artistes peu écoutés.
+Les clics des auditeurs départagent plus tard deux règles, sans jamais nourrir la similarité, ce
+qui ferait boucle.
 
 **La popularité ne s'affiche pas.** Le nombre d'auditeurs ListenBrainz sert à deux choses
 techniques : classer la recherche (« The Beatles » de Liverpool avant le groupe doo-wop de
@@ -97,12 +113,14 @@ rendent impossibles sur les 2,98 millions d'artistes. Il ne choisit pas ce qu'un
 
 ### 2.3 La carte et le texte
 
-- **La carte** : le temps de gauche à droite, l'artiste au centre sur ses années d'activité, ses
-  proches posés à leur année de début, d'autant plus près qu'ils sont proches ; les liens de
-  groupe par-dessus. Un clic recentre. Les proches sont en ligne depuis le 2026-10-06 : sa valeur
-  se juge avec la refonte de la découverte (§7) ; si le texte suffit à creuser, elle part.
-- **Le texte** : la même chose en phrases et en listes. C'est ce que lisent les lecteurs d'écran
-  et les moteurs de recherche, et ce qui doit suffire seul.
+- **La carte, seule à l'écran** : le temps de gauche à droite, l'artiste au centre sur ses années
+  d'activité, ses proches posés à leur année de début, d'autant plus près qu'ils sont proches. Un
+  sélecteur passe de « Même son » (environ huit artistes, les influences marquées) à « Même label »
+  (les artistes regroupés par label). Un artiste sans année de début a sa rangée au bord. Un clic
+  recentre. Elle remplace les listes « avant, pendant, après » et la rubrique des influences : plus
+  visuelle et plus courte.
+- **Lisible sans la voir** : chaque nom de la carte est un lien textuel, que lisent les lecteurs
+  d'écran et les moteurs de recherche.
 - **Indexée quand elle est riche** : une page est proposée aux moteurs de recherche au-delà d'un
   seuil de contenu ; en deçà, elle existe mais n'est pas listée. La page d'un artiste joué l'est
   toujours. Celle d'un artiste jamais joué l'est quand au moins 10 pages d'artistes joués y
@@ -118,8 +136,9 @@ rendent impossibles sur les 2,98 millions d'artistes. Il ne choisit pas ce qu'un
 
 Un ordre de départ, chaque section seulement quand elle a quelque chose à montrer :
 
-1. **Qui** : le portrait, le nom, une ligne de faits, l'ouverture de Wikipédia ou, sans article,
-   les faits dits en une phrase.
+1. **Qui** : le portrait, le nom, une ligne de faits, une ligne de genres (les styles Discogs par
+   époque, sinon les genres MusicBrainz), l'ouverture de Wikipédia ou, sans article, les faits dits
+   en une phrase.
 2. **Écouter ailleurs** : Deezer, Spotify, Bandcamp, site officiel…
 3. **Albums et EP**, avec pochette et année, du plus ancien au plus récent : ce que l'artiste a
    voulu sortir. Les albums (studio, bandes originales qu'il a composées, remix) et les EP ; pas
@@ -129,9 +148,9 @@ Un ordre de départ, chaque section seulement quand elle a quelque chose à mont
    quand un cas réel la contredit. Le 2026-10-05, Protomartyr, Bloc Party ou Can gardent leur
    discographie entière, les Beatles s'arrêtent en 1970.
 4. **Vos titres gardés**, pour un auditeur connecté qui en a gardé.
-5. **Où aller ensuite** : les artistes liés, rangés par raison (même courant, même label, même
-   public), chacun avec sa raison et sa place dans le temps ; puis les groupes et projets en
-   trois rubriques plutôt que les douze types de relation de MusicBrainz :
+5. **Où aller ensuite** : la carte (§2.3), « Même son » ou « Même label », chaque artiste avec sa
+   raison et sa place dans le temps ; puis les groupes et projets en trois rubriques plutôt que
+   les douze types de relation de MusicBrainz :
    - **Membres** d'un groupe, ou **Groupes** d'une personne, avec leurs années ;
    - **Projets des membres** : leurs autres groupes et projets solo, seulement ceux qui ont un
      disque, pour que chaque lien mène à de la musique, du plus ancien au plus récent, repliés
@@ -317,8 +336,10 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
    comme l'œuvre de l'artiste (476 des 4 980 disques des artistes joués, 2026-10-06), mais 149
    restent de statut inconnu, et le relevé n'a pas encore interrogé les artistes qui n'ont que des
    EP ni les nouveaux types d'artistes.
-2. **La découverte ne suit qu'un signal** : la co-écoute ; le courant et le label restent à
-   faire, et les influences sont encore sur la page (§7, étape 9).
+2. **La découverte ne suit qu'un signal, et il favorise les artistes connus** : les proches de la
+   page viennent du seul service de co-écoute ListenBrainz, dont 80 % des voisins sont plus connus
+   que l'artiste et qui ne couvre pas les artistes de moins de 1 000 auditeurs environ ; le courant,
+   le label et la fusion restent à faire (§7, étape 9).
 3. **Les pages d'artistes jamais joués qui passent le seuil restent à leur MBID** :
    `/artiste/<mbid>`, sans slug (étape 7.5).
 4. **Identité incomplète** : 52 des 397 artistes joués n'ont pas de MBID (2026-10-06). Le lien
@@ -327,7 +348,8 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
    titres gardés ne retrouvent ni leur passage ni leur titre exact chez Deezer.
 5. **Relevés incomplets** : musilogy publie tous les types d'artistes, sauf les 12 artistes à
    usage spécial (les 674 240 sans type, 17 790 personnages et 6 572 « autres » s'ajoutent), mais
-   le relevé de co-écoute du 2026-10-04 n'a interrogé que les groupes et les personnes.
+   le relevé de co-écoute du 2026-10-04 n'a interrogé que les groupes et les personnes. Les parties
+   complémentaires (co-écoute et statut officiel, 2026-10-06) sont prises, pas encore épinglées.
 6. **Les featurings ne relient que l'artiste principal** (§4.4).
 7. **Licences à régulariser** : la similarité ListenBrainz à confirmer, le portrait et les
    pochettes Deezer (§2.5).
@@ -358,23 +380,31 @@ l'historique git.
    au-delà de 300 ms le backend envoie la page vide, que le client remplit.
 8. **Les proches en ligne** — fait (#293, chargé le 2026-10-06).
 9. **La découverte refondue** (écarts 2 et 5), en PR courtes. Le site n'a pas encore de public :
-   chaque PR remplace pour de bon, et retire dans la même PR ce qu'elle rend inutile.
-   1. **Population complète** : tous les types MusicBrainz sauf les artistes techniques (Various
-      Artists, [anonymous], [dialogue]…), une règle de dates pour les artistes sans type (début
-      d'activité ou naissance : à mesurer), un dump MusicBrainz récent, et les relevés de
-      popularité, de co-écoute et de statut officiel complétés pour les nouveaux artistes.
-   2. **Discogs** : le dump des sorties épinglé ; une table des styles par artiste et par époque,
-      une table des labels où il sort ses disques.
-   3. **L'évaluation** : un jeu de vérité tiré du jugement de Victor sur une vingtaine d'artistes ;
-      la justesse des dix premiers liens par signal et fusionnés, et le seuil à tenir avant la mise
-      en ligne.
-   4. **Les artistes liés** : une table calculée hors ligne (artiste, artiste lié, signaux, raison,
-      confiance), une fonction SQL, la page par raison (§2.4).
-   5. **Ce qui part**, chacun dans la PR qui le remplace : les influences (table, relevé Wikidata
-      P737, fonction `artist_influences`, rubrique, types partagés, leur part dans le seuil
-      d'indexation) ; `artist_neighbours`, remplacée par la fonction des artistes liés ;
-      `artist_links`, que le site n'appelle plus ; la carte si le texte suffit (§2.3) ; sur le serveur, les dossiers de travail et l'extraction périmée de
-      `~/musilogy-data/work`.
+   chaque PR remplace pour de bon, et retire dans la même PR ce qu'elle rend inutile. Les sources
+   restent séparées : une source, ses tables ; les ponts entre bases sont des tables ; les
+   combinaisons vivent dans une couche dérivée qui ne réécrit jamais une source
+   (`musilogy/docs/conception.md` §1).
+   1. **Population complète** — fait (#406 à #409, chargé le 2026-10-07) ; les relevés
+      complémentaires de co-écoute et de statut officiel sont pris (2026-10-06), à épingler.
+   2. **Discogs** : le dump des sorties épinglé, les tables des styles par décennie et des labels
+      de première édition — en cours.
+   3. **L'évaluation** — premier tour fait (2026-10-07 : 20 artistes, 515 candidats jugés avec
+      sources). À faire : une soixantaine de références, surtout peu écoutées ; l'avis de Victor à
+      l'oreille sur un échantillon, pour savoir si le jugement documenté suit le sien.
+   4. **Notre co-écoute** : calculée sur l'export ListenBrainz (tops d'écoute, CC0), corrigée de la
+      popularité ; les corrections (cosinus asymétrique, RP3β, PMI lissée, BM25) comparées sur
+      l'évaluation. Si elle bat le relevé du service, le relevé part avec sa mécanique de parties.
+   5. **Les artistes liés** : une table calculée hors ligne (artiste, artiste lié, signaux, raison,
+      score), fusion par les rangs, bascule sur le contenu sous un seuil d'auditeurs ; une fonction
+      SQL ; la carte « Même son / Même label » et la ligne de genres sur la page.
+   6. **Ce qui part**, chacun dans la PR qui le remplace : `artist_neighbours`, remplacée par la
+      fonction des artistes liés ; les listes sous la carte et la rubrique des influences, que la
+      carte remplace (la table des influences reste, comme signal) ; `artist_links`, que le site
+      n'appelle plus ; sur le serveur, les fichiers de l'étude devenus inutiles.
+   7. **Ensuite, sur mesure** : relier plus d'artistes à Discogs par les sorties que MusicBrainz y
+      relie, adopté seulement à 99 % de justesse mesurée ; les crédits Discogs (producteurs,
+      mixeurs) comme signal s'ils prédisent le son sur l'évaluation ; l'audio pour les artistes de
+      la bibliothèque.
 10. **Les données à jour** : un dump MusicBrainz plus récent, le dump Discogs mensuel et les
     relevés rapides refaits régulièrement par un timer (dumps, relevés, invariants, publication,
     chargement) ; les relevés longs avancent en incrémental, sur les nouveaux artistes. La
