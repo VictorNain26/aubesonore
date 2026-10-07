@@ -11,11 +11,17 @@ REPO_DIR="${REPO_DIR:-$HOME/aubesonore}"
 cd "$REPO_DIR"
 
 # The weekly pass imports its code from pipeline/ at each step: never move the
-# tree under it. The next timer run promotes once the pass is over.
-if systemctl --user is-active --quiet radio-weekly.service; then
-  echo "radio-weekly is running, deferring the deploy"
-  exit 0
-fi
+# tree under it. The next timer run promotes once the pass is over. A oneshot
+# stays "activating" for its whole run, which `is-active` reports as not active:
+# three deploys landed in the middle of the pass of 2026-10-04.
+weekly=$(systemctl --user show -P ActiveState radio-weekly.service)
+case "$weekly" in
+  inactive | failed) ;;
+  *)
+    echo "radio-weekly is $weekly, deferring the deploy"
+    exit 0
+    ;;
+esac
 
 # The checkout serves production: anything but a clean master is someone's work
 # in progress. A fast-forward would then move their branch, or fail on their
