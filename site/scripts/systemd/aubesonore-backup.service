@@ -6,3 +6,5 @@ Type=oneshot
 Nice=15
 ExecStart=%h/aubesonore/site/scripts/backup-db.sh
 TimeoutStartSec=30m
+# Gatus hears how each run ended; "-": a Gatus that does not answer never fails the run.
+ExecStopPost=-%h/aubesonore/site/scripts/heartbeat.sh site_sauvegarde-site

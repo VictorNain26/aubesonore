@@ -104,6 +104,32 @@ endpoints:
       - type: ntfy
         minimum-reminder-interval: 24h
 
+  # Le site (site/) : la page d'accueil à travers Cloudflare, et l'API jusqu'au backend.
+  - name: site
+    group: site
+    url: "https://aubesonore.fr/"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: custom
+        minimum-reminder-interval: 24h
+      - type: ntfy
+        minimum-reminder-interval: 24h
+
+  - name: api
+    group: site
+    url: "https://api.aubesonore.fr/health"
+    interval: 5m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].status == ok"
+    alerts:
+      - type: custom
+        minimum-reminder-interval: 24h
+      - type: ntfy
+        minimum-reminder-interval: 24h
+
 external-endpoints:
   - name: passe-hebdo
     group: radio
@@ -151,6 +177,35 @@ external-endpoints:
   - name: grille
     group: radio
     token: "${GATUS_TOKEN}"
+    heartbeat:
+      interval: 48h
+    alerts:
+      - type: custom
+        failure-threshold: 1
+        minimum-reminder-interval: 24h
+      - type: ntfy
+        failure-threshold: 1
+        minimum-reminder-interval: 24h
+
+  # Le déploiement du site tourne toutes les 2 min et peut construire 30 min : une heure sans
+  # battement, c'est le timer qui s'est arrêté. 3 échecs de suite (6 min) : une coupure réseau
+  # passagère n'alerte pas, un déploiement bloqué (migration, checkout pas sur master) si.
+  - name: deploiement
+    group: site
+    token: "${GATUS_SITE_TOKEN}"
+    heartbeat:
+      interval: 1h
+    alerts:
+      - type: custom
+        failure-threshold: 3
+        minimum-reminder-interval: 24h
+      - type: ntfy
+        failure-threshold: 3
+        minimum-reminder-interval: 24h
+
+  - name: sauvegarde-site
+    group: site
+    token: "${GATUS_SITE_TOKEN}"
     heartbeat:
       interval: 48h
     alerts:

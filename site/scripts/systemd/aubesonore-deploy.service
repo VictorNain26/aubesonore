@@ -7,3 +7,5 @@ Type=oneshot
 Nice=10
 ExecStart=%h/aubesonore/site/scripts/deploy.sh
 TimeoutStartSec=1800
+# Gatus hears how each run ended; "-": a Gatus that does not answer never fails the run.
+ExecStopPost=-%h/aubesonore/site/scripts/heartbeat.sh site_deploiement
