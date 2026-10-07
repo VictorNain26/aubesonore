@@ -162,7 +162,7 @@ external-endpoints:
   # azuracast/scripts/) : alerte au premier échec ou après 2 jours de silence.
   - name: sauvegarde-medias
     group: radio
-    token: "${GATUS_TOKEN}"
+    token: "${GATUS_AZURACAST_TOKEN}"
     heartbeat:
       interval: 48h
     alerts:
