@@ -438,6 +438,23 @@ def _discogs_fixture(artists: Path, out: Path) -> None:
         fh.writelines(line for line in src if discogs_ids & set(json.loads(line)["artists"]))
 
 
+def fixtures_attribution() -> str:
+    """The sources the fixtures are drawn from, named from the pinned
+    references: written by make-fixtures, so it cannot fall behind a new pin."""
+    return (
+        "<!-- tests/fixtures/ATTRIBUTION.md, written by `musilogy make-fixtures` -->\n"
+        f"Extraits du dump MusicBrainz `{DUMP}`, des relevés ListenBrainz (popularité du "
+        f"{REFERENCE_POPULARITY}, proximité du {', '.join(REFERENCE_PROXIMITY)}), des relevés "
+        f"Wikidata (influences du {REFERENCE_INFLUENCES}, "
+        f"discographie du {REFERENCE_DISCOGRAPHY}), "
+        f"du statut officiel MusicBrainz du {', '.join(REFERENCE_OFFICIAL)} et du dump des "
+        f"sorties Discogs `{REFERENCE_DISCOGS}` (data.discogs.com).\n"
+        "Données de base, relevés et Discogs : CC0. Genres : CC-BY-NC-SA 3.0, attribution "
+        "MusicBrainz.\n"
+        "Ne pas éditer à la main : `uv run musilogy make-fixtures` le réécrit.\n"
+    )
+
+
 def make_fixtures() -> None:
     """Extracts the witness records from the full extractions, plus every
     artist a witness is linked to: a link only survives when both of its ends
@@ -522,6 +539,7 @@ def make_fixtures() -> None:
         fh.writelines(_lines_about(verified_official(), kept_set))
     _discogs_fixture(work / "artists.jsonl", out / "discogs.jsonl")
 
+    (out / "ATTRIBUTION.md").write_text(fixtures_attribution(), encoding="utf-8")
     print("witnesses found:", len(wanted & set(kept)), "linked artists:", len(set(kept) - wanted))
     missing = wanted - set(kept)
     print("missing:", missing or "none")
