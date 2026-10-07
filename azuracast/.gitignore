@@ -7,5 +7,7 @@ stations/
 # mirrors it and is the file to read.
 .env
 azuracast.env
+# The heartbeat token of azuracast-backup, kept out of .env, which the container reads.
+gatus.env
 
 *.log

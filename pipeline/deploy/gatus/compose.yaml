@@ -15,6 +15,8 @@ services:
       GATUS_TOKEN: ${GATUS_TOKEN}
       # Jeton des battements du site (site/.env), à part de celui du pipeline.
       GATUS_SITE_TOKEN: ${GATUS_SITE_TOKEN}
+      # Jeton du battement d'azuracast-backup (azuracast/gatus.env).
+      GATUS_AZURACAST_TOKEN: ${GATUS_AZURACAST_TOKEN}
       NTFY_TOPIC: ${NTFY_TOPIC}
     volumes:
       # Le dossier, pas le fichier : un fichier monté seul garde son ancien inode quand git le
