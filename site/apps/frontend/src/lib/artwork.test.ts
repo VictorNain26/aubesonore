@@ -78,14 +78,13 @@ describe('artworkSrcSet', () => {
     );
   });
 
-  it("offers the station's covers at the three widths nginx makes", () => {
-    expect(
-      artworkSrcSet(
-        'https://radio.aubesonore.fr/api/station/aubesonore/art/27d87a8584e8ebe4e670e5e7-1791145643.jpg'
-      )
-    ).toBe(
-      [96, 192, 384]
+  it("offers the station's covers at the widths nginx makes, then the original", () => {
+    const original =
+      'https://radio.aubesonore.fr/api/station/aubesonore/art/27d87a8584e8ebe4e670e5e7-1791145643.jpg';
+    expect(artworkSrcSet(original)).toBe(
+      [96, 192, 384, 768]
         .map((width) => `/covers/${width}/27d87a8584e8ebe4e670e5e7-1791145643.jpg ${width}w`)
+        .concat(`${original} 1000w`)
         .join(', ')
     );
   });
@@ -93,7 +92,8 @@ describe('artworkSrcSet', () => {
   it("takes the next width nginx makes for a station's cover at another size", () => {
     const url = 'https://radio.aubesonore.fr/api/station/aubesonore/art/abc-1.jpg';
     expect(artworkAt(url, 160)).toBe('/covers/192/abc-1.jpg');
-    expect(artworkAt(url, 1000)).toBe('/covers/384/abc-1.jpg');
+    expect(artworkAt(url, 500)).toBe('/covers/768/abc-1.jpg');
+    expect(artworkAt(url, 1000)).toBe(url);
   });
 
   it('offers nothing for a host that cannot resize', () => {

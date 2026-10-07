@@ -100,6 +100,8 @@ export function NowPlayingView({
             alt={m.now_cover_alt({ title: track.title, artist: track.artist })}
             seed={`${track.artist}|${track.title}`}
             priority
+            // artwork-size: 46svh wide, 60svh from 64rem (design/tokens.css).
+            sizes="(min-width: 64rem) 60vh, 46vh"
             className={cn('artwork-size shadow-cover aspect-square', hasChanged && 'swap-in')}
           />
         ) : (

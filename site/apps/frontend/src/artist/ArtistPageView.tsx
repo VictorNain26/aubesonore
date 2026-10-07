@@ -6,12 +6,11 @@ import type {
   ClientLikedTrack,
   MusilogyArtist,
 } from '@aubesonore/shared-types/client';
-import { getLocale, localizeHref } from '@/paraglide/runtime.js';
-import { Link } from 'react-router';
+import { getLocale } from '@/paraglide/runtime.js';
 import { ArrowUpRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Cover } from '../home/Cover';
-import { ARTIST_LINK, BACK_TO_LIVE } from '../home/styles';
+import { ARTIST_LINK } from '../home/styles';
 import * as m from '@/paraglide/messages.js';
 import { KIND_LABELS } from '../lib/artistKind';
 import { SiteHeader } from '../home/SiteHeader';
@@ -19,6 +18,7 @@ import { Section } from '../design/molecules/Section';
 import { musilogyNav, MusilogySections } from '../musilogy/MusilogyView';
 import { PageNav } from '../design/molecules/PageNav';
 import { DiscoveryTrail } from '../design/molecules/DiscoveryTrail';
+import { PageMessage } from './PageMessage';
 import type { TrailStep } from '../lib/discoveryTrail';
 import { ReleasesSection } from '../musilogy/Releases';
 
@@ -98,20 +98,6 @@ function formatKeptAt(iso: string): string {
 }
 
 /** A page with nothing to show, like the 404: what happened, and the way back to the live. */
-function Message({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="lift-in px-page flex flex-1 flex-col justify-center gap-3 py-16">
-      <h1 className="text-hero m-0">{title}</h1>
-      <p className="text-intro text-text-muted max-w-blurb m-0">{body}</p>
-      <p className="m-0 mt-6">
-        <Link to={localizeHref('/')} className={BACK_TO_LIVE}>
-          {m.artist_back()}
-        </Link>
-      </p>
-    </div>
-  );
-}
-
 const OUTSIDE_LINK = { rel: 'noopener noreferrer', target: '_blank' } as const;
 
 /** The opening of the article, its link closing the paragraph rather than taking a line. */
@@ -311,9 +297,9 @@ export function ArtistPageView({
           <span className="bg-surface-raised h-12 w-2/3 rounded-sm" />
         </div>
       ) : state.status === 'missing' ? (
-        <Message title={m.artist_missing_title()} body={m.artist_missing_body()} />
+        <PageMessage title={m.artist_missing_title()} body={m.artist_missing_body()} />
       ) : state.status === 'error' ? (
-        <Message title={m.artist_error_title()} body={m.artist_error_body()} />
+        <PageMessage title={m.artist_error_title()} body={m.artist_error_body()} />
       ) : (
         <Profile
           profile={state.profile}

@@ -143,18 +143,24 @@ export default defineConfig(({ mode }) => {
     ssr: { noExternal: true },
     build: {
       sourcemap: false,
-      rollupOptions: {
+      rolldownOptions: {
         // The Cast receiver is a page of its own, which a TV opens (vite.dev/guide/build#multi-page-app).
         input: {
           main: path.resolve(__dirname, 'index.html'),
           receiver: path.resolve(__dirname, 'cast/receiver.html'),
         },
         output: {
-          manualChunks(id: string) {
-            if (id.includes('node_modules')) {
-              if (id.includes('react-dom') || id.endsWith('/react/index.js')) return 'react-vendor';
-            }
-            return undefined;
+          // React alone, so that updating any other library leaves this chunk cached. The test
+          // reads the package's own folder: pnpm's isolated layout names peers in its paths
+          // (.pnpm/@base-ui+react@…_react-dom@…), which a bare `includes('react-dom')` matched.
+          // https://rolldown.rs/in-depth/manual-code-splitting
+          codeSplitting: {
+            groups: [
+              {
+                name: 'react-vendor',
+                test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+              },
+            ],
           },
         },
       },
