@@ -125,7 +125,7 @@ rendent impossibles sur les 2,98 millions d'artistes. Il ne choisit pas ce qu'un
   seuil de contenu ; en deçà, elle existe mais n'est pas listée. La page d'un artiste joué l'est
   toujours. Celle d'un artiste jamais joué l'est quand au moins 10 pages d'artistes joués y
   mènent, qu'elle a un élément Wikidata (le chemin vers son article Wikipédia) et au moins 3
-  albums ou EP (`services/discoveredArtists.ts`). Mesuré le 2026-10-06 : les 398 pages jouées
+  albums ou EP (`site/apps/backend/src/services/discoveredArtists.ts`). Mesuré le 2026-10-06 : les 398 pages jouées
   mènent à 8 126 artistes jamais joués, 522 depuis au moins 10 pages, environ 490 passent. La
   règle tient la page dans le graphe de la radio : Google traite comme abus les pages assemblées
   en masse depuis d'autres sites, et une masse de pages faibles pèse sur tout le site. Elles ont
