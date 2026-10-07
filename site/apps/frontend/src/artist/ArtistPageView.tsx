@@ -143,20 +143,26 @@ const LISTEN_PILL =
 /** Where else to hear the artist: one pill per platform, each opening outside. */
 function ListenLinks({ links }: { links: ArtistProfile['links'] }) {
   return (
-    // One row on phones, scrolling sideways past the gutter like PageNav; wraps from md.
-    <ul
-      aria-label={m.artist_listen_title()}
-      className="m-0 -mx-6 flex scrollbar-none list-none gap-2 overflow-x-auto p-0 px-6 md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
-    >
-      {links.map((link) => (
-        <li key={link.url} className="shrink-0">
-          <a href={link.url} {...OUTSIDE_LINK} className={LISTEN_PILL}>
-            {PLATFORM_LABELS[link.platform]()}
-            <ArrowUpRight aria-hidden="true" className="text-text-muted size-4" />
-          </a>
-        </li>
-      ))}
-    </ul>
+    <>
+      {/* Named for those who move by headings; the pills say it to the eye. */}
+      <h2 id="listen-title" className="sr-only">
+        {m.artist_listen_title()}
+      </h2>
+      {/* One row on phones, scrolling sideways past the gutter like PageNav; wraps from md. */}
+      <ul
+        aria-labelledby="listen-title"
+        className="m-0 -mx-6 flex scrollbar-none list-none gap-2 overflow-x-auto p-0 px-6 md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
+      >
+        {links.map((link) => (
+          <li key={link.url} className="shrink-0">
+            <a href={link.url} {...OUTSIDE_LINK} className={LISTEN_PILL}>
+              {PLATFORM_LABELS[link.platform]()}
+              <ArrowUpRight aria-hidden="true" className="text-text-muted size-4" />
+            </a>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 

@@ -555,6 +555,23 @@
   }
 }
 
+/* Reveal's fade, ended halfway in: in a dense list whose faint names mean « less close », a name
+   still fading at the bottom of the screen would read as one of them. Never faded while focused,
+   so a focused name and its outline keep their contrast. Its own utility: `reveal` stays as the
+   home page has it. */
+@utility reveal-early {
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      animation: focus-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 50%;
+      &:focus-within {
+        animation: none;
+      }
+    }
+  }
+}
+
 /* A track joining the thread: it drops into place; the first ones follow each other. */
 @utility thread-in {
   @media (prefers-reduced-motion: no-preference) {

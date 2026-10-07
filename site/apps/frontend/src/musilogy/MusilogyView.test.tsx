@@ -176,7 +176,7 @@ describe('MusilogySections', () => {
     const { rerender } = show(artist({ influences }));
     expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Elvis' })).not.toBeInTheDocument();
-    expect(screen.getAllByText(/son influence/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/l'a influencé/).length).toBeGreaterThan(0);
 
     rerender(<Sections artist={artist({ neighbours: null, influences })} />);
     expect(screen.getByRole('heading', { name: 'Influences' })).toBeInTheDocument();
@@ -188,7 +188,7 @@ describe('MusilogySections', () => {
     show(artist({ neighbours: { before: [neighbour(3)], during: [], after: [], undated } }));
 
     expect(screen.getByText('Débuts inconnus')).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: 'Undated Band' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: /Undated Band/ }).length).toBeGreaterThan(0);
   });
 
   it('names no source, licence or tool, and links nowhere outside the site', () => {

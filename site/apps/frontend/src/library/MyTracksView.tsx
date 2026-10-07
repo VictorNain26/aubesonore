@@ -92,7 +92,12 @@ function ArtistName({ track, className }: { track: LikedTrack; className?: strin
 
 const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
   return (
-    <li className={cn(ROW, 'border-border reveal min-h-18 gap-y-0.5 border-b py-2.5')}>
+    <li
+      className={cn(
+        ROW,
+        'border-border reveal min-h-18 gap-y-0.5 border-b py-2.5 focus-within:animate-none'
+      )}
+    >
       <Cover
         src={track.artworkUrl}
         alt=""

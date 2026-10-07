@@ -211,7 +211,10 @@ function InlineNames({ artists }: { artists: readonly MusilogyArtistRef[] }) {
   return (
     <ul className="m-0 flex list-none flex-wrap items-center gap-x-6 p-0">
       {shown.map((artist) => (
-        <li key={artist.mbid} className="reveal inline-flex min-h-11 items-center">
+        <li
+          key={artist.mbid}
+          className="reveal inline-flex min-h-11 items-center focus-within:animate-none"
+        >
           <Link
             to={pagePathOf(artist)}
             state={DISCOVERY}
@@ -277,7 +280,11 @@ export function MusilogySections({
         <Section
           id="close"
           title={m.musilogy_close_title()}
-          body={m.musilogy_neighbours_note()}
+          body={
+            artist.card.y0 === null
+              ? m.musilogy_neighbours_note_undated()
+              : m.musilogy_neighbours_note({ name: artist.card.name })
+          }
           full
         >
           <MusilogyMap artist={artist} thisYear={thisYear} />
@@ -311,7 +318,12 @@ const HIT_COLUMNS =
 function SearchHitRow({ hit }: { hit: MusilogySearchHit }) {
   const kind = hit.kind ? KIND_LABELS[hit.kind]() : null;
   return (
-    <li className={cn(HIT_COLUMNS, 'border-border reveal relative min-h-18 border-b py-2.5')}>
+    <li
+      className={cn(
+        HIT_COLUMNS,
+        'border-border reveal relative min-h-18 border-b py-2.5 focus-within:animate-none'
+      )}
+    >
       <span className="flex min-w-0 flex-col gap-0.5">
         <Link
           to={pagePathOf({ ...hit, played: null })}

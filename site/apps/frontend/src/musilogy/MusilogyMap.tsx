@@ -12,7 +12,7 @@ import { DISCOVERY } from '../lib/discoveryTrail';
 import { pagePathOf } from '../lib/musilogy';
 
 // A decade's column holds this many names; a fuller decade gets more columns, and more width.
-const PER_COLUMN = 15;
+const PER_COLUMN = 20;
 
 /** What Wikidata adds about a neighbour: the artist cites it, or it cites the artist. */
 export type Mark = 'influence' | 'inspired';
@@ -33,9 +33,9 @@ const MARK_LABELS: Record<Mark, () => string> = {
 
 // Closeness reads in steps of weight and ink, never in type size, which reads as fame.
 const TIER_CLASSES: Record<Tier, string> = {
-  1: 'text-text font-semibold',
-  2: 'text-text',
-  3: 'text-text-muted',
+  1: 'text-text font-bold',
+  2: 'text-text font-normal',
+  3: 'text-text-muted font-normal',
 };
 
 /** Every neighbour, the closest first, marked when it is also a declared influence. */
@@ -55,7 +55,7 @@ export function closestOf({ neighbours, influences }: MusilogyArtist): Close[] {
 export interface Decade {
   /** Its first year: 1990 for the 1990s. */
   decade: number;
-  /** The neighbours who started in it, the closest first. */
+  /** The neighbours who started in it, by year, the closest first within a year. */
   close: Close[];
   /** Whether the artist was active in it. */
   own: boolean;
@@ -70,8 +70,8 @@ export interface Decades {
 }
 
 /**
- * The neighbours by the decade they started in, each decade's closest first; the decades with a
- * neighbour and those the artist was active in, an active artist's up to this year.
+ * The neighbours by the decade they started in, each decade a little chronology; the decades with
+ * a neighbour, and the one the artist started in, where its name stands.
  */
 export function byDecade(artist: MusilogyArtist, thisYear: number): Decades {
   const all = closestOf(artist);
@@ -88,7 +88,14 @@ export function byDecade(artist: MusilogyArtist, thisYear: number): Decades {
     const decade = decadeOf(close.artist.y0);
     groups.set(decade, [...(groups.get(decade) ?? []), close]);
   }
-  const decades = [...new Set([...groups.keys(), ...own])]
+  for (const close of groups.values()) {
+    // Stable: within a year, the closest stays first.
+    close.sort((a, b) => (a.artist.y0 as number) - (b.artist.y0 as number));
+  }
+  const first = card.y0 === null ? null : decadeOf(card.y0);
+  // An active decade with no neighbour would be an empty column, but the first holds the name.
+  const shown = [...own].filter((decade) => decade === first || groups.has(decade));
+  const decades = [...new Set([...groups.keys(), ...shown])]
     .sort((a, b) => a - b)
     .map((decade) => {
       const close = groups.get(decade) ?? [];
@@ -118,6 +125,7 @@ function NameLink({ close, quiet = false }: { close: Close; quiet?: boolean }) {
     >
       {close.artist.name}
       {close.artist.y0 === null ? null : <span className="sr-only">, {close.artist.y0}</span>}
+      {close.tier === 1 ? <span className="sr-only">, {m.musilogy_closest_hint()}</span> : null}
     </Link>
   );
 }
@@ -160,13 +168,21 @@ function Columns({ card, decades }: { card: MusilogyCard; decades: Decade[] }) {
               style={{ columnCount: decade.columns }}
             >
               {decade.close.map((close) => (
-                <li key={close.artist.mbid} className="reveal break-inside-avoid py-1 leading-snug">
-                  <NameLink close={close} quiet />
-                  {close.mark ? (
-                    <span className="text-caption text-text-muted block">
-                      {MARK_LABELS[close.mark]()}
-                    </span>
-                  ) : null}
+                <li
+                  key={close.artist.mbid}
+                  className="reveal-early grid break-inside-avoid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-2 py-1 leading-snug"
+                >
+                  <span aria-hidden="true" className="text-caption text-text-muted font-mono">
+                    {close.artist.y0}
+                  </span>
+                  <span className="min-w-0">
+                    <NameLink close={close} quiet />
+                    {close.mark ? (
+                      <span className="text-caption text-text-muted block">
+                        {MARK_LABELS[close.mark]()}
+                      </span>
+                    ) : null}
+                  </span>
                 </li>
               ))}
             </ol>
@@ -196,8 +212,12 @@ function Stacked({ card, decades }: { card: MusilogyCard; decades: Decade[] }) {
           {decade.close.length > 0 ? (
             <ol className="text-ui m-0 flex list-none flex-wrap gap-x-1 gap-y-2 p-0 leading-snug">
               {decade.close.map((close, i) => (
-                <li key={close.artist.mbid} className="reveal">
+                <li key={close.artist.mbid} className="reveal-early">
                   <NameLink close={close} />
+                  <span aria-hidden="true" className="text-caption text-text-muted font-mono">
+                    {' '}
+                    {close.artist.y0}
+                  </span>
                   {close.mark ? (
                     <span className="text-text-muted"> ({MARK_LABELS[close.mark]()})</span>
                   ) : null}
@@ -237,15 +257,15 @@ export function MusilogyMap({ artist, thisYear }: { artist: MusilogyArtist; this
       {undated.length > 0 ? (
         <section
           aria-label={m.musilogy_undated_title()}
-          className="reveal text-ui flex flex-wrap items-baseline gap-x-4 gap-y-2"
+          className="text-ui flex flex-wrap items-baseline gap-x-4 gap-y-2"
         >
           <h3 className="text-label text-text-muted m-0 font-mono font-normal">
             {m.musilogy_undated_title()}
           </h3>
           <ol className="m-0 flex list-none flex-wrap gap-x-4 gap-y-2 p-0">
             {undated.map((close) => (
-              <li key={close.artist.mbid}>
-                <NameLink close={close} />
+              <li key={close.artist.mbid} className="reveal-early">
+                <NameLink close={close} quiet />
               </li>
             ))}
           </ol>

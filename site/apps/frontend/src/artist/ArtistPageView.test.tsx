@@ -144,6 +144,7 @@ describe('ArtistPageView', () => {
     );
 
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
+      'Écouter ailleurs',
       'Albums et EP',
       'Vos titres gardés',
       'Artistes proches',

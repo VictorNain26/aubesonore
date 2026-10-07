@@ -86,7 +86,7 @@ describe('closestOf', () => {
 });
 
 describe('byDecade', () => {
-  it('groups every neighbour by the decade it started in, the closest first in each', () => {
+  it('groups every neighbour by the decade it started in, each decade by year', () => {
     const { decades, undated } = byDecade(
       artist(
         around(
@@ -103,21 +103,32 @@ describe('byDecade', () => {
       [1970, true],
     ]);
     expect(decades[2]?.close.map((close) => close.artist.name)).toEqual([
-      'Artist number 3',
       'Artist number 2',
+      'Artist number 3',
     ]);
     expect(undated.map((close) => close.artist.name)).toEqual(['Artist number 4']);
   });
 
-  it("runs an active artist's decades to this year, whatever its last album says", () => {
+  it("marks an active artist's decades up to this year, leaving out the empty ones but its first", () => {
     const { decades } = byDecade(
-      artist(around([neighbour(1, 2016)]), { y0: 2009, yEnd: 2012, ended: false }),
+      artist(around([neighbour(1, 2016), neighbour(2, 2021)]), {
+        y0: 2004,
+        yEnd: 2012,
+        ended: false,
+      }),
       2026
     );
 
-    expect(decades.filter((decade) => decade.own).map((decade) => decade.decade)).toEqual([
-      2000, 2010, 2020,
+    expect(decades.map((decade) => [decade.decade, decade.own])).toEqual([
+      [2000, true],
+      [2010, true],
+      [2020, true],
     ]);
+    expect(
+      byDecade(artist(around([neighbour(1, 2016)]), { y0: 2004, ended: false }), 2026).decades.map(
+        (decade) => decade.decade
+      )
+    ).toEqual([2000, 2010]);
   });
 
   it('gives a fuller decade more columns, fifteen names each', () => {
@@ -140,7 +151,7 @@ describe('MusilogyMap', () => {
 
     // Side by side and one under the other are both in the page: a container query shows one.
     expect(screen.getAllByRole('link')).toHaveLength(200);
-    const [first] = screen.getAllByRole('link', { name: 'Artist number 1, 1951' });
+    const [first] = screen.getAllByRole('link', { name: /^Artist number 1, 1951/ });
     expect(first).toHaveAttribute('href', `/artiste/${neighbour(1, 1951).mbid}`);
   });
 
@@ -158,7 +169,7 @@ describe('MusilogyMap', () => {
 
     expect(
       within(screen.getByRole('region', { name: 'Débuts inconnus' })).getByRole('link', {
-        name: 'Artist number 2',
+        name: /Artist number 2/,
       })
     ).toBeInTheDocument();
   });
@@ -169,7 +180,7 @@ describe('MusilogyMap', () => {
       influences: { cites: [{ ...neighbour(1, 1960), statement: 'Q1$a' }], citedBy: [] },
     });
 
-    expect(screen.getAllByText(/son influence/)).toHaveLength(2);
+    expect(screen.getAllByText(/l'a influencé/)).toHaveLength(2);
   });
 
   it('shows nothing without a neighbour', () => {
