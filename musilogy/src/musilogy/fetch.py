@@ -1,4 +1,5 @@
-"""Downloads and verifies the MusicBrainz archives, the ListenBrainz and Wikidata snapshots."""
+"""Downloads and verifies the MusicBrainz and Discogs archives, the ListenBrainz and Wikidata
+snapshots."""
 
 from __future__ import annotations
 
@@ -53,14 +54,19 @@ def verify(path: Path, expected: str) -> None:
 
 
 def download(url: str, dest: Path, timeout: float = DOWNLOAD_TIMEOUT) -> Path:
+    """The file at `dest` once whole: a download cut short leaves only its
+    `.partial`, which the next attempt starts over, never a truncated `dest`
+    that the callers would take as already fetched."""
     dest.parent.mkdir(parents=True, exist_ok=True)
+    partial = dest.with_name(dest.name + ".partial")
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r, dest.open("wb") as out:
+        with urllib.request.urlopen(req, timeout=timeout) as r, partial.open("wb") as out:
             while chunk := r.read(1 << 20):
                 out.write(chunk)
     except (urllib.error.HTTPError, urllib.error.URLError) as e:
         raise DownloadError(f"failed to download {url}: {e}") from e
+    partial.replace(dest)
     return dest
 
 
@@ -69,6 +75,18 @@ def fetch_dump(date: str, name: str, raw_dir: Path, sums_path: Path) -> Path:
     if not dest.exists():
         download(f"{BASE}/{date}/{name}", dest)
     verify(dest, expected_sums(sums_path)[name])
+    return dest
+
+
+# data.discogs.com serves each monthly dump under data/<year>/ (read 2026-10-07;
+# "made available under the CC0 No Rights Reserved license").
+DISCOGS_URL = "https://data.discogs.com/?download=data%2F{year}%2F{name}"
+
+
+def fetch_discogs(date: str, dest: Path, sums_path: Path) -> Path:
+    if not dest.exists():
+        download(DISCOGS_URL.format(year=date[:4], name=dest.name), dest)
+    verify(dest, expected_sums(sums_path)[dest.name])
     return dest
 
 

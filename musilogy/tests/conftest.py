@@ -1,5 +1,6 @@
 import json
 import os
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +42,7 @@ def con():
         # publication tests set up themselves (test_publish.py).
         proximity=[FIX / "proximity.jsonl"],
         official=[FIX / "official.jsonl"],
+        discogs=FIX / "discogs.jsonl",
     )
     return c
 
@@ -164,6 +166,40 @@ def official_file(path, rows):
         encoding="utf-8",
     )
     return path
+
+
+def discogs_release(
+    release_id: int,
+    artists: list[int],
+    labels: Sequence[tuple[int, str]] = (),
+    master_id: int | None = 0,
+    released: str | None = "2001",
+    styles: Sequence[str] = (),
+    descriptions: Sequence[str] = (),
+) -> dict[str, Any]:
+    """A synthetic line of the Discogs projection (extract.reduce_discogs_release)."""
+    return {
+        "id": release_id,
+        "master_id": master_id,
+        "artists": artists,
+        "labels": [{"id": i, "name": n} for i, n in labels],
+        "descriptions": list(descriptions),
+        "styles": list(styles),
+        "released": released,
+    }
+
+
+def discogs_file(path, releases):
+    path.write_text("".join(json.dumps(r) + "\n" for r in releases), encoding="utf-8")
+    return path
+
+
+def discogs_url(discogs_id: int) -> dict[str, Any]:
+    return {
+        "type": "discogs",
+        "url": f"https://www.discogs.com/artist/{discogs_id}",
+        "ended": False,
+    }
 
 
 def published(

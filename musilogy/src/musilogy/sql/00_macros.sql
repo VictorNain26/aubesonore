@@ -11,3 +11,9 @@ CREATE OR REPLACE MACRO person(type) AS coalesce(type = 'Person', false);
 CREATE OR REPLACE MACRO yr(s) AS
   CASE WHEN regexp_full_match(substr(s, 1, 4), '[0-9]{4}')
        THEN CAST(substr(s, 1, 4) AS INTEGER) END;
+
+-- The Discogs artist a MusicBrainz URL names, NULL for any other Discogs page
+-- (a user, a label, an image). One reading of the URL for the build, its
+-- invariants and the fixtures, so that none of them can disagree on an id.
+CREATE OR REPLACE MACRO discogs_artist_id(url) AS
+  TRY_CAST(regexp_extract(url, 'discogs\.com/(?:[a-z]{2}/)?artist/([0-9]+)', 1) AS BIGINT);

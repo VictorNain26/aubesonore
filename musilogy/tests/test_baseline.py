@@ -2,6 +2,7 @@ import pytest
 
 from musilogy import (
     REFERENCE_DISCOGRAPHY,
+    REFERENCE_DISCOGS,
     REFERENCE_DUMP,
     REFERENCE_INFLUENCES,
     REFERENCE_OFFICIAL,
@@ -12,6 +13,7 @@ from musilogy.build import build, check_invariants, connect
 from musilogy.paths import (
     SQL_DIR,
     discography_snapshot,
+    discogs_releases,
     influences_snapshot,
     official_snapshot,
     popularity_snapshot,
@@ -43,6 +45,10 @@ BASELINE = {
     # more (snapshot of 2026-10-04), once the repeats and the artists given as
     # their own neighbour are dropped.
     "proximity": 4_973_236,
+    # The labels of first editions carrying at least two of an artist's
+    # records, and its styles by decade, over the artists Discogs is linked to.
+    "labels": 980_519,
+    "styles": 4_359_024,
 }
 RELEASE_TYPE_BREAKDOWN = {"Album": 1_968_255, "EP": 588_019}
 # Wikidata files 60 688 of the album rows and 9 508 of the EP rows as a studio
@@ -52,6 +58,14 @@ URLS_ENDED = 24_789
 PROXIMITY_EXCLUSIONS = {"repeated_neighbour": 675, "self_neighbour": 84}
 # Every artist asked, 16 515 of them without a neighbour.
 PROXIMITY_SURVEYED = 111_402
+DISCOGS_COVERAGE = {
+    "releases": 19_492_392,
+    "releases_out_of_work": 4_234_631,
+    "records": 8_634_459,
+    "discogs_ids_ambiguous": 352,
+    "artists_linked": 1_266_088,
+}
+DISCOGS_DATE_DISAGREEMENTS = {"first_record_before_formation": 1_748}
 # Distinct records by official status (part of 2026-10-05: 93 665 artists asked,
 # 2 of them no longer held). Unknown dominates: only artists with 500 listeners
 # or more and an album or an EP are asked.
@@ -124,6 +138,7 @@ INFLUENCES = influences_snapshot(REFERENCE_INFLUENCES)
 DISCOGRAPHY = discography_snapshot(REFERENCE_DISCOGRAPHY)
 PROXIMITY = [proximity_snapshot(date) for date in REFERENCE_PROXIMITY]
 OFFICIAL = [official_snapshot(date) for date in REFERENCE_OFFICIAL]
+DISCOGS = discogs_releases(REFERENCE_DISCOGS)
 
 
 def test_the_baseline_looks_for_the_extractions_at_an_absolute_path():
@@ -140,18 +155,18 @@ def single_row(con, table):
 
 @pytest.mark.slow
 def test_reference_dump_matches_the_baseline():
-    if not (WORK / "artists.jsonl").exists() or not (WORK / "release_groups.jsonl").exists():
-        pytest.skip("extractions missing: run Task 3")
-    if not POPULARITY.exists():
-        pytest.skip(f"ListenBrainz snapshot {REFERENCE_POPULARITY} missing")
-    if not INFLUENCES.exists():
-        pytest.skip(f"Wikidata snapshot {REFERENCE_INFLUENCES} missing")
-    if not DISCOGRAPHY.exists():
-        pytest.skip(f"Wikidata snapshot {REFERENCE_DISCOGRAPHY} missing")
-    if not all(part.exists() for part in PROXIMITY):
-        pytest.skip(f"ListenBrainz proximity {REFERENCE_PROXIMITY} missing")
-    if not all(part.exists() for part in OFFICIAL):
-        pytest.skip(f"MusicBrainz official status {REFERENCE_OFFICIAL} missing")
+    inputs = {
+        "MusicBrainz extractions": [WORK / "artists.jsonl", WORK / "release_groups.jsonl"],
+        f"ListenBrainz snapshot {REFERENCE_POPULARITY}": [POPULARITY],
+        f"Wikidata snapshot {REFERENCE_INFLUENCES}": [INFLUENCES],
+        f"Wikidata snapshot {REFERENCE_DISCOGRAPHY}": [DISCOGRAPHY],
+        f"ListenBrainz proximity {REFERENCE_PROXIMITY}": PROXIMITY,
+        f"MusicBrainz official status {REFERENCE_OFFICIAL}": OFFICIAL,
+        f"Discogs extraction {REFERENCE_DISCOGS}": [DISCOGS],
+    }
+    for name, paths in inputs.items():
+        if not all(path.exists() for path in paths):
+            pytest.skip(f"{name} missing")
     con = connect()
     build(
         con,
@@ -169,6 +184,8 @@ def test_reference_dump_matches_the_baseline():
         proximity_snapshots=REFERENCE_PROXIMITY,
         official=OFFICIAL,
         official_snapshots=REFERENCE_OFFICIAL,
+        discogs=DISCOGS,
+        discogs_dump=REFERENCE_DISCOGS,
     )
     assert check_invariants(con, SQL_DIR) == []
     for table, expected in BASELINE.items():
@@ -216,6 +233,8 @@ def test_reference_dump_matches_the_baseline():
     assert con.execute("SELECT count(*) FROM urls WHERE ended").fetchone() == (URLS_ENDED,)
     assert single_row(con, "proximity_exclusions") == PROXIMITY_EXCLUSIONS
     assert single_row(con, "release_status") == RELEASE_STATUS
+    assert single_row(con, "discogs_coverage") == DISCOGS_COVERAGE
+    assert single_row(con, "discogs_date_disagreements") == DISCOGS_DATE_DISAGREEMENTS
     assert con.execute("SELECT count(*) FROM artists WHERE proximity_surveyed").fetchone() == (
         PROXIMITY_SURVEYED,
     )

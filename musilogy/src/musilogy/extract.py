@@ -1,11 +1,14 @@
-"""Streaming projection of the MusicBrainz JSON dumps. No business rule here."""
+"""Streaming projection of the MusicBrainz JSON dumps and the Discogs releases dump. No
+business rule here."""
 
 from __future__ import annotations
 
+import gzip
 import json
 import logging
 import lzma
 import tarfile
+import xml.etree.ElementTree as ET
 from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
@@ -136,3 +139,46 @@ def extract(
             fh.write(json.dumps(reduced, ensure_ascii=False) + "\n")
             kept += 1
     return kept, dropped
+
+
+def reduce_discogs_release(el: ET.Element) -> dict[str, Any]:
+    """The fields a label or a style reads, as the dump writes them: a release
+    without a master carries master_id 0 when the dump writes the element, null
+    when it does not, and `released` is a partial date the SQL reads with yr()."""
+    master = el.find("master_id")
+    return {
+        "id": int(el.attrib["id"]),
+        "master_id": int(master.text) if master is not None and master.text else None,
+        "artists": [int(i) for a in el.findall("artists/artist") if (i := a.findtext("id"))],
+        "labels": [
+            {"id": int(lab.attrib["id"]), "name": lab.get("name")}
+            for lab in el.findall("labels/label")
+            if lab.get("id")
+        ],
+        "descriptions": sorted(
+            {d.text for d in el.findall("formats/format/descriptions/description") if d.text}
+        ),
+        "styles": [st.text for st in el.findall("styles/style") if st.text],
+        "released": el.findtext("released"),
+    }
+
+
+def extract_discogs(archive: Path, out: Path) -> int:
+    """Returns the releases written. The 11 GB archive is read as a stream, and
+    each release is dropped from the tree once written: iterparse otherwise
+    keeps the whole document under its root."""
+    out.parent.mkdir(parents=True, exist_ok=True)
+    # Written aside and renamed once whole: an interrupted extraction must not
+    # leave a file the next run takes for the dump.
+    partial = out.with_name(out.name + ".partial")
+    n = 0
+    with gzip.open(archive) as src, partial.open("w", encoding="utf-8") as fh:
+        events = ET.iterparse(src, events=("start", "end"))
+        _, root = next(events)
+        for event, el in events:
+            if event == "end" and el.tag == "release":
+                fh.write(json.dumps(reduce_discogs_release(el), ensure_ascii=False) + "\n")
+                n += 1
+                root.clear()
+    partial.replace(out)
+    return n

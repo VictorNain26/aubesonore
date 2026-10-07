@@ -1,6 +1,6 @@
 # musilogy
 
-Produit, hors ligne et depuis des sources épinglées et datées, les données de **Musilogy** (`docs/vision.md` à la racine, §2) : pour un artiste, qui faisait cette musique avant lui, en même temps, après lui ; qui il a cité comme influence ; dans quels groupes ses membres ont joué. Un dump JSON MusicBrainz, deux relevés ListenBrainz (popularité, proximité) et un relevé Wikidata deviennent neuf tables reproductibles et testées, publiées en Parquet ; `musilogy load` les copie dans le schéma `musilogy` de la base du site, qui ne lit que des fonctions SQL. La conception en vigueur, avec la feuille de route des tables et le contrat de ces fonctions, est `docs/conception.md`.
+Produit, hors ligne et depuis des sources épinglées et datées, les données de **Musilogy** (`docs/vision.md` à la racine, §2) : pour un artiste, qui faisait cette musique avant lui, en même temps, après lui ; qui il a cité comme influence ; dans quels groupes ses membres ont joué. Un dump JSON MusicBrainz, le dump des sorties Discogs, des relevés ListenBrainz (popularité, proximité), MusicBrainz (statut officiel) et Wikidata (influences, discographie) deviennent onze tables reproductibles et testées, publiées en Parquet ; `musilogy load` les copie dans le schéma `musilogy` de la base du site, qui ne lit que des fonctions SQL. La conception en vigueur, avec la feuille de route des tables et le contrat de ces fonctions, est `docs/conception.md`.
 
 ## Principe directeur
 
@@ -8,7 +8,7 @@ Produit, hors ligne et depuis des sources épinglées et datées, les données d
 
 **Les tables portent la population complète.** Aucun filtre d'affichage n'y entre : ce que le site montre d'abord se décide dans les fonctions SQL qu'il appelle, qui ordonnent sans exclure. Une donnée écartée en amont serait irrécupérable en aval.
 
-## Les neuf tables
+## Les onze tables
 
 Mesurées sur le dump de référence `20260909-001002` :
 
@@ -23,6 +23,8 @@ Mesurées sur le dump de référence `20260909-001002` :
 | `releases` | un album ou un EP crédité à un artiste, dont les types secondaires se limitent à bande originale et remix ; une ligne par artiste crédité | 2 556 274 |
 | `urls` | une page web qu'une page artiste utilise parmi celles que MusicBrainz relie à un artiste (plateforme d'écoute, site officiel, Wikidata, Wikipédia, image), terminées comprises | 2 036 294 |
 | `proximity` | un voisin ListenBrainz d'un artiste, avec son rang et son score | 4 973 236 |
+| `labels` | un label de première édition qui porte au moins deux disques d'un artiste (Discogs), avec le nombre d'artistes dont il est la maison ; non chargée dans le site | 980 519 |
+| `styles` | un style Discogs des disques d'un artiste, par décennie de première édition, compté en disques ; non chargée dans le site | 4 359 024 |
 
 Colonnes réelles (voir `src/musilogy/sql/`) :
 
@@ -35,6 +37,8 @@ Colonnes réelles (voir `src/musilogy/sql/`) :
 - **`releases`** : `artist_mbid`, `rg_mbid`, `title`, `primary_type` (`Album` ou `EP`), `soundtrack`, `remix`, `y`, `filed_original` (Wikidata le classe album studio ou EP).
 - **`urls`** : `artist_mbid`, `type` (type de relation MusicBrainz), `url`, `ended`.
 - **`proximity`** : `artist_mbid`, `neighbour_mbid`, `score`, `rank`.
+- **`labels`** : `artist_mbid`, `label_id` (identifiant Discogs), `label`, `records`, `label_artists`.
+- **`styles`** : `artist_mbid`, `decade` (NULL pour un disque sans édition datée), `style`, `records`.
 
 `name_key` est la clé de recherche d'un nom tapé : `strip_accents(lower(name))`, « bjork » trouve Björk.
 
@@ -84,6 +88,8 @@ Les corrections manuelles (`src/musilogy/corrections.csv`, colonnes `mbid, field
 
 - **`82_urls` — Pages web.** Parmi les relations URL d'un artiste de `artists`, celles qu'une page artiste utilise : les plateformes d'écoute par leur domaine (Deezer, Spotify, Apple Music, Bandcamp, SoundCloud), quel que soit le type de relation, et les types `official homepage`, `wikidata`, `wikipedia` et `image`, avec le type MusicBrainz. Discogs, VIAF, IMDb, les réseaux sociaux et les autres bases — 4 des 5,8 millions de pages du dump — restent dans le dump. Une relation terminée (`ended`) reste dans la table, marquée ; une même page reliée deux fois sous un même type est une ligne, terminée seulement si toutes le sont. Sur le dump de référence, 2 036 294 pages pour 1 006 090 artistes, dont 24 789 terminées.
 
+- **`84_discogs` — Labels et styles (Discogs).** Le dump mensuel des sorties Discogs (`REFERENCE_DISCOGS`, CC0, data.discogs.com), épinglé par l'empreinte que Discogs publie à côté et réduit en flux aux champs qu'une règle lit (`extract.py`, 19 492 392 sorties) et lu une seule fois par le build (`discogs_work`). La projection porte un compagnon (`extraction.json`, sorties écrites et champs) : écrite avec d'autres champs que ceux que lit le build, elle est refaite ; lue avec moins de sorties qu'elle n'en a écrit, `run` s'arrête sans rien publier. **Un artiste rejoint Discogs par la page Discogs que MusicBrainz lui relie** (`discogs_links`) : un artiste Discogs relié à deux MBID n'en rejoint aucun, écarté et compté (352 identifiants), un MBID relié à plusieurs artistes Discogs (des alias) les additionne ; 1 266 088 artistes sont reliés. **Un disque est un master Discogs**, ou la sortie elle-même quand elle n'en a pas (le dump écrit `master_id` 0) ; une compilation, une sortie non officielle, une promotion, un sampler ou un mix ne compte pas (4 234 631 sorties) : ils disent où la musique a circulé, pas où l'artiste l'a faite. **Les labels sont ceux de la première édition datée** d'un disque, ou de toutes quand aucune n'est datée : une réédition dit qui tient le catalogue aujourd'hui (Can revient chez P-Vine et Warner) ; « Not On Label » est une autoproduction, pas un label. `labels` garde un label à partir de deux disques de l'artiste — une maison plutôt qu'un passage — et `label_artists` compte les artistes dont le label est la maison (par MBID quand Discogs est relié, pour que les alias s'additionnent ; Various, Unknown Artist et No Artist à part) : quelques dizaines pour un label de scène, des milliers pour une major. Mesuré le 2026-10-07 sur 515 candidats jugés, un label partagé n'est pas une proximité de son (26 % de même son ou de parenté) : il se montre comme un fait, jamais comme un classement. `styles` compte les disques par style et par décennie de première édition ; une année hors de `[1850, année du dump]` n'est pas une date (Discogs porte une sortie de 338). **MusicBrainz reste l'autorité sur les dates** : un premier disque Discogs antérieur de plus d'un an à la formation déclarée est compté (`discogs_date_disagreements`, 1 748), jamais réécrit. Sept invariants : un label ou un style en double, sans artiste, sous le seuil de deux disques ou d'un artiste, une décennie hors de la fenêtre, et un artiste qui n'atteint Discogs que par un identifiant partagé.
+
 ## Proximité ListenBrainz (relevé)
 
 `musilogy snapshot-proximity` relève, pour chaque artiste qu'au moins 500 auditeurs écoutent dans le relevé de popularité épinglé (111 402 artistes au 2026-10-04), ses 100 voisins selon ListenBrainz (`labs.api.listenbrainz.org/similar-artists`, algorithme épinglé dans `fetch.SIMILAR_ALGORITHM`) : une ligne par artiste, `{artist_mbid, similar: [{artist_mbid, score}]}`, dans `data/raw/listenbrainz/<date>/artist-similar.jsonl`, empreinte dans `reference/listenbrainz-similar-<date>.SHA256SUMS`. Le service prend un artiste par requête et n'annonce aucune limite : le relevé s'en tient à une requête par seconde au plus. Le débit réel mesuré, pannes du service comprises, est d'environ 0,6 artiste par seconde (2026-10-04) : plusieurs jours pour le relevé entier. Interrompu, il reprend le relevé resté partiel, quel que soit le jour où il a commencé. Les données ListenBrainz sont publiées en CC0 (metabrainz.org/datasets/postgres-dumps) ; le service de similarité, qui en dérive, ne précise pas de licence. `REFERENCE_PROXIMITY` épingle le relevé que `run` lit et vérifie, et `run` s'arrête s'il manque, comme pour les autres relevés : le relevé du 2026-10-04 n'est épinglé qu'une fois son empreinte, écrite par la commande à la fin du relevé, versionnée sous `reference/`.
@@ -106,9 +112,9 @@ Relevé du 2026-10-05 : 72 397 lignes, 72 170 release groups.
 
 ## Ce que reçoit le site
 
-`data/out/<dump>/` contient les neuf tables en Parquet et le manifeste.
+`data/out/<dump>/` contient les onze tables en Parquet et le manifeste.
 
-`manifest.json` porte les empreintes des archives, la date et l'empreinte des relevés ListenBrainz (`popularity`, `proximity`) et Wikidata (`influences`), **les empreintes des fichiers Parquet livrés** (`output_sha256`), les comptes, les **paramètres** du run (`dump_year`, `min_year`), les **entrées** (`rows_loaded` par table brute, le sidecar d'extraction), les anomalies de lecture de dates, les sept compteurs de neutralisation, les exclusions de liens et les voisins répétés écartés, le commit et l'empreinte des corrections.
+`manifest.json` porte les empreintes des archives, la date et l'empreinte des relevés ListenBrainz (`popularity`, `proximity`) et Wikidata (`influences`), **les empreintes des fichiers Parquet livrés** (`output_sha256`), les comptes, les **paramètres** du run (`dump_year`, `min_year`), les **entrées** (`rows_loaded` par table brute, le sidecar d'extraction), les anomalies de lecture de dates, les sept compteurs de neutralisation, les exclusions de liens et les voisins répétés écartés, le statut officiel des disques, le dump Discogs lu et le compagnon de sa projection — sorties écrites, champs (`discogs`) —, sa couverture (`discogs_coverage`) et les désaccords de dates avec MusicBrainz (`discogs_date_disagreements`), le commit et l'empreinte des corrections.
 
 Ces empreintes de sortie sont opposables parce que la livraison est reproductible : à dump et code identiques, deux exécutions écrivent les mêmes octets. L'ordre des lignes est fixé par une clé totale sur chaque table. Un consommateur distingue donc une livraison inchangée d'une nouvelle par sa seule empreinte, sans retélécharger.
 

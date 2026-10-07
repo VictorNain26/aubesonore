@@ -183,6 +183,38 @@ def load_official(
     )
 
 
+# The fields extract.reduce_discogs_release writes, in its order.
+RAW_DISCOGS_FIELDS = {
+    "id": "BIGINT",
+    "master_id": "BIGINT",
+    "artists": "BIGINT[]",
+    "labels": "STRUCT(id BIGINT, name VARCHAR)[]",
+    "descriptions": "VARCHAR[]",
+    "styles": "VARCHAR[]",
+    "released": "VARCHAR",
+}
+RAW_DISCOGS_COLUMNS = "{" + ", ".join(f"{k}:'{v}'" for k, v in RAW_DISCOGS_FIELDS.items()) + "}"
+
+
+def load_discogs(con: duckdb.DuckDBPyConnection, releases: Path | None, dump: str | None) -> None:
+    """A view, not a table: 84_discogs.sql reads the 19 million releases once,
+    as a stream, into the narrower discogs_work."""
+    if releases is None:
+        # Always materialized, even empty: 84_discogs.sql reads it.
+        con.execute(
+            "CREATE OR REPLACE TABLE raw_discogs (id BIGINT, master_id BIGINT, artists BIGINT[], "
+            "labels STRUCT(id BIGINT, name VARCHAR)[], descriptions VARCHAR[], styles VARCHAR[], "
+            "released VARCHAR)"
+        )
+    else:
+        con.execute(
+            f"CREATE OR REPLACE VIEW raw_discogs AS SELECT * FROM read_ndjson("
+            f"'{releases.as_posix()}', columns={RAW_DISCOGS_COLUMNS}, "
+            f"format='newline_delimited')"
+        )
+    con.execute("SET VARIABLE discogs_dump = " + ("NULL" if dump is None else f"'{dump}'"))
+
+
 def apply_corrections(con: duckdb.DuckDBPyConnection, corrections: Path | None) -> int:
     if corrections is None:
         # Always materialized, even empty: the fast suite builds
@@ -227,6 +259,8 @@ def build(
     proximity_snapshots: Sequence[str] | None = None,
     official: Sequence[Path] = (),
     official_snapshots: Sequence[str] | None = None,
+    discogs: Path | None = None,
+    discogs_dump: str | None = None,
 ) -> None:
     load_raw(con, artists, rgs)
     apply_corrections(con, corrections)
@@ -235,6 +269,7 @@ def build(
     load_discography(con, discography, discography_snapshot)
     load_proximity(con, proximity, proximity_snapshots)
     load_official(con, official, official_snapshots)
+    load_discogs(con, discogs, discogs_dump)
     con.execute(f"SET VARIABLE dump_year = {dump_year}")
     con.execute(f"SET VARIABLE min_year = {min_year}")
     for path in sorted(sql_dir.glob("*.sql")):
@@ -296,6 +331,13 @@ INVARIANTS = (
     "proximity_unsourced",
     "official_asked_twice",
     "official_unsourced",
+    "duplicate_label",
+    "duplicate_style",
+    "label_without_artist",
+    "style_without_artist",
+    "label_below_home",
+    "style_decade_malformed",
+    "discogs_link_ambiguous",
     "corrections_file_too_large",
     "corrections_invalid",
     "corrections_duplicate",

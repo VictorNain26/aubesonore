@@ -24,9 +24,22 @@ groupes ses membres ont joué. `musilogy load` les copie dans le schéma
 | proximité ListenBrainz (`labs…/similar-artists`) | `REFERENCE_PROXIMITY` | dérivée des données ListenBrainz (CC0) ; le service ne précise pas de licence |
 | influences Wikidata (P737 « influencé par », entre deux éléments qui portent un MBID, P434) | `REFERENCE_INFLUENCES` | CC0 |
 | discographie Wikidata (release groups, P436, classés album studio, EP ou bande originale par P31 ou P7937) | `REFERENCE_DISCOGRAPHY` | CC0 |
+| dump mensuel des sorties Discogs (artistes crédités, labels, styles, date, descriptions de format) | `REFERENCE_DISCOGS` | CC0 (data.discogs.com) |
 
 Chaque relevé est pris une fois, son empreinte versionnée sous `reference/`,
 et `run` lit celui que la constante épingle.
+
+**Une source, ses tables.** Les sources ne se mélangent jamais dans une même
+colonne : `genres` reste MusicBrainz, `styles` et `labels` restent Discogs,
+`proximity` reste ListenBrainz. L'identité d'un artiste est son MBID ; le pont
+vers une autre base est une table à part (`discogs_links`), et un pont ambigu
+— un artiste Discogs relié à deux MBID — est écarté et compté, jamais deviné.
+Quand deux sources se recoupent, une seule fait foi : MusicBrainz pour les
+dates, que Discogs ne déplace jamais ; leurs désaccords sont comptés dans le
+manifeste (`discogs_date_disagreements`), pas corrigés. Ce qui combine
+plusieurs sources — les artistes liés de la feuille de route — vit dans une
+couche dérivée qui lit les tables sources, garde la raison de chaque lien et
+ne réécrit jamais une source.
 
 ## 2. Tables
 
@@ -56,6 +69,12 @@ albums), `genres` (vocabulaire), `links` (appartenances, pseudonymes et changeme
   listent pas, NULL si aucun n'a été relevé ; `artist_releases` écarte les
   faux. L'extraction garde désormais les EP à côté des albums ; `albums` reste
   limitée aux albums.
+- `labels(artist_mbid, label_id, label, records, label_artists)` et
+  `styles(artist_mbid, decade, style, records)`, tirées du dump Discogs
+  (`84_discogs`, README) : les labels de première édition qui portent au moins
+  deux disques de l'artiste, avec le nombre d'artistes dont le label est la
+  maison, et les styles de ses disques par décennie. Publiées, non chargées
+  dans le site tant qu'aucune fonction ne les lit.
 - `urls(artist_mbid, type, url, ended)` : parmi les pages que MusicBrainz relie
   à un artiste, celles qu'une page artiste utilise (Deezer, Spotify, Apple
   Music, Bandcamp, SoundCloud, site officiel, Wikidata, Wikipédia, images),

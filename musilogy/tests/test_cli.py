@@ -4,6 +4,7 @@ import pytest
 from conftest import FIX
 
 from musilogy import cli
+from musilogy.build import RAW_DISCOGS_FIELDS
 
 
 def sidecar(tmp_path, artists_kept, release_groups_kept):
@@ -70,6 +71,7 @@ def test_run_refuses_to_publish_when_the_extraction_disagrees(tmp_path, monkeypa
     monkeypatch.setattr(cli, "verified_discography", lambda: FIX / "discography.jsonl")
     monkeypatch.setattr(cli, "verified_proximity", lambda: [FIX / "proximity.jsonl"])
     monkeypatch.setattr(cli, "verified_official", lambda: [FIX / "official.jsonl"])
+    monkeypatch.setattr(cli, "verified_discogs", lambda: FIX / "discogs.jsonl")
 
     def record_publish(*args):
         # Returns a plausible manifest on purpose: a double returning None
@@ -219,3 +221,61 @@ def test_a_new_part_of_the_official_survey_asks_only_the_artists_no_part_asked(
     monkeypatch.setattr(cli, "fetch_official", fetch)
     cli.snapshot_official()
     assert asked == ["eps-only"]
+
+
+def discogs_sidecar(tmp_path, monkeypatch, recorded):
+    path = tmp_path / "extraction.json"
+    if recorded is not None:
+        path.write_text(json.dumps(recorded), encoding="utf-8")
+    monkeypatch.setattr(cli, "discogs_extraction", lambda _date: path)
+    return path
+
+
+@pytest.fixture
+def extractions(tmp_path, monkeypatch):
+    """The Discogs extractions verified_discogs runs, faked: each writes 5 releases."""
+    done: list[str] = []
+    releases = tmp_path / "releases.jsonl"
+    monkeypatch.setattr(cli, "DISCOGS_JSONL", releases)
+    monkeypatch.setattr(cli, "fetch_discogs", lambda *_: tmp_path / "dump.xml.gz")
+
+    def extract(_archive, out):
+        out.write_text("{}\n", encoding="utf-8")
+        done.append(out.name)
+        return 5
+
+    monkeypatch.setattr(cli, "extract_discogs", extract)
+    return done
+
+
+def test_a_discogs_projection_of_other_fields_is_extracted_again(
+    tmp_path, monkeypatch, extractions
+):
+    # Breaks if verified_discogs reuses any releases.jsonl that exists: a field
+    # added to the projection would then read as nulls in the build.
+    (tmp_path / "releases.jsonl").write_text("{}\n", encoding="utf-8")
+    sidecar = discogs_sidecar(tmp_path, monkeypatch, {"releases": 5, "fields": ["id"]})
+    cli.verified_discogs()
+    assert extractions == ["releases.jsonl"]
+    assert json.loads(sidecar.read_text(encoding="utf-8")) == {
+        "releases": 5,
+        "fields": list(RAW_DISCOGS_FIELDS),
+    }
+
+
+def test_a_discogs_projection_of_the_fields_read_is_kept(tmp_path, monkeypatch, extractions):
+    (tmp_path / "releases.jsonl").write_text("{}\n", encoding="utf-8")
+    discogs_sidecar(tmp_path, monkeypatch, {"releases": 5, "fields": list(RAW_DISCOGS_FIELDS)})
+    cli.verified_discogs()
+    assert extractions == []
+
+
+def test_discogs_releases_read_short_of_those_written_stop_the_run(con, tmp_path, monkeypatch):
+    (read,) = con.execute("SELECT releases FROM discogs_coverage").fetchone()
+    discogs_sidecar(tmp_path, monkeypatch, {"releases": read + 1})
+    with pytest.raises(SystemExit) as raised:
+        cli._stop_on_discogs_mismatch(con)
+    assert "Discogs extraction mismatch" in str(raised.value)
+
+    discogs_sidecar(tmp_path, monkeypatch, {"releases": read})
+    cli._stop_on_discogs_mismatch(con)

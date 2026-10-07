@@ -1,11 +1,21 @@
+import gzip
 import io
+import json
 import logging
 import lzma
 import tarfile
+import xml.etree.ElementTree as ET
 
 import pytest
 
-from musilogy.extract import extract, iter_records, reduce_artist, reduce_release_group
+from musilogy.build import RAW_DISCOGS_FIELDS
+from musilogy.extract import (
+    extract,
+    extract_discogs,
+    iter_records,
+    reduce_artist,
+    reduce_release_group,
+)
 
 VARIOUS_ARTISTS = "89ad4ac3-39f7-470e-963a-56509c546377"
 
@@ -223,3 +233,87 @@ def test_extract_reports_what_it_dropped(tmp_path):
     )
     kept, dropped = extract(archive, reduce_release_group, tmp_path / "out.jsonl")
     assert (kept, dropped) == (2, 1)
+
+
+# Two releases of the Discogs dump of 2026-10-01: 386 as written, 3 cut down to
+# what a reduction could misread — the artists of its tracks and its credits.
+DISCOGS_DUMP = (
+    "<releases>"
+    '<release id="3"><artists><artist><id>3</id><name>Josh Wink</name></artist></artists>'
+    "<title>Profound Sounds Vol. 1</title>"
+    '<labels><label name="Ruffhouse Records" catno="CK 63628" id="6"/>'
+    '<label name="Ovum Recordings" catno="CK 63628" id="35"/></labels>'
+    "<extraartists><artist><id>3</id><name>Josh Wink</name><role>DJ Mix</role></artist>"
+    "</extraartists>"
+    '<formats><format name="CD" qty="1" text=""><descriptions><description>Compilation'
+    "</description><description>Mixed</description></descriptions></format></formats>"
+    "<genres><genre>Electronic</genre></genres>"
+    "<styles><style>Techno</style><style>Tech House</style></styles>"
+    "<country>US</country><released>1999-07-13</released>"
+    '<master_id is_main_release="false">66526</master_id>'
+    "<tracklist><track><position>1</position><title>D2</title><artists>"
+    "<artist><id>4</id><name>Johannes Heil</name></artist></artists></track></tracklist>"
+    "</release>"
+    '<release id="386"><artists><artist><id>363</id><name>Himuro</name></artist></artists>'
+    "<title>Nice Feedback E.P.</title>"
+    '<labels><label name="Worm Interface" catno="wi012" id="110"/></labels>'
+    '<formats><format name="Vinyl" qty="1" text=""><descriptions><description>12"'
+    "</description><description>EP</description></descriptions></format></formats>"
+    "<genres><genre>Electronic</genre></genres>"
+    "<styles><style>Jungle</style><style>Drum n Bass</style><style>Chiptune</style></styles>"
+    "<country>UK</country><released>1998-02-00</released><data_quality>Needs Vote"
+    '</data_quality><master_id is_main_release="false">0</master_id><tracklist><track>'
+    "<position>A1</position><title>Bell Bottom Beats</title></track></tracklist></release>"
+    "</releases>"
+)
+
+
+def test_extract_discogs_keeps_the_release_credits_and_nothing_of_its_tracks(tmp_path):
+    archive = tmp_path / "releases.xml.gz"
+    archive.write_bytes(gzip.compress(DISCOGS_DUMP.encode()))
+    out = tmp_path / "work" / "releases.jsonl"
+    assert extract_discogs(archive, out) == 2
+    assert [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines()] == [
+        {
+            "id": 3,
+            "master_id": 66526,
+            "artists": [3],
+            "labels": [
+                {"id": 6, "name": "Ruffhouse Records"},
+                {"id": 35, "name": "Ovum Recordings"},
+            ],
+            "descriptions": ["Compilation", "Mixed"],
+            "styles": ["Techno", "Tech House"],
+            "released": "1999-07-13",
+        },
+        {
+            "id": 386,
+            "master_id": 0,
+            "artists": [363],
+            "labels": [{"id": 110, "name": "Worm Interface"}],
+            "descriptions": ['12"', "EP"],
+            "styles": ["Jungle", "Drum n Bass", "Chiptune"],
+            "released": "1998-02-00",
+        },
+    ]
+    assert not (tmp_path / "work" / "releases.jsonl.partial").exists()
+
+
+def test_the_discogs_projection_writes_the_fields_the_build_reads(tmp_path):
+    # Breaks if a field is added to one side only: verified_discogs records
+    # RAW_DISCOGS_FIELDS as what the extraction wrote.
+    archive = tmp_path / "releases.xml.gz"
+    archive.write_bytes(gzip.compress(DISCOGS_DUMP.encode()))
+    out = tmp_path / "releases.jsonl"
+    extract_discogs(archive, out)
+    first = json.loads(out.read_text(encoding="utf-8").splitlines()[0])
+    assert list(first) == list(RAW_DISCOGS_FIELDS)
+
+
+def test_an_interrupted_discogs_extraction_leaves_no_extraction(tmp_path):
+    archive = tmp_path / "releases.xml.gz"
+    archive.write_bytes(gzip.compress(DISCOGS_DUMP[:-200].encode()))
+    out = tmp_path / "releases.jsonl"
+    with pytest.raises(ET.ParseError):
+        extract_discogs(archive, out)
+    assert not out.exists()

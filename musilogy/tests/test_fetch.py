@@ -35,6 +35,43 @@ def test_verify_rejects_a_corrupted_file(tmp_path):
         verify(p, "0" * 64)
 
 
+class Cut:
+    """An answer whose connection drops after its first chunk."""
+
+    def __init__(self, chunks):
+        self.chunks = list(chunks)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+    def read(self, _size):
+        if not self.chunks:
+            raise TimeoutError("timed out")
+        return self.chunks.pop(0)
+
+
+def test_a_download_cut_short_leaves_no_file_to_mistake_for_the_archive(tmp_path, monkeypatch):
+    # Breaks if download writes straight to dest: fetch_dump and fetch_discogs
+    # skip a dest that exists, and a truncated one would fail its digest on
+    # every run until deleted by hand.
+    dest = tmp_path / "releases.xml.gz"
+    monkeypatch.setattr("musilogy.fetch.urllib.request.urlopen", lambda *_a, **_k: Cut([b"half"]))
+    with pytest.raises(TimeoutError):
+        fetch.download("https://example.org/releases.xml.gz", dest)
+    assert not dest.exists()
+
+    answers = iter([Cut([b"half"]), Cut([b"whole", b""])])
+    monkeypatch.setattr("musilogy.fetch.urllib.request.urlopen", lambda *_a, **_k: next(answers))
+    with pytest.raises(TimeoutError):
+        fetch.download("https://example.org/releases.xml.gz", dest)
+    fetch.download("https://example.org/releases.xml.gz", dest)
+    assert dest.read_bytes() == b"whole"
+    assert [p.name for p in tmp_path.iterdir()] == ["releases.xml.gz"]
+
+
 def mbids(n, start=0):
     return [f"00000000-0000-4000-8000-{i:012d}" for i in range(start, start + n)]
 
