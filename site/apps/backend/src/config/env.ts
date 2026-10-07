@@ -16,7 +16,7 @@ interface EnvConfig {
   DATABASE_URL: string;
   /** CA of the stack's Postgres (PEM, single-line with \n, or DATABASE_CA_CERT_FILE); required whenever TLS is on. */
   DATABASE_CA_CERT: string | undefined;
-  /** Optional pool size override. Defaults to 10. */
+  /** Optional pool size override. Defaults to 20, of the 100 connections Postgres allows. */
   DATABASE_POOL_MAX: number;
   /** TLS to Postgres, always verified against DATABASE_CA_CERT. Defaults to true in prod; false for a local plain Postgres. */
   DATABASE_SSL: boolean;
@@ -112,7 +112,7 @@ export const env: EnvConfig = {
 
   DATABASE_URL: required('DATABASE_URL'),
   DATABASE_CA_CERT: resolveCaCert(),
-  DATABASE_POOL_MAX: parseInteger('DATABASE_POOL_MAX', 10),
+  DATABASE_POOL_MAX: parseInteger('DATABASE_POOL_MAX', 20),
   DATABASE_SSL: Bun.env.DATABASE_SSL ? Bun.env.DATABASE_SSL === 'true' : isProd,
 
   BETTER_AUTH_SECRET: required('BETTER_AUTH_SECRET'),
