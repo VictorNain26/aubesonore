@@ -41,10 +41,11 @@ BASELINE = {
     # The pages an artist page uses among those MusicBrainz relates, ended
     # ones included.
     "urls": 2_036_294,
-    # The ListenBrainz neighbours of the 111 402 artists with 500 listeners or
-    # more (snapshot of 2026-10-04), once the repeats and the artists given as
-    # their own neighbour are dropped.
-    "proximity": 4_973_236,
+    # The ListenBrainz neighbours of the artists with 500 listeners or more,
+    # over both parts (2026-10-04: 111 402 groups and persons; 2026-10-06: the
+    # 6 614 artists of the other types, 122 031 rows), once the repeats and the
+    # artists given as their own neighbour are dropped.
+    "proximity": 5_095_267,
     # The labels of first editions carrying at least two of an artist's
     # records, and its styles by decade, over the artists Discogs is linked to.
     "labels": 980_519,
@@ -55,9 +56,11 @@ RELEASE_TYPE_BREAKDOWN = {"Album": 1_968_255, "EP": 588_019}
 # album or an EP (discography snapshot of 2026-10-05).
 RELEASES_FILED_ORIGINAL = 70_196
 URLS_ENDED = 24_789
-PROXIMITY_EXCLUSIONS = {"repeated_neighbour": 675, "self_neighbour": 84}
-# Every artist asked, 16 515 of them without a neighbour.
-PROXIMITY_SURVEYED = 111_402
+# 17 of the repeats come from the part of 2026-10-06.
+PROXIMITY_EXCLUSIONS = {"repeated_neighbour": 692, "self_neighbour": 84}
+# Every artist asked by either part, 18 375 of them without a neighbour (1 860
+# from the part of 2026-10-06).
+PROXIMITY_SURVEYED = 118_016
 DISCOGS_COVERAGE = {
     "releases": 19_492_392,
     "releases_out_of_work": 4_234_631,
@@ -67,9 +70,10 @@ DISCOGS_COVERAGE = {
 }
 DISCOGS_DATE_DISAGREEMENTS = {"first_record_before_formation": 1_748}
 # Distinct records by official status (part of 2026-10-05: 93 665 artists asked,
-# 2 of them no longer held). Unknown dominates: only artists with 500 listeners
-# or more and an album or an EP are asked.
-RELEASE_STATUS = {"official": 741_258, "not_official": 11_827, "unknown": 1_434_297}
+# 2 of them no longer held; part of 2026-10-06: the 9 062 artists with only EPs
+# or of the other types, which move 22 504 records out of unknown). Unknown
+# dominates: only artists with 500 listeners or more and a release are asked.
+RELEASE_STATUS = {"official": 763_457, "not_official": 12_132, "unknown": 1_411_793}
 DISCOGRAPHY_EXCLUSIONS = {"malformed": 1, "not_album_or_ep": 1_274, "secondary_type": 1_498}
 # The influences whose two ends are artists of the dump, the only ones the
 # site can name; the other 207 have an end whose MBID `artists` does not hold.
