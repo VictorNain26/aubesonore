@@ -54,14 +54,19 @@ def verify(path: Path, expected: str) -> None:
 
 
 def download(url: str, dest: Path, timeout: float = DOWNLOAD_TIMEOUT) -> Path:
+    """The file at `dest` once whole: a download cut short leaves only its
+    `.partial`, which the next attempt starts over, never a truncated `dest`
+    that the callers would take as already fetched."""
     dest.parent.mkdir(parents=True, exist_ok=True)
+    partial = dest.with_name(dest.name + ".partial")
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r, dest.open("wb") as out:
+        with urllib.request.urlopen(req, timeout=timeout) as r, partial.open("wb") as out:
             while chunk := r.read(1 << 20):
                 out.write(chunk)
     except (urllib.error.HTTPError, urllib.error.URLError) as e:
         raise DownloadError(f"failed to download {url}: {e}") from e
+    partial.replace(dest)
     return dest
 
 
