@@ -140,8 +140,13 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+    # The journal, not json-file: a deploy recreates this container, and json-file logs go
+    # with it (84 deploys in 72 h before 2026-10-07). journald rotates them (SystemMaxUse);
+    # read with `journalctl CONTAINER_TAG=aubesonore-backend` or `docker logs`
+    # (https://docs.docker.com/engine/logging/drivers/journald/).
     logging:
-      options: { max-size: '10m', max-file: '3' }
+      driver: journald
+      options: { tag: aubesonore-backend }
     # `docker compose up --watch` only (https://docs.docker.com/compose/how-tos/file-watch/):
     # an edit restarts Bun on the new code; a dependency change rebuilds the image.
     develop:
@@ -179,7 +184,8 @@ services:
       retries: 3
       start_period: 10s
     logging:
-      options: { max-size: '10m', max-file: '3' }
+      driver: journald
+      options: { tag: aubesonore-frontend }
 
   # The artist pages' server render, which the backend asks for
   # (artistPage.routes.ts). Built with the frontend, from the same build stage,
@@ -202,7 +208,8 @@ services:
     mem_limit: 256m
     pids_limit: 64
     logging:
-      options: { max-size: '10m', max-file: '3' }
+      driver: journald
+      options: { tag: aubesonore-renderer }
 
   # ── Workstation only (profile `dev`) ──────────────────────────────────────────────────
 
