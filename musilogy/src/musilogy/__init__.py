@@ -9,5 +9,5 @@ REFERENCE_DISCOGRAPHY = "2026-10-05"
 REFERENCE_DISCOGS = "20261001"
 # The parts of each long survey, oldest first: each asks only the artists no
 # earlier part asked (cli.snapshot_proximity, cli.snapshot_official).
-REFERENCE_PROXIMITY = ("2026-10-04",)
-REFERENCE_OFFICIAL = ("2026-10-05",)
+REFERENCE_PROXIMITY = ("2026-10-04", "2026-10-06")
+REFERENCE_OFFICIAL = ("2026-10-05", "2026-10-06")

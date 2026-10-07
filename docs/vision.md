@@ -333,9 +333,9 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 ## 6. Écarts actuels
 
 1. **Statut officiel incomplet** : la page écarte les disques que MusicBrainz ne montre pas
-   comme l'œuvre de l'artiste (476 des 4 980 disques des artistes joués, 2026-10-06), mais 149
-   restent de statut inconnu, et le relevé n'a pas encore interrogé les artistes qui n'ont que des
-   EP ni les nouveaux types d'artistes.
+   comme l'œuvre de l'artiste (476 des 4 980 disques des artistes joués, 2026-10-06) ; seuls les
+   artistes d'au moins 500 auditeurs sont interrogés, désormais tous types confondus, EP compris
+   (partie du 2026-10-06, épinglée le 2026-10-07).
 2. **La découverte ne suit qu'un signal, et il favorise les artistes connus** : les proches de la
    page viennent du seul service de co-écoute ListenBrainz, dont 80 % des voisins sont plus connus
    que l'artiste et qui ne couvre pas les artistes de moins de 1 000 auditeurs environ ; le courant,
@@ -348,8 +348,8 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
    titres gardés ne retrouvent ni leur passage ni leur titre exact chez Deezer.
 5. **Relevés incomplets** : musilogy publie tous les types d'artistes, sauf les 12 artistes à
    usage spécial (les 674 240 sans type, 17 790 personnages et 6 572 « autres » s'ajoutent), mais
-   le relevé de co-écoute du 2026-10-04 n'a interrogé que les groupes et les personnes. Les parties
-   complémentaires (co-écoute et statut officiel, 2026-10-06) sont prises, pas encore épinglées.
+   la co-écoute ne couvre que les artistes d'au moins 500 auditeurs que le service a relevés, tous
+   types depuis la partie du 2026-10-06 (épinglée le 2026-10-07).
 6. **Les featurings ne relient que l'artiste principal** (§4.4).
 7. **Licences à régulariser** : la similarité ListenBrainz à confirmer, le portrait et les
    pochettes Deezer (§2.5).
@@ -385,7 +385,7 @@ l'historique git.
    combinaisons vivent dans une couche dérivée qui ne réécrit jamais une source
    (`musilogy/docs/conception.md` §1).
    1. **Population complète** — fait (#406 à #409, chargé le 2026-10-07) ; les relevés
-      complémentaires de co-écoute et de statut officiel sont pris (2026-10-06), à épingler.
+      complémentaires de co-écoute et de statut officiel (2026-10-06) sont épinglés (2026-10-07).
    2. **Discogs** : le dump des sorties épinglé, les tables des styles par décennie et des labels
       de première édition — en cours.
    3. **L'évaluation** — premier tour fait (2026-10-07 : 20 artistes, 515 candidats jugés avec
