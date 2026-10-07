@@ -112,13 +112,7 @@ describe('GET /api/musilogy/artist/:mbid', () => {
 
     const res = await get(`/artist/${T_REX.toUpperCase()}`);
     const body = (await res.json()) as {
-      card: {
-        name: string;
-        genres: string[];
-        listeners: number;
-        played: unknown;
-        proximitySurveyed: boolean;
-      };
+      card: { name: string; genres: string[]; played: unknown };
       neighbours: Record<string, Array<{ name: string; played: unknown }>>;
     };
 
@@ -126,8 +120,6 @@ describe('GET /api/musilogy/artist/:mbid', () => {
     expect(body.card).toMatchObject({
       name: 'T. Rex',
       genres: ['glam rock'],
-      listeners: 31415,
-      proximitySurveyed: true,
     });
     expect(body.neighbours.before!.map((n) => n.name)).toEqual(['The Kinks']);
     expect(body.neighbours.during![0]).toMatchObject({
@@ -299,7 +291,6 @@ describe('GET /api/musilogy/search', () => {
         disambiguation: null,
         type: 'Group',
         y0: 1967,
-        listeners: 31415,
       },
     ]);
   });

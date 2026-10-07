@@ -85,7 +85,6 @@ await render('/artiste/warm-up', {
     facts: null,
     summary: null,
     links: [],
-    playedOnRadio: [],
   },
   musilogy: null,
 });

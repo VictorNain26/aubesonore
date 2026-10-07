@@ -54,7 +54,6 @@ describe('ArtistPage', () => {
         facts: null,
         summary: null,
         links: [],
-        playedOnRadio: [],
       },
       musilogy: null,
     });
@@ -84,7 +83,6 @@ describe('ArtistPage', () => {
         facts: null,
         summary: null,
         links: [],
-        playedOnRadio: [],
       },
       musilogy: null,
     });

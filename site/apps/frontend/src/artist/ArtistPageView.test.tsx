@@ -25,15 +25,11 @@ const MUSILOGY: MusilogyArtist = {
     y0: 2015,
     played: { id: 'a-1', slug: 'hania-rani' },
     type: 'Person',
-    country: 'PL',
-    beginArea: null,
     y0Source: 'declared',
     yEnd: null,
     yEndSource: null,
     ended: false,
     genres: [],
-    listeners: 1000,
-    proximitySurveyed: true,
   },
   neighbours: {
     before: [
@@ -65,15 +61,11 @@ const SUMMARY = {
 };
 
 describe('ArtistPageView', () => {
-  it('says who the artist is, without listing what the antenna played', () => {
+  it('says who the artist is', () => {
     show({ status: 'ready', profile: makeArtistProfile({ summary: SUMMARY }) });
 
     expect(screen.getByRole('heading', { level: 1, name: 'Hania Rani' })).toBeInTheDocument();
     expect(screen.getByText('Artiste · Pologne')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('heading', { name: "Ses titres à l'antenne" })
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText('F Major')).not.toBeInTheDocument();
   });
 
   it('shows the way walked to the artist, each earlier step a link back', () => {

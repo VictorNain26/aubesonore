@@ -6,7 +6,7 @@ import type {
 import { API_BASE_URL } from '../utils/config';
 import { artistPath } from './artistProfile';
 
-/** Musilogy is not loaded on the server, or is being reloaded. */
+/** Musilogy is not loaded on the server. */
 export class MusilogyUnavailableError extends Error {}
 
 /**

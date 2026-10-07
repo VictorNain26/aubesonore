@@ -102,7 +102,6 @@ function formatKeptAt(iso: string): string {
   }).format(new Date(iso));
 }
 
-/** The day of a play: the year only when it is not this one. */
 /** A page with nothing to show, like the 404: what happened, and the way back to the live. */
 function Message({ title, body }: { title: string; body: string }) {
   return (

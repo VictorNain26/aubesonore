@@ -62,8 +62,6 @@ async function section<R extends Record<string, unknown>>(query: SQL): Promise<R
   }
 }
 
-type Int8 = string;
-
 interface CardRow extends Record<string, unknown> {
   mbid: string;
   name: string;
@@ -77,8 +75,6 @@ interface CardRow extends Record<string, unknown> {
   y_end_source: string | null;
   ended: boolean | null;
   genres: Array<{ name: string }> | null;
-  user_count: Int8 | null;
-  proximity_surveyed: boolean | null;
 }
 
 interface NeighbourRow extends Record<string, unknown> {
@@ -132,7 +128,6 @@ interface SearchRow extends Record<string, unknown> {
   disambiguation: string | null;
   type: string | null;
   y0: number | null;
-  user_count: Int8 | null;
 }
 
 async function playedByMbid(mbids: string[]): Promise<Map<string, ArtistPageRef>> {
@@ -146,8 +141,6 @@ async function playedByMbid(mbids: string[]): Promise<Map<string, ArtistPageRef>
     rows.flatMap((r) => (r.mbid ? [[r.mbid, { id: r.id, slug: r.slug }] as const] : []))
   );
 }
-
-const toCount = (value: Int8 | null): number | null => (value === null ? null : Number(value));
 
 export async function getMusilogyArtist(mbid: string): Promise<MusilogyArtist | null> {
   const cached = musilogyCache.get(mbid);
@@ -218,15 +211,11 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
     card: {
       ...ref(card.mbid, card.name, card.disambiguation, card.y0),
       type: card.type,
-      country: regionOf(card.country),
-      beginArea: card.begin_area,
       y0Source: card.y0_source,
       yEnd: card.y_end,
       yEndSource: card.y_end_source,
       ended: card.ended,
       genres: (card.genres ?? []).map((genre) => genre.name),
-      listeners: toCount(card.user_count),
-      proximitySurveyed: card.proximity_surveyed ?? null,
     },
     neighbours: neighbourRows && {
       before: neighbourRows.filter((row) => row.side === 'before').map(neighbour),
@@ -276,7 +265,6 @@ export async function searchMusilogy(query: string): Promise<MusilogySearchHit[]
     disambiguation: row.disambiguation,
     type: row.type,
     y0: row.y0,
-    listeners: toCount(row.user_count),
   }));
 }
 

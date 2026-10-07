@@ -35,7 +35,7 @@ void mock.module('../db/index', () => ({
   },
 }));
 
-const { getArtistIdentity, getMusilogyArtist, identityCache, musilogyCache, MusilogyUnavailable } =
+const { getArtistIdentity, identityCache, musilogyCache, MusilogyUnavailable } =
   await import('./musilogyService');
 
 const DAFT_PUNK = '056e4f3e-d505-4dad-8ec1-d04f521cbb56';
@@ -205,13 +205,5 @@ describe('getArtistIdentity', () => {
     loaded = false;
     const failure = await getArtistIdentity(DAFT_PUNK).catch((err: unknown) => err);
     expect(failure).toBeInstanceOf(MusilogyUnavailable);
-  });
-});
-
-describe('getMusilogyArtist', () => {
-  it('names no dissolved country on the card either', async () => {
-    answers.artist_card = [card({ country: 'SU' })];
-
-    expect((await getMusilogyArtist(DAFT_PUNK))?.card.country).toBeNull();
   });
 });
