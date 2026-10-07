@@ -6,8 +6,10 @@
 }
 
 @layer base {
-  /* Keeps a focused element clear of the pinned player bar (WCAG 2.4.11). */
+  /* Keeps a focused element clear of the pinned player bar and of the header when it is back
+     over the page (WCAG 2.4.11). */
   html {
+    scroll-padding-top: var(--header-space);
     scroll-padding-bottom: var(--bar-space);
   }
 
