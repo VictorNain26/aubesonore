@@ -34,7 +34,7 @@ export function Section({
       <div
         className={cn(
           'reveal flex flex-col gap-2 self-start md:gap-3',
-          sticky && 'wide:sticky wide:top-10'
+          sticky && 'wide:sticky wide:top-below-header'
         )}
       >
         <h2 id={`${id}-title`} className="text-section m-0">
