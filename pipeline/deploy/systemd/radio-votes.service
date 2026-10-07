@@ -7,6 +7,9 @@ WorkingDirectory=%h/aubesonore/pipeline
 ExecStart=%h/aubesonore/pipeline/.venv/bin/radio votes-serve
 Restart=on-failure
 RestartSec=10
+# Pic mesuré : 220 Mo sur 6 démarrages (30 jours) ; mêmes règles que radio-weekly.
+MemoryHigh=384M
+MemoryMax=512M
 
 [Install]
 WantedBy=default.target
