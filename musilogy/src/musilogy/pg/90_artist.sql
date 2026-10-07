@@ -115,8 +115,17 @@ AS $$
   ORDER BY r.y NULLS LAST, r.title, r.rg_mbid;
 $$;
 
--- Members of a group, or groups of a person: member of band, founder and
--- collaboration are one relation, being part of it (docs/vision.md §2.4).
+-- Being part of a group: member of band, founder and collaboration are one
+-- relation (docs/vision.md §2.4). A simple immutable SQL function, inlined
+-- into the queries that call it.
+CREATE FUNCTION musilogy.is_part_of(relation text)
+RETURNS boolean
+LANGUAGE sql IMMUTABLE
+AS $$
+  SELECT relation IN ('member of band', 'founder', 'collaboration');
+$$;
+
+-- Members of a group, or groups of a person, through musilogy.is_part_of.
 -- `role` reads from the artist's side: 'member' when the other is part of the
 -- artist, 'group' when the artist is part of the other. Several relations
 -- between the same two (two stints, a founder also a member) are one row, from
@@ -138,11 +147,11 @@ AS $$
   WITH part AS (
     SELECT 'member' AS role, l.src_mbid AS other, l.y_begin, l.y_end
     FROM musilogy.links l
-    WHERE l.dst_mbid = artist AND l.type IN ('member of band', 'founder', 'collaboration')
+    WHERE l.dst_mbid = artist AND musilogy.is_part_of(l.type)
     UNION ALL
     SELECT 'group', l.dst_mbid, l.y_begin, l.y_end
     FROM musilogy.links l
-    WHERE l.src_mbid = artist AND l.type IN ('member of band', 'founder', 'collaboration')
+    WHERE l.src_mbid = artist AND musilogy.is_part_of(l.type)
   )
   SELECT p.role, o.mbid, o.name, o.disambiguation, o.y0, min(p.y_begin), max(p.y_end)
   FROM part p JOIN musilogy.artists o ON o.mbid = p.other
@@ -170,18 +179,18 @@ AS $$
   WITH member AS (
     SELECT DISTINCT l.src_mbid AS mbid
     FROM musilogy.links l
-    WHERE l.dst_mbid = artist AND l.type IN ('member of band', 'founder', 'collaboration')
+    WHERE l.dst_mbid = artist AND musilogy.is_part_of(l.type)
   ),
   project AS (
     SELECT DISTINCT l.dst_mbid AS mbid, l.src_mbid AS via
     FROM musilogy.links l JOIN member m ON m.mbid = l.src_mbid
-    WHERE l.type IN ('member of band', 'founder', 'collaboration', 'is person')
+    WHERE (musilogy.is_part_of(l.type) OR l.type = 'is person')
       AND l.dst_mbid <> artist
       AND NOT EXISTS (SELECT 1 FROM member o WHERE o.mbid = l.dst_mbid)
       AND NOT EXISTS (
         SELECT 1 FROM musilogy.links g
         WHERE g.src_mbid = artist AND g.dst_mbid = l.dst_mbid
-          AND g.type IN ('member of band', 'founder', 'collaboration'))
+          AND musilogy.is_part_of(g.type))
       AND NOT EXISTS (
         SELECT 1 FROM musilogy.links r
         WHERE r.type = 'artist rename'
