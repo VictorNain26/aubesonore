@@ -85,6 +85,9 @@ jobs:
       - name: Frontend tests with coverage
         run: pnpm --filter=@aubesonore/frontend test --run --coverage
 
+      - name: Deploy script guard
+        run: bash scripts/deploy.test.sh
+
       - name: Security audit (prod, critical blocks)
         run: pnpm audit --prod --audit-level=critical
 
