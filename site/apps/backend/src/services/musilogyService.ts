@@ -431,7 +431,16 @@ interface ReleaseRow extends Record<string, unknown> {
  * artists, 199 of 300 sampled with 500 listeners or more (2026-10-05).
  */
 function firstCoverOf(releases: ReleaseRow[]): string | null {
-  const first = releases.find((r) => r.primary_type === 'Album') ?? releases[0];
+  // The earliest dated one, whatever order artist_releases gives.
+  const earliest = (rows: ReleaseRow[]) =>
+    rows.reduce<ReleaseRow | undefined>(
+      (best, r) => (r.y !== null && (best?.y == null || r.y < best.y) ? r : best),
+      undefined
+    );
+  const first =
+    earliest(releases.filter((r) => r.primary_type === 'Album')) ??
+    earliest(releases) ??
+    releases[0];
   return first ? coverArtUrl(first.mbid, 500) : null;
 }
 

@@ -82,9 +82,11 @@ const urls = [
 
 // Homework (1997) before its EP The New Wave (1994): the album comes first.
 const HOMEWORK = 'a7da8a4c-6e8b-3d3e-b6f1-7c0fd3ed3d5b';
+// As artist_releases gives them: the latest first.
 const releases = [
-  { mbid: 'b1c9a6f0-3c8f-3e5a-9a8e-2f1b4c0d9e77', primary_type: 'EP', y: 1994 },
+  { mbid: 'f2a1c0b7-6b3e-4f3a-9d8e-5c4b3a291807', primary_type: 'Album', y: 2001 },
   { mbid: HOMEWORK, primary_type: 'Album', y: 1997 },
+  { mbid: 'b1c9a6f0-3c8f-3e5a-9a8e-2f1b4c0d9e77', primary_type: 'EP', y: 1994 },
 ];
 
 beforeEach(() => {
@@ -121,13 +123,12 @@ describe('getArtistIdentity', () => {
   });
 
   it("takes the first EP's cover when there is no album, and none without a record", async () => {
-    answers.artist_releases = [releases[0]!];
+    answers.artist_releases = [releases[2]!];
     expect((await getArtistIdentity(DAFT_PUNK))?.firstCover).toBe(
-      `https://coverartarchive.org/release-group/${releases[0]!.mbid}/front-500`
+      `https://coverartarchive.org/release-group/${releases[2]!.mbid}/front-500`
     );
 
     identityCache.dispose();
-
     coreCache.dispose();
     answers.artist_releases = [];
     expect((await getArtistIdentity(DAFT_PUNK))?.firstCover).toBeNull();

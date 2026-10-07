@@ -140,7 +140,7 @@ Un ordre de départ, chaque section seulement quand elle a quelque chose à mont
    époque, sinon les genres MusicBrainz), l'ouverture de Wikipédia ou, sans article, les faits dits
    en une phrase.
 2. **Écouter ailleurs** : Deezer, Spotify, Bandcamp, site officiel…
-3. **Albums et EP**, avec pochette et année, du plus ancien au plus récent : ce que l'artiste a
+3. **Albums et EP**, avec pochette et année, du plus récent au plus ancien : ce que l'artiste a
    voulu sortir. Les albums (studio, bandes originales qu'il a composées, remix) et les EP ; pas
    les singles, compilations, lives, démos ni bootlegs, qui noient l'œuvre dans le catalogue. Une
    longue liste d'EP se replie. Ce qui définit précisément un disque gardé est une règle de

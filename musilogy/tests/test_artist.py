@@ -121,14 +121,14 @@ def test_a_page_shows_the_work_from_the_first_album_to_the_declared_end(tmp_path
     assert pg_query(
         pg, f"SELECT mbid, primary_type, remix, y FROM musilogy.artist_releases('{A}')"
     ) == [
-        (RG2, "Album", False, 1979),
-        (RG3, "EP", False, 1981),
-        (RG4, "Album", True, 1983),
         (RG6, "Album", False, 1992),
+        (RG4, "Album", True, 1983),
+        (RG3, "EP", False, 1981),
+        (RG2, "Album", False, 1979),
     ]
     assert pg_query(pg, f"SELECT mbid, y FROM musilogy.artist_releases('{B}')") == [
-        (RG8, 1990),
         (RG7, 1995),
+        (RG8, 1990),
         (RG10, None),
     ]
     assert pg_query(

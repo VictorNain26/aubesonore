@@ -79,8 +79,8 @@ AS $$
   ORDER BY 1 NULLS LAST, 2;
 $$;
 
--- The records a page shows of the artist's work (docs/vision.md §2.4), in the
--- order it was published: albums — studio, soundtrack, remix — and the EPs
+-- The records a page shows of the artist's work (docs/vision.md §2.4), the
+-- latest first: albums — studio, soundtrack, remix — and the EPs
 -- released from the first album on; an artist with no album yet shows its
 -- EPs. For a group whose end is declared, nothing released after that year
 -- but what Wikidata files as a studio album or an EP: a posthumous record of
@@ -112,7 +112,7 @@ AS $$
   WHERE (r.y IS NOT NULL OR r.filed_original)
     AND (r.primary_type = 'Album' OR f.y IS NULL OR r.y IS NULL OR r.y >= f.y)
     AND (c.y_end IS NULL OR r.y IS NULL OR r.y <= c.y_end OR r.filed_original)
-  ORDER BY r.y NULLS LAST, r.title, r.rg_mbid;
+  ORDER BY r.y DESC NULLS LAST, r.title, r.rg_mbid;
 $$;
 
 -- Being part of a group: member of band, founder and collaboration are one
