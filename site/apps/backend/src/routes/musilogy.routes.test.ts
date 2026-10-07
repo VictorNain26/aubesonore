@@ -40,7 +40,7 @@ void mock.module('../db/index', () => ({
 }));
 
 const { musilogyRoutes } = await import('./musilogy.routes');
-const { musilogyCache } = await import('../services/musilogyService');
+const { coreCache, musilogyCache } = await import('../services/musilogyService');
 
 const T_REX = 'c842d29f-a297-48cd-bb71-4f77fd672b16';
 const BOWIE = '5441c29d-3602-4898-b1a1-b77fa23b8e50';
@@ -93,6 +93,7 @@ beforeEach(() => {
   notLoaded = new Set();
   pageRows = [];
   musilogyCache.dispose();
+  coreCache.dispose();
   __resetRateLimits();
 });
 
@@ -289,7 +290,7 @@ describe('GET /api/musilogy/search', () => {
         mbid: T_REX,
         name: 'T. Rex',
         disambiguation: null,
-        type: 'Group',
+        kind: 'group',
         y0: 1967,
       },
     ]);

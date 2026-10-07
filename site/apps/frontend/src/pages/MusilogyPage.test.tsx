@@ -11,7 +11,7 @@ const DAFT_PUNK = {
   mbid: '056e4f3e-d505-4dad-8ec1-d04f521cbb56',
   name: 'Daft Punk',
   disambiguation: 'French electronic duo',
-  type: 'Group',
+  kind: 'group',
   y0: 1993,
 };
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { fetchArtistPages, type ArtistPage } from '../lib/artistProfile';
+import type { ArtistPageRef } from '@aubesonore/shared-types/client';
+import { fetchArtistPages } from '../lib/artistProfile';
 
 // What the backend accepts (artistPagesSchema): one name out of bounds would void the batch.
 const MAX_NAMES = 400;
@@ -13,8 +14,8 @@ const NONE: ReadonlySet<string> = new Set();
  * first play (the resolution calls Deezer and MusicBrainz), so a miss is not final: it
  * holds for the current list of names only.
  */
-export function useArtistPages(names: readonly string[]): ReadonlyMap<string, ArtistPage> {
-  const [pages, setPages] = useState<ReadonlyMap<string, ArtistPage>>(new Map());
+export function useArtistPages(names: readonly string[]): ReadonlyMap<string, ArtistPageRef> {
+  const [pages, setPages] = useState<ReadonlyMap<string, ArtistPageRef>>(new Map());
   const [missed, setMissed] = useState<{ list: string; names: ReadonlySet<string> }>({
     list: '',
     names: NONE,

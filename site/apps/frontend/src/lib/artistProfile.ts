@@ -1,4 +1,4 @@
-import type { ArtistProfile } from '@aubesonore/shared-types/client';
+import type { ArtistPageRef, ArtistProfile } from '@aubesonore/shared-types/client';
 import { object, record, safeParse, string } from 'valibot';
 import { getLocale, localizeHref } from '@/paraglide/runtime.js';
 import { API_BASE_URL } from '../utils/config';
@@ -40,13 +40,13 @@ export async function fetchArtistProfile(
 // 10 calls a minute per address, which listeners behind one address (a carrier's NAT, an office)
 // share. A name without a page yet is asked again later: an artist heard for the first time gets
 // its page a little after its first play.
-const resolving = new Map<string, Promise<ArtistPage | null>>();
+const resolving = new Map<string, Promise<ArtistPageRef | null>>();
 
 /**
  * The page of an artist heard on the antenna, from the raw AzuraCast string.
  * `null` when the artist has no page (yet): callers show no link then.
  */
-export function resolveArtistPage(name: string): Promise<ArtistPage | null> {
+export function resolveArtistPage(name: string): Promise<ArtistPageRef | null> {
   const trimmed = name.trim();
   if (!trimmed) return Promise.resolve(null);
   const known = resolving.get(trimmed);
@@ -54,7 +54,7 @@ export function resolveArtistPage(name: string): Promise<ArtistPage | null> {
 
   const request = fetch(
     `${API_BASE_URL}/api/artist/resolve?name=${encodeURIComponent(trimmed)}`
-  ).then(async (response) => (response.ok ? ((await response.json()) as ArtistPage) : null));
+  ).then(async (response) => (response.ok ? ((await response.json()) as ArtistPageRef) : null));
   resolving.set(trimmed, request);
   void request.then(
     (page) => {
@@ -63,11 +63,6 @@ export function resolveArtistPage(name: string): Promise<ArtistPage | null> {
     () => resolving.delete(trimmed)
   );
   return request;
-}
-
-export interface ArtistPage {
-  id: string;
-  slug: string;
 }
 
 const ArtistPagesSchema = record(string(), object({ id: string(), slug: string() }));
@@ -79,7 +74,7 @@ const ArtistPagesSchema = record(string(), object({ id: string(), slug: string()
 export async function fetchArtistPages(
   names: readonly string[],
   signal?: AbortSignal
-): Promise<Map<string, ArtistPage>> {
+): Promise<Map<string, ArtistPageRef>> {
   const response = await fetch(`${API_BASE_URL}/api/artist/pages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { MusilogyRelease } from '@aubesonore/shared-types/client';
+import { coverArtUrl, type MusilogyRelease } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
 import { Section } from '../design/molecules/Section';
 import { Cover } from '../home/Cover';
@@ -9,12 +9,9 @@ import { TEXT_ACTION } from '../home/styles';
 // ones): the first show, the rest open on demand. Albums all show.
 const EPS_SHOWN = 8;
 
-/**
- * The Cover Art Archive's thumbnail of a release group: a redirect to the
- * image, or 404 when none was chosen, and Cover then shows its wave.
- */
+/** The release's thumbnail; without one, Cover shows its wave. */
 export function coverOf(release: MusilogyRelease): string {
-  return `https://coverartarchive.org/release-group/${release.mbid}/front-250`;
+  return coverArtUrl(release.mbid, 250);
 }
 
 function Record({ release }: { release: MusilogyRelease }) {

@@ -10,6 +10,11 @@ export interface DeezerArtist {
 }
 
 const DEEZER_API = 'https://api.deezer.com';
+
+/** An artist's page on Deezer, the address MusicBrainz relates to it. */
+export function deezerArtistUrl(id: string): string {
+  return `https://www.deezer.com/artist/${id}`;
+}
 const POSITIVE_TTL_MS = 24 * 60 * 60 * 1000;
 const NEGATIVE_TTL_MS = 6 * 60 * 60 * 1000;
 const CIRCUIT_OPEN_MS = 60 * 1000;

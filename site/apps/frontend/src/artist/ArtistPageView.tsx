@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { Cover } from '../home/Cover';
 import { ARTIST_LINK, BACK_TO_LIVE } from '../home/styles';
 import * as m from '@/paraglide/messages.js';
+import { KIND_LABELS } from '../lib/artistKind';
 import { SiteHeader } from '../home/SiteHeader';
 import { Section } from '../design/molecules/Section';
 import { musilogyNav, MusilogySections } from '../musilogy/MusilogyView';
@@ -33,13 +34,6 @@ const PLATFORM_LABELS: Record<ArtistPlatform, () => string> = {
   bandcamp: () => 'Bandcamp',
   soundcloud: () => 'SoundCloud',
   official: () => m.artist_link_official(),
-};
-
-const KIND_LABELS: Record<NonNullable<ArtistFacts['kind']>, () => string> = {
-  person: () => m.artist_kind_person(),
-  group: () => m.artist_kind_group(),
-  orchestra: () => m.artist_kind_orchestra(),
-  choir: () => m.artist_kind_choir(),
 };
 
 // Wikipedia text is CC BY-SA 4.0: the excerpt links its article, which names

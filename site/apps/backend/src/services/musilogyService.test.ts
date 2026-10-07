@@ -9,6 +9,7 @@ import * as realSchema from '../db/schema';
 const dialect = new PgDialect();
 let answers: Record<string, Array<Record<string, unknown>>> = {};
 let loaded = true;
+let asked: string[] = [];
 
 function answer(query: SQL) {
   const built = dialect.sqlToQuery(query);
@@ -22,6 +23,7 @@ function answer(query: SQL) {
     );
   }
   const fn = /musilogy\.(\w+)\(/.exec(built.sql)?.[1] ?? '';
+  asked.push(fn);
   return Promise.resolve({ rows: answers[fn] ?? [] });
 }
 
@@ -35,8 +37,14 @@ void mock.module('../db/index', () => ({
   },
 }));
 
-const { getArtistIdentity, identityCache, musilogyCache, MusilogyUnavailable } =
-  await import('./musilogyService');
+const {
+  coreCache,
+  getArtistIdentity,
+  getMusilogyArtist,
+  identityCache,
+  musilogyCache,
+  MusilogyUnavailable,
+} = await import('./musilogyService');
 
 const DAFT_PUNK = '056e4f3e-d505-4dad-8ec1-d04f521cbb56';
 
@@ -82,7 +90,9 @@ const releases = [
 beforeEach(() => {
   answers = { artist_card: [card()], artist_urls: urls, artist_releases: releases };
   loaded = true;
+  asked = [];
   identityCache.dispose();
+  coreCache.dispose();
   musilogyCache.dispose();
 });
 
@@ -117,6 +127,8 @@ describe('getArtistIdentity', () => {
     );
 
     identityCache.dispose();
+
+    coreCache.dispose();
     answers.artist_releases = [];
     expect((await getArtistIdentity(DAFT_PUNK))?.firstCover).toBeNull();
   });
@@ -172,6 +184,7 @@ describe('getArtistIdentity', () => {
   it('names no dissolved country nor MusicBrainz region, Kosovo it does', async () => {
     const countryOf = async (code: string) => {
       identityCache.dispose();
+      coreCache.dispose();
       answers.artist_card = [card({ country: code })];
       return (await getArtistIdentity(DAFT_PUNK))?.facts.country;
     };
@@ -202,8 +215,20 @@ describe('getArtistIdentity', () => {
     expect(await getArtistIdentity(DAFT_PUNK)).toBeNull();
 
     identityCache.dispose();
+    coreCache.dispose();
     loaded = false;
     const failure = await getArtistIdentity(DAFT_PUNK).catch((err: unknown) => err);
     expect(failure).toBeInstanceOf(MusilogyUnavailable);
+  });
+});
+
+describe('an artist page', () => {
+  it('reads the card and the records once for the profile and the sections', async () => {
+    // Breaks if getArtistIdentity and getMusilogyArtist each query them again:
+    // one page view asks for both.
+    await getArtistIdentity(DAFT_PUNK);
+    await getMusilogyArtist(DAFT_PUNK);
+    expect(asked.filter((fn) => fn === 'artist_card')).toHaveLength(1);
+    expect(asked.filter((fn) => fn === 'artist_releases')).toHaveLength(1);
   });
 });

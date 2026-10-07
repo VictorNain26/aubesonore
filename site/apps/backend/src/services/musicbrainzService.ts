@@ -1,4 +1,5 @@
 import { env } from '../config/env';
+import { deezerArtistUrl } from './deezerService';
 import type { Lookup } from '../lib/lookup';
 import { TtlCache } from '../lib/cache/ttlCache';
 import { createSingleFlight } from '../lib/singleFlight';
@@ -81,7 +82,7 @@ async function cached<V>(key: string, load: () => Promise<Lookup<V>>): Promise<L
  */
 export function findMbidByDeezerId(deezerId: string): Promise<Lookup<string>> {
   return cached(`deezer:${deezerId}`, async () => {
-    const resource = `https://www.deezer.com/artist/${deezerId}`;
+    const resource = deezerArtistUrl(deezerId);
     const fetched = await fetchJson<{ relations?: Array<{ artist?: { id?: string } }> }>(
       `/url?resource=${encodeURIComponent(resource)}&inc=artist-rels&fmt=json`
     );

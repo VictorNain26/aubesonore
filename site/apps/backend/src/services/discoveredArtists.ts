@@ -13,7 +13,7 @@ import { getArtistIdentity, getMusilogyArtist } from './musilogyService';
  * https://developers.google.com/search/docs/essentials/spam-policies
  */
 export const MIN_PLAYED_LINKS = 10;
-export const MIN_RECORDS = 3;
+const MIN_RECORDS = 3;
 
 const REFRESH_EVERY_MS = 24 * 60 * 60 * 1000;
 const FIRST_RUN_AFTER_MS = 60_000;

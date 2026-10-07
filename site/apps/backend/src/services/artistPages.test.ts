@@ -1,17 +1,18 @@
 import { describe, it, expect } from 'bun:test';
-import { matchPages, pageKey } from './artistPages';
+import { matchPages } from './artistPages';
+import { artistKey } from './artistResolver';
 
 const CASSIUS = { normalizedName: 'cassius', id: 'a-1', slug: 'cassius' };
 const DAHO = { normalizedName: 'etienne daho', id: 'a-2', slug: 'etienne-daho' };
 
-describe('pageKey', () => {
+describe('artistKey', () => {
   it('keys a raw name the way the resolver stores it', () => {
-    expect(pageKey('Étienne Daho')).toBe('etienne daho');
-    expect(pageKey('Cassius feat. Pharrell Williams')).toBe('cassius');
+    expect(artistKey('Étienne Daho')).toBe('etienne daho');
+    expect(artistKey('Cassius feat. Pharrell Williams')).toBe('cassius');
   });
 
   it('never splits a name on & or a comma', () => {
-    expect(pageKey('Earth, Wind & Fire')).toBe('earth wind fire');
+    expect(artistKey('Earth, Wind & Fire')).toBe('earth wind fire');
   });
 });
 

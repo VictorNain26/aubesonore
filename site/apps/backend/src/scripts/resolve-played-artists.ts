@@ -4,8 +4,8 @@ import { db, pool } from '../db/index';
 import { artist, likedTracks, radioPlay } from '../db/schema';
 import { toIsrc } from '../lib/isrc';
 import {
+  artistKey,
   normalizeArtistName,
-  primaryArtistName,
   resolveArtist,
   resolveKeptArtist,
   reverifyArtist,
@@ -23,7 +23,7 @@ import { searchDeezer } from '../services/trackLinksService';
 // are handled as they come. Sequential on purpose: MusicBrainz allows one
 // request per second.
 const key = (artistName: string, title: string): string =>
-  `${normalizeArtistName(primaryArtistName(artistName))}|${normalizeArtistName(title)}`;
+  `${artistKey(artistName)}|${normalizeArtistName(title)}`;
 
 const response = await fetch(
   `${env.AZURACAST_BASE_URL}/api/station/${env.AZURACAST_STATION_ID}/files`,

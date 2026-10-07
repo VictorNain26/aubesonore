@@ -28,7 +28,7 @@ function artist(
       disambiguation: null,
       y0,
       played: null,
-      type: 'Group',
+      kind: 'group',
       y0Source: 'declared',
       yEnd: 1977,
       yEndSource: 'declared',

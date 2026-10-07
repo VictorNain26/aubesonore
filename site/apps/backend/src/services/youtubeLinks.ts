@@ -1,7 +1,7 @@
 import { and, eq, gt, inArray, isNotNull, lt, or } from 'drizzle-orm';
 import { db, schema } from '../db/index';
 import { logger } from '../lib/logger';
-import { normalizeArtistName, primaryArtistName } from './artistResolver';
+import { artistKey, normalizeArtistName } from './artistResolver';
 import {
   existingVideos,
   findArtTrack,
@@ -25,7 +25,7 @@ const FIRST_RUN_AFTER_MS = 60 * 1000;
 
 /** One song for every listener who keeps it: its primary artist and title, normalized. */
 export function songKey(title: string, artist: string): string {
-  return `${normalizeArtistName(primaryArtistName(artist))}|${normalizeArtistName(title)}`;
+  return `${artistKey(artist)}|${normalizeArtistName(title)}`;
 }
 
 /** Searches the song's Art Track unless a recent answer is stored; a failure stores nothing. */

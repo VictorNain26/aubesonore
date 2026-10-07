@@ -151,6 +151,15 @@ export interface ArtistPageRef {
 }
 
 /**
+ * A release group's front cover at the Cover Art Archive, hotlinked. The
+ * archive answers a redirect to the image, or 404 when the community chose none
+ * (musicbrainz.org/doc/Cover_Art_Archive/API).
+ */
+export function coverArtUrl(releaseGroup: string, size: 250 | 500): string {
+  return `https://coverartarchive.org/release-group/${releaseGroup}/front-${size}`;
+}
+
+/**
  * Musilogy (docs/vision.md §2) reads musilogy's SQL functions over a
  * MusicBrainz dump (genres CC BY-NC-SA 3.0), ListenBrainz snapshots (CC0) and
  * Wikidata (CC0). Artists are keyed by MBID; `played` leads to the artist page
@@ -167,8 +176,8 @@ export interface MusilogyArtistRef {
 }
 
 export interface MusilogyCard extends MusilogyArtistRef {
-  /** MusicBrainz's type: Group, Person, Orchestra, Choir, Character, Other; null when it names none. */
-  type: string | null;
+  /** Null for a character, an "other" or an artist without a type. */
+  kind: ArtistFacts['kind'];
   /** `declared` or `first_album`: an inferred start is not a stated one. */
   y0Source: string | null;
   yEnd: number | null;
@@ -256,6 +265,6 @@ export interface MusilogySearchHit {
   mbid: string;
   name: string;
   disambiguation: string | null;
-  type: string | null;
+  kind: ArtistFacts['kind'];
   y0: number | null;
 }

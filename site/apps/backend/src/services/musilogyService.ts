@@ -1,18 +1,19 @@
 import { DrizzleQueryError, eq, inArray, sql, type SQL } from 'drizzle-orm';
-import type {
-  ArtistFacts,
-  ArtistLink,
-  ArtistPageRef,
-  ArtistPlatform,
-  MusilogyArtist,
-  MusilogyArtistRef,
-  MusilogyBandmate,
-  MusilogyInfluence,
-  MusilogyNeighbour,
-  MusilogyOtherName,
-  MusilogyProject,
-  MusilogyRelease,
-  MusilogySearchHit,
+import {
+  coverArtUrl,
+  type ArtistFacts,
+  type ArtistLink,
+  type ArtistPageRef,
+  type ArtistPlatform,
+  type MusilogyArtist,
+  type MusilogyArtistRef,
+  type MusilogyBandmate,
+  type MusilogyInfluence,
+  type MusilogyNeighbour,
+  type MusilogyOtherName,
+  type MusilogyProject,
+  type MusilogyRelease,
+  type MusilogySearchHit,
 } from '@aubesonore/shared-types/client';
 import { db } from '../db/index';
 import { artist, artistSlug } from '../db/schema';
@@ -142,6 +143,32 @@ async function playedByMbid(mbids: string[]): Promise<Map<string, ArtistPageRef>
   );
 }
 
+/**
+ * The card and the records, which both the artist's profile (getArtistIdentity)
+ * and Musilogy's sections read: one query each per artist, shared.
+ */
+interface Core {
+  card: CardRow | null;
+  releases: ReleaseRow[] | null;
+}
+
+export const coreCache = new TtlCache<Core>(ONE_HOUR_MS);
+const coreFlight = createSingleFlight<Core>();
+
+function readCore(mbid: string): Promise<Core> {
+  const cached = coreCache.get(mbid);
+  if (cached !== undefined) return Promise.resolve(cached);
+  return coreFlight(mbid, async () => {
+    const [cards, releases] = await Promise.all([
+      call<CardRow>(sql`SELECT * FROM musilogy.artist_card(${mbid})`),
+      section<ReleaseRow>(sql`SELECT * FROM musilogy.artist_releases(${mbid})`),
+    ]);
+    const core = { card: cards[0] ?? null, releases };
+    coreCache.set(mbid, core);
+    return core;
+  });
+}
+
 export async function getMusilogyArtist(mbid: string): Promise<MusilogyArtist | null> {
   const cached = musilogyCache.get(mbid);
   if (cached !== undefined) return cached;
@@ -149,17 +176,21 @@ export async function getMusilogyArtist(mbid: string): Promise<MusilogyArtist | 
 }
 
 async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
-  const [cards, neighbourRows, influenceRows, releaseRows, bandRows, projectRows, nameRows] =
-    await Promise.all([
-      call<CardRow>(sql`SELECT * FROM musilogy.artist_card(${mbid})`),
-      section<NeighbourRow>(sql`SELECT * FROM musilogy.artist_neighbours(${mbid})`),
-      section<InfluenceRow>(sql`SELECT * FROM musilogy.artist_influences(${mbid})`),
-      section<ReleaseRow>(sql`SELECT * FROM musilogy.artist_releases(${mbid})`),
-      section<BandRow>(sql`SELECT * FROM musilogy.artist_bands(${mbid})`),
-      section<ProjectRow>(sql`SELECT * FROM musilogy.artist_member_projects(${mbid})`),
-      section<OtherNameRow>(sql`SELECT * FROM musilogy.artist_other_names(${mbid})`),
-    ]);
-  const card = cards[0];
+  const [
+    { card, releases: releaseRows },
+    neighbourRows,
+    influenceRows,
+    bandRows,
+    projectRows,
+    nameRows,
+  ] = await Promise.all([
+    readCore(mbid),
+    section<NeighbourRow>(sql`SELECT * FROM musilogy.artist_neighbours(${mbid})`),
+    section<InfluenceRow>(sql`SELECT * FROM musilogy.artist_influences(${mbid})`),
+    section<BandRow>(sql`SELECT * FROM musilogy.artist_bands(${mbid})`),
+    section<ProjectRow>(sql`SELECT * FROM musilogy.artist_member_projects(${mbid})`),
+    section<OtherNameRow>(sql`SELECT * FROM musilogy.artist_other_names(${mbid})`),
+  ]);
   if (!card) {
     musilogyCache.set(mbid, null);
     return null;
@@ -210,7 +241,7 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
   const result: MusilogyArtist = {
     card: {
       ...ref(card.mbid, card.name, card.disambiguation, card.y0),
-      type: card.type,
+      kind: kindOf(card.type),
       y0Source: card.y0_source,
       yEnd: card.y_end,
       yEndSource: card.y_end_source,
@@ -253,7 +284,7 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
   return result;
 }
 
-export const SEARCH_PAGE = 12;
+const SEARCH_PAGE = 12;
 
 export async function searchMusilogy(query: string): Promise<MusilogySearchHit[]> {
   const rows = await call<SearchRow>(
@@ -263,7 +294,7 @@ export async function searchMusilogy(query: string): Promise<MusilogySearchHit[]
     mbid: row.mbid,
     name: row.name,
     disambiguation: row.disambiguation,
-    type: row.type,
+    kind: kindOf(row.type),
     y0: row.y0,
   }));
 }
@@ -293,6 +324,11 @@ const KINDS: Record<string, ArtistFacts['kind']> = {
   Choir: 'choir',
 };
 
+/** MusicBrainz's artist type as the site words it; a character, "Other" or no type says nothing. */
+function kindOf(type: string | null): ArtistFacts['kind'] {
+  return type ? (KINDS[type] ?? null) : null;
+}
+
 /**
  * Only a group's dates and begin area are a career; a person's are a birth,
  * and those of an artist without a type, a character or an "other" may be
@@ -301,7 +337,7 @@ const KINDS: Record<string, ArtistFacts['kind']> = {
  * have one (2 168 of 20 000 sampled, 2026-10-05).
  */
 function toFacts(card: CardRow): ArtistFacts {
-  const kind = card.type ? (KINDS[card.type] ?? null) : null;
+  const kind = kindOf(card.type);
   const isGroup = kind !== null && kind !== 'person';
   const country = regionOf(card.country);
   const countryName = country && new Intl.DisplayNames(['en'], { type: 'region' }).of(country);
@@ -389,16 +425,14 @@ interface ReleaseRow extends Record<string, unknown> {
 }
 
 /**
- * The cover of the artist's first album, else of its first EP, at the
- * Cover Art Archive: the portrait when Deezer has none (docs/vision.md §2.4).
- * The archive answers a redirect to the image, or 404 when the community
- * chose none (musicbrainz.org/doc/Cover_Art_Archive/API): the page falls back
+ * The cover of the artist's first album, else of its first EP: the portrait
+ * when Deezer has none (docs/vision.md §2.4); without one the page falls back
  * on its generated wave. A first album has one for 321 of the 336 played
  * artists, 199 of 300 sampled with 500 listeners or more (2026-10-05).
  */
 function firstCoverOf(releases: ReleaseRow[]): string | null {
   const first = releases.find((r) => r.primary_type === 'Album') ?? releases[0];
-  return first ? `https://coverartarchive.org/release-group/${first.mbid}/front-500` : null;
+  return first ? coverArtUrl(first.mbid, 500) : null;
 }
 
 const DEEZER_ARTIST = /^https:\/\/www\.deezer\.com\/artist\/(\d+)$/;
@@ -433,19 +467,17 @@ export function getArtistIdentity(mbid: string): Promise<ArtistIdentity | null> 
   const cached = identityCache.get(mbid);
   if (cached !== undefined) return Promise.resolve(cached);
   return identityFlight(mbid, async () => {
-    const [cards, urls, releases] = await Promise.all([
-      call<CardRow>(sql`SELECT * FROM musilogy.artist_card(${mbid})`),
+    const [{ card, releases }, urls] = await Promise.all([
+      readCore(mbid),
       call<UrlRow>(sql`SELECT * FROM musilogy.artist_urls(${mbid})`),
-      call<ReleaseRow>(sql`SELECT * FROM musilogy.artist_releases(${mbid})`),
     ]);
-    const card = cards[0];
     const identity = card
       ? {
           name: card.name,
           facts: toFacts(card),
           links: toLinks(urls),
           wikidataId: wikidataIdOf(urls),
-          firstCover: firstCoverOf(releases),
+          firstCover: firstCoverOf(releases ?? []),
           deezerId: deezerIdOf(urls),
         }
       : null;
