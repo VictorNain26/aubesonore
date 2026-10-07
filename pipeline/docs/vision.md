@@ -497,6 +497,10 @@ toutes les 24 h et un message de retour à la normale, sur deux canaux :
 | `grille` (endpoint externe) | `radio-grille` ; alerte au premier échec (heure mal écrite, heure trop courte) ou après 2 jours de silence. Dans la passe du dimanche, `radio check` fait échouer la passe |
 | `page-de-vote` : `127.0.0.1:8040`, toutes les 5 min | HTTP 403 sans jeton Access : la page tourne (en place) |
 | `page-de-vote-publique` : `votes.aubesonore.fr`, toutes les 5 min, redirection non suivie | HTTP 302 vers la connexion Access : la règle Access et la route du tunnel tiennent |
+| `site` : `aubesonore.fr`, toutes les 5 min (groupe `site`) | HTTP 200 : le frontend et le tunnel |
+| `api` : `api.aubesonore.fr/health`, toutes les 5 min (groupe `site`) | HTTP 200 et `status == ok` : le backend |
+| `deploiement` (endpoint externe, groupe `site`) | `aubesonore-deploy` par `site/scripts/heartbeat.sh`, jeton `GATUS_SITE_TOKEN` ; alerte après 3 échecs de suite (6 min) ou une heure de silence |
+| `sauvegarde-site` (endpoint externe, groupe `site`) | `aubesonore-backup` ; alerte au premier échec ou après 2 jours de silence |
 
 ### 8.3 Non-régression
 
