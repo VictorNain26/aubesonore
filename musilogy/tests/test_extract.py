@@ -8,6 +8,7 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
+from musilogy.build import RAW_DISCOGS_FIELDS
 from musilogy.extract import (
     extract,
     extract_discogs,
@@ -296,6 +297,17 @@ def test_extract_discogs_keeps_the_release_credits_and_nothing_of_its_tracks(tmp
         },
     ]
     assert not (tmp_path / "work" / "releases.jsonl.partial").exists()
+
+
+def test_the_discogs_projection_writes_the_fields_the_build_reads(tmp_path):
+    # Breaks if a field is added to one side only: verified_discogs records
+    # RAW_DISCOGS_FIELDS as what the extraction wrote.
+    archive = tmp_path / "releases.xml.gz"
+    archive.write_bytes(gzip.compress(DISCOGS_DUMP.encode()))
+    out = tmp_path / "releases.jsonl"
+    extract_discogs(archive, out)
+    first = json.loads(out.read_text(encoding="utf-8").splitlines()[0])
+    assert list(first) == list(RAW_DISCOGS_FIELDS)
 
 
 def test_an_interrupted_discogs_extraction_leaves_no_extraction(tmp_path):

@@ -172,7 +172,7 @@ def discogs_release(
     release_id: int,
     artists: list[int],
     labels: Sequence[tuple[int, str]] = (),
-    master_id: int = 0,
+    master_id: int | None = 0,
     released: str | None = "2001",
     styles: Sequence[str] = (),
     descriptions: Sequence[str] = (),

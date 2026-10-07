@@ -3,12 +3,12 @@ import subprocess
 
 from conftest import FIX
 
+from musilogy import cli
+from musilogy.cli import WITNESSES, fixtures_attribution
 from musilogy.paths import REPO_ROOT
 
 
 def test_every_witness_is_present():
-    from musilogy.cli import WITNESSES  # noqa: PLC0415
-
     with (FIX / "artists.jsonl").open(encoding="utf-8") as fh:
         ids = {json.loads(line)["mbid"] for line in fh}
     assert set(WITNESSES) <= ids
@@ -34,8 +34,6 @@ def test_release_groups_file_is_well_formed_and_complete():
 
 
 def test_every_release_group_credits_a_witness():
-    from musilogy.cli import WITNESSES  # noqa: PLC0415
-
     wanted = set(WITNESSES)
     with (FIX / "release_groups.jsonl").open(encoding="utf-8") as fh:
         for line in fh:
@@ -77,6 +75,14 @@ def test_the_fixture_files_are_not_ignored_by_git():
 def test_the_attribution_names_the_pinned_sources():
     # Written by make-fixtures from the pinned references: a hand-written one
     # fell behind the popularity re-pin of 2026-10-06.
-    from musilogy.cli import fixtures_attribution  # noqa: PLC0415
-
     assert (FIX / "ATTRIBUTION.md").read_text(encoding="utf-8") == fixtures_attribution()
+
+
+def test_the_discogs_fixture_is_what_the_witnesses_discogs_pages_select(tmp_path, monkeypatch):
+    # Breaks if make-fixtures reads a Discogs id other than the build's
+    # discogs_artist_id does: replayed on the fixtures, the selection must give
+    # back every committed line, and only those.
+    monkeypatch.setattr(cli, "verified_discogs", lambda: FIX / "discogs.jsonl")
+    out = tmp_path / "discogs.jsonl"
+    cli._discogs_fixture(FIX / "artists.jsonl", out)
+    assert out.read_text(encoding="utf-8") == (FIX / "discogs.jsonl").read_text(encoding="utf-8")

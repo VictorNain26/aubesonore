@@ -80,3 +80,9 @@ def discogs_releases(date: str) -> Path:
     """The projection of the dump, beside the MusicBrainz extractions and named
     after its own dump for the same reason as work_dir."""
     return work_dir(f"discogs-{date}") / "releases.jsonl"
+
+
+def discogs_extraction(date: str) -> Path:
+    """The sidecar of the projection: the releases it holds and the fields it
+    wrote, so a build can tell a truncated or outdated projection."""
+    return discogs_releases(date).with_name("extraction.json")

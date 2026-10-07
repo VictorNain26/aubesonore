@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
-import re
 from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -21,7 +20,13 @@ from musilogy import (
     REFERENCE_PROXIMITY,
 )
 from musilogy import REFERENCE_DUMP as DUMP
-from musilogy.build import build, check_invariants, connect
+from musilogy.build import (
+    RAW_ARTIST_COLUMNS,
+    RAW_DISCOGS_FIELDS,
+    build,
+    check_invariants,
+    connect,
+)
 from musilogy.extract import extract, extract_discogs, reduce_artist, reduce_release_group
 from musilogy.fetch import (
     POPULARITY_BATCH,
@@ -46,6 +51,7 @@ from musilogy.paths import (
     discography_snapshot,
     discography_sums,
     discogs_dump,
+    discogs_extraction,
     discogs_releases,
     discogs_sums,
     influences_snapshot,
@@ -59,7 +65,7 @@ from musilogy.paths import (
     proximity_sums,
     work_dir,
 )
-from musilogy.publish import extraction_matches_rows_loaded, publish
+from musilogy.publish import extraction_matches_rows_loaded, publish, read_extraction
 
 SUMS_PATH = REFERENCE_DIR / f"{DUMP}.SHA256SUMS"
 WORK_DIR = work_dir(DUMP)
@@ -118,7 +124,6 @@ DISCOGS_WITNESSES = [
     "f7338f2a-136b-4d5e-b099-5504cf997f58",  # Cardiacs
     "f38ed14d-07db-4a4b-9270-53435358898a",  # Buzz Kull
 ]
-DISCOGS_ID = re.compile(r"discogs\.com/(?:[a-z]{2}/)?artist/([0-9]+)")
 
 
 def fetch_and_extract() -> None:
@@ -344,13 +349,32 @@ def verified_popularity() -> Path:
 
 def verified_discogs() -> Path:
     """The projection of the pinned Discogs dump, extracted from the verified
-    archive when missing (about two hours)."""
-    if not DISCOGS_JSONL.exists():
+    archive (about two hours) when missing or written with other fields than
+    the build reads: a field the projection lacks would read as nulls."""
+    sidecar = discogs_extraction(REFERENCE_DISCOGS)
+    recorded = read_extraction(sidecar) or {}
+    if not DISCOGS_JSONL.exists() or recorded.get("fields") != list(RAW_DISCOGS_FIELDS):
         archive = fetch_discogs(
             REFERENCE_DISCOGS, discogs_dump(REFERENCE_DISCOGS), discogs_sums(REFERENCE_DISCOGS)
         )
-        extract_discogs(archive, DISCOGS_JSONL)
+        n = extract_discogs(archive, DISCOGS_JSONL)
+        sidecar.write_text(
+            json.dumps({"releases": n, "fields": list(RAW_DISCOGS_FIELDS)}, indent=1),
+            encoding="utf-8",
+        )
     return DISCOGS_JSONL
+
+
+def _stop_on_discogs_mismatch(con: duckdb.DuckDBPyConnection) -> None:
+    """Like _stop_on_extraction_mismatch, before publish(): the build read
+    other releases than the projection's sidecar says it holds."""
+    written = (read_extraction(discogs_extraction(REFERENCE_DISCOGS)) or {}).get("releases")
+    (read,) = con.execute("SELECT releases FROM discogs_coverage").fetchone() or (None,)
+    if written is not None and written != read:
+        raise SystemExit(
+            f"Discogs extraction mismatch: {written} releases written, {read} read, "
+            "nothing published"
+        )
 
 
 def _stop_on_extraction_mismatch(con: duckdb.DuckDBPyConnection, extraction: Path) -> None:
@@ -409,6 +433,7 @@ def run() -> None:
 
     extraction = WORK_DIR / "extraction.json"
     _stop_on_extraction_mismatch(con, extraction)
+    _stop_on_discogs_mismatch(con)
 
     manifest = publish(con, out_dir(DUMP), DUMP, CORRECTIONS_CSV, extraction)
     print(manifest["counts"])
@@ -423,17 +448,19 @@ def _lines_about(parts: Sequence[Path], artists: set[str]) -> Iterator[str]:
 
 def _discogs_fixture(artists: Path, out: Path) -> None:
     """Every release of the Discogs witnesses, through the Discogs pages
-    MusicBrainz relates to them."""
-    discogs_ids: set[int] = set()
-    with artists.open(encoding="utf-8") as src:
-        for line in src:
-            rec = json.loads(line)
-            if rec["mbid"] in DISCOGS_WITNESSES:
-                discogs_ids |= {
-                    int(m.group(1))
-                    for u in rec["urls"]
-                    if u["type"] == "discogs" and (m := DISCOGS_ID.search(u["url"] or ""))
-                }
+    MusicBrainz relates to them, read by the build's own discogs_artist_id."""
+    con = connect()
+    con.execute((SQL_DIR / "00_macros.sql").read_text(encoding="utf-8"))
+    discogs_ids = {
+        i
+        for (i,) in con.execute(
+            "SELECT DISTINCT discogs_artist_id(t.u.url) FROM read_ndjson("
+            f"'{artists.as_posix()}', columns={RAW_ARTIST_COLUMNS}, format='newline_delimited') r, "
+            "UNNEST(r.urls) t(u) WHERE t.u.type = 'discogs' AND list_contains(?, r.mbid)",
+            [DISCOGS_WITNESSES],
+        ).fetchall()
+        if i is not None
+    }
     with out.open("w", encoding="utf-8") as fh, verified_discogs().open(encoding="utf-8") as src:
         fh.writelines(line for line in src if discogs_ids & set(json.loads(line)["artists"]))
 

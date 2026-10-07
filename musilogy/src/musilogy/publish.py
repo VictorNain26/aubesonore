@@ -15,6 +15,7 @@ from musilogy.paths import (
     PACKAGE_DIR,
     REFERENCE_DIR,
     discography_sums,
+    discogs_extraction,
     discogs_sums,
     influences_sums,
     official_sums,
@@ -87,7 +88,7 @@ def _count(con: duckdb.DuckDBPyConnection, table: str) -> int:
     return int(row[0])
 
 
-def _extraction(path: Path | None) -> dict[str, Any] | None:
+def read_extraction(path: Path | None) -> dict[str, Any] | None:
     """Three distinguishable states, because no record and a broken record are
     not the same thing. The sidecar is an external file read at a boundary, and
     the very failure it exists to reveal — a truncated extraction — is the one
@@ -137,7 +138,7 @@ def extraction_matches_rows_loaded(
     one, and a consumer reading the Parquet without the manifest would never
     know. The manifest reports the same verdict through the same two
     functions, so the two answers cannot drift."""
-    return _extraction_matches_rows_loaded(_extraction(extraction), input_rows_loaded(con))
+    return _extraction_matches_rows_loaded(read_extraction(extraction), input_rows_loaded(con))
 
 
 PARAMETERS = ("dump_year", "min_year")
@@ -177,12 +178,17 @@ def _parts(
 
 
 def _discogs(con: duckdb.DuckDBPyConnection) -> dict[str, Any] | None:
-    """The Discogs dump the build read, with its pinned digest."""
+    """The Discogs dump the build read, with its pinned digest and the sidecar
+    of its projection."""
     row = con.execute("SELECT getvariable('discogs_dump')").fetchone()
     assert row is not None  # a single-row projection always returns one row
     if row[0] is None:
         return None
-    return {"dump": row[0], "sha256": expected_sums(discogs_sums(row[0]))}
+    return {
+        "dump": row[0],
+        "sha256": expected_sums(discogs_sums(row[0])),
+        "extraction": read_extraction(discogs_extraction(row[0])),
+    }
 
 
 def publish(
@@ -212,7 +218,7 @@ def publish(
             stale.unlink()
 
     rows_loaded = input_rows_loaded(con)
-    extraction_record = _extraction(extraction)
+    extraction_record = read_extraction(extraction)
 
     # Read back from disk once every file is written and the stale ones are
     # gone, never accumulated as they are produced: the manifest has to

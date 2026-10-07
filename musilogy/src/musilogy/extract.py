@@ -143,8 +143,8 @@ def extract(
 
 def reduce_discogs_release(el: ET.Element) -> dict[str, Any]:
     """The fields a label or a style reads, as the dump writes them: a release
-    without a master carries master_id 0, and `released` is a partial date the
-    SQL reads with yr()."""
+    without a master carries master_id 0 when the dump writes the element, null
+    when it does not, and `released` is a partial date the SQL reads with yr()."""
     master = el.find("master_id")
     return {
         "id": int(el.attrib["id"]),

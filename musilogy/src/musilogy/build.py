@@ -183,17 +183,22 @@ def load_official(
     )
 
 
-RAW_DISCOGS_COLUMNS = (
-    "{id:'BIGINT', master_id:'BIGINT', artists:'BIGINT[]', "
-    "labels:'STRUCT(id BIGINT, name VARCHAR)[]', descriptions:'VARCHAR[]', "
-    "styles:'VARCHAR[]', released:'VARCHAR'}"
-)
+# The fields extract.reduce_discogs_release writes, in its order.
+RAW_DISCOGS_FIELDS = {
+    "id": "BIGINT",
+    "master_id": "BIGINT",
+    "artists": "BIGINT[]",
+    "labels": "STRUCT(id BIGINT, name VARCHAR)[]",
+    "descriptions": "VARCHAR[]",
+    "styles": "VARCHAR[]",
+    "released": "VARCHAR",
+}
+RAW_DISCOGS_COLUMNS = "{" + ", ".join(f"{k}:'{v}'" for k, v in RAW_DISCOGS_FIELDS.items()) + "}"
 
 
 def load_discogs(con: duckdb.DuckDBPyConnection, releases: Path | None, dump: str | None) -> None:
-    """A view, not a table: the 19 million releases are read as a stream by
-    each query of 84_discogs.sql, where a table would hold them all within the
-    2 GB connect() allows."""
+    """A view, not a table: 84_discogs.sql reads the 19 million releases once,
+    as a stream, into the narrower discogs_work."""
     if releases is None:
         # Always materialized, even empty: 84_discogs.sql reads it.
         con.execute(

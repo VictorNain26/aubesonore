@@ -58,9 +58,6 @@ URLS_ENDED = 24_789
 PROXIMITY_EXCLUSIONS = {"repeated_neighbour": 675, "self_neighbour": 84}
 # Every artist asked, 16 515 of them without a neighbour.
 PROXIMITY_SURVEYED = 111_402
-# Distinct records by official status (part of 2026-10-05: 93 665 artists asked,
-# 2 of them no longer held). Unknown dominates: only artists with 500 listeners
-# or more and an album or an EP are asked.
 DISCOGS_COVERAGE = {
     "releases": 19_492_392,
     "releases_out_of_work": 4_234_631,
@@ -69,6 +66,9 @@ DISCOGS_COVERAGE = {
     "artists_linked": 1_266_088,
 }
 DISCOGS_DATE_DISAGREEMENTS = {"first_record_before_formation": 1_748}
+# Distinct records by official status (part of 2026-10-05: 93 665 artists asked,
+# 2 of them no longer held). Unknown dominates: only artists with 500 listeners
+# or more and an album or an EP are asked.
 RELEASE_STATUS = {"official": 741_258, "not_official": 11_827, "unknown": 1_434_297}
 DISCOGRAPHY_EXCLUSIONS = {"malformed": 1, "not_album_or_ep": 1_274, "secondary_type": 1_498}
 # The influences whose two ends are artists of the dump, the only ones the

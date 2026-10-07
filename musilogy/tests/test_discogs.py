@@ -1,10 +1,15 @@
+import json
+from collections import defaultdict
+
 from conftest import (
+    FIX,
     build_synthetic,
     discogs_file,
     discogs_release,
     discogs_url,
     synthetic_artist,
 )
+from test_invariants import restored
 
 from musilogy.build import check_invariants
 from musilogy.paths import SQL_DIR
@@ -54,14 +59,20 @@ def test_a_label_is_home_from_two_records_on(tmp_path):
 
 
 def test_a_release_without_master_is_its_own_record(tmp_path):
-    # The dump writes master_id 0 when a release has none: read as a master, it
-    # would merge every such release of the dump into one record.
+    # The dump writes master_id 0 when a release has none, and the extraction
+    # writes null when the element is missing: read as a master, either would
+    # merge every such release of the dump into one record.
     c = built(
         tmp_path,
         [linked(A, 1)],
-        [discogs_release(1, [1], [LABEL]), discogs_release(2, [1], [LABEL])],
+        [
+            discogs_release(1, [1], [LABEL]),
+            discogs_release(2, [1], [LABEL], master_id=None),
+            discogs_release(3, [1], [OTHER], master_id=None),
+            discogs_release(4, [1], [OTHER], master_id=None),
+        ],
     )
-    assert labels(c) == [(A, 10, "Home Records", 2, 1)]
+    assert labels(c) == [(A, 10, "Home Records", 2, 1), (A, 20, "Reissue Co.", 2, 1)]
 
 
 def test_compilations_unofficial_releases_and_promos_do_not_count(tmp_path):
@@ -219,11 +230,6 @@ OUT_OF_WORK = {
 
 def recount_labels(discogs_ids):
     """The labels rule restated in Python over the fixture lines, for one artist."""
-    import json  # noqa: PLC0415
-    from collections import defaultdict  # noqa: PLC0415
-
-    from conftest import FIX  # noqa: PLC0415
-
     first_year: dict[str, int | None] = {}
     editions = []
     with (FIX / "discogs.jsonl").open(encoding="utf-8") as fh:
@@ -274,3 +280,40 @@ def test_joy_division_and_new_order_share_factory(con):
         [JOY_DIVISION, NEW_ORDER],
     ).fetchall()
     assert any(name.startswith("Factory") for (name,) in shared), shared
+
+
+def test_a_label_counting_fewer_artists_than_it_is_home_to_is_reported(con):
+    # Factory is home to Joy Division and New Order in the fixtures: a crowd
+    # counted short of them is what label_below_home exists to catch.
+    factory = con.execute(
+        "SELECT label_id, label_artists FROM labels "
+        "WHERE artist_mbid = ? AND label LIKE 'Factory%' ORDER BY records DESC LIMIT 1",
+        [JOY_DIVISION],
+    ).fetchone()
+    homes = con.execute(
+        "SELECT count(DISTINCT artist_mbid) FROM labels WHERE label_id = ?", [factory[0]]
+    ).fetchone()[0]
+    assert homes >= 2
+    undo = "UPDATE labels SET label_artists = ? WHERE label_id = ?"
+    with restored(con, (undo, [factory[1], factory[0]])):
+        con.execute(undo, [1, factory[0]])
+        violations = dict(check_invariants(con, SQL_DIR))
+    assert violations.get("label_below_home") == homes
+
+
+def test_a_label_reached_through_no_discogs_page_of_its_own_is_reported(con):
+    # An artist that relates no Discogs page can only carry a label through an
+    # id another MBID holds.
+    (pageless,) = con.execute(
+        "SELECT a.mbid FROM artists a JOIN raw_artists r USING (mbid) "
+        "WHERE NOT list_contains([u.type FOR u IN r.urls], 'discogs') ORDER BY a.mbid LIMIT 1"
+    ).fetchone()
+    row = con.execute(
+        "SELECT label_id, label, records, label_artists FROM labels WHERE artist_mbid = ? LIMIT 1",
+        [JOY_DIVISION],
+    ).fetchone()
+    undo = "DELETE FROM labels WHERE artist_mbid = ?"
+    with restored(con, (undo, [pageless])):
+        con.execute("INSERT INTO labels VALUES (?, ?, ?, ?, ?)", [pageless, *row])
+        violations = dict(check_invariants(con, SQL_DIR))
+    assert violations.get("discogs_link_ambiguous") == 1

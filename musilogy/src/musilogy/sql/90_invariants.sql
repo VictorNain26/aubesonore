@@ -395,26 +395,29 @@ CREATE OR REPLACE VIEW label_without_artist AS
 CREATE OR REPLACE VIEW style_without_artist AS
   SELECT artist_mbid, style FROM styles s
   WHERE NOT EXISTS (SELECT 1 FROM artists a WHERE a.mbid = s.artist_mbid);
--- 84_discogs.sql: a label is a home from two records on, and the artist itself
--- is one of the label's artists. A threshold read as "one or more", or a crowd
--- counted on the linked artists only, fails here.
+-- 84_discogs.sql: a label is a home from two records on, and every artist
+-- published at home on a label is one of its label_artists. A threshold read
+-- as "one or more", or a crowd counted short of the homes the table itself
+-- publishes (a threshold of three there, an alias counted apart), fails here.
 CREATE OR REPLACE VIEW label_below_home AS
-  SELECT artist_mbid, label_id FROM labels WHERE records < 2 OR label_artists < 1;
+  SELECT artist_mbid, label_id FROM labels l
+  WHERE records < 2
+     OR label_artists < (SELECT count(DISTINCT artist_mbid) FROM labels h
+                         WHERE h.label_id = l.label_id);
 -- A decade is a year of the window [1850, 2026] rounded down to ten, or NULL
 -- for a record with no dated edition: hardcoded like every contractual bound.
 CREATE OR REPLACE VIEW style_decade_malformed AS
   SELECT artist_mbid, decade FROM styles
   WHERE decade % 10 <> 0 OR decade NOT BETWEEN 1850 AND 2020 OR records < 1;
 -- An artist reaches Discogs only through a Discogs page MusicBrainz relates to
--- it alone. Restated with string functions rather than the regular expression
--- that produced it: an artist whose every Discogs id is shared with another
--- MBID must carry no label and no style.
+-- it alone. Recounted from raw_artists rather than read from discogs_links,
+-- with the one reading of a URL (discogs_artist_id): an artist whose every
+-- Discogs id is shared with another MBID must carry no label and no style.
 CREATE OR REPLACE VIEW discogs_link_ambiguous AS
   WITH ids AS (
-    SELECT DISTINCT r.mbid,
-      split_part(split_part(split_part(t.u.url, '/artist/', 2), '-', 1), '?', 1) AS discogs_id
+    SELECT DISTINCT r.mbid, discogs_artist_id(t.u.url) AS discogs_id
     FROM raw_artists r, UNNEST(r.urls) AS t(u)
-    WHERE t.u.type = 'discogs' AND t.u.url LIKE '%discogs.com/%artist/%'
+    WHERE t.u.type = 'discogs' AND EXISTS (SELECT 1 FROM artists a WHERE a.mbid = r.mbid)
   ),
   alone AS (
     SELECT mbid FROM ids
