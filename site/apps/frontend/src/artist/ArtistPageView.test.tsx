@@ -111,13 +111,11 @@ describe('ArtistPageView', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Artistes proches' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Avant' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Après' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Explorer dans Musilogy' })).not.toBeInTheDocument();
   });
 
-  it('orders the page as the vision does: listen, records, kept, then where to go next', () => {
+  it('says who, their music and where to hear them first, then records, kept and where next', () => {
     const record = (n: number, type: 'album' | 'ep') => ({
       mbid: `rg-${n}`,
       title: `Record ${n}`,
@@ -135,14 +133,17 @@ describe('ArtistPageView', () => {
           }),
         }}
         kept={[{ id: 'k-1', title: 'Glass', createdAt: '2026-09-12T08:00:00.000Z' }]}
-        musilogy={{ ...MUSILOGY, releases: [record(1, 'album'), record(2, 'ep')] }}
+        musilogy={{
+          ...MUSILOGY,
+          card: { ...MUSILOGY.card, genres: ['glam rock', 'rock', 'boogie', 'pop rock'] },
+          releases: [record(1, 'album'), record(2, 'ep')],
+        }}
         thisYear={2026}
       />,
       { wrapper: MemoryRouter }
     );
 
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
-      'Écouter ailleurs',
       'Albums et EP',
       'Vos titres gardés',
       'Artistes proches',
@@ -152,7 +153,11 @@ describe('ArtistPageView', () => {
         .getAllByRole('link')
         .filter((link) => link.getAttribute('href')?.startsWith('#'))
         .map((link) => link.textContent)
-    ).toEqual(['Écouter ailleurs', 'Albums et EP', 'Vos titres gardés', 'Artistes proches']);
+    ).toEqual(['Albums et EP', 'Vos titres gardés', 'Artistes proches']);
+    expect(screen.getByRole('list', { name: 'Écouter ailleurs' })).toContainElement(
+      screen.getByRole('link', { name: 'Bandcamp' })
+    );
+    expect(screen.getByText('glam rock · rock · boogie')).toBeInTheDocument();
     expect(screen.getByText('Record 1')).toBeInTheDocument();
   });
 
@@ -202,7 +207,7 @@ describe('ArtistPageView', () => {
 
     expect(screen.queryByRole('blockquote')).not.toBeInTheDocument();
     expect(screen.queryByText(/Artiste ·/)).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Écouter ailleurs' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Écouter ailleurs' })).not.toBeInTheDocument();
   });
 
   it('opens outside links in a new tab, named by platform', () => {

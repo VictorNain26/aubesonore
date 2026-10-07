@@ -4,26 +4,32 @@ import { cn } from '@/lib/utils';
 /**
  * A section of a page: its title and intro in the title column (4 parts of 12 where the screen is wide, tokens.css; stacked on phones and upright tablets), its
  * content in the other 8. Its id is an anchor (PageNav). `sticky` keeps the title in view beside
- * long content, as « Depuis l'aube » does on the home page.
+ * long content, as « Depuis l'aube » does on the home page. `full` gives the content the whole
+ * width under its title instead, for a drawing that needs it.
  */
 export function Section({
   id,
   title,
   body,
   sticky = false,
+  full = false,
   children,
 }: {
   id: string;
   title: string;
   body?: string;
   sticky?: boolean;
+  full?: boolean;
   children: ReactNode;
 }) {
   return (
     <section
       id={id}
       aria-labelledby={`${id}-title`}
-      className="wide:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] wide:gap-16 grid scroll-mt-10 gap-6"
+      className={cn(
+        'grid scroll-mt-10 gap-6',
+        !full && 'wide:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] wide:gap-16'
+      )}
     >
       <div
         className={cn(

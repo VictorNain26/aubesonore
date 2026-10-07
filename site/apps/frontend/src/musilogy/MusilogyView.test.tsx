@@ -74,25 +74,24 @@ function show(shown: MusilogyArtist) {
 }
 
 describe('MusilogySections', () => {
-  it('places the artist among those before, alongside and after it', () => {
+  it('places the close artists in time, each a link to its page, with no lists apart', () => {
     show(artist());
 
-    expect(screen.getByRole('heading', { name: 'Avant' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'The Kinks' })).toHaveAttribute(
-      'href',
-      `/artiste/${neighbour(3).mbid}`
-    );
-    expect(screen.getByRole('link', { name: 'Ramones' })).toBeInTheDocument();
-    expect(screen.getByText(/placés selon leurs débuts/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Artistes proches' })).toBeInTheDocument();
+    for (const link of screen.getAllByRole('link', { name: /The Kinks/ })) {
+      expect(link).toHaveAttribute('href', `/artiste/${neighbour(3).mbid}`);
+    }
+    expect(screen.getAllByRole('link', { name: /Ramones/ }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('heading', { name: 'Avant' })).not.toBeInTheDocument();
+    expect(screen.getByText(/à leur place dans le temps/)).toBeInTheDocument();
   });
 
   it('leads straight to the page of a neighbour the antenna played', () => {
     show(artist());
 
-    expect(screen.getByRole('link', { name: 'David Bowie' })).toHaveAttribute(
-      'href',
-      '/artiste/david-bowie'
-    );
+    for (const link of screen.getAllByRole('link', { name: /David Bowie/ })) {
+      expect(link).toHaveAttribute('href', '/artiste/david-bowie');
+    }
   });
 
   it('names each band link from the artist side', () => {
@@ -105,7 +104,7 @@ describe('MusilogySections', () => {
   it('leaves out every section with nothing in it, without a title over an absence', () => {
     show(artist({ neighbours: null, influences: null }));
 
-    expect(screen.queryByRole('heading', { name: 'Avant' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Artistes proches' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Groupes et projets' })).toBeInTheDocument();
   });
@@ -158,39 +157,39 @@ describe('MusilogySections', () => {
     expect(screen.getByText('ancien nom')).toBeInTheDocument();
   });
 
-  it('shows the closest first and opens the rest on demand', async () => {
+  it('shows the closest first and the next ones on demand', async () => {
     const before = Array.from({ length: 15 }, (_, i) => neighbour(i));
     show(artist({ neighbours: { before, during: [], after: [], undated: [] } }));
 
-    expect(screen.queryByRole('link', { name: 'Artist 14' })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Voir 3 de plus' }));
-    expect(screen.getByRole('link', { name: 'Artist 14' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Artist 14/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Voir 5 de plus' }));
+    expect(screen.getAllByRole('link', { name: /Artist 14/ }).length).toBeGreaterThan(0);
   });
 
-  it('shows influences only when the artist declared some', () => {
-    const { rerender } = show(artist());
+  it('marks the influences on the map, and lists them alone only without close artists', () => {
+    const influences = {
+      cites: [
+        { ...neighbour(3, { name: 'The Kinks' }), statement: 'Q1$abc' },
+        { ...neighbour(40, { name: 'Elvis' }), statement: 'Q1$def' },
+      ],
+      citedBy: [],
+    };
+    const { rerender } = show(artist({ influences }));
     expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Elvis' })).not.toBeInTheDocument();
+    expect(screen.getAllByText(/son influence/).length).toBeGreaterThan(0);
 
-    rerender(
-      <Sections
-        artist={artist({
-          influences: {
-            cites: [{ ...neighbour(40, { name: 'Elvis' }), statement: 'Q1$abc' }],
-            citedBy: [],
-          },
-        })}
-      />
-    );
+    rerender(<Sections artist={artist({ neighbours: null, influences })} />);
     expect(screen.getByRole('heading', { name: 'Influences' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Elvis' })).toBeInTheDocument();
   });
 
-  it('lists the neighbours whose start is unknown', () => {
+  it('names the close artists whose start is unknown', () => {
     const undated = [neighbour(30, { name: 'Undated Band', y0: null })];
-    show(artist({ neighbours: { before: [], during: [], after: [], undated } }));
+    show(artist({ neighbours: { before: [neighbour(3)], during: [], after: [], undated } }));
 
-    expect(screen.getByRole('heading', { name: 'Débuts inconnus' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Undated Band' })).toBeInTheDocument();
+    expect(screen.getByText('Débuts inconnus')).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Undated Band' }).length).toBeGreaterThan(0);
   });
 
   it('names no source, licence or tool, and links nowhere outside the site', () => {
@@ -203,7 +202,7 @@ describe('MusilogySections', () => {
       })
     );
 
-    expect(screen.getByRole('link', { name: 'Chuck Berry' })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Ramones/ }).length).toBeGreaterThan(0);
     expect(document.body).not.toHaveTextContent(/ListenBrainz|MusicBrainz|Wikidata|CC BY|CC0/);
     for (const link of screen.getAllByRole('link')) {
       expect(link.getAttribute('href')).toMatch(/^[/#]/);

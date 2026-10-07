@@ -136,19 +136,19 @@ rendent impossibles sur les 2,98 millions d'artistes. Il ne choisit pas ce qu'un
 
 Un ordre de départ, chaque section seulement quand elle a quelque chose à montrer :
 
-1. **Qui** : le portrait, le nom, une ligne de faits, une ligne de genres (les styles Discogs par
-   époque, sinon les genres MusicBrainz), l'ouverture de Wikipédia ou, sans article, les faits dits
-   en une phrase.
-2. **Écouter ailleurs** : Deezer, Spotify, Bandcamp, site officiel…
-3. **Albums et EP**, avec pochette et année, du plus récent au plus ancien : ce que l'artiste a
+1. **Qui** : le portrait, une ligne de faits au-dessus du nom, le nom, une ligne de genres dessous
+   (les styles Discogs par époque, sinon les genres MusicBrainz), l'ouverture de Wikipédia ou, sans
+   article, les faits dits en une phrase ; puis où l'écouter ailleurs (Deezer, Spotify, Bandcamp,
+   site officiel…), un bouton par plateforme.
+2. **Albums et EP**, avec pochette et année, du plus récent au plus ancien : ce que l'artiste a
    voulu sortir. Les albums (studio, bandes originales qu'il a composées, remix) et les EP ; pas
    les singles, compilations, lives, démos ni bootlegs, qui noient l'œuvre dans le catalogue. Une
    longue liste d'EP se replie. Ce qui définit précisément un disque gardé est une règle de
    musilogy (`musilogy/README.md`, `22_releases`), mesurée sur les artistes joués : elle s'ajuste
    quand un cas réel la contredit. Le 2026-10-05, Protomartyr, Bloc Party ou Can gardent leur
    discographie entière, les Beatles s'arrêtent en 1970.
-4. **Vos titres gardés**, pour un auditeur connecté qui en a gardé.
-5. **Où aller ensuite** : la carte (§2.3), « Même son » ou « Même label », chaque artiste avec sa
+3. **Vos titres gardés**, pour un auditeur connecté qui en a gardé.
+4. **Où aller ensuite** : la carte (§2.3), « Même son » ou « Même label », chaque artiste avec sa
    raison et sa place dans le temps ; puis les groupes et projets en trois rubriques plutôt que
    les douze types de relation de MusicBrainz :
    - **Membres** d'un groupe, ou **Groupes** d'une personne, avec leurs années ;

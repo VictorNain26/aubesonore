@@ -8,6 +8,7 @@ import type {
 } from '@aubesonore/shared-types/client';
 import { getLocale, localizeHref } from '@/paraglide/runtime.js';
 import { Link } from 'react-router';
+import { ArrowUpRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Cover } from '../home/Cover';
 import { ARTIST_LINK, BACK_TO_LIVE } from '../home/styles';
@@ -113,17 +114,18 @@ function Message({ title, body }: { title: string; body: string }) {
 
 const OUTSIDE_LINK = { rel: 'noopener noreferrer', target: '_blank' } as const;
 
+/** The opening of the article, its link closing the paragraph rather than taking a line. */
 function Summary({ summary }: { summary: ArtistSummary }) {
   return (
-    <figure className="m-0 flex flex-col gap-2">
-      <blockquote cite={summary.url} lang={summary.lang} className="m-0">
-        <p className="text-intro m-0 max-w-prose">{summary.text}</p>
-      </blockquote>
-      <figcaption>
+    <figure className="text-intro m-0 max-w-prose">
+      <blockquote cite={summary.url} lang={summary.lang} className="m-0 inline">
+        <p className="m-0 inline">{summary.text}</p>
+      </blockquote>{' '}
+      <figcaption className="inline">
         <a
           href={summary.url}
           {...OUTSIDE_LINK}
-          className={cn(ARTIST_LINK, 'text-ui -my-3 inline-block py-3 underline-offset-4')}
+          className={cn(ARTIST_LINK, 'text-ui text-text-muted underline-offset-4')}
         >
           {summary.lang === getLocale()
             ? m.artist_summary_source()
@@ -133,6 +135,33 @@ function Summary({ summary }: { summary: ArtistSummary }) {
     </figure>
   );
 }
+
+// An action that leaves the site: a pill, so it reads apart from the text and the page's anchors.
+const LISTEN_PILL =
+  'text-ui border-border ease-out-quart hover:border-text focus-visible:outline-accent inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 transition-[border-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
+
+/** Where else to hear the artist: one pill per platform, each opening outside. */
+function ListenLinks({ links }: { links: ArtistProfile['links'] }) {
+  return (
+    // One row on phones, scrolling sideways past the gutter like PageNav; wraps from md.
+    <ul
+      aria-label={m.artist_listen_title()}
+      className="m-0 -mx-6 flex scrollbar-none list-none gap-2 overflow-x-auto p-0 px-6 md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
+    >
+      {links.map((link) => (
+        <li key={link.url} className="shrink-0">
+          <a href={link.url} {...OUTSIDE_LINK} className={LISTEN_PILL}>
+            {PLATFORM_LABELS[link.platform]()}
+            <ArrowUpRight aria-hidden="true" className="text-text-muted size-4" />
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// MusicBrainz's genres, the most voted first: three say the music, more read as a tag cloud.
+const GENRES_SHOWN = 3;
 
 function Portrait({ text }: { text: string }) {
   return <p className="text-intro m-0 max-w-prose">{text}</p>;
@@ -156,11 +185,19 @@ function Profile({
   // Without a Wikipedia article, the facts are said in a sentence rather than listed.
   const portrait = !profile.summary && profile.facts ? portraitSentence(profile.facts) : null;
   const facts = profile.facts && !portrait ? factsLine(profile.facts) : null;
+  const genres = musilogy?.card.genres.slice(0, GENRES_SHOWN) ?? [];
+  const sections = [
+    ...(musilogy?.releases && musilogy.releases.length > 0
+      ? [{ id: 'records', label: m.artist_records_title() }]
+      : []),
+    ...(kept.length > 0 ? [{ id: 'kept', label: m.artist_kept_title() }] : []),
+    ...(musilogy ? musilogyNav(musilogy) : []),
+  ];
 
   return (
     <>
       {/* The sections' 4/8 grid: the portrait in the title column, who they are beside it. */}
-      <div className="lift-in px-page wide:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] wide:gap-16 grid gap-6 pt-10 md:pt-16">
+      <div className="px-page wide:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] wide:gap-16 grid gap-6 pt-10 md:pt-16">
         <Cover
           src={profile.image}
           alt={m.artist_portrait_alt({ name: profile.name })}
@@ -168,55 +205,37 @@ function Profile({
           priority
           // w-40 on phones, w-64 on upright tablets; the 4/12 title column where it is wide.
           sizes="(min-width: 64rem) 33vw, (min-width: 48rem) and (orientation: landscape) 33vw, (min-width: 48rem) 16rem, 10rem"
-          className="wide:w-full aspect-square w-40 md:w-64"
+          className="lift-in wide:w-full aspect-square w-40 md:w-64"
         />
-        <div className="wide:justify-end flex min-w-0 flex-col gap-3">
+        {/* Who first, in three lines: what they are, their name, their music; then a few words,
+            where to hear them, and the way down the page. */}
+        <div className="lift-in-late wide:justify-end flex min-w-0 flex-col">
           <DiscoveryTrail steps={trail} />
-          <h1 className="text-hero m-0 break-words">{profile.name}</h1>
-          {facts ? <p className="text-sub text-text-muted m-0">{facts}</p> : null}
-          <div className="mt-3 flex flex-col gap-3">
-            {profile.summary ? <Summary summary={profile.summary} /> : null}
-            {portrait ? <Portrait text={portrait} /> : null}
-          </div>
-          <div className="mt-3">
-            <PageNav
-              items={[
-                ...(profile.links.length > 0
-                  ? [{ id: 'listen', label: m.artist_listen_title() }]
-                  : []),
-                ...(musilogy?.releases && musilogy.releases.length > 0
-                  ? [{ id: 'records', label: m.artist_records_title() }]
-                  : []),
-                ...(kept.length > 0 ? [{ id: 'kept', label: m.artist_kept_title() }] : []),
-                ...(musilogy ? musilogyNav(musilogy) : []),
-              ]}
-            />
-          </div>
+          {facts ? (
+            <p className="text-label text-text-muted m-0 font-mono uppercase">{facts}</p>
+          ) : null}
+          <h1 className="text-hero m-0 mt-2 break-words">{profile.name}</h1>
+          {genres.length > 0 ? <p className="text-sub m-0 mt-3">{genres.join(' · ')}</p> : null}
+          {profile.summary || portrait ? (
+            <div className="mt-6">
+              {profile.summary ? <Summary summary={profile.summary} /> : null}
+              {portrait ? <Portrait text={portrait} /> : null}
+            </div>
+          ) : null}
+          {profile.links.length > 0 ? (
+            <div className="mt-6">
+              <ListenLinks links={profile.links} />
+            </div>
+          ) : null}
+          {sections.length > 1 ? (
+            <div className="border-border mt-8 border-t pt-2">
+              <PageNav items={sections} />
+            </div>
+          ) : null}
         </div>
       </div>
 
       <div className="px-page flex flex-col gap-16 py-16 md:gap-28 md:py-28">
-        {profile.links.length > 0 ? (
-          <Section id="listen" title={m.artist_listen_title()}>
-            <ul className="m-0 flex list-none flex-wrap gap-x-8 gap-y-2 p-0">
-              {profile.links.map((link) => (
-                <li key={link.url} className="reveal">
-                  <a
-                    href={link.url}
-                    {...OUTSIDE_LINK}
-                    className={cn(
-                      ARTIST_LINK,
-                      'text-ui inline-flex min-h-11 items-center underline-offset-4'
-                    )}
-                  >
-                    {PLATFORM_LABELS[link.platform]()}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </Section>
-        ) : null}
-
         {musilogy?.releases && musilogy.releases.length > 0 ? (
           <ReleasesSection releases={musilogy.releases} />
         ) : null}
