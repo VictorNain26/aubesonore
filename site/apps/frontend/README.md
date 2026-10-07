@@ -40,7 +40,7 @@ pnpm check:contrast   # contraste des tokens (wired en CI)
 
 ## Déploiement
 
-Auto-hébergé : le `Dockerfile` construit la SPA et la sert via nginx, dans le `docker-compose.yml` de la racine. Merger sur `master` suffit — un timer systemd sur le serveur déploie dans les deux minutes (voir la section _Deployment_ du `CLAUDE.md` racine).
+Auto-hébergé : le `Dockerfile` construit la SPA et la sert via nginx, dans le `compose.yaml` de la racine. Merger sur `master` suffit — un timer systemd sur le serveur déploie dans les deux minutes (voir la section _Deployment_ du `CLAUDE.md` racine).
 
 ## Licence
 

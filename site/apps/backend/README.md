@@ -58,7 +58,7 @@ Le schéma (`src/db/schema.ts`) est la source de vérité ; les index sont décl
 
 ## Déploiement
 
-Servie sur un VPS auto-hébergé, exposée via Cloudflare Tunnel. Docker : voir `docker-compose.yml` à la racine.
+Servie sur un VPS auto-hébergé, exposée via Cloudflare Tunnel. Docker : voir `compose.yaml` à la racine (`pnpm stack` pour la pile locale).
 
 ## Licence
 

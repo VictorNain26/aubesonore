@@ -9,6 +9,7 @@
     "pnpm": ">=10.34.5"
   },
   "scripts": {
+    "stack": "docker compose --profile dev up --watch backend frontend-dev",
     "dev": "turbo dev",
     "dev:backend": "turbo dev --filter=@aubesonore/backend",
     "dev:frontend": "turbo dev --filter=@aubesonore/frontend",
