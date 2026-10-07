@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Route, Routes, useLocation } from 'react-router';
-import { ArtistPageView } from './artist/ArtistPageView';
+import { PageError } from './artist/PageMessage';
 import { AuthInit } from './components/AuthInit';
 import { NowPlayingPoller } from './components/NowPlayingPoller';
 import { PlayerSideEffects } from './components/Player/PlayerSideEffects';
@@ -11,13 +11,15 @@ import Layout from './layout/Layout';
 import HomePage from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { LegalPage } from './pages/LegalPage';
-import { MyTracksPage } from './pages/MyTracksPage';
 import { useLocale, useLocaleStore } from './stores/localeStore';
 
 const ArtistPage = lazy(() => import('./pages/ArtistPage'));
 const MusilogyPage = lazy(() => import('./pages/MusilogyPage'));
-// Loaded when opened: the sign-in code is not needed to listen.
+// Loaded when opened: the sign-in code and the listener's tracks are not needed to listen.
 const AuthPage = lazy(() => import('./pages/AuthPage'));
+const MyTracksPage = lazy(() =>
+  import('./pages/MyTracksPage').then((page) => ({ default: page.MyTracksPage }))
+);
 
 /** Rendered inside a router: BrowserRouter in main.tsx, StaticRouter when pre-rendering. */
 export default function App() {
@@ -33,7 +35,7 @@ export default function App() {
   // In the frame of every page: the error fills the screen, with the footer under it.
   const pageError = (
     <div className="min-h-page flex flex-col">
-      <ArtistPageView state={{ status: 'error' }} />
+      <PageError />
       <SiteFooter />
     </div>
   );
@@ -60,6 +62,14 @@ export default function App() {
     </Suspense>
   );
 
+  const myTracks = (
+    <ErrorBoundary fallback={pageError}>
+      <Suspense fallback={null}>
+        <MyTracksPage />
+      </Suspense>
+    </ErrorBoundary>
+  );
+
   return (
     <>
       <AuthInit />
@@ -74,8 +84,8 @@ export default function App() {
           <Route path="/en/musilogy" element={musilogy} />
           <Route path="/musilogy/:mbid/:slug?" element={musilogy} />
           <Route path="/en/musilogy/:mbid/:slug?" element={musilogy} />
-          <Route path="/mes-titres" element={<MyTracksPage />} />
-          <Route path="/en/my-tracks" element={<MyTracksPage />} />
+          <Route path="/mes-titres" element={myTracks} />
+          <Route path="/en/my-tracks" element={myTracks} />
           <Route path="/connexion" element={auth} />
           <Route path="/en/sign-in" element={auth} />
           <Route path="/reset-password" element={auth} />
