@@ -138,7 +138,7 @@ function Summary({ summary }: { summary: ArtistSummary }) {
 
 // An action that leaves the site: a pill, so it reads apart from the text and the page's anchors.
 const LISTEN_PILL =
-  'text-ui border-border ease-out-quart hover:border-text focus-visible:outline-accent inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 transition-[border-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
+  'text-ui bg-surface-raised ease-out-quart hover:bg-accent/10 focus-visible:outline-accent inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 transition-[background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
 
 /** Where else to hear the artist: one pill per platform, each opening outside. */
 function ListenLinks({ links }: { links: ArtistProfile['links'] }) {

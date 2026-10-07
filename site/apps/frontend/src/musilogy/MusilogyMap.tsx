@@ -148,7 +148,7 @@ function Columns({ card, decades }: { card: MusilogyCard; decades: Decade[] }) {
           key={decade.decade}
           aria-label={m.musilogy_decade({ decade: String(decade.decade) })}
           className={cn(
-            'reveal border-text-muted flex min-w-0 flex-col gap-3 border-t px-3 pt-2 pb-4',
+            'border-text-muted flex min-w-0 flex-col gap-3 border-t px-3 pt-2 pb-4',
             decade.own && 'bg-surface-raised border-accent rounded-b-sm border-t-2'
           )}
         >
@@ -160,7 +160,7 @@ function Columns({ card, decades }: { card: MusilogyCard; decades: Decade[] }) {
               style={{ columnCount: decade.columns }}
             >
               {decade.close.map((close) => (
-                <li key={close.artist.mbid} className="break-inside-avoid py-1 leading-snug">
+                <li key={close.artist.mbid} className="reveal break-inside-avoid py-1 leading-snug">
                   <NameLink close={close} quiet />
                   {close.mark ? (
                     <span className="text-caption text-text-muted block">
@@ -187,7 +187,7 @@ function Stacked({ card, decades }: { card: MusilogyCard; decades: Decade[] }) {
           key={decade.decade}
           aria-label={m.musilogy_decade({ decade: String(decade.decade) })}
           className={cn(
-            'reveal border-border flex flex-col gap-2 border-t py-4',
+            'border-border flex flex-col gap-2 border-t py-4',
             decade.own && 'bg-surface-raised border-accent -mx-3 border-t-2 px-3'
           )}
         >
@@ -196,7 +196,7 @@ function Stacked({ card, decades }: { card: MusilogyCard; decades: Decade[] }) {
           {decade.close.length > 0 ? (
             <ol className="text-ui m-0 flex list-none flex-wrap gap-x-1 gap-y-2 p-0 leading-snug">
               {decade.close.map((close, i) => (
-                <li key={close.artist.mbid}>
+                <li key={close.artist.mbid} className="reveal">
                   <NameLink close={close} />
                   {close.mark ? (
                     <span className="text-text-muted"> ({MARK_LABELS[close.mark]()})</span>
