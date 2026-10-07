@@ -713,3 +713,12 @@
     z-index: 50;
   }
 }
+
+/* A sticky title 2.5rem from the top, moving down under the header while the header is back over
+   the page (--header-offset, set by useHeaderOnScroll), so the header never covers it. */
+@utility top-below-header {
+  top: calc(2.5rem + var(--header-offset, 0px));
+  @media (prefers-reduced-motion: no-preference) {
+    transition: top 0.3s var(--ease-out-quart);
+  }
+}

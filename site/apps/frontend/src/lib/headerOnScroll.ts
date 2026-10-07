@@ -77,6 +77,14 @@ export function useHeaderOnScroll() {
     };
   }, []);
 
+  // What sticks to the top of the page moves down under the header while it is back.
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      '--header-offset',
+      view.state === 'shown' ? 'var(--header-space)' : '0px'
+    );
+  }, [view.state]);
+
   /** A key that reaches the hidden header brings it back: focus is never off the screen. */
   const onFocus = () => {
     if (current.current.state !== 'hidden') return;
