@@ -31,6 +31,21 @@ describe('getStationHistory', () => {
     expect(result).toEqual([{ sh_id: 1 }]);
   });
 
+  it('asks AzuraCast once for concurrent calls on a cold cache', async () => {
+    let calls = 0;
+    globalThis.fetch = (() => {
+      calls++;
+      return Promise.resolve(
+        new Response(JSON.stringify({ page: 1, rows: [{ sh_id: calls }] }), { status: 200 })
+      );
+    }) as unknown as typeof fetch;
+
+    const results = await Promise.all([getStationHistory(5), getStationHistory(5)]);
+
+    expect(calls).toBe(1);
+    expect(results).toEqual([[{ sh_id: 1 }], [{ sh_id: 1 }]]);
+  });
+
   it('caches the result per rows value for subsequent calls', async () => {
     let calls = 0;
     globalThis.fetch = (() => {
