@@ -1,5 +1,5 @@
 ---
-description: Conventions des règles SQL de la couche 0 — chargé en ouvrant un fichier de src/musilogy/sql/
+description: Conventions des règles SQL de musilogy — chargé en ouvrant un fichier de src/musilogy/sql/
 paths:
   - "src/musilogy/sql/**/*.sql"
 ---

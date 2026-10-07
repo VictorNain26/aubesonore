@@ -61,7 +61,7 @@ FROM raw_artists;
 -- every artist extracted, persons included, not just `artists` after
 -- filtering.
 -- The r2_ prefix is frozen rather than left over: the name is a published
--- manifest key layer 1 reads, so renaming it would break that contract.
+-- manifest key, so renaming it would break that contract.
 CREATE OR REPLACE TABLE r2_anomalies AS
 SELECT
   sum(begin_illegible::INTEGER) AS begin_illegible,

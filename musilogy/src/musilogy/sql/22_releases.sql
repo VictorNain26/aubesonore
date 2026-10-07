@@ -76,13 +76,16 @@ FROM records;
 -- (single, other type, or absent from the dump), and one this table leaves out
 -- for its secondary types.
 CREATE OR REPLACE TABLE discography_exclusions AS
-WITH named AS (SELECT DISTINCT rg_mbid FROM raw_discography)
+WITH named AS (
+  SELECT DISTINCT rg_mbid,
+    regexp_full_match(rg_mbid, '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+      AS well_formed
+  FROM raw_discography
+)
 SELECT
+  count(*) FILTER (WHERE NOT well_formed) AS malformed,
   count(*) FILTER (
-    WHERE NOT regexp_full_match(rg_mbid, '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
-  ) AS malformed,
-  count(*) FILTER (
-    WHERE regexp_full_match(rg_mbid, '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+    WHERE well_formed
       AND NOT EXISTS (SELECT 1 FROM raw_release_groups r WHERE r.mbid = n.rg_mbid)
   ) AS not_album_or_ep,
   count(*) FILTER (

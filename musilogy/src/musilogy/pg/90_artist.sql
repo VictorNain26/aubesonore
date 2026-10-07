@@ -2,8 +2,8 @@
 -- the tables: the site depends on these signatures, not on how the tables are
 -- laid out, and every query it runs is tested here against Postgres.
 
--- proximity_surveyed says whether the artist was asked about in the pinned
--- proximity snapshot (89_proximity.sql): only artists with 500 listeners or
+-- proximity_surveyed says whether the artist was asked about by a pinned
+-- part of the proximity survey (89_proximity.sql): only artists with 500 listeners or
 -- more are, so an artist not surveyed is not an artist without neighbours.
 -- NULL when the load carries no snapshot.
 CREATE FUNCTION musilogy.artist_card(artist text)
@@ -34,32 +34,6 @@ AS $$
   FROM musilogy.artists a
   LEFT JOIN musilogy.popularity p USING (mbid)
   WHERE a.mbid = artist;
-$$;
-
--- Every typed link of an artist, read from its side: `forward` when the
--- artist is the source of the MusicBrainz relation, `backward` when it is the
--- target. The type keeps MusicBrainz's name; the front words it.
-CREATE FUNCTION musilogy.artist_links(artist text)
-RETURNS TABLE (
-  type text,
-  direction text,
-  other_mbid text,
-  other_name text,
-  other_disambiguation text,
-  other_y0 integer,
-  y_begin integer,
-  y_end integer
-)
-LANGUAGE sql STABLE
-AS $$
-  SELECT l.type, 'forward', o.mbid, o.name, o.disambiguation, o.y0, l.y_begin, l.y_end
-  FROM musilogy.links l JOIN musilogy.artists o ON o.mbid = l.dst_mbid
-  WHERE l.src_mbid = artist
-  UNION ALL
-  SELECT l.type, 'backward', o.mbid, o.name, o.disambiguation, o.y0, l.y_begin, l.y_end
-  FROM musilogy.links l JOIN musilogy.artists o ON o.mbid = l.src_mbid
-  WHERE l.dst_mbid = artist
-  ORDER BY 1, 2, 7 NULLS LAST, 3;
 $$;
 
 -- The influences Wikidata declares, both ways: 'cited' when the artist cites
@@ -141,8 +115,17 @@ AS $$
   ORDER BY r.y NULLS LAST, r.title, r.rg_mbid;
 $$;
 
--- Members of a group, or groups of a person: member of band, founder and
--- collaboration are one relation, being part of it (docs/vision.md §2.4).
+-- Being part of a group: member of band, founder and collaboration are one
+-- relation (docs/vision.md §2.4). A simple immutable SQL function, inlined
+-- into the queries that call it.
+CREATE FUNCTION musilogy.is_part_of(relation text)
+RETURNS boolean
+LANGUAGE sql IMMUTABLE
+AS $$
+  SELECT relation IN ('member of band', 'founder', 'collaboration');
+$$;
+
+-- Members of a group, or groups of a person, through musilogy.is_part_of.
 -- `role` reads from the artist's side: 'member' when the other is part of the
 -- artist, 'group' when the artist is part of the other. Several relations
 -- between the same two (two stints, a founder also a member) are one row, from
@@ -164,11 +147,11 @@ AS $$
   WITH part AS (
     SELECT 'member' AS role, l.src_mbid AS other, l.y_begin, l.y_end
     FROM musilogy.links l
-    WHERE l.dst_mbid = artist AND l.type IN ('member of band', 'founder', 'collaboration')
+    WHERE l.dst_mbid = artist AND musilogy.is_part_of(l.type)
     UNION ALL
     SELECT 'group', l.dst_mbid, l.y_begin, l.y_end
     FROM musilogy.links l
-    WHERE l.src_mbid = artist AND l.type IN ('member of band', 'founder', 'collaboration')
+    WHERE l.src_mbid = artist AND musilogy.is_part_of(l.type)
   )
   SELECT p.role, o.mbid, o.name, o.disambiguation, o.y0, min(p.y_begin), max(p.y_end)
   FROM part p JOIN musilogy.artists o ON o.mbid = p.other
@@ -196,18 +179,18 @@ AS $$
   WITH member AS (
     SELECT DISTINCT l.src_mbid AS mbid
     FROM musilogy.links l
-    WHERE l.dst_mbid = artist AND l.type IN ('member of band', 'founder', 'collaboration')
+    WHERE l.dst_mbid = artist AND musilogy.is_part_of(l.type)
   ),
   project AS (
     SELECT DISTINCT l.dst_mbid AS mbid, l.src_mbid AS via
     FROM musilogy.links l JOIN member m ON m.mbid = l.src_mbid
-    WHERE l.type IN ('member of band', 'founder', 'collaboration', 'is person')
+    WHERE (musilogy.is_part_of(l.type) OR l.type = 'is person')
       AND l.dst_mbid <> artist
       AND NOT EXISTS (SELECT 1 FROM member o WHERE o.mbid = l.dst_mbid)
       AND NOT EXISTS (
         SELECT 1 FROM musilogy.links g
         WHERE g.src_mbid = artist AND g.dst_mbid = l.dst_mbid
-          AND g.type IN ('member of band', 'founder', 'collaboration'))
+          AND musilogy.is_part_of(g.type))
       AND NOT EXISTS (
         SELECT 1 FROM musilogy.links r
         WHERE r.type = 'artist rename'

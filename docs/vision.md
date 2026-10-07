@@ -399,8 +399,8 @@ l'historique git.
       SQL ; la carte « Même son / Même label » et la ligne de genres sur la page.
    6. **Ce qui part**, chacun dans la PR qui le remplace : `artist_neighbours`, remplacée par la
       fonction des artistes liés ; les listes sous la carte et la rubrique des influences, que la
-      carte remplace (la table des influences reste, comme signal) ; `artist_links`, que le site
-      n'appelle plus ; sur le serveur, les fichiers de l'étude devenus inutiles.
+      carte remplace (la table des influences reste, comme signal). Déjà partis (2026-10-07) :
+      `artist_links`, que le site n'appelait plus, et les copies de l'étude sur le serveur.
    7. **Ensuite, sur mesure** : relier plus d'artistes à Discogs par les sorties que MusicBrainz y
       relie, adopté seulement à 99 % de justesse mesurée ; les crédits Discogs (producteurs,
       mixeurs) comme signal s'ils prédisent le son sur l'évaluation ; l'audio pour les artistes de

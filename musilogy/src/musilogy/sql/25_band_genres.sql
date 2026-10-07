@@ -1,12 +1,12 @@
--- The genres a band is found by. Most artists declare none — 77 % of the dated
--- groups on the reference dump — while their albums often do, so the rule is
--- the one 30_bands_lifespan.sql applies to dates: the declared evidence wins,
+-- The genres an artist is found by. Most artists declare none while their
+-- albums often do, so the rule is the one 30_bands_lifespan.sql applies to
+-- dates: the declared evidence wins,
 -- the albums take over. genre_source names the branch; both raw lists stay
 -- published beside the result.
 --
--- Album genres are summed over the band's own albums, the ones 20_albums.sql
--- kept, so they rest on exactly the releases the rest of the layer counts. A
--- band that declares genres never mixes in its albums': the two are votes on
+-- Album genres are summed over the artist's own albums, the ones 20_albums.sql
+-- kept, so they rest on exactly the releases the other tables count. An
+-- artist that declares genres never mixes in its albums': the two are votes on
 -- different things, and a union would let one album outvote the band.
 CREATE OR REPLACE TABLE artist_album_genres AS
 SELECT a.artist_mbid AS mbid, t.g.mbid AS genre_mbid, any_value(t.g.name) AS name,

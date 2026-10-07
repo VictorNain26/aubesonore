@@ -26,10 +26,6 @@ def group(mbid, begin="1978", end="1985", genres=("post-punk",), relations=None)
     )
 
 
-def relation(kind, target):
-    return {"type": kind, "direction": "forward", "mbid": target, "begin": None, "end": None}
-
-
 def test_an_artist_unknown_to_listenbrainz_has_no_count_rather_than_zero(tmp_path, pg):
     loaded(tmp_path, pg, [group(A), group(B)], popularity={A: 42})
     cards = {
@@ -61,16 +57,6 @@ def test_no_artist_counts_as_surveyed_for_proximity_before_a_snapshot_is_loaded(
             "listen_count bigint, user_count bigint, proximity_surveyed boolean)",
         )
     ]
-
-
-def test_a_link_reads_forward_from_its_source_and_backward_from_its_target(tmp_path, pg):
-    loaded(tmp_path, pg, [group(A, relations=[relation("member of band", B)]), group(B)])
-    assert pg_query(
-        pg, f"SELECT type, direction, other_mbid FROM musilogy.artist_links('{A}')"
-    ) == [("member of band", "forward", B)]
-    assert pg_query(
-        pg, f"SELECT type, direction, other_mbid FROM musilogy.artist_links('{B}')"
-    ) == [("member of band", "backward", A)]
 
 
 C = "00000000-0000-4000-8000-0000000000f3"

@@ -180,6 +180,13 @@ PROXIMITY_MIN_USERS = 500
 PROXIMITY_FIXTURE_LINES = 120
 
 
+def _part_date(partial: str) -> str:
+    """The day of the part a stopped run left partial, which the next run
+    resumes, else today's: a new part."""
+    partials = sorted(RAW_DIR.glob(partial))
+    return partials[-1].parent.name if partials else datetime.now(UTC).date().isoformat()
+
+
 def snapshot_proximity() -> None:
     """Asks ListenBrainz for the neighbours of every artist with at least
     PROXIMITY_MIN_USERS listeners in the pinned popularity that no pinned part
@@ -187,8 +194,7 @@ def snapshot_proximity() -> None:
     taken again whole, it grows by parts. A part is taken once and pinned; a
     run stopped before the end resumes the part it left partial, whatever day
     it started."""
-    partials = sorted(RAW_DIR.glob("listenbrainz/*/artist-similar.jsonl.partial"))
-    date = partials[-1].parent.name if partials else datetime.now(UTC).date().isoformat()
+    date = _part_date("listenbrainz/*/artist-similar.jsonl.partial")
     dest = proximity_snapshot(date)
     if dest.exists():
         raise SystemExit(
@@ -209,8 +215,7 @@ def snapshot_proximity() -> None:
 
 # The artists whose records a page filters by MusicBrainz's official status:
 # those with at least this many listeners and at least one album or EP in the
-# extraction, 97 628 artists for about 100 000 requests (2026-10-05). Below
-# it, bootlegs are rare: the 31 played artists under 500 listeners show 112
+# extraction. Below it, bootlegs are rare: the 31 played artists under 500 listeners show 112
 # records, one of them a promotional EP (Cignol, The Cosmic Garden EP).
 OFFICIAL_MIN_USERS = 500
 
@@ -222,8 +227,7 @@ def snapshot_official() -> None:
     day: a part is taken once and pinned, and resumed like the proximity."""
     if not RELEASE_GROUPS_JSONL.exists():
         fetch_and_extract()
-    partials = sorted(RAW_DIR.glob("musicbrainz/*/official-release-groups.jsonl.partial"))
-    date = partials[-1].parent.name if partials else datetime.now(UTC).date().isoformat()
+    date = _part_date("musicbrainz/*/official-release-groups.jsonl.partial")
     dest = official_snapshot(date)
     if dest.exists():
         raise SystemExit(
@@ -244,55 +248,78 @@ def snapshot_official() -> None:
     print(f"{n} artists asked; pin it: add {date!r} to REFERENCE_OFFICIAL")
 
 
+def _take_once(
+    survey: str,
+    snapshot: Callable[[str], Path],
+    sums: Callable[[str], Path],
+    fetch: Callable[[Path], int],
+    constant: str,
+) -> None:
+    """Takes today's snapshot of a source that moves every day, once: its
+    digest is written to pin it."""
+    date = datetime.now(UTC).date().isoformat()
+    dest = snapshot(date)
+    if dest.exists():
+        raise SystemExit(f"{survey} {date} already taken at {dest}: it is never taken again")
+    n = fetch(dest)
+    sums(date).write_text(f"{sha256_file(dest)}  {dest.name}\n", encoding="utf-8")
+    print(f"{n} rows; pin it: {constant} = {date!r}")
+
+
+def _verified_one(path: Path, date: str, sums: Path, survey: str, command: str) -> Path:
+    """A pinned snapshot, checked against its digest; it cannot be taken again."""
+    if not path.exists():
+        raise SystemExit(
+            f"{survey} {date} missing at {path}; it cannot be taken again: "
+            f"`musilogy {command}`, then pin the new one"
+        )
+    verify(path, expected_sums(sums)[path.name])
+    return path
+
+
 def snapshot_influences() -> None:
     """Asks Wikidata for the declared influences between MusicBrainz artists.
     Wikidata moves every day, so the snapshot is taken once and pinned, like
     the ListenBrainz ones."""
-    date = datetime.now(UTC).date().isoformat()
-    dest = influences_snapshot(date)
-    if dest.exists():
-        raise SystemExit(
-            f"Wikidata influences {date} already taken at {dest}: it is never taken again"
-        )
-    n = fetch_influences(dest)
-    influences_sums(date).write_text(f"{sha256_file(dest)}  {dest.name}\n", encoding="utf-8")
-    print(f"{n} rows; pin it: REFERENCE_INFLUENCES = {date!r}")
+    _take_once(
+        "Wikidata influences",
+        influences_snapshot,
+        influences_sums,
+        fetch_influences,
+        "REFERENCE_INFLUENCES",
+    )
 
 
 def verified_influences() -> Path:
-    if not INFLUENCES_JSONL.exists():
-        raise SystemExit(
-            f"Wikidata snapshot {REFERENCE_INFLUENCES} missing at {INFLUENCES_JSONL}; "
-            "it cannot be taken again: `musilogy snapshot-influences`, then pin the new one"
-        )
-    sums = expected_sums(influences_sums(REFERENCE_INFLUENCES))
-    verify(INFLUENCES_JSONL, sums[INFLUENCES_JSONL.name])
-    return INFLUENCES_JSONL
+    return _verified_one(
+        INFLUENCES_JSONL,
+        REFERENCE_INFLUENCES,
+        influences_sums(REFERENCE_INFLUENCES),
+        "Wikidata snapshot",
+        "snapshot-influences",
+    )
 
 
 def snapshot_discography() -> None:
     """Asks Wikidata for the release groups it files as a studio album, an EP
     or a soundtrack. Taken once and pinned, like the influences."""
-    date = datetime.now(UTC).date().isoformat()
-    dest = discography_snapshot(date)
-    if dest.exists():
-        raise SystemExit(
-            f"Wikidata discography {date} already taken at {dest}: it is never taken again"
-        )
-    n = fetch_discography(dest)
-    discography_sums(date).write_text(f"{sha256_file(dest)}  {dest.name}\n", encoding="utf-8")
-    print(f"{n} rows; pin it: REFERENCE_DISCOGRAPHY = {date!r}")
+    _take_once(
+        "Wikidata discography",
+        discography_snapshot,
+        discography_sums,
+        fetch_discography,
+        "REFERENCE_DISCOGRAPHY",
+    )
 
 
 def verified_discography() -> Path:
-    if not DISCOGRAPHY_JSONL.exists():
-        raise SystemExit(
-            f"Wikidata snapshot {REFERENCE_DISCOGRAPHY} missing at {DISCOGRAPHY_JSONL}; "
-            "it cannot be taken again: `musilogy snapshot-discography`, then pin the new one"
-        )
-    sums = expected_sums(discography_sums(REFERENCE_DISCOGRAPHY))
-    verify(DISCOGRAPHY_JSONL, sums[DISCOGRAPHY_JSONL.name])
-    return DISCOGRAPHY_JSONL
+    return _verified_one(
+        DISCOGRAPHY_JSONL,
+        REFERENCE_DISCOGRAPHY,
+        discography_sums(REFERENCE_DISCOGRAPHY),
+        "Wikidata snapshot",
+        "snapshot-discography",
+    )
 
 
 def verified_parts(
@@ -337,14 +364,13 @@ def verified_official() -> list[Path]:
 
 
 def verified_popularity() -> Path:
-    if not POPULARITY_JSONL.exists():
-        raise SystemExit(
-            f"ListenBrainz snapshot {REFERENCE_POPULARITY} missing at {POPULARITY_JSONL}; "
-            "it cannot be taken again: `musilogy snapshot-popularity`, then pin the new one"
-        )
-    sums = expected_sums(popularity_sums(REFERENCE_POPULARITY))
-    verify(POPULARITY_JSONL, sums[POPULARITY_JSONL.name])
-    return POPULARITY_JSONL
+    return _verified_one(
+        POPULARITY_JSONL,
+        REFERENCE_POPULARITY,
+        popularity_sums(REFERENCE_POPULARITY),
+        "ListenBrainz snapshot",
+        "snapshot-popularity",
+    )
 
 
 def verified_discogs() -> Path:

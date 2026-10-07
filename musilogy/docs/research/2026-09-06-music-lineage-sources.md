@@ -1,7 +1,7 @@
 # Découverte par filiation — état de l'art et cadrage
 
 **Date :** 2026-09-06
-**Statut :** recherche. Aucune décision prise, aucun code écrit.
+**Statut :** dépassée. La filiation tirée de MusicBrainz a été abandonnée ; la conception en vigueur est `docs/conception.md` (2026-10-04) et la découverte suit `docs/vision.md` §2.
 **Objet :** un outil de digg qui, à partir d'un artiste, propose des contemporains
 similaires **et** des précurseurs, chaque lien étant adossé à une source vérifiable.
 

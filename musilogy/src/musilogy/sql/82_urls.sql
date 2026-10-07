@@ -1,10 +1,9 @@
 -- The web pages an artist page uses, among those MusicBrainz relates to an
 -- artist: where to listen (Deezer, Spotify, Apple Music, Bandcamp,
--- SoundCloud, whatever the relation type says of them), the official site,
--- the Wikidata item and the Wikipedia article the summary is read from, and
--- the images MusicBrainz relates. Discogs, VIAF, IMDb, social networks and the
--- other databases — 3.5 of the 5.8 million pages on the reference dump — stay
--- out: no page shows them, and the dump keeps them.
+-- SoundCloud, whatever the relation type says of them), the official site and
+-- the Wikidata item, from which the site reaches the Wikipedia article.
+-- Discogs, Wikipedia, images, VIAF, IMDb, social networks and the other
+-- databases stay out: no page shows them, and the dump keeps them.
 --
 -- MusicBrainz marks a relation `ended` when the page no longer belongs to the
 -- artist (a closed account): kept, flagged. The same page related twice under
@@ -20,7 +19,7 @@ SELECT artist_mbid, type, url, bool_and(coalesce(ended, false)) AS ended
 FROM related u
 WHERE EXISTS (SELECT 1 FROM artists a WHERE a.mbid = u.artist_mbid)
   AND (
-    u.type IN ('official homepage', 'wikidata', 'wikipedia', 'image')
+    u.type IN ('official homepage', 'wikidata')
     OR EXISTS (
       SELECT 1
       FROM (VALUES ('deezer.com'), ('spotify.com'), ('apple.com'), ('bandcamp.com'),
