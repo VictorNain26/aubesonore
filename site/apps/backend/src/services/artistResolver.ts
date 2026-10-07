@@ -29,6 +29,11 @@ export function normalizeArtistName(name: string): string {
     .trim();
 }
 
+/** The key a raw AzuraCast name is stored and compared under: its first credited artist, normalized. */
+export function artistKey(raw: string): string {
+  return normalizeArtistName(primaryArtistName(raw));
+}
+
 export function slugify(name: string): string {
   return normalizeArtistName(name).replace(/ /g, '-');
 }
@@ -133,8 +138,7 @@ async function playedTrack(normalizedName: string): Promise<Played | null> {
 
   // The watcher records a track up to a minute after it starts.
   const current = await fetchNowPlaying().catch(() => null);
-  return current !== null &&
-    normalizeArtistName(primaryArtistName(current.artist)) === normalizedName
+  return current !== null && artistKey(current.artist) === normalizedName
     ? { title: current.title, isrc: current.isrc }
     : null;
 }

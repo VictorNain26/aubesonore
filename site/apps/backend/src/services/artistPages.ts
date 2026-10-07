@@ -1,17 +1,8 @@
+import type { ArtistPageRef } from '@aubesonore/shared-types/client';
 import { eq, inArray, isNotNull } from 'drizzle-orm';
 import { db } from '../db';
 import { artist, artistSlug } from '../db/schema';
-import { normalizeArtistName, primaryArtistName } from './artistResolver';
-
-export interface ArtistPageRef {
-  id: string;
-  slug: string;
-}
-
-/** The key a raw AzuraCast name is stored under, as `resolveArtist` writes it. */
-export function pageKey(raw: string): string {
-  return normalizeArtistName(primaryArtistName(raw));
-}
+import { artistKey } from './artistResolver';
 
 /** Pairs each raw name with the page stored under its key; a name without one is left out. */
 export function matchPages(
@@ -22,7 +13,7 @@ export function matchPages(
   // fromEntries defines own properties, so a name such as "__proto__" stays a plain key.
   return Object.fromEntries(
     names.flatMap((name) => {
-      const page = byKey.get(pageKey(name));
+      const page = byKey.get(artistKey(name));
       return page ? [[name, page]] : [];
     })
   );
@@ -35,7 +26,7 @@ export function matchPages(
 export async function findArtistPages(
   names: readonly string[]
 ): Promise<Record<string, ArtistPageRef>> {
-  const keys = [...new Set(names.map(pageKey))].filter(Boolean);
+  const keys = [...new Set(names.map(artistKey))].filter(Boolean);
   if (keys.length === 0) return {};
   const rows = await db
     .select({ id: artist.id, slug: artistSlug.slug, normalizedName: artist.normalizedName })

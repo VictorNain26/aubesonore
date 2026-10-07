@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { desc, eq } from 'drizzle-orm';
 import { db } from '../db';
 import { radioPlay } from '../db/schema';
-import { normalizeArtistName, primaryArtistName } from './artistResolver';
+import { artistKey, normalizeArtistName } from './artistResolver';
 import { fetchNowPlaying } from './nowPlaying';
 
 export function buildPlayRow(
@@ -23,7 +23,7 @@ export function buildPlayRow(
     shId,
     title,
     artist,
-    artistNormalized: normalizeArtistName(primaryArtistName(artist)),
+    artistNormalized: artistKey(artist),
     isrc,
   };
 }
@@ -53,7 +53,7 @@ export async function findPlay(title: string, artist: string): Promise<Play | nu
   const rows = await db
     .select({ title: radioPlay.title, isrc: radioPlay.isrc })
     .from(radioPlay)
-    .where(eq(radioPlay.artistNormalized, normalizeArtistName(primaryArtistName(artist))))
+    .where(eq(radioPlay.artistNormalized, artistKey(artist)))
     .orderBy(desc(radioPlay.playedAt))
     .limit(200);
   return (
@@ -68,8 +68,7 @@ export async function playOnAir(title: string, artist: string): Promise<Play | n
   if (
     current === null ||
     normalizeArtistName(current.title) !== normalizeArtistName(title) ||
-    normalizeArtistName(primaryArtistName(current.artist)) !==
-      normalizeArtistName(primaryArtistName(artist))
+    artistKey(current.artist) !== artistKey(artist)
   ) {
     return null;
   }

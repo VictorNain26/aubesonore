@@ -10,6 +10,7 @@ import type {
   MusilogySearchHit,
 } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
+import { KIND_LABELS } from '../lib/artistKind';
 import type { PageNavItem } from '../design/molecules/PageNav';
 import { Section } from '../design/molecules/Section';
 import { ARTIST_LINK, TEXT_ACTION } from '../home/styles';
@@ -161,7 +162,7 @@ function Bands({ artist }: { artist: MusilogyArtist }) {
       {bands && bands.groups.length > 0 ? (
         // A person's bands; for a group, the projects it took part in (Stereolab in Uilab).
         <SubList
-          label={artist.card.type === 'Person' ? m.musilogy_groups() : m.musilogy_joint_projects()}
+          label={artist.card.kind === 'person' ? m.musilogy_groups() : m.musilogy_joint_projects()}
         >
           <ArtistList artists={bands.groups} yearsOf={linkYears} />
         </SubList>
@@ -286,20 +287,12 @@ export type SearchState =
   | { status: 'error' }
   | { status: 'done'; hits: MusilogySearchHit[] };
 
-// MusicBrainz's artist types the site has a word for; a character, "Other" or no type says nothing.
-const HIT_KINDS: Record<string, () => string> = {
-  Person: () => m.artist_kind_person(),
-  Group: () => m.artist_kind_group(),
-  Orchestra: () => m.artist_kind_orchestra(),
-  Choir: () => m.artist_kind_choir(),
-};
-
 // Name and what tells it apart, then on a wide screen the kind and the first year in columns.
 const HIT_COLUMNS =
   'grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 md:grid-cols-[minmax(0,1fr)_9rem_5rem]';
 
 function SearchHitRow({ hit }: { hit: MusilogySearchHit }) {
-  const kind = hit.type ? (HIT_KINDS[hit.type]?.() ?? null) : null;
+  const kind = hit.kind ? KIND_LABELS[hit.kind]() : null;
   return (
     <li className={cn(HIT_COLUMNS, 'border-border relative min-h-18 border-b py-2.5')}>
       <span className="flex min-w-0 flex-col gap-0.5">

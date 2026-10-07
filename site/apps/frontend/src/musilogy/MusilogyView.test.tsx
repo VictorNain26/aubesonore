@@ -30,7 +30,7 @@ function artist(overrides: Partial<MusilogyArtist> = {}): MusilogyArtist {
       disambiguation: 'British glam rock band',
       y0: 1967,
       played: null,
-      type: 'Group',
+      kind: 'group',
       y0Source: 'declared',
       yEnd: 1977,
       yEndSource: 'declared',
@@ -140,7 +140,7 @@ describe('MusilogySections', () => {
     expect(screen.getByRole('heading', { name: 'Projets communs' })).toBeInTheDocument();
 
     const person = artist({ bands: { members: [], groups: [uilab] } });
-    rerender(<Sections artist={{ ...person, card: { ...person.card, type: 'Person' } }} />);
+    rerender(<Sections artist={{ ...person, card: { ...person.card, kind: 'person' } }} />);
     expect(screen.getByRole('heading', { name: 'Groupes' })).toBeInTheDocument();
   });
 
@@ -235,7 +235,7 @@ describe('MusilogyHomeView', () => {
               mbid: T_REX,
               name: 'T. Rex',
               disambiguation: null,
-              type: 'Group',
+              kind: 'group',
               y0: 1967,
             },
           ],
@@ -257,7 +257,7 @@ describe('MusilogyHomeView', () => {
       mbid: T_REX,
       name: 'T. Rex',
       disambiguation: 'glam rock band',
-      type: 'Group',
+      kind: 'group' as const,
       y0: 1967,
     };
     const view = (search: Parameters<typeof MusilogyHomeView>[0]['search']) => (

@@ -5,10 +5,11 @@ import { artist, artistProfile, artistSlug } from '../db/schema';
 import { logger } from '../lib/logger';
 import type { Lookup } from '../lib/lookup';
 import { createSingleFlight } from '../lib/singleFlight';
-import { getArtist } from './deezerService';
+import { deezerArtistUrl, getArtist } from './deezerService';
 import { ensureMbid } from './artistResolver';
 import { getArtistIdentity, type ArtistIdentity } from './musilogyService';
 import { getSummary } from './wikipediaService';
+import { parseMbid } from '../validators/musilogyValidator';
 
 const SOURCE_TIMEOUT_MS = 6_000;
 // A profile older than this is served as it is and refreshed behind the answer.
@@ -98,13 +99,6 @@ function refresh(
   });
 }
 
-const MBID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-
-/** Whether a page key is an MBID: the address of an artist page without a slug. */
-export function isMbid(key: string): boolean {
-  return MBID.test(key);
-}
-
 /**
  * The page of an artist the antenna never played, made from what Musilogy
  * knows of its MBID (docs/vision.md §5): no row is stored for it, so a crawler
@@ -130,12 +124,7 @@ async function unplayedProfile(mbid: string, locale: SiteLocale): Promise<Artist
     summary: summary.status === 'found' ? summary.value : null,
     links: [
       ...(identity.deezerId
-        ? [
-            {
-              platform: 'deezer' as const,
-              url: `https://www.deezer.com/artist/${identity.deezerId}`,
-            },
-          ]
+        ? [{ platform: 'deezer' as const, url: deezerArtistUrl(identity.deezerId) }]
         : []),
       ...identity.links,
     ],
@@ -151,17 +140,18 @@ export async function getArtistProfile(
   key: string,
   locale: SiteLocale
 ): Promise<ArtistProfile | null> {
-  const byMbid = isMbid(key);
+  // A key that is an MBID is the address of an artist page without a slug.
+  const mbid = parseMbid(key);
   const rows = await db
     .select()
     .from(artistSlug)
     .innerJoin(artist, eq(artist.id, artistSlug.artistId))
     .leftJoin(artistProfile, eq(artistProfile.artistId, artist.id))
-    .where(byMbid ? eq(artist.mbid, key) : eq(artistSlug.slug, key))
+    .where(mbid ? eq(artist.mbid, mbid) : eq(artistSlug.slug, key))
     .limit(1);
 
   const found = rows[0];
-  if (!found) return byMbid ? unplayedProfile(key, locale) : null;
+  if (!found) return mbid ? unplayedProfile(mbid, locale) : null;
   const row = found.artist;
   const { slug } = found.artist_slug;
   const { id } = row;
@@ -190,7 +180,7 @@ export async function getArtistProfile(
     summary: locale === 'fr' ? stored.summaryFr : stored.summaryEn,
     links: [
       ...(row.deezerId
-        ? [{ platform: 'deezer' as const, url: `https://www.deezer.com/artist/${row.deezerId}` }]
+        ? [{ platform: 'deezer' as const, url: deezerArtistUrl(row.deezerId) }]
         : []),
       ...(identity.status === 'found' ? identity.value.links : []),
     ],

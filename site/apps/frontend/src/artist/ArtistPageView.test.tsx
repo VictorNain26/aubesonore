@@ -24,7 +24,7 @@ const MUSILOGY: MusilogyArtist = {
     disambiguation: null,
     y0: 2015,
     played: { id: 'a-1', slug: 'hania-rani' },
-    type: 'Person',
+    kind: 'person',
     y0Source: 'declared',
     yEnd: null,
     yEndSource: null,

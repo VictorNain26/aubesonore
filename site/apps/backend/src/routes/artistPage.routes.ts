@@ -3,7 +3,8 @@ import { Elysia } from 'elysia';
 import { env } from '../config/env';
 import { logger } from '../lib/logger';
 import { checkRate, getClientIp } from '../lib/rateLimit';
-import { getArtistProfile, isMbid } from '../services/artistProfileService';
+import { getArtistProfile } from '../services/artistProfileService';
+import { parseMbid } from '../validators/musilogyValidator';
 import { getMusilogyArtist, MusilogyUnavailable } from '../services/musilogyService';
 import { listArtistSlugs, slugOfArtist } from '../services/artistPages';
 import { isDiscovered, listDiscovered } from '../services/discoveredArtists';
@@ -87,7 +88,7 @@ interface HandlerContext {
 }
 
 /** The page path of an artist: /artiste/<slug> in French, /en/artist/<slug> in English. */
-export function artistPagePath(locale: SiteLocale, slug: string): string {
+function artistPagePath(locale: SiteLocale, slug: string): string {
   return `${locale === 'en' ? '/en/artist' : '/artiste'}/${encodeURIComponent(slug)}`;
 }
 
@@ -133,7 +134,7 @@ async function handle(
     return html;
   }
   // An artist the antenna played has one address, its slug.
-  if (isMbid(params.slug) && profile.played) {
+  if (parseMbid(params.slug) && profile.played) {
     set.status = 301;
     set.headers.location = artistPagePath(locale, profile.slug);
     return '';
@@ -159,7 +160,7 @@ type ResponseSet = HandlerContext['set'];
  * (https://developers.google.com/search/docs/specialty/international/localized-versions#sitemap).
  * A slug is percent-encoded by artistPagePath: nothing in it needs escaping in XML.
  */
-export function artistSitemap(slugs: readonly string[]): string {
+function artistSitemap(slugs: readonly string[]): string {
   const entries = slugs.flatMap((slug) => {
     const fr = `${env.FRONTEND_BASE_URL}${artistPagePath('fr', slug)}`;
     const en = `${env.FRONTEND_BASE_URL}${artistPagePath('en', slug)}`;

@@ -1,3 +1,4 @@
+import type { ArtistPageRef } from '@aubesonore/shared-types/client';
 import { useEffect, useState } from 'react';
 import { resolveArtistPage } from '../lib/artistProfile';
 
@@ -5,10 +6,10 @@ import { resolveArtistPage } from '../lib/artistProfile';
  * The page of an artist heard on the antenna, or `null` while it resolves or
  * when the artist has none: a link is only shown once it leads somewhere.
  */
-export function useArtistPage(artist: string | undefined): { id: string; slug: string } | null {
+export function useArtistPage(artist: string | undefined): ArtistPageRef | null {
   const [resolved, setResolved] = useState<{
     artist: string;
-    page: { id: string; slug: string } | null;
+    page: ArtistPageRef | null;
   } | null>(null);
 
   useEffect(() => {
