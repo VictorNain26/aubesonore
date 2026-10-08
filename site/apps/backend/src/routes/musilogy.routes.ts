@@ -1,5 +1,5 @@
 import { Elysia } from 'elysia';
-import { checkRate, getClientIp } from '../lib/rateLimit';
+import { checkRate, getClientIp, tooManyRequests } from '../lib/rateLimit';
 import { logger } from '../lib/logger';
 import {
   getMusilogyArtist,
@@ -11,7 +11,6 @@ import { parseMbid, parseSearchQuery } from '../validators/musilogyValidator';
 const WINDOW_MS = 60_000;
 // Walking from artist to artist asks one page per click; a search, one per pause in typing.
 const LIMITS = { artist: 120, search: 60 } as const;
-const TOO_MANY = { error: 'Trop de requêtes, réessayez dans 1 minute' };
 const UNAVAILABLE = { error: "Musilogy n'est pas disponible pour l'instant" };
 
 function limited(bucket: keyof typeof LIMITS, request: Request): boolean {
@@ -28,9 +27,7 @@ function unavailable(err: unknown, set: { status?: number | string }) {
 export const musilogyRoutes = new Elysia({ prefix: '/api/musilogy' })
   .get('/search', async ({ request, query, set }) => {
     if (limited('search', request)) {
-      set.status = 429;
-      set.headers['retry-after'] = '60';
-      return TOO_MANY;
+      return tooManyRequests(set);
     }
     const q = parseSearchQuery(query?.q);
     if (q === null) {
@@ -45,9 +42,7 @@ export const musilogyRoutes = new Elysia({ prefix: '/api/musilogy' })
   })
   .get('/artist/:mbid', async ({ request, params, set }) => {
     if (limited('artist', request)) {
-      set.status = 429;
-      set.headers['retry-after'] = '60';
-      return TOO_MANY;
+      return tooManyRequests(set);
     }
     const mbid = parseMbid(params.mbid);
     if (mbid === null) {

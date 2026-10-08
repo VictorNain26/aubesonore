@@ -1,5 +1,5 @@
 import { Elysia } from 'elysia';
-import { checkRate, getClientIp } from '../lib/rateLimit';
+import { checkRate, getClientIp, tooManyRequests } from '../lib/rateLimit';
 import { logger } from '../lib/logger';
 import { findTrackLinks } from '../services/trackLinksService';
 import { renderSharePage, type ShareLocale } from '../services/templates/sharePage';
@@ -23,9 +23,7 @@ export function pickShareLocale(acceptLanguage: string | null): ShareLocale {
 export const shareRoutes = new Elysia().get('/t', async ({ request, query, set }) => {
   const ip = getClientIp(request.headers);
   if (!checkRate('share', ip, SHARE_LIMIT, SHARE_WINDOW_MS)) {
-    set.status = 429;
-    set.headers['retry-after'] = '60';
-    return { error: 'Trop de requêtes, réessayez dans 1 minute' };
+    return tooManyRequests(set);
   }
 
   const title = typeof query.title === 'string' ? query.title.trim() : '';

@@ -62,5 +62,6 @@ describe('GET /api/trends', () => {
 
     expect(res?.status).toBe(429);
     expect(res?.headers.get('retry-after')).toBe('60');
+    expect(await res?.json()).toEqual({ error: 'Trop de requêtes, réessayez dans 1 minute' });
   });
 });
