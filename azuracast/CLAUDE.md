@@ -40,6 +40,10 @@ pipeline, et vide le lecteur du site.
   services. Avant de publier un port, vérifier `docker ps`. La plage
   d'auto-attribution déclarée dans `azuracast.env` doit rester cohérente avec ce
   que `docker-compose.yml` publie réellement.
+- **Les ports ne sont publiés que sur la boucle locale** (127.0.0.1, plus 8080 sur
+  172.17.0.1, l'adresse `host.docker.internal` du backend du site) : Docker contourne ufw et
+  la machine a une IPv6 publique. Tout client est sur la machine (tunnel Cloudflare, Gatus,
+  pipeline) ; l'interface s'ouvre par `radio.aubesonore.fr`. Un nouveau port suit la même règle.
 - **Le conteneur écrit dans `stations/` en tant que `AZURACAST_PUID:PGID`.** Si
   ces valeurs ne correspondent plus au propriétaire du dossier sur l'hôte, le
   pipeline perd l'accès aux fichiers — panne silencieuse et déroutante.

@@ -5,6 +5,7 @@
 #  - streaming ports trimmed to 8000-8036 (Jellyfin holds 8096; AUTO_ASSIGN_PORT_MAX matched in azuracast.env)
 #  - station media on NVMe (~/aubesonore/azuracast/stations) since 2026-07: HDD IO stalls caused Liquidsoap latency catchups (audible dropouts)
 #  - backups bind-mounted to /media/plex (big disk, separate from media/DB); MariaDB stays on NVMe named volume
+#  - ports published on loopback only (plus 8080 on docker0 for the site backend), not 0.0.0.0/[::]
 #
 
 name: azuracast
@@ -15,22 +16,28 @@ services:
     image: "ghcr.io/azuracast/azuracast:${AZURACAST_VERSION:-stable}"
     labels:
       - "com.centurylinklabs.watchtower.scope=azuracast"
+    # Loopback only: Docker's published ports bypass ufw
+    # (docs.docker.com/engine/network/packet-filtering-firewalls/), and the box has a public IPv6.
+    # Every client is on this host: the Cloudflare tunnel (localhost:8080), Gatus, the pipeline;
+    # listeners come through the tunnel and nginx, never to Icecast directly. The site backend
+    # reaches the API at host.docker.internal, docker0's 172.17.0.1, hence that second address.
     ports:
-      - '${AZURACAST_HTTP_PORT:-80}:${AZURACAST_HTTP_PORT:-80}'
-      - '${AZURACAST_HTTPS_PORT:-443}:${AZURACAST_HTTPS_PORT:-443}'
-      - '${AZURACAST_SFTP_PORT:-2022}:${AZURACAST_SFTP_PORT:-2022}'
-      - '8000:8000'
-      - '8005:8005'
-      - '8006:8006'
-      - '8010:8010'
-      - '8015:8015'
-      - '8016:8016'
-      - '8020:8020'
-      - '8025:8025'
-      - '8026:8026'
-      - '8030:8030'
-      - '8035:8035'
-      - '8036:8036'
+      - '127.0.0.1:${AZURACAST_HTTP_PORT:-80}:${AZURACAST_HTTP_PORT:-80}'
+      - '172.17.0.1:${AZURACAST_HTTP_PORT:-80}:${AZURACAST_HTTP_PORT:-80}'
+      - '127.0.0.1:${AZURACAST_HTTPS_PORT:-443}:${AZURACAST_HTTPS_PORT:-443}'
+      - '127.0.0.1:${AZURACAST_SFTP_PORT:-2022}:${AZURACAST_SFTP_PORT:-2022}'
+      - '127.0.0.1:8000:8000'
+      - '127.0.0.1:8005:8005'
+      - '127.0.0.1:8006:8006'
+      - '127.0.0.1:8010:8010'
+      - '127.0.0.1:8015:8015'
+      - '127.0.0.1:8016:8016'
+      - '127.0.0.1:8020:8020'
+      - '127.0.0.1:8025:8025'
+      - '127.0.0.1:8026:8026'
+      - '127.0.0.1:8030:8030'
+      - '127.0.0.1:8035:8035'
+      - '127.0.0.1:8036:8036'
     env_file:
       - azuracast.env
       - .env
