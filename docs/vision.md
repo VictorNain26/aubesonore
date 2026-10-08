@@ -79,7 +79,20 @@ sources écrites servent à mesurer ces signaux, jamais à être recopiées.
 | Signal | Ce qu'il mesure | Source | Seul, sur l'évaluation du 2026-10-07 |
 |---|---|---|---|
 | **Écoutés par le même public** | le goût : qui aime l'un aime l'autre | notre co-écoute, calculée sur les tops d'écoute de 95 872 auditeurs (export ListenBrainz du 2026-10-01, CC0), corrigée de la popularité (`musilogy/docs/conception.md`, `colisten`) | 64 % de bons, contre 54 % pour le service de ListenBrainz, qui favorise les artistes connus |
-| **Du même courant** | la couleur : le style, l'époque | les styles Discogs de ses disques (dump CC0), par décennie, et les genres MusicBrainz | 48 % de bons, trois fois plus d'artistes moins connus ; seul signal pour l'underground : 64 % des artistes de 100 à 999 auditeurs, 32 % de ceux de 1 à 99 |
+| **Du même courant** | la couleur : le genre, le sous-genre, l'époque | trois classements du son, réunis : les styles Discogs de ses disques (environ 600 sous-genres, dump CC0), par décennie ; les genres MusicBrainz, votés ; les genres Wikidata (P136), renseignés par les éditeurs, jamais par l'artiste | 48 % de bons (styles Discogs seuls), trois fois plus d'artistes moins connus ; seul signal pour l'underground : 64 % des artistes de 100 à 999 auditeurs, 32 % de ceux de 1 à 99 |
+
+**Le courant se compare finement.** Deux artistes sont d'autant plus proches qu'ils partagent des
+genres précis, à la même époque, dans une part importante de leur œuvre : un sous-genre rare pèse
+plus qu'un genre large (« Krautrock » dit beaucoup, « Rock » presque rien) ; la « Synth-pop » de
+1982 n'est pas celle de 2015 ; un disque dub sur trente ne fait pas un artiste dub. Les profils se
+comparent en proportion, jamais en additionnant les genres communs, qu'un artiste prolifique
+gagnerait d'office.
+
+**La précision d'abord.** Une règle se choisit sur la part de bons parmi les proches qu'elle
+montre, artiste de référence par artiste de référence, et sur la borne basse de son intervalle de
+confiance, jamais sur une moyenne qui cacherait des erreurs. « Même son » se compte à part de la
+simple parenté. Mieux vaut trois proches justes que dix dont un faux : la couverture vient
+ensuite.
 
 **Aucun signal ne suffit seul ; leur accord est sûr.** Un candidat que les deux trouvent est bon
 86 fois sur 100. **« Même son »** est donc le seul classement montré : un proche y entre quand la
@@ -106,7 +119,9 @@ d'artistes de référence, surtout peu écoutés. Pour chacun, le son de l'artis
 candidat est décrit à partir de sources citées (critiques, articles, encyclopédies, pages
 Bandcamp, styles Discogs), puis le candidat est jugé : même son, parenté, lointain, étranger. Le
 jeu se juge par artiste de référence, jamais par paire ; un écart se donne avec son intervalle de
-confiance ; une règle qui gagne en moyenne mais perd sur les artistes peu écoutés est rejetée. Un
+confiance ; une règle qui gagne en moyenne mais perd sur les artistes peu écoutés est rejetée. Les
+règles comparées : le courant seul (affiné comme ci-dessus), la co-écoute seule, leur accord, et
+les candidats de la co-écoute reclassés par le courant. Un
 échantillon passe à l'oreille de Victor, pour vérifier que le jugement documenté suit le sien. Les
 clics des auditeurs départagent plus tard deux règles, sans jamais nourrir la similarité, ce qui
 ferait boucle.
