@@ -12,6 +12,7 @@ from conftest import (
 
 from musilogy import REFERENCE_DUMP as DUMP
 from musilogy import REFERENCE_INFLUENCES, REFERENCE_POPULARITY
+from musilogy.colisten import PARAMETERS as COLISTEN_PARAMETERS
 from musilogy.fetch import expected_sums, sha256_file
 from musilogy.paths import PACKAGE_DIR, REFERENCE_DIR, influences_sums, popularity_sums
 from musilogy.publish import publish
@@ -253,7 +254,7 @@ def test_manifest_carries_the_parameters_the_build_actually_used(tmp_path):
         tmp_path, [synthetic_artist("a", "1990", None)], dump_year=2030, min_year=1900
     )
     manifest = publish(c, tmp_path / "out", DUMP, None)
-    assert manifest["parameters"] == {"dump_year": 2030, "min_year": 1900}
+    assert manifest["parameters"] == {"dump_year": 2030, "min_year": 1900, **COLISTEN_PARAMETERS}
 
 
 def test_manifest_counts_the_rows_that_fed_the_build(con, tmp_path):

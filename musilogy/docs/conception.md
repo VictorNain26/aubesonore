@@ -23,6 +23,7 @@ groupes ses membres ont joué. `musilogy load` les copie dans le schéma
 | influences Wikidata (P737 « influencé par », entre deux éléments qui portent un MBID, P434) | `REFERENCE_INFLUENCES` | CC0 |
 | discographie Wikidata (release groups, P436, classés album studio, EP ou bande originale par P31 ou P7937) | `REFERENCE_DISCOGRAPHY` | CC0 |
 | dump mensuel des sorties Discogs (artistes crédités, labels, styles, date, descriptions de format) | `REFERENCE_DISCOGS` | CC0 (data.discogs.com) |
+| export des statistiques ListenBrainz (artistes les plus écoutés de chaque utilisateur, de tout temps) | `REFERENCE_LISTENING` | CC0 |
 
 Chaque relevé est pris une fois, son empreinte versionnée sous `reference/`,
 et `run` lit celui que la constante épingle.
@@ -38,6 +39,15 @@ manifeste (`discogs_date_disagreements`), pas corrigés. Ce qui combine
 plusieurs sources — les artistes liés (`docs/vision.md` §7, étape 9.5) — vit dans une
 couche dérivée qui lit les tables sources, garde la raison de chaque lien et
 ne réécrit jamais une source.
+
+**Une exception au SQL, la co-écoute** (`colisten.py`). Compter, pour chaque
+paire d'artistes, les utilisateurs qui écoutent les deux est un produit de
+matrices creuses : les 33 millions de lignes utilisateur-artiste de l'export
+donnent des milliards de paires, de l'ordre de 2 × 10¹⁰ incréments en
+auto-jointure SQL. La lecture, les filtres et la numérotation restent en SQL
+(DuckDB) ; scipy ne fait que le produit, le score et les K meilleurs voisins
+de chaque artiste. La règle et ses paramètres sont dans le module et dans le
+manifeste (`parameters`).
 
 ## 2. Tables
 
@@ -93,6 +103,20 @@ albums), `genres` (vocabulaire, publié, non chargé), `links` (appartenances, p
   n'est pas un artiste sans voisin. Le relevé se fait en parties épinglées : chacune
   interroge les artistes éligibles qu'aucune autre n'a interrogés, et aucun
   artiste n'est dans deux parties (invariant `proximity_asked_twice`).
+- `colisten(artist_mbid, neighbour_mbid, common, score, rank)` (`colisten.py`,
+  sur l'export des statistiques ListenBrainz épinglé) : notre co-écoute. Pour
+  chaque artiste qu'au moins 3 utilisateurs écoutent, ses 50 meilleurs voisins
+  parmi ceux avec qui il partage au moins 2 auditeurs, au score
+  c / (pop_artiste^0,3 × pop_voisin^0,7) × c / (c + 10), où c compte les
+  auditeurs communs et pop les auditeurs de chacun : la règle mesurée le
+  2026-10-07 contre le service de ListenBrainz (64 % de voisins justes contre
+  54 %, et nettement plus d'artistes peu connus parmi eux, `docs/vision.md`
+  §2.2). La page en montre 30 au plus : 50 laissent de la marge. Un rang de 1 à 50 sans trou, jamais l'artiste lui-même ; un voisin
+  absent du dump reste dans la table, comme dans `proximity`. Publiée, pas encore
+  chargée dans le site. Cinq invariants :
+  une paire en double, un artiste voisin de lui-même, des rangs hors de 1 à K
+  ou troués, une paire sous le seuil d'auditeurs communs, un score qui remonte
+  le long des rangs.
 - `influences(artist_mbid, influence_mbid, statement)` : `artist_mbid` cite
   `influence_mbid` comme influence selon Wikidata ; `statement` est
   l'identifiant complet de la déclaration (`Q123$GUID`), pour la citer. Les déclarations

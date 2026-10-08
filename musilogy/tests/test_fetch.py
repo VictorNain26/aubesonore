@@ -1,5 +1,8 @@
+import hashlib
 import http.client
 import json
+import shutil
+import subprocess
 import urllib.error
 from email.message import Message
 
@@ -498,3 +501,41 @@ def test_pages_that_do_not_add_up_are_refused(monkeypatch, second):
     monkeypatch.setattr(fetch, "_get", get)
     with pytest.raises(fetch.DownloadError):
         fetch.official_release_groups(artist)
+
+
+@pytest.mark.skipif(shutil.which("zstd") is None, reason="tar --zstd needs zstd")
+def test_fetch_listening_takes_the_first_member_and_checks_it(tmp_path, monkeypatch):
+    stamp = "20261001-000003"
+    root = tmp_path / "archive"
+    member = root / f"listenbrainz-statistics-dump-{stamp}" / "lbdump" / "statistics"
+    member.mkdir(parents=True)
+    (member / "artists_all_time.jsonl").write_text('{"user_id": 1, "data": []}\n')
+    # A later member, which the extraction never reaches for.
+    (member / "zz_other.jsonl").write_text("unused\n")
+    archive = tmp_path / "statistics.tar.zst"
+    subprocess.run(
+        [
+            "tar",
+            "--zstd",
+            "-cf",
+            str(archive),
+            "-C",
+            str(root),
+            f"listenbrainz-statistics-dump-{stamp}",
+        ],
+        check=True,
+    )
+    monkeypatch.setattr(fetch, "LISTENING_URL", archive.as_uri())
+    dest = tmp_path / "out" / "artists_all_time.jsonl"
+    sums = tmp_path / "sums"
+    sums.write_text(
+        hashlib.sha256(b'{"user_id": 1, "data": []}\n').hexdigest() + "  artists_all_time.jsonl\n"
+    )
+
+    assert fetch.fetch_listening(f"2692-{stamp}", dest, sums) == dest
+    assert dest.read_text() == '{"user_id": 1, "data": []}\n'
+    assert not dest.with_name(dest.name + ".partial").exists()
+
+    dest.write_text("tampered\n")
+    with pytest.raises(ChecksumError):
+        fetch.fetch_listening(f"2692-{stamp}", dest, sums)

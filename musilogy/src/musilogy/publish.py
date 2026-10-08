@@ -10,6 +10,7 @@ from typing import Any
 
 import duckdb
 
+from musilogy.colisten import PARAMETERS as COLISTEN_PARAMETERS
 from musilogy.fetch import expected_sums, sha256_file
 from musilogy.paths import (
     PACKAGE_DIR,
@@ -18,6 +19,7 @@ from musilogy.paths import (
     discogs_extraction,
     discogs_sums,
     influences_sums,
+    listening_sums,
     official_sums,
     popularity_sums,
     proximity_sums,
@@ -33,6 +35,7 @@ TABLES = (
     "releases",
     "urls",
     "proximity",
+    "colisten",
     "labels",
     "styles",
 )
@@ -53,6 +56,7 @@ ORDER_BY = {
     "releases": "artist_mbid, rg_mbid",
     "urls": "artist_mbid, type NULLS LAST, url",
     "proximity": "artist_mbid, rank",
+    "colisten": "artist_mbid, rank",
     "labels": "artist_mbid, label_id",
     "styles": "artist_mbid, decade NULLS LAST, style",
 }
@@ -141,7 +145,7 @@ def extraction_matches_rows_loaded(
     return _extraction_matches_rows_loaded(read_extraction(extraction), input_rows_loaded(con))
 
 
-PARAMETERS = ("dump_year", "min_year")
+PARAMETERS = ("dump_year", "min_year", *COLISTEN_PARAMETERS)
 
 
 def _parameters(con: duckdb.DuckDBPyConnection) -> dict[str, Any]:
@@ -238,6 +242,7 @@ def publish(
         "discography": _snapshot(con, "discography_snapshot", discography_sums),
         "proximity": _parts(con, "proximity_snapshots", proximity_sums),
         "official": _parts(con, "official_snapshots", official_sums),
+        "listening": _snapshot(con, "listening_snapshot", listening_sums),
         "discogs": _discogs(con),
         "counts": counts,
         "output_sha256": output_sha256,

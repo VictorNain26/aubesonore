@@ -8,7 +8,7 @@ Produit, hors ligne et depuis des sources épinglées et datées, les données d
 
 **Les tables portent la population complète.** Aucun filtre d'affichage n'y entre : ce que le site montre d'abord se décide dans les fonctions SQL qu'il appelle, qui ordonnent sans exclure. Une donnée écartée en amont serait irrécupérable en aval.
 
-## Les onze tables
+## Les douze tables
 
 Mesurées sur le dump de référence `20260909-001002` :
 
@@ -23,6 +23,7 @@ Mesurées sur le dump de référence `20260909-001002` :
 | `releases` | un album ou un EP crédité à un artiste, dont les types secondaires se limitent à bande originale et remix ; une ligne par artiste crédité | 2 556 274 |
 | `urls` | une page web qu'une page artiste utilise parmi celles que MusicBrainz relie à un artiste (plateforme d'écoute, site officiel, Wikidata), terminées comprises | 1 991 446 |
 | `proximity` | un voisin ListenBrainz d'un artiste, avec son rang et son score | 4 973 236 |
+| `colisten` | un voisin d'un artiste selon notre co-écoute, avec ses auditeurs communs, son score et son rang ; non chargée dans le site | 18 473 211 |
 | `labels` | un label de première édition qui porte au moins deux disques d'un artiste (Discogs), avec le nombre d'artistes dont il est la maison ; non chargée dans le site | 980 519 |
 | `styles` | un style Discogs des disques d'un artiste, par décennie de première édition, compté en disques ; non chargée dans le site | 4 359 024 |
 
@@ -37,6 +38,7 @@ Colonnes réelles (voir `src/musilogy/sql/`) :
 - **`releases`** : `artist_mbid`, `rg_mbid`, `title`, `primary_type` (`Album` ou `EP`), `soundtrack`, `remix`, `y`, `filed_original` (Wikidata le classe album studio ou EP).
 - **`urls`** : `artist_mbid`, `type` (type de relation MusicBrainz), `url`, `ended`.
 - **`proximity`** : `artist_mbid`, `neighbour_mbid`, `score`, `rank`.
+- **`colisten`** : `artist_mbid`, `neighbour_mbid`, `common`, `score`, `rank`.
 - **`labels`** : `artist_mbid`, `label_id` (identifiant Discogs), `label`, `records`, `label_artists`.
 - **`styles`** : `artist_mbid`, `decade` (NULL pour un disque sans édition datée), `style`, `records`.
 
@@ -93,6 +95,10 @@ Les corrections manuelles (`src/musilogy/corrections.csv`, colonnes `mbid, field
 ## Proximité ListenBrainz (relevé)
 
 `musilogy snapshot-proximity` relève, pour chaque artiste qu'au moins 500 auditeurs écoutent dans le relevé de popularité épinglé (111 402 artistes au 2026-10-04), ses 100 voisins selon ListenBrainz (`labs.api.listenbrainz.org/similar-artists`, algorithme épinglé dans `fetch.SIMILAR_ALGORITHM`) : une ligne par artiste, `{artist_mbid, similar: [{artist_mbid, score}]}`, dans `data/raw/listenbrainz/<date>/artist-similar.jsonl`, empreinte dans `reference/listenbrainz-similar-<date>.SHA256SUMS`. Le service prend un artiste par requête et n'annonce aucune limite : le relevé s'en tient à une requête par seconde au plus. Le débit réel mesuré, pannes du service comprises, est d'environ 0,6 artiste par seconde (2026-10-04) : plusieurs jours pour le relevé entier. Interrompu, il reprend le relevé resté partiel, quel que soit le jour où il a commencé. Les données ListenBrainz sont publiées en CC0 (metabrainz.org/datasets/postgres-dumps) ; le service de similarité, qui en dérive, ne précise pas de licence. `REFERENCE_PROXIMITY` épingle le relevé que `run` lit et vérifie, et `run` s'arrête s'il manque, comme pour les autres relevés : une partie n'est épinglée qu'une fois son empreinte, écrite par la commande à la fin du relevé, versionnée sous `reference/`. Deux parties sont épinglées : 2026-10-04, les groupes et les personnes (111 402 artistes), et 2026-10-06, les artistes des autres types (6 614).
+
+## Co-écoute (export des statistiques ListenBrainz)
+
+ListenBrainz publie chaque mois, dans le dossier de son export complet, un export de statistiques sous CC0 ; son premier fichier, `artists_all_time.jsonl`, donne pour chaque utilisateur ses artistes les plus écoutés de tout temps (jusqu'à 1 000). `run` le télécharge s'il manque — en flux depuis l'archive de 22 Go, dont `tar` n'extrait que ce fichier de 4 Go avant de s'arrêter (`zstd` doit être installé) — et le vérifie contre l'empreinte épinglée sous `reference/listenbrainz-statistics-<export>.SHA256SUMS` ; `REFERENCE_LISTENING` désigne l'export. L'empreinte que ListenBrainz publie couvre l'archive entière, jamais téléchargée : c'est celle du fichier qui fait foi. `colisten.py` en tire `colisten` : la règle, ses seuils et l'exception au SQL qu'elle demande sont dans `docs/conception.md`. Sur l'export `2692-20261001-000003` : 95 872 utilisateurs, 33 393 707 paires utilisateur-artiste, 371 602 artistes d'au moins 3 auditeurs, dont 371 582 ont des voisins (18 473 211 lignes ; 0,08 % des voisins sont absents du dump), en 11 min environ et 2,7 Go de mémoire au plus (2026-10-08).
 
 ## Statut officiel MusicBrainz (relevé)
 
@@ -166,6 +172,8 @@ Python 3.12 géré par `uv`.
 ```bash
 uv sync
 ```
+
+`zstd` doit être installé : `run` en a besoin pour lire l'export des statistiques ListenBrainz.
 
 Trois niveaux de test :
 

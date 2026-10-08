@@ -3,11 +3,13 @@ snapshots."""
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import http.client
 import itertools
 import json
 import re
+import subprocess
 import time
 import urllib.error
 import urllib.parse
@@ -86,6 +88,55 @@ DISCOGS_URL = "https://data.discogs.com/?download=data%2F{year}%2F{name}"
 def fetch_discogs(date: str, dest: Path, sums_path: Path) -> Path:
     if not dest.exists():
         download(DISCOGS_URL.format(year=date[:4], name=dest.name), dest)
+    verify(dest, expected_sums(sums_path)[dest.name])
+    return dest
+
+
+# The statistics export sits in the full export's folder (read 2026-10-08), one
+# tar.zst whose first member is the file wanted: users' top artists of all time.
+LISTENING_URL = (
+    "https://data.metabrainz.org/pub/musicbrainz/listenbrainz/fullexport/"
+    "listenbrainz-dump-{ref}-full/listenbrainz-statistics-dump-{stamp}.tar.zst"
+)
+LISTENING_MEMBER = "listenbrainz-statistics-dump-{stamp}/lbdump/statistics/artists_all_time.jsonl"
+
+
+def fetch_listening(ref: str, dest: Path, sums_path: Path) -> Path:
+    """The 4 GB file wanted out of a 22 GB archive, without storing the archive:
+    the download is streamed into `tar`, which stops after its first match
+    (--occurrence=1), and the transfer stops with it. The archive's own digest
+    covers bytes never fetched; the file's digest, pinned under reference/,
+    is the check. `tar --zstd` needs zstd installed."""
+    if not dest.exists():
+        stamp = ref.split("-", 1)[1]
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        partial = dest.with_name(dest.name + ".partial")
+        req = urllib.request.Request(
+            LISTENING_URL.format(ref=ref, stamp=stamp), headers={"User-Agent": UA}
+        )
+        member = LISTENING_MEMBER.format(stamp=stamp)
+        with partial.open("wb") as out:
+            tar = subprocess.Popen(
+                ["tar", "--zstd", "-xO", "--occurrence=1", "-f", "-", member],
+                stdin=subprocess.PIPE,
+                stdout=out,
+            )
+            assert tar.stdin is not None  # stdin=PIPE
+            try:
+                with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as r:
+                    while chunk := r.read(1 << 20):
+                        tar.stdin.write(chunk)
+            except BrokenPipeError:
+                pass  # tar has its member and stopped reading: the transfer is done
+            except (urllib.error.HTTPError, urllib.error.URLError) as e:
+                tar.kill()
+                raise DownloadError(f"failed to download the statistics export: {e}") from e
+            finally:
+                with contextlib.suppress(BrokenPipeError):
+                    tar.stdin.close()
+            if tar.wait() != 0:
+                raise DownloadError(f"tar could not extract {member}")
+        partial.replace(dest)
     verify(dest, expected_sums(sums_path)[dest.name])
     return dest
 
