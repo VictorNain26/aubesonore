@@ -107,7 +107,6 @@ describe('GET /api/musilogy/artist/:mbid', () => {
         neighbour(RAMONES, 'Ramones', 1974, 'after'),
         neighbour('0bfba3d3-6a04-4779-bb0a-df07df5b0558', 'Undated', null, null),
       ],
-      artist_influences: [],
     };
     pageRows = [{ id: 'a-bowie', slug: 'david-bowie', mbid: BOWIE }];
 
@@ -200,37 +199,10 @@ describe('GET /api/musilogy/artist/:mbid', () => {
     expect(body.otherNames).toMatchObject([{ name: 'Tyrannosaurus Rex', kind: 'former' }]);
   });
 
-  it('splits influences the artist cites from those that cite it', async () => {
-    const influence = (direction: string, mbid: string, name: string) => ({
-      direction,
-      mbid,
-      name,
-      disambiguation: null,
-      y0: null,
-      statement: `Q1$${name}`,
-    });
-    answers = {
-      artist_card: [card],
-      artist_neighbours: [],
-      artist_influences: [
-        influence('cited', KINKS, 'The Kinks'),
-        influence('cited_by', RAMONES, 'Ramones'),
-      ],
-    };
-
-    const body = (await (await get(`/artist/${T_REX}`)).json()) as {
-      influences: { cites: Array<{ name: string }>; citedBy: Array<{ name: string }> };
-    };
-
-    expect(body.influences.cites.map((i) => i.name)).toEqual(['The Kinks']);
-    expect(body.influences.citedBy.map((i) => i.name)).toEqual(['Ramones']);
-  });
-
   it('says a section is unknown, not empty, while its data is not loaded', async () => {
     answers = { artist_card: [card] };
     notLoaded = new Set([
       'artist_neighbours',
-      'artist_influences',
       'artist_releases',
       'artist_bands',
       'artist_member_projects',
@@ -240,7 +212,8 @@ describe('GET /api/musilogy/artist/:mbid', () => {
     const body = (await (await get(`/artist/${T_REX}`)).json()) as Record<string, unknown>;
 
     expect(body.neighbours).toBeNull();
-    expect(body.influences).toBeNull();
+    // Declared influences are not sound and left the page (docs/vision.md §2.2).
+    expect(body).not.toHaveProperty('influences');
     expect(body.releases).toBeNull();
     expect(body.bands).toBeNull();
     expect(body.memberProjects).toBeNull();
