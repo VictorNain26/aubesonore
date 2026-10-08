@@ -41,6 +41,7 @@ const MUSILOGY: MusilogyArtist = {
         played: null,
         yEnd: null,
         score: 900,
+        rank: 1,
       },
     ],
     during: [],

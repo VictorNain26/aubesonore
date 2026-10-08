@@ -5,7 +5,12 @@ import { MemoryRouter } from 'react-router';
 import type { MusilogyArtist, MusilogyNeighbour } from '@aubesonore/shared-types/client';
 import { byDecade, closestOf, MusilogyMap } from './MusilogyMap';
 
-function neighbour(n: number, y0: number | null, score = 1000 - n): MusilogyNeighbour {
+function neighbour(
+  n: number,
+  y0: number | null,
+  score = 1000 - n,
+  rank = n + 1
+): MusilogyNeighbour {
   return {
     mbid: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
     name: `Artist number ${n}`,
@@ -14,6 +19,7 @@ function neighbour(n: number, y0: number | null, score = 1000 - n): MusilogyNeig
     played: null,
     yEnd: null,
     score,
+    rank,
   };
 }
 
@@ -56,10 +62,10 @@ describe('closestOf', () => {
   it('puts every neighbour in one line, the closest first, marked and tiered', () => {
     const shown = {
       ...artist({
-        before: [neighbour(1, 1950, 10)],
-        during: [neighbour(2, 1968, 30)],
-        after: [neighbour(3, 1980, 20)],
-        undated: [neighbour(4, null, 5)],
+        before: [neighbour(1, 1950, 10, 3)],
+        during: [neighbour(2, 1968, 30, 1)],
+        after: [neighbour(3, 1980, 20, 2)],
+        undated: [neighbour(4, null, 5, 4)],
       }),
       influences: {
         cites: [{ ...neighbour(1, 1950), statement: 'Q1$a' }],
@@ -82,6 +88,21 @@ describe('closestOf', () => {
     expect(tiers.filter((tier) => tier === 1)).toHaveLength(10);
     expect(tiers.filter((tier) => tier === 2)).toHaveLength(20);
     expect(tiers.filter((tier) => tier === 3)).toHaveLength(10);
+  });
+
+  it('follows the rank musilogy gives, which settles equal scores', () => {
+    // Equal scores are common among artists with few listeners: the rank, not
+    // the order the side groups come in, decides who is among the ten closest.
+    const tied = artist({
+      before: [neighbour(2, 1960, 5, 11)],
+      during: [],
+      after: [neighbour(1, 1980, 5, 10)],
+      undated: [],
+    });
+    expect(closestOf(tied).map((close) => close.artist.name)).toEqual([
+      'Artist number 1',
+      'Artist number 2',
+    ]);
   });
 });
 

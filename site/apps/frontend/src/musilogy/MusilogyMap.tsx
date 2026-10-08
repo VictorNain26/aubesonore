@@ -43,13 +43,17 @@ export function closestOf({ neighbours, influences }: MusilogyArtist): Close[] {
   if (!neighbours) return [];
   const cites = new Set(influences?.cites.map((influence) => influence.mbid));
   const citedBy = new Set(influences?.citedBy.map((influence) => influence.mbid));
-  return [...neighbours.before, ...neighbours.during, ...neighbours.after, ...neighbours.undated]
-    .sort((a, b) => b.score - a.score)
-    .map((artist, rank) => ({
-      artist,
-      mark: cites.has(artist.mbid) ? 'influence' : citedBy.has(artist.mbid) ? 'inspired' : null,
-      tier: rank < 10 ? 1 : rank < 30 ? 2 : 3,
-    }));
+  return (
+    [...neighbours.before, ...neighbours.during, ...neighbours.after, ...neighbours.undated]
+      // By rank, not score: musilogy settles equal scores, which are common
+      // among artists with few listeners.
+      .sort((a, b) => a.rank - b.rank)
+      .map((artist, rank) => ({
+        artist,
+        mark: cites.has(artist.mbid) ? 'influence' : citedBy.has(artist.mbid) ? 'inspired' : null,
+        tier: rank < 10 ? 1 : rank < 30 ? 2 : 3,
+      }))
+  );
 }
 
 export interface Decade {

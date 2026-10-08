@@ -18,6 +18,7 @@ function neighbour(n: number, overrides: Partial<MusilogyNeighbour> = {}): Musil
     played: null,
     yEnd: null,
     score: 1000 - n,
+    rank: n + 1,
     ...overrides,
   };
 }
