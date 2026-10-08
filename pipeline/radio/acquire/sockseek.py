@@ -10,6 +10,8 @@ titre n'a été tenté (connexion refusée, compte banni).
 """
 
 import csv
+import logging
+import math
 import os
 import subprocess
 from collections.abc import Callable, Sequence
@@ -17,6 +19,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from radio.core.config import AcquisitionConfig
+
+logger = logging.getLogger(__name__)
 
 _DONE, _ALREADY = 1, 3
 _RAN = (0, 1)
@@ -51,11 +55,19 @@ class Outcome:
     reason: str | None  # None si `file` est présent
 
 
-Runner = Callable[[Sequence[str]], int]
+Runner = Callable[[Sequence[str], float], int]
 
 
-def run_command(args: Sequence[str]) -> int:
-    return subprocess.run(args, check=False).returncode
+def run_command(args: Sequence[str], timeout: float) -> int:
+    return subprocess.run(args, check=False, timeout=timeout).returncode
+
+
+def time_limit(n_wanted: int, cfg: AcquisitionConfig) -> float:
+    """Deux fois le temps que le rythme de recherche impose à la liste, plus une demi-heure pour
+    les derniers téléchargements : au-delà, Sockseek est bloqué, et sans limite il gèlerait la
+    passe jusqu'à son délai de 12 h."""
+    windows = math.ceil(n_wanted / cfg.searches_per_time)
+    return 2.0 * windows * cfg.searches_renew_s + 1800.0
 
 
 def _write_config(path: Path, user: str, password: str) -> None:
@@ -82,6 +94,8 @@ def download(
         w.writerows([t.artist, t.title, t.duration_s, t.deezer_track_id] for t in wanted)
     conf = conf_dir / "sockseek.conf"
     _write_config(conf, user, password)
+    limit = time_limit(len(wanted), cfg)
+    code: int | None
     try:
         code = run(
             [
@@ -105,11 +119,17 @@ def download(
                 str(cfg.searches_per_time),
                 "--searches-renew-time",
                 str(cfg.searches_renew_s),
-            ]
+            ],
+            limit,
         )
+    except subprocess.TimeoutExpired:
+        # subprocess.run l'a tué : l'index, réécrit à chaque titre terminé, dit ce qui est fait ;
+        # les titres absents de l'index ne sont pas tentés et reviennent à la passe suivante.
+        logger.warning("Sockseek arrêté au délai de %.0f s, les titres terminés sont gardés", limit)
+        code = None
     finally:
         conf.unlink()
-    if code not in _RAN:
+    if code is not None and code not in _RAN:
         raise SockseekError(f"code de sortie {code}")
     index = workdir / "retenus" / "_index.csv"
     if not index.exists():

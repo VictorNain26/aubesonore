@@ -28,6 +28,9 @@ _FADE_FRAMES = 16
 # `cue_out_threshold`), relatifs à la sonie intégrée du titre, en dB.
 CUE_IN_DB = -34.0
 CUE_OUT_DB = -42.0
+# Un appel ne porte que sur un fichier : quelques secondes. Ce délai n'arrête qu'un outil bloqué,
+# qui sans lui gèlerait la passe jusqu'à son délai de 12 h.
+TOOL_TIMEOUT_S = 300.0
 
 
 class ToolError(Exception):
@@ -35,7 +38,13 @@ class ToolError(Exception):
 
 
 def _run(args: list[str]) -> str:
-    r = subprocess.run(args, capture_output=True, text=True, check=False)
+    try:
+        r = subprocess.run(
+            args, capture_output=True, text=True, check=False, timeout=TOOL_TIMEOUT_S
+        )
+    except subprocess.TimeoutExpired:
+        # subprocess.run tue l'outil et l'attend avant de relancer l'exception.
+        raise ToolError(f"{Path(args[0]).name} : délai de {TOOL_TIMEOUT_S:.0f} s dépassé") from None
     if r.returncode != 0:
         raise ToolError(f"{Path(args[0]).name} : code {r.returncode}")
     return r.stdout
