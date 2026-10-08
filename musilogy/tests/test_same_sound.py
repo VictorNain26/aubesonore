@@ -129,6 +129,29 @@ def test_the_reason_is_the_style_that_weighs_most_in_what_the_two_share(tmp_path
     assert same_sound(built(tmp_path, releases=releases))[0][4:] == ("Krautrock", 1970)
 
 
+def test_the_reason_sums_a_style_over_its_decades(tmp_path):
+    # Krautrock is the heaviest single term (12 records against 8), but the two
+    # share Ambient in the 1980s and the 1990s, which meet across the decade:
+    # 3 x 8 x 8 outweighs 12 x 12. Within Ambient, the two decades weigh the
+    # same: the earlier one.
+    releases = [
+        *records(1, "Krautrock", "1972", 12, 100),
+        *records(1, "Ambient", "1983", 8, 120),
+        *records(1, "Ambient", "1994", 8, 140),
+        *records(2, "Krautrock", "1974", 12, 200),
+        *records(2, "Ambient", "1985", 8, 220),
+        *records(2, "Ambient", "1996", 8, 240),
+        *records(6, "Rock", "1975", 30, 600),
+    ]
+    c = built(
+        tmp_path,
+        [artist(A, 1), artist(B, 2), artist(G, 6)],
+        releases,
+        {user: [A, B] for user in range(1, 7)},
+    )
+    assert same_sound(c) == [(B, 1, 1, "styles", "Ambient", 1980)]
+
+
 def test_no_listening_export_gives_no_same_sound(tmp_path):
     c = build_synthetic(tmp_path, ARTISTS, discogs=discogs_file(tmp_path / "d.jsonl", RELEASES))
     assert c.execute("SELECT count(*) FROM same_sound").fetchone() == (0,)
