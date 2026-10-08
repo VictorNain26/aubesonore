@@ -14,7 +14,7 @@ from musilogy.paths import PG_DIR
 
 SCHEMA = "musilogy"
 STAGING = "musilogy_next"
-TABLES = ("artists", "links", "popularity", "influences", "releases", "urls", "proximity")
+TABLES = ("artists", "links", "popularity", "releases", "urls", "proximity")
 # Postgres has no anonymous composite type: a list of genre structs travels as
 # JSON.
 PROJECTIONS = {
@@ -84,16 +84,16 @@ def load(published: Path, conninfo: str = "") -> dict[str, int]:
         )
     snapshots = [
         manifest[name]["snapshot"] if isinstance(manifest[name], dict) else None
-        for name in ("popularity", "influences", "discography")
+        for name in ("popularity", "discography")
     ]
     parts = [
         [part["snapshot"] for part in manifest[name] or []] or None
         for name in ("proximity", "official")
     ]
     con.execute(
-        f"INSERT INTO site.{STAGING}.manifest (dump, popularity_snapshot, influences_snapshot, "
+        f"INSERT INTO site.{STAGING}.manifest (dump, popularity_snapshot, "
         "discography_snapshot, proximity_snapshots, official_snapshots, git_sha) "
-        "VALUES (?, ?, ?, ?, ?::DATE[], ?::DATE[], ?)",
+        "VALUES (?, ?, ?, ?::DATE[], ?::DATE[], ?)",
         [manifest["dump"], *snapshots, *parts, manifest["git_sha"]],
     )
     # Everything after the copy, on the staging schema; 90_ reads the final

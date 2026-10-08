@@ -4,7 +4,6 @@ from musilogy import (
     REFERENCE_DISCOGRAPHY,
     REFERENCE_DISCOGS,
     REFERENCE_DUMP,
-    REFERENCE_INFLUENCES,
     REFERENCE_OFFICIAL,
     REFERENCE_POPULARITY,
     REFERENCE_PROXIMITY,
@@ -14,7 +13,6 @@ from musilogy.paths import (
     SQL_DIR,
     discography_snapshot,
     discogs_releases,
-    influences_snapshot,
     official_snapshot,
     popularity_snapshot,
     proximity_snapshot,
@@ -32,9 +30,6 @@ BASELINE = {
     "genres": 1_740,
     "links": 701_614,
     "popularity": 1_366_777,
-    # One row per pair of MBIDs Wikidata relates by "influenced by" (P737),
-    # deprecated statements left out.
-    "influences": 9_517,
     # Albums and EPs whose secondary types are at most Soundtrack and Remix, one
     # row per credited artist of the population.
     "releases": 2_556_274,
@@ -76,11 +71,6 @@ DISCOGS_DATE_DISAGREEMENTS = {"first_record_before_formation": 1_748}
 # dominates: only artists with 500 listeners or more and a release are asked.
 RELEASE_STATUS = {"official": 763_457, "not_official": 12_132, "unknown": 1_411_793}
 DISCOGRAPHY_EXCLUSIONS = {"malformed": 1, "not_album_or_ep": 1_274, "secondary_type": 1_498}
-# The influences whose two ends are artists of the dump, the only ones the
-# site can name; the other 207 have an end whose MBID `artists` does not hold.
-# A drift in how MBIDs are read on either side — case, whitespace — moves this
-# first.
-INFLUENCES_BETWEEN_ARTISTS = 9_310
 # links: the relations a page shows, oriented source -> target and
 # de-duplicated across the two artists that carry it. Memberships replace the
 # former `members` table (601 759 rows), which read them from the band's side:
@@ -139,7 +129,6 @@ LIVE_LONG_AFTER_LAST_STUDIO = 925
 BANDS_WITHOUT_ALBUM = 2_425_953
 WORK = work_dir(REFERENCE_DUMP)
 POPULARITY = popularity_snapshot(REFERENCE_POPULARITY)
-INFLUENCES = influences_snapshot(REFERENCE_INFLUENCES)
 DISCOGRAPHY = discography_snapshot(REFERENCE_DISCOGRAPHY)
 PROXIMITY = [proximity_snapshot(date) for date in REFERENCE_PROXIMITY]
 OFFICIAL = [official_snapshot(date) for date in REFERENCE_OFFICIAL]
@@ -163,7 +152,6 @@ def test_reference_dump_matches_the_baseline():
     inputs = {
         "MusicBrainz extractions": [WORK / "artists.jsonl", WORK / "release_groups.jsonl"],
         f"ListenBrainz snapshot {REFERENCE_POPULARITY}": [POPULARITY],
-        f"Wikidata snapshot {REFERENCE_INFLUENCES}": [INFLUENCES],
         f"Wikidata snapshot {REFERENCE_DISCOGRAPHY}": [DISCOGRAPHY],
         f"ListenBrainz proximity {REFERENCE_PROXIMITY}": PROXIMITY,
         f"MusicBrainz official status {REFERENCE_OFFICIAL}": OFFICIAL,
@@ -181,8 +169,6 @@ def test_reference_dump_matches_the_baseline():
         None,
         popularity=POPULARITY,
         popularity_snapshot=REFERENCE_POPULARITY,
-        influences=INFLUENCES,
-        influences_snapshot=REFERENCE_INFLUENCES,
         discography=DISCOGRAPHY,
         discography_snapshot=REFERENCE_DISCOGRAPHY,
         proximity=PROXIMITY,
@@ -212,14 +198,6 @@ def test_reference_dump_matches_the_baseline():
     row = con.execute("SELECT count(*) FROM artists WHERE y0 IS NOT NULL").fetchone()
     assert row is not None
     assert row[0] == PLACEABLE
-
-    row = con.execute(
-        "SELECT count(*) FROM influences i "
-        "WHERE EXISTS (SELECT 1 FROM artists a WHERE a.mbid = i.artist_mbid) "
-        "AND EXISTS (SELECT 1 FROM artists a WHERE a.mbid = i.influence_mbid)"
-    ).fetchone()
-    assert row is not None
-    assert row[0] == INFLUENCES_BETWEEN_ARTISTS
 
     assert single_row(con, "r2_anomalies") == DATE_ANOMALIES
     assert single_row(con, "neutralised_inferences") == NEUTRALISED_INFERENCES

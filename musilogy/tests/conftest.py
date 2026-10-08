@@ -10,7 +10,6 @@ import pytest
 from musilogy import (
     REFERENCE_DISCOGRAPHY,
     REFERENCE_DUMP,
-    REFERENCE_INFLUENCES,
     REFERENCE_POPULARITY,
 )
 from musilogy.build import build
@@ -33,8 +32,6 @@ def con():
         None,
         popularity=FIX / "popularity.jsonl",
         popularity_snapshot=REFERENCE_POPULARITY,
-        influences=FIX / "influences.jsonl",
-        influences_snapshot=REFERENCE_INFLUENCES,
         discography=FIX / "discography.jsonl",
         discography_snapshot=REFERENCE_DISCOGRAPHY,
         # The first lines of the proximity snapshot. No date: the manifest
@@ -123,18 +120,6 @@ def pg():
     return conninfo
 
 
-def influences_file(path, rows):
-    """A synthetic Wikidata snapshot: (artist, influence, statement) rows."""
-    path.write_text(
-        "".join(
-            json.dumps({"artist_mbid": a, "influence_mbid": i, "statement": s}) + "\n"
-            for a, i, s in rows
-        ),
-        encoding="utf-8",
-    )
-    return path
-
-
 def proximity_file(path, rows):
     """A synthetic ListenBrainz proximity snapshot: `rows` maps each artist
     asked to its neighbours, (mbid, score) pairs in the service's order."""
@@ -206,7 +191,6 @@ def published(
     tmp_path,
     artists,
     popularity=None,
-    influences=None,
     release_groups=(),
     discography=None,
     proximity=None,
@@ -215,8 +199,8 @@ def published(
     """A synthetic build, published as a delivery. `popularity` maps an mbid
     to its listen count; every other artist gets the null row ListenBrainz
     sends for an artist it has no listen of, as a real snapshot asks about
-    everyone. `influences` lists (artist, influence, statement) rows,
-    `proximity` maps each artist asked to its neighbours (proximity_file)."""
+    everyone. `proximity` maps each artist asked to its neighbours
+    (proximity_file)."""
     tmp_path.mkdir(exist_ok=True)
     kwargs: dict[str, Any] = {}
     if popularity is not None:
@@ -236,9 +220,6 @@ def published(
             encoding="utf-8",
         )
         kwargs = {"popularity": path, "popularity_snapshot": REFERENCE_POPULARITY}
-    if influences is not None:
-        kwargs["influences"] = influences_file(tmp_path / "influences.jsonl", influences)
-        kwargs["influences_snapshot"] = REFERENCE_INFLUENCES
     if discography is not None:
         path = tmp_path / "discography.jsonl"
         path.write_text(
@@ -269,7 +250,6 @@ def loaded(
     conninfo,
     artists,
     popularity=None,
-    influences=None,
     release_groups=(),
     discography=None,
     proximity=None,
@@ -280,7 +260,6 @@ def loaded(
             tmp_path,
             artists,
             popularity,
-            influences,
             release_groups,
             discography,
             proximity,

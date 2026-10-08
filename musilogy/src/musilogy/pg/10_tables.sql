@@ -42,13 +42,6 @@ CREATE TABLE popularity (
   snapshot date NOT NULL
 );
 
-CREATE TABLE influences (
-  artist_mbid text COLLATE "C" NOT NULL,
-  influence_mbid text COLLATE "C" NOT NULL,
-  statement text NOT NULL,
-  PRIMARY KEY (artist_mbid, influence_mbid)
-);
-
 -- An artist's records (22_releases.sql), one row per credited artist.
 CREATE TABLE releases (
   artist_mbid text COLLATE "C" NOT NULL,
@@ -83,7 +76,6 @@ CREATE TABLE proximity (
 CREATE TABLE manifest (
   dump text NOT NULL,
   popularity_snapshot date,
-  influences_snapshot date,
   discography_snapshot date,
   proximity_snapshots date[],
   official_snapshots date[],

@@ -14,7 +14,6 @@ import duckdb
 from musilogy import (
     REFERENCE_DISCOGRAPHY,
     REFERENCE_DISCOGS,
-    REFERENCE_INFLUENCES,
     REFERENCE_LISTENING,
     REFERENCE_OFFICIAL,
     REFERENCE_POPULARITY,
@@ -35,7 +34,6 @@ from musilogy.fetch import (
     fetch_discography,
     fetch_discogs,
     fetch_dump,
-    fetch_influences,
     fetch_listening,
     fetch_official,
     fetch_popularity,
@@ -56,8 +54,6 @@ from musilogy.paths import (
     discogs_extraction,
     discogs_releases,
     discogs_sums,
-    influences_snapshot,
-    influences_sums,
     listening_export,
     listening_sums,
     official_snapshot,
@@ -76,7 +72,6 @@ WORK_DIR = work_dir(DUMP)
 ARTISTS_JSONL = WORK_DIR / "artists.jsonl"
 RELEASE_GROUPS_JSONL = WORK_DIR / "release_groups.jsonl"
 POPULARITY_JSONL = popularity_snapshot(REFERENCE_POPULARITY)
-INFLUENCES_JSONL = influences_snapshot(REFERENCE_INFLUENCES)
 DISCOGRAPHY_JSONL = discography_snapshot(REFERENCE_DISCOGRAPHY)
 DISCOGS_JSONL = discogs_releases(REFERENCE_DISCOGS)
 
@@ -291,32 +286,9 @@ def verified_listening() -> Path:
     )
 
 
-def snapshot_influences() -> None:
-    """Asks Wikidata for the declared influences between MusicBrainz artists.
-    Wikidata moves every day, so the snapshot is taken once and pinned, like
-    the ListenBrainz ones."""
-    _take_once(
-        "Wikidata influences",
-        influences_snapshot,
-        influences_sums,
-        fetch_influences,
-        "REFERENCE_INFLUENCES",
-    )
-
-
-def verified_influences() -> Path:
-    return _verified_one(
-        INFLUENCES_JSONL,
-        REFERENCE_INFLUENCES,
-        influences_sums(REFERENCE_INFLUENCES),
-        "Wikidata snapshot",
-        "snapshot-influences",
-    )
-
-
 def snapshot_discography() -> None:
     """Asks Wikidata for the release groups it files as a studio album, an EP
-    or a soundtrack. Taken once and pinned, like the influences."""
+    or a soundtrack. Taken once and pinned, like the ListenBrainz snapshots."""
     _take_once(
         "Wikidata discography",
         discography_snapshot,
@@ -440,7 +412,6 @@ def run() -> None:
         fetch_and_extract()
 
     popularity = verified_popularity()
-    influences = verified_influences()
     discography = verified_discography()
     proximity = verified_proximity()
     official = verified_official()
@@ -456,8 +427,6 @@ def run() -> None:
         CORRECTIONS_CSV,
         popularity=popularity,
         popularity_snapshot=REFERENCE_POPULARITY,
-        influences=influences,
-        influences_snapshot=REFERENCE_INFLUENCES,
         discography=discography,
         discography_snapshot=REFERENCE_DISCOGRAPHY,
         proximity=proximity,
@@ -515,8 +484,7 @@ def fixtures_attribution() -> str:
         "<!-- tests/fixtures/ATTRIBUTION.md, written by `musilogy make-fixtures` -->\n"
         f"Extraits du dump MusicBrainz `{DUMP}`, des relevés ListenBrainz (popularité du "
         f"{REFERENCE_POPULARITY}, proximité du {', '.join(REFERENCE_PROXIMITY)}), des relevés "
-        f"Wikidata (influences du {REFERENCE_INFLUENCES}, "
-        f"discographie du {REFERENCE_DISCOGRAPHY}), "
+        f"Wikidata (discographie du {REFERENCE_DISCOGRAPHY}), "
         f"du statut officiel MusicBrainz du {', '.join(REFERENCE_OFFICIAL)} et du dump des "
         f"sorties Discogs `{REFERENCE_DISCOGS}` (data.discogs.com).\n"
         "Données de base, relevés et Discogs : CC0. Genres : CC-BY-NC-SA 3.0, attribution "
@@ -576,17 +544,6 @@ def make_fixtures() -> None:
             if json.loads(line)["artist_mbid"] in kept_set:
                 fh.write(line)
 
-    # The declarations that touch a fixture artist, from either side: the
-    # witnesses' influences, and who cites them.
-    with (
-        (out / "influences.jsonl").open("w", encoding="utf-8") as fh,
-        verified_influences().open(encoding="utf-8") as src,
-    ):
-        for line in src:
-            row = json.loads(line)
-            if row["artist_mbid"] in kept_set or row["influence_mbid"] in kept_set:
-                fh.write(line)
-
     # What Wikidata files about the fixture release groups.
     with (
         (out / "discography.jsonl").open("w", encoding="utf-8") as fh,
@@ -636,10 +593,6 @@ def main() -> None:
         help="take a dated MusicBrainz snapshot of the release groups each popular artist shows",
     )
     subparsers.add_parser(
-        "snapshot-influences",
-        help="take a dated Wikidata snapshot of the influences between MusicBrainz artists",
-    )
-    subparsers.add_parser(
         "snapshot-discography",
         help="take a dated Wikidata snapshot of the release groups filed as main records",
     )
@@ -657,8 +610,6 @@ def main() -> None:
         snapshot_proximity()
     elif args.command == "snapshot-official":
         snapshot_official()
-    elif args.command == "snapshot-influences":
-        snapshot_influences()
     elif args.command == "snapshot-discography":
         snapshot_discography()
     elif args.command == "make-fixtures":

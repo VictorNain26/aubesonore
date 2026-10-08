@@ -318,65 +318,7 @@ def test_neighbours_of_another_artist_are_refused(monkeypatch):
         fetch.similar_artists(mbids(1)[0])
 
 
-def sparql(*rows):
-    return {
-        "head": {"vars": ["statement", "artist", "influence"]},
-        "results": {
-            "bindings": [
-                {
-                    "statement": {
-                        "type": "uri",
-                        "value": f"http://www.wikidata.org/entity/statement/{statement}",
-                    },
-                    "artist": {"type": "literal", "value": artist},
-                    "influence": {"type": "literal", "value": influence},
-                }
-                for statement, artist, influence in rows
-            ]
-        },
-    }
-
-
-def test_an_influences_snapshot_names_each_statement_by_its_id(tmp_path, monkeypatch):
-    # Breaks if the subject and object are swapped, or if the statement node
-    # is written instead of the id Wikidata cites it by (Q…$…, case kept).
-    a, b = mbids(2)
-    monkeypatch.setattr(
-        fetch,
-        "_get",
-        lambda _url, _params: (
-            sparql((f"q7-{b[-8:]}", b, a), (f"Q42-{a[-8:]}-x", a, b)),
-            Message(),
-        ),
-    )
-    dest = tmp_path / "wikidata" / "influences.jsonl"
-    assert fetch.fetch_influences(dest) == 2
-    rows = [json.loads(line) for line in dest.read_text(encoding="utf-8").splitlines()]
-    assert rows == [
-        {"artist_mbid": a, "influence_mbid": b, "statement": f"Q42${a[-8:]}-x"},
-        {"artist_mbid": b, "influence_mbid": a, "statement": f"q7${b[-8:]}"},
-    ]
-
-
-@pytest.mark.parametrize(
-    "answer",
-    [
-        {"results": {"bindings": [{"statement": {"value": "x"}}]}},
-        sparql(("not-a-statement", *mbids(2))),
-        {"head": {}},
-    ],
-)
-def test_an_influences_answer_of_another_shape_is_refused(tmp_path, monkeypatch, answer):
-    # An external payload: a row missing a value, or a statement that is not
-    # one, would otherwise be written half.
-    def get(_url, _params):
-        return answer, Message()
-
-    monkeypatch.setattr(fetch, "_get", get)
-    dest = tmp_path / "influences.jsonl"
-    with pytest.raises(fetch.DownloadError):
-        fetch.fetch_influences(dest)
-    assert not dest.exists()
+EMPTY_SPARQL = {"head": {"vars": ["rg"]}, "results": {"bindings": []}}
 
 
 def test_a_throttled_wikidata_query_waits_for_its_retry_after(monkeypatch, slept):
@@ -390,10 +332,10 @@ def test_a_throttled_wikidata_query_waits_for_its_retry_after(monkeypatch, slept
             raise urllib.error.HTTPError(
                 url, 429, "Too Many Requests", message_with({"Retry-After": "9"}), None
             )
-        return sparql(), Message()
+        return EMPTY_SPARQL, Message()
 
     monkeypatch.setattr(fetch, "_get", get)
-    assert fetch.influences() == []
+    assert fetch.discography() == []
     assert slept == [9.0]
 
 

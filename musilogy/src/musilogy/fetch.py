@@ -8,7 +8,6 @@ import hashlib
 import http.client
 import itertools
 import json
-import re
 import subprocess
 import time
 import urllib.error
@@ -429,72 +428,11 @@ def fetch_popularity(batches: Iterable[list[str]], dest: Path) -> int:
     return n
 
 
-WDQS_URL = "https://query.wikidata.org/sparql"
-# Every "influenced by" (P737) statement whose subject and object both carry a
-# MusicBrainz artist ID (P434). A deprecated statement is one Wikidata itself
-# holds wrong: left out. wdt:P434 reads the truthy MBIDs, the best
-# non-deprecated rank (mediawiki.org/wiki/Wikibase/Indexing/RDF_Dump_Format,
-# "Truthy statements"); an item with several MBIDs gives one row per pair.
-#
 # The service stops a query at 60 seconds and gives each client 60 seconds of
 # processing a minute (mediawiki.org/wiki/Wikidata_Query_Service/User_Manual,
-# "Query limits"). This one answered its 9 517 rows in 3 to 5 seconds
-# (2026-10-04): one request, no paging. A query cut by the deadline comes back
-# as an error or as a body that does not parse, never as a shorter result.
-INFLUENCES_QUERY = """
-SELECT ?statement ?artist ?influence WHERE {
-  ?subject p:P737 ?statement .
-  ?statement ps:P737 ?object ;
-             wikibase:rank ?rank .
-  FILTER(?rank != wikibase:DeprecatedRank)
-  ?subject wdt:P434 ?artist .
-  ?object wdt:P434 ?influence .
-}
-"""
-# A statement node is named after the statement id, its "$" written "-"
-# (wds:Q42-…); the id keeps the case of its item prefix, "q" on old ones.
-# Checked against the wbgetclaims API on a sample, 2026-10-04.
-STATEMENT_IRI = re.compile(r"http://www\.wikidata\.org/entity/statement/([Qq][0-9]+)-(.+)")
-
-
-def _statement_id(iri: str) -> str:
-    match = STATEMENT_IRI.fullmatch(iri)
-    if match is None:
-        raise DownloadError(f"Wikidata answered a statement that is not one: {iri}")
-    return f"{match[1]}${match[2]}"
-
-
-def influences() -> list[dict[str, str]]:
-    """The declared influences between two MusicBrainz artists, one row per
-    statement and pair of MBIDs, sorted: a snapshot of the same answer is the
-    same bytes. An external payload: a row missing a value is refused rather
-    than written half."""
-    answer, _ = _with_retries(
-        lambda: _get(WDQS_URL, {"query": INFLUENCES_QUERY, "format": "json"}), "Wikidata"
-    )
-    try:
-        rows = [
-            {
-                "artist_mbid": b["artist"]["value"],
-                "influence_mbid": b["influence"]["value"],
-                "statement": _statement_id(b["statement"]["value"]),
-            }
-            for b in answer["results"]["bindings"]
-        ]
-    except (KeyError, TypeError) as e:
-        raise DownloadError(f"Wikidata answered an unexpected shape: {e!r}") from e
-    return sorted(rows, key=lambda r: (r["artist_mbid"], r["influence_mbid"], r["statement"]))
-
-
-def fetch_influences(dest: Path) -> int:
-    """Written aside and renamed, like the ListenBrainz snapshots: a run that
-    fails leaves no file that looks like a complete one."""
-    rows = influences()
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    partial = dest.with_name(dest.name + ".partial")
-    partial.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
-    partial.replace(dest)
-    return len(rows)
+# "Query limits"). A query cut by the deadline comes back as an error or as a
+# body that does not parse, never as a shorter result.
+WDQS_URL = "https://query.wikidata.org/sparql"
 
 
 # The release groups Wikidata files as a studio album, an EP or a soundtrack
@@ -503,8 +441,8 @@ def fetch_influences(dest: Path) -> int:
 # which tells a posthumous record of new music from an archive
 # (22_releases.sql).
 # One query per form: the three in one VALUES clause took 26.6 s on
-# 2026-10-05, near the service's 60-second cap (see INFLUENCES_QUERY); apart
-# they took 5.1, 0.9 and 0.7 s.
+# 2026-10-05, near the service's 60-second cap (see WDQS_URL); apart they
+# took 5.1, 0.9 and 0.7 s.
 DISCOGRAPHY_FORMS = {"Q208569": "studio", "Q169930": "ep", "Q4176708": "soundtrack"}
 DISCOGRAPHY_QUERY = "SELECT ?rg WHERE {{ ?album wdt:P436 ?rg ; wdt:P31|wdt:P7937 wd:{form} . }}"
 
@@ -525,7 +463,8 @@ def discography() -> list[dict[str, str]]:
 
 
 def fetch_discography(dest: Path) -> int:
-    """Written aside and renamed, like the influences snapshot."""
+    """Written aside and renamed, like the ListenBrainz snapshots: a run that
+    fails leaves no file that looks like a complete one."""
     rows = discography()
     dest.parent.mkdir(parents=True, exist_ok=True)
     partial = dest.with_name(dest.name + ".partial")

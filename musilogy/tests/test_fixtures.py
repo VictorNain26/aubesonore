@@ -50,7 +50,6 @@ def test_the_fixture_files_are_not_ignored_by_git():
         "artists.jsonl",
         "release_groups.jsonl",
         "popularity.jsonl",
-        "influences.jsonl",
         "discography.jsonl",
         "proximity.jsonl",
         "official.jsonl",
