@@ -6,7 +6,7 @@ A webradio: backend Bun + Elysia, frontend Vite + React 19, pnpm monorepo orches
 
 | Layer    | Tech                                                            |
 | -------- | --------------------------------------------------------------- |
-| Backend  | Bun 1.3, Elysia 1.4, Drizzle 0.45 + PostgreSQL, Better Auth 1.6 |
+| Backend  | Bun 1.4, Elysia 1.4, Drizzle 0.45 + PostgreSQL, Better Auth 1.6 |
 | Frontend | React 19.2, Vite 8, Tailwind 4.3, Zustand 5                     |
 | Tooling  | pnpm 10.34, Turbo 2.10, ESLint 9 flat, Vitest 4.1 + bun test    |
 

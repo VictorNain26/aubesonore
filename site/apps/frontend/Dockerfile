@@ -9,7 +9,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: install all workspace deps
 # -----------------------------------------------------------------------------
-FROM node:22-slim AS deps
+FROM node:22-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392 AS deps
 RUN corepack enable pnpm
 
 WORKDIR /app
@@ -51,7 +51,7 @@ RUN pnpm --filter @aubesonore/shared-types build && \
 # Built from the same build as the static assets: the markup it writes is the
 # one the client hydrates. dist-ssr bundles its dependencies (vite.config.ts).
 # -----------------------------------------------------------------------------
-FROM node:22-alpine AS renderer
+FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS renderer
 
 WORKDIR /app
 COPY --from=builder /app/apps/frontend/dist-ssr ./dist-ssr
@@ -67,7 +67,7 @@ CMD ["node", "renderer.mjs"]
 # -----------------------------------------------------------------------------
 # Stage 3: nginx runtime (static assets only, no Node in the final image)
 # -----------------------------------------------------------------------------
-FROM nginx:alpine AS runner
+FROM nginx:alpine@sha256:df221db836e1754089190208cee7eeda94f233197056426eda74a43ab1abeac2 AS runner
 
 COPY --from=builder /app/apps/frontend/dist /usr/share/nginx/html
 # The image filter module ships with the image; load_module belongs to the main context, which
