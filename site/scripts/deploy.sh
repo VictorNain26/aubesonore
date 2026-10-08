@@ -40,6 +40,7 @@ fi
 # The radio-* units run pipeline/.venv directly. Syncing it on every pass, not only when
 # uv.lock moves, also repairs a sync that failed after its code was already promoted.
 uv="${UV:-$HOME/.local/bin/uv}"
+health_timeout="${HEALTH_TIMEOUT_S:-300}"
 (cd pipeline && "$uv" sync --locked --quiet)
 
 current=$(git rev-parse HEAD)
@@ -67,6 +68,13 @@ if git merge-base --is-ancestor "$target" HEAD; then
   exit 0
 fi
 
+# A commit whose deploy failed was rolled back (rollback below): it is not tried again every
+# two minutes, only a newer master is. The unit keeps failing meanwhile, so Gatus keeps alerting.
+if [ "$target" = "$(git config --get aubesonore.failedTarget || true)" ]; then
+  echo "${target:0:8} failed to deploy and was rolled back; waiting for a newer master"
+  exit 1
+fi
+
 echo "deploying ${current:0:8} -> ${target:0:8}"
 
 # The backend applies new drizzle/*.sql migrations at boot (src/db/migrate.ts).
@@ -92,46 +100,71 @@ if [ -n "$unmigrated" ] && [ "$target_schema" != "$running_schema" ] && [ "$targ
   exit 1
 fi
 
+# Every container with a healthcheck healthy within the timeout, or the others named.
+wait_healthy() {
+  local deadline=$((SECONDS + health_timeout)) pending cid health
+  while true; do
+    pending=""
+    for cid in $(docker compose ps -q); do
+      health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$cid")
+      [ -z "$health" ] && continue
+      [ "$health" = "healthy" ] && continue
+      pending="$pending $(docker inspect -f '{{.Name}}' "$cid")=$health"
+    done
+    [ -z "$pending" ] && return 0
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      echo "unhealthy after ${health_timeout}s:$pending"
+      return 1
+    fi
+    sleep 5
+  done
+}
+
+# Back to the commit that ran before, rebuilt (the build cache still holds its layers), the
+# failed one recorded so that the next runs wait for a newer master. Without this, a failed
+# build left HEAD on the new commit and the containers on the old one, and the next run saw
+# nothing to do. reset --keep stops rather than overwrite a local change (git-reset(1)); the
+# tree was checked clean above.
+rollback() {
+  echo "deploy of ${target:0:8} failed ($1): rolling back to ${current:0:8}"
+  cd "$REPO_DIR"
+  git config aubesonore.failedTarget "$target"
+  git reset --keep "$current"
+  (cd pipeline && "$uv" sync --locked --quiet)
+  if ! git diff --quiet "$current" "$target" -- pipeline/; then
+    systemctl --user try-restart radio-votes.service
+  fi
+  if ! git diff --quiet "$current" "$target" -- site/; then
+    if (cd site && docker compose up -d --build --remove-orphans && wait_healthy); then
+      echo "rolled back to ${current:0:8}, all healthchecks green"
+    else
+      echo "rolled back to ${current:0:8}, which is not healthy either"
+    fi
+  fi
+  exit 1
+}
+
 git merge --ff-only "$target"
 
 # The vote page is a long-running process: it keeps serving the pipeline code it
 # was started with until it restarts.
 if ! git diff --quiet "$current" "$target" -- pipeline/; then
-  (cd pipeline && "$uv" sync --locked --quiet)
+  (cd pipeline && "$uv" sync --locked --quiet) || rollback "uv sync"
   systemctl --user try-restart radio-votes.service
   echo "restarted radio-votes on ${target:0:8}"
 fi
 
 if git diff --quiet "$current" "$target" -- site/; then
+  git config --unset aubesonore.failedTarget || true
   echo "promoted ${target:0:8} (no change under site/, containers left as they are)"
   exit 0
 fi
 
 cd site
-docker compose up -d --build --remove-orphans
-
-deadline=$((SECONDS + 300))
-while true; do
-  pending=""
-  for cid in $(docker compose ps -q); do
-    health=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$cid")
-    [ -z "$health" ] && continue
-    [ "$health" = "healthy" ] && continue
-    pending="$pending $(docker inspect -f '{{.Name}}' "$cid")=$health"
-  done
-
-  if [ -z "$pending" ]; then
-    echo "deployed ${target:0:8}, all healthchecks green"
-    break
-  fi
-
-  if [ "$SECONDS" -ge "$deadline" ]; then
-    echo "deployed ${target:0:8} but unhealthy after 300s:$pending"
-    exit 1
-  fi
-
-  sleep 5
-done
+docker compose up -d --build --remove-orphans || rollback "build"
+wait_healthy || rollback "healthchecks"
+git config --unset aubesonore.failedTarget || true
+echo "deployed ${target:0:8}, all healthchecks green"
 
 docker image prune -f --filter "until=72h" >/dev/null
 # Each build adds to the build cache and nothing removed it: 28 GB on 2026-10-08, 22 of them
