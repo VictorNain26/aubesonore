@@ -76,7 +76,7 @@ services:
 
   updater:
     container_name: azuracast_updater
-    image: ghcr.io/azuracast/updater:latest
+    image: ghcr.io/azuracast/updater:latest@sha256:91a7c9cb31bf34f9cf019a718d427df1c665f33595721bccafbe850e1ffedd05
     restart: unless-stopped
     mem_limit: 128m
     # Official default: serves only the "Update" button of the web UI. Scheduled
