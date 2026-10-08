@@ -122,9 +122,9 @@ if (env.IS_PROD && env.DISABLE_EMAILS) {
 }
 
 if (!env.AZURACAST_BASE_URL || !env.AZURACAST_API_KEY) {
-  console.warn(
-    '/api/radio/history will return 502 until AZURACAST_BASE_URL and AZURACAST_API_KEY are set'
-  );
+  logger.warn('radio.history_unconfigured', {
+    impact: '/api/radio/history answers 502 until AZURACAST_BASE_URL and AZURACAST_API_KEY are set',
+  });
 }
 
 let isShuttingDown = false;
@@ -148,6 +148,9 @@ async function gracefulShutdown(signal: string): Promise<void> {
   musicbrainzCache.dispose();
   wikipediaCache.dispose();
   titlesCache.dispose();
+  musilogyCache.dispose();
+  identityCache.dispose();
+  coreCache.dispose();
 
   try {
     await pool.end();

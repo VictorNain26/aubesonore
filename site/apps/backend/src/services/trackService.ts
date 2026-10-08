@@ -76,7 +76,7 @@ export async function likeTrack({
 
   // Background enrichment — non-blocking Songlink lookup.
   void enrichTrackInBackground(trackId, title, artist, isrc ?? null).catch((err: unknown) => {
-    console.error(`[enrichTrackInBackground] Error for track ${trackId}:`, err);
+    logger.warn('track.enrich_failed', { trackId, message: (err as Error).message });
   });
   void linkKeptTrack(trackId, title, artist).catch((err: unknown) => {
     logger.warn('keptTrack.link_failed', { trackId, message: (err as Error).message });
@@ -295,7 +295,7 @@ export async function refreshAllLinks({
     for (const r of results) {
       if (r.status === 'fulfilled' && r.value) updated++;
       if (r.status === 'rejected') {
-        console.error('[refreshAllLinks]', (r.reason as Error).message);
+        logger.warn('track_links.refresh_failed', { message: (r.reason as Error).message });
       }
     }
     if (i + REFRESH_CHUNK_SIZE < tracks.length) {
