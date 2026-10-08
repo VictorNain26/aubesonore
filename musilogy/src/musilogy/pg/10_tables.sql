@@ -73,6 +73,18 @@ CREATE TABLE proximity (
   rank integer NOT NULL
 );
 
+-- « Même son » (88_same_sound.sql); indexed once loaded, like proximity.
+CREATE TABLE same_sound (
+  artist_mbid text COLLATE "C" NOT NULL,
+  neighbour_mbid text COLLATE "C" NOT NULL,
+  rank integer NOT NULL,
+  colisten_rank integer NOT NULL,
+  source text NOT NULL,
+  colour double precision NOT NULL,
+  term text NOT NULL,
+  decade integer
+);
+
 CREATE TABLE manifest (
   dump text NOT NULL,
   popularity_snapshot date,

@@ -14,7 +14,7 @@ from musilogy.paths import PG_DIR
 
 SCHEMA = "musilogy"
 STAGING = "musilogy_next"
-TABLES = ("artists", "links", "popularity", "releases", "urls", "proximity")
+TABLES = ("artists", "links", "popularity", "releases", "urls", "proximity", "same_sound")
 # Postgres has no anonymous composite type: a list of genre structs travels as
 # JSON.
 PROJECTIONS = {

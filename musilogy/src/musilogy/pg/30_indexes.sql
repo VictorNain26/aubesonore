@@ -6,4 +6,6 @@ CREATE INDEX ON links (dst_mbid);
 CREATE INDEX ON urls (artist_mbid);
 -- An artist's neighbours, read in their rank order (artist_neighbours).
 CREATE INDEX ON proximity (artist_mbid, rank);
+-- An artist's « Même son », read in its rank order (artist_same_sound).
+CREATE INDEX ON same_sound (artist_mbid, rank);
 ANALYZE;

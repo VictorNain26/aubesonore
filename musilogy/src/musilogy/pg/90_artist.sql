@@ -237,3 +237,41 @@ AS $$
   WHERE a.mbid = artist
   ORDER BY p.rank;
 $$;
+
+-- « Même son » (88_same_sound.sql, docs/vision.md §2.2): the artist's
+-- neighbours of the co-listening whose colour agrees, in their rank order,
+-- each with its reason — the style, with the artist's decade, or the genre
+-- (`source` says which) that weighs most in what the two share — and its side
+-- in time, read as for artist_neighbours. A neighbour absent from the dump has
+-- no name to show and is left out, without renumbering the others.
+CREATE FUNCTION musilogy.artist_same_sound(artist text)
+RETURNS TABLE (
+  mbid text,
+  name text,
+  disambiguation text,
+  type text,
+  y0 integer,
+  y_end integer,
+  ended boolean,
+  rank integer,
+  source text,
+  term text,
+  decade integer,
+  side text
+)
+LANGUAGE sql STABLE
+AS $$
+  SELECT o.mbid, o.name, o.disambiguation, o.type, o.y0, o.y_end, o.ended, s.rank,
+         s.source, s.term, s.decade,
+         CASE
+           WHEN a.y0 IS NULL OR o.y0 IS NULL THEN NULL
+           WHEN o.y0 < a.y0 - 3 THEN 'before'
+           WHEN o.y0 > a.y0 + 3 THEN 'after'
+           ELSE 'during'
+         END
+  FROM musilogy.artists a
+  JOIN musilogy.same_sound s ON s.artist_mbid = a.mbid
+  JOIN musilogy.artists o ON o.mbid = s.neighbour_mbid
+  WHERE a.mbid = artist
+  ORDER BY s.rank;
+$$;
