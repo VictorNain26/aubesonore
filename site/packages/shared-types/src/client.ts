@@ -190,6 +190,8 @@ export interface MusilogyCard extends MusilogyArtistRef {
 export interface MusilogyNeighbour extends MusilogyArtistRef {
   yEnd: number | null;
   score: number;
+  /** Its place among the artist's neighbours, from 1: the order that counts, ties settled. */
+  rank: number;
 }
 
 export interface MusilogyInfluence extends MusilogyArtistRef {

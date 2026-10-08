@@ -14,6 +14,7 @@ const ref = (mbid: string, played = false): MusilogyNeighbour => ({
   played: played ? { id: mbid, slug: mbid } : null,
   yEnd: null,
   score: 1,
+  rank: 1,
 });
 
 function page(close: MusilogyNeighbour[], releases = 0): MusilogyArtist {

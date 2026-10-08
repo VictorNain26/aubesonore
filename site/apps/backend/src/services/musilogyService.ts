@@ -85,6 +85,7 @@ interface NeighbourRow extends Record<string, unknown> {
   y0: number | null;
   y_end: number | null;
   score: number;
+  rank: number;
   side: 'before' | 'during' | 'after' | null;
 }
 
@@ -219,6 +220,7 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
     ...ref(row.mbid, row.name, row.disambiguation, row.y0),
     yEnd: row.y_end,
     score: row.score,
+    rank: row.rank,
   });
   const influence = (row: InfluenceRow): MusilogyInfluence => ({
     ...ref(row.mbid, row.name, row.disambiguation, row.y0),
