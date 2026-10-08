@@ -8,7 +8,6 @@ import {
   type MusilogyArtist,
   type MusilogyArtistRef,
   type MusilogyBandmate,
-  type MusilogyInfluence,
   type MusilogyNeighbour,
   type MusilogyOtherName,
   type MusilogyProject,
@@ -87,15 +86,6 @@ interface NeighbourRow extends Record<string, unknown> {
   score: number;
   rank: number;
   side: 'before' | 'during' | 'after' | null;
-}
-
-interface InfluenceRow extends Record<string, unknown> {
-  direction: 'cited' | 'cited_by';
-  mbid: string;
-  name: string;
-  disambiguation: string | null;
-  y0: number | null;
-  statement: string;
 }
 
 interface BandRow extends Record<string, unknown> {
@@ -177,21 +167,14 @@ export async function getMusilogyArtist(mbid: string): Promise<MusilogyArtist | 
 }
 
 async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
-  const [
-    { card, releases: releaseRows },
-    neighbourRows,
-    influenceRows,
-    bandRows,
-    projectRows,
-    nameRows,
-  ] = await Promise.all([
-    readCore(mbid),
-    section<NeighbourRow>(sql`SELECT * FROM musilogy.artist_neighbours(${mbid})`),
-    section<InfluenceRow>(sql`SELECT * FROM musilogy.artist_influences(${mbid})`),
-    section<BandRow>(sql`SELECT * FROM musilogy.artist_bands(${mbid})`),
-    section<ProjectRow>(sql`SELECT * FROM musilogy.artist_member_projects(${mbid})`),
-    section<OtherNameRow>(sql`SELECT * FROM musilogy.artist_other_names(${mbid})`),
-  ]);
+  const [{ card, releases: releaseRows }, neighbourRows, bandRows, projectRows, nameRows] =
+    await Promise.all([
+      readCore(mbid),
+      section<NeighbourRow>(sql`SELECT * FROM musilogy.artist_neighbours(${mbid})`),
+      section<BandRow>(sql`SELECT * FROM musilogy.artist_bands(${mbid})`),
+      section<ProjectRow>(sql`SELECT * FROM musilogy.artist_member_projects(${mbid})`),
+      section<OtherNameRow>(sql`SELECT * FROM musilogy.artist_other_names(${mbid})`),
+    ]);
   if (!card) {
     musilogyCache.set(mbid, null);
     return null;
@@ -199,7 +182,7 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
 
   const played = await playedByMbid([
     card.mbid,
-    ...[neighbourRows, influenceRows, bandRows, projectRows, nameRows].flatMap((rows) =>
+    ...[neighbourRows, bandRows, projectRows, nameRows].flatMap((rows) =>
       (rows ?? []).map((row) => row.mbid)
     ),
   ]);
@@ -221,10 +204,6 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
     yEnd: row.y_end,
     score: row.score,
     rank: row.rank,
-  });
-  const influence = (row: InfluenceRow): MusilogyInfluence => ({
-    ...ref(row.mbid, row.name, row.disambiguation, row.y0),
-    statement: row.statement,
   });
   const bandmate = (row: BandRow): MusilogyBandmate => ({
     ...ref(row.mbid, row.name, row.disambiguation, row.y0),
@@ -255,10 +234,6 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
       during: neighbourRows.filter((row) => row.side === 'during').map(neighbour),
       after: neighbourRows.filter((row) => row.side === 'after').map(neighbour),
       undated: neighbourRows.filter((row) => row.side === null).map(neighbour),
-    },
-    influences: influenceRows && {
-      cites: influenceRows.filter((row) => row.direction === 'cited').map(influence),
-      citedBy: influenceRows.filter((row) => row.direction === 'cited_by').map(influence),
     },
     releases: releaseRows && releaseRows.map(release),
     bands: bandRows && {

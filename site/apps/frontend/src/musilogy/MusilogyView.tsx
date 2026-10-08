@@ -192,76 +192,17 @@ function bandCount({ bands, memberProjects, otherNames }: MusilogyArtist): numbe
   );
 }
 
-/** The influences declared either way, for an artist the map cannot show: the artist's own first. */
-function influencesOf({ influences }: MusilogyArtist) {
-  return influences
-    ? (
-        [
-          [m.musilogy_cites(), influences.cites],
-          [m.musilogy_cited_by(), influences.citedBy],
-        ] as const
-      ).filter(([, list]) => list.length > 0)
-    : [];
-}
-
-/** Names on wrapping lines, each a link: the closest first, the rest on demand. */
-function InlineNames({ artists }: { artists: readonly MusilogyArtistRef[] }) {
-  const [open, setOpen] = useState(false);
-  const shown = open ? artists : artists.slice(0, FIRST_SHOWN);
-  return (
-    <ul className="m-0 flex list-none flex-wrap items-center gap-x-6 p-0">
-      {shown.map((artist) => (
-        <li
-          key={artist.mbid}
-          className="reveal inline-flex min-h-11 items-center focus-within:animate-none"
-        >
-          <Link
-            to={pagePathOf(artist)}
-            state={DISCOVERY}
-            className={cn(ARTIST_LINK, 'text-ui underline-offset-4')}
-          >
-            {artist.name}
-          </Link>
-        </li>
-      ))}
-      {artists.length > shown.length ? (
-        <li className="inline-flex">
-          <button type="button" onClick={() => setOpen(true)} className={TEXT_ACTION}>
-            {m.musilogy_show_more({ count: String(artists.length - shown.length) })}
-          </button>
-        </li>
-      ) : null}
-    </ul>
-  );
-}
-
-function Influences({ lines }: { lines: ReturnType<typeof influencesOf> }) {
-  return (
-    <div className="flex flex-col gap-4">
-      {lines.map(([label, list]) => (
-        <SubList key={label} label={label}>
-          <InlineNames artists={list} />
-        </SubList>
-      ))}
-    </div>
-  );
-}
-
 /** The sections MusilogySections shows, for the page's anchors (PageNav). */
 export function musilogyNav(artist: MusilogyArtist): PageNavItem[] {
   const close = closestOf(artist).length > 0;
   return [
     close ? { id: 'close', label: m.musilogy_close_title() } : null,
-    !close && influencesOf(artist).length > 0
-      ? { id: 'influences', label: m.musilogy_influences_title() }
-      : null,
     bandCount(artist) > 0 ? { id: 'bands', label: m.musilogy_links_title() } : null,
   ].filter((item) => item !== null);
 }
 
 /**
- * Where to go next from an artist: its close artists in time, the whole width of the page, the
- * influences among them marked; the influences alone for an artist without close artists; then
+ * Where to go next from an artist: its close artists in time, the whole width of the page; then
  * the bands and their projects. A section with nothing in it is left out: no « nothing yet »
  * under a title.
  */
@@ -273,7 +214,6 @@ export function MusilogySections({
   thisYear: number;
 }) {
   const close = closestOf(artist).length > 0;
-  const influences = influencesOf(artist);
   return (
     <>
       {close ? (
@@ -288,10 +228,6 @@ export function MusilogySections({
           full
         >
           <MusilogyMap artist={artist} thisYear={thisYear} />
-        </Section>
-      ) : influences.length > 0 ? (
-        <Section id="influences" title={m.musilogy_influences_title()} sticky>
-          <Influences lines={influences} />
         </Section>
       ) : null}
       {bandCount(artist) > 0 ? (

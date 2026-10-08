@@ -21,7 +21,6 @@ function page(close: MusilogyNeighbour[], releases = 0): MusilogyArtist {
   return {
     card: {} as MusilogyArtist['card'],
     neighbours: { before: close, during: [], after: [], undated: [] },
-    influences: null,
     releases: Array.from({ length: releases }, (_, i) => ({
       mbid: `rg${i}`,
       title: `r${i}`,

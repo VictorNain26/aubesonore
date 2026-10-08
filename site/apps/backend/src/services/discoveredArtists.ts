@@ -30,14 +30,13 @@ export function listDiscovered(): string[] {
   return [...discovered].sort();
 }
 
-/** Every artist a page links to: close artists, influences, bands, projects, other names. */
+/** Every artist a page links to: close artists, bands, projects, other names. */
 function linkedArtists(page: MusilogyArtist): MusilogyArtistRef[] {
-  const { neighbours, influences, bands } = page;
+  const { neighbours, bands } = page;
   return [
     ...(neighbours
       ? [...neighbours.before, ...neighbours.during, ...neighbours.after, ...neighbours.undated]
       : []),
-    ...(influences ? [...influences.cites, ...influences.citedBy] : []),
     ...(bands ? [...bands.members, ...bands.groups] : []),
     ...(page.memberProjects ?? []),
     ...(page.otherNames ?? []),

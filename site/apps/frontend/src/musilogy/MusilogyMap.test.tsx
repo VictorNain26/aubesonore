@@ -43,7 +43,6 @@ function artist(
       ...card,
     },
     neighbours,
-    influences: null,
     releases: [],
     bands: { members: [], groups: [] },
     memberProjects: [],
@@ -59,25 +58,19 @@ const around = (before: MusilogyNeighbour[], undated: MusilogyNeighbour[] = []) 
 });
 
 describe('closestOf', () => {
-  it('puts every neighbour in one line, the closest first, marked and tiered', () => {
-    const shown = {
-      ...artist({
-        before: [neighbour(1, 1950, 10, 3)],
-        during: [neighbour(2, 1968, 30, 1)],
-        after: [neighbour(3, 1980, 20, 2)],
-        undated: [neighbour(4, null, 5, 4)],
-      }),
-      influences: {
-        cites: [{ ...neighbour(1, 1950), statement: 'Q1$a' }],
-        citedBy: [{ ...neighbour(3, 1980), statement: 'Q2$b' }],
-      },
-    };
+  it('puts every neighbour in one line, the closest first, tiered', () => {
+    const shown = artist({
+      before: [neighbour(1, 1950, 10, 3)],
+      during: [neighbour(2, 1968, 30, 1)],
+      after: [neighbour(3, 1980, 20, 2)],
+      undated: [neighbour(4, null, 5, 4)],
+    });
 
-    expect(closestOf(shown).map((close) => [close.artist.name, close.mark])).toEqual([
-      ['Artist number 2', null],
-      ['Artist number 3', 'inspired'],
-      ['Artist number 1', 'influence'],
-      ['Artist number 4', null],
+    expect(closestOf(shown).map((close) => close.artist.name)).toEqual([
+      'Artist number 2',
+      'Artist number 3',
+      'Artist number 1',
+      'Artist number 4',
     ]);
   });
 
@@ -193,15 +186,6 @@ describe('MusilogyMap', () => {
         name: /Artist number 2/,
       })
     ).toBeInTheDocument();
-  });
-
-  it('says beside a neighbour that it is also a declared influence', () => {
-    showMap({
-      ...artist(around([neighbour(1, 1960)])),
-      influences: { cites: [{ ...neighbour(1, 1960), statement: 'Q1$a' }], citedBy: [] },
-    });
-
-    expect(screen.getAllByText(/l'a influencé/)).toHaveLength(2);
   });
 
   it('shows nothing without a neighbour', () => {

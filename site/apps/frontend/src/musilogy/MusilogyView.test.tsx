@@ -46,7 +46,6 @@ function artist(overrides: Partial<MusilogyArtist> = {}): MusilogyArtist {
       after: [neighbour(14, { name: 'Ramones' })],
       undated: [],
     },
-    influences: { cites: [], citedBy: [] },
     releases: [],
     bands: {
       members: [{ ...neighbour(20, { name: 'Marc Bolan' }), yBegin: 1967, yEnd: 1977 }],
@@ -103,7 +102,7 @@ describe('MusilogySections', () => {
   });
 
   it('leaves out every section with nothing in it, without a title over an absence', () => {
-    show(artist({ neighbours: null, influences: null }));
+    show(artist({ neighbours: null }));
 
     expect(screen.queryByRole('heading', { name: 'Artistes proches' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
@@ -166,24 +165,6 @@ describe('MusilogySections', () => {
     expect(screen.queryByRole('button', { name: /Voir/ })).not.toBeInTheDocument();
   });
 
-  it('marks the influences on the map, and lists them alone only without close artists', () => {
-    const influences = {
-      cites: [
-        { ...neighbour(3, { name: 'The Kinks' }), statement: 'Q1$abc' },
-        { ...neighbour(40, { name: 'Elvis' }), statement: 'Q1$def' },
-      ],
-      citedBy: [],
-    };
-    const { rerender } = show(artist({ influences }));
-    expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Elvis' })).not.toBeInTheDocument();
-    expect(screen.getAllByText(/l'a influencé/).length).toBeGreaterThan(0);
-
-    rerender(<Sections artist={artist({ neighbours: null, influences })} />);
-    expect(screen.getByRole('heading', { name: 'Influences' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Elvis' })).toBeInTheDocument();
-  });
-
   it('names the close artists whose start is unknown', () => {
     const undated = [neighbour(30, { name: 'Undated Band', y0: null })];
     show(artist({ neighbours: { before: [neighbour(3)], during: [], after: [], undated } }));
@@ -193,14 +174,7 @@ describe('MusilogySections', () => {
   });
 
   it('names no source, licence or tool, and links nowhere outside the site', () => {
-    show(
-      artist({
-        influences: {
-          cites: [{ ...neighbour(40, { name: 'Chuck Berry' }), statement: 'Q1$abc' }],
-          citedBy: [],
-        },
-      })
-    );
+    show(artist());
 
     expect(screen.getAllByRole('link', { name: /Ramones/ }).length).toBeGreaterThan(0);
     expect(document.body).not.toHaveTextContent(/ListenBrainz|MusicBrainz|Wikidata|CC BY|CC0/);

@@ -48,7 +48,6 @@ const MUSILOGY: MusilogyArtist = {
     after: [],
     undated: [],
   },
-  influences: null,
   releases: [],
   bands: { members: [], groups: [] },
   memberProjects: [],

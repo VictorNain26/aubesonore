@@ -264,7 +264,7 @@ function Profile({
 /**
  * An artist heard on the antenna, on one page, in the order of docs/vision.md §2.4: who they are,
  * where to hear more, their albums and EPs, what the listener kept of them, then where to go next
- * (their place in time, the influences they declared, their bands and their members' projects),
+ * (their place in time, their bands and their members' projects),
  * each section only when it has something.
  */
 export function ArtistPageView({
