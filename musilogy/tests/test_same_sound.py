@@ -129,6 +129,23 @@ def test_the_reason_is_the_style_that_weighs_most_in_what_the_two_share(tmp_path
     assert same_sound(built(tmp_path, releases=releases))[0][4:] == ("Krautrock", 1970)
 
 
+def test_two_discogs_profiles_without_a_style_in_common_are_not_overturned_by_a_genre(tmp_path):
+    # C's synth-pop shares nothing with A's Krautrock; C also carries A's genre.
+    artists = [*(a for a in ARTISTS if a["mbid"] != C), artist(C, 3, ["krautrock"])]
+    assert C not in [row[0] for row in same_sound(built(tmp_path, artists))]
+
+
+def test_the_shrink_counts_only_the_records_that_can_match(tmp_path):
+    # B: three dated Krautrock records of A's decade and forty undated ones.
+    # Only the three can match: shrunk by 3 / (3 + 10), not 43 / (43 + 10).
+    releases = [
+        *(r for r in RELEASES if r["artists"] != [2]),
+        *records(2, "Krautrock", "1974", 3, 200),
+        *records(2, "Krautrock", None, 40, 300_000),
+    ]
+    assert [row[0] for row in same_sound(built(tmp_path, releases=releases))] == [E, F]
+
+
 def test_the_reason_sums_a_style_over_its_decades(tmp_path):
     # Krautrock is the heaviest single term (12 records against 8), but the two
     # share Ambient in the 1980s and the 1990s, which meet across the decade:

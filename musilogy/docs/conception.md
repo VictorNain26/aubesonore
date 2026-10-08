@@ -118,8 +118,9 @@ albums), `genres` (vocabulaire, publié, non chargé), `links` (appartenances, p
   couche dérivée (§1). Un voisin de `colisten` y entre quand sa couleur
   s'accorde à celle de l'artiste : leurs profils de styles Discogs (par
   décennie, une décennie voisine à moitié, pondérés par la rareté du style),
-  sinon de genres MusicBrainz, comparés par cosinus et rabattus pour un profil
-  mince, valent au moins 0,35. C'est la règle mesurée le 2026-10-08 sur 61
+  ou, quand l'un des deux n'a pas de profil Discogs, de genres MusicBrainz,
+  comparés par cosinus et rabattus pour un profil mince (ses disques datés),
+  valent au moins 0,35. C'est la règle mesurée le 2026-10-08 sur 61
   artistes de référence (`docs/vision.md` §2.2) ; ses seuils sont posés dans le
   fichier SQL et relus par le manifeste (`parameters`). `rank` de 1 à n dans
   l'ordre de la co-écoute, `colisten_rank` le rang d'origine ; la raison est le

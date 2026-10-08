@@ -9,7 +9,8 @@
 
 SET VARIABLE same_sound_min_colour = 0.35::DOUBLE;
 -- A profile of a few records matches anything: the similarity of a neighbour
--- whose profile counts n records (or votes) is shrunk by n / (n + shrink).
+-- whose profile counts n records (or votes) is shrunk by n / (n + shrink),
+-- counting for styles only the dated records, the only ones that can match.
 SET VARIABLE same_sound_styles_shrink = 10::INTEGER;
 SET VARIABLE same_sound_genres_shrink = 3::INTEGER;
 -- Under three style-records an artist has no Discogs colour, only genres.
@@ -30,12 +31,16 @@ CREATE OR REPLACE MACRO dot_term(x) AS CAST(x AS DECIMAL(38, 20));
 -- each style and decade, weighted by the style's rarity (Krautrock says much,
 -- Rock almost nothing), so that a prolific artist does not win by sheer count.
 CREATE OR REPLACE TABLE colour_styles AS
-WITH total AS (SELECT artist_mbid, sum(records) AS n FROM styles GROUP BY 1),
+WITH total AS (
+  SELECT artist_mbid, sum(records) AS n, coalesce(sum(records) FILTER (WHERE decade IS NOT NULL), 0)
+    AS dated
+  FROM styles GROUP BY 1
+),
 rarity AS (
   SELECT style, ln((SELECT count(*) FROM total) / count(DISTINCT artist_mbid)) AS idf
   FROM styles GROUP BY 1
 )
-SELECT s.artist_mbid, s.style AS term, s.decade, s.records / t.n * r.idf AS w, t.n
+SELECT s.artist_mbid, s.style AS term, s.decade, s.records / t.n * r.idf AS w, t.dated AS n
 FROM styles s JOIN total t USING (artist_mbid) JOIN rarity r USING (style)
 WHERE t.n >= getvariable('same_sound_min_style_records');
 
@@ -70,8 +75,10 @@ GROUP BY a.artist_mbid;
 
 -- The colour two artists share, for every pair of the co-listening: their
 -- Discogs styles when both have a profile and share a style, in any decade;
--- else their genres when they share one; else none. The genres are read only
--- for the pairs the styles leave without a word.
+-- else, when one of the two has no Discogs profile, their genres when they
+-- share one; else none. Two Discogs profiles without a style in common are a
+-- sign of two sounds that a broad shared genre does not overturn: on the
+-- pairs judged, 1 of the 3 such neighbours was good (2026-10-09).
 SET preserve_insertion_order = false;
 CREATE OR REPLACE TABLE same_sound_shared AS
 SELECT 'styles' AS source, p.artist_mbid, p.neighbour_mbid,
@@ -86,9 +93,10 @@ SELECT 'genres', p.artist_mbid, p.neighbour_mbid, sum(dot_term(a.w * b.w))::DOUB
 FROM colisten p
 JOIN colour_genres a ON a.artist_mbid = p.artist_mbid
 JOIN colour_genres b ON b.artist_mbid = p.neighbour_mbid AND b.term = a.term
-WHERE NOT EXISTS (
-  SELECT 1 FROM same_sound_shared s
-  WHERE s.artist_mbid = p.artist_mbid AND s.neighbour_mbid = p.neighbour_mbid)
+WHERE NOT (
+  EXISTS (SELECT 1 FROM colour_norms n WHERE n.source = 'styles' AND n.artist_mbid = p.artist_mbid)
+  AND EXISTS (
+    SELECT 1 FROM colour_norms n WHERE n.source = 'styles' AND n.artist_mbid = p.neighbour_mbid))
 GROUP BY ALL;
 
 -- The neighbours whose colour agrees, with their place in the co-listening. A
