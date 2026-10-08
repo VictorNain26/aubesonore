@@ -76,10 +76,10 @@ encyclopédies, classements de styles) fait foi pour le juger. À l'échelle de 
 d'artistes, aucune ne se lit pour chacun : la page s'appuie sur deux signaux calculables, et les
 sources écrites servent à mesurer ces signaux, jamais à être recopiées.
 
-| Signal | Ce qu'il mesure | Source | Seul, sur l'évaluation du 2026-10-07 |
+| Signal | Ce qu'il mesure | Source | Seul, sur l'évaluation du 2026-10-08 |
 |---|---|---|---|
-| **Écoutés par le même public** | le goût : qui aime l'un aime l'autre | notre co-écoute, calculée sur les tops d'écoute de 95 872 auditeurs (export ListenBrainz du 2026-10-01, CC0), corrigée de la popularité (`musilogy/docs/conception.md`, `colisten`) | 64 % de bons, contre 54 % pour le service de ListenBrainz, qui favorise les artistes connus |
-| **Du même courant** | la couleur : le genre, le sous-genre, l'époque | trois classements du son, réunis : les styles Discogs de ses disques (environ 600 sous-genres, dump CC0), par décennie ; les genres MusicBrainz, votés ; les genres Wikidata (P136), renseignés par les éditeurs, jamais par l'artiste | 48 % de bons (styles Discogs seuls), trois fois plus d'artistes moins connus ; seul signal pour l'underground : 64 % des artistes de 100 à 999 auditeurs, 32 % de ceux de 1 à 99 |
+| **Écoutés par le même public** | le goût : qui aime l'un aime l'autre | notre co-écoute, calculée sur les tops d'écoute de 95 872 auditeurs (export ListenBrainz du 2026-10-01, CC0), corrigée de la popularité (`musilogy/docs/conception.md`, `colisten`) | 54 % de bons [46, 62] parmi les 8 premiers ; chez les artistes de 3 à 19 auditeurs, 42 % de bons et 30 % d'étrangers. Le 2026-10-07 : 64 % contre 54 % pour le service de ListenBrainz, qui favorise les artistes connus |
+| **Du même courant** | la couleur : le genre, le sous-genre, l'époque | trois classements du son, réunis : les styles Discogs de ses disques (environ 600 sous-genres, dump CC0), par décennie ; les genres MusicBrainz, votés ; les genres Wikidata (P136), renseignés par les éditeurs, jamais par l'artiste | 53 % de bons [46, 61] (styles Discogs seuls), 40 % [22, 60] chez les artistes sans co-écoute ; genres MusicBrainz seuls : 39 %, 8 % d'étrangers |
 
 **Le courant se compare finement.** Deux artistes sont d'autant plus proches qu'ils partagent des
 genres précis, à la même époque, dans une part importante de leur œuvre : un sous-genre rare pèse
@@ -94,14 +94,21 @@ confiance, jamais sur une moyenne qui cacherait des erreurs. « Même son » se 
 simple parenté. Mieux vaut trois proches justes que dix dont un faux : la couverture vient
 ensuite.
 
-**Aucun signal ne suffit seul ; leur accord est sûr.** Un candidat que les deux trouvent est bon
-86 fois sur 100. **« Même son »** est donc le seul classement montré : un proche y entre quand la
+**Aucun signal ne suffit seul ; leur accord est sûr.** Mesuré le 2026-10-08 sur 61 artistes de
+référence, surtout peu écoutés (1 572 paires jugées depuis des sources citées) : les voisins de la
+co-écoute dont la couleur atteint 0,35 sont bons à 81 % [73, 87] parmi les 8 premiers, sans aucun
+étranger dans aucune tranche d'auditeurs, contre 54 % pour la co-écoute seule (+17 points apparié
+[+8, +26], +27 chez les artistes de moins de 100 auditeurs). Un audit de 60 paires refaites avec de
+meilleures sources place cette règle près de 90 % : 81 % est une borne basse. **« Même son »** est
+donc le seul classement montré : un proche y entre quand la
 co-écoute et le courant s'accordent, et chaque lien garde sa raison en mots d'auditeur (« écoutés
 par les mêmes, même courant dans les années 90 »). On ne montre que des proches confirmés, sans
 jamais compléter une liste trop courte : leur nombre dépend de ce que les sources disent, et les
-plus sûrs (environ huit) passent en tête. Sous le seuil d'auditeurs où la co-écoute cesse d'être
-fiable, seul le courant parle, et seulement s'il est assez précis ; sinon la page ne montre aucun
-proche. Ce seuil se mesure, il ne se choisit pas.
+plus sûrs (environ huit) passent en tête. L'accord tient même sous 20 auditeurs (82 %, aucun
+étranger), où la co-écoute seule s'effondre : il n'y a pas de seuil d'auditeurs. Le courant seul,
+pour les artistes que la co-écoute ne connaît pas, reste trop imprécis (40 %, borne basse 22 %) :
+la page ne leur montre aucun proche tant qu'une règle des styles plus fine n'est pas mesurée. Un
+tiers des artistes de l'évaluation n'ont ainsi aucun proche ; c'est le prix de la précision.
 Un classement est un calcul nommé et documenté, jamais un jugement.
 
 **Ce qui n'est pas une proximité de son, et ne l'est plus sur la page (2026-10-08).**
@@ -426,17 +433,18 @@ l'historique git.
       complémentaires de co-écoute et de statut officiel (2026-10-06) sont épinglés (2026-10-07).
    2. **Discogs** : le dump des sorties épinglé, la table des styles par décennie — fait (#413) ;
       la table des labels part avec le label (§2.2).
-   3. **L'évaluation** — premier tour fait (2026-10-07 : 20 artistes, 515 candidats). À faire :
-      une soixantaine de références, surtout peu écoutées, chaque son décrit depuis des sources
-      citées avant d'être jugé (§2.2) ; l'oreille de Victor sur un échantillon. Elle mesure la
-      co-écoute par tranche d'auditeurs, le courant, et leur accord, et fixe le seuil sous lequel
-      la page ne montre rien.
+   3. **L'évaluation** — faite (2026-10-08 : 61 références, 1 572 paires jugées depuis des
+      sources citées, un audit de 60 paires dans le navigateur ; rapport et données sur le
+      serveur, `~/musilogy-data/study/eval4/`). Elle retient l'accord à 0,35 (§2.2) et ne trouve
+      pas de seuil d'auditeurs.
    4. **Notre co-écoute** — calculée et publiée (#451 : 50 voisins pour 371 582 artistes,
       cosinus asymétrique et lissage, mesurée meilleure que le service). Elle ne va sur la page
       qu'avec « Même son », au-dessus du seuil mesuré.
-   5. **« Même son »** : une table calculée hors ligne (artiste, proche, signaux, raison, rang) où
-      un proche entre quand la co-écoute et le courant s'accordent, le courant seul sous le seuil
-      d'auditeurs ; une fonction SQL ; la carte et la ligne de genres sur la page.
+   5. **« Même son »** : la table `same_sound` (artiste, proche, rang, couleur, raison) et la
+      fonction `artist_same_sound` — faites ; la carte et la ligne de genres sur la page — à faire.
+      Le courant seul, pour les artistes sans co-écoute, attend une règle des styles plus fine
+      (des styles qui ne décrivent pas un son, comme « Instrumental » ou « Holiday », à écarter),
+      mesurée de nouveau.
    6. **Ce qui part**, chacun dans la PR qui le remplace : les influences déclarées (relevé
       Wikidata, table, fonction, marques et rubrique de la page), la table des labels, le relevé
       du service des artistes similaires de ListenBrainz avec sa mécanique de parties, et
