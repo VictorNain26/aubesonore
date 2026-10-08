@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from radio.acquire import audio
 from radio.acquire.audio import (
     Cue,
     Probe,
@@ -326,3 +327,9 @@ def test_the_start_takes_liquidsoap_margin_and_ignores_a_tiny_cut() -> None:
     # Première trame forte à 0,3 s : 0,2 - 0,1 = 0,1, sous 0,2 : pas de coupe.
     early = cue_from_frames(_frames(-200, -200, -200, -20, -20, -20), 0.6)
     assert early is not None and early.cue_in == 0.0
+
+
+def test_a_stuck_tool_is_a_named_tool_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(audio, "TOOL_TIMEOUT_S", 1.0)
+    with pytest.raises(ToolError, match="sleep : délai de 1 s dépassé"):
+        audio._run(["sleep", "5"])

@@ -186,6 +186,11 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
      refusée, compte banni), fait échouer l'étape sans enregistrer aucune tentative. Un titre
      absent d'un index partiel (Sockseek interrompu) n'est pas une tentative : il est compté
      « non tenté » et l'étape échoue.
+   - **Sockseek bloqué.** Il est arrêté au double du temps que le rythme de recherche impose à la
+     liste, plus 30 min (`time_limit`, ~2 h 30 pour 160 titres) : les titres terminés sont gardés,
+     les autres comptés « non tentés », le journal nomme le délai. ffprobe, fpcalc, ffmpeg et
+     rsgain ont 300 s par fichier ; au-delà, c'est un échec du fichier (`ToolError`). Sans ces
+     délais, un outil bloqué gelait la passe jusqu'à ses 12 h.
    - Le dossier de la passe (`data/acquisition/<date>/`) est supprimé à la fin, même sur
      exception ; pas si systemd tue le processus (délai de 12 h), car Python n'exécute alors pas
      son `finally`.
