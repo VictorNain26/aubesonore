@@ -37,16 +37,20 @@ async function identityOf(mbid: string | null): Promise<Lookup<ArtistIdentity>> 
 
 // A slow source counts as a failed one: its section keeps what was stored.
 async function bounded<V>(label: string, work: Promise<Lookup<V>>): Promise<Lookup<V>> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       work,
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('source timeout')), SOURCE_TIMEOUT_MS)
-      ),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('source timeout')), SOURCE_TIMEOUT_MS);
+      }),
     ]);
   } catch (err) {
     logger.warn('artistProfile.source_failed', { label, message: (err as Error).message });
     return { status: 'failed' };
+  } finally {
+    // A source that answers in time leaves no 6 s timer behind, holding its closure.
+    clearTimeout(timer);
   }
 }
 
