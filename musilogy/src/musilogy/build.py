@@ -85,11 +85,14 @@ def load_popularity(
     )
 
 
+RAW_DISCOGRAPHY_COLUMNS = "{rg_mbid:'VARCHAR', form:'VARCHAR'}"
+
+
 def load_discography(
     con: duckdb.DuckDBPyConnection, discography: Path | None, snapshot: str | None
 ) -> None:
     if discography is None:
-        # Always materialized, even empty, like corrections: synthetic builds
+        # Always materialized, even empty, like popularity: synthetic builds
         # carry no snapshot, and 22_releases.sql reads this table anyway.
         con.execute("CREATE OR REPLACE TABLE raw_discography (rg_mbid VARCHAR, form VARCHAR)")
     else:
