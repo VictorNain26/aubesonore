@@ -2,7 +2,7 @@ import type { ArtistProfile, SiteLocale } from '@aubesonore/shared-types/client'
 import { Elysia } from 'elysia';
 import { env } from '../config/env';
 import { logger } from '../lib/logger';
-import { checkRate, getClientIp } from '../lib/rateLimit';
+import { checkRate, getClientIp, tooManyRequests } from '../lib/rateLimit';
 import { getArtistProfile } from '../services/artistProfileService';
 import { parseMbid } from '../validators/musilogyValidator';
 import { getMusilogyArtist, MusilogyUnavailable } from '../services/musilogyService';
@@ -98,8 +98,7 @@ async function handle(
 ): Promise<string> {
   const ip = getClientIp(request.headers);
   if (!checkRate('artistPage', ip, PAGE_LIMIT, PAGE_WINDOW_MS)) {
-    set.status = 429;
-    set.headers['retry-after'] = '60';
+    tooManyRequests(set);
     return locale === 'en'
       ? 'Too many requests, retry in 1 minute'
       : 'Trop de requêtes, réessayez dans 1 minute';
@@ -182,8 +181,7 @@ ${entries.join('\n')}
 function sitemapOf(list: () => string[] | Promise<string[]>) {
   return async ({ request, set }: { request: Request; set: ResponseSet }) => {
     if (!checkRate('artistSitemap', getClientIp(request.headers), PAGE_LIMIT, PAGE_WINDOW_MS)) {
-      set.status = 429;
-      set.headers['retry-after'] = '60';
+      tooManyRequests(set);
       return 'Too many requests, retry in 1 minute';
     }
     set.headers['content-type'] = 'application/xml; charset=utf-8';

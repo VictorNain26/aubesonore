@@ -6,6 +6,18 @@
 // in-memory state when horizontal scaling is enabled. See CLAUDE.md
 // "Scaling roadmap" for the trigger.
 
+const TOO_MANY = { error: 'Trop de requêtes, réessayez dans 1 minute' } as const;
+
+/** Marks the response 429, retry in a minute (every window is one), and gives the JSON body. */
+export function tooManyRequests(set: {
+  status?: number | string;
+  headers: Record<string, string | number>;
+}): typeof TOO_MANY {
+  set.status = 429;
+  set.headers['retry-after'] = '60';
+  return TOO_MANY;
+}
+
 interface Bucket {
   count: number;
   resetAt: number;

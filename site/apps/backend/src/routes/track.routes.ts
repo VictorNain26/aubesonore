@@ -5,7 +5,7 @@ import { likeTrackSchema, checkLikedSchema } from '../validators/trackValidator'
 import * as trackService from '../services/trackService';
 import type { LikedTrackListItem } from '../services/trackService';
 import { auth } from '../lib/auth/index';
-import { checkRate } from '../lib/rateLimit';
+import { checkRate, tooManyRequests } from '../lib/rateLimit';
 import type { User, Session, LikedTrack } from '../db/schema';
 
 // ─────────────────────────────────────────────
@@ -55,9 +55,7 @@ export const trackRoutes = new Elysia({ prefix: '/api/track' })
         TRACK_MUTATION_WINDOW_MS
       )
     ) {
-      set.status = 429;
-      set.headers['retry-after'] = '60';
-      return { error: 'Trop de requêtes, réessayez dans une minute' };
+      return tooManyRequests(set);
     }
 
     const data = validateBody(likeTrackSchema, body);
@@ -186,9 +184,7 @@ export const trackRoutes = new Elysia({ prefix: '/api/track' })
         TRACK_MUTATION_WINDOW_MS
       )
     ) {
-      set.status = 429;
-      set.headers['retry-after'] = '60';
-      return { error: 'Trop de requêtes, réessayez dans une minute' };
+      return tooManyRequests(set);
     }
 
     const { trackId } = params;

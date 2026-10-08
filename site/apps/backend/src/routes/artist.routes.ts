@@ -4,7 +4,7 @@ import { MusilogyUnavailable } from '../services/musilogyService';
 import { resolveArtist } from '../services/artistResolver';
 import { findArtistPages } from '../services/artistPages';
 import { artistPagesSchema, isValidArtistSlug } from '../validators/artistValidator';
-import { checkRate, getClientIp } from '../lib/rateLimit';
+import { checkRate, getClientIp, tooManyRequests } from '../lib/rateLimit';
 import { validateBody } from '../lib/validate';
 import { hasError } from '../lib/routeHelpers';
 
@@ -20,9 +20,7 @@ export const artistRoutes = new Elysia({ prefix: '/api/artist' })
   .get('/resolve', async ({ request, query, set }) => {
     const ip = getClientIp(request.headers);
     if (!checkRate('artist', ip, ARTIST_LIMIT, ARTIST_WINDOW_MS)) {
-      set.status = 429;
-      set.headers['retry-after'] = '60';
-      return { error: 'Trop de requêtes, réessayez dans 1 minute' };
+      return tooManyRequests(set);
     }
 
     const name = typeof query?.name === 'string' ? query.name.trim() : '';
@@ -43,9 +41,7 @@ export const artistRoutes = new Elysia({ prefix: '/api/artist' })
   .post('/pages', async ({ request, body, set }) => {
     const ip = getClientIp(request.headers);
     if (!checkRate('artist-pages', ip, PAGES_LIMIT, ARTIST_WINDOW_MS)) {
-      set.status = 429;
-      set.headers['retry-after'] = '60';
-      return { error: 'Trop de requêtes, réessayez dans 1 minute' };
+      return tooManyRequests(set);
     }
 
     const data = validateBody(artistPagesSchema, body);
@@ -59,9 +55,7 @@ export const artistRoutes = new Elysia({ prefix: '/api/artist' })
   .get('/page/:slug', async ({ request, params, query, set }) => {
     const ip = getClientIp(request.headers);
     if (!checkRate('artist-page', ip, PAGE_LIMIT, ARTIST_WINDOW_MS)) {
-      set.status = 429;
-      set.headers['retry-after'] = '60';
-      return { error: 'Trop de requêtes, réessayez dans 1 minute' };
+      return tooManyRequests(set);
     }
 
     if (!isValidArtistSlug(params.slug)) {
