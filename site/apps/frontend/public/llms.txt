@@ -13,9 +13,9 @@ qui nous arrêtent ; avec un compte, ils se réécoutent sur YouTube depuis « M
 classement « Les plus gardés » réunit les choix des auditeurs, cette semaine ou depuis le début.
 
 Chaque artiste passé à l'antenne a sa page : qui il est, ses albums et EP, où l'écouter, ce que la
-radio a joué de lui, puis les artistes proches de lui dans le temps, ses influences déclarées et
-ses groupes. Ces données viennent de MusicBrainz, ListenBrainz, Wikidata et Wikipédia. Musilogy
-cherche n'importe quel artiste et mène à sa page.
+radio a joué de lui, puis les artistes proches de lui dans le temps et ses groupes. Ces données
+viennent de MusicBrainz, ListenBrainz, Wikidata et Wikipédia. Musilogy cherche n'importe quel
+artiste et mène à sa page.
 
 Le site s'installe sur l'écran d'accueil et diffuse vers AirPlay et Chromecast. L'analyse audio
 repose sur les modèles Essentia Discogs-EffNet du Music Technology Group (Universitat Pompeu Fabra),

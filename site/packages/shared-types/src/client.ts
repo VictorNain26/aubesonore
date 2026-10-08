@@ -186,17 +186,12 @@ export interface MusilogyCard extends MusilogyArtistRef {
   genres: string[];
 }
 
-/** A neighbour by co-listening: close in sound, never said to be an influence. */
+/** A neighbour by co-listening: listened to by the same public. */
 export interface MusilogyNeighbour extends MusilogyArtistRef {
   yEnd: number | null;
   score: number;
   /** Its place among the artist's neighbours, from 1: the order that counts, ties settled. */
   rank: number;
-}
-
-export interface MusilogyInfluence extends MusilogyArtistRef {
-  /** The Wikidata statement that declares it. */
-  statement: string;
 }
 
 /** A record of the artist's work (docs/vision.md §2.4). */
@@ -246,17 +241,10 @@ export interface MusilogyNeighbours {
   undated: MusilogyNeighbour[];
 }
 
-/** Influences the artist declared, and artists who declared it one. */
-export interface MusilogyInfluences {
-  cites: MusilogyInfluence[];
-  citedBy: MusilogyInfluence[];
-}
-
 export interface MusilogyArtist {
   card: MusilogyCard;
   /** Null while the data behind a section is not loaded yet; empty when it holds none. */
   neighbours: MusilogyNeighbours | null;
-  influences: MusilogyInfluences | null;
   releases: MusilogyRelease[] | null;
   bands: MusilogyBands | null;
   memberProjects: MusilogyProject[] | null;

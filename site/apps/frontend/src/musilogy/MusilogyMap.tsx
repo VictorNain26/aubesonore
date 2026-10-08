@@ -14,22 +14,13 @@ import { pagePathOf } from '../lib/musilogy';
 // A decade's column holds this many names; a fuller decade gets more columns, and more width.
 const PER_COLUMN = 20;
 
-/** What Wikidata adds about a neighbour: the artist cites it, or it cites the artist. */
-export type Mark = 'influence' | 'inspired';
-
 /** How close: the ten closest, the next twenty, the rest. */
 export type Tier = 1 | 2 | 3;
 
 export interface Close {
   artist: MusilogyNeighbour;
-  mark: Mark | null;
   tier: Tier;
 }
-
-const MARK_LABELS: Record<Mark, () => string> = {
-  influence: () => m.musilogy_mark_influence(),
-  inspired: () => m.musilogy_mark_inspired(),
-};
 
 // Closeness reads in steps of weight and ink, never in type size, which reads as fame.
 const TIER_CLASSES: Record<Tier, string> = {
@@ -38,21 +29,15 @@ const TIER_CLASSES: Record<Tier, string> = {
   3: 'text-text-muted font-normal',
 };
 
-/** Every neighbour, the closest first, marked when it is also a declared influence. */
-export function closestOf({ neighbours, influences }: MusilogyArtist): Close[] {
+/** Every neighbour, the closest first. */
+export function closestOf({ neighbours }: MusilogyArtist): Close[] {
   if (!neighbours) return [];
-  const cites = new Set(influences?.cites.map((influence) => influence.mbid));
-  const citedBy = new Set(influences?.citedBy.map((influence) => influence.mbid));
   return (
     [...neighbours.before, ...neighbours.during, ...neighbours.after, ...neighbours.undated]
       // By rank, not score: musilogy settles equal scores, which are common
       // among artists with few listeners.
       .sort((a, b) => a.rank - b.rank)
-      .map((artist, rank) => ({
-        artist,
-        mark: cites.has(artist.mbid) ? 'influence' : citedBy.has(artist.mbid) ? 'inspired' : null,
-        tier: rank < 10 ? 1 : rank < 30 ? 2 : 3,
-      }))
+      .map((artist, rank) => ({ artist, tier: rank < 10 ? 1 : rank < 30 ? 2 : 3 }))
   );
 }
 
@@ -181,11 +166,6 @@ function Columns({ card, decades }: { card: MusilogyCard; decades: Decade[] }) {
                   </span>
                   <span className="min-w-0">
                     <NameLink close={close} quiet />
-                    {close.mark ? (
-                      <span className="text-caption text-text-muted block">
-                        {MARK_LABELS[close.mark]()}
-                      </span>
-                    ) : null}
                   </span>
                 </li>
               ))}
@@ -222,9 +202,6 @@ function Stacked({ card, decades }: { card: MusilogyCard; decades: Decade[] }) {
                     {' '}
                     {close.artist.y0}
                   </span>
-                  {close.mark ? (
-                    <span className="text-text-muted"> ({MARK_LABELS[close.mark]()})</span>
-                  ) : null}
                   {i < decade.close.length - 1 ? (
                     <span aria-hidden="true" className="text-text-muted">
                       {' '}
