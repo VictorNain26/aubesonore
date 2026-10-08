@@ -14,20 +14,9 @@ import { pagePathOf } from '../lib/musilogy';
 // A decade's column holds this many names; a fuller decade gets more columns, and more width.
 const PER_COLUMN = 20;
 
-/** How close: the ten closest, the next twenty, the rest. */
-export type Tier = 1 | 2 | 3;
-
 export interface Close {
   artist: MusilogyNeighbour;
-  tier: Tier;
 }
-
-// Closeness reads in steps of weight and ink, never in type size, which reads as fame.
-const TIER_CLASSES: Record<Tier, string> = {
-  1: 'text-text font-bold',
-  2: 'text-text font-normal',
-  3: 'text-text-muted font-normal',
-};
 
 /** Every neighbour, the closest first. */
 export function closestOf({ neighbours }: MusilogyArtist): Close[] {
@@ -37,7 +26,7 @@ export function closestOf({ neighbours }: MusilogyArtist): Close[] {
       // By rank, not score: musilogy settles equal scores, which are common
       // among artists with few listeners.
       .sort((a, b) => a.rank - b.rank)
-      .map((artist, rank) => ({ artist, tier: rank < 10 ? 1 : rank < 30 ? 2 : 3 }))
+      .map((artist) => ({ artist }))
   );
 }
 
@@ -107,14 +96,13 @@ function NameLink({ close, quiet = false }: { close: Close; quiet?: boolean }) {
       className={cn(
         ARTIST_LINK,
         'underline-offset-4',
-        // A hundred underlines side by side read as noise; a pointer finds the links on its own.
+        // Underlines side by side read as noise; a pointer finds the links on its own.
         quiet && 'no-underline hover:underline focus-visible:underline',
-        TIER_CLASSES[close.tier]
+        'text-text font-bold'
       )}
     >
       {close.artist.name}
       {close.artist.y0 === null ? null : <span className="sr-only">, {close.artist.y0}</span>}
-      {close.tier === 1 ? <span className="sr-only">, {m.musilogy_closest_hint()}</span> : null}
     </Link>
   );
 }
@@ -221,7 +209,7 @@ function Stacked({ card, decades }: { card: MusilogyCard; decades: Decade[] }) {
 /**
  * Every close neighbour of the artist, by the decade it started in: the decades side by side
  * where the container is wide, one under the other where it is not, the artist's own decades
- * marked; in each, the closest first and in bold. Those whose start is unknown close the section.
+ * marked; in each, by year. Those whose start is unknown close the section.
  */
 export function MusilogyMap({ artist, thisYear }: { artist: MusilogyArtist; thisYear: number }) {
   const { decades, undated } = byDecade(artist, thisYear);

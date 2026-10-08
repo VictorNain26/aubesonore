@@ -5,12 +5,7 @@ import { MemoryRouter } from 'react-router';
 import type { MusilogyArtist, MusilogyNeighbour } from '@aubesonore/shared-types/client';
 import { byDecade, closestOf, MusilogyMap } from './MusilogyMap';
 
-function neighbour(
-  n: number,
-  y0: number | null,
-  score = 1000 - n,
-  rank = n + 1
-): MusilogyNeighbour {
+function neighbour(n: number, y0: number | null, rank = n + 1): MusilogyNeighbour {
   return {
     mbid: `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`,
     name: `Artist number ${n}`,
@@ -18,7 +13,6 @@ function neighbour(
     y0,
     played: null,
     yEnd: null,
-    score,
     rank,
   };
 }
@@ -58,12 +52,12 @@ const around = (before: MusilogyNeighbour[], undated: MusilogyNeighbour[] = []) 
 });
 
 describe('closestOf', () => {
-  it('puts every neighbour in one line, the closest first, tiered', () => {
+  it('puts every neighbour in one line, the closest first', () => {
     const shown = artist({
-      before: [neighbour(1, 1950, 10, 3)],
-      during: [neighbour(2, 1968, 30, 1)],
-      after: [neighbour(3, 1980, 20, 2)],
-      undated: [neighbour(4, null, 5, 4)],
+      before: [neighbour(1, 1950, 3)],
+      during: [neighbour(2, 1968, 1)],
+      after: [neighbour(3, 1980, 2)],
+      undated: [neighbour(4, null, 4)],
     });
 
     expect(closestOf(shown).map((close) => close.artist.name)).toEqual([
@@ -74,22 +68,11 @@ describe('closestOf', () => {
     ]);
   });
 
-  it('sets the ten closest apart, then the next twenty, then the rest', () => {
-    const crowd = Array.from({ length: 40 }, (_, i) => neighbour(i, 1970));
-    const tiers = closestOf(artist(around(crowd))).map((close) => close.tier);
-
-    expect(tiers.filter((tier) => tier === 1)).toHaveLength(10);
-    expect(tiers.filter((tier) => tier === 2)).toHaveLength(20);
-    expect(tiers.filter((tier) => tier === 3)).toHaveLength(10);
-  });
-
-  it('follows the rank musilogy gives, which settles equal scores', () => {
-    // Equal scores are common among artists with few listeners: the rank, not
-    // the order the side groups come in, decides who is among the ten closest.
+  it('follows the rank musilogy gives, not the order the sides come in', () => {
     const tied = artist({
-      before: [neighbour(2, 1960, 5, 11)],
+      before: [neighbour(2, 1960, 11)],
       during: [],
-      after: [neighbour(1, 1980, 5, 10)],
+      after: [neighbour(1, 1980, 10)],
       undated: [],
     });
     expect(closestOf(tied).map((close) => close.artist.name)).toEqual([
@@ -103,10 +86,7 @@ describe('byDecade', () => {
   it('groups every neighbour by the decade it started in, each decade by year', () => {
     const { decades, undated } = byDecade(
       artist(
-        around(
-          [neighbour(1, 1958, 10), neighbour(2, 1972, 50), neighbour(3, 1975, 90)],
-          [neighbour(4, null)]
-        )
+        around([neighbour(1, 1958), neighbour(2, 1972), neighbour(3, 1975)], [neighbour(4, null)])
       ),
       2026
     );

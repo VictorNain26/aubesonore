@@ -83,7 +83,6 @@ interface NeighbourRow extends Record<string, unknown> {
   disambiguation: string | null;
   y0: number | null;
   y_end: number | null;
-  score: number;
   rank: number;
   side: 'before' | 'during' | 'after' | null;
 }
@@ -170,7 +169,7 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
   const [{ card, releases: releaseRows }, neighbourRows, bandRows, projectRows, nameRows] =
     await Promise.all([
       readCore(mbid),
-      section<NeighbourRow>(sql`SELECT * FROM musilogy.artist_neighbours(${mbid})`),
+      section<NeighbourRow>(sql`SELECT * FROM musilogy.artist_same_sound(${mbid})`),
       section<BandRow>(sql`SELECT * FROM musilogy.artist_bands(${mbid})`),
       section<ProjectRow>(sql`SELECT * FROM musilogy.artist_member_projects(${mbid})`),
       section<OtherNameRow>(sql`SELECT * FROM musilogy.artist_other_names(${mbid})`),
@@ -202,7 +201,6 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
   const neighbour = (row: NeighbourRow): MusilogyNeighbour => ({
     ...ref(row.mbid, row.name, row.disambiguation, row.y0),
     yEnd: row.y_end,
-    score: row.score,
     rank: row.rank,
   });
   const bandmate = (row: BandRow): MusilogyBandmate => ({

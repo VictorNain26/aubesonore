@@ -40,7 +40,6 @@ const MUSILOGY: MusilogyArtist = {
         y0: 2005,
         played: null,
         yEnd: null,
-        score: 900,
         rank: 1,
       },
     ],

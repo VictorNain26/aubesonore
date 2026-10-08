@@ -186,10 +186,9 @@ export interface MusilogyCard extends MusilogyArtistRef {
   genres: string[];
 }
 
-/** A neighbour by co-listening: listened to by the same public. */
+/** A neighbour of « Même son »: listened to by the same public, of the same colour. */
 export interface MusilogyNeighbour extends MusilogyArtistRef {
   yEnd: number | null;
-  score: number;
   /** Its place among the artist's neighbours, from 1: the order that counts, ties settled. */
   rank: number;
 }
