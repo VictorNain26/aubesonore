@@ -183,8 +183,9 @@ musilogy.artist_neighbours(artist text) RETURNS TABLE (
   mbid text, name text, disambiguation text, type text, y0 integer,
   y_end integer, ended boolean, score integer, rank integer, side text)
 
--- « Même son » : les voisins de la co-écoute dont la couleur s'accorde, dans
--- leur rang, chacun avec sa raison (source 'styles' : term est un style
+-- « Même son » : les 8 premiers voisins de la co-écoute dont la couleur
+-- s'accorde, la profondeur à laquelle la règle a été mesurée (la table les
+-- garde tous), dans leur rang, chacun avec sa raison (source 'styles' : term est un style
 -- Discogs, decade la décennie de l'artiste ; 'genres' : term est un genre
 -- MusicBrainz, decade NULL) et son côté dans le temps (§3) ; les rangs ne sont
 -- pas renumérotés quand un voisin absent du dump est écarté.

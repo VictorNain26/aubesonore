@@ -239,7 +239,9 @@ AS $$
 $$;
 
 -- « Même son » (88_same_sound.sql, docs/vision.md §2.2): the artist's
--- neighbours of the co-listening whose colour agrees, in their rank order,
+-- neighbours of the co-listening whose colour agrees, the first 8 — the depth
+-- the rule was measured at (2026-10-08); the table keeps them all — in their
+-- rank order,
 -- each with its reason — the style, with the artist's decade, or the genre
 -- (`source` says which) that weighs most in what the two share — and its side
 -- in time, read as for artist_neighbours. A neighbour absent from the dump has
@@ -272,6 +274,6 @@ AS $$
   FROM musilogy.artists a
   JOIN musilogy.same_sound s ON s.artist_mbid = a.mbid
   JOIN musilogy.artists o ON o.mbid = s.neighbour_mbid
-  WHERE a.mbid = artist
+  WHERE a.mbid = artist AND s.rank <= 8
   ORDER BY s.rank;
 $$;

@@ -172,3 +172,20 @@ def test_artist_same_sound_keeps_the_signature_the_site_reads(tmp_path, pg):
             "decade integer, side text)",
         )
     ]
+
+
+def test_the_site_reads_the_first_8_the_depth_the_rule_was_measured_at(tmp_path, pg):
+    # Ten neighbours of A's very colour: the table keeps them all, the page
+    # reads the first 8.
+    near = [f"00000000-0000-4000-8000-0000000006{i:02x}" for i in range(10)]
+    artists = [artist(A, 1, ["krautrock"]), *(artist(n, 10 + i) for i, n in enumerate(near))]
+    releases = [
+        *records(1, "Krautrock", "1972", 30, 100),
+        *(r for i in range(10) for r in records(10 + i, "Krautrock", "1974", 30, 1000 + 100 * i)),
+        *records(6, "Rock", "1975", 30, 600),
+    ]
+    artists.append(artist(G, 6, ["rock"]))
+    loaded(tmp_path, pg, artists, listening={u: [A, *near] for u in range(1, 7)}, discogs=releases)
+    assert pg_query(pg, f"SELECT mbid, rank FROM musilogy.artist_same_sound('{A}')") == [
+        (n, i + 1) for i, n in enumerate(near[:8])
+    ]
