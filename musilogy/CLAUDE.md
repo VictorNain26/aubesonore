@@ -85,7 +85,6 @@ uv run musilogy run           # fetch → extract → transform → validate →
 uv run musilogy snapshot-popularity  # relevé ListenBrainz daté, à épingler
 uv run musilogy snapshot-proximity   # une partie : les artistes qu'aucune partie épinglée n'a interrogés, reprenable
 uv run musilogy snapshot-official    # disques officiels MusicBrainz, ~30 h, reprenable
-uv run musilogy snapshot-influences  # influences Wikidata, quelques secondes, à épingler
 uv run musilogy snapshot-discography # disques classés par Wikidata, quelques secondes, à épingler
 uv run musilogy make-fixtures # depuis les extractions et les relevés épinglés
 uv run musilogy load          # charge data/out/ dans la base du site (environnement libpq)
