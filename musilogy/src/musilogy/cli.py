@@ -15,6 +15,7 @@ from musilogy import (
     REFERENCE_DISCOGRAPHY,
     REFERENCE_DISCOGS,
     REFERENCE_INFLUENCES,
+    REFERENCE_LISTENING,
     REFERENCE_OFFICIAL,
     REFERENCE_POPULARITY,
     REFERENCE_PROXIMITY,
@@ -35,6 +36,7 @@ from musilogy.fetch import (
     fetch_discogs,
     fetch_dump,
     fetch_influences,
+    fetch_listening,
     fetch_official,
     fetch_popularity,
     fetch_proximity,
@@ -56,6 +58,8 @@ from musilogy.paths import (
     discogs_sums,
     influences_snapshot,
     influences_sums,
+    listening_export,
+    listening_sums,
     official_snapshot,
     official_sums,
     out_dir,
@@ -277,6 +281,16 @@ def _verified_one(path: Path, date: str, sums: Path, survey: str, command: str) 
     return path
 
 
+def verified_listening() -> Path:
+    """The statistics export the co-listening is computed from, fetched once
+    and checked against its pinned digest."""
+    return fetch_listening(
+        REFERENCE_LISTENING,
+        listening_export(REFERENCE_LISTENING),
+        listening_sums(REFERENCE_LISTENING),
+    )
+
+
 def snapshot_influences() -> None:
     """Asks Wikidata for the declared influences between MusicBrainz artists.
     Wikidata moves every day, so the snapshot is taken once and pinned, like
@@ -431,6 +445,7 @@ def run() -> None:
     proximity = verified_proximity()
     official = verified_official()
     discogs = verified_discogs()
+    listening = verified_listening()
 
     con = connect()
     build(
@@ -451,6 +466,8 @@ def run() -> None:
         official_snapshots=REFERENCE_OFFICIAL,
         discogs=discogs,
         discogs_dump=REFERENCE_DISCOGS,
+        listening=listening,
+        listening_snapshot=REFERENCE_LISTENING,
     )
 
     violations = check_invariants(con, SQL_DIR)

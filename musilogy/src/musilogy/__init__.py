@@ -12,3 +12,6 @@ REFERENCE_DISCOGS = "20261001"
 # earlier part asked (cli.snapshot_proximity, cli.snapshot_official).
 REFERENCE_PROXIMITY = ("2026-10-04", "2026-10-06")
 REFERENCE_OFFICIAL = ("2026-10-05", "2026-10-06")
+# The ListenBrainz statistics export whose users' top artists give our
+# co-listening (colisten.py): dump number, date and sequence of its folder.
+REFERENCE_LISTENING = "2692-20261001-000003"

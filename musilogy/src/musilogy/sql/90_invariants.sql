@@ -425,3 +425,22 @@ CREATE OR REPLACE VIEW discogs_link_ambiguous AS
   )
   SELECT artist_mbid FROM (SELECT artist_mbid FROM labels UNION SELECT artist_mbid FROM styles)
   WHERE artist_mbid NOT IN (SELECT mbid FROM alone);
+-- colisten (colisten.py): one row per pair, never the artist itself, ranks
+-- 1..K without a gap, at least MIN_COMMON listeners in common, and each rank
+-- scoring no more than the one before it.
+CREATE OR REPLACE VIEW duplicate_colisten AS
+  SELECT artist_mbid, neighbour_mbid FROM colisten GROUP BY ALL HAVING count(*) > 1;
+CREATE OR REPLACE VIEW colisten_self AS
+  SELECT artist_mbid FROM colisten WHERE artist_mbid = neighbour_mbid;
+CREATE OR REPLACE VIEW colisten_rank_out_of_range AS
+  SELECT artist_mbid FROM colisten GROUP BY artist_mbid
+  HAVING min(rank) <> 1 OR max(rank) <> count(*) OR max(rank) > getvariable('colisten_k');
+CREATE OR REPLACE VIEW colisten_below_min_common AS
+  SELECT artist_mbid, neighbour_mbid FROM colisten
+  WHERE common < getvariable('colisten_min_common');
+CREATE OR REPLACE VIEW colisten_out_of_order AS
+  SELECT artist_mbid, rank FROM (
+    SELECT artist_mbid, rank, score,
+           lag(score) OVER (PARTITION BY artist_mbid ORDER BY rank) AS before
+    FROM colisten
+  ) WHERE score > before;

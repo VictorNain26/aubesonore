@@ -5,6 +5,9 @@ requires-python = ">=3.12"
 license = "MIT"
 dependencies = [
     "duckdb==1.5.5",
+    # Our co-listening's sparse product (colisten.py), the one step not in SQL.
+    "numpy==2.5.3",
+    "scipy==1.18.1",
 ]
 
 [project.scripts]
@@ -52,7 +55,8 @@ strict = true
 warn_unused_configs = true
 
 [[tool.mypy.overrides]]
-module = ["duckdb"]
+# scipy ships no type information.
+module = ["duckdb", "scipy", "scipy.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
@@ -62,7 +66,7 @@ ignore_missing_imports = true
 # still checked (check_untyped_defs, part of strict, stays on).
 module = [
     "conftest", "test_albums", "test_artist", "test_bands", "test_baseline",
-    "test_cli", "test_corrections", "test_discogs", "test_env", "test_extract", "test_fetch",
+    "test_cli", "test_colisten", "test_corrections", "test_discogs", "test_env", "test_extract", "test_fetch",
     "test_fixtures", "test_genres", "test_influences", "test_invariants", "test_lifespan",
     "test_links", "test_load", "test_official", "test_paths", "test_persons", "test_popularity",
     "test_proximity", "test_publish", "test_releases", "test_search", "test_types", "test_urls",

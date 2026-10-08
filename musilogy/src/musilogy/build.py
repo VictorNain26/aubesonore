@@ -7,6 +7,7 @@ from pathlib import Path
 
 import duckdb
 
+from musilogy.colisten import build_colisten
 from musilogy.paths import DATA_DIR
 
 
@@ -160,6 +161,41 @@ def load_proximity(
     )
 
 
+RAW_LISTENING_COLUMNS = (
+    "{user_id:'BIGINT', "
+    "data:'STRUCT(listen_count BIGINT, artist_name VARCHAR, artist_mbid VARCHAR)[]'}"
+)
+
+
+def load_listening(
+    con: duckdb.DuckDBPyConnection, export: Path | None, snapshot: str | None
+) -> None:
+    """Who listens to whom, from the ListenBrainz statistics export: each
+    user's top artists of all time, one row per user and artist with an MBID
+    (an artist known only by name cannot be counted). Read with a bounded
+    object size: a user's line holds up to a thousand artists."""
+    # Always materialized, even empty: colisten reads it. 33 million rows: the
+    # MBID as a UUID (16 bytes rather than 36 characters, and a malformed one
+    # stops the build) keeps them within the build's memory bound, and so does
+    # leaving the insertion order free while they are read (nothing reads this
+    # table in order; publish() sorts every table it writes).
+    con.execute("CREATE OR REPLACE TABLE raw_listening (user_id INTEGER, artist_mbid UUID)")
+    if export is not None:
+        con.execute("SET preserve_insertion_order = false")
+        con.execute(
+            "INSERT INTO raw_listening "
+            "SELECT user_id, d.artist_mbid::UUID FROM ("
+            f"  SELECT user_id, unnest(data) AS d FROM read_ndjson('{export.as_posix()}', "
+            f"    columns={RAW_LISTENING_COLUMNS}, format='newline_delimited', "
+            "    maximum_object_size=268435456)"
+            ") WHERE d.artist_mbid IS NOT NULL"
+        )
+        con.execute("RESET preserve_insertion_order")
+    con.execute(
+        "SET VARIABLE listening_snapshot = " + ("NULL" if snapshot is None else f"'{snapshot}'")
+    )
+
+
 def load_official(
     con: duckdb.DuckDBPyConnection, parts: Sequence[Path], snapshots: Sequence[str] | None
 ) -> None:
@@ -261,6 +297,8 @@ def build(
     official_snapshots: Sequence[str] | None = None,
     discogs: Path | None = None,
     discogs_dump: str | None = None,
+    listening: Path | None = None,
+    listening_snapshot: str | None = None,
 ) -> None:
     load_raw(con, artists, rgs)
     apply_corrections(con, corrections)
@@ -270,6 +308,8 @@ def build(
     load_proximity(con, proximity, proximity_snapshots)
     load_official(con, official, official_snapshots)
     load_discogs(con, discogs, discogs_dump)
+    load_listening(con, listening, listening_snapshot)
+    build_colisten(con)
     con.execute(f"SET VARIABLE dump_year = {dump_year}")
     con.execute(f"SET VARIABLE min_year = {min_year}")
     for path in sorted(sql_dir.glob("*.sql")):
@@ -329,6 +369,11 @@ INVARIANTS = (
     "proximity_asked_twice",
     "duplicate_proximity",
     "proximity_unsourced",
+    "duplicate_colisten",
+    "colisten_self",
+    "colisten_rank_out_of_range",
+    "colisten_below_min_common",
+    "colisten_out_of_order",
     "official_asked_twice",
     "official_unsourced",
     "duplicate_label",
