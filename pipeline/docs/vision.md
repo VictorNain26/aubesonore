@@ -191,6 +191,9 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
      les autres comptés « non tentés », le journal nomme le délai. ffprobe, fpcalc, ffmpeg et
      rsgain ont 300 s par fichier ; au-delà, c'est un échec du fichier (`ToolError`). Sans ces
      délais, un outil bloqué gelait la passe jusqu'à ses 12 h.
+   - La sortie de Sockseek, qui détaille chaque tentative, va dans `data/acquisition/sockseek.log`,
+     réécrit à chaque passe, et non dans le journal : l'issue de chaque titre est en base et
+     résumée dans le rapport. Sous systemd, le journal n'ajoute plus sa propre heure aux lignes.
    - Le dossier de la passe (`data/acquisition/<date>/`) est supprimé à la fin, même sur
      exception ; pas si systemd tue le processus (délai de 12 h), car Python n'exécute alors pas
      son `finally`.
