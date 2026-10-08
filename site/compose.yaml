@@ -97,8 +97,9 @@ services:
     # own Compose example (hub.docker.com/_/postgres).
     shm_size: 128mb
     # This box is a shared homelab running ~22 containers; a runaway here must
-    # not take Plex down with it. The ceilings sit ~20x above observed steady
-    # state, so they cap accidents without throttling normal work.
+    # not take Plex down with it. The memory ceiling sits about 3x above the
+    # steady state (353 MiB on 2026-10-08) and leaves room for a musilogy load,
+    # so it caps accidents without throttling normal work.
     cpus: 1.0
     mem_limit: 1g
     pids_limit: 256
