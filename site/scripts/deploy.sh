@@ -134,3 +134,8 @@ while true; do
 done
 
 docker image prune -f --filter "until=72h" >/dev/null
+# Each build adds to the build cache and nothing removed it: 28 GB on 2026-10-08, 22 of them
+# reclaimable, on a disk shared with other services. Past 10 GB the least recently used records
+# go first (docs.docker.com/reference/cli/docker/buildx/prune/), so the layers of the last
+# builds stay and the next deploy keeps its cache.
+docker buildx prune -f --max-used-space 10gb >/dev/null
