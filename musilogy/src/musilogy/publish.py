@@ -34,7 +34,6 @@ TABLES = (
     "urls",
     "proximity",
     "colisten",
-    "labels",
     "styles",
 )
 # A delivery has to come out in a fixed order, or the same code on the same
@@ -54,7 +53,6 @@ ORDER_BY = {
     "urls": "artist_mbid, type NULLS LAST, url",
     "proximity": "artist_mbid, rank",
     "colisten": "artist_mbid, rank",
-    "labels": "artist_mbid, label_id",
     "styles": "artist_mbid, decade NULLS LAST, style",
 }
 

@@ -114,8 +114,7 @@ WITNESSES = [
     "da02dddc-60fa-4ca4-88bb-8012598f1f86",  # Two Steps From Hell: an "other"
 ]
 # The witnesses whose Discogs releases the fixtures carry: the whole catalogue of
-# the Beatles or of Bach would weigh tens of megabytes. Joy Division and New
-# Order share Factory, a label two witnesses call home.
+# the Beatles or of Bach would weigh tens of megabytes.
 DISCOGS_WITNESSES = [
     "9a58fda3-f4ed-4080-a3a5-f457aac9fcdd",  # Joy Division
     "f1106b17-dcbb-45f6-b938-199ccfab50cc",  # New Order

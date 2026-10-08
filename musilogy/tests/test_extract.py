@@ -278,10 +278,6 @@ def test_extract_discogs_keeps_the_release_credits_and_nothing_of_its_tracks(tmp
             "id": 3,
             "master_id": 66526,
             "artists": [3],
-            "labels": [
-                {"id": 6, "name": "Ruffhouse Records"},
-                {"id": 35, "name": "Ovum Recordings"},
-            ],
             "descriptions": ["Compilation", "Mixed"],
             "styles": ["Techno", "Tech House"],
             "released": "1999-07-13",
@@ -290,7 +286,6 @@ def test_extract_discogs_keeps_the_release_credits_and_nothing_of_its_tracks(tmp
             "id": 386,
             "master_id": 0,
             "artists": [363],
-            "labels": [{"id": 110, "name": "Worm Interface"}],
             "descriptions": ['12"', "EP"],
             "styles": ["Jungle", "Drum n Bass", "Chiptune"],
             "released": "1998-02-00",

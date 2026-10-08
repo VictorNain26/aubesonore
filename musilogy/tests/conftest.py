@@ -156,7 +156,6 @@ def official_file(path, rows):
 def discogs_release(
     release_id: int,
     artists: list[int],
-    labels: Sequence[tuple[int, str]] = (),
     master_id: int | None = 0,
     released: str | None = "2001",
     styles: Sequence[str] = (),
@@ -167,7 +166,6 @@ def discogs_release(
         "id": release_id,
         "master_id": master_id,
         "artists": artists,
-        "labels": [{"id": i, "name": n} for i, n in labels],
         "descriptions": list(descriptions),
         "styles": list(styles),
         "released": released,

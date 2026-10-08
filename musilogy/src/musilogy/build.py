@@ -199,7 +199,6 @@ RAW_DISCOGS_FIELDS = {
     "id": "BIGINT",
     "master_id": "BIGINT",
     "artists": "BIGINT[]",
-    "labels": "STRUCT(id BIGINT, name VARCHAR)[]",
     "descriptions": "VARCHAR[]",
     "styles": "VARCHAR[]",
     "released": "VARCHAR",
@@ -214,8 +213,7 @@ def load_discogs(con: duckdb.DuckDBPyConnection, releases: Path | None, dump: st
         # Always materialized, even empty: 84_discogs.sql reads it.
         con.execute(
             "CREATE OR REPLACE TABLE raw_discogs (id BIGINT, master_id BIGINT, artists BIGINT[], "
-            "labels STRUCT(id BIGINT, name VARCHAR)[], descriptions VARCHAR[], styles VARCHAR[], "
-            "released VARCHAR)"
+            "descriptions VARCHAR[], styles VARCHAR[], released VARCHAR)"
         )
     else:
         con.execute(
@@ -345,11 +343,8 @@ INVARIANTS = (
     "colisten_out_of_order",
     "official_asked_twice",
     "official_unsourced",
-    "duplicate_label",
     "duplicate_style",
-    "label_without_artist",
     "style_without_artist",
-    "label_below_home",
     "style_decade_malformed",
     "discogs_link_ambiguous",
     "corrections_file_too_large",

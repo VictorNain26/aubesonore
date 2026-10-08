@@ -42,9 +42,7 @@ BASELINE = {
     # 6 614 artists of the other types, 122 031 rows), once the repeats and the
     # artists given as their own neighbour are dropped.
     "proximity": 5_095_267,
-    # The labels of first editions carrying at least two of an artist's
-    # records, and its styles by decade, over the artists Discogs is linked to.
-    "labels": 980_519,
+    # The styles of an artist by decade, over the artists Discogs is linked to.
     "styles": 4_359_024,
 }
 RELEASE_TYPE_BREAKDOWN = {"Album": 1_968_255, "EP": 588_019}
