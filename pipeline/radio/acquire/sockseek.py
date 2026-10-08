@@ -55,11 +55,16 @@ class Outcome:
     reason: str | None  # None si `file` est présent
 
 
-Runner = Callable[[Sequence[str], float], int]
+Runner = Callable[[Sequence[str], float, Path], int]
 
 
-def run_command(args: Sequence[str], timeout: float) -> int:
-    return subprocess.run(args, check=False, timeout=timeout).returncode
+def run_command(args: Sequence[str], timeout: float, log: Path) -> int:
+    # Sa sortie détaille chaque tentative (779 des 822 lignes du journal de la passe du
+    # 2026-10-04) ; l'issue de chaque titre est déjà en base et résumée dans le rapport.
+    with log.open("w", encoding="utf-8") as out:
+        return subprocess.run(
+            args, stdout=out, stderr=subprocess.STDOUT, check=False, timeout=timeout
+        ).returncode
 
 
 def time_limit(n_wanted: int, cfg: AcquisitionConfig) -> float:
@@ -95,6 +100,8 @@ def download(
     conf = conf_dir / "sockseek.conf"
     _write_config(conf, user, password)
     limit = time_limit(len(wanted), cfg)
+    # À côté du dossier de la passe, qui est supprimé : la sortie de la dernière passe reste.
+    log = workdir.parent / "sockseek.log"
     code: int | None
     try:
         code = run(
@@ -121,6 +128,7 @@ def download(
                 str(cfg.searches_renew_s),
             ],
             limit,
+            log,
         )
     except subprocess.TimeoutExpired:
         # subprocess.run l'a tué : l'index, réécrit à chaque titre terminé, dit ce qui est fait ;
@@ -129,6 +137,7 @@ def download(
         code = None
     finally:
         conf.unlink()
+    logger.info("sortie de Sockseek : %s", log)
     if code is not None and code not in _RAN:
         raise SockseekError(f"code de sortie {code}")
     index = workdir / "retenus" / "_index.csv"

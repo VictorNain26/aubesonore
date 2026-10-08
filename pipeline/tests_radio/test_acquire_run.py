@@ -44,7 +44,7 @@ class FakeDeezer:
 def _sockseek(found: set[int]) -> Any:
     """Faux Sockseek : écrit un fichier pour les ids de `found`, un échec pour les autres."""
 
-    def run(args: Sequence[str], timeout: float) -> int:
+    def run(args: Sequence[str], timeout: float, log: Path) -> int:
         out = Path(args[args.index("--output-dir") + 1])
         rows = []
         for line in (out / "retenus.csv").read_text().splitlines()[1:]:
@@ -235,7 +235,7 @@ def test_sockseek_without_index_consumes_no_attempt(
             ("u", "p"),
             CFG,
             NOW,
-            lambda args, timeout: 1,
+            lambda args, timeout, log: 1,
         )
     assert _no_attempt_recorded(conn)
     assert not (tmp_path / "w").exists()
@@ -249,8 +249,8 @@ def test_sockseek_fatal_code_consumes_no_attempt(
     found = set(pending(conn, CFG).tids)
     run = _sockseek(found)
 
-    def usage_error(args: Sequence[str], timeout: float) -> int:
-        run(args, timeout)
+    def usage_error(args: Sequence[str], timeout: float, log: Path) -> int:
+        run(args, timeout, log)
         return 2
 
     with pytest.raises(SockseekError):
@@ -276,8 +276,8 @@ def test_titles_missing_from_a_partial_index_are_not_attempts(
     first = pending(conn, CFG).tids[0]
     run = _sockseek({first})
 
-    def interrupted(args: Sequence[str], timeout: float) -> int:
-        run(args, timeout)
+    def interrupted(args: Sequence[str], timeout: float, log: Path) -> int:
+        run(args, timeout, log)
         index = Path(args[args.index("--output-dir") + 1]) / "retenus" / "_index.csv"
         index.write_text("\n".join(index.read_text().splitlines()[:2]))
         return 1

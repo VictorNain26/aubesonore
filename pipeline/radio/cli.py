@@ -178,8 +178,10 @@ def _now() -> str:
 @app.callback()
 def main() -> None:
     """AubeSonore — goût, découverte, acquisition, antenne et votes."""
+    # Sous systemd, journald date déjà chaque ligne.
+    stamp = "" if os.environ.get("INVOCATION_ID") else "%(asctime)s "
     logging.basicConfig(
-        level=logging.INFO, stream=sys.stderr, format="%(asctime)s %(levelname)s %(message)s"
+        level=logging.INFO, stream=sys.stderr, format=f"{stamp}%(levelname)s %(message)s"
     )
     # À WARNING, urllib3 peut journaliser l'URL complète, clé Last.fm comprise.
     logging.getLogger("urllib3").setLevel(logging.ERROR)
@@ -523,7 +525,7 @@ def acquire() -> None:
     if rep.n_unindexed:
         _fail(
             f"Sockseek s'est arrêté avant {_n(rep.n_unindexed)} titres, non comptés comme "
-            "tentatives : voir le journal",
+            "tentatives : voir data/acquisition/sockseek.log",
             1,
         )
     if not rate_ok:

@@ -7,7 +7,14 @@ from pathlib import Path
 
 import pytest
 
-from radio.acquire.sockseek import SockseekError, Wanted, download, read_index, time_limit
+from radio.acquire.sockseek import (
+    SockseekError,
+    Wanted,
+    download,
+    read_index,
+    run_command,
+    time_limit,
+)
 from radio.core.config import AcquisitionConfig
 
 WANTED = [
@@ -29,8 +36,9 @@ def _index(workdir: Path, rows: list[str]) -> None:
 def test_download_passes_the_list_and_reads_the_index(tmp_path: Path) -> None:
     seen: dict[str, object] = {}
 
-    def fake(args: Sequence[str], timeout: float) -> int:
+    def fake(args: Sequence[str], timeout: float, log: Path) -> int:
         seen["args"] = list(args)
+        seen["log"] = log
         conf = Path(args[args.index("--config") + 1])
         seen["conf_path"] = str(conf)
         seen["conf_mode"] = stat.S_IMODE(os.stat(conf).st_mode)
@@ -65,6 +73,8 @@ def test_download_passes_the_list_and_reads_the_index(tmp_path: Path) -> None:
         (222, None, "aucun fichier conforme"),
     ]
     assert Path(str(seen["conf_path"])).parent == secrets
+    # À côté du dossier de la passe, supprimé à la fin : la sortie de la dernière passe reste.
+    assert seen["log"] == tmp_path.parent / "sockseek.log"
     assert seen["csv"] == (
         "Artist,Title,Length,URI\nA Certain Ratio,Crystal,173,111\n"
         "Adrianne Lenker,anything,201,222\nNobody Here,Missing Song,200,333\n"
@@ -78,7 +88,7 @@ def test_download_passes_the_list_and_reads_the_index(tmp_path: Path) -> None:
 
 
 def test_config_is_removed_even_if_sockseek_crashes(tmp_path: Path) -> None:
-    def boom(args: Sequence[str], timeout: float) -> int:
+    def boom(args: Sequence[str], timeout: float, log: Path) -> int:
         raise OSError("exec")
 
     with pytest.raises(OSError):
@@ -90,13 +100,13 @@ def test_no_index_is_a_sockseek_failure(tmp_path: Path) -> None:
     # Connexion refusée ou compte banni : Sockseek sort en 1 sans avoir écrit d'index.
     with pytest.raises(SockseekError, match="aucun index"):
         download(
-            WANTED, tmp_path, tmp_path, Path("/x"), "u", "p", AcquisitionConfig(), lambda a, t: 1
+            WANTED, tmp_path, tmp_path, Path("/x"), "u", "p", AcquisitionConfig(), lambda *_: 1
         )
 
 
 @pytest.mark.parametrize("code", [2, 130, -15])
 def test_fatal_exit_code_is_a_sockseek_failure(tmp_path: Path, code: int) -> None:
-    def run(args: Sequence[str], timeout: float) -> int:
+    def run(args: Sequence[str], timeout: float, log: Path) -> int:
         _index(tmp_path, [",A Certain Ratio,,Crystal,173,0,2,7"])
         return code
 
@@ -109,7 +119,7 @@ def test_a_stuck_sockseek_is_stopped_and_its_finished_tracks_kept(
 ) -> None:
     seen: dict[str, float] = {}
 
-    def stuck(args: Sequence[str], timeout: float) -> int:
+    def stuck(args: Sequence[str], timeout: float, log: Path) -> int:
         seen["timeout"] = timeout
         (tmp_path / "111.mp3").write_bytes(b"x")
         _index(tmp_path, [f"{tmp_path}/111.mp3,A Certain Ratio,,Crystal,173,0,1,0"])
@@ -135,3 +145,10 @@ def test_unknown_failure_code_is_named(tmp_path: Path) -> None:
     _index(tmp_path, [",A Certain Ratio,,Crystal,173,0,2,42"])
     out = read_index(tmp_path / "retenus" / "_index.csv", WANTED[:1])
     assert out[0].reason == "état 2"
+
+
+def test_sockseek_output_goes_to_its_log_not_the_journal(tmp_path: Path) -> None:
+    log = tmp_path / "sockseek.log"
+    code = run_command(["sh", "-c", "echo found; echo failed >&2; exit 1"], 5.0, log)
+    assert code == 1
+    assert log.read_text().split() == ["found", "failed"]
