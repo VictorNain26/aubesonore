@@ -60,14 +60,6 @@ def official_sums(date: str) -> Path:
     return REFERENCE_DIR / f"musicbrainz-official-{date}.SHA256SUMS"
 
 
-def influences_snapshot(date: str) -> Path:
-    return RAW_DIR / "wikidata" / date / "influences.jsonl"
-
-
-def influences_sums(date: str) -> Path:
-    return REFERENCE_DIR / f"wikidata-influences-{date}.SHA256SUMS"
-
-
 def discography_snapshot(date: str) -> Path:
     return RAW_DIR / "wikidata" / date / "discography.jsonl"
 

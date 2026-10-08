@@ -302,34 +302,13 @@ CREATE OR REPLACE VIEW popularity_unrequested AS
   SELECT a.mbid FROM artists a
   WHERE getvariable('popularity_snapshot') IS NOT NULL
     AND NOT EXISTS (SELECT 1 FROM raw_popularity p WHERE p.artist_mbid = a.mbid);
--- 88_influences.sql: one statement per pair of MBIDs.
-CREATE OR REPLACE VIEW duplicate_influence AS
-  SELECT artist_mbid, influence_mbid FROM influences GROUP BY ALL HAVING count(*) > 1;
--- An MBID is a lowercase UUID, as MusicBrainz writes it and `artists` keys
--- it: anything else on Wikidata would join nothing, in silence. A statement
--- id names its item, then the statement: without it, nothing can be cited.
-CREATE OR REPLACE VIEW influence_malformed AS
-  SELECT artist_mbid, influence_mbid FROM influences
-  WHERE NOT coalesce(regexp_full_match(
-          artist_mbid, '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'), false)
-     OR NOT coalesce(regexp_full_match(
-          influence_mbid, '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'), false)
-     OR NOT coalesce(regexp_full_match(statement, '[Qq][0-9]+\$.+'), false);
--- The orientation, restated against the snapshot: a published row must be the
--- pair its statement declares, read the same way. A swapped column in the rule
--- publishes every influence reversed, which the two views above do not see.
-CREATE OR REPLACE VIEW influence_unsourced AS
-  SELECT i.artist_mbid, i.influence_mbid FROM influences i
-  WHERE NOT EXISTS (
-    SELECT 1 FROM raw_influences r
-    WHERE r.artist_mbid = i.artist_mbid AND r.influence_mbid = i.influence_mbid
-      AND r.statement = i.statement);
 -- 89_proximity.sql: the service answers at most 100 neighbours, ranked from 1.
 CREATE OR REPLACE VIEW proximity_rank_out_of_range AS
   SELECT artist_mbid, neighbour_mbid FROM proximity
   WHERE rank IS NULL OR rank < 1 OR rank > 100;
--- Same shape as influence_malformed: an MBID that is not a lowercase UUID
--- joins nothing, in silence; a neighbour without a score cannot be ranked.
+-- An MBID is a lowercase UUID, as MusicBrainz writes it and `artists` keys
+-- it: anything else joins nothing, in silence; a neighbour without a score
+-- cannot be ranked.
 CREATE OR REPLACE VIEW proximity_malformed AS
   SELECT artist_mbid, neighbour_mbid FROM proximity
   WHERE NOT coalesce(regexp_full_match(
@@ -384,26 +363,12 @@ CREATE OR REPLACE VIEW proximity_unsourced AS
     SELECT 1 FROM occurrences o JOIN best b USING (artist_mbid, neighbour_mbid, rank)
     WHERE o.artist_mbid = p.artist_mbid AND o.neighbour_mbid = p.neighbour_mbid
       AND o.rank = p.rank AND o.score = p.score);
--- One row per artist and label, per artist, decade and style.
-CREATE OR REPLACE VIEW duplicate_label AS
-  SELECT artist_mbid, label_id FROM labels GROUP BY ALL HAVING count(*) > 1;
+-- One row per artist, decade and style.
 CREATE OR REPLACE VIEW duplicate_style AS
   SELECT artist_mbid, decade, style FROM styles GROUP BY ALL HAVING count(*) > 1;
-CREATE OR REPLACE VIEW label_without_artist AS
-  SELECT artist_mbid, label_id FROM labels l
-  WHERE NOT EXISTS (SELECT 1 FROM artists a WHERE a.mbid = l.artist_mbid);
 CREATE OR REPLACE VIEW style_without_artist AS
   SELECT artist_mbid, style FROM styles s
   WHERE NOT EXISTS (SELECT 1 FROM artists a WHERE a.mbid = s.artist_mbid);
--- 84_discogs.sql: a label is a home from two records on, and every artist
--- published at home on a label is one of its label_artists. A threshold read
--- as "one or more", or a crowd counted short of the homes the table itself
--- publishes (a threshold of three there, an alias counted apart), fails here.
-CREATE OR REPLACE VIEW label_below_home AS
-  SELECT artist_mbid, label_id FROM labels l
-  WHERE records < 2
-     OR label_artists < (SELECT count(DISTINCT artist_mbid) FROM labels h
-                         WHERE h.label_id = l.label_id);
 -- A decade is a year of the window [1850, 2026] rounded down to ten, or NULL
 -- for a record with no dated edition: hardcoded like every contractual bound.
 CREATE OR REPLACE VIEW style_decade_malformed AS
@@ -412,7 +377,7 @@ CREATE OR REPLACE VIEW style_decade_malformed AS
 -- An artist reaches Discogs only through a Discogs page MusicBrainz relates to
 -- it alone. Recounted from raw_artists rather than read from discogs_links,
 -- with the one reading of a URL (discogs_artist_id): an artist whose every
--- Discogs id is shared with another MBID must carry no label and no style.
+-- Discogs id is shared with another MBID must carry no style.
 CREATE OR REPLACE VIEW discogs_link_ambiguous AS
   WITH ids AS (
     SELECT DISTINCT r.mbid, discogs_artist_id(t.u.url) AS discogs_id
@@ -423,7 +388,7 @@ CREATE OR REPLACE VIEW discogs_link_ambiguous AS
     SELECT mbid FROM ids
     WHERE discogs_id IN (SELECT discogs_id FROM ids GROUP BY 1 HAVING count(*) = 1)
   )
-  SELECT artist_mbid FROM (SELECT artist_mbid FROM labels UNION SELECT artist_mbid FROM styles)
+  SELECT DISTINCT artist_mbid FROM styles
   WHERE artist_mbid NOT IN (SELECT mbid FROM alone);
 -- colisten (colisten.py): one row per pair, never the artist itself, ranks
 -- 1..K without a gap, at least MIN_COMMON listeners in common, and each rank

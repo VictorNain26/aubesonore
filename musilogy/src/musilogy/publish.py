@@ -18,7 +18,6 @@ from musilogy.paths import (
     discography_sums,
     discogs_extraction,
     discogs_sums,
-    influences_sums,
     listening_sums,
     official_sums,
     popularity_sums,
@@ -31,12 +30,10 @@ TABLES = (
     "genres",
     "links",
     "popularity",
-    "influences",
     "releases",
     "urls",
     "proximity",
     "colisten",
-    "labels",
     "styles",
 )
 # A delivery has to come out in a fixed order, or the same code on the same
@@ -52,12 +49,10 @@ ORDER_BY = {
     "genres": "genre_mbid",
     "links": "src_mbid, dst_mbid, type, y_begin NULLS LAST, y_end NULLS LAST",
     "popularity": "mbid",
-    "influences": "artist_mbid, influence_mbid",
     "releases": "artist_mbid, rg_mbid",
     "urls": "artist_mbid, type NULLS LAST, url",
     "proximity": "artist_mbid, rank",
     "colisten": "artist_mbid, rank",
-    "labels": "artist_mbid, label_id",
     "styles": "artist_mbid, decade NULLS LAST, style",
 }
 
@@ -238,7 +233,6 @@ def publish(
         "dump": dump,
         "archive_sha256": expected_sums(REFERENCE_DIR / f"{dump}.SHA256SUMS"),
         "popularity": _snapshot(con, "popularity_snapshot", popularity_sums),
-        "influences": _snapshot(con, "influences_snapshot", influences_sums),
         "discography": _snapshot(con, "discography_snapshot", discography_sums),
         "proximity": _parts(con, "proximity_snapshots", proximity_sums),
         "official": _parts(con, "official_snapshots", official_sums),

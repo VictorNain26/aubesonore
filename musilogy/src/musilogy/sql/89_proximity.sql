@@ -1,8 +1,8 @@
 -- The neighbours ListenBrainz gives each artist it was asked about
 -- (labs.api.listenbrainz.org/similar-artists, co-listening): `rank` is the
 -- neighbour's place in the service's answer, from 1, `score` the service's
--- own. Proximity never says "influenced by"; time gives it a side, in the
--- function the site reads (pg/90_artist.sql). A neighbour absent from the dump
+-- own. Time gives it a side, in the function the site reads
+-- (pg/90_artist.sql). A neighbour absent from the dump
 -- stays here: the function leaves it out, for want of a name to show.
 --
 -- The service sometimes gives one artist the same neighbour twice (5 of the

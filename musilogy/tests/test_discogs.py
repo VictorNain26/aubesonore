@@ -17,8 +17,6 @@ from musilogy.paths import SQL_DIR
 A = "00000000-0000-4000-8000-0000000000d1"
 B = "00000000-0000-4000-8000-0000000000d2"
 C = "00000000-0000-4000-8000-0000000000d3"
-LABEL = (10, "Home Records")
-OTHER = (20, "Reissue Co.")
 
 
 def built(tmp_path, artists, releases):
@@ -32,9 +30,9 @@ def built(tmp_path, artists, releases):
     return c
 
 
-def labels(c):
+def styles(c):
     return c.execute(
-        "SELECT artist_mbid, label_id, label, records, label_artists FROM labels ORDER BY ALL"
+        "SELECT artist_mbid, decade, style, records FROM styles ORDER BY ALL"
     ).fetchall()
 
 
@@ -42,20 +40,18 @@ def linked(mbid, *discogs_ids):
     return synthetic_artist(mbid, "1990", None, urls=[discogs_url(i) for i in discogs_ids])
 
 
-def test_a_label_is_home_from_two_records_on(tmp_path):
-    # Two editions of one master are one record: a label counting releases would
-    # take a reissued single for a home.
+def test_two_editions_of_one_master_are_one_record(tmp_path):
     c = built(
         tmp_path,
         [linked(A, 1), linked(B, 2)],
         [
-            discogs_release(1, [1], [LABEL], master_id=100),
-            discogs_release(2, [1], [LABEL], master_id=100),
-            discogs_release(3, [2], [LABEL], master_id=200),
-            discogs_release(4, [2], [LABEL], master_id=201),
+            discogs_release(1, [1], master_id=100, styles=["Techno"]),
+            discogs_release(2, [1], master_id=100, styles=["Techno"]),
+            discogs_release(3, [2], master_id=200, styles=["Techno"]),
+            discogs_release(4, [2], master_id=201, styles=["Techno"]),
         ],
     )
-    assert labels(c) == [(B, 10, "Home Records", 2, 1)]
+    assert styles(c) == [(A, 2000, "Techno", 1), (B, 2000, "Techno", 2)]
 
 
 def test_a_release_without_master_is_its_own_record(tmp_path):
@@ -66,13 +62,12 @@ def test_a_release_without_master_is_its_own_record(tmp_path):
         tmp_path,
         [linked(A, 1)],
         [
-            discogs_release(1, [1], [LABEL]),
-            discogs_release(2, [1], [LABEL], master_id=None),
-            discogs_release(3, [1], [OTHER], master_id=None),
-            discogs_release(4, [1], [OTHER], master_id=None),
+            discogs_release(1, [1], styles=["Techno"]),
+            discogs_release(2, [1], master_id=None, styles=["Techno"]),
+            discogs_release(3, [1], master_id=None, styles=["Techno"]),
         ],
     )
-    assert labels(c) == [(A, 10, "Home Records", 2, 1), (A, 20, "Reissue Co.", 2, 1)]
+    assert styles(c) == [(A, 2000, "Techno", 3)]
 
 
 def test_compilations_unofficial_releases_and_promos_do_not_count(tmp_path):
@@ -80,67 +75,17 @@ def test_compilations_unofficial_releases_and_promos_do_not_count(tmp_path):
         tmp_path,
         [linked(A, 1)],
         [
-            discogs_release(1, [1], [LABEL], descriptions=["Compilation"]),
-            discogs_release(2, [1], [LABEL], descriptions=["Unofficial Release", "LP"]),
-            discogs_release(3, [1], [LABEL], descriptions=["Promo"]),
-            discogs_release(4, [1], [LABEL], descriptions=["Album", "LP"]),
+            discogs_release(1, [1], descriptions=["Compilation"], styles=["House"]),
+            discogs_release(2, [1], descriptions=["Unofficial Release", "LP"], styles=["House"]),
+            discogs_release(3, [1], descriptions=["Promo"], styles=["House"]),
+            discogs_release(4, [1], descriptions=["Album", "LP"], styles=["Techno"]),
         ],
     )
-    assert labels(c) == []
+    assert styles(c) == [(A, 2000, "Techno", 1)]
     assert c.execute("SELECT releases, releases_out_of_work FROM discogs_coverage").fetchone() == (
         4,
         3,
     )
-
-
-def test_only_the_first_edition_says_where_the_record_was_made(tmp_path):
-    # Reissued a decade later elsewhere: the reissuer holds the catalogue, it is
-    # not the artist's label. A record with no dated edition keeps them all.
-    c = built(
-        tmp_path,
-        [linked(A, 1)],
-        [
-            discogs_release(1, [1], [LABEL], master_id=100, released="1971"),
-            discogs_release(2, [1], [OTHER], master_id=100, released="1999-05-00"),
-            discogs_release(3, [1], [LABEL], master_id=101, released="1972"),
-            discogs_release(4, [1], [OTHER], master_id=101, released="2004"),
-            discogs_release(5, [1], [OTHER], master_id=102, released=None),
-        ],
-    )
-    assert labels(c) == [(A, 10, "Home Records", 2, 1)]
-
-
-def test_a_self_release_is_no_label(tmp_path):
-    c = built(
-        tmp_path,
-        [linked(A, 1)],
-        [
-            discogs_release(1, [1], [(1818, "Not On Label")]),
-            discogs_release(2, [1], [(1818, "Not On Label")]),
-            discogs_release(3, [1], [(5, "Not On Label (Somebody Self-released)")]),
-            discogs_release(4, [1], [(5, "Not On Label (Somebody Self-released)")]),
-        ],
-    )
-    assert labels(c) == []
-
-
-def test_label_artists_counts_the_label_homes_placeholders_aside(tmp_path):
-    # Artist 3 is not linked to MusicBrainz: it still makes the label bigger.
-    # Various (194) is a credit, not an artist the label is home to.
-    c = built(
-        tmp_path,
-        [linked(A, 1)],
-        [
-            discogs_release(1, [1], [LABEL]),
-            discogs_release(2, [1], [LABEL]),
-            discogs_release(3, [3], [LABEL]),
-            discogs_release(4, [3], [LABEL]),
-            discogs_release(5, [194], [LABEL]),
-            discogs_release(6, [194], [LABEL]),
-            discogs_release(7, [4], [LABEL]),
-        ],
-    )
-    assert labels(c) == [(A, 10, "Home Records", 2, 2)]
 
 
 def test_a_discogs_artist_related_to_two_mbids_reaches_neither(tmp_path):
@@ -148,13 +93,12 @@ def test_a_discogs_artist_related_to_two_mbids_reaches_neither(tmp_path):
         tmp_path,
         [linked(A, 1), linked(B, 1), linked(C, 1, 2)],
         [
-            discogs_release(1, [1], [LABEL], styles=["Techno"]),
-            discogs_release(2, [1], [LABEL], styles=["Techno"]),
-            discogs_release(3, [2], [LABEL], styles=["House"]),
+            discogs_release(1, [1], styles=["Techno"]),
+            discogs_release(2, [1], styles=["Techno"]),
+            discogs_release(3, [2], styles=["House"]),
         ],
     )
-    assert labels(c) == []
-    assert c.execute("SELECT artist_mbid, style FROM styles").fetchall() == [(C, "House")]
+    assert styles(c) == [(C, 2000, "House", 1)]
     assert c.execute(
         "SELECT discogs_ids_ambiguous, artists_linked FROM discogs_coverage"
     ).fetchone() == (1, 1)
@@ -164,9 +108,9 @@ def test_the_aliases_of_one_mbid_add_up(tmp_path):
     c = built(
         tmp_path,
         [linked(A, 1, 2)],
-        [discogs_release(1, [1], [LABEL]), discogs_release(2, [2], [LABEL])],
+        [discogs_release(1, [1], styles=["Techno"]), discogs_release(2, [2], styles=["Techno"])],
     )
-    assert labels(c) == [(A, 10, "Home Records", 2, 1)]
+    assert styles(c) == [(A, 2000, "Techno", 2)]
 
 
 def test_styles_count_records_by_decade_of_first_edition(tmp_path):
@@ -191,9 +135,8 @@ def test_styles_count_records_by_decade_of_first_edition(tmp_path):
     ]
 
 
-def test_a_build_without_discogs_has_no_label_and_no_style(tmp_path):
+def test_a_build_without_discogs_has_no_style(tmp_path):
     c = build_synthetic(tmp_path, [linked(A, 1)])
-    assert c.execute("SELECT count(*) FROM labels").fetchone() == (0,)
     assert c.execute("SELECT count(*) FROM styles").fetchone() == (0,)
 
 
@@ -228,30 +171,34 @@ OUT_OF_WORK = {
 }
 
 
-def recount_labels(discogs_ids):
-    """The labels rule restated in Python over the fixture lines, for one artist."""
+def recount_styles(discogs_ids):
+    """The styles rule restated in Python over the fixture lines, for one artist:
+    a record is the artist's when one of its editions credits it, and carries the
+    styles and the first year of all its editions."""
     first_year: dict[str, int | None] = {}
-    editions = []
+    record_styles = defaultdict(set)
+    own = set()
     with (FIX / "discogs.jsonl").open(encoding="utf-8") as fh:
         for line in fh:
             r = json.loads(line)
-            if OUT_OF_WORK & set(r["descriptions"]) or not discogs_ids & set(r["artists"]):
+            if OUT_OF_WORK & set(r["descriptions"]):
                 continue
             record = f"m{r['master_id']}" if r["master_id"] else f"r{r['id']}"
             y = int(r["released"][:4]) if (r["released"] or "")[:4].isdigit() else None
             y = y if y and 1850 <= y <= 2026 else None
-            editions.append((record, y, r["labels"]))
             earliest = first_year.get(record)
             if y is not None and (earliest is None or y < earliest):
                 first_year[record] = y
             first_year.setdefault(record, None)
+            record_styles[record].update(r["styles"])
+            if discogs_ids & set(r["artists"]):
+                own.add(record)
     records = defaultdict(set)
-    for record, y, labels in editions:
-        if y == first_year[record]:
-            for lab in labels:
-                if not lab["name"].startswith("Not On Label"):
-                    records[lab["id"]].add(record)
-    return {label: len(rs) for label, rs in records.items() if len(rs) >= 2}
+    for record in own:
+        y = first_year[record]
+        for style in record_styles[record]:
+            records[(None if y is None else y // 10 * 10, style)].add(record)
+    return {key: len(rs) for key, rs in records.items()}
 
 
 def discogs_ids_of(con, mbid):
@@ -263,57 +210,31 @@ def discogs_ids_of(con, mbid):
     }
 
 
-def test_the_witnesses_labels_match_a_recount_of_the_fixture(con):
+def test_the_witnesses_styles_match_a_recount_of_the_fixture(con):
     for mbid in (JOY_DIVISION, NEW_ORDER):
-        got = dict(
-            con.execute(
-                "SELECT label_id, records FROM labels WHERE artist_mbid = ?", [mbid]
+        got = {
+            (decade, style): records
+            for decade, style, records in con.execute(
+                "SELECT decade, style, records FROM styles WHERE artist_mbid = ?", [mbid]
             ).fetchall()
-        )
-        assert got == recount_labels(discogs_ids_of(con, mbid)), mbid
+        }
+        assert got, mbid
+        assert got == recount_styles(discogs_ids_of(con, mbid)), mbid
 
 
-def test_joy_division_and_new_order_share_factory(con):
-    shared = con.execute(
-        "SELECT a.label FROM labels a JOIN labels b USING (label_id) "
-        "WHERE a.artist_mbid = ? AND b.artist_mbid = ?",
-        [JOY_DIVISION, NEW_ORDER],
-    ).fetchall()
-    assert any(name.startswith("Factory") for (name,) in shared), shared
-
-
-def test_a_label_counting_fewer_artists_than_it_is_home_to_is_reported(con):
-    # Factory is home to Joy Division and New Order in the fixtures: a crowd
-    # counted short of them is what label_below_home exists to catch.
-    factory = con.execute(
-        "SELECT label_id, label_artists FROM labels "
-        "WHERE artist_mbid = ? AND label LIKE 'Factory%' ORDER BY records DESC LIMIT 1",
-        [JOY_DIVISION],
-    ).fetchone()
-    homes = con.execute(
-        "SELECT count(DISTINCT artist_mbid) FROM labels WHERE label_id = ?", [factory[0]]
-    ).fetchone()[0]
-    assert homes >= 2
-    undo = "UPDATE labels SET label_artists = ? WHERE label_id = ?"
-    with restored(con, (undo, [factory[1], factory[0]])):
-        con.execute(undo, [1, factory[0]])
-        violations = dict(check_invariants(con, SQL_DIR))
-    assert violations.get("label_below_home") == homes
-
-
-def test_a_label_reached_through_no_discogs_page_of_its_own_is_reported(con):
-    # An artist that relates no Discogs page can only carry a label through an
+def test_a_style_reached_through_no_discogs_page_of_its_own_is_reported(con):
+    # An artist that relates no Discogs page can only carry a style through an
     # id another MBID holds.
     (pageless,) = con.execute(
         "SELECT a.mbid FROM artists a JOIN raw_artists r USING (mbid) "
         "WHERE NOT list_contains([u.type FOR u IN r.urls], 'discogs') ORDER BY a.mbid LIMIT 1"
     ).fetchone()
     row = con.execute(
-        "SELECT label_id, label, records, label_artists FROM labels WHERE artist_mbid = ? LIMIT 1",
+        "SELECT decade, style, records FROM styles WHERE artist_mbid = ? LIMIT 1",
         [JOY_DIVISION],
     ).fetchone()
-    undo = "DELETE FROM labels WHERE artist_mbid = ?"
+    undo = "DELETE FROM styles WHERE artist_mbid = ?"
     with restored(con, (undo, [pageless])):
-        con.execute("INSERT INTO labels VALUES (?, ?, ?, ?, ?)", [pageless, *row])
+        con.execute("INSERT INTO styles VALUES (?, ?, ?, ?)", [pageless, *row])
         violations = dict(check_invariants(con, SQL_DIR))
     assert violations.get("discogs_link_ambiguous") == 1

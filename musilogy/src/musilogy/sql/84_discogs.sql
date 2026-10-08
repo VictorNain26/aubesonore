@@ -36,7 +36,6 @@ SELECT in_work,
   CASE WHEN coalesce(master_id, 0) > 0 THEN master_id ELSE -id END AS record,
   CASE WHEN in_work THEN discogs_year(released) END AS y,
   CASE WHEN in_work THEN artists END AS artists,
-  CASE WHEN in_work THEN labels END AS labels,
   CASE WHEN in_work THEN styles END AS styles
 FROM (SELECT discogs_in_work(descriptions) AS in_work, * FROM raw_discogs);
 
@@ -52,20 +51,6 @@ CREATE OR REPLACE TABLE discogs_record_styles AS
 SELECT record, style FROM (
   SELECT record, UNNEST(styles) AS style FROM discogs_work WHERE in_work
 ) GROUP BY ALL;
-
--- The labels of a record's first dated edition, or of all its editions when
--- none is dated: a reissue says who holds the catalogue today, not where the
--- artist made the record (Can's records come back on P-Vine and Warner).
--- "Not On Label" is how Discogs writes a self-release, never a label.
-CREATE OR REPLACE TABLE discogs_record_labels AS
-SELECT record, l.id AS label_id, l.name FROM (
-  SELECT d.record, UNNEST(d.labels) AS l
-  FROM discogs_work d
-  JOIN discogs_record_years ry ON ry.record = d.record AND d.y IS NOT DISTINCT FROM ry.y
-  WHERE d.in_work
-)
-WHERE NOT starts_with(l.name, 'Not On Label')
-GROUP BY ALL;
 
 CREATE OR REPLACE TABLE discogs_coverage AS
 SELECT
@@ -85,37 +70,6 @@ DROP TABLE discogs_work;
 CREATE OR REPLACE TABLE discogs_artist_records AS
 SELECT DISTINCT l.mbid, ra.record
 FROM discogs_links l JOIN discogs_record_artists ra USING (discogs_id);
-
--- An artist's labels: those that carry at least two of its records, a home
--- rather than a passage. `label_artists` counts the artists the label is home
--- to: by MBID when Discogs is linked, so that aliases add up as they do for the
--- artist itself, by Discogs id otherwise, and Various, Unknown Artist and No
--- Artist aside (Discogs ids 194, 355 and 118760). A few dozen for a scene's
--- label, thousands for a major: a consumer reads it before it takes a shared
--- label for a shared scene. One name per label, the smallest the first
--- editions carry: Discogs spells a label differently across them.
-CREATE OR REPLACE TABLE labels AS
-WITH homes AS (
-  SELECT rl.label_id, coalesce(l.mbid, ra.discogs_id::VARCHAR) AS artist,
-    count(DISTINCT rl.record) AS records
-  FROM discogs_record_labels rl
-  JOIN discogs_record_artists ra USING (record)
-  LEFT JOIN discogs_links l USING (discogs_id)
-  WHERE ra.discogs_id NOT IN (194, 355, 118760)
-  GROUP BY ALL
-),
-crowd AS (
-  SELECT label_id, count(*) FILTER (WHERE records >= 2) AS label_artists FROM homes GROUP BY 1
-),
-names AS (SELECT label_id, min(name) AS label FROM discogs_record_labels GROUP BY 1)
-SELECT ar.mbid AS artist_mbid, rl.label_id, n.label, count(DISTINCT rl.record) AS records,
-  c.label_artists
-FROM discogs_artist_records ar
-JOIN discogs_record_labels rl USING (record)
-JOIN crowd c USING (label_id)
-JOIN names n USING (label_id)
-GROUP BY ar.mbid, rl.label_id, n.label, c.label_artists
-HAVING count(DISTINCT rl.record) >= 2;
 
 -- An artist's styles by decade of first edition, each counted in records: a
 -- current is read era by era (James Holden, progressive house in the 2000s,

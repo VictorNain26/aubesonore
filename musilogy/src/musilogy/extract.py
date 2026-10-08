@@ -142,7 +142,7 @@ def extract(
 
 
 def reduce_discogs_release(el: ET.Element) -> dict[str, Any]:
-    """The fields a label or a style reads, as the dump writes them: a release
+    """The fields a style reads, as the dump writes them: a release
     without a master carries master_id 0 when the dump writes the element, null
     when it does not, and `released` is a partial date the SQL reads with yr()."""
     master = el.find("master_id")
@@ -150,11 +150,6 @@ def reduce_discogs_release(el: ET.Element) -> dict[str, Any]:
         "id": int(el.attrib["id"]),
         "master_id": int(master.text) if master is not None and master.text else None,
         "artists": [int(i) for a in el.findall("artists/artist") if (i := a.findtext("id"))],
-        "labels": [
-            {"id": int(lab.attrib["id"]), "name": lab.get("name")}
-            for lab in el.findall("labels/label")
-            if lab.get("id")
-        ],
         "descriptions": sorted(
             {d.text for d in el.findall("formats/format/descriptions/description") if d.text}
         ),

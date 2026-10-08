@@ -85,31 +85,6 @@ def load_popularity(
     )
 
 
-RAW_INFLUENCE_COLUMNS = "{artist_mbid:'VARCHAR', influence_mbid:'VARCHAR', statement:'VARCHAR'}"
-
-
-def load_influences(
-    con: duckdb.DuckDBPyConnection, influences: Path | None, snapshot: str | None
-) -> None:
-    if influences is None:
-        # Always materialized, even empty, like popularity: synthetic builds
-        # carry no snapshot, and 88_influences.sql reads this table anyway.
-        con.execute(
-            "CREATE OR REPLACE TABLE raw_influences (artist_mbid VARCHAR, "
-            "influence_mbid VARCHAR, statement VARCHAR)"
-        )
-    else:
-        con.execute(
-            f"CREATE OR REPLACE TABLE raw_influences AS SELECT * FROM read_ndjson("
-            f"'{influences.as_posix()}', columns={RAW_INFLUENCE_COLUMNS}, "
-            f"format='newline_delimited')"
-        )
-    con.execute(
-        "SET VARIABLE influences_snapshot = "
-        + ("NULL" if snapshot is None else f"DATE '{snapshot}'")
-    )
-
-
 RAW_DISCOGRAPHY_COLUMNS = "{rg_mbid:'VARCHAR', form:'VARCHAR'}"
 
 
@@ -117,7 +92,7 @@ def load_discography(
     con: duckdb.DuckDBPyConnection, discography: Path | None, snapshot: str | None
 ) -> None:
     if discography is None:
-        # Always materialized, even empty, like influences: synthetic builds
+        # Always materialized, even empty, like popularity: synthetic builds
         # carry no snapshot, and 22_releases.sql reads this table anyway.
         con.execute("CREATE OR REPLACE TABLE raw_discography (rg_mbid VARCHAR, form VARCHAR)")
     else:
@@ -224,7 +199,6 @@ RAW_DISCOGS_FIELDS = {
     "id": "BIGINT",
     "master_id": "BIGINT",
     "artists": "BIGINT[]",
-    "labels": "STRUCT(id BIGINT, name VARCHAR)[]",
     "descriptions": "VARCHAR[]",
     "styles": "VARCHAR[]",
     "released": "VARCHAR",
@@ -239,8 +213,7 @@ def load_discogs(con: duckdb.DuckDBPyConnection, releases: Path | None, dump: st
         # Always materialized, even empty: 84_discogs.sql reads it.
         con.execute(
             "CREATE OR REPLACE TABLE raw_discogs (id BIGINT, master_id BIGINT, artists BIGINT[], "
-            "labels STRUCT(id BIGINT, name VARCHAR)[], descriptions VARCHAR[], styles VARCHAR[], "
-            "released VARCHAR)"
+            "descriptions VARCHAR[], styles VARCHAR[], released VARCHAR)"
         )
     else:
         con.execute(
@@ -287,8 +260,6 @@ def build(
     min_year: int = 1850,
     popularity: Path | None = None,
     popularity_snapshot: str | None = None,
-    influences: Path | None = None,
-    influences_snapshot: str | None = None,
     discography: Path | None = None,
     discography_snapshot: str | None = None,
     proximity: Sequence[Path] = (),
@@ -303,7 +274,6 @@ def build(
     load_raw(con, artists, rgs)
     apply_corrections(con, corrections)
     load_popularity(con, popularity, popularity_snapshot)
-    load_influences(con, influences, influences_snapshot)
     load_discography(con, discography, discography_snapshot)
     load_proximity(con, proximity, proximity_snapshots)
     load_official(con, official, official_snapshots)
@@ -360,9 +330,6 @@ INVARIANTS = (
     "duplicate_popularity",
     "popularity_out_of_range",
     "popularity_unrequested",
-    "duplicate_influence",
-    "influence_malformed",
-    "influence_unsourced",
     "proximity_rank_out_of_range",
     "proximity_malformed",
     "proximity_self",
@@ -376,11 +343,8 @@ INVARIANTS = (
     "colisten_out_of_order",
     "official_asked_twice",
     "official_unsourced",
-    "duplicate_label",
     "duplicate_style",
-    "label_without_artist",
     "style_without_artist",
-    "label_below_home",
     "style_decade_malformed",
     "discogs_link_ambiguous",
     "corrections_file_too_large",

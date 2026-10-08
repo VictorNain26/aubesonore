@@ -8,9 +8,8 @@ racine. Les chiffres cités ici sont descriptifs ; le contrat exécutable reste
 ## Rôle
 
 musilogy produit, hors ligne et depuis des sources épinglées et datées, les
-données de **Musilogy** : pour un artiste, qui faisait cette musique avant
-lui, en même temps, après lui ; qui il a cité comme influence ; dans quels
-groupes ses membres ont joué. `musilogy load` les copie dans le schéma
+données de **Musilogy** : pour un artiste, qui fait le même son, avant lui,
+en même temps, après lui ; dans quels groupes ses membres ont joué. `musilogy load` les copie dans le schéma
 `musilogy` de la base du site, qui ne lit que des fonctions SQL (§4).
 
 ## 1. Sources
@@ -20,16 +19,15 @@ groupes ses membres ont joué. `musilogy load` les copie dans le schéma
 | dump JSON MusicBrainz (artistes, release groups) | `REFERENCE_DUMP` | CC0 (cœur) ; genres CC BY-NC-SA 3.0 |
 | popularité ListenBrainz (`/1/popularity/artist`) | `REFERENCE_POPULARITY` | CC0 |
 | proximité ListenBrainz (`labs…/similar-artists`) | `REFERENCE_PROXIMITY` | dérivée des données ListenBrainz (CC0) ; le service ne précise pas de licence |
-| influences Wikidata (P737 « influencé par », entre deux éléments qui portent un MBID, P434) | `REFERENCE_INFLUENCES` | CC0 |
 | discographie Wikidata (release groups, P436, classés album studio, EP ou bande originale par P31 ou P7937) | `REFERENCE_DISCOGRAPHY` | CC0 |
-| dump mensuel des sorties Discogs (artistes crédités, labels, styles, date, descriptions de format) | `REFERENCE_DISCOGS` | CC0 (data.discogs.com) |
+| dump mensuel des sorties Discogs (artistes crédités, styles, date, descriptions de format) | `REFERENCE_DISCOGS` | CC0 (data.discogs.com) |
 | export des statistiques ListenBrainz (artistes les plus écoutés de chaque utilisateur, de tout temps) | `REFERENCE_LISTENING` | CC0 |
 
 Chaque relevé est pris une fois, son empreinte versionnée sous `reference/`,
 et `run` lit celui que la constante épingle.
 
 **Une source, ses tables.** Les sources ne se mélangent jamais dans une même
-colonne : `genres` reste MusicBrainz, `styles` et `labels` restent Discogs,
+colonne : `genres` reste MusicBrainz, `styles` reste Discogs,
 `proximity` reste ListenBrainz. L'identité d'un artiste est son MBID ; le pont
 vers une autre base est une table à part (`discogs_links`), et un pont ambigu
 — un artiste Discogs relié à deux MBID — est écarté et compté, jamais deviné.
@@ -70,12 +68,9 @@ albums), `genres` (vocabulaire, publié, non chargé), `links` (appartenances, p
   listent pas, NULL si aucun n'a été relevé ; `artist_releases` écarte les
   faux. L'extraction garde désormais les EP à côté des albums ; `albums` reste
   limitée aux albums.
-- `labels(artist_mbid, label_id, label, records, label_artists)` et
-  `styles(artist_mbid, decade, style, records)`, tirées du dump Discogs
-  (`84_discogs`, README) : les labels de première édition qui portent au moins
-  deux disques de l'artiste, avec le nombre d'artistes dont le label est la
-  maison, et les styles de ses disques par décennie. Publiées, non chargées
-  dans le site tant qu'aucune fonction ne les lit.
+- `styles(artist_mbid, decade, style, records)`, tirée du dump Discogs
+  (`84_discogs`, README) : les styles des disques de l'artiste par décennie.
+  Publiée, non chargée dans le site tant qu'aucune fonction ne la lit.
 - `urls(artist_mbid, type, url, ended)` : parmi les pages que MusicBrainz relie
   à un artiste, celles qu'une page artiste utilise (Deezer, Spotify, Apple
   Music, Bandcamp, SoundCloud, site officiel, Wikidata),
@@ -117,22 +112,10 @@ albums), `genres` (vocabulaire, publié, non chargé), `links` (appartenances, p
   une paire en double, un artiste voisin de lui-même, des rangs hors de 1 à K
   ou troués, une paire sous le seuil d'auditeurs communs, un score qui remonte
   le long des rangs.
-- `influences(artist_mbid, influence_mbid, statement)` : `artist_mbid` cite
-  `influence_mbid` comme influence selon Wikidata ; `statement` est
-  l'identifiant complet de la déclaration (`Q123$GUID`), pour la citer. Les déclarations
-  dépréciées sont écartées. Un élément Wikidata peut porter plusieurs MBID :
-  une déclaration donne une ligne par paire de MBID, et la table garde une
-  déclaration par paire (la plus petite si deux déclarations donnent la même
-  paire). Une extrémité absente du dump reste dans la table. Relevé du
-  2026-10-04 : 9 517 paires (8 612 déclarations), 5 661 MBID distincts
-  (2 589 qui citent, 3 728 cités), dont 9 310 paires entre deux artistes du
-  dump ; `artist_influences` en rend au moins une pour 61 des 288 artistes
-  joués à cette date (24 en citent, 49 sont cités).
 
 ## 3. Proximité × temps
 
-La proximité vient de la co-écoute : **elle ne dit jamais « influencé par »**.
-Le temps lui donne un sens. Un voisin est :
+La proximité vient de la co-écoute ; le temps lui donne un sens. Un voisin est :
 
 - `before` quand il a commencé (`y0`) plus de 3 ans avant l'artiste ;
 - `after` quand il a commencé plus de 3 ans après ;
@@ -158,7 +141,6 @@ absente (code `42883`).
 | `artist_bands` | livrée par #342 |
 | `artist_member_projects` | livrée par #342 |
 | `artist_other_names` | livrée par #342 |
-| `artist_influences` | livrée par #286 |
 | `search_artists` | livrée par #286 |
 | `artist_neighbours` | livrée avec la table `proximity` |
 | `artist_releases` | livrée par #337, règle de la page par #338 |
@@ -181,12 +163,6 @@ musilogy.artist_card(artist text) RETURNS TABLE (
 musilogy.artist_neighbours(artist text) RETURNS TABLE (
   mbid text, name text, disambiguation text, type text, y0 integer,
   y_end integer, ended boolean, score integer, rank integer, side text)
-
--- Influences déclarées, dans les deux sens : 'cited' (l'artiste cite
--- l'autre), 'cited_by' (l'autre cite l'artiste).
-musilogy.artist_influences(artist text) RETURNS TABLE (
-  direction text, mbid text, name text, disambiguation text, y0 integer,
-  statement text)
 
 -- Recherche par nom, pour entrer dans Musilogy par un artiste quelconque :
 -- préfixe du nom normalisé (`name_key`), les plus écoutés d'abord.
@@ -233,19 +209,13 @@ musilogy.artist_other_names(artist text) RETURNS TABLE (
 musilogy.artist_urls(artist text) RETURNS TABLE (type text, url text)
 ```
 
-Un voisin ou une influence absents du dump n'apparaissent pas : la fonction
+Un voisin absent du dump n'apparaît pas : la fonction
 joint `artists`, faute de nom à montrer.
 
 `artist_neighbours`, mesurée le 2026-10-06 sur un Postgres jetable chargé du
 dump de référence et du relevé entier, pour Joy Division (100 voisins) :
 environ 1 ms d'exécution, cache chaud. La table pèse 877 Mo dans la base,
 index compris (555 Mo sans).
-
-`artist_influences` rend chaque direction dans l'ordre du temps (`y0`, les
-artistes sans année en dernier, puis le MBID). `statement` est l'identifiant
-complet de la déclaration Wikidata, `Q123$GUID`, tel que Wikidata l'écrit (un
-« q » minuscule sur certaines déclarations anciennes) : la provenance de
-l'influence, que la page ne montre pas.
 
 `search_artists` normalise la requête comme `name_key` l'est dans DuckDB
 (`strip_accents(lower(name))`), par une fonction Postgres interne,

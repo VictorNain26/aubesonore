@@ -4,9 +4,8 @@ releases dump and dated ListenBrainz, MusicBrainz and Wikidata surveys."""
 REFERENCE_DUMP = "20260909-001002"
 # A ListenBrainz snapshot is never taken again: its date pins the one a run reads.
 REFERENCE_POPULARITY = "2026-10-06"
-REFERENCE_INFLUENCES = "2026-10-04"
 REFERENCE_DISCOGRAPHY = "2026-10-05"
-# The monthly Discogs data dump whose releases give the labels and the styles.
+# The monthly Discogs data dump whose releases give the styles.
 REFERENCE_DISCOGS = "20261001"
 # The parts of each long survey, oldest first: each asks only the artists no
 # earlier part asked (cli.snapshot_proximity, cli.snapshot_official).

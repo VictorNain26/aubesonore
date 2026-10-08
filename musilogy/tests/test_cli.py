@@ -67,7 +67,6 @@ def test_run_refuses_to_publish_when_the_extraction_disagrees(tmp_path, monkeypa
     monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
     monkeypatch.setattr(cli, "WORK_DIR", tmp_path)
     monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
-    monkeypatch.setattr(cli, "verified_influences", lambda: FIX / "influences.jsonl")
     monkeypatch.setattr(cli, "verified_discography", lambda: FIX / "discography.jsonl")
     monkeypatch.setattr(cli, "verified_proximity", lambda: [FIX / "proximity.jsonl"])
     monkeypatch.setattr(cli, "verified_official", lambda: [FIX / "official.jsonl"])
@@ -117,25 +116,25 @@ def test_a_snapshot_already_taken_today_is_never_taken_again(tmp_path, monkeypat
     assert "never taken again" in str(raised.value)
 
 
-def test_run_stops_when_the_pinned_influences_are_missing(tmp_path, monkeypatch):
+def test_run_stops_when_the_pinned_discography_is_missing(tmp_path, monkeypatch):
     # Same contract as the ListenBrainz snapshot: Wikidata moves every day, so
     # a run neither asks it again nor builds without it.
     monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
     monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
     monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
-    monkeypatch.setattr(cli, "INFLUENCES_JSONL", tmp_path / "influences.jsonl")
+    monkeypatch.setattr(cli, "DISCOGRAPHY_JSONL", tmp_path / "discography.jsonl")
     with pytest.raises(SystemExit) as raised:
         cli.run()
     assert "cannot be taken again" in str(raised.value)
 
 
-def test_influences_taken_today_are_never_taken_again(tmp_path, monkeypatch):
-    taken = tmp_path / "influences.jsonl"
+def test_a_discography_taken_today_is_never_taken_again(tmp_path, monkeypatch):
+    taken = tmp_path / "discography.jsonl"
     taken.write_text("", encoding="utf-8")
-    monkeypatch.setattr(cli, "influences_snapshot", lambda _date: taken)
-    monkeypatch.setattr(cli, "fetch_influences", lambda *_: pytest.fail("asked Wikidata"))
+    monkeypatch.setattr(cli, "discography_snapshot", lambda _date: taken)
+    monkeypatch.setattr(cli, "fetch_discography", lambda *_: pytest.fail("asked Wikidata"))
     with pytest.raises(SystemExit) as raised:
-        cli.snapshot_influences()
+        cli.snapshot_discography()
     assert "never taken again" in str(raised.value)
 
 
@@ -145,7 +144,6 @@ def test_run_stops_when_a_pinned_part_of_the_proximity_is_missing(monkeypatch):
     monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
     monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
     monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
-    monkeypatch.setattr(cli, "verified_influences", lambda: FIX / "influences.jsonl")
     monkeypatch.setattr(cli, "verified_discography", lambda: FIX / "discography.jsonl")
     monkeypatch.setattr(cli, "REFERENCE_PROXIMITY", ("1999-01-01",))
     with pytest.raises(SystemExit) as raised:
