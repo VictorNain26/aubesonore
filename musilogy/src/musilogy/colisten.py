@@ -97,7 +97,7 @@ def build_colisten(con: duckdb.DuckDBPyConnection) -> None:
 
     con.execute(
         "CREATE OR REPLACE TABLE colisten_scored (artist INTEGER, neighbour INTEGER, "
-        "common INTEGER, score FLOAT, rank SMALLINT)"
+        "common INTEGER, score DOUBLE, rank SMALLINT)"
     )
     parts: list[tuple[np.ndarray, ...]] = []
     held = 0
@@ -137,7 +137,9 @@ def build_colisten(con: duckdb.DuckDBPyConnection) -> None:
                     np.full(n, ref, np.int32),
                     cols[top].astype(np.int32),
                     common[top].astype(np.int32),
-                    score[top].astype(np.float32),
+                    # Double, as computed: rounded to float32, distinct scores
+                    # tied in the table while their ranks kept them apart.
+                    score[top],
                     np.arange(1, n + 1, dtype=np.int16),
                 )
             )
