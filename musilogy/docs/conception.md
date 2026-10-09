@@ -8,9 +8,37 @@ racine. Les chiffres cités ici sont descriptifs ; le contrat exécutable reste
 ## Rôle
 
 musilogy produit, hors ligne et depuis des sources épinglées et datées, les
-données de **Musilogy** : pour un artiste, qui fait le même son, avant lui,
-en même temps, après lui ; dans quels groupes ses membres ont joué. `musilogy load` les copie dans le schéma
+données de **Musilogy** : pour un artiste, les artistes du même son, de toutes
+les époques ; dans quels groupes ses membres ont joué. `musilogy load` les copie dans le schéma
 `musilogy` de la base du site, qui ne lit que des fonctions SQL (§4).
+
+## Méthode des proches
+
+Les proches d'un artiste (`docs/vision.md` §2.2) viennent d'une seule chaîne, faite de méthodes
+reconnues, sans couche maison :
+
+1. **Qui écoute quoi** : pour chaque utilisateur de ListenBrainz, les artistes qu'il écoute,
+   identifiés par leur MBID.
+2. **Le même public** (`colisten`) : le filtrage collaboratif « article à article », la méthode des
+   « ceux qui aiment X aiment aussi Y » (Sarwar et al., WWW 2001 ; Linden, Smith et York, *IEEE
+   Internet Computing*, 2003). Deux artistes se comparent par leurs auditeurs communs, avec le
+   cosinus asymétrique d'Aiolli (RecSys 2013, la méthode gagnante du *Million Song Dataset
+   Challenge*), c / (pop_artiste^α × pop_voisin^(1−α)), qui corrige la popularité, et le lissage
+   c / (c + h) de Bell et Koren (2007), qui se méfie d'un lien porté par peu d'auditeurs.
+3. **Le même son** (`same_sound`) : un recommandeur hybride « en cascade » (Burke, *User Modeling
+   and User-Adapted Interaction*, 2002) : la co-écoute propose, la couleur filtre. La couleur est
+   un profil de styles Discogs pondérés par leur rareté et leur part dans l'œuvre, comparé par
+   cosinus (TF-IDF, la base du filtrage par contenu).
+4. **Le classement** : le score de la co-écoute, parmi les voisins que la couleur confirme.
+5. **La mesure** : des paires jugées à partir de sources sur un ensemble de candidats regroupés
+   (le *pooling* de TREC ; Ellis et al., ISMIR 2002 pour la vérité terrain de la similarité
+   d'artistes), une précision par artiste de référence avec son intervalle de confiance.
+
+Ce que la chaîne doit encore corriger (`docs/vision.md` §7) : elle se calcule aujourd'hui sur
+l'export des statistiques, tronqué au top 1 000 de chaque utilisateur, au lieu de toutes les
+écoutes (le dump Spark de ListenBrainz, les écoutes déjà rapprochées de MusicBrainz) ; elle ne
+lit la co-écoute que dans un sens ; et la couleur s'y compare décennie par décennie, un choix
+maison que la mesure ne justifie pas (2026-10-09) et qui part.
 
 ## 1. Sources
 
@@ -34,7 +62,7 @@ vers une autre base est une table à part (`discogs_links`), et un pont ambigu
 Quand deux sources se recoupent, une seule fait foi : MusicBrainz pour les
 dates, que Discogs ne déplace jamais ; leurs désaccords sont comptés dans le
 manifeste (`discogs_date_disagreements`), pas corrigés. Ce qui combine
-plusieurs sources — les artistes liés (`docs/vision.md` §7, étape 9.5) — vit dans une
+plusieurs sources — les proches (`docs/vision.md` §2.2) — vit dans une
 couche dérivée qui lit les tables sources, garde la raison de chaque lien et
 ne réécrit jamais une source.
 
