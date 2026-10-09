@@ -35,6 +35,7 @@ TABLES = (
     "proximity",
     "colisten",
     "styles",
+    "same_sound",
 )
 # A delivery has to come out in a fixed order, or the same code on the same
 # extraction writes different bytes: the tables are built by parallel joins and
@@ -54,6 +55,7 @@ ORDER_BY = {
     "proximity": "artist_mbid, rank",
     "colisten": "artist_mbid, rank",
     "styles": "artist_mbid, decade NULLS LAST, style",
+    "same_sound": "artist_mbid, rank",
 }
 
 
@@ -140,7 +142,14 @@ def extraction_matches_rows_loaded(
     return _extraction_matches_rows_loaded(read_extraction(extraction), input_rows_loaded(con))
 
 
-PARAMETERS = ("dump_year", "min_year", *COLISTEN_PARAMETERS)
+# Set by 88_same_sound.sql, where the rule lives.
+SAME_SOUND_PARAMETERS = (
+    "same_sound_min_colour",
+    "same_sound_styles_shrink",
+    "same_sound_genres_shrink",
+    "same_sound_min_style_records",
+)
+PARAMETERS = ("dump_year", "min_year", *COLISTEN_PARAMETERS, *SAME_SOUND_PARAMETERS)
 
 
 def _parameters(con: duckdb.DuckDBPyConnection) -> dict[str, Any]:

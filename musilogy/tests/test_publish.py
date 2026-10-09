@@ -245,7 +245,15 @@ def test_manifest_carries_the_parameters_the_build_actually_used(tmp_path):
         tmp_path, [synthetic_artist("a", "1990", None)], dump_year=2030, min_year=1900
     )
     manifest = publish(c, tmp_path / "out", DUMP, None)
-    assert manifest["parameters"] == {"dump_year": 2030, "min_year": 1900, **COLISTEN_PARAMETERS}
+    assert manifest["parameters"] == {
+        "dump_year": 2030,
+        "min_year": 1900,
+        **COLISTEN_PARAMETERS,
+        "same_sound_min_colour": 0.35,
+        "same_sound_styles_shrink": 10,
+        "same_sound_genres_shrink": 3,
+        "same_sound_min_style_records": 3,
+    }
 
 
 def test_manifest_counts_the_rows_that_fed_the_build(con, tmp_path):

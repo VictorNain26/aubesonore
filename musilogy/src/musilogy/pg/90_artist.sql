@@ -202,11 +202,25 @@ AS $$
   ORDER BY 5 NULLS LAST, 3, 2;
 $$;
 
+-- A neighbour's side in time (docs/conception.md, section 3): 'before' when it
+-- began more than 3 years before the artist, 'after' more than 3 years after,
+-- 'during' otherwise, NULL when either has no y0. One rule for every list of
+-- neighbours; inlined, like is_part_of.
+CREATE FUNCTION musilogy.side(artist_y0 integer, other_y0 integer)
+RETURNS text
+LANGUAGE sql IMMUTABLE
+AS $$
+  SELECT CASE
+    WHEN artist_y0 IS NULL OR other_y0 IS NULL THEN NULL
+    WHEN other_y0 < artist_y0 - 3 THEN 'before'
+    WHEN other_y0 > artist_y0 + 3 THEN 'after'
+    ELSE 'during'
+  END;
+$$;
+
 -- An artist's ListenBrainz neighbours in the service's order, each with its
--- side in time (docs/conception.md, section 3): 'before' when it began more
--- than 3 years before the artist, 'after' more than 3 years after, 'during'
--- otherwise, NULL when either has no y0. The side is the only reading time
--- gives co-listening. A neighbour absent from the dump has
+-- side in time (musilogy.side). The side is the only reading time gives
+-- co-listening. A neighbour absent from the dump has
 -- no name to show and is left out, as is every neighbour of an artist the dump
 -- lacks.
 CREATE FUNCTION musilogy.artist_neighbours(artist text)
@@ -225,15 +239,44 @@ RETURNS TABLE (
 LANGUAGE sql STABLE
 AS $$
   SELECT o.mbid, o.name, o.disambiguation, o.type, o.y0, o.y_end, o.ended, p.score, p.rank,
-         CASE
-           WHEN a.y0 IS NULL OR o.y0 IS NULL THEN NULL
-           WHEN o.y0 < a.y0 - 3 THEN 'before'
-           WHEN o.y0 > a.y0 + 3 THEN 'after'
-           ELSE 'during'
-         END
+         musilogy.side(a.y0, o.y0)
   FROM musilogy.artists a
   JOIN musilogy.proximity p ON p.artist_mbid = a.mbid
   JOIN musilogy.artists o ON o.mbid = p.neighbour_mbid
   WHERE a.mbid = artist
   ORDER BY p.rank;
+$$;
+
+-- « Même son » (88_same_sound.sql, docs/vision.md §2.2): the artist's
+-- neighbours of the co-listening whose colour agrees, the first 8 — the depth
+-- the rule was measured at (2026-10-08); the table keeps them all — in their
+-- rank order,
+-- each with its reason — the style, with the artist's decade, or the genre
+-- (`source` says which) that weighs most in what the two share — and its side
+-- in time (musilogy.side). Every neighbour is in the dump: a colour comes from
+-- its styles or its genres, which only an artist of the dump has.
+CREATE FUNCTION musilogy.artist_same_sound(artist text)
+RETURNS TABLE (
+  mbid text,
+  name text,
+  disambiguation text,
+  type text,
+  y0 integer,
+  y_end integer,
+  ended boolean,
+  rank integer,
+  source text,
+  term text,
+  decade integer,
+  side text
+)
+LANGUAGE sql STABLE
+AS $$
+  SELECT o.mbid, o.name, o.disambiguation, o.type, o.y0, o.y_end, o.ended, s.rank,
+         s.source, s.term, s.decade, musilogy.side(a.y0, o.y0)
+  FROM musilogy.artists a
+  JOIN musilogy.same_sound s ON s.artist_mbid = a.mbid
+  JOIN musilogy.artists o ON o.mbid = s.neighbour_mbid
+  WHERE a.mbid = artist AND s.rank <= 8
+  ORDER BY s.rank;
 $$;

@@ -172,6 +172,27 @@ def discogs_release(
     }
 
 
+def listening_file(path, users):
+    """A synthetic ListenBrainz statistics export: `users` maps each user to
+    the artists among its top artists of all time."""
+    path.write_text(
+        "".join(
+            json.dumps(
+                {
+                    "user_id": user,
+                    "data": [
+                        {"listen_count": 10, "artist_name": "?", "artist_mbid": a} for a in artists
+                    ],
+                }
+            )
+            + "\n"
+            for user, artists in users.items()
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
 def discogs_file(path, releases):
     path.write_text("".join(json.dumps(r) + "\n" for r in releases), encoding="utf-8")
     return path
@@ -193,6 +214,8 @@ def published(
     discography=None,
     proximity=None,
     official=None,
+    listening=None,
+    discogs=None,
 ):
     """A synthetic build, published as a delivery. `popularity` maps an mbid
     to its listen count; every other artist gets the null row ListenBrainz
@@ -230,6 +253,11 @@ def published(
         kwargs["proximity"] = [proximity_file(tmp_path / "proximity.jsonl", proximity)]
     if official is not None:
         kwargs["official"] = [official_file(tmp_path / "official.jsonl", official)]
+    if listening is not None:
+        # No snapshot named: the manifest would look for its pinned digest.
+        kwargs["listening"] = listening_file(tmp_path / "artists_all_time.jsonl", listening)
+    if discogs is not None:
+        kwargs["discogs"] = discogs_file(tmp_path / "discogs.jsonl", discogs)
     out = tmp_path / "out"
     publish(build_synthetic(tmp_path, artists, release_groups, **kwargs), out, REFERENCE_DUMP, None)
     return out
@@ -252,6 +280,8 @@ def loaded(
     discography=None,
     proximity=None,
     official=None,
+    listening=None,
+    discogs=None,
 ):
     load(
         published(
@@ -262,6 +292,8 @@ def loaded(
             discography,
             proximity,
             official,
+            listening,
+            discogs,
         ),
         conninfo,
     )

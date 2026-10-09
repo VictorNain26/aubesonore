@@ -409,3 +409,45 @@ CREATE OR REPLACE VIEW colisten_out_of_order AS
            lag(score) OVER (PARTITION BY artist_mbid ORDER BY rank) AS before
     FROM colisten
   ) WHERE score > before;
+-- 88_same_sound.sql: one row per pair, never the artist itself, ranks 1..n
+-- without a gap, in the co-listening's order; every pair a co-listening pair
+-- at the rank it holds there, of colour 0.35 or more (a literal: the build
+-- reads a variable), explained by a style or genre both artists carry, with a
+-- decade for a style only.
+CREATE OR REPLACE VIEW duplicate_same_sound AS
+  SELECT artist_mbid, neighbour_mbid FROM same_sound GROUP BY ALL HAVING count(*) > 1;
+CREATE OR REPLACE VIEW same_sound_self AS
+  SELECT artist_mbid FROM same_sound WHERE artist_mbid = neighbour_mbid;
+CREATE OR REPLACE VIEW same_sound_rank_out_of_range AS
+  SELECT artist_mbid FROM same_sound GROUP BY artist_mbid
+  HAVING min(rank) <> 1 OR max(rank) <> count(*);
+CREATE OR REPLACE VIEW same_sound_out_of_order AS
+  SELECT artist_mbid, rank FROM (
+    SELECT artist_mbid, rank, colisten_rank,
+           lag(colisten_rank) OVER (PARTITION BY artist_mbid ORDER BY rank) AS before
+    FROM same_sound
+  ) WHERE colisten_rank <= before;
+CREATE OR REPLACE VIEW same_sound_unsourced AS
+  SELECT s.artist_mbid, s.neighbour_mbid FROM same_sound s
+  WHERE NOT EXISTS (
+    SELECT 1 FROM colisten c
+    WHERE c.artist_mbid = s.artist_mbid AND c.neighbour_mbid = s.neighbour_mbid
+      AND c.rank = s.colisten_rank);
+CREATE OR REPLACE VIEW same_sound_colour_out_of_range AS
+  SELECT artist_mbid, neighbour_mbid FROM same_sound
+  WHERE colour IS NULL OR colour < 0.35 OR colour > 1 + 1e-9
+     OR source IS NULL OR source NOT IN ('styles', 'genres');
+CREATE OR REPLACE VIEW same_sound_unexplained AS
+  SELECT s.artist_mbid, s.neighbour_mbid FROM same_sound s
+  WHERE CASE s.source
+    WHEN 'styles' THEN s.decade IS NULL
+      OR NOT EXISTS (SELECT 1 FROM styles a WHERE a.artist_mbid = s.artist_mbid
+                     AND a.style = s.term AND a.decade = s.decade)
+      OR NOT EXISTS (SELECT 1 FROM styles b WHERE b.artist_mbid = s.neighbour_mbid
+                     AND b.style = s.term)
+    ELSE s.decade IS NOT NULL
+      OR NOT EXISTS (SELECT 1 FROM artists a, UNNEST(a.genres) AS t(g)
+                     WHERE a.mbid = s.artist_mbid AND t.g.name = s.term)
+      OR NOT EXISTS (SELECT 1 FROM artists b, UNNEST(b.genres) AS t(g)
+                     WHERE b.mbid = s.neighbour_mbid AND t.g.name = s.term)
+  END;

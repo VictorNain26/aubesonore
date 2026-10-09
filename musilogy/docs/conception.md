@@ -113,6 +113,28 @@ albums), `genres` (vocabulaire, publié, non chargé), `links` (appartenances, p
   ou troués, une paire sous le seuil d'auditeurs communs, un score qui remonte
   le long des rangs.
 
+- `same_sound(artist_mbid, neighbour_mbid, rank, colisten_rank, source, colour,
+  term, decade)` (`88_same_sound.sql`) : « Même son », la première table de la
+  couche dérivée (§1). Un voisin de `colisten` y entre quand sa couleur
+  s'accorde à celle de l'artiste : leurs profils de styles Discogs (par
+  décennie, une décennie voisine à moitié, pondérés par la rareté du style),
+  ou, quand l'un des deux n'a pas de profil Discogs, de genres MusicBrainz,
+  comparés par cosinus et rabattus pour un profil mince (ses disques datés),
+  valent au moins 0,35. C'est la règle mesurée le 2026-10-08 sur 61
+  artistes de référence (`docs/vision.md` §2.2) ; ses seuils sont posés dans le
+  fichier SQL et relus par le manifeste (`parameters`). `rank` de 1 à n dans
+  l'ordre de la co-écoute, `colisten_rank` le rang d'origine ; la raison est le
+  style (`term`, avec la `decade` de l'artiste) ou le genre qui pèse le plus
+  dans ce que les deux partagent (sommé sur les décennies pour un style),
+  `source` dit lequel. Tout voisin est un artiste du dump : sa couleur vient de
+  ses styles ou de ses genres, que seul un artiste du dump porte. La couleur se
+  somme en décimal exact, pour qu'une livraison reste la même octet pour
+  octet. Sept invariants : une paire en
+  double, un artiste voisin de lui-même, des rangs troués, un ordre qui
+  contredit la co-écoute, une paire absente de la co-écoute ou à un autre rang,
+  une couleur sous 0,35 ou une source inconnue, une raison que les deux
+  artistes ne portent pas.
+
 ## 3. Proximité × temps
 
 La proximité vient de la co-écoute ; le temps lui donne un sens. Un voisin est :
@@ -122,7 +144,7 @@ La proximité vient de la co-écoute ; le temps lui donne un sens. Un voisin est
 - `during` sinon ;
 - `NULL` quand l'un des deux n'a pas de `y0`.
 
-Le seuil de 3 ans (`pg/90_artist.sql`, `artist_neighbours`) est à juger sur des artistes connus (T. Rex,
+Le seuil de 3 ans (`pg/90_artist.sql`, `musilogy.side`) est à juger sur des artistes connus (T. Rex,
 1967 : Kinks et Beatles avant, Bowie et Roxy Music pendant, Ramones et Clash
 après) et à mesurer avant d'être changé.
 
@@ -145,6 +167,7 @@ absente (code `42883`).
 | `artist_neighbours` | livrée avec la table `proximity` |
 | `artist_releases` | livrée par #337, règle de la page par #338 |
 | `artist_urls` | livrée par #337 |
+| `artist_same_sound` | livrée avec la table `same_sound` |
 
 ```sql
 -- Fiche. proximity_surveyed : vrai si l'artiste a été interrogé dans le
@@ -163,6 +186,16 @@ musilogy.artist_card(artist text) RETURNS TABLE (
 musilogy.artist_neighbours(artist text) RETURNS TABLE (
   mbid text, name text, disambiguation text, type text, y0 integer,
   y_end integer, ended boolean, score integer, rank integer, side text)
+
+-- « Même son » : les 8 premiers voisins de la co-écoute dont la couleur
+-- s'accorde, la profondeur à laquelle la règle a été mesurée (la table les
+-- garde tous), dans leur rang, chacun avec sa raison (source 'styles' : term est un style
+-- Discogs, decade la décennie de l'artiste ; 'genres' : term est un genre
+-- MusicBrainz, decade NULL) et son côté dans le temps (§3, musilogy.side).
+musilogy.artist_same_sound(artist text) RETURNS TABLE (
+  mbid text, name text, disambiguation text, type text, y0 integer,
+  y_end integer, ended boolean, rank integer, source text, term text,
+  decade integer, side text)
 
 -- Recherche par nom, pour entrer dans Musilogy par un artiste quelconque :
 -- préfixe du nom normalisé (`name_key`), les plus écoutés d'abord.
