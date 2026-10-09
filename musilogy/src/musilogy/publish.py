@@ -21,7 +21,6 @@ from musilogy.paths import (
     listening_sums,
     official_sums,
     popularity_sums,
-    proximity_sums,
 )
 
 TABLES = (
@@ -32,7 +31,6 @@ TABLES = (
     "popularity",
     "releases",
     "urls",
-    "proximity",
     "colisten",
     "styles",
     "same_sound",
@@ -52,7 +50,6 @@ ORDER_BY = {
     "popularity": "mbid",
     "releases": "artist_mbid, rg_mbid",
     "urls": "artist_mbid, type NULLS LAST, url",
-    "proximity": "artist_mbid, rank",
     "colisten": "artist_mbid, rank",
     "styles": "artist_mbid, decade NULLS LAST, style",
     "same_sound": "artist_mbid, rank",
@@ -243,7 +240,6 @@ def publish(
         "archive_sha256": expected_sums(REFERENCE_DIR / f"{dump}.SHA256SUMS"),
         "popularity": _snapshot(con, "popularity_snapshot", popularity_sums),
         "discography": _snapshot(con, "discography_snapshot", discography_sums),
-        "proximity": _parts(con, "proximity_snapshots", proximity_sums),
         "official": _parts(con, "official_snapshots", official_sums),
         "listening": _snapshot(con, "listening_snapshot", listening_sums),
         "discogs": _discogs(con),
@@ -266,7 +262,6 @@ def publish(
         "neutralised_inferences": _counters(con, "neutralised_inferences"),
         "link_exclusions": _counters(con, "link_exclusions"),
         "discography_exclusions": _counters(con, "discography_exclusions"),
-        "proximity_exclusions": _counters(con, "proximity_exclusions"),
         "release_status": _counters(con, "release_status"),
         "discogs_coverage": _counters(con, "discogs_coverage"),
         "discogs_date_disagreements": _counters(con, "discogs_date_disagreements"),

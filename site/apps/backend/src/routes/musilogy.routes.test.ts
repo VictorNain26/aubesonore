@@ -66,7 +66,6 @@ const card = {
   genre_source: 'declared',
   listen_count: '1234567',
   user_count: '31415',
-  proximity_surveyed: true,
 };
 
 const neighbour = (mbid: string, name: string, y0: number | null, side: string | null) => ({

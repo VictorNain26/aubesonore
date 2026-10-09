@@ -65,7 +65,6 @@ const card = (values: Record<string, unknown> = {}) => ({
   genre_source: null,
   listen_count: null,
   user_count: null,
-  proximity_surveyed: null,
   ...values,
 });
 

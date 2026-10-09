@@ -6,7 +6,6 @@ from musilogy import (
     REFERENCE_DUMP,
     REFERENCE_OFFICIAL,
     REFERENCE_POPULARITY,
-    REFERENCE_PROXIMITY,
 )
 from musilogy.build import build, check_invariants, connect
 from musilogy.paths import (
@@ -15,7 +14,6 @@ from musilogy.paths import (
     discogs_releases,
     official_snapshot,
     popularity_snapshot,
-    proximity_snapshot,
     work_dir,
 )
 
@@ -37,11 +35,6 @@ BASELINE = {
     # ones included: 44 848 Wikipedia and image pages left out since no page
     # reads them.
     "urls": 1_991_446,
-    # The ListenBrainz neighbours of the artists with 500 listeners or more,
-    # over both parts (2026-10-04: 111 402 groups and persons; 2026-10-06: the
-    # 6 614 artists of the other types, 122 031 rows), once the repeats and the
-    # artists given as their own neighbour are dropped.
-    "proximity": 5_095_267,
     # The styles of an artist by decade, over the artists Discogs is linked to.
     "styles": 4_359_024,
 }
@@ -50,11 +43,6 @@ RELEASE_TYPE_BREAKDOWN = {"Album": 1_968_255, "EP": 588_019}
 # album or an EP (discography snapshot of 2026-10-05).
 RELEASES_FILED_ORIGINAL = 70_196
 URLS_ENDED = 24_671
-# 17 of the repeats come from the part of 2026-10-06.
-PROXIMITY_EXCLUSIONS = {"repeated_neighbour": 692, "self_neighbour": 84}
-# Every artist asked by either part, 18 375 of them without a neighbour (1 860
-# from the part of 2026-10-06).
-PROXIMITY_SURVEYED = 118_016
 DISCOGS_COVERAGE = {
     "releases": 19_492_392,
     "releases_out_of_work": 4_234_631,
@@ -128,7 +116,6 @@ BANDS_WITHOUT_ALBUM = 2_425_953
 WORK = work_dir(REFERENCE_DUMP)
 POPULARITY = popularity_snapshot(REFERENCE_POPULARITY)
 DISCOGRAPHY = discography_snapshot(REFERENCE_DISCOGRAPHY)
-PROXIMITY = [proximity_snapshot(date) for date in REFERENCE_PROXIMITY]
 OFFICIAL = [official_snapshot(date) for date in REFERENCE_OFFICIAL]
 DISCOGS = discogs_releases(REFERENCE_DISCOGS)
 
@@ -151,7 +138,6 @@ def test_reference_dump_matches_the_baseline():
         "MusicBrainz extractions": [WORK / "artists.jsonl", WORK / "release_groups.jsonl"],
         f"ListenBrainz snapshot {REFERENCE_POPULARITY}": [POPULARITY],
         f"Wikidata snapshot {REFERENCE_DISCOGRAPHY}": [DISCOGRAPHY],
-        f"ListenBrainz proximity {REFERENCE_PROXIMITY}": PROXIMITY,
         f"MusicBrainz official status {REFERENCE_OFFICIAL}": OFFICIAL,
         f"Discogs extraction {REFERENCE_DISCOGS}": [DISCOGS],
     }
@@ -169,8 +155,6 @@ def test_reference_dump_matches_the_baseline():
         popularity_snapshot=REFERENCE_POPULARITY,
         discography=DISCOGRAPHY,
         discography_snapshot=REFERENCE_DISCOGRAPHY,
-        proximity=PROXIMITY,
-        proximity_snapshots=REFERENCE_PROXIMITY,
         official=OFFICIAL,
         official_snapshots=REFERENCE_OFFICIAL,
         discogs=DISCOGS,
@@ -212,13 +196,9 @@ def test_reference_dump_matches_the_baseline():
         == RELEASE_TYPE_BREAKDOWN
     )
     assert con.execute("SELECT count(*) FROM urls WHERE ended").fetchone() == (URLS_ENDED,)
-    assert single_row(con, "proximity_exclusions") == PROXIMITY_EXCLUSIONS
     assert single_row(con, "release_status") == RELEASE_STATUS
     assert single_row(con, "discogs_coverage") == DISCOGS_COVERAGE
     assert single_row(con, "discogs_date_disagreements") == DISCOGS_DATE_DISAGREEMENTS
-    assert con.execute("SELECT count(*) FROM artists WHERE proximity_surveyed").fetchone() == (
-        PROXIMITY_SURVEYED,
-    )
 
     row = con.execute(
         "SELECT count(*) FROM artists WHERE y_end IS NOT NULL AND y0 IS NOT NULL AND y_end < y0"

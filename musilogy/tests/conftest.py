@@ -34,10 +34,6 @@ def con():
         popularity_snapshot=REFERENCE_POPULARITY,
         discography=FIX / "discography.jsonl",
         discography_snapshot=REFERENCE_DISCOGRAPHY,
-        # The first lines of the proximity snapshot. No date: the manifest
-        # would then name a snapshot and its pinned digest, which the
-        # publication tests set up themselves (test_publish.py).
-        proximity=[FIX / "proximity.jsonl"],
         official=[FIX / "official.jsonl"],
         discogs=FIX / "discogs.jsonl",
     )
@@ -120,25 +116,6 @@ def pg():
     return conninfo
 
 
-def proximity_file(path, rows):
-    """A synthetic ListenBrainz proximity snapshot: `rows` maps each artist
-    asked to its neighbours, (mbid, score) pairs in the service's order."""
-    path.write_text(
-        "".join(
-            json.dumps(
-                {
-                    "artist_mbid": artist,
-                    "similar": [{"artist_mbid": m, "score": s} for m, s in neighbours],
-                }
-            )
-            + "\n"
-            for artist, neighbours in rows.items()
-        ),
-        encoding="utf-8",
-    )
-    return path
-
-
 def official_file(path, rows):
     """A synthetic official status snapshot: `rows` maps each artist asked to
     the release groups MusicBrainz shows for it, None when it no longer
@@ -212,7 +189,6 @@ def published(
     popularity=None,
     release_groups=(),
     discography=None,
-    proximity=None,
     official=None,
     listening=None,
     discogs=None,
@@ -220,8 +196,7 @@ def published(
     """A synthetic build, published as a delivery. `popularity` maps an mbid
     to its listen count; every other artist gets the null row ListenBrainz
     sends for an artist it has no listen of, as a real snapshot asks about
-    everyone. `proximity` maps each artist asked to its neighbours
-    (proximity_file)."""
+    everyone."""
     tmp_path.mkdir(exist_ok=True)
     kwargs: dict[str, Any] = {}
     if popularity is not None:
@@ -249,8 +224,6 @@ def published(
         )
         kwargs["discography"] = path
         kwargs["discography_snapshot"] = REFERENCE_DISCOGRAPHY
-    if proximity is not None:
-        kwargs["proximity"] = [proximity_file(tmp_path / "proximity.jsonl", proximity)]
     if official is not None:
         kwargs["official"] = [official_file(tmp_path / "official.jsonl", official)]
     if listening is not None:
@@ -278,7 +251,6 @@ def loaded(
     popularity=None,
     release_groups=(),
     discography=None,
-    proximity=None,
     official=None,
     listening=None,
     discogs=None,
@@ -290,7 +262,6 @@ def loaded(
             popularity,
             release_groups,
             discography,
-            proximity,
             official,
             listening,
             discogs,

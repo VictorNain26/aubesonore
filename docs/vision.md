@@ -119,7 +119,8 @@ Un classement est un calcul nommé et documenté, jamais un jugement.
 - **Le label** : un fait de scène. Mesuré, 26 % de bons seulement, quelle que soit la taille du
   label.
 
-Le service des artistes similaires de ListenBrainz, remplacé par notre co-écoute, part aussi.
+Le service des artistes similaires de ListenBrainz, remplacé par notre co-écoute, est parti avec
+eux (2026-10-09).
 
 **Une règle n'entre en ligne que mesurée.** Le jeu d'évaluation compte une soixantaine
 d'artistes de référence, surtout peu écoutés. Pour chacun, le son de l'artiste et de chaque
@@ -441,15 +442,15 @@ l'historique git.
       cosinus asymétrique et lissage, mesurée meilleure que le service). Elle ne va sur la page
       qu'avec « Même son », au-dessus du seuil mesuré.
    5. **« Même son »** : la table `same_sound` (artiste, proche, rang, couleur, raison) et la
-      fonction `artist_same_sound` — faites ; la carte et la ligne de genres sur la page — à faire.
+      fonction `artist_same_sound`, et la carte de la page qui la lit — faites ; la ligne de genres
+      (styles Discogs par époque) — à faire.
       Le courant seul, pour les artistes sans co-écoute, attend une règle des styles plus fine
       (des styles qui ne décrivent pas un son, comme « Instrumental » ou « Holiday », à écarter),
       mesurée de nouveau.
-   6. **Ce qui part**, chacun dans la PR qui le remplace : les influences déclarées (relevé
-      Wikidata, table, fonction, marques et rubrique de la page), la table des labels, le relevé
-      du service des artistes similaires de ListenBrainz avec sa mécanique de parties, et
-      `artist_neighbours`, remplacée par la fonction « Même son ». Déjà partis (2026-10-07) :
-      `artist_links`, que le site n'appelait plus, et les copies de l'étude sur le serveur.
+   6. **Ce qui part** — fait : `artist_links`, que le site n'appelait plus, et les copies de
+      l'étude sur le serveur (2026-10-07) ; les influences déclarées et la table des labels
+      (2026-10-08) ; le relevé du service des artistes similaires de ListenBrainz, sa mécanique
+      de parties et `artist_neighbours`, remplacée par « Même son » (2026-10-09).
    7. **Ensuite, sur mesure** : relier plus d'artistes à Discogs par les sorties que MusicBrainz y
       relie, adopté seulement à 99 % de justesse mesurée ; l'audio pour les artistes de la
       bibliothèque.
