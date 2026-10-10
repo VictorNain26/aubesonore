@@ -17,7 +17,6 @@ function neighbour(n: number, overrides: Partial<MusilogyNeighbour> = {}): Musil
     y0: 1960 + n,
     played: null,
     yEnd: null,
-    score: 1000 - n,
     rank: n + 1,
     ...overrides,
   };
