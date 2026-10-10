@@ -1,28 +1,25 @@
 # AubeSonore — vision produit et architecture
 
-Révisée le 2026-10-10 : Musilogy répond à deux questions, les artistes similaires et la généalogie (§2). Ce document fixe une direction pour ce qui traverse les pièces : les
+Révisée le 2026-10-10 : Musilogy est une encyclopédie de la musique pour découvrir des artistes : les artistes similaires et la généalogie des courants (§2). Ce document fixe une direction pour ce qui traverse les pièces : les
 produits, qui possède quoi, comment les pièces se parlent. Chaque pièce garde sa conception propre
 (`pipeline/docs/vision.md`, `site/CLAUDE.md`, `azuracast/RUNBOOK.md`, `musilogy/docs/conception.md`)
 et ne doit pas le contredire. C'est une direction, pas un règlement : une règle se rediscute quand
 l'usage ou une mesure la contredit, et quand le système réel contredit ce document, le système a
 raison et le document se corrige.
 
-## 1. Une radio, une page par artiste
+## 1. Une radio et une encyclopédie
 
 **AubeSonore** est une webradio de découverte dans la couleur de Victor : des titres qu'on ne
 connaît pas, qu'il aurait pu choisir. Son goût (Plex) et ses votes (page privée) décident de ce
 qui passe ; les auditeurs écoutent, gardent, apprennent qui joue.
 
-**La page artiste** existe pour tout artiste qui a un MBID. Elle répond à deux questions : *qui
-est-ce ?* et *où aller ensuite ?* **Musilogy** est la partie « où aller ensuite » de cette page
-(§2), et sa porte d'entrée par un nom, la recherche ; ce n'est pas un second type de page. La
-radio et les pages se nourrissent : une page amène des auditeurs à l'antenne, l'antenne amène à
-ses pages.
+**Musilogy** est une encyclopédie de la musique, faite pour découvrir des artistes (§2) : une page
+par artiste qui a un MBID, qui répond à *qui est-ce ?* et *où aller ensuite ?*, et une page par
+courant, qui répond à *d'où vient ce son ?* ; la recherche y entre par un nom. La radio et
+l'encyclopédie se nourrissent : le titre en cours mène à la page de son artiste, et une page mène
+à d'autres.
 
-**L'objectif du moment est d'attirer des auditeurs.** Au 2026-10-04, la radio n'a pas
-d'auditeur régulier : 3 comptes, un seul qui garde des titres. Tout fonctionne donc sans compte ;
-le compte personnalise, il ne débloque rien. Les pages artiste, trouvées par un moteur de
-recherche, sont le premier moyen d'être découvert.
+Tout fonctionne sans compte ; le compte personnalise (les titres gardés), il ne débloque rien.
 
 ### 1.1 Le parcours
 
@@ -31,7 +28,8 @@ recherche, sont le premier moyen d'être découvert.
 | **Écouter** | « Qu'est-ce qui passe ? » | accueil | le direct, ce qui vient de passer, les plus gardés |
 | **Garder** | « Je ne veux pas le perdre » | bibliothèque, compte | aimer, retrouver, être prévenu quand l'artiste repasse |
 | **Savoir** | « Qui est-ce ? » | page artiste | portrait, quelques lignes sur lui, où l'écouter, ses albums et EP, vos titres gardés |
-| **Découvrir** | « Où aller ensuite ? » | la même page ; la recherche pour y entrer par un nom | des artistes similaires, de toutes les époques ; d'où vient son son et où il est allé ; ses groupes et ceux de ses membres |
+| **Découvrir** | « Où aller ensuite ? » | la même page ; la recherche pour y entrer par un nom | des artistes similaires, de toutes les époques ; ses groupes et ceux de ses membres |
+| **Comprendre** | « D'où vient ce son ? » | page de courant | les courants dont il est né, ceux qu'il a engendrés, ses artistes époque par époque |
 
 Les gestes se bouclent : le titre en cours mène à sa page, et chaque artiste cité sur une page
 mène à la sienne. Avoir été joué ajoute des sections à une page (vos titres gardés), pas une autre
@@ -55,7 +53,7 @@ du direct.
 - **Pas une page pour n'importe quel nom.** Une page existe pour un artiste qui a un MBID, ou que
   l'antenne a joué ; jamais pour un nom tapé dans une adresse ou une API.
 
-## 2. Musilogy : où aller ensuite
+## 2. Musilogy : une encyclopédie pour découvrir
 
 ### 2.1 Le but
 
@@ -64,8 +62,8 @@ questions, chacune avec sa méthode et ses preuves :
 
 1. **Qui sonne comme lui ?** Des artistes similaires, de toutes les époques, les plus pertinents
    d'abord : de quoi découvrir des artistes qu'on ne connaît pas (§2.2).
-2. **D'où vient son son, où est-il allé ?** La généalogie : les courants dont il vient et ceux qui
-   en sont nés, et les artistes que des sources relient à lui (§2.3).
+2. **D'où vient son son, où est-il allé ?** La généalogie de ses courants, chacun sa page : d'où
+   il est né, ce qu'il a engendré, ses artistes époque par époque (§2.3).
 
 Les deux valent pour tous les artistes, anciens comme récents, connus comme confidentiels, et
 Musilogy cherche à être **le plus complet possible**. C'est une référence factuelle : ce qui y fait
@@ -128,37 +126,47 @@ recherche (« The Beatles » de Liverpool avant le groupe doo-wop de Philadelphi
 relevés longs, que les limites des API (une requête par seconde) rendent impossibles sur les 2,98
 millions d'artistes. Il ne choisit pas les artistes similaires.
 
-### 2.3 La généalogie
+### 2.3 La généalogie : les pages de courant
 
-À deux niveaux, comme chez les musicologues et dans les ouvrages de référence :
+**Une page par courant.** La généalogie se lit à l'échelle des courants, comme chez les
+musicologues, dans les cartes de genres (Musicmap) et dans les encyclopédies (« origines
+stylistiques », « formes dérivées ») ; c'est aussi l'échelle à laquelle se mesure l'évolution de
+la musique (Mauch et al., 2015 ; Klimek et al., 2019). Chaque courant a sa page : ses dates, les
+courants dont il est né, ceux qu'il a engendrés, et ses artistes, époque par époque, ceux dont il
+fait une grande part de l'œuvre. Krautrock, 1967 : né du rock psychédélique et du rock
+expérimental, il a engendré l'ambient, la techno, le post-punk, le post-rock ; Can, Neu! et Faust
+au début des années 70, Kosmischer Läufer dans les années 2010.
 
-- **Les courants.** Les courants d'un artiste (ses styles Discogs, ses genres MusicBrainz) placés
-  dans l'histoire des genres : ceux dont ils sont nés, ceux qu'ils ont engendrés, avec leurs
-  dates (krautrock, 1967 : né du rock psychédélique et du rock expérimental ; il a engendré
-  l'ambient, la techno, le post-punk, le post-rock). Les liens viennent de Wikidata et de
-  MusicBrainz (CC0) et des infobox Wikipédia (« origines stylistiques », « formes dérivées »,
-  CC BY-SA), reliés aux styles Discogs par Wikidata (753 sur 756). C'est la méthode des cartes de
-  genres (Musicmap) et l'échelle à laquelle se mesure l'évolution de la musique (Mauch et al.,
-  2015 ; Klimek et al., 2019). Elle vaut pour **tout artiste qui a des styles, même sans un seul
-  auditeur**. Aucune source ne suffit seule (le lien krautrock → post-punk n'est que dans
-  Wikipédia) : un lien n'entre que mesuré, source par source.
-- **Les artistes.** Les liens qu'une source écrit entre deux artistes : une influence citée, une
-  reprise, un échantillon, un héritage, des membres communs (Wikipédia, MusicBrainz), retenus
-  quand les courants des deux artistes s'accordent aussi. Un musicologue n'affirme une filiation
-  que quand un fait et une ressemblance s'accordent (Burkholder, 2018). Ils couvrent surtout les
-  artistes documentés.
+**Pourquoi sur le courant et pas sur l'artiste.** La généalogie du post-punk est la même pour les
+milliers de groupes post-punk : recopiée sur chacune de leurs pages, elle ne dirait rien de plus à
+l'auditeur, et Google traite comme abus les « pages substantiellement similaires » et le contenu
+« assemblé d'autres pages sans valeur ajoutée », quand il recommande « une hiérarchie clairement
+définie et navigable » (règles anti-spam de Google Search, lues le 2026-10-10). La page artiste
+mène à ses courants par sa ligne de genres ; un artiste sans un seul auditeur y est relié par ses
+styles.
 
-**La mesure** : les liens entre courants contre des sources sur un échantillon, arête par arête ;
-les liens entre artistes contre 28 filiations établies d'abord depuis des sources, pour 30 artistes
-joués de 1960 à 2019 (`~/musilogy-data/study/lineage/documented/`) : ce que la règle retrouve, ce
-qu'elle affirme à tort.
+**Les sources.** Les liens entre genres de Wikidata et de MusicBrainz (CC0) et les infobox de
+Wikipédia (CC BY-SA), reliés aux styles Discogs par Wikidata (753 sur 756). Aucune ne suffit
+seule (le lien krautrock → post-punk n'est que dans Wikipédia), et l'infobox de Wikipédia est
+inflationniste (réciproque à 10 % seulement) : un lien n'entre que mesuré, source par source, sur
+un échantillon jugé contre des références. Les dates d'un courant viennent de Wikidata (P571) et
+de ses premiers disques dans Discogs.
+
+**Plus tard, sur mesure : les liens écrits entre artistes** (une influence citée, une reprise, un
+échantillon). DBpedia n'en porte aucun entre musiciens (vérifié le 2026-10-10 : l'infobox des
+musiciens n'a pas de champ d'influences) et Wikidata très peu (2 426 entités musicales) : il
+faudrait les extraire du texte des articles, un chantier dont la justesse reste à prouver, contre
+les 28 filiations établies depuis des sources pour 30 artistes joués
+(`~/musilogy-data/study/lineage/documented/`). Une filiation ne s'affirme que quand un fait et
+une ressemblance s'accordent (Burkholder, 2018).
 
 ### 2.4 La page
 
 Un ordre de départ, chaque section seulement quand elle a quelque chose à montrer :
 
 1. **Qui** : le portrait, une ligne de faits au-dessus du nom, le nom, une ligne de genres dessous
-   (les styles Discogs par époque, sinon les genres MusicBrainz), l'ouverture de Wikipédia ou, sans
+   (les styles Discogs par époque, sinon les genres MusicBrainz), chacun menant à sa page de
+   courant (§2.3), l'ouverture de Wikipédia ou, sans
    article, les faits dits en une phrase ; puis où l'écouter ailleurs (Deezer, Spotify, Bandcamp,
    site officiel…), un bouton par plateforme.
 2. **Vos titres gardés**, pour un auditeur connecté qui en a gardé, chacun avec l'album d'où il
@@ -171,8 +179,7 @@ Un ordre de départ, chaque section seulement quand elle a quelque chose à mont
    quand un cas réel la contredit. Le 2026-10-05, Protomartyr, Bloc Party ou Can gardent leur
    discographie entière, les Beatles s'arrêtent en 1970.
 4. **Où aller ensuite** : les artistes similaires (§2.2), les plus pertinents d'abord, chaque nom
-   menant à sa page ; la généalogie de ses courants et les artistes que des sources relient à lui
-   (§2.3) ; puis les groupes et projets en trois rubriques plutôt que
+   menant à sa page ; puis les groupes et projets en trois rubriques plutôt que
    les douze types de relation de MusicBrainz :
    - **Membres** d'un groupe, ou **Groupes** d'une personne, avec leurs années ;
    - **Projets des membres** : leurs autres groupes et projets solo, seulement ceux qui ont un
@@ -217,6 +224,30 @@ Revue du 2026-10-06, textes lus ce jour-là ; ce n'est pas un avis juridique.
 | API Deezer | usage privé seulement | developers.deezer.com/termsofuse §IV : « The use of the Content is limited to a strictly private use within a family scope », pas de « data » générée, pas d'association à une marque. Les extraits ne servent donc pas au son publié ; le portrait et les pochettes que le site affiche sont à régulariser par un accord écrit (§IX) ou à remplacer par des images sous licence connue |
 | Spotify, Apple, YouTube, SoundCloud | exclus | analyse ou copie du contenu interdites par leurs conditions |
 | modèle Discogs-EffNet (pipeline) | non commercial | essentia.upf.edu : CC BY-NC-SA ou BY-NC-ND selon la page ; tient tant qu'AubeSonore n'a aucun revenu |
+
+### 2.6 Naviguer et chercher
+
+Une encyclopédie pour découvrir se parcourt plus qu'elle ne se consulte : on y entre par un nom,
+on suit un lien, puis un autre, et l'on apprend en chemin. C'est la recherche exploratoire
+(Marchionini, *Communications of the ACM*, 2006), qui avance par cueillettes successives plutôt
+que par une requête unique (Bates, 1989). Elle demande :
+
+- **Chaque nom est un lien**, sur toutes les pages : un artiste similaire, un membre, un projet,
+  un courant, un artiste d'un courant. On ne bute jamais sur un nom mort.
+- **Deux sortes d'entrées qui se répondent** : la page artiste mène à ses courants et à ses
+  similaires ; la page de courant mène à ses parents, à ses enfants et à ses artistes. On passe
+  d'un artiste à l'histoire de son son, et de là à d'autres artistes.
+- **Une recherche qui pardonne** : par artiste et par courant, dès les premières lettres, sans
+  accents ni majuscules (« bjork » trouve Björk), chaque homonyme dit qui il est (pays, années,
+  précision MusicBrainz). La popularité départage les homonymes, rien d'autre.
+- **Le chemin parcouru reste visible** et le retour du navigateur ramène où l'on était ; une
+  adresse stable par page, à partager ou à retrouver.
+- **Rapide et lisible partout** : la page arrive dessinée par le serveur, se lit sur un téléphone
+  sans défilement horizontal, et chaque liste longue montre d'abord l'essentiel, le reste en
+  dépliant.
+
+Chaque surface s'essaie dans le navigateur, sur ordinateur et sur téléphone, avant d'être en
+ligne.
 
 ## 3. Principes communs
 
@@ -325,7 +356,7 @@ l'artiste principal, chaque crédité est relié.
 | ouverture de l'article | Wikipédia (CC BY-SA), via l'identifiant Wikidata du dump | — |
 | artistes similaires (même public et même courant), généalogie (courants, faits écrits), groupes et projets | musilogy, datés de leurs dumps et relevés | reproductibles, avec leur provenance |
 
-Un artiste plus récent que le dump épinglé n'a pas de faits jusqu'au suivant (§7, étape 3).
+Un artiste plus récent que le dump épinglé n'a pas de faits jusqu'au suivant (§7, étape 6).
 
 ### 4.6 Une page artiste qui répond toujours
 
@@ -364,6 +395,7 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 |---|---|---|---|
 | Accueil | `/`, `/en` | oui, pré-rendue | Écouter |
 | Page artiste | `/artiste/:slug` (`/en/artist/:slug`) ; `/artiste/:mbid` tant que l'artiste n'a pas de slug ; un slug par artiste, jamais réattribué | au-delà d'un seuil de contenu (§2.4), décidé par le serveur | Savoir, Découvrir |
+| Page de courant | à créer (§2.3) | quand elle est riche | Comprendre, Découvrir |
 | Musilogy | `/musilogy` (recherche) ; `/musilogy/:mbid/…` renvoie en 301 à la page artiste | non | Découvrir |
 | Connexion | `/connexion`, `/en/sign-in` | non | Garder |
 | Bibliothèque, compte | panneau et menu de l'en-tête | non | Garder |
@@ -376,7 +408,7 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 2. **Les similaires couvrent mal les petits, les récents et les autres époques** (§2.2) : la
    co-écoute se calcule sur l'export tronqué (371 623 artistes au lieu de 899 265), dans un seul
    sens, et la couleur se compare décennie par décennie.
-3. **La généalogie n'existe pas encore** (§2.3).
+3. **Les pages de courant n'existent pas encore** (§2.3).
 4. **Statut officiel incomplet** : la page écarte les disques que MusicBrainz ne montre pas
    comme l'œuvre de l'artiste (476 des 4 980 disques des artistes joués, 2026-10-06) ; seuls les
    artistes d'au moins 500 auditeurs sont interrogés.
@@ -403,17 +435,19 @@ complète, Discogs, notre co-écoute, « Même son ») sont dans l'historique gi
    gardée) ; la co-écoute recalculée dessus, dans les deux sens, par une bibliothèque maintenue
    plutôt que le calcul actuel (10 h sur toutes les écoutes) ; la couleur sans noyau de décennie ;
    mesurés une fois (§2.2).
-3. **La généalogie des courants** (écart 3) : un relevé daté des liens entre genres (Wikidata,
-   MusicBrainz, Wikipédia), épinglé, mesuré source par source.
-4. **La filiation d'artistes** : les liens que Wikipédia écrit entre artistes, mesurés contre les
-   filiations établies.
-5. **La page** : les artistes similaires, la généalogie et la ligne de genres (§2.4), essayées
-   dans le navigateur sur ordinateur et sur téléphone.
+3. **La page artiste** : les artistes similaires et la ligne de genres (§2.4), essayées dans le
+   navigateur sur ordinateur et sur téléphone.
+4. **Les pages de courant** (écart 3) : un relevé daté des liens entre genres (Wikidata,
+   MusicBrainz, Wikipédia), épinglé, mesuré source par source ; les artistes de chaque courant par
+   époque ; la page, reliée depuis la ligne de genres.
+5. **Naviguer et chercher** (§2.6) : la recherche par artiste et par courant, le chemin
+   parcouru, essayés sur ordinateur et sur téléphone.
 6. **Les données à jour** : un dump MusicBrainz plus récent, le dump Discogs mensuel, les écoutes
    et les relevés rapides refaits par un timer.
 7. **Un slug pour chaque page qui passe le seuil d'indexation** (écart 5).
 8. **À décider sur mesure** : relier plus d'artistes à Discogs par les sorties que MusicBrainz y
-   relie (adopté seulement à 99 % de justesse mesurée) ; les liens d'œuvre (featurings, remixes,
-   producteurs) ; l'audio pour les artistes de la bibliothèque.
+   relie (adopté seulement à 99 % de justesse mesurée) ; les liens écrits entre artistes (§2.3) ;
+   les liens d'œuvre (featurings, remixes, producteurs) ; l'audio pour les artistes de la
+   bibliothèque.
 
 En parallèle : la copie hors site dès qu'un compte de stockage existe.
