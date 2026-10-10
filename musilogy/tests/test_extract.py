@@ -6,6 +6,7 @@ import lzma
 import tarfile
 import xml.etree.ElementTree as ET
 
+import duckdb
 import pytest
 
 from musilogy.build import RAW_DISCOGS_FIELDS
@@ -14,6 +15,7 @@ from musilogy.extract import (
     extract_discogs,
     iter_records,
     reduce_artist,
+    reduce_listens,
     reduce_release_group,
 )
 
@@ -312,3 +314,36 @@ def test_an_interrupted_discogs_extraction_leaves_no_extraction(tmp_path):
     with pytest.raises(ET.ParseError):
         extract_discogs(archive, out)
     assert not out.exists()
+
+
+def spark_part(path, rows):
+    """A Parquet part laid out like the Spark dump's: one row per listen."""
+    con = duckdb.connect()
+    con.execute("CREATE TABLE listens (user_id BIGINT, artist_credit_mbids VARCHAR[])")
+    con.executemany("INSERT INTO listens VALUES (?, ?)", rows)
+    con.execute("COPY listens TO ? (FORMAT parquet)", [path.as_posix()])
+    return path
+
+
+A = "a0000000-0000-0000-0000-000000000000"
+B = "b0000000-0000-0000-0000-000000000000"
+
+
+def test_listens_are_counted_per_user_and_artist_across_parts(tmp_path):
+    parts = [
+        # A credit names every artist of the track; one without an MBID, or
+        # with a malformed one, cannot be counted.
+        spark_part(tmp_path / "0.parquet", [(1, [A, B]), (1, [A]), (2, []), (2, ["not-an-mbid"])]),
+        spark_part(tmp_path / "1.parquet", [(1, [A]), (33, [B])]),
+    ]
+    out = tmp_path / "listens"
+    out.mkdir()
+
+    assert reduce_listens(duckdb.connect(), parts, out) == 3
+
+    # Split by user: user 1 and user 33 share a slice of 32.
+    assert sorted(p.name for p in out.iterdir()) == ["01.parquet"]
+    rows = duckdb.sql(
+        f"SELECT user_id, artist_mbid::VARCHAR, listens FROM '{out}/*.parquet' ORDER BY ALL"
+    ).fetchall()
+    assert rows == [(1, A, 3), (1, B, 1), (33, B, 1)]

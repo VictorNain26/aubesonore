@@ -5,6 +5,7 @@ from conftest import FIX
 
 from musilogy import cli
 from musilogy.build import RAW_DISCOGS_FIELDS
+from musilogy.fetch import ChecksumError, sha256_file
 
 
 def sidecar(tmp_path, artists_kept, release_groups_kept):
@@ -248,3 +249,43 @@ def test_discogs_releases_read_short_of_those_written_stop_the_run(con, tmp_path
 
     discogs_sidecar(tmp_path, monkeypatch, {"releases": read})
     cli._stop_on_discogs_mismatch(con)
+
+
+@pytest.fixture
+def pinned_listens(tmp_path, monkeypatch):
+    folder = tmp_path / "listens"
+    folder.mkdir()
+    (folder / "00.parquet").write_bytes(b"slice 0")
+    (folder / "01.parquet").write_bytes(b"slice 1")
+    sums = tmp_path / "SHA256SUMS"
+    sums.write_text(
+        # The archive's line is provenance: the archive itself is never kept.
+        f"{'f' * 64}  listenbrainz-spark-dump-2692-20261001-000003-full.tar\n"
+        f"{sha256_file(folder / '00.parquet')}  00.parquet\n"
+        f"{sha256_file(folder / '01.parquet')}  01.parquet\n"
+    )
+    monkeypatch.setattr(cli, "listening_snapshot", lambda _ref: folder)
+    monkeypatch.setattr(cli, "listening_sums", lambda _ref: sums)
+    return folder
+
+
+def test_pinned_listens_are_checked_file_by_file(pinned_listens):
+    assert cli.verified_listening() == pinned_listens
+
+    (pinned_listens / "01.parquet").write_bytes(b"tampered")
+    with pytest.raises(ChecksumError):
+        cli.verified_listening()
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        pytest.param(lambda f: (f / "01.parquet").unlink(), id="slice-missing"),
+        pytest.param(lambda f: (f / "02.parquet").write_bytes(b"x"), id="slice-unpinned"),
+    ],
+)
+def test_listens_that_are_not_the_pinned_slices_stop_the_run(pinned_listens, change):
+    # An unpinned slice would be read by the build's glob without any check.
+    change(pinned_listens)
+    with pytest.raises(SystemExit):
+        cli.verified_listening()

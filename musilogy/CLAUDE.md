@@ -85,6 +85,7 @@ uv run musilogy run           # fetch → extract → transform → validate →
 uv run musilogy snapshot-popularity  # relevé ListenBrainz daté, à épingler
 uv run musilogy snapshot-official    # disques officiels MusicBrainz, ~30 h, reprenable
 uv run musilogy snapshot-discography # disques classés par Wikidata, quelques secondes, à épingler
+uv run musilogy snapshot-listens <dump> # toutes les écoutes ListenBrainz (archive de 242 Go lue en flux), à épingler
 uv run musilogy make-fixtures # depuis les extractions et les relevés épinglés
 uv run musilogy load          # charge data/out/ dans la base du site (environnement libpq)
 MUSILOGY_TEST_PG='host=… dbname=…' uv run pytest  # tests Postgres compris : un Postgres jetable, jamais celui du site
@@ -111,8 +112,10 @@ Sur victorserv, `pytest -m slow` et `musilogy run` partent dans un scope
 plafonné : `build.connect()` borne DuckDB (2 Go, 2 threads, 10 Go de
 débordement dans `data/tmp/`), mais pas le cache disque ni Python, et les
 services de la machine occupent déjà la moitié de ses 16 Go. Le 2026-10-02,
-une requête sans borne l'a gelée. Construire, publier et charger le dump de
-référence culmine à 2,1 Go de mémoire résidente (2026-10-04).
+une requête sans borne l'a gelée. La co-écoute sur toutes les écoutes culmine
+à 3,9 Go et prend 10 h (2026-10-10) : `musilogy run` part alors dans un scope
+de 4 Go visés et 5 Go au plus, quand la passe hebdomadaire de la radio ne
+tourne pas.
 
 ```bash
 systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=0 \

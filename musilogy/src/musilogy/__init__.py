@@ -10,6 +10,7 @@ REFERENCE_DISCOGS = "20261001"
 # The parts of the long survey, oldest first: each asks only the artists no
 # earlier part asked (cli.snapshot_official).
 REFERENCE_OFFICIAL = ("2026-10-05", "2026-10-06")
-# The ListenBrainz statistics export whose users' top artists give our
-# co-listening (colisten.py): dump number, date and sequence of its folder.
+# The ListenBrainz dump whose listens, reduced to one row per user and artist
+# (`musilogy snapshot-listens`), give our co-listening (colisten.py): dump
+# number, date and sequence of its folder.
 REFERENCE_LISTENING = "2692-20261001-000003"

@@ -150,23 +150,16 @@ def discogs_release(
 
 
 def listening_file(path, users):
-    """A synthetic ListenBrainz statistics export: `users` maps each user to
-    the artists among its top artists of all time."""
-    path.write_text(
-        "".join(
-            json.dumps(
-                {
-                    "user_id": user,
-                    "data": [
-                        {"listen_count": 10, "artist_name": "?", "artist_mbid": a} for a in artists
-                    ],
-                }
-            )
-            + "\n"
-            for user, artists in users.items()
-        ),
-        encoding="utf-8",
+    """A synthetic projection of the ListenBrainz listens (extract.reduce_listens):
+    `users` maps each user to the artists it listens to."""
+    path.mkdir(parents=True)
+    con = duckdb.connect()
+    con.execute("CREATE TABLE listens (user_id INTEGER, artist_mbid UUID, listens INTEGER)")
+    con.executemany(
+        "INSERT INTO listens VALUES (?, ?, 10)",
+        [(user, a) for user, artists in users.items() for a in artists],
     )
+    con.execute("COPY listens TO ? (FORMAT parquet)", [(path / "00.parquet").as_posix()])
     return path
 
 
@@ -228,7 +221,7 @@ def published(
         kwargs["official"] = [official_file(tmp_path / "official.jsonl", official)]
     if listening is not None:
         # No snapshot named: the manifest would look for its pinned digest.
-        kwargs["listening"] = listening_file(tmp_path / "artists_all_time.jsonl", listening)
+        kwargs["listening"] = listening_file(tmp_path / "listens", listening)
     if discogs is not None:
         kwargs["discogs"] = discogs_file(tmp_path / "discogs.jsonl", discogs)
     out = tmp_path / "out"

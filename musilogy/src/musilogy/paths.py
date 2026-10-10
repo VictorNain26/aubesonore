@@ -36,12 +36,12 @@ def popularity_sums(date: str) -> Path:
     return REFERENCE_DIR / f"listenbrainz-{date}.SHA256SUMS"
 
 
-def listening_export(ref: str) -> Path:
-    return RAW_DIR / "listenbrainz" / f"statistics-{ref}" / "artists_all_time.jsonl"
+def listening_snapshot(ref: str) -> Path:
+    return RAW_DIR / "listenbrainz" / f"listens-{ref}"
 
 
 def listening_sums(ref: str) -> Path:
-    return REFERENCE_DIR / f"listenbrainz-statistics-{ref}.SHA256SUMS"
+    return REFERENCE_DIR / f"listenbrainz-listens-{ref}.SHA256SUMS"
 
 
 def official_snapshot(date: str) -> Path:
