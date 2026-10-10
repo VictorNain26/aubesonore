@@ -26,9 +26,10 @@ ALPHA = 0.3
 SHRINK = 10.0
 # « Même son » looks for the colour among all 50 (88_same_sound.sql); the page shows 8.
 K = 50
-# Rows of the artist-by-artist product computed at once: about 7 million
-# non-zero counts per chunk, a few tens of MB.
-CHUNK = 500
+# Rows of the artist-by-artist product computed at once. Over all listens a
+# famous artist shares listeners with most of the 899 265 others: at 100 rows,
+# the whole build of the co-listening peaked at 3.9 GB (2026-10-10).
+CHUNK = 100
 # Scored rows handed to DuckDB at once: the whole result held in Python, then
 # copied once more to be joined, took the peak to 4.2 GB (2026-10-08).
 BATCH = 2_000_000
