@@ -23,8 +23,7 @@ CREATE TABLE artists (
   y0 integer,
   y0_source text,
   y_end integer,
-  y_end_source text,
-  proximity_surveyed boolean
+  y_end_source text
 );
 
 CREATE TABLE links (
@@ -64,16 +63,9 @@ CREATE TABLE urls (
   ended boolean NOT NULL
 );
 
--- No key during the copy: millions of rows, indexed once loaded
--- (30_indexes.sql). One pair per row is an invariant of the build.
-CREATE TABLE proximity (
-  artist_mbid text COLLATE "C" NOT NULL,
-  neighbour_mbid text COLLATE "C" NOT NULL,
-  score integer NOT NULL,
-  rank integer NOT NULL
-);
-
--- « Même son » (88_same_sound.sql); indexed once loaded, like proximity.
+-- « Même son » (88_same_sound.sql). No key during the copy: millions of rows,
+-- indexed once loaded (30_indexes.sql). One pair per row is an invariant of
+-- the build.
 CREATE TABLE same_sound (
   artist_mbid text COLLATE "C" NOT NULL,
   neighbour_mbid text COLLATE "C" NOT NULL,
@@ -89,7 +81,6 @@ CREATE TABLE manifest (
   dump text NOT NULL,
   popularity_snapshot date,
   discography_snapshot date,
-  proximity_snapshots date[],
   official_snapshots date[],
   git_sha text NOT NULL,
   loaded_at timestamptz NOT NULL DEFAULT now()

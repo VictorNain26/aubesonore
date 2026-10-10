@@ -2,10 +2,6 @@
 -- the tables: the site depends on these signatures, not on how the tables are
 -- laid out, and every query it runs is tested here against Postgres.
 
--- proximity_surveyed says whether the artist was asked about by a pinned
--- part of the proximity survey (89_proximity.sql): only artists with 500 listeners or
--- more are, so an artist not surveyed is not an artist without neighbours.
--- NULL when the load carries no snapshot.
 CREATE FUNCTION musilogy.artist_card(artist text)
 RETURNS TABLE (
   mbid text,
@@ -23,14 +19,13 @@ RETURNS TABLE (
   genres jsonb,
   genre_source text,
   listen_count bigint,
-  user_count bigint,
-  proximity_surveyed boolean
+  user_count bigint
 )
 LANGUAGE sql STABLE
 AS $$
   SELECT a.mbid, a.name, a.disambiguation, a.type, a.country, a.begin_area, a.y_birth,
          a.y0, a.y0_source, a.y_end, a.y_end_source, a.ended, a.genres, a.genre_source,
-         p.listen_count, p.user_count, a.proximity_surveyed
+         p.listen_count, p.user_count
   FROM musilogy.artists a
   LEFT JOIN musilogy.popularity p USING (mbid)
   WHERE a.mbid = artist;
@@ -204,8 +199,7 @@ $$;
 
 -- A neighbour's side in time (docs/conception.md, section 3): 'before' when it
 -- began more than 3 years before the artist, 'after' more than 3 years after,
--- 'during' otherwise, NULL when either has no y0. One rule for every list of
--- neighbours; inlined, like is_part_of.
+-- 'during' otherwise, NULL when either has no y0. Inlined, like is_part_of.
 CREATE FUNCTION musilogy.side(artist_y0 integer, other_y0 integer)
 RETURNS text
 LANGUAGE sql IMMUTABLE
@@ -218,42 +212,12 @@ AS $$
   END;
 $$;
 
--- An artist's ListenBrainz neighbours in the service's order, each with its
--- side in time (musilogy.side). The side is the only reading time gives
--- co-listening. A neighbour absent from the dump has
--- no name to show and is left out, as is every neighbour of an artist the dump
--- lacks.
-CREATE FUNCTION musilogy.artist_neighbours(artist text)
-RETURNS TABLE (
-  mbid text,
-  name text,
-  disambiguation text,
-  type text,
-  y0 integer,
-  y_end integer,
-  ended boolean,
-  score integer,
-  rank integer,
-  side text
-)
-LANGUAGE sql STABLE
-AS $$
-  SELECT o.mbid, o.name, o.disambiguation, o.type, o.y0, o.y_end, o.ended, p.score, p.rank,
-         musilogy.side(a.y0, o.y0)
-  FROM musilogy.artists a
-  JOIN musilogy.proximity p ON p.artist_mbid = a.mbid
-  JOIN musilogy.artists o ON o.mbid = p.neighbour_mbid
-  WHERE a.mbid = artist
-  ORDER BY p.rank;
-$$;
-
 -- « Même son » (88_same_sound.sql, docs/vision.md §2.2): the artist's
 -- neighbours of the co-listening whose colour agrees, the first 8 — the depth
 -- the rule was measured at (2026-10-08); the table keeps them all — in their
--- rank order,
--- each with its reason — the style, with the artist's decade, or the genre
--- (`source` says which) that weighs most in what the two share — and its side
--- in time (musilogy.side). Every neighbour is in the dump: a colour comes from
+-- rank order, each with its reason — the style, with the artist's decade, or
+-- the genre (`source` says which) that weighs most in what the two share —
+-- and its side in time (musilogy.side). Every neighbour is in the dump: a colour comes from
 -- its styles or its genres, which only an artist of the dump has.
 CREATE FUNCTION musilogy.artist_same_sound(artist text)
 RETURNS TABLE (

@@ -107,35 +107,6 @@ def load_discography(
     )
 
 
-# "similar" is the snapshot's key, and a reserved word in SQL: renamed on read.
-RAW_PROXIMITY_COLUMNS = (
-    "{artist_mbid:'VARCHAR', \"similar\":'STRUCT(artist_mbid VARCHAR, score INTEGER)[]'}"
-)
-
-
-def load_proximity(
-    con: duckdb.DuckDBPyConnection, parts: Sequence[Path], snapshots: Sequence[str] | None
-) -> None:
-    """A survey too long to take again is taken in parts: each asks the artists
-    no earlier part asked (cli.snapshot_proximity). The parts are read as one
-    table; proximity_asked_twice holds them apart."""
-    # Always materialized, even empty: 89_proximity.sql reads it, and an empty
-    # table is how it knows that no snapshot was loaded.
-    con.execute(
-        "CREATE OR REPLACE TABLE raw_proximity (artist_mbid VARCHAR, "
-        "neighbours STRUCT(artist_mbid VARCHAR, score INTEGER)[])"
-    )
-    for part in parts:
-        con.execute(
-            f'INSERT INTO raw_proximity SELECT artist_mbid, "similar" FROM read_ndjson('
-            f"'{part.as_posix()}', columns={RAW_PROXIMITY_COLUMNS}, format='newline_delimited')"
-        )
-    con.execute(
-        "SET VARIABLE proximity_snapshots = "
-        + ("NULL" if snapshots is None else f"{[*snapshots]}::DATE[]")
-    )
-
-
 RAW_LISTENING_COLUMNS = (
     "{user_id:'BIGINT', "
     "data:'STRUCT(listen_count BIGINT, artist_name VARCHAR, artist_mbid VARCHAR)[]'}"
@@ -175,8 +146,8 @@ def load_official(
     con: duckdb.DuckDBPyConnection, parts: Sequence[Path], snapshots: Sequence[str] | None
 ) -> None:
     """The album and EP release groups MusicBrainz shows for each artist asked,
-    in parts like the proximity; NULL for an artist it no longer holds or
-    answered as merged (fetch.official_release_groups)."""
+    in parts, each asking the artists no earlier part asked; NULL for an artist
+    it no longer holds or answered as merged (fetch.official_release_groups)."""
     # Always materialized, even empty: 22_releases.sql reads it, and an empty
     # table leaves every record's status unknown.
     con.execute(
@@ -262,8 +233,6 @@ def build(
     popularity_snapshot: str | None = None,
     discography: Path | None = None,
     discography_snapshot: str | None = None,
-    proximity: Sequence[Path] = (),
-    proximity_snapshots: Sequence[str] | None = None,
     official: Sequence[Path] = (),
     official_snapshots: Sequence[str] | None = None,
     discogs: Path | None = None,
@@ -275,7 +244,6 @@ def build(
     apply_corrections(con, corrections)
     load_popularity(con, popularity, popularity_snapshot)
     load_discography(con, discography, discography_snapshot)
-    load_proximity(con, proximity, proximity_snapshots)
     load_official(con, official, official_snapshots)
     load_discogs(con, discogs, discogs_dump)
     load_listening(con, listening, listening_snapshot)
@@ -330,12 +298,6 @@ INVARIANTS = (
     "duplicate_popularity",
     "popularity_out_of_range",
     "popularity_unrequested",
-    "proximity_rank_out_of_range",
-    "proximity_malformed",
-    "proximity_self",
-    "proximity_asked_twice",
-    "duplicate_proximity",
-    "proximity_unsourced",
     "duplicate_colisten",
     "colisten_self",
     "colisten_rank_out_of_range",

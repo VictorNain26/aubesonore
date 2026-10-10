@@ -41,12 +41,9 @@ def test_an_artist_unknown_to_listenbrainz_has_no_count_rather_than_zero(tmp_pat
     assert [g["name"] for g in json.loads(cards[A][2])] == ["post-punk"]
 
 
-def test_no_artist_counts_as_surveyed_for_proximity_before_a_snapshot_is_loaded(tmp_path, pg):
-    # An artist not surveyed is not an artist without neighbours: with no
-    # proximity snapshot loaded, the card says it does not know, not false.
-    loaded(tmp_path, pg, [group(A)], popularity={A: 42})
-    assert pg_query(pg, f"SELECT proximity_surveyed FROM musilogy.artist_card('{A}')") == [(None,)]
+def test_the_card_keeps_the_signature_the_site_reads(tmp_path, pg):
     # The signature is the contract the site reads (docs/conception.md §4).
+    loaded(tmp_path, pg, [group(A)], popularity={A: 42})
     assert pg_query(
         pg, "SELECT pg_get_function_result('musilogy.artist_card(text)'::regprocedure)"
     ) == [
@@ -54,13 +51,9 @@ def test_no_artist_counts_as_surveyed_for_proximity_before_a_snapshot_is_loaded(
             "TABLE(mbid text, name text, disambiguation text, type text, country text, "
             "begin_area text, y_birth integer, y0 integer, y0_source text, y_end integer, "
             "y_end_source text, ended boolean, genres jsonb, genre_source text, "
-            "listen_count bigint, user_count bigint, proximity_surveyed boolean)",
+            "listen_count bigint, user_count bigint)",
         )
     ]
-
-
-C = "00000000-0000-4000-8000-0000000000f3"
-ABSENT = "00000000-0000-4000-8000-0000000000f9"
 
 
 def test_a_page_shows_the_work_from_the_first_album_to_the_declared_end(tmp_path, pg):
@@ -271,46 +264,3 @@ def test_the_band_sections_keep_the_signatures_the_site_reads(tmp_path, pg):
             "TABLE(kind text, mbid text, name text, disambiguation text, y0 integer)",
         ),
     ]
-
-
-D = "00000000-0000-4000-8000-0000000000f4"
-E = "00000000-0000-4000-8000-0000000000f5"
-
-
-def neighbours(conninfo, mbid):
-    return pg_query(conninfo, f"SELECT mbid, rank, side FROM musilogy.artist_neighbours('{mbid}')")
-
-
-def test_neighbours_come_in_rank_order_each_with_its_side_in_time(tmp_path, pg):
-    # A began in 1978. B (1960) is more than 3 years before, D (1982) more than
-    # 3 after, C (1975) exactly 3 before: during. E has no year: no side. The
-    # neighbour absent from the dump has no name to show and is left out,
-    # without renumbering the others.
-    loaded(
-        tmp_path,
-        pg,
-        [group(A, "1978"), group(B, "1960"), group(C, "1975"), group(D, "1982"), group(E, None)],
-        proximity={A: [(D, 90), (ABSENT, 80), (B, 70), (E, 60), (C, 50)]},
-    )
-    assert neighbours(pg, A) == [
-        (D, 1, "after"),
-        (B, 3, "before"),
-        (E, 4, None),
-        (C, 5, "during"),
-    ]
-
-
-def test_an_artist_absent_from_the_dump_has_no_neighbours(tmp_path, pg):
-    loaded(tmp_path, pg, [group(A)], proximity={ABSENT: [(A, 90)]})
-    assert neighbours(pg, ABSENT) == []
-
-
-def test_the_card_tells_a_surveyed_artist_from_one_never_asked(tmp_path, pg):
-    # A was asked and has no neighbour; B was never asked. Only B's empty list
-    # is no answer.
-    loaded(tmp_path, pg, [group(A), group(B)], proximity={A: []})
-    assert pg_query(
-        pg,
-        f"SELECT mbid, proximity_surveyed FROM musilogy.artist_card('{A}') "
-        f"UNION ALL SELECT mbid, proximity_surveyed FROM musilogy.artist_card('{B}')",
-    ) == [(A, True), (B, False)]
