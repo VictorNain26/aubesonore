@@ -36,8 +36,7 @@ reconnues, sans couche maison :
 
 Ce que la chaîne doit encore corriger (`docs/vision.md` §7) : elle se calcule aujourd'hui sur
 l'export des statistiques, tronqué au top 1 000 de chaque utilisateur, au lieu de toutes les
-écoutes (le dump Spark de ListenBrainz, les écoutes déjà rapprochées de MusicBrainz, chaque
-auditeur compté pour ses 5 000 artistes les plus écoutés : `docs/vision.md` §2.2) ; elle ne
+écoutes (le dump Spark de ListenBrainz, les écoutes déjà rapprochées de MusicBrainz) ; elle ne
 lit la co-écoute que dans un sens ; et la couleur s'y compare décennie par décennie, un choix
 maison que la mesure ne justifie pas (2026-10-09) et qui part.
 

@@ -107,12 +107,13 @@ chaque utilisateur : 48 % des artistes de 1 à 19 auditeurs au lieu de 5 %, 77 %
 apparus dans les années 2020 au lieu de 42 %. Un artiste sans auditeur n'a pas d'artistes
 similaires ; la généalogie de ses courants le situe (§2.3).
 
-**Chaque auditeur compte pour ses 5 000 artistes les plus écoutés.** Le calcul croît comme le
-carré du nombre d'artistes de chaque auditeur, et quelques comptes en déclarent des dizaines de
-milliers (jusqu'à 145 531 ; 1 % des auditeurs en ont plus de 12 000) : sur toutes les écoutes,
-il prend 10 h. Au-delà de 5 000, il reste 723 195 artistes d'au moins 3 auditeurs pour environ un
-tiers du calcul ; une bibliothèque de produit matriciel creux plus rapide n'a rien gagné (mesuré
-le 2026-10-10).
+**Toutes les écoutes de chaque auditeur comptent**, même au-delà de ses artistes favoris : ce
+sont elles qui portent les artistes confidentiels. Le calcul croît comme le carré du nombre
+d'artistes de chaque auditeur, et quelques comptes en ont des dizaines de milliers (jusqu'à
+145 531) : 10 h hors ligne, une fois par dump. Ne garder que les 5 000 artistes les plus écoutés
+de chacun le diviserait par trois, mais retirerait 176 070 artistes (899 265 → 723 195), sans
+mesure qui montre que ces écoutes nuisent ; une bibliothèque de produit matriciel creux plus
+rapide n'a rien gagné (mesuré le 2026-10-10).
 
 **La mesure**, une fois, sur la méthode figée : des paires jugées à partir de sources citées
 (même son, parenté, lointain, étranger, inconnu), sur les 61 références de l'étude du 2026-10-08
@@ -413,7 +414,7 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
    veut les plus pertinents d'abord : la carte les trie par année de début et les met tous en
    gras. Le seuil d'indexation (§2.4) a été mesuré sur l'ancien voisinage et reste à remesurer.
 2. **Les similaires couvrent mal les petits, les récents et les autres époques** (§2.2) : la
-   co-écoute se calcule sur l'export tronqué (371 602 artistes au lieu de 723 195), dans un seul
+   co-écoute se calcule sur l'export tronqué (371 602 artistes au lieu de 899 265), dans un seul
    sens, et la couleur se compare décennie par décennie.
 3. **Les pages de courant n'existent pas encore** (§2.3).
 4. **Statut officiel incomplet** : la page écarte les disques que MusicBrainz ne montre pas
@@ -438,8 +439,8 @@ sont dans l'historique git.
 
 1. **Les artistes similaires sur toutes les écoutes** (écart 2) : la projection des écoutes
    complètes de ListenBrainz, épinglée avec l'empreinte publiée du dump (l'archive de 242 Go n'est
-   pas gardée) ; la co-écoute recalculée dessus, chaque auditeur compté pour ses 5 000 artistes
-   les plus écoutés (§2.2), dans les deux sens ; la couleur sans noyau de décennie ; mesurés une
+   pas gardée) ; la co-écoute recalculée dessus, toutes les écoutes de chaque auditeur (§2.2),
+   dans les deux sens ; la couleur sans noyau de décennie ; mesurés une
    fois (§2.2).
 2. **La page artiste** (écart 1) : les artistes similaires en liste, les plus pertinents d'abord,
    et la ligne de genres (§2.4), essayées dans le navigateur sur ordinateur et sur téléphone ; le
