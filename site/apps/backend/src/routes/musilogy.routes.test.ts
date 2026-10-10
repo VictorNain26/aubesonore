@@ -66,7 +66,6 @@ const card = {
   genre_source: 'declared',
   listen_count: '1234567',
   user_count: '31415',
-  proximity_surveyed: true,
 };
 
 const neighbour = (mbid: string, name: string, y0: number | null, side: string | null) => ({
@@ -77,7 +76,6 @@ const neighbour = (mbid: string, name: string, y0: number | null, side: string |
   y0,
   y_end: null,
   ended: null,
-  score: 1000,
   rank: 1,
   side,
 });
@@ -101,7 +99,7 @@ describe('GET /api/musilogy/artist/:mbid', () => {
   it('places each neighbour before, during or after the artist, as musilogy says', async () => {
     answers = {
       artist_card: [card],
-      artist_neighbours: [
+      artist_same_sound: [
         neighbour(KINKS, 'The Kinks', 1963, 'before'),
         neighbour(BOWIE, 'David Bowie', 1964, 'during'),
         neighbour(RAMONES, 'Ramones', 1974, 'after'),
@@ -202,7 +200,7 @@ describe('GET /api/musilogy/artist/:mbid', () => {
   it('says a section is unknown, not empty, while its data is not loaded', async () => {
     answers = { artist_card: [card] };
     notLoaded = new Set([
-      'artist_neighbours',
+      'artist_same_sound',
       'artist_releases',
       'artist_bands',
       'artist_member_projects',

@@ -83,7 +83,6 @@ uv run pytest                 # suite rapide, sur les témoins
 uv run pytest -m slow         # ligne de base sur le dump réel, exige data/work/
 uv run musilogy run           # fetch → extract → transform → validate → publish (relevés épinglés exigés)
 uv run musilogy snapshot-popularity  # relevé ListenBrainz daté, à épingler
-uv run musilogy snapshot-proximity   # une partie : les artistes qu'aucune partie épinglée n'a interrogés, reprenable
 uv run musilogy snapshot-official    # disques officiels MusicBrainz, ~30 h, reprenable
 uv run musilogy snapshot-discography # disques classés par Wikidata, quelques secondes, à épingler
 uv run musilogy make-fixtures # depuis les extractions et les relevés épinglés
@@ -105,7 +104,7 @@ PGPASSWORD="$(grep '^POSTGRES_PASSWORD=' ~/aubesonore/site/.env | cut -d= -f2-)"
 PGHOST=localhost PGPORT=5433 PGUSER=aubesonore PGDATABASE=aubesonore \
 PGSSLMODE=verify-full PGSSLROOTCERT=~/aubesonore/site/certs/ca.crt \
 systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=0 \
-  nice -n 10 uv run musilogy load   # ~9 min 30 sur un Postgres jetable, proximité comprise (2026-10-06)
+  nice -n 10 uv run musilogy load   # ~10 min sur un Postgres jetable (2026-10-06)
 ```
 
 Sur victorserv, `pytest -m slow` et `musilogy run` partent dans un scope

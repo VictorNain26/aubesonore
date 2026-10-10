@@ -8,8 +8,7 @@ racine. Les chiffres cités ici sont descriptifs ; le contrat exécutable reste
 ## Rôle
 
 musilogy produit, hors ligne et depuis des sources épinglées et datées, les
-données de **Musilogy** : pour un artiste, les artistes du même son, de toutes
-les époques ; dans quels groupes ses membres ont joué. `musilogy load` les copie dans le schéma
+données de **Musilogy** : pour un artiste, les artistes du même son ; dans quels groupes ses membres ont joué. `musilogy load` les copie dans le schéma
 `musilogy` de la base du site, qui ne lit que des fonctions SQL (§4).
 
 ## Méthode des artistes similaires
@@ -27,8 +26,9 @@ reconnues, sans couche maison :
    c / (c + h) de Bell et Koren (2007), qui se méfie d'un lien porté par peu d'auditeurs.
 3. **Le même son** (`same_sound`) : un recommandeur hybride « en cascade » (Burke, *User Modeling
    and User-Adapted Interaction*, 2002) : la co-écoute propose, la couleur filtre. La couleur est
-   un profil de styles Discogs pondérés par leur rareté et leur part dans l'œuvre, comparé par
-   cosinus (TF-IDF, la base du filtrage par contenu).
+   un profil de styles Discogs pondérés par leur rareté et leur part dans l'œuvre, sinon de genres
+   MusicBrainz pour un artiste qui a moins de trois disques stylés, comparé par cosinus (TF-IDF,
+   la base du filtrage par contenu).
 4. **Le classement** : le score de la co-écoute, parmi les voisins que la couleur confirme.
 5. **La mesure** : des paires jugées à partir de sources sur un ensemble de candidats regroupés
    (le *pooling* de TREC ; Ellis et al., ISMIR 2002 pour la vérité terrain de la similarité
@@ -36,7 +36,8 @@ reconnues, sans couche maison :
 
 Ce que la chaîne doit encore corriger (`docs/vision.md` §7) : elle se calcule aujourd'hui sur
 l'export des statistiques, tronqué au top 1 000 de chaque utilisateur, au lieu de toutes les
-écoutes (le dump Spark de ListenBrainz, les écoutes déjà rapprochées de MusicBrainz) ; elle ne
+écoutes (le dump Spark de ListenBrainz, les écoutes déjà rapprochées de MusicBrainz, chaque
+auditeur compté pour ses 5 000 artistes les plus écoutés : `docs/vision.md` §2.2) ; elle ne
 lit la co-écoute que dans un sens ; et la couleur s'y compare décennie par décennie, un choix
 maison que la mesure ne justifie pas (2026-10-09) et qui part.
 
@@ -49,7 +50,6 @@ entre genres, faits écrits) ; elle ne passe pas par la co-écoute.
 |---|---|---|
 | dump JSON MusicBrainz (artistes, release groups) | `REFERENCE_DUMP` | CC0 (cœur) ; genres CC BY-NC-SA 3.0 |
 | popularité ListenBrainz (`/1/popularity/artist`) | `REFERENCE_POPULARITY` | CC0 |
-| proximité ListenBrainz (`labs…/similar-artists`) | `REFERENCE_PROXIMITY` | dérivée des données ListenBrainz (CC0) ; le service ne précise pas de licence |
 | discographie Wikidata (release groups, P436, classés album studio, EP ou bande originale par P31 ou P7937) | `REFERENCE_DISCOGRAPHY` | CC0 |
 | dump mensuel des sorties Discogs (artistes crédités, styles, date, descriptions de format) | `REFERENCE_DISCOGS` | CC0 (data.discogs.com) |
 | export des statistiques ListenBrainz (artistes les plus écoutés de chaque utilisateur, de tout temps) | `REFERENCE_LISTENING` | CC0 |
@@ -59,7 +59,7 @@ et `run` lit celui que la constante épingle.
 
 **Une source, ses tables.** Les sources ne se mélangent jamais dans une même
 colonne : `genres` reste MusicBrainz, `styles` reste Discogs,
-`proximity` reste ListenBrainz. L'identité d'un artiste est son MBID ; le pont
+`colisten` reste ListenBrainz. L'identité d'un artiste est son MBID ; le pont
 vers une autre base est une table à part (`discogs_links`), et un pont ambigu
 — un artiste Discogs relié à deux MBID — est écarté et compté, jamais deviné.
 Quand deux sources se recoupent, une seule fait foi : MusicBrainz pour les
@@ -109,26 +109,6 @@ albums), `genres` (vocabulaire, publié, non chargé), `links` (appartenances, p
   plus celle de l'artiste. Une même page reliée deux fois sous un même type est
   une ligne.
 
-- `proximity(artist_mbid, neighbour_mbid, score, rank)` (`89_proximity.sql`,
-  sur les parties épinglées du relevé) : les voisins ListenBrainz de chaque
-  artiste relevé, `rank` de 1 à 100 dans l'ordre du service. Un voisin absent
-  du dump reste dans la table (il n'a pas de fiche). Le service répète parfois
-  un voisin pour un même artiste (675 fois sur les 111 402 artistes du
-  relevé du 2026-10-04 ; will.i.am aux rangs 58 et 100, scores 45 et 35, chez
-  Chuckie, `0145e155…`) : **un voisin répété garde sa meilleure occurrence**,
-  le rang le plus petit, qui porte aussi le score le plus haut (le score ne
-  remonte jamais le long des rangs du relevé) ; le rang laissé
-  libre n'est pas comblé. C'est un dédoublonnage, compté dans le manifeste
-  (`proximity_exclusions`), pas une violation ; un doublon de paire restant
-  après lui en serait une. Le service donne aussi certains artistes pour leur
-  propre voisin (84 des 111 402 artistes relevés) : cette occurrence est
-  écartée et comptée de même, son rang laissé libre. Seuls les artistes d'au
-  moins 500 auditeurs sont interrogés : `artists.proximity_surveyed` vaut vrai pour chaque artiste dont
-  le relevé porte une ligne, même sans voisin (14,8 % des 111 402), faux
-  pour les autres, NULL si aucun relevé n'est chargé. Un artiste non relevé
-  n'est pas un artiste sans voisin. Le relevé se fait en parties épinglées : chacune
-  interroge les artistes éligibles qu'aucune autre n'a interrogés, et aucun
-  artiste n'est dans deux parties (invariant `proximity_asked_twice`).
 - `colisten(artist_mbid, neighbour_mbid, common, score, rank)` (`colisten.py`,
   sur l'export des statistiques ListenBrainz épinglé) : notre co-écoute. Pour
   chaque artiste qu'au moins 3 utilisateurs écoutent, ses 50 meilleurs voisins
@@ -137,9 +117,9 @@ albums), `genres` (vocabulaire, publié, non chargé), `links` (appartenances, p
   auditeurs communs et pop les auditeurs de chacun : la règle mesurée le
   2026-10-07 contre le service de ListenBrainz (64 % de voisins justes contre
   54 %, et nettement plus d'artistes peu connus parmi eux, `docs/vision.md`
-  §2.2). La page en montre 30 au plus : 50 laissent de la marge. Un rang de 1 à 50 sans trou, jamais l'artiste lui-même ; un voisin
-  absent du dump reste dans la table, comme dans `proximity`. Publiée, pas encore
-  chargée dans le site. Cinq invariants :
+  §2.2). « Même son » cherche la couleur parmi les 50. Un rang de 1 à 50 sans
+  trou, jamais l'artiste lui-même ; un voisin absent du dump reste dans la
+  table. Publiée, non chargée dans le site : `same_sound` la lit. Cinq invariants :
   une paire en double, un artiste voisin de lui-même, des rangs hors de 1 à K
   ou troués, une paire sous le seuil d'auditeurs communs, un score qui remonte
   le long des rangs.
@@ -190,33 +170,22 @@ absente (code `42883`).
 
 | Fonction | État |
 |---|---|
-| `artist_card` | livrée ; `proximity_surveyed` ajoutée par #286 |
+| `artist_card` | livrée ; `proximity_surveyed` retirée avec le relevé de proximité |
 | `artist_bands` | livrée par #342 |
 | `artist_member_projects` | livrée par #342 |
 | `artist_other_names` | livrée par #342 |
 | `search_artists` | livrée par #286 |
-| `artist_neighbours` | livrée avec la table `proximity` |
 | `artist_releases` | livrée par #337, règle de la page par #338 |
 | `artist_urls` | livrée par #337 |
 | `artist_same_sound` | livrée avec la table `same_sound` |
 
 ```sql
--- Fiche. proximity_surveyed : vrai si l'artiste a été interrogé dans le
--- relevé de proximité épinglé, même sans voisin, faux sinon, NULL si le
--- chargement ne porte aucun relevé. Un artiste non relevé n'est pas un
--- artiste sans voisin.
+-- Fiche.
 musilogy.artist_card(artist text) RETURNS TABLE (
   mbid text, name text, disambiguation text, type text, country text,
   begin_area text, y_birth integer, y0 integer, y0_source text, y_end integer,
   y_end_source text, ended boolean, genres jsonb, genre_source text,
-  listen_count bigint, user_count bigint, proximity_surveyed boolean)
-
--- Voisins ListenBrainz dans l'ordre du service (rang), avec leur côté dans
--- le temps (§3) ; les rangs ne sont pas renumérotés quand un voisin absent du
--- dump est écarté.
-musilogy.artist_neighbours(artist text) RETURNS TABLE (
-  mbid text, name text, disambiguation text, type text, y0 integer,
-  y_end integer, ended boolean, score integer, rank integer, side text)
+  listen_count bigint, user_count bigint)
 
 -- « Même son » : les 8 premiers voisins de la co-écoute dont la couleur
 -- s'accorde, la profondeur à laquelle la règle a été mesurée (la table les
@@ -273,13 +242,8 @@ musilogy.artist_other_names(artist text) RETURNS TABLE (
 musilogy.artist_urls(artist text) RETURNS TABLE (type text, url text)
 ```
 
-Un voisin absent du dump n'apparaît pas : la fonction
-joint `artists`, faute de nom à montrer.
-
-`artist_neighbours`, mesurée le 2026-10-06 sur un Postgres jetable chargé du
-dump de référence et du relevé entier, pour Joy Division (100 voisins) :
-environ 1 ms d'exécution, cache chaud. La table pèse 877 Mo dans la base,
-index compris (555 Mo sans).
+`artist_same_sound`, mesurée le 2026-10-09 sur un Postgres jetable : 0,07 ms
+pour Daft Punk, index chaud. La table pèse 484 Mo dans la base, index compris.
 
 `search_artists` normalise la requête comme `name_key` l'est dans DuckDB
 (`strip_accents(lower(name))`), par une fonction Postgres interne,
@@ -289,12 +253,12 @@ dans `search`, une projection étroite créée au chargement (README,
 
 ## 5. Exécution
 
-- Les relevés longs (proximité, statut officiel) se font en parties, une
+- Le relevé long (statut officiel) se fait en parties, une
   requête par seconde au plus : une partie interroge les artistes qu'aucune
   partie épinglée n'a interrogés et reprend le fichier partiel si elle est
-  interrompue. Ils tournent en service systemd transitoire plafonné
-  (`systemd-run --user --unit=musilogy-proximity -p MemoryMax=1G`). À la fin,
+  interrompue. Il tourne en service systemd transitoire plafonné
+  (`systemd-run --user --unit=musilogy-official -p MemoryMax=1G`). À la fin,
   la commande écrit l'empreinte de la partie dans `reference/` : versionner ce
-  fichier et ajouter sa date à `REFERENCE_PROXIMITY` ou `REFERENCE_OFFICIAL`
-  épingle la partie, et `run` les lit toutes.
+  fichier et ajouter sa date à `REFERENCE_OFFICIAL` épingle la partie, et
+  `run` les lit toutes.
 - La construction reste plafonnée comme avant (`musilogy/CLAUDE.md`).

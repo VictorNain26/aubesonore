@@ -220,48 +220,12 @@ def popularity_batch(mbids: list[str]) -> tuple[list[dict[str, Any]], float]:
     return rows, _reset_in(headers) if remaining == 0 else MIN_INTERVAL
 
 
-SIMILAR_URL = "https://labs.api.listenbrainz.org/similar-artists/json"
-# Of the algorithms the service lists, the one reading the longest history of
-# listening sessions (7 500 days), so a 1970s band's neighbours are not only
-# today's listening. Pinned: another algorithm is another snapshot.
-SIMILAR_ALGORITHM = (
-    "session_based_days_7500_session_300_contribution_5_threshold_10_limit_100_filter_True_skip_30"
-)
-
-
 def _get(url: str, params: dict[str, str]) -> tuple[Any, Message]:
     req = urllib.request.Request(
         f"{url}?{urllib.parse.urlencode(params)}", headers={"User-Agent": UA}
     )
     with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as r:
         return json.load(r), r.headers
-
-
-def similar_artists(mbid: str) -> dict[str, Any]:
-    """The neighbours ListenBrainz gives one artist, as one snapshot row. The
-    service answers one artist per request (it takes no batch) and states no
-    rate limit: the snapshot keeps to the API's one call per second.
-
-    An external payload: no neighbour may name another artist than the one
-    asked, or it lands on the wrong artist without anything noticing. A
-    neighbour naming none is kept: the service leaves `reference_mbid` empty
-    now and then (Pitty, among the neighbours of 00034ede…, 2026-10-04), and
-    the request asked about one artist only."""
-    rows, _ = _with_retries(
-        lambda: _get(SIMILAR_URL, {"artist_mbids": mbid, "algorithm": SIMILAR_ALGORITHM})
-    )
-    if not isinstance(rows, list) or any(
-        not isinstance(r, dict)
-        or r.get("reference_mbid") not in (mbid, None)
-        or not isinstance(r.get("artist_mbid"), str)
-        or not isinstance(r.get("score"), int)
-        for r in rows
-    ):
-        raise DownloadError(f"ListenBrainz answered another artist than {mbid}")
-    return {
-        "artist_mbid": mbid,
-        "similar": [{"artist_mbid": r["artist_mbid"], "score": r["score"]} for r in rows],
-    }
 
 
 def _skip_written(partial: Path, batches: Iterator[list[str]]) -> tuple[int, Iterator[list[str]]]:
@@ -301,23 +265,6 @@ def _resume(dest: Path, batches: Iterable[list[str]]) -> tuple[Path, int, Iterat
         n, rest = _skip_written(partial, iter(batches))
         return partial, n, rest
     return partial, 0, iter(batches)
-
-
-def fetch_proximity(mbids: Iterable[str], dest: Path) -> int:
-    """One line per artist asked, written as answered, aside then renamed like
-    the popularity snapshot: several days for the 111 402 artists with 500
-    listeners or more, at about 0.6 artist a second measured with the
-    service's outages (2026-10-04), so a stopped run resumes where it was."""
-    partial, n, rest = _resume(dest, ([m] for m in mbids))
-    with partial.open("a", encoding="utf-8") as out:
-        for (mbid,) in rest:
-            started = time.monotonic()
-            out.write(json.dumps(similar_artists(mbid)) + "\n")
-            out.flush()
-            n += 1
-            time.sleep(max(0.0, MIN_INTERVAL - (time.monotonic() - started)))
-    partial.replace(dest)
-    return n
 
 
 RELEASE_GROUPS_URL = "https://musicbrainz.org/ws/2/release-group"
@@ -399,9 +346,10 @@ def official_release_groups(mbid: str) -> dict[str, Any]:
 
 
 def fetch_official(mbids: Iterable[str], dest: Path) -> int:
-    """One line per artist asked, written as answered, aside then renamed and
-    resumable like the proximity snapshot: about 100 000 requests for the
-    artists with 500 listeners or more, more than a day."""
+    """One line per artist asked, written as answered, aside then renamed like
+    the popularity snapshot: about 100 000 requests for the artists with 500
+    listeners or more, more than a day, so a stopped run resumes where it
+    was."""
     partial_file, n, rest = _resume(dest, ([m] for m in mbids))
     with partial_file.open("a", encoding="utf-8") as out:
         for (mbid,) in rest:

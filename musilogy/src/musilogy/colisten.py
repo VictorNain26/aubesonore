@@ -24,7 +24,7 @@ MIN_LISTENERS = 3
 MIN_COMMON = 2
 ALPHA = 0.3
 SHRINK = 10.0
-# The page shows 30 at most; 50 leaves room for the neighbours it cannot show.
+# « Même son » looks for the colour among all 50 (88_same_sound.sql); the page shows 8.
 K = 50
 # Rows of the artist-by-artist product computed at once: about 7 million
 # non-zero counts per chunk, a few tens of MB.

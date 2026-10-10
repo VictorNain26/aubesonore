@@ -36,14 +36,6 @@ def popularity_sums(date: str) -> Path:
     return REFERENCE_DIR / f"listenbrainz-{date}.SHA256SUMS"
 
 
-def proximity_snapshot(date: str) -> Path:
-    return RAW_DIR / "listenbrainz" / date / "artist-similar.jsonl"
-
-
-def proximity_sums(date: str) -> Path:
-    return REFERENCE_DIR / f"listenbrainz-similar-{date}.SHA256SUMS"
-
-
 def listening_export(ref: str) -> Path:
     return RAW_DIR / "listenbrainz" / f"statistics-{ref}" / "artists_all_time.jsonl"
 

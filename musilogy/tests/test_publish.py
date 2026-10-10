@@ -5,7 +5,6 @@ import pytest
 from conftest import (
     build_synthetic,
     official_file,
-    proximity_file,
     synthetic_artist,
     synthetic_release_group,
 )
@@ -22,7 +21,7 @@ REF_SUMS = REFERENCE_DIR / f"{DUMP}.SHA256SUMS"
 
 def test_publish_writes_every_table(con, tmp_path):
     manifest = publish(con, tmp_path, DUMP, None)
-    for name in ("artists", "albums", "genres", "links", "popularity", "proximity"):
+    for name in ("artists", "albums", "genres", "links", "popularity", "same_sound"):
         assert (tmp_path / f"{name}.parquet").exists()
         assert name in manifest["counts"]
     assert manifest["dump"] == DUMP
@@ -62,32 +61,6 @@ def test_manifest_names_the_popularity_snapshot_the_build_loaded(con, tmp_path):
     }
 
 
-def test_manifest_names_every_part_of_the_proximity_survey(tmp_path, monkeypatch):
-    # Each part's digest is the one pinned for its date, read from its
-    # reference file; here files of this test's own, so the wiring is checked
-    # without depending on which parts are pinned.
-    def sums(date):
-        path = tmp_path / f"listenbrainz-similar-{date}.SHA256SUMS"
-        path.write_text(f"{date[-1] * 64}  artist-similar.jsonl\n", encoding="utf-8")
-        return path
-
-    monkeypatch.setattr("musilogy.publish.proximity_sums", sums)
-    con = build_synthetic(
-        tmp_path,
-        [synthetic_artist(m, "1990", None) for m in ("a", "b")],
-        proximity=[
-            proximity_file(tmp_path / "p1.jsonl", {"a": []}),
-            proximity_file(tmp_path / "p2.jsonl", {"b": []}),
-        ],
-        proximity_snapshots=["2026-10-04", "2026-10-07"],
-    )
-    manifest = publish(con, tmp_path / "out", DUMP, None)
-    assert manifest["proximity"] == [
-        {"snapshot": "2026-10-04", "sha256": {"artist-similar.jsonl": "4" * 64}},
-        {"snapshot": "2026-10-07", "sha256": {"artist-similar.jsonl": "7" * 64}},
-    ]
-
-
 def test_manifest_names_the_official_parts_and_counts_the_statuses(tmp_path, monkeypatch):
     def sums(date):
         path = tmp_path / f"musicbrainz-official-{date}.SHA256SUMS"
@@ -109,19 +82,11 @@ def test_manifest_names_the_official_parts_and_counts_the_statuses(tmp_path, mon
     assert manifest["release_status"] == {"official": 1, "not_official": 1, "unknown": 0}
 
 
-def test_manifest_counts_the_repeated_neighbours_it_dropped(con, tmp_path):
-    # The first 120 lines of the snapshot repeat one neighbour once (line 119).
-    assert publish(con, tmp_path, DUMP, None)["proximity_exclusions"] == {
-        "repeated_neighbour": 1,
-        "self_neighbour": 0,
-    }
-
-
 def test_a_build_without_snapshot_says_so_in_the_manifest(tmp_path):
     con = build_synthetic(tmp_path, [synthetic_artist("a", "1990", None)])
     manifest = publish(con, tmp_path / "out", DUMP, None)
     assert manifest["popularity"] is None
-    assert manifest["proximity"] is None
+    assert manifest["official"] is None
 
 
 def test_manifest_carries_r2_anomaly_counters(con, tmp_path):
@@ -387,7 +352,6 @@ PARQUET_KEYS = {
     "albums": ["rg_mbid"],
     "genres": ["genre_mbid"],
     "links": ["src_mbid", "dst_mbid", "type", "y_begin", "y_end"],
-    "proximity": ["artist_mbid", "rank"],
 }
 
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import itertools
 import json
 from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime
@@ -17,7 +16,6 @@ from musilogy import (
     REFERENCE_LISTENING,
     REFERENCE_OFFICIAL,
     REFERENCE_POPULARITY,
-    REFERENCE_PROXIMITY,
 )
 from musilogy import REFERENCE_DUMP as DUMP
 from musilogy.build import (
@@ -37,7 +35,6 @@ from musilogy.fetch import (
     fetch_listening,
     fetch_official,
     fetch_popularity,
-    fetch_proximity,
     sha256_file,
     verify,
 )
@@ -61,8 +58,6 @@ from musilogy.paths import (
     out_dir,
     popularity_snapshot,
     popularity_sums,
-    proximity_snapshot,
-    proximity_sums,
     work_dir,
 )
 from musilogy.publish import extraction_matches_rows_loaded, publish, read_extraction
@@ -169,46 +164,11 @@ def snapshot_popularity() -> None:
     print(f"{n} artists asked; pin it: REFERENCE_POPULARITY = {date!r}")
 
 
-# The artists ListenBrainz relates to others: those with at least this many
-# listeners in the pinned popularity snapshot. 111 402 artists, and 228 of the
-# 235 played artists with an MBID (2026-10-04); the 7 others have 132 listeners
-# or more. At most one request a second, but about 0.6 artist a second
-# measured with the service's outages (2026-10-04): several days.
-PROXIMITY_MIN_USERS = 500
-PROXIMITY_FIXTURE_LINES = 120
-
-
 def _part_date(partial: str) -> str:
     """The day of the part a stopped run left partial, which the next run
     resumes, else today's: a new part."""
     partials = sorted(RAW_DIR.glob(partial))
     return partials[-1].parent.name if partials else datetime.now(UTC).date().isoformat()
-
-
-def snapshot_proximity() -> None:
-    """Asks ListenBrainz for the neighbours of every artist with at least
-    PROXIMITY_MIN_USERS listeners in the pinned popularity that no pinned part
-    of the survey asked yet: about one artist a second, so a survey is never
-    taken again whole, it grows by parts. A part is taken once and pinned; a
-    run stopped before the end resumes the part it left partial, whatever day
-    it started."""
-    date = _part_date("listenbrainz/*/artist-similar.jsonl.partial")
-    dest = proximity_snapshot(date)
-    if dest.exists():
-        raise SystemExit(
-            f"ListenBrainz proximity {date} already taken at {dest}: it is never taken again"
-        )
-    asked = [part.as_posix() for part in verified_proximity()]
-    cur = connect().execute(
-        f"SELECT artist_mbid FROM read_ndjson('{verified_popularity().as_posix()}', "
-        "columns={artist_mbid:'VARCHAR', total_user_count:'BIGINT'}) "
-        f"WHERE total_user_count >= {PROXIMITY_MIN_USERS} AND artist_mbid NOT IN ("
-        f"SELECT artist_mbid FROM read_ndjson({asked}, columns={{artist_mbid:'VARCHAR'}})) "
-        "ORDER BY artist_mbid"
-    )
-    n = fetch_proximity((r[0] for r in iter(cur.fetchone, None)), dest)
-    proximity_sums(date).write_text(f"{sha256_file(dest)}  {dest.name}\n", encoding="utf-8")
-    print(f"{n} artists asked; pin it: add {date!r} to REFERENCE_PROXIMITY")
 
 
 # The artists whose records a page filters by MusicBrainz's official status:
@@ -222,7 +182,8 @@ def snapshot_official() -> None:
     """Asks MusicBrainz which album and EP release groups it shows for every
     artist with at least OFFICIAL_MIN_USERS listeners and an album or EP in
     the extraction that no pinned part asked yet. MusicBrainz moves every
-    day: a part is taken once and pinned, and resumed like the proximity."""
+    day: a part is taken once and pinned; a run stopped before the end resumes
+    the part it left partial, whatever day it started."""
     if not RELEASE_GROUPS_JSONL.exists():
         fetch_and_extract()
     date = _part_date("musicbrainz/*/official-release-groups.jsonl.partial")
@@ -328,16 +289,6 @@ def verified_parts(
     return parts
 
 
-def verified_proximity() -> list[Path]:
-    return verified_parts(
-        REFERENCE_PROXIMITY,
-        proximity_snapshot,
-        proximity_sums,
-        "ListenBrainz proximity",
-        "snapshot-proximity",
-    )
-
-
 def verified_official() -> list[Path]:
     return verified_parts(
         REFERENCE_OFFICIAL,
@@ -412,7 +363,6 @@ def run() -> None:
 
     popularity = verified_popularity()
     discography = verified_discography()
-    proximity = verified_proximity()
     official = verified_official()
     discogs = verified_discogs()
     listening = verified_listening()
@@ -428,8 +378,6 @@ def run() -> None:
         popularity_snapshot=REFERENCE_POPULARITY,
         discography=discography,
         discography_snapshot=REFERENCE_DISCOGRAPHY,
-        proximity=proximity,
-        proximity_snapshots=REFERENCE_PROXIMITY,
         official=official,
         official_snapshots=REFERENCE_OFFICIAL,
         discogs=discogs,
@@ -482,7 +430,7 @@ def fixtures_attribution() -> str:
     return (
         "<!-- tests/fixtures/ATTRIBUTION.md, written by `musilogy make-fixtures` -->\n"
         f"Extraits du dump MusicBrainz `{DUMP}`, des relevés ListenBrainz (popularité du "
-        f"{REFERENCE_POPULARITY}, proximité du {', '.join(REFERENCE_PROXIMITY)}), des relevés "
+        f"{REFERENCE_POPULARITY}), des relevés "
         f"Wikidata (discographie du {REFERENCE_DISCOGRAPHY}), "
         f"du statut officiel MusicBrainz du {', '.join(REFERENCE_OFFICIAL)} et du dump des "
         f"sorties Discogs `{REFERENCE_DISCOGS}` (data.discogs.com).\n"
@@ -551,15 +499,6 @@ def make_fixtures() -> None:
         for line in src:
             if json.loads(line)["rg_mbid"] in fixture_rgs:
                 fh.write(line)
-    # The first lines of the survey's first part, whoever they ask about: few of
-    # them are witnesses (artists are asked in mbid order), but they hold every
-    # shape the rule reads — 100 neighbours, none at all, a repeated one (line
-    # 119). A prefix, so the partial snapshot already held these very bytes.
-    with (
-        (out / "proximity.jsonl").open("w", encoding="utf-8") as fh,
-        verified_proximity()[0].open(encoding="utf-8") as src,
-    ):
-        fh.writelines(itertools.islice(src, PROXIMITY_FIXTURE_LINES))
     # What MusicBrainz shows of the fixture artists it was asked about.
     with (out / "official.jsonl").open("w", encoding="utf-8") as fh:
         fh.writelines(_lines_about(verified_official(), kept_set))
@@ -584,10 +523,6 @@ def main() -> None:
         "snapshot-popularity", help="take a dated ListenBrainz snapshot of every artist"
     )
     subparsers.add_parser(
-        "snapshot-proximity",
-        help="take a dated ListenBrainz snapshot of each popular artist's neighbours",
-    )
-    subparsers.add_parser(
         "snapshot-official",
         help="take a dated MusicBrainz snapshot of the release groups each popular artist shows",
     )
@@ -605,8 +540,6 @@ def main() -> None:
         run()
     elif args.command == "snapshot-popularity":
         snapshot_popularity()
-    elif args.command == "snapshot-proximity":
-        snapshot_proximity()
     elif args.command == "snapshot-official":
         snapshot_official()
     elif args.command == "snapshot-discography":

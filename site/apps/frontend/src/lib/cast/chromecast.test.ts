@@ -27,6 +27,19 @@ describe('loadCastSdk', () => {
     expect(document.head.querySelector(SDK)).not.toBeNull();
   });
 
+  it('says casting is unavailable when the SDK answers without chrome.cast', async () => {
+    // Chrome posing as an iPhone (its device mode, Chrome on iOS) loads the framework, yet
+    // chrome.cast stays undefined: reading chrome.cast.AutoJoinPolicy then threw on every page.
+    vi.stubGlobal('requestIdleCallback', (callback: () => void) => callback());
+    Object.assign(window, { chrome: {} });
+    const { loadCastSdk } = await import('./chromecast');
+
+    const loaded = loadCastSdk();
+    window.__onGCastApiAvailable?.(true);
+
+    expect(await loaded).toBe(false);
+  });
+
   it('asks nothing outside Chromium', async () => {
     const { loadCastSdk } = await import('./chromecast');
 

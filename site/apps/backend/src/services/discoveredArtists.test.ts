@@ -13,7 +13,6 @@ const ref = (mbid: string, played = false): MusilogyNeighbour => ({
   y0: null,
   played: played ? { id: mbid, slug: mbid } : null,
   yEnd: null,
-  score: 1,
   rank: 1,
 });
 

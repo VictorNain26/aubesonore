@@ -97,15 +97,22 @@ artistes similaires ») :
   popularité, jamais l'époque.
 
 **Ce qui n'en est pas une preuve** : le label (mesuré : 26 % de bons), une influence déclarée, la
-popularité, l'époque. Le service des artistes similaires de ListenBrainz part, remplacé par notre
-co-écoute.
+popularité, l'époque. Le service des artistes similaires de ListenBrainz est parti, remplacé par
+notre co-écoute (#459, 2026-10-10).
 
 **La couverture.** Toutes les écoutes (2,86 milliards au 2026-10-01, 87 % rapprochées d'un
 artiste) donnent au moins 3 auditeurs, le seuil de la co-écoute, à 899 265 artistes, contre
-371 623 avec l'export des statistiques, qui ne garde que les 1 000 artistes les plus écoutés de
+371 602 avec l'export des statistiques, qui ne garde que les 1 000 artistes les plus écoutés de
 chaque utilisateur : 48 % des artistes de 1 à 19 auditeurs au lieu de 5 %, 77 % des artistes
 apparus dans les années 2020 au lieu de 42 %. Un artiste sans auditeur n'a pas d'artistes
 similaires ; la généalogie de ses courants le situe (§2.3).
+
+**Chaque auditeur compte pour ses 5 000 artistes les plus écoutés.** Le calcul croît comme le
+carré du nombre d'artistes de chaque auditeur, et quelques comptes en déclarent des dizaines de
+milliers (jusqu'à 145 531 ; 1 % des auditeurs en ont plus de 12 000) : sur toutes les écoutes,
+il prend 10 h. Au-delà de 5 000, il reste 723 195 artistes d'au moins 3 auditeurs pour environ un
+tiers du calcul ; une bibliothèque de produit matriciel creux plus rapide n'a rien gagné (mesuré
+le 2026-10-10).
 
 **La mesure**, une fois, sur la méthode figée : des paires jugées à partir de sources citées
 (même son, parenté, lointain, étranger, inconnu), sur les 61 références de l'étude du 2026-10-08
@@ -356,7 +363,7 @@ l'artiste principal, chaque crédité est relié.
 | ouverture de l'article | Wikipédia (CC BY-SA), via l'identifiant Wikidata du dump | — |
 | artistes similaires (même public et même courant), généalogie (courants, faits écrits), groupes et projets | musilogy, datés de leurs dumps et relevés | reproductibles, avec leur provenance |
 
-Un artiste plus récent que le dump épinglé n'a pas de faits jusqu'au suivant (§7, étape 6).
+Un artiste plus récent que le dump épinglé n'a pas de faits jusqu'au suivant (§7, étape 5).
 
 ### 4.6 Une page artiste qui répond toujours
 
@@ -402,11 +409,11 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 
 ## 6. Écarts actuels
 
-1. **Les artistes similaires en ligne viennent encore du service ListenBrainz** : 54 % de bons,
-   80 % de voisins plus connus que l'artiste, enfermés dans son époque. « Même son » (81 %) est
-   publié mais pas encore lu par le site (#458).
+1. **La page range les artistes similaires sur une carte par décennie** (#458), quand le §2.4 les
+   veut les plus pertinents d'abord : la carte les trie par année de début et les met tous en
+   gras. Le seuil d'indexation (§2.4) a été mesuré sur l'ancien voisinage et reste à remesurer.
 2. **Les similaires couvrent mal les petits, les récents et les autres époques** (§2.2) : la
-   co-écoute se calcule sur l'export tronqué (371 623 artistes au lieu de 899 265), dans un seul
+   co-écoute se calcule sur l'export tronqué (371 602 artistes au lieu de 723 195), dans un seul
    sens, et la couleur se compare décennie par décennie.
 3. **Les pages de courant n'existent pas encore** (§2.3).
 4. **Statut officiel incomplet** : la page écarte les disques que MusicBrainz ne montre pas
@@ -426,26 +433,26 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 Dans cet ordre, en PR courtes fusionnées une à une, chacune avec sa mesure. Le site n'a pas
 encore de public : chaque PR remplace pour de bon et retire ce qu'elle rend inutile. Les étapes
 faites (la vision, l'identité par ISRC, la page artiste, musilogy refondu, la population
-complète, Discogs, notre co-écoute, « Même son ») sont dans l'historique git.
+complète, Discogs, notre co-écoute, « Même son » lu par la page et le service ListenBrainz parti)
+sont dans l'historique git.
 
-1. **« Même son » sur la page** (écart 1) : le site lit `artist_same_sound` (#458), puis le relevé
-   du service ListenBrainz et `artist_neighbours` partent (#459).
-2. **Les artistes similaires sur toutes les écoutes** (écart 2) : la projection des écoutes
-   complètes de ListenBrainz, épinglée par l'empreinte du dump (l'archive de 226 Go n'est pas
-   gardée) ; la co-écoute recalculée dessus, dans les deux sens, par une bibliothèque maintenue
-   plutôt que le calcul actuel (10 h sur toutes les écoutes) ; la couleur sans noyau de décennie ;
-   mesurés une fois (§2.2).
-3. **La page artiste** : les artistes similaires et la ligne de genres (§2.4), essayées dans le
-   navigateur sur ordinateur et sur téléphone.
-4. **Les pages de courant** (écart 3) : un relevé daté des liens entre genres (Wikidata,
+1. **Les artistes similaires sur toutes les écoutes** (écart 2) : la projection des écoutes
+   complètes de ListenBrainz, épinglée avec l'empreinte publiée du dump (l'archive de 242 Go n'est
+   pas gardée) ; la co-écoute recalculée dessus, chaque auditeur compté pour ses 5 000 artistes
+   les plus écoutés (§2.2), dans les deux sens ; la couleur sans noyau de décennie ; mesurés une
+   fois (§2.2).
+2. **La page artiste** (écart 1) : les artistes similaires en liste, les plus pertinents d'abord,
+   et la ligne de genres (§2.4), essayées dans le navigateur sur ordinateur et sur téléphone ; le
+   seuil d'indexation remesuré.
+3. **Les pages de courant** (écart 3) : un relevé daté des liens entre genres (Wikidata,
    MusicBrainz, Wikipédia), épinglé, mesuré source par source ; les artistes de chaque courant par
    époque ; la page, reliée depuis la ligne de genres.
-5. **Naviguer et chercher** (§2.6) : la recherche par artiste et par courant, le chemin
+4. **Naviguer et chercher** (§2.6) : la recherche par artiste et par courant, le chemin
    parcouru, essayés sur ordinateur et sur téléphone.
-6. **Les données à jour** : un dump MusicBrainz plus récent, le dump Discogs mensuel, les écoutes
+5. **Les données à jour** : un dump MusicBrainz plus récent, le dump Discogs mensuel, les écoutes
    et les relevés rapides refaits par un timer.
-7. **Un slug pour chaque page qui passe le seuil d'indexation** (écart 5).
-8. **À décider sur mesure** : relier plus d'artistes à Discogs par les sorties que MusicBrainz y
+6. **Un slug pour chaque page qui passe le seuil d'indexation** (écart 5).
+7. **À décider sur mesure** : relier plus d'artistes à Discogs par les sorties que MusicBrainz y
    relie (adopté seulement à 99 % de justesse mesurée) ; les liens écrits entre artistes (§2.3) ;
    les liens d'œuvre (featurings, remixes, producteurs) ; l'audio pour les artistes de la
    bibliothèque.

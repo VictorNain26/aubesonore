@@ -68,7 +68,6 @@ def test_run_refuses_to_publish_when_the_extraction_disagrees(tmp_path, monkeypa
     monkeypatch.setattr(cli, "WORK_DIR", tmp_path)
     monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
     monkeypatch.setattr(cli, "verified_discography", lambda: FIX / "discography.jsonl")
-    monkeypatch.setattr(cli, "verified_proximity", lambda: [FIX / "proximity.jsonl"])
     monkeypatch.setattr(cli, "verified_official", lambda: [FIX / "official.jsonl"])
     monkeypatch.setattr(cli, "verified_discogs", lambda: FIX / "discogs.jsonl")
     monkeypatch.setattr(cli, "verified_listening", lambda: None)
@@ -138,46 +137,17 @@ def test_a_discography_taken_today_is_never_taken_again(tmp_path, monkeypatch):
     assert "never taken again" in str(raised.value)
 
 
-def test_run_stops_when_a_pinned_part_of_the_proximity_is_missing(monkeypatch):
-    # The neighbours change with every listening day: a run neither asks
-    # ListenBrainz again nor builds without every part it pins.
+def test_run_stops_when_a_pinned_part_of_a_survey_is_missing(monkeypatch):
+    # MusicBrainz moves every day: a run neither asks it again nor builds
+    # without every part it pins.
     monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
     monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
     monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
     monkeypatch.setattr(cli, "verified_discography", lambda: FIX / "discography.jsonl")
-    monkeypatch.setattr(cli, "REFERENCE_PROXIMITY", ("1999-01-01",))
+    monkeypatch.setattr(cli, "REFERENCE_OFFICIAL", ("1999-01-01",))
     with pytest.raises(SystemExit) as raised:
         cli.run()
-    assert "ListenBrainz proximity 1999-01-01 missing" in str(raised.value)
-
-
-def test_a_new_part_of_the_proximity_asks_only_the_artists_no_part_asked(tmp_path, monkeypatch):
-    popularity = tmp_path / "artist-popularity.jsonl"
-    popularity.write_text(
-        "".join(
-            json.dumps({"artist_mbid": m, "total_listen_count": 1, "total_user_count": n}) + "\n"
-            for m, n in (("asked", 900), ("new", 600), ("small", 499))
-        ),
-        encoding="utf-8",
-    )
-    first = tmp_path / "first.jsonl"
-    first.write_text(json.dumps({"artist_mbid": "asked", "similar": []}) + "\n", encoding="utf-8")
-    monkeypatch.setattr(cli, "RAW_DIR", tmp_path)
-    monkeypatch.setattr(cli, "verified_popularity", lambda: popularity)
-    monkeypatch.setattr(cli, "verified_proximity", lambda: [first])
-    monkeypatch.setattr(cli, "proximity_snapshot", lambda date: tmp_path / date / "part.jsonl")
-    monkeypatch.setattr(cli, "proximity_sums", lambda date: tmp_path / f"{date}.SHA256SUMS")
-    asked = []
-
-    def fetch(mbids, dest):
-        asked.extend(mbids)
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        dest.write_text("", encoding="utf-8")
-        return len(asked)
-
-    monkeypatch.setattr(cli, "fetch_proximity", fetch)
-    cli.snapshot_proximity()
-    assert asked == ["new"]
+    assert "MusicBrainz official status 1999-01-01 missing" in str(raised.value)
 
 
 def test_a_new_part_of_the_official_survey_asks_only_the_artists_no_part_asked(
