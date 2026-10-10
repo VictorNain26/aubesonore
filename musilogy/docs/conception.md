@@ -12,9 +12,9 @@ données de **Musilogy** : pour un artiste, les artistes du même son, de toutes
 les époques ; dans quels groupes ses membres ont joué. `musilogy load` les copie dans le schéma
 `musilogy` de la base du site, qui ne lit que des fonctions SQL (§4).
 
-## Méthode des proches
+## Méthode des artistes similaires
 
-Les proches d'un artiste (`docs/vision.md` §2.2) viennent d'une seule chaîne, faite de méthodes
+Les artistes similaires (`docs/vision.md` §2.2) viennent d'une seule chaîne, faite de méthodes
 reconnues, sans couche maison :
 
 1. **Qui écoute quoi** : pour chaque utilisateur de ListenBrainz, les artistes qu'il écoute,
@@ -39,6 +39,9 @@ l'export des statistiques, tronqué au top 1 000 de chaque utilisateur, au lieu 
 écoutes (le dump Spark de ListenBrainz, les écoutes déjà rapprochées de MusicBrainz) ; elle ne
 lit la co-écoute que dans un sens ; et la couleur s'y compare décennie par décennie, un choix
 maison que la mesure ne justifie pas (2026-10-09) et qui part.
+
+La généalogie (`docs/vision.md` §2.3) est une autre question, avec ses propres preuves (liens
+entre genres, faits écrits) ; elle ne passe pas par la co-écoute.
 
 ## 1. Sources
 

@@ -1,11 +1,11 @@
-# La filiation d'un son — dossier de recherche
+# Similarité et généalogie — dossier de recherche
 
 **Date :** 2026-10-09
-**Objet :** fonder sur la recherche et sur nos mesures la partie « où aller ensuite » de la page
-artiste (`docs/vision.md` §2) : les proches d'un artiste, d'où vient son son et où il est allé,
-pour tous les artistes, anciens comme récents, connus comme confidentiels.
+**Objet :** fonder sur la recherche et sur nos mesures les deux questions de Musilogy
+(`docs/vision.md` §2) : qui sonne comme un artiste, et d'où vient son son, où il est allé, pour
+tous les artistes, anciens comme récents, connus comme confidentiels.
 **Statut :** dossier d'étude. Il nourrit la vision ; il n'est pas une règle en ligne. Les
-fichiers de mesure sont sur le serveur et en local, `~/musilogy-data/study/lineage/`.
+fichiers de mesure sont sur le serveur, `~/musilogy-data/study/lineage/`.
 
 Musilogy est une référence factuelle : ce qui y fait foi est ce que les sources (critiques,
 encyclopédies, ouvrages, classements des styles) établissent, jamais le goût d'une personne. La
@@ -108,8 +108,8 @@ collaborations, influences) et celle des livres.
   peut être démenti par l'analyse.
 - **Échantillons** : MusicBrainz porte environ 32 000 relations « samples » (WhoSampled environ
   600 000 arêtes, sans API ni licence) : précis, rares, surtout hip-hop et électronique.
-- **Influences déclarées dans Wikidata (P737)** : 2 426 entités musicales en septembre
-  (`2026-09-06-music-lineage-sources.md`) ; trop creux pour être une colonne.
+- **Influences déclarées dans Wikidata (P737)** : 2 426 entités musicales (requête SPARQL du
+  2026-09-06) ; trop creux pour être une colonne.
 
 ### 3.3 Généalogie des genres
 
@@ -174,41 +174,51 @@ styles seuls font 40 % de bons chez les artistes sans co-écoute (évaluation du
 
 ## 5. Ce qui en découle
 
-1. **La co-écoute reste la meilleure preuve du goût partagé là où il y a un public** (Berenzweig
-   et al. ; nos mesures), corrigée de la popularité. Elle dit le présent ; elle ne dit ni le
-   passé ni le futur (assortative par popularité et par époque).
+1. **Deux questions, deux méthodes.** « Qui sonne comme lui ? » se répond par l'écoute filtrée
+   par les styles (Berenzweig et al. ; Burke) ; « d'où vient son son, où est-il allé ? » par la
+   généalogie des courants et les faits écrits (Musicmap, Wikipédia ; Burkholder). L'écoute dit le
+   présent, assortative par popularité et par époque (Celma) : on ne lui demande pas la
+   généalogie, et la généalogie ne remplace pas la similarité.
 2. **Le temps place un lien, il ne le crée pas** (Shalit ; 98 % des influences vont dans le sens
-   du temps). La couleur se compare sans exclure les époques ; un seuil fixe sur une similarité
-   qui baisse avec l'écart élimine le passé.
-3. **Une filiation s'affirme quand deux preuves indépendantes s'accordent** : le goût partagé
-   (co-écoute, dans les deux sens) ou un fait (échantillon, influence citée, filiation de
-   personnes), et la couleur du son (styles, ou styles reliés par la généalogie des genres).
-4. **Les petits et les récents** : leur couverture se décide une fois les écoutes complètes de
-   ListenBrainz en place, puisque l'export actuel coupe la traîne ; ce qui reste alors sans
-   proche se tranche sur la mesure (le courant et ses repères est une piste, pas une décision).
-5. **Ce que la page montre** (décision du 2026-10-09) : les proches les plus pertinents d'abord,
-   sans regroupement par époque ni raison affichée ; la preuve de chaque lien reste dans les
-   données. Les trois temps des biographies servent à vérifier la couverture des époques, pas à
-   ranger l'écran.
-6. **Rien n'est montré avant d'être mesuré** sur des sources.
+   du temps). La couleur se compare sans noyau de décennie ; un seuil fixe sur une similarité qui
+   baisse avec l'écart élimine le passé.
+3. **Une filiation s'affirme quand un fait et une ressemblance s'accordent** (Burkholder) : un fait
+   écrit (influence citée, reprise, échantillon, personnes) et des courants qui s'accordent.
+4. **Les écoutes complètes, pas l'export** : mesuré le 2026-10-09 (§6), elles portent la
+   couverture de la co-écoute de 371 623 à 899 265 artistes. Un artiste sans auditeur se situe
+   par la généalogie de ses courants.
+5. **Ce que la page montre** (décisions du 2026-10-09) : les artistes similaires les plus
+   pertinents d'abord, sans regroupement par époque ni raison affichée, la preuve de chaque lien
+   restant dans les données ; la généalogie à part.
+6. **Rien n'est montré avant d'être mesuré** sur des sources, une fois, sur une méthode figée.
 
-## 6. Ce qui reste à mesurer
+## 6. Les écoutes complètes (mesuré le 2026-10-09)
 
-- **La troncature de la co-écoute** : l'export ne garde que les artistes les plus écoutés de
-  chaque utilisateur ; combien de petits artistes en sont écartés, et ce qu'apporteraient les
-  écoutes complètes (et une co-écoute par session).
-- **La règle de lignée** sur un jeu élargi : les 61 références et environ 30 artistes joués tirés
-  par décennie de début (1960 à 2010), choisis avant de regarder les sorties, avec pour chacun la
-  liste des précurseurs et héritiers documentés, établie d'abord.
-- **Le jugement** sur deux axes : le son (même son, parenté, lointain, étranger, inconnu) et le
-  temps (précurseur, contemporain, héritier), chaque verdict appuyé par une source ; deux juges
-  sur une partie des paires, leur accord mesuré ; un audit avec de meilleures sources. Précision
-  par temps, taux d'étrangers à part, couverture de chaque temps, par décennie et par tranche
-  d'auditeurs ; intervalles par référence.
-- **La généalogie des genres** : précision de chaque source d'arêtes sur un échantillon, couverture
-  pondérée par nos artistes, avant de s'en servir pour la couleur.
-- **Le courant des petits artistes** : la règle « courant et repères » contre les styles seuls
-  (40 %), chez les artistes de moins de 20 auditeurs.
+Le dump « Spark » de ListenBrainz du 2026-10-01 (226 Go, empreinte publiée vérifiée) porte toutes
+les écoutes déjà rapprochées de MusicBrainz : 2 856 452 793 écoutes, 2 484 121 161 rapprochées
+d'un artiste (87 %), 96 667 utilisateurs ; réduites à 119 637 055 lignes « utilisateur, artiste,
+écoutes » (1,5 Go), contre 33 393 707 dans l'export des statistiques, qui ne garde que les 1 000
+artistes les plus écoutés de chaque utilisateur (31 % l'atteignent). Artistes d'au moins 3
+auditeurs, le seuil de la co-écoute :
+
+| Auditeurs ListenBrainz | Export | Toutes les écoutes |
+|---|---|---|
+| 1 à 19 | 5,3 % | 47,6 % |
+| 20 à 99 | 45,5 % | 90,1 % |
+| 100 à 999 | 69,2 % | 98,3 % |
+| 1 000 et plus | 96,9 % | 99,5 % |
+
+Par décennie de début, de 42-58 % à 77-88 % (années 2020 : 41,9 % → 76,7 % ; années 1960 :
+51,5 % → 88,4 %). Compter un auditeur à partir de 2 écoutes seulement ramène le total à 697 995
+artistes. La co-écoute recalculée sur ces écoutes, même formule, prend 10 h (contre 12 min sur
+l'export) : à accélérer avant d'aller en ligne. Sur les 61 références, ses 8 premiers voisins
+confirmés par la couleur sans noyau sont bons à 90,5 % parmi les paires déjà jugées, sans
+étranger, mais 160 sur 268 n'avaient jamais été jugés : la mesure reste à faire sur la méthode
+figée.
+
+Ce qui reste à mesurer : la similarité sur la méthode figée (§2.2 de la vision), la généalogie des
+courants source par source, la filiation d'artistes contre les 28 filiations établies
+(`documented/`).
 
 ## Sources
 

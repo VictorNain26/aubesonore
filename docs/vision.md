@@ -1,6 +1,6 @@
 # AubeSonore — vision produit et architecture
 
-Révisée le 2026-10-09 : Musilogy sert à découvrir des artistes du même son, de toutes les époques (§2). Ce document fixe une direction pour ce qui traverse les pièces : les
+Révisée le 2026-10-10 : Musilogy répond à deux questions, les artistes similaires et la généalogie (§2). Ce document fixe une direction pour ce qui traverse les pièces : les
 produits, qui possède quoi, comment les pièces se parlent. Chaque pièce garde sa conception propre
 (`pipeline/docs/vision.md`, `site/CLAUDE.md`, `azuracast/RUNBOOK.md`, `musilogy/docs/conception.md`)
 et ne doit pas le contredire. C'est une direction, pas un règlement : une règle se rediscute quand
@@ -31,7 +31,7 @@ recherche, sont le premier moyen d'être découvert.
 | **Écouter** | « Qu'est-ce qui passe ? » | accueil | le direct, ce qui vient de passer, les plus gardés |
 | **Garder** | « Je ne veux pas le perdre » | bibliothèque, compte | aimer, retrouver, être prévenu quand l'artiste repasse |
 | **Savoir** | « Qui est-ce ? » | page artiste | portrait, quelques lignes sur lui, où l'écouter, ses albums et EP, vos titres gardés |
-| **Découvrir** | « Où aller ensuite ? » | la même page ; la recherche pour y entrer par un nom | des artistes du même son, de toutes les époques, les plus pertinents d'abord ; ses groupes et ceux de ses membres |
+| **Découvrir** | « Où aller ensuite ? » | la même page ; la recherche pour y entrer par un nom | des artistes similaires, de toutes les époques ; d'où vient son son et où il est allé ; ses groupes et ceux de ses membres |
 
 Les gestes se bouclent : le titre en cours mène à sa page, et chaque artiste cité sur une page
 mène à la sienne. Avoir été joué ajoute des sections à une page (vos titres gardés), pas une autre
@@ -42,8 +42,8 @@ du direct.
 
 - **Pas un service à la demande.** On écoute le direct ; pour un titre précis, le site mène à une
   plateforme par un lien réel, jamais par une recherche déguisée.
-- **Pas une affirmation sans preuve.** Un proche entre sur une preuve mesurée, que les données
-  gardent ; une absence reste une absence, et la page ne propose rien plutôt que du bruit.
+- **Pas une affirmation sans preuve.** Un artiste similaire ou une filiation entre sur une preuve
+  mesurée, que les données gardent ; une absence reste une absence, et la page ne propose rien plutôt que du bruit.
 - **Pas de mécanique à l'écran.** Les pages parlent à des auditeurs, avec leurs mots : pas de
   jargon, pas de nom d'outil ni de base de données, pas de licence. Les sources et leurs licences
   sont créditées dans les Mentions légales ; la provenance reste dans les données. Dire d'où vient
@@ -59,80 +59,63 @@ du direct.
 
 ### 2.1 Le but
 
-**Faire découvrir des artistes qu'on ne connaît pas**, à partir d'un artiste qu'on aime ou qu'on
-vient d'entendre : des artistes qui ont **le même son**, de toutes les époques, les plus
-pertinents d'abord. Chaque nom mène à sa page, et de proche en proche on découvre. Le but vaut
-pour tous les artistes, anciens comme récents, connus comme confidentiels, et Musilogy cherche à
-être **le plus complet possible**.
+**Mieux comprendre la musique et son évolution, en partant d'un artiste.** Musilogy répond à deux
+questions, chacune avec sa méthode et ses preuves :
 
-Musilogy est une référence factuelle : ce qui y fait foi est ce que les données et les sources
-qui décrivent la musique établissent (critiques, encyclopédies, classements des styles, écoutes
-publiques), jamais un goût, pas même celui de la radio. Là où aucune preuve fiable ne relie un
-artiste à un autre, la page ne propose rien plutôt que du bruit.
+1. **Qui sonne comme lui ?** Des artistes similaires, de toutes les époques, les plus pertinents
+   d'abord : de quoi découvrir des artistes qu'on ne connaît pas (§2.2).
+2. **D'où vient son son, où est-il allé ?** La généalogie : les courants dont il vient et ceux qui
+   en sont nés, et les artistes que des sources relient à lui (§2.3).
 
-### 2.2 Les proches : les preuves et la pertinence
+Les deux valent pour tous les artistes, anciens comme récents, connus comme confidentiels, et
+Musilogy cherche à être **le plus complet possible**. C'est une référence factuelle : ce qui y fait
+foi est ce que les données et les sources qui décrivent la musique établissent (écoutes
+publiques, classements des styles, encyclopédies, critiques), jamais un goût, pas même celui de
+la radio. Là où aucune preuve fiable ne parle d'un artiste, la page ne propose rien plutôt que du
+bruit.
 
-**Un artiste devient le proche d'un autre sur preuve.** Trois sortes de preuves sont admises,
-chacune seulement une fois mesurée (plus bas) :
+Les deux questions ne se mélangent pas. L'écoute dit qui plaît aux mêmes gens aujourd'hui, pas
+qui a engendré qui : elle relie surtout des artistes de la même époque et de la même popularité
+(Celma, 2008). La généalogie se lit dans les classements des courants et dans les faits écrits,
+comme le font les musicologues et les ouvrages de référence. Le dossier qui fonde ces choix :
+`musilogy/docs/research/2026-10-09-similarite-genealogie.md`.
 
-| Preuve | Ce qu'elle établit | Source | État |
-|---|---|---|---|
-| **Le même public et le même courant** | qui écoute l'un écoute l'autre (dans un sens ou dans l'autre), et leurs styles s'accordent, à n'importe quelle époque | notre co-écoute, corrigée de la popularité (`musilogy/docs/conception.md`, `colisten`), sur les écoutes publiques de ListenBrainz (CC0) ; les styles Discogs de leurs disques (environ 600 sous-genres, CC0), sinon leurs genres MusicBrainz | mesurée : 81 % de bons parmi les 8 premiers, sans étranger (2026-10-08, même époque, un seul sens) ; dans les deux sens et entre époques, 70 à 92 % sur les paires déjà jugées (2026-10-09), à confirmer |
-| **Un fait écrit** | une influence citée, une reprise, un échantillon, un héritage, dans un article qui le source | Wikipédia (CC BY-SA), retenu quand les courants des deux artistes s'accordent aussi | à construire et à mesurer |
-| **Des courants parents** | deux courants dont l'un est né de l'autre (krautrock → post-punk) | Wikidata et MusicBrainz (CC0), infobox Wikipédia (CC BY-SA) ; les styles Discogs y sont reliés par Wikidata (753 sur 756) | relevé d'étude du 2026-10-09 (1 638 liens entre styles) ; à mesurer |
+### 2.2 Les artistes similaires
 
-**Ce qui ne prouve rien à lui seul** : le label (mesuré : 26 % de bons), une influence déclarée
-sans parenté de son, la popularité, l'époque. Le service des artistes similaires de ListenBrainz
-part, remplacé par notre co-écoute.
+**La méthode**, reconnue et sans couche maison (`musilogy/docs/conception.md`, « Méthode des
+artistes similaires ») :
 
-**La pertinence classe.** Les proches se rangent par la force de leurs preuves : la proximité
-d'écoute et de courant, et un fait écrit qui s'y ajoute. Jamais par la popularité, jamais par
-l'ancienneté. Le temps n'écarte personne : un héritier de 2015 compte autant qu'un contemporain.
-Chaque lien garde dans les données la preuve qui l'a fait entrer ; l'écran ne l'affiche pas.
+- **le même public** : notre co-écoute, le filtrage collaboratif « article à article » (Sarwar et
+  al., 2001 ; Linden et al., 2003) avec le cosinus asymétrique d'Aiolli (2013), qui corrige la
+  popularité, calculée sur **toutes les écoutes publiques de ListenBrainz** (CC0, déjà rapprochées
+  de MusicBrainz), dans les deux sens ;
+- **le même son** : un voisin n'est retenu que si ses styles s'accordent avec ceux de l'artiste
+  (les styles Discogs de leurs disques, environ 600 sous-genres, pondérés par leur rareté et leur
+  part dans l'œuvre, sinon les genres MusicBrainz), à n'importe quelle époque : l'écoute propose,
+  le contenu confirme, un hybride « en cascade » (Burke, 2002). La co-occurrence d'écoute est la
+  source la plus proche du jugement humain de similarité (Berenzweig et al., 2004), le contenu
+  écarte ce qu'y mêlent les auditeurs éclectiques ;
+- **la pertinence classe** : le score de la co-écoute, parmi les voisins confirmés ; jamais la
+  popularité, jamais l'époque.
 
-**La précision d'abord.** Une règle se choisit sur la part de bons parmi les proches qu'elle
-montre, artiste de référence par artiste de référence, et sur la borne basse de son intervalle de
-confiance, jamais sur une moyenne qui cacherait des erreurs. On ne montre que des proches
-confirmés, sans compléter une liste trop courte. Un classement est un calcul nommé et documenté,
-jamais un jugement.
+**Ce qui n'en est pas une preuve** : le label (mesuré : 26 % de bons), une influence déclarée, la
+popularité, l'époque. Le service des artistes similaires de ListenBrainz part, remplacé par notre
+co-écoute.
 
-**Être complet, pour l'ancien comme pour le récent.** Au 2026-10-09, la part des artistes qui ont
-au moins un proche « Même son » baisse avec leur public : 81 % au-delà de 1 000 auditeurs, 38 %
-de 100 à 999, 17 % de 20 à 99, 1,3 % en dessous ; et un artiste ancien reste enfermé dans son
-époque (Can : 7 proches, tous de 1965-1973). Trois causes, mesurées :
+**La couverture.** Toutes les écoutes (2,86 milliards au 2026-10-01, 87 % rapprochées d'un
+artiste) donnent au moins 3 auditeurs, le seuil de la co-écoute, à 899 265 artistes, contre
+371 623 avec l'export des statistiques, qui ne garde que les 1 000 artistes les plus écoutés de
+chaque utilisateur : 48 % des artistes de 1 à 19 auditeurs au lieu de 5 %, 77 % des artistes
+apparus dans les années 2020 au lieu de 42 %. Un artiste sans auditeur n'a pas d'artistes
+similaires ; la généalogie de ses courants le situe (§2.3).
 
-- **les écoutes sont tronquées** : l'export des statistiques ne garde que les 1 000 artistes les
-  plus écoutés de chaque utilisateur, plafond qu'atteignent 31 % d'entre eux ; les écoutes
-  complètes de ListenBrainz (CC0) lèvent ce plafond ;
-- **la couleur se comparait décennie par décennie**, ce qui écartait les autres époques sans
-  rendre la règle plus juste ;
-- **la co-écoute ne se lisait que dans un sens** : les artistes dont le public écoute Can
-  (BEAK>, Kosmischer Läufer…) n'étaient pas comptés.
-
-La couverture se mesure par décennie de début et par tranche d'auditeurs, après chaque
-changement. Ce qui reste sans proche une fois toutes les preuves en place se décide sur cette
-mesure.
-
-**Une règle n'entre en ligne que mesurée.** Le jeu d'évaluation compte les 61 références de
-l'étude du 2026-10-08 (surtout des artistes peu écoutés) et 30 artistes joués tirés par décennie
-de début, de 1960 à 2010. Chaque paire est jugée à partir de sources citées : même son, parenté,
-lointain, étranger ou inconnu. Une partie des paires est jugée deux fois, pour mesurer l'accord
-entre juges, et un audit en refait un échantillon avec de meilleures sources. Pour les 30
-artistes joués, leurs précurseurs et héritiers documentés ont été établis d'abord, depuis des
-sources (`~/musilogy-data/study/lineage/documented/`), pour mesurer ce que les règles oublient.
-Le jeu se juge par référence, avec son intervalle de confiance, par époque et par tranche
-d'auditeurs ; une règle qui gagne en moyenne mais perd sur une époque ou sur les artistes peu
-écoutés est rejetée. Les clics des auditeurs départagent plus tard deux règles, sans jamais
-nourrir les proches, ce qui ferait boucle.
-
-**Ce que la page montre d'autre**, des faits, jamais des proximités :
-
-| Information | Question de l'auditeur | Source | État |
-|---|---|---|---|
-| **Genres** | « Qu'est-ce que c'est ? » | les styles Discogs par époque, sinon les genres MusicBrainz | à faire (§7) |
-| **Groupes et projets** | « Où sont allés ses membres ? » | MusicBrainz : appartenances, pseudonymes, changements de nom ; 129 des 161 groupes joués ont au moins un projet de membre qui a un disque (2026-10-05) | en ligne |
-| **Albums et EP** | « Qu'a-t-il sorti, par où commencer ? » | MusicBrainz | en ligne |
-| **Écouter ailleurs** | « Où l'écouter en entier ? » | les liens que MusicBrainz déclare | en ligne |
+**La mesure**, une fois, sur la méthode figée : des paires jugées à partir de sources citées
+(même son, parenté, lointain, étranger, inconnu), sur les 61 références de l'étude du 2026-10-08
+et 30 artistes joués tirés par décennie de début ; la part de bons par référence, avec son
+intervalle de confiance, par époque et par tranche d'auditeurs ; une partie des paires jugée deux
+fois pour mesurer l'accord entre juges. On ne montre que des voisins confirmés, sans compléter une
+liste trop courte. Les clics des auditeurs départagent plus tard deux réglages, sans jamais
+nourrir la similarité, ce qui ferait boucle.
 
 **L'audio**, la couleur du son elle-même, n'est pas une source pour tous : les extraits Deezer
 sont exclus par leurs conditions (§2.5), AcousticBrainz est mesuré trop faible (AUC 0,65). Les
@@ -143,27 +126,32 @@ bibliothèque, plus tard.
 écoutes et celles de MLHD+, un historique de Last.fm) sert à deux choses techniques : classer la
 recherche (« The Beatles » de Liverpool avant le groupe doo-wop de Philadelphie) et borner les
 relevés longs, que les limites des API (une requête par seconde) rendent impossibles sur les 2,98
-millions d'artistes. Il ne choisit pas les proches.
+millions d'artistes. Il ne choisit pas les artistes similaires.
 
-Le dossier de recherche qui fonde ces choix : `musilogy/docs/research/2026-10-09-filiation.md`.
+### 2.3 La généalogie
 
-### 2.3 La liste des proches
+À deux niveaux, comme chez les musicologues et dans les ouvrages de référence :
 
-- **Les plus pertinents d'abord**, sans regroupement par époque ni raison affichée : chaque nom
-  mène à sa page. Une première série courte, le reste en dépliant ; la forme se décide avec la
-  page, essayée sur ordinateur et sur téléphone, et ne range jamais par popularité.
-- **Lisible sans la voir** : chaque nom est un lien textuel, que lisent les lecteurs d'écran et
-  les moteurs de recherche.
-- **Indexée quand elle est riche** : une page est proposée aux moteurs de recherche au-delà d'un
-  seuil de contenu ; en deçà, elle existe mais n'est pas listée. La page d'un artiste joué l'est
-  toujours. Celle d'un artiste jamais joué l'est quand au moins 10 pages d'artistes joués y
-  mènent, qu'elle a un élément Wikidata (le chemin vers son article Wikipédia) et au moins 3
-  albums ou EP (`site/apps/backend/src/services/discoveredArtists.ts`). Mesuré le 2026-10-06 : les 398 pages jouées
-  mènent à 8 126 artistes jamais joués, 522 depuis au moins 10 pages, environ 490 passent. La
-  règle tient la page dans le graphe de la radio : Google traite comme abus les pages assemblées
-  en masse depuis d'autres sites, et une masse de pages faibles pèse sur tout le site. Elles ont
-  leur propre sitemap, `sitemap-artists-discovered.xml`, pour suivre leur sort dans la Search
-  Console avant d'abaisser le seuil.
+- **Les courants.** Les courants d'un artiste (ses styles Discogs, ses genres MusicBrainz) placés
+  dans l'histoire des genres : ceux dont ils sont nés, ceux qu'ils ont engendrés, avec leurs
+  dates (krautrock, 1967 : né du rock psychédélique et du rock expérimental ; il a engendré
+  l'ambient, la techno, le post-punk, le post-rock). Les liens viennent de Wikidata et de
+  MusicBrainz (CC0) et des infobox Wikipédia (« origines stylistiques », « formes dérivées »,
+  CC BY-SA), reliés aux styles Discogs par Wikidata (753 sur 756). C'est la méthode des cartes de
+  genres (Musicmap) et l'échelle à laquelle se mesure l'évolution de la musique (Mauch et al.,
+  2015 ; Klimek et al., 2019). Elle vaut pour **tout artiste qui a des styles, même sans un seul
+  auditeur**. Aucune source ne suffit seule (le lien krautrock → post-punk n'est que dans
+  Wikipédia) : un lien n'entre que mesuré, source par source.
+- **Les artistes.** Les liens qu'une source écrit entre deux artistes : une influence citée, une
+  reprise, un échantillon, un héritage, des membres communs (Wikipédia, MusicBrainz), retenus
+  quand les courants des deux artistes s'accordent aussi. Un musicologue n'affirme une filiation
+  que quand un fait et une ressemblance s'accordent (Burkholder, 2018). Ils couvrent surtout les
+  artistes documentés.
+
+**La mesure** : les liens entre courants contre des sources sur un échantillon, arête par arête ;
+les liens entre artistes contre 28 filiations établies d'abord depuis des sources, pour 30 artistes
+joués de 1960 à 2019 (`~/musilogy-data/study/lineage/documented/`) : ce que la règle retrouve, ce
+qu'elle affirme à tort.
 
 ### 2.4 La page
 
@@ -182,7 +170,9 @@ Un ordre de départ, chaque section seulement quand elle a quelque chose à mont
    musilogy (`musilogy/README.md`, `22_releases`), mesurée sur les artistes joués : elle s'ajuste
    quand un cas réel la contredit. Le 2026-10-05, Protomartyr, Bloc Party ou Can gardent leur
    discographie entière, les Beatles s'arrêtent en 1970.
-4. **Où aller ensuite** : les proches (§2.3), les plus pertinents d'abord ; puis les groupes et projets en trois rubriques plutôt que
+4. **Où aller ensuite** : les artistes similaires (§2.2), les plus pertinents d'abord, chaque nom
+   menant à sa page ; la généalogie de ses courants et les artistes que des sources relient à lui
+   (§2.3) ; puis les groupes et projets en trois rubriques plutôt que
    les douze types de relation de MusicBrainz :
    - **Membres** d'un groupe, ou **Groupes** d'une personne, avec leurs années ;
    - **Projets des membres** : leurs autres groupes et projets solo, seulement ceux qui ont un
@@ -201,6 +191,17 @@ visuel « onde » que le site génère. Chaque page a une image, toutes ne sont 
 photo et les pochettes Deezer posent une question de licence (§2.5). L'image Wikidata/Commons attend :
 chaque image a sa licence et son auteur à créditer à côté d'elle. Les identifiants Deezer peuvent
 aussi venir des ISRC des enregistrements du dump, vérifiés comme ceux de l'antenne (§4.4).
+
+**Indexée quand elle est riche** : une page est proposée aux moteurs de recherche au-delà d'un
+seuil de contenu ; en deçà, elle existe mais n'est pas listée. La page d'un artiste joué l'est
+toujours. Celle d'un artiste jamais joué l'est quand au moins 10 pages d'artistes joués y
+mènent, qu'elle a un élément Wikidata (le chemin vers son article Wikipédia) et au moins 3
+albums ou EP (`site/apps/backend/src/services/discoveredArtists.ts`). Mesuré le 2026-10-06 : les 398 pages jouées
+mènent à 8 126 artistes jamais joués, 522 depuis au moins 10 pages, environ 490 passent. La
+règle tient la page dans le graphe de la radio : Google traite comme abus les pages assemblées
+en masse depuis d'autres sites, et une masse de pages faibles pèse sur tout le site. Elles ont
+leur propre sitemap, `sitemap-artists-discovered.xml`, pour suivre leur sort dans la Search
+Console avant d'abaisser le seuil.
 
 ### 2.5 Les licences
 
@@ -236,8 +237,8 @@ Revue du 2026-10-06, textes lus ce jour-là ; ce n'est pas un avis juridique.
    retirée.
 7. **Les données déclarées d'abord, les heuristiques assumées.** Une règle sur un fait (une date,
    un type, une appartenance) s'appuie de préférence sur ce que des humains ont déclaré (types et
-   statuts MusicBrainz, natures Wikidata). Un proche, lui, ne se déclare pas : il entre sur une
-   preuve mesurée (§2.2). Une
+   statuts MusicBrainz, natures Wikidata). Un artiste similaire ou une filiation, eux, entrent sur
+   des preuves mesurées (§2.2, §2.3). Une
    heuristique est permise quand elle est mesurée, documentée et dite comme telle : la popularité
    classe la recherche et borne les relevés, un seuil choisit qui est relevé. Le profil par défaut
    de Lidarr fait les mêmes choix sur MusicBrainz (albums sans type secondaire, statut officiel).
@@ -322,7 +323,7 @@ l'artiste principal, chaque crédité est relié.
 | portrait | Deezer, puis une pochette, puis l'onde (§2.4) | l'image de l'artiste exact quand une source l'a |
 | faits (type, lieu, années), liens d'écoute, albums et EP | le dump MusicBrainz, via musilogy | une seule source pour toute page, reproductible |
 | ouverture de l'article | Wikipédia (CC BY-SA), via l'identifiant Wikidata du dump | — |
-| proches (même public et même courant, faits écrits, courants parents), groupes et projets | musilogy, datés de leurs dumps et relevés | reproductibles, avec leur provenance |
+| artistes similaires (même public et même courant), généalogie (courants, faits écrits), groupes et projets | musilogy, datés de leurs dumps et relevés | reproductibles, avec leur provenance |
 
 Un artiste plus récent que le dump épinglé n'a pas de faits jusqu'au suivant (§7, étape 3).
 
@@ -362,29 +363,31 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 | Surface | Route | Indexée | Geste |
 |---|---|---|---|
 | Accueil | `/`, `/en` | oui, pré-rendue | Écouter |
-| Page artiste | `/artiste/:slug` (`/en/artist/:slug`) ; `/artiste/:mbid` tant que l'artiste n'a pas de slug ; un slug par artiste, jamais réattribué | au-delà d'un seuil de contenu (§2.3), décidé par le serveur | Savoir, Découvrir |
+| Page artiste | `/artiste/:slug` (`/en/artist/:slug`) ; `/artiste/:mbid` tant que l'artiste n'a pas de slug ; un slug par artiste, jamais réattribué | au-delà d'un seuil de contenu (§2.4), décidé par le serveur | Savoir, Découvrir |
 | Musilogy | `/musilogy` (recherche) ; `/musilogy/:mbid/…` renvoie en 301 à la page artiste | non | Découvrir |
 | Connexion | `/connexion`, `/en/sign-in` | non | Garder |
 | Bibliothèque, compte | panneau et menu de l'en-tête | non | Garder |
 
 ## 6. Écarts actuels
 
-1. **Les proches en ligne viennent encore du service ListenBrainz** : 54 % de bons, 80 % de voisins
-   plus connus que l'artiste, enfermés dans son époque. « Même son » (81 %) est publié mais pas
-   encore lu par le site (#458).
-2. **Les petits et les récents ont peu de proches** (§2.2) : des écoutes tronquées, une couleur
-   comparée décennie par décennie, une co-écoute lue dans un seul sens.
-3. **Statut officiel incomplet** : la page écarte les disques que MusicBrainz ne montre pas
+1. **Les artistes similaires en ligne viennent encore du service ListenBrainz** : 54 % de bons,
+   80 % de voisins plus connus que l'artiste, enfermés dans son époque. « Même son » (81 %) est
+   publié mais pas encore lu par le site (#458).
+2. **Les similaires couvrent mal les petits, les récents et les autres époques** (§2.2) : la
+   co-écoute se calcule sur l'export tronqué (371 623 artistes au lieu de 899 265), dans un seul
+   sens, et la couleur se compare décennie par décennie.
+3. **La généalogie n'existe pas encore** (§2.3).
+4. **Statut officiel incomplet** : la page écarte les disques que MusicBrainz ne montre pas
    comme l'œuvre de l'artiste (476 des 4 980 disques des artistes joués, 2026-10-06) ; seuls les
    artistes d'au moins 500 auditeurs sont interrogés.
-4. **Les pages d'artistes jamais joués qui passent le seuil restent à leur MBID** :
+5. **Les pages d'artistes jamais joués qui passent le seuil restent à leur MBID** :
    `/artiste/<mbid>`, sans slug.
-5. **Identité incomplète** : 52 des 397 artistes joués n'ont pas de MBID (2026-10-06) ; la plupart
+6. **Identité incomplète** : 52 des 397 artistes joués n'ont pas de MBID (2026-10-06) ; la plupart
    n'ont aucun lien vers Deezer dans MusicBrainz, ce qui se corrige à la source. 22 des 91 titres
    gardés ne retrouvent ni leur passage ni leur titre exact chez Deezer.
-6. **Les featurings ne relient que l'artiste principal** (§4.4).
-7. **Licences à régulariser** : le portrait et les pochettes Deezer (§2.5).
-8. **Aucune copie hors de la maison** (§4.7).
+7. **Les featurings ne relient que l'artiste principal** (§4.4).
+8. **Licences à régulariser** : le portrait et les pochettes Deezer (§2.5).
+9. **Aucune copie hors de la maison** (§4.7).
 
 ## 7. Feuille de route
 
@@ -395,22 +398,21 @@ complète, Discogs, notre co-écoute, « Même son ») sont dans l'historique gi
 
 1. **« Même son » sur la page** (écart 1) : le site lit `artist_same_sound` (#458), puis le relevé
    du service ListenBrainz et `artist_neighbours` partent (#459).
-2. **Les proches de toutes les époques** (écart 2) : la co-écoute dans les deux sens, la couleur
-   sans noyau de décennie, le classement par pertinence ; mesurés sur le jeu d'évaluation.
-3. **Les données à jour et complètes** : les écoutes complètes de ListenBrainz, lues en flux sur
-   le serveur (l'archive de 236 Go n'y tient pas ; seule sa projection est gardée, épinglée par
-   son empreinte), et la co-écoute recalculée dessus ; un dump MusicBrainz plus récent, le dump
-   Discogs mensuel et les relevés rapides refaits par un timer. La couverture se mesure ensuite
-   par décennie et par tranche d'auditeurs (§2.2).
-4. **Les faits écrits** : les liens entre artistes que Wikipédia établit, avec leur article,
-   mesurés.
-5. **Les courants parents** : un relevé daté des liens entre genres (Wikidata, MusicBrainz,
-   Wikipédia), épinglé, mesuré source par source.
-6. **La liste des proches sur la page** (§2.3), et la ligne de genres (§2.4), essayées dans le
-   navigateur sur ordinateur et sur téléphone.
-7. **Ce qui reste sans proche**, décidé sur la mesure de l'étape 3.
-8. **Un slug pour chaque page qui passe le seuil d'indexation** (écart 4).
-9. **À décider sur mesure** : relier plus d'artistes à Discogs par les sorties que MusicBrainz y
+2. **Les artistes similaires sur toutes les écoutes** (écart 2) : la projection des écoutes
+   complètes de ListenBrainz, épinglée par l'empreinte du dump (l'archive de 226 Go n'est pas
+   gardée) ; la co-écoute recalculée dessus, dans les deux sens, par une bibliothèque maintenue
+   plutôt que le calcul actuel (10 h sur toutes les écoutes) ; la couleur sans noyau de décennie ;
+   mesurés une fois (§2.2).
+3. **La généalogie des courants** (écart 3) : un relevé daté des liens entre genres (Wikidata,
+   MusicBrainz, Wikipédia), épinglé, mesuré source par source.
+4. **La filiation d'artistes** : les liens que Wikipédia écrit entre artistes, mesurés contre les
+   filiations établies.
+5. **La page** : les artistes similaires, la généalogie et la ligne de genres (§2.4), essayées
+   dans le navigateur sur ordinateur et sur téléphone.
+6. **Les données à jour** : un dump MusicBrainz plus récent, le dump Discogs mensuel, les écoutes
+   et les relevés rapides refaits par un timer.
+7. **Un slug pour chaque page qui passe le seuil d'indexation** (écart 5).
+8. **À décider sur mesure** : relier plus d'artistes à Discogs par les sorties que MusicBrainz y
    relie (adopté seulement à 99 % de justesse mesurée) ; les liens d'œuvre (featurings, remixes,
    producteurs) ; l'audio pour les artistes de la bibliothèque.
 
