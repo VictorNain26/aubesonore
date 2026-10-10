@@ -1,6 +1,6 @@
 # musilogy
 
-Produit, hors ligne et depuis des sources épinglées et datées, les données de **Musilogy** (`docs/vision.md` à la racine, §2) : pour un artiste, qui fait le même son, avant lui, en même temps, après lui ; dans quels groupes ses membres ont joué. Un dump JSON MusicBrainz, le dump des sorties Discogs, des relevés ListenBrainz (popularité, statistiques d'écoute), MusicBrainz (statut officiel) et Wikidata (discographie) deviennent dix tables reproductibles et testées, publiées en Parquet ; `musilogy load` les copie dans le schéma `musilogy` de la base du site, qui ne lit que des fonctions SQL. La conception en vigueur, avec le contrat de ces fonctions, est `docs/conception.md` ; la feuille de route est `docs/vision.md` §7.
+Produit, hors ligne et depuis des sources épinglées et datées, les données de **Musilogy** (`docs/vision.md` à la racine, §2) : pour un artiste, les artistes du même son ; dans quels groupes ses membres ont joué. Un dump JSON MusicBrainz, le dump des sorties Discogs, des relevés ListenBrainz (popularité, statistiques d'écoute), MusicBrainz (statut officiel) et Wikidata (discographie) deviennent dix tables reproductibles et testées, publiées en Parquet ; `musilogy load` les copie dans le schéma `musilogy` de la base du site, qui ne lit que des fonctions SQL. La conception en vigueur, avec le contrat de ces fonctions, est `docs/conception.md` ; la feuille de route est `docs/vision.md` §7.
 
 ## Principe directeur
 
