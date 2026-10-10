@@ -1,7 +1,7 @@
 """« Même son » (88_same_sound.sql) on a synthetic build: six listeners share
-every artist, so the co-listening ranks A's neighbours by MBID, and the
-Discogs records and MusicBrainz genres below make each rule of the colour
-visible."""
+every artist, so the co-listening scores A's neighbours alike and they rank by
+MBID, and the Discogs records and MusicBrainz genres below make each rule of
+the colour visible."""
 
 from conftest import (
     build_synthetic,
@@ -14,6 +14,7 @@ from conftest import (
     synthetic_artist,
 )
 
+from musilogy import colisten
 from musilogy.build import check_invariants
 from musilogy.paths import SQL_DIR
 
@@ -48,8 +49,8 @@ def records(discogs_id, style, year, n, first_id):
 
 # A and B: Krautrock of the 1970s, thirty records each. C: synth-pop only.
 # D: Krautrock, but of the 1990s, and the genre A carries. E: no Discogs
-# records, A's genre. F: Krautrock of the 1980s, the decade next to A's. G: rock,
-# so that Krautrock is not every artist's style.
+# records, A's genre. F: Krautrock of the 1980s. G: rock, so that Krautrock is
+# not every artist's style.
 ARTISTS = [
     artist(A, 1, ["krautrock"]),
     artist(B, 2),
@@ -83,22 +84,48 @@ def built(tmp_path, artists=ARTISTS, releases=RELEASES, listeners=LISTENERS):
 
 def same_sound(c, mbid=A):
     return c.execute(
-        "SELECT neighbour_mbid, rank, colisten_rank, source, term, decade FROM same_sound "
+        "SELECT neighbour_mbid, rank, source, term, decade FROM same_sound "
         "WHERE artist_mbid = ? ORDER BY rank",
         [mbid],
     ).fetchall()
 
 
-def test_only_the_neighbours_whose_colour_agrees_ranked_again_in_the_colisten_order(tmp_path):
-    # B shares A's style and decade. C shares nothing. D shares the style 20
-    # years apart: no colour, and its styles hide the genre it shares. E has no
-    # Discogs records: its genre speaks. F's decade is next to A's: half the
-    # weight, still above the threshold.
+def test_only_the_neighbours_whose_colour_agrees_in_any_era(tmp_path):
+    # B, D and F share A's style, D twenty years later and F ten. C shares
+    # nothing. E has no Discogs records: its genre speaks. The reason's decade
+    # is A's.
     assert same_sound(built(tmp_path)) == [
-        (B, 1, 1, "styles", "Krautrock", 1970),
-        (E, 2, 4, "genres", "krautrock", None),
-        (F, 3, 5, "styles", "Krautrock", 1970),
+        (B, 1, "styles", "Krautrock", 1970),
+        (D, 2, "styles", "Krautrock", 1970),
+        (E, 3, "genres", "krautrock", None),
+        (F, 4, "styles", "Krautrock", 1970),
     ]
+
+
+def test_both_directions_of_the_co_listening_ranked_by_its_score(tmp_path, monkeypatch):
+    # One neighbour each: A's is C, which 8 of its 11 listeners share; B's is
+    # A, with the 3 listeners B has. B never makes A's own list, yet it is in
+    # A's « Même son », after C, by the score B's list gives A.
+    monkeypatch.setattr(colisten, "K", 1)
+    c = built(
+        tmp_path,
+        [artist(A, 1), artist(B, 2), artist(C, 3), artist(G, 6)],
+        [
+            *records(1, "Krautrock", "1972", 30, 100),
+            *records(2, "Krautrock", "1974", 30, 200),
+            *records(3, "Krautrock", "1976", 30, 300),
+            *records(6, "Rock", "1975", 30, 600),
+        ],
+        {**{u: [A, C] for u in range(1, 9)}, **{u: [A, B] for u in range(9, 12)}},
+    )
+    assert [row[:2] for row in same_sound(c)] == [(C, 1), (B, 2)]
+    [(kept, given)] = c.execute(
+        "SELECT s.colisten_score, l.score FROM same_sound s JOIN colisten l "
+        "ON l.artist_mbid = s.neighbour_mbid AND l.neighbour_mbid = s.artist_mbid "
+        "WHERE s.artist_mbid = ? AND s.neighbour_mbid = ?",
+        [A, B],
+    ).fetchall()
+    assert kept == given
 
 
 def test_a_thin_profile_is_shrunk_below_the_threshold(tmp_path):
@@ -107,16 +134,15 @@ def test_a_thin_profile_is_shrunk_below_the_threshold(tmp_path):
     releases = [r for r in RELEASES if r["artists"] != [2]] + records(
         2, "Krautrock", "1974", 3, 200
     )
-    assert [row[0] for row in same_sound(built(tmp_path, releases=releases))] == [E, F]
+    assert [row[0] for row in same_sound(built(tmp_path, releases=releases))] == [D, E, F]
 
 
 def test_a_profile_of_undated_records_has_no_colour(tmp_path):
-    # B's thirty records carry no date: a style without a decade never matches,
-    # and its profile has no length. 0 / 0 is a NaN, which DuckDB sorts above
-    # every threshold; and B's Discogs styles still hide its genres.
+    # B's thirty records carry no date: shrunk by 0 / (0 + 10), as measured; and
+    # B's Discogs styles still hide its genres.
     artists = [*(a for a in ARTISTS if a["mbid"] != B), artist(B, 2, ["krautrock"])]
     releases = [r for r in RELEASES if r["artists"] != [2]] + records(2, "Krautrock", None, 30, 200)
-    assert [row[0] for row in same_sound(built(tmp_path, artists, releases))] == [E, F]
+    assert [row[0] for row in same_sound(built(tmp_path, artists, releases))] == [D, E, F]
 
 
 def test_the_reason_is_the_style_that_weighs_most_in_what_the_two_share(tmp_path):
@@ -126,7 +152,7 @@ def test_the_reason_is_the_style_that_weighs_most_in_what_the_two_share(tmp_path
         *records(1, "Kosmische", "1973", 5, 700),
         *records(2, "Kosmische", "1975", 5, 800),
     ]
-    assert same_sound(built(tmp_path, releases=releases))[0][4:] == ("Krautrock", 1970)
+    assert same_sound(built(tmp_path, releases=releases))[0][3:] == ("Krautrock", 1970)
 
 
 def test_two_discogs_profiles_without_a_style_in_common_are_not_overturned_by_a_genre(tmp_path):
@@ -135,22 +161,21 @@ def test_two_discogs_profiles_without_a_style_in_common_are_not_overturned_by_a_
     assert C not in [row[0] for row in same_sound(built(tmp_path, artists))]
 
 
-def test_the_shrink_counts_only_the_records_that_can_match(tmp_path):
+def test_the_shrink_counts_only_the_dated_records(tmp_path):
     # B: three dated Krautrock records of A's decade and forty undated ones.
-    # Only the three can match: shrunk by 3 / (3 + 10), not 43 / (43 + 10).
+    # Shrunk by 3 / (3 + 10), not 43 / (43 + 10): the rule as measured.
     releases = [
         *(r for r in RELEASES if r["artists"] != [2]),
         *records(2, "Krautrock", "1974", 3, 200),
         *records(2, "Krautrock", None, 40, 300_000),
     ]
-    assert [row[0] for row in same_sound(built(tmp_path, releases=releases))] == [E, F]
+    assert [row[0] for row in same_sound(built(tmp_path, releases=releases))] == [D, E, F]
 
 
 def test_the_reason_sums_a_style_over_its_decades(tmp_path):
-    # Krautrock is the heaviest single term (12 records against 8), but the two
-    # share Ambient in the 1980s and the 1990s, which meet across the decade:
-    # 3 x 8 x 8 outweighs 12 x 12. Within Ambient, the two decades weigh the
-    # same: the earlier one.
+    # Krautrock is the heaviest style of a single decade (12 records against
+    # 8), but Ambient sums 16 over the 1980s and the 1990s. Within Ambient, the
+    # artist's two decades weigh the same: the earlier one.
     releases = [
         *records(1, "Krautrock", "1972", 12, 100),
         *records(1, "Ambient", "1983", 8, 120),
@@ -166,7 +191,7 @@ def test_the_reason_sums_a_style_over_its_decades(tmp_path):
         releases,
         {user: [A, B] for user in range(1, 7)},
     )
-    assert same_sound(c) == [(B, 1, 1, "styles", "Ambient", 1980)]
+    assert same_sound(c) == [(B, 1, "styles", "Ambient", 1980)]
 
 
 def test_no_listening_export_gives_no_same_sound(tmp_path):
@@ -175,8 +200,9 @@ def test_no_listening_export_gives_no_same_sound(tmp_path):
 
 
 def test_the_site_reads_same_sound_in_rank_order_each_with_its_reason_and_side(tmp_path, pg):
-    # A began in 1970; B (1960) more than 3 years before, E (1982) after, F
-    # (1972) during. A neighbour absent from the dump is left out.
+    # A began in 1970; B (1960) more than 3 years before, D (1970) and F
+    # (1972) during, E (1982) after. A neighbour absent from the dump is left
+    # out.
     artists = [
         artist(A, 1, ["krautrock"], "1970"),
         artist(B, 2, begin="1960"),
@@ -192,8 +218,9 @@ def test_the_site_reads_same_sound_in_rank_order_each_with_its_reason_and_side(t
         f"SELECT mbid, rank, source, term, decade, side FROM musilogy.artist_same_sound('{A}')",
     ) == [
         (B, 1, "styles", "Krautrock", 1970, "before"),
-        (E, 2, "genres", "krautrock", None, "after"),
-        (F, 3, "styles", "Krautrock", 1970, "during"),
+        (D, 2, "styles", "Krautrock", 1970, "during"),
+        (E, 3, "genres", "krautrock", None, "after"),
+        (F, 4, "styles", "Krautrock", 1970, "during"),
     ]
     assert pg_query(pg, f"SELECT count(*) FROM musilogy.artist_same_sound('{ABSENT}')") == [(0,)]
 
