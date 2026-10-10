@@ -1,6 +1,6 @@
 # musilogy
 
-Produit, hors ligne et depuis des sources épinglées et datées, les données de **Musilogy** (`docs/vision.md` à la racine, §2) : pour un artiste, les artistes du même son ; dans quels groupes ses membres ont joué. Un dump JSON MusicBrainz, le dump des sorties Discogs, des relevés ListenBrainz (popularité, statistiques d'écoute), MusicBrainz (statut officiel) et Wikidata (discographie) deviennent dix tables reproductibles et testées, publiées en Parquet ; `musilogy load` les copie dans le schéma `musilogy` de la base du site, qui ne lit que des fonctions SQL. La conception en vigueur, avec le contrat de ces fonctions, est `docs/conception.md` ; la feuille de route est `docs/vision.md` §7.
+Produit, hors ligne et depuis des sources épinglées et datées, les données de **Musilogy** (`docs/vision.md` à la racine, §2) : pour un artiste, les artistes du même son ; dans quels groupes ses membres ont joué. Un dump JSON MusicBrainz, le dump des sorties Discogs, des relevés ListenBrainz (popularité, toutes les écoutes), MusicBrainz (statut officiel) et Wikidata (discographie) deviennent dix tables reproductibles et testées, publiées en Parquet ; `musilogy load` les copie dans le schéma `musilogy` de la base du site, qui ne lit que des fonctions SQL. La conception en vigueur, avec le contrat de ces fonctions, est `docs/conception.md` ; la feuille de route est `docs/vision.md` §7.
 
 ## Principe directeur
 
@@ -85,9 +85,9 @@ Les corrections manuelles (`src/musilogy/corrections.csv`, colonnes `mbid, field
 
 - **`84_discogs` — Styles (Discogs).** Le dump mensuel des sorties Discogs (`REFERENCE_DISCOGS`, CC0, data.discogs.com), épinglé par l'empreinte que Discogs publie à côté et réduit en flux aux champs qu'une règle lit (`extract.py`, 19 492 392 sorties) et lu une seule fois par le build (`discogs_work`). La projection porte un compagnon (`extraction.json`, sorties écrites et champs) : écrite avec d'autres champs que ceux que lit le build, elle est refaite ; lue avec moins de sorties qu'elle n'en a écrit, `run` s'arrête sans rien publier. **Un artiste rejoint Discogs par la page Discogs que MusicBrainz lui relie** (`discogs_links`) : un artiste Discogs relié à deux MBID n'en rejoint aucun, écarté et compté (352 identifiants), un MBID relié à plusieurs artistes Discogs (des alias) les additionne ; 1 266 088 artistes sont reliés. **Un disque est un master Discogs**, ou la sortie elle-même quand elle n'en a pas (le dump écrit `master_id` 0) ; une compilation, une sortie non officielle, une promotion, un sampler ou un mix ne compte pas (4 234 631 sorties) : ils disent où la musique a circulé, pas où l'artiste l'a faite. `styles` compte les disques par style et par décennie de première édition — un disque porte les styles de toutes ses éditions — ; une année hors de `[1850, année du dump]` n'est pas une date (Discogs porte une sortie de 338). **MusicBrainz reste l'autorité sur les dates** : un premier disque Discogs antérieur de plus d'un an à la formation déclarée est compté (`discogs_date_disagreements`, 1 748), jamais réécrit. Quatre invariants : un style en double, sans artiste, une décennie hors de la fenêtre, et un artiste qui n'atteint Discogs que par un identifiant partagé.
 
-## Co-écoute (export des statistiques ListenBrainz)
+## Co-écoute (toutes les écoutes ListenBrainz)
 
-ListenBrainz publie chaque mois, dans le dossier de son export complet, un export de statistiques sous CC0 ; son premier fichier, `artists_all_time.jsonl`, donne pour chaque utilisateur ses artistes les plus écoutés de tout temps (jusqu'à 1 000). `run` le télécharge s'il manque — en flux depuis l'archive de 22 Go, dont `tar` n'extrait que ce fichier de 4 Go avant de s'arrêter (`zstd` doit être installé) — et le vérifie contre l'empreinte épinglée sous `reference/listenbrainz-statistics-<export>.SHA256SUMS` ; `REFERENCE_LISTENING` désigne l'export. L'empreinte que ListenBrainz publie couvre l'archive entière, jamais téléchargée : c'est celle du fichier qui fait foi. `colisten.py` en tire `colisten` : la règle, ses seuils et l'exception au SQL qu'elle demande sont dans `docs/conception.md`. Sur l'export `2692-20261001-000003` : 95 872 utilisateurs, 33 393 707 paires utilisateur-artiste, 371 602 artistes d'au moins 3 auditeurs, dont 371 582 ont des voisins (18 473 211 lignes ; 0,08 % des voisins sont absents du dump), en 11 min environ et 2,7 Go de mémoire au plus (2026-10-08).
+ListenBrainz publie chaque mois, dans le dossier de son export complet, un dump « Spark » sous CC0 : une archive tar de 242 Go, en Parquet, qui porte toutes les écoutes déjà rapprochées de MusicBrainz. `musilogy snapshot-listens <dump>` la lit en flux, sans jamais la garder : chaque fichier Parquet est réduit à une ligne par utilisateur et par artiste crédité, avec son nombre d'écoutes, puis effacé. Les 32 tranches qui en sortent, réparties par utilisateur, sont rangées sous `data/raw/listenbrainz/listens-<dump>/`. L'empreinte que ListenBrainz publie pour l'archive n'est connue qu'au dernier octet : tant qu'elle ne concorde pas, rien n'est rangé. Elle est épinglée avec celles des tranches sous `reference/listenbrainz-listens-<dump>.SHA256SUMS`, et `REFERENCE_LISTENING` désigne le dump. `run` vérifie chaque tranche et refuse un dossier qui en compte une de plus ou de moins ; ListenBrainz ne garde pas ses dumps, la copie de la projection est donc sauvegardée hors du disque. `colisten.py` en tire `colisten` : la règle, ses seuils et l'exception au SQL qu'elle demande sont dans `docs/conception.md`. Toutes les écoutes de chaque utilisateur comptent, même pour les comptes qui ont écouté des dizaines de milliers d'artistes (`docs/vision.md` §2.2). Sur le dump `2692-20261001-000003` : 2 856 452 793 écoutes, dont 2 484 121 161 rapprochées d'un artiste, réduites à 119 637 055 paires utilisateur-artiste, et 899 265 artistes d'au moins 3 auditeurs (2026-10-09).
 
 ## Même son
 
@@ -161,8 +161,6 @@ Python 3.12 géré par `uv`.
 uv sync
 ```
 
-`zstd` doit être installé : `run` en a besoin pour lire l'export des statistiques ListenBrainz.
-
 Trois niveaux de test :
 
 - `uv run pytest` — suite rapide, quelques secondes, sans dépendance au dump. Tourne sur les témoins réels de `cli.WITNESSES`, versionnés dans `tests/fixtures/` (extraits authentiques du dump de référence, jamais de données inventées) et sur quelques enregistrements synthétiques pour les formes qu'aucun témoin ne porte.
@@ -176,6 +174,7 @@ uv run musilogy run                 # fetch → extract → transform → valida
 uv run musilogy snapshot-popularity # relevé ListenBrainz daté, à épingler (~1 h)
 uv run musilogy snapshot-official   # albums et EP que MusicBrainz montre pour les artistes d'au moins 500 auditeurs (~30 h, reprenable)
 uv run musilogy snapshot-discography # relevé Wikidata daté des disques classés album studio, EP ou BO, à épingler
+uv run musilogy snapshot-listens <dump> # toutes les écoutes ListenBrainz, réduites par utilisateur et artiste, à épingler
 uv run musilogy make-fixtures       # régénère les témoins depuis les extractions et les relevés épinglés
 uv run musilogy load                # charge data/out/ dans la base du site (environnement libpq)
 ```

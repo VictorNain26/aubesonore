@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -25,22 +26,31 @@ from musilogy.build import (
     check_invariants,
     connect,
 )
-from musilogy.extract import extract, extract_discogs, reduce_artist, reduce_release_group
+from musilogy.extract import (
+    extract,
+    extract_discogs,
+    reduce_artist,
+    reduce_listens,
+    reduce_release_group,
+)
 from musilogy.fetch import (
     POPULARITY_BATCH,
     expected_sums,
     fetch_discography,
     fetch_discogs,
     fetch_dump,
-    fetch_listening,
     fetch_official,
     fetch_popularity,
     sha256_file,
+    spark_digest,
+    spark_listens,
+    spark_name,
     verify,
 )
 from musilogy.load import load
 from musilogy.paths import (
     CORRECTIONS_CSV,
+    DATA_DIR,
     FIXTURES_DIR,
     RAW_DIR,
     REFERENCE_DIR,
@@ -51,7 +61,7 @@ from musilogy.paths import (
     discogs_extraction,
     discogs_releases,
     discogs_sums,
-    listening_export,
+    listening_snapshot,
     listening_sums,
     official_snapshot,
     official_sums,
@@ -236,14 +246,46 @@ def _verified_one(path: Path, date: str, sums: Path, survey: str, command: str) 
     return path
 
 
+def snapshot_listens(ref: str) -> None:
+    """Reduces the listens of a ListenBrainz Spark dump to one row per user and
+    artist, streaming the archive (fetch.spark_listens), and pins the result
+    with the archive's published digest: the archive is never kept, and
+    ListenBrainz does not keep its dumps for ever."""
+    dest = listening_snapshot(ref)
+    if dest.exists():
+        raise SystemExit(f"listens {ref} already reduced at {dest}")
+    expected = spark_digest(ref)
+    partial = dest.with_name(dest.name + ".partial")
+    shutil.rmtree(partial, ignore_errors=True)
+    partial.mkdir(parents=True)
+    rows = reduce_listens(connect(), spark_listens(ref, expected, DATA_DIR / "tmp"), partial)
+    partial.replace(dest)
+    lines = [f"{expected}  {spark_name(ref)}"]
+    lines += [f"{sha256_file(p)}  {p.name}" for p in sorted(dest.glob("*.parquet"))]
+    listening_sums(ref).write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"{rows} user-artist rows; pin it: REFERENCE_LISTENING = {ref!r}")
+
+
 def verified_listening() -> Path:
-    """The statistics export the co-listening is computed from, fetched once
-    and checked against its pinned digest."""
-    return fetch_listening(
-        REFERENCE_LISTENING,
-        listening_export(REFERENCE_LISTENING),
-        listening_sums(REFERENCE_LISTENING),
-    )
+    """The listens the co-listening is computed from, every file checked
+    against its pinned digest; the archive's own digest is provenance only."""
+    folder = listening_snapshot(REFERENCE_LISTENING)
+    if not folder.exists():
+        raise SystemExit(
+            f"listens {REFERENCE_LISTENING} missing at {folder}: "
+            f"`musilogy snapshot-listens {REFERENCE_LISTENING}`"
+        )
+    pinned = {
+        name: digest
+        for name, digest in expected_sums(listening_sums(REFERENCE_LISTENING)).items()
+        if name.endswith(".parquet")
+    }
+    found = sorted(p.name for p in folder.glob("*.parquet"))
+    if found != sorted(pinned):
+        raise SystemExit(f"{folder} holds {found}, the pin names {sorted(pinned)}")
+    for name, digest in pinned.items():
+        verify(folder / name, digest)
+    return folder
 
 
 def snapshot_discography() -> None:
@@ -530,6 +572,13 @@ def main() -> None:
         "snapshot-discography",
         help="take a dated Wikidata snapshot of the release groups filed as main records",
     )
+    listens = subparsers.add_parser(
+        "snapshot-listens",
+        help="reduce a ListenBrainz Spark dump's listens to one row per user and artist",
+    )
+    listens.add_argument(
+        "ref", help="the dump's number, date and sequence, e.g. 2692-20261001-000003"
+    )
     subparsers.add_parser("make-fixtures", help="extract witness records for the test fixtures")
     subparsers.add_parser(
         "load", help="load the published tables into the site's Postgres (libpq environment)"
@@ -544,6 +593,8 @@ def main() -> None:
         snapshot_official()
     elif args.command == "snapshot-discography":
         snapshot_discography()
+    elif args.command == "snapshot-listens":
+        snapshot_listens(args.ref)
     elif args.command == "make-fixtures":
         make_fixtures()
     elif args.command == "load":

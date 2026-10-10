@@ -1,5 +1,5 @@
-"""Streaming projection of the MusicBrainz JSON dumps and the Discogs releases dump. No
-business rule here."""
+"""Streaming projection of the MusicBrainz JSON dumps, the Discogs releases dump and the
+ListenBrainz listens. No business rule here."""
 
 from __future__ import annotations
 
@@ -7,11 +7,14 @@ import gzip
 import json
 import logging
 import lzma
+import shutil
 import tarfile
 import xml.etree.ElementTree as ET
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import Any
+
+import duckdb
 
 logger = logging.getLogger(__name__)
 
@@ -177,3 +180,50 @@ def extract_discogs(archive: Path, out: Path) -> int:
                 root.clear()
     partial.replace(out)
     return n
+
+
+# Files of the listens projection, each holding a slice of the users: no
+# aggregation ever holds more than one slice.
+LISTENS_BUCKETS = 32
+
+
+def reduce_listens(con: duckdb.DuckDBPyConnection, parts: Iterable[Path], out: Path) -> int:
+    """Every listen of the Spark dump's Parquet parts, reduced to one row per user
+    and credited artist with its listen count, in files `NN.parquet` split by
+    user. Each part is counted as it comes, then each slice of users summed: a
+    part is deleted once read (fetch.spark_listens). An artist credit without an
+    MBID, or with a malformed one, cannot be counted. Returns the rows written."""
+    split = out / ".split"
+    split.mkdir()
+    for i, part in enumerate(parts):
+        con.execute(
+            f"""
+            COPY (
+              SELECT user_id, artist_mbid, count(*)::INTEGER AS listens,
+                     user_id % {LISTENS_BUCKETS} AS bucket
+              FROM (
+                SELECT user_id::INTEGER AS user_id, try_cast(a AS UUID) AS artist_mbid
+                FROM (SELECT user_id, unnest(artist_credit_mbids) AS a FROM read_parquet(?))
+              )
+              WHERE artist_mbid IS NOT NULL
+              GROUP BY ALL
+            ) TO '{(split / f"{i:05d}").as_posix()}'
+            (FORMAT parquet, PARTITION_BY (bucket), COMPRESSION zstd)
+            """,
+            [part.as_posix()],
+        )
+    rows = 0
+    buckets = sorted({int(d.name.split("=")[1]) for d in split.glob("*/bucket=*")})
+    for b in buckets:
+        target = out / f"{b:02d}.parquet"
+        slice_parts = (split / "*" / f"bucket={b}" / "*.parquet").as_posix()
+        con.execute(
+            "COPY (SELECT user_id, artist_mbid, sum(listens)::INTEGER AS listens "
+            f"FROM read_parquet('{slice_parts}') GROUP BY 1, 2) "
+            f"TO '{target.as_posix()}' (FORMAT parquet, COMPRESSION zstd)"
+        )
+        row = con.execute("SELECT count(*) FROM read_parquet(?)", [target.as_posix()]).fetchone()
+        assert row is not None  # an aggregate always returns one row
+        rows += row[0]
+    shutil.rmtree(split, ignore_errors=True)
+    return rows

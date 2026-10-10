@@ -3,12 +3,13 @@ snapshots."""
 
 from __future__ import annotations
 
-import contextlib
 import hashlib
 import http.client
+import io
 import itertools
 import json
-import subprocess
+import shutil
+import tarfile
 import time
 import urllib.error
 import urllib.parse
@@ -91,53 +92,74 @@ def fetch_discogs(date: str, dest: Path, sums_path: Path) -> Path:
     return dest
 
 
-# The statistics export sits in the full export's folder (read 2026-10-08), one
-# tar.zst whose first member is the file wanted: users' top artists of all time.
-LISTENING_URL = (
+# The Spark dump sits in the full export's folder (read 2026-10-10): one plain
+# tar of Parquet files holding every listen already linked to MusicBrainz, with
+# its digest published beside it.
+SPARK_URL = (
     "https://data.metabrainz.org/pub/musicbrainz/listenbrainz/fullexport/"
-    "listenbrainz-dump-{ref}-full/listenbrainz-statistics-dump-{stamp}.tar.zst"
+    "listenbrainz-dump-{ref}-full/listenbrainz-spark-dump-{ref}-full.tar"
 )
-LISTENING_MEMBER = "listenbrainz-statistics-dump-{stamp}/lbdump/statistics/artists_all_time.jsonl"
 
 
-def fetch_listening(ref: str, dest: Path, sums_path: Path) -> Path:
-    """The 4 GB file wanted out of a 22 GB archive, without storing the archive:
-    the download is streamed into `tar`, which stops after its first match
-    (--occurrence=1), and the transfer stops with it. The archive's own digest
-    covers bytes never fetched; the file's digest, pinned under reference/,
-    is the check. `tar --zstd` needs zstd installed."""
-    if not dest.exists():
-        stamp = ref.split("-", 1)[1]
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        partial = dest.with_name(dest.name + ".partial")
-        req = urllib.request.Request(
-            LISTENING_URL.format(ref=ref, stamp=stamp), headers={"User-Agent": UA}
-        )
-        member = LISTENING_MEMBER.format(stamp=stamp)
-        with partial.open("wb") as out:
-            tar = subprocess.Popen(
-                ["tar", "--zstd", "-xO", "--occurrence=1", "-f", "-", member],
-                stdin=subprocess.PIPE,
-                stdout=out,
-            )
-            assert tar.stdin is not None  # stdin=PIPE
-            try:
-                with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as r:
-                    while chunk := r.read(1 << 20):
-                        tar.stdin.write(chunk)
-            except BrokenPipeError:
-                pass  # tar has its member and stopped reading: the transfer is done
-            except (urllib.error.HTTPError, urllib.error.URLError) as e:
-                tar.kill()
-                raise DownloadError(f"failed to download the statistics export: {e}") from e
-            finally:
-                with contextlib.suppress(BrokenPipeError):
-                    tar.stdin.close()
-            if tar.wait() != 0:
-                raise DownloadError(f"tar could not extract {member}")
-        partial.replace(dest)
-    verify(dest, expected_sums(sums_path)[dest.name])
-    return dest
+def spark_name(ref: str) -> str:
+    return SPARK_URL.format(ref=ref).rsplit("/", 1)[1]
+
+
+def spark_digest(ref: str) -> str:
+    """The digest ListenBrainz publishes for the archive."""
+    req = urllib.request.Request(SPARK_URL.format(ref=ref) + ".sha256", headers={"User-Agent": UA})
+    try:
+        with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as r:
+            return str(r.read().decode().split()[0])
+    except (urllib.error.HTTPError, urllib.error.URLError) as e:
+        raise DownloadError(f"failed to download the Spark dump's digest: {e}") from e
+
+
+class _Digested(io.RawIOBase):
+    """A readable stream that digests what is read through it."""
+
+    def __init__(self, raw: Any) -> None:
+        super().__init__()
+        self.raw = raw
+        self.sha256 = hashlib.sha256()
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer: Any) -> int:
+        n: int = self.raw.readinto(buffer)
+        self.sha256.update(memoryview(buffer)[:n])
+        return n
+
+
+def spark_listens(ref: str, expected: str, tmp: Path) -> Iterator[Path]:
+    """Each Parquet file of the 242 GB archive, written under `tmp` and deleted
+    once the caller has read it: the archive is streamed, never stored. Its
+    digest is only known once the last byte is read, so the caller keeps what it
+    derives aside until the iteration ends without a ChecksumError."""
+    tmp.mkdir(parents=True, exist_ok=True)
+    part = tmp / "spark-member.parquet"
+    req = urllib.request.Request(SPARK_URL.format(ref=ref), headers={"User-Agent": UA})
+    try:
+        with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as r:
+            stream = _Digested(r)
+            with tarfile.open(fileobj=stream, mode="r|") as tar:
+                for member in tar:
+                    source = tar.extractfile(member) if member.name.endswith(".parquet") else None
+                    if source is None:
+                        continue
+                    with part.open("wb") as out:
+                        shutil.copyfileobj(source, out, 1 << 20)
+                    yield part
+                    part.unlink()
+            # The end-of-archive blocks tar stops short of belong to the digest.
+            while stream.read(1 << 20):
+                pass
+    except (urllib.error.HTTPError, urllib.error.URLError) as e:
+        raise DownloadError(f"failed to download the Spark dump: {e}") from e
+    actual = stream.sha256.hexdigest()
+    if actual != expected:
+        raise ChecksumError(f"{spark_name(ref)}: expected {expected}, got {actual}")
 
 
 POPULARITY_URL = "https://api.listenbrainz.org/1/popularity/artist"

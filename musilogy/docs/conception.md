@@ -34,11 +34,9 @@ reconnues, sans couche maison :
    (le *pooling* de TREC ; Ellis et al., ISMIR 2002 pour la vérité terrain de la similarité
    d'artistes), une précision par artiste de référence avec son intervalle de confiance.
 
-Ce que la chaîne doit encore corriger (`docs/vision.md` §7) : elle se calcule aujourd'hui sur
-l'export des statistiques, tronqué au top 1 000 de chaque utilisateur, au lieu de toutes les
-écoutes (le dump Spark de ListenBrainz, les écoutes déjà rapprochées de MusicBrainz) ; elle ne
-lit la co-écoute que dans un sens ; et la couleur s'y compare décennie par décennie, un choix
-maison que la mesure ne justifie pas (2026-10-09) et qui part.
+Ce que la chaîne doit encore corriger (`docs/vision.md` §7) : elle ne lit la co-écoute que dans
+un sens, et la couleur s'y compare décennie par décennie, un choix maison que la mesure ne
+justifie pas (2026-10-09) et qui part.
 
 La généalogie (`docs/vision.md` §2.3) est une autre question, avec ses propres preuves (liens
 entre genres, faits écrits) ; elle ne passe pas par la co-écoute.
@@ -51,7 +49,7 @@ entre genres, faits écrits) ; elle ne passe pas par la co-écoute.
 | popularité ListenBrainz (`/1/popularity/artist`) | `REFERENCE_POPULARITY` | CC0 |
 | discographie Wikidata (release groups, P436, classés album studio, EP ou bande originale par P31 ou P7937) | `REFERENCE_DISCOGRAPHY` | CC0 |
 | dump mensuel des sorties Discogs (artistes crédités, styles, date, descriptions de format) | `REFERENCE_DISCOGS` | CC0 (data.discogs.com) |
-| export des statistiques ListenBrainz (artistes les plus écoutés de chaque utilisateur, de tout temps) | `REFERENCE_LISTENING` | CC0 |
+| dump Spark ListenBrainz (toutes les écoutes rapprochées de MusicBrainz), réduit à une ligne par utilisateur et par artiste | `REFERENCE_LISTENING` | CC0 |
 
 Chaque relevé est pris une fois, son empreinte versionnée sous `reference/`,
 et `run` lit celui que la constante épingle.
@@ -70,9 +68,9 @@ ne réécrit jamais une source.
 
 **Une exception au SQL, la co-écoute** (`colisten.py`). Compter, pour chaque
 paire d'artistes, les utilisateurs qui écoutent les deux est un produit de
-matrices creuses : les 33 millions de lignes utilisateur-artiste de l'export
-donnent des milliards de paires, de l'ordre de 2 × 10¹⁰ incréments en
-auto-jointure SQL. La lecture, les filtres et la numérotation restent en SQL
+matrices creuses : les 120 millions de lignes utilisateur-artiste de toutes
+les écoutes donnent des milliards de paires, de l'ordre de 9 × 10¹¹
+incréments en auto-jointure SQL. La lecture, les filtres et la numérotation restent en SQL
 (DuckDB) ; scipy ne fait que le produit, le score et les K meilleurs voisins
 de chaque artiste. La règle et ses paramètres sont dans le module et dans le
 manifeste (`parameters`).
@@ -109,7 +107,7 @@ albums), `genres` (vocabulaire, publié, non chargé), `links` (appartenances, p
   une ligne.
 
 - `colisten(artist_mbid, neighbour_mbid, common, score, rank)` (`colisten.py`,
-  sur l'export des statistiques ListenBrainz épinglé) : notre co-écoute. Pour
+  sur toutes les écoutes ListenBrainz épinglées) : notre co-écoute. Pour
   chaque artiste qu'au moins 3 utilisateurs écoutent, ses 50 meilleurs voisins
   parmi ceux avec qui il partage au moins 2 auditeurs, au score
   c / (pop_artiste^0,3 × pop_voisin^0,7) × c / (c + 10), où c compte les
