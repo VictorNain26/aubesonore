@@ -23,7 +23,10 @@ export function loadCastSdk(): Promise<boolean> {
       return;
     }
     // The SDK calls this global once loaded; it is set before the script, as the guide does.
-    window.__onGCastApiAvailable = (isAvailable: boolean) => resolve(isAvailable);
+    // Chrome posing as an iPhone (its device mode, Chrome on iOS) loads the framework without
+    // chrome.cast, which the context's options need: casting is then unavailable.
+    window.__onGCastApiAvailable = (isAvailable: boolean) =>
+      resolve(isAvailable && 'cast' in window.chrome);
     const script = document.createElement('script');
     script.src = SDK_URL;
     script.async = true;
