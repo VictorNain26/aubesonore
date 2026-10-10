@@ -34,9 +34,10 @@ reconnues, sans couche maison :
    (le *pooling* de TREC ; Ellis et al., ISMIR 2002 pour la vérité terrain de la similarité
    d'artistes), une précision par artiste de référence avec son intervalle de confiance.
 
-Ce que la chaîne doit encore corriger (`docs/vision.md` §7) : elle ne lit la co-écoute que dans
-un sens, et la couleur s'y compare décennie par décennie, un choix maison que la mesure ne
-justifie pas (2026-10-09) et qui part.
+La co-écoute se lit dans les deux sens : un artiste parmi les voisins de l'artiste, ou dont
+l'artiste est un voisin, au plus haut des deux scores. La couleur se compare toutes décennies
+confondues : la comparer décennie par décennie, un choix maison, écartait les artistes d'un même
+son à des décennies d'écart sans rendre les paires gardées plus justes (2026-10-09).
 
 La généalogie (`docs/vision.md` §2.3) est une autre question, avec ses propres preuves (liens
 entre genres, faits écrits) ; elle ne passe pas par la co-écoute.
@@ -121,25 +122,27 @@ albums), `genres` (vocabulaire, publié, non chargé), `links` (appartenances, p
   ou troués, une paire sous le seuil d'auditeurs communs, un score qui remonte
   le long des rangs.
 
-- `same_sound(artist_mbid, neighbour_mbid, rank, colisten_rank, source, colour,
+- `same_sound(artist_mbid, neighbour_mbid, rank, colisten_score, source, colour,
   term, decade)` (`88_same_sound.sql`) : « Même son », la première table de la
-  couche dérivée (§1). Un voisin de `colisten` y entre quand sa couleur
-  s'accorde à celle de l'artiste : leurs profils de styles Discogs (par
-  décennie, une décennie voisine à moitié, pondérés par la rareté du style),
+  couche dérivée (§1). Un voisin de `colisten`, dans un sens ou dans l'autre, y
+  entre quand sa couleur s'accorde à celle de l'artiste : leurs profils de
+  styles Discogs (toutes décennies confondues, pondérés par la rareté du style),
   ou, quand l'un des deux n'a pas de profil Discogs, de genres MusicBrainz,
   comparés par cosinus et rabattus pour un profil mince (ses disques datés),
-  valent au moins 0,35. C'est la règle mesurée le 2026-10-08 sur 61
-  artistes de référence (`docs/vision.md` §2.2) ; ses seuils sont posés dans le
-  fichier SQL et relus par le manifeste (`parameters`). `rank` de 1 à n dans
-  l'ordre de la co-écoute, `colisten_rank` le rang d'origine ; la raison est le
-  style (`term`, avec la `decade` de l'artiste) ou le genre qui pèse le plus
-  dans ce que les deux partagent (sommé sur les décennies pour un style),
+  valent au moins 0,35. C'est la règle mesurée sur 61 artistes de référence
+  (`docs/vision.md` §2.2 ; décennie par décennie le 2026-10-08, toutes
+  époques et dans les deux sens le 2026-10-10) ; ses seuils sont posés dans le
+  fichier SQL et relus par le manifeste (`parameters`). `rank` de 1 à n par
+  `colisten_score`, le plus haut score de co-écoute des deux sens ; la raison
+  est le style (`term`, avec la `decade` où l'artiste en a le plus de disques)
+  ou le genre qui pèse le plus dans ce que les deux partagent,
   `source` dit lequel. Tout voisin est un artiste du dump : sa couleur vient de
   ses styles ou de ses genres, que seul un artiste du dump porte. La couleur se
   somme en décimal exact, pour qu'une livraison reste la même octet pour
   octet. Sept invariants : une paire en
   double, un artiste voisin de lui-même, des rangs troués, un ordre qui
-  contredit la co-écoute, une paire absente de la co-écoute ou à un autre rang,
+  contredit le score de co-écoute, une paire absente de la co-écoute dans les
+  deux sens ou à un autre score,
   une couleur sous 0,35 ou une source inconnue, une raison que les deux
   artistes ne portent pas.
 

@@ -413,9 +413,9 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 1. **La page range les artistes similaires sur une carte par décennie** (#458), quand le §2.4 les
    veut les plus pertinents d'abord : la carte les trie par année de début et les met tous en
    gras. Le seuil d'indexation (§2.4) a été mesuré sur l'ancien voisinage et reste à remesurer.
-2. **Les similaires couvrent mal les petits, les récents et les autres époques** (§2.2) : la
-   co-écoute se calcule sur l'export tronqué (371 602 artistes au lieu de 899 265), dans un seul
-   sens, et la couleur se compare décennie par décennie.
+2. **Les similaires sur toutes les écoutes, dans les deux sens et toutes époques, ne sont pas
+   encore mesurés** sur la méthode figée (§2.2) : 160 des 268 paires que la règle montre aux 61
+   références n'ont jamais été jugées.
 3. **Les pages de courant n'existent pas encore** (§2.3).
 4. **Statut officiel incomplet** : la page écarte les disques que MusicBrainz ne montre pas
    comme l'œuvre de l'artiste (476 des 4 980 disques des artistes joués, 2026-10-06) ; seuls les
@@ -434,14 +434,12 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 Dans cet ordre, en PR courtes fusionnées une à une, chacune avec sa mesure. Le site n'a pas
 encore de public : chaque PR remplace pour de bon et retire ce qu'elle rend inutile. Les étapes
 faites (la vision, l'identité par ISRC, la page artiste, musilogy refondu, la population
-complète, Discogs, notre co-écoute, « Même son » lu par la page et le service ListenBrainz parti)
-sont dans l'historique git.
+complète, Discogs, notre co-écoute, « Même son » lu par la page et le service ListenBrainz parti,
+la co-écoute sur toutes les écoutes dans les deux sens et la couleur toutes époques) sont dans
+l'historique git.
 
-1. **Les artistes similaires sur toutes les écoutes** (écart 2) : la projection des écoutes
-   complètes de ListenBrainz, épinglée avec l'empreinte publiée du dump (l'archive de 242 Go n'est
-   pas gardée) ; la co-écoute recalculée dessus, toutes les écoutes de chaque auditeur (§2.2),
-   dans les deux sens ; la couleur sans noyau de décennie ; mesurés une
-   fois (§2.2).
+1. **La mesure des artistes similaires** (écart 2), une fois, sur la méthode figée (§2.2) : la
+   co-écoute sur toutes les écoutes, dans les deux sens, la couleur toutes époques confondues.
 2. **La page artiste** (écart 1) : les artistes similaires en liste, les plus pertinents d'abord,
    et la ligne de genres (§2.4), essayées dans le navigateur sur ordinateur et sur téléphone ; le
    seuil d'indexation remesuré.
