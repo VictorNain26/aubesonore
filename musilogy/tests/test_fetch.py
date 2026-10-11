@@ -1,8 +1,7 @@
-import hashlib
 import http.client
+import io
 import json
-import shutil
-import subprocess
+import tarfile
 import urllib.error
 from email.message import Message
 
@@ -375,39 +374,76 @@ def test_pages_that_do_not_add_up_are_refused(monkeypatch, second):
         fetch.official_release_groups(artist)
 
 
-@pytest.mark.skipif(shutil.which("zstd") is None, reason="tar --zstd needs zstd")
-def test_fetch_listening_takes_the_first_member_and_checks_it(tmp_path, monkeypatch):
-    stamp = "20261001-000003"
-    root = tmp_path / "archive"
-    member = root / f"listenbrainz-statistics-dump-{stamp}" / "lbdump" / "statistics"
-    member.mkdir(parents=True)
-    (member / "artists_all_time.jsonl").write_text('{"user_id": 1, "data": []}\n')
-    # A later member, which the extraction never reaches for.
-    (member / "zz_other.jsonl").write_text("unused\n")
-    archive = tmp_path / "statistics.tar.zst"
-    subprocess.run(
-        [
-            "tar",
-            "--zstd",
-            "-cf",
-            str(archive),
-            "-C",
-            str(root),
-            f"listenbrainz-statistics-dump-{stamp}",
-        ],
-        check=True,
-    )
-    monkeypatch.setattr(fetch, "LISTENING_URL", archive.as_uri())
-    dest = tmp_path / "out" / "artists_all_time.jsonl"
-    sums = tmp_path / "sums"
-    sums.write_text(
-        hashlib.sha256(b'{"user_id": 1, "data": []}\n').hexdigest() + "  artists_all_time.jsonl\n"
-    )
+def spark_archive(tmp_path, monkeypatch):
+    """A plain tar laid out like the Spark dump, served from disk, with its
+    digest published beside it."""
+    archive = tmp_path / "spark.tar"
+    with tarfile.open(archive, "w") as tar:
+        for name, data in [
+            ("dump/listens/0.parquet", b"first part"),
+            ("dump/README", b"not a part"),
+            ("dump/listens/1.parquet", b"second part"),
+        ]:
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            tar.addfile(info, io.BytesIO(data))
+    digest = sha256_file(archive)
+    (tmp_path / "spark.tar.sha256").write_text(f"{digest}  spark.tar\n")
+    monkeypatch.setattr(fetch, "SPARK_URL", archive.as_uri())
+    return digest
 
-    assert fetch.fetch_listening(f"2692-{stamp}", dest, sums) == dest
-    assert dest.read_text() == '{"user_id": 1, "data": []}\n'
-    assert not dest.with_name(dest.name + ".partial").exists()
 
-    dest.write_text("tampered\n")
+def test_spark_listens_hands_each_part_and_checks_the_whole_archive(tmp_path, monkeypatch):
+    digest = spark_archive(tmp_path, monkeypatch)
+    assert fetch.spark_digest("2692-20261001-000003") == digest
+
+    seen = [
+        p.read_bytes()
+        for p in fetch.spark_listens("2692-20261001-000003", digest, tmp_path / "tmp")
+    ]
+
+    assert seen == [b"first part", b"second part"]
+    assert list((tmp_path / "tmp").iterdir()) == []
+
+
+def test_spark_listens_refuses_an_archive_that_is_not_the_published_one(tmp_path, monkeypatch):
+    # The digest is only known after the last part: the caller has read every
+    # part by then, and must drop what it derived from them.
+    spark_archive(tmp_path, monkeypatch)
+    parts = fetch.spark_listens("2692-20261001-000003", "0" * 64, tmp_path / "tmp")
     with pytest.raises(ChecksumError):
-        fetch.fetch_listening(f"2692-{stamp}", dest, sums)
+        for _ in parts:
+            pass
+
+
+def test_spark_listens_refuses_parts_after_the_end_of_the_archive(tmp_path, monkeypatch):
+    # tar stops at the first end-of-archive marker: a second archive appended
+    # would enter the digest without its parts ever being read.
+    spark_archive(tmp_path, monkeypatch)
+    archive = tmp_path / "spark.tar"
+    tail = tmp_path / "tail.tar"
+    with tarfile.open(tail, "w") as tar:
+        info = tarfile.TarInfo("dump/listens/2.parquet")
+        info.size = 4
+        tar.addfile(info, io.BytesIO(b"lost"))
+    archive.write_bytes(archive.read_bytes() + tail.read_bytes())
+    digest = sha256_file(archive)
+
+    with pytest.raises(fetch.DownloadError, match="after the end"):
+        for _ in fetch.spark_listens("2692-20261001-000003", digest, tmp_path / "tmp"):
+            pass
+
+
+def test_a_spark_digest_that_is_not_a_sha256_is_refused(tmp_path, monkeypatch):
+    spark_archive(tmp_path, monkeypatch)
+    (tmp_path / "spark.tar.sha256").write_text("<html>Not Found</html>\n")
+    with pytest.raises(fetch.DownloadError, match="not a SHA-256"):
+        fetch.spark_digest("2692-20261001-000003")
+
+
+def test_a_part_the_caller_fails_on_leaves_no_file_behind(tmp_path, monkeypatch):
+    digest = spark_archive(tmp_path, monkeypatch)
+    parts = fetch.spark_listens("2692-20261001-000003", digest, tmp_path / "tmp")
+    next(parts)
+    parts.close()  # what a failing caller's loop does to the generator
+    assert list((tmp_path / "tmp").iterdir()) == []

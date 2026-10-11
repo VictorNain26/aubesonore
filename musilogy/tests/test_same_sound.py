@@ -74,7 +74,7 @@ def built(tmp_path, artists=ARTISTS, releases=RELEASES, listeners=LISTENERS):
     c = build_synthetic(
         tmp_path,
         artists,
-        listening=listening_file(tmp_path / "artists_all_time.jsonl", listeners),
+        listening=listening_file(tmp_path / "listens", listeners),
         discogs=discogs_file(tmp_path / "discogs.jsonl", releases),
     )
     assert check_invariants(c, SQL_DIR) == []

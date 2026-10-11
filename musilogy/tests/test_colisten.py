@@ -1,11 +1,10 @@
-"""Our co-listening on a synthetic export: a handful of users whose shared
+"""Our co-listening on synthetic listens: a handful of users whose shared
 artists make every rule of colisten.py visible."""
-
-import json
 
 import duckdb
 import numpy as np
 import pytest
+from conftest import listening_file
 
 from musilogy import colisten
 from musilogy.build import load_listening
@@ -29,15 +28,8 @@ USERS = {
 
 
 def built(tmp_path):
-    export = tmp_path / "artists_all_time.jsonl"
-    with export.open("w", encoding="utf-8") as f:
-        for user, artists in USERS.items():
-            data = [{"listen_count": 10, "artist_name": "?", "artist_mbid": a} for a in artists]
-            # An artist known by name only cannot be counted.
-            data.append({"listen_count": 99, "artist_name": "No MBID", "artist_mbid": None})
-            f.write(json.dumps({"user_id": user, "data": data}) + "\n")
     c = duckdb.connect(":memory:")
-    load_listening(c, export, "test")
+    load_listening(c, listening_file(tmp_path / "listens", USERS), "test")
     build_colisten(c)
     return c
 
@@ -88,7 +80,7 @@ def test_only_the_top_k_are_kept(tmp_path, monkeypatch):
     assert neighbours(built(tmp_path), A) == [(B, 4, 1)]
 
 
-def test_no_export_gives_an_empty_table():
+def test_no_listens_give_an_empty_table():
     c = duckdb.connect(":memory:")
     load_listening(c, None, None)
     build_colisten(c)

@@ -1,6 +1,6 @@
 """Our co-listening (docs/conception.md §1, `colisten`): for each artist that at
-least MIN_LISTENERS users of the ListenBrainz statistics export listen to, its
-K closest artists by listeners in common, corrected for popularity.
+least MIN_LISTENERS ListenBrainz users listen to, its K closest artists by
+listeners in common, corrected for popularity.
 
 The rule, measured on the evaluation set (docs/vision.md §2.2, 2026-10-07):
 cosine with an asymmetric exponent, score(j, i) = c / (pop_j^ALPHA * pop_i^(1 - ALPHA)),
@@ -9,8 +9,8 @@ users who listen to each. Only pairs with at least MIN_COMMON users in common
 count.
 
 The one step of the build written in Python rather than SQL: counting the
-users every pair of artists shares is a sparse matrix product (33 million
-user-artist rows give billions of pairs, about 2 x 10^10 increments as a SQL
+users every pair of artists shares is a sparse matrix product (120 million
+user-artist rows give billions of pairs, about 9 x 10^11 increments as a SQL
 self-join). The rows are read, filtered and numbered in SQL; scipy only
 multiplies, scores and keeps the top K of each artist."""
 
@@ -26,9 +26,10 @@ ALPHA = 0.3
 SHRINK = 10.0
 # « Même son » looks for the colour among all 50 (88_same_sound.sql); the page shows 8.
 K = 50
-# Rows of the artist-by-artist product computed at once: about 7 million
-# non-zero counts per chunk, a few tens of MB.
-CHUNK = 500
+# Rows of the artist-by-artist product computed at once. Over all listens a
+# famous artist shares listeners with most of the 899 265 others: at 100 rows,
+# the whole build of the co-listening peaked at 3.9 GB (2026-10-10).
+CHUNK = 100
 # Scored rows handed to DuckDB at once: the whole result held in Python, then
 # copied once more to be joined, took the peak to 4.2 GB (2026-10-08).
 BATCH = 2_000_000
@@ -52,7 +53,7 @@ def scores(common: np.ndarray, pop_ref: float, pop_cand: np.ndarray) -> np.ndarr
 
 def build_colisten(con: duckdb.DuckDBPyConnection) -> None:
     """Writes `colisten(artist_mbid, neighbour_mbid, common, score, rank)` from
-    `raw_listening`; an empty export gives an empty table."""
+    `raw_listening`; no listens give an empty table."""
     for name, value in PARAMETERS.items():
         # Typed: a bare 0.3 would be a DECIMAL, which the manifest cannot write.
         sql_type = "DOUBLE" if isinstance(value, float) else "INTEGER"

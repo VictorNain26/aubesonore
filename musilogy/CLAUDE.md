@@ -80,11 +80,13 @@ d'acceptation se donne en nombre ou en code de sortie. « le chiffre `links` de
 cd musilogy                   # toutes les commandes partent d'ici
 uv sync
 uv run pytest                 # suite rapide, sur les témoins
+uv run ruff check && uv run ruff format --check && uv run mypy  # les contrôles de la CI, tels quels : `mypy src` seul saute les tests
 uv run pytest -m slow         # ligne de base sur le dump réel, exige data/work/
 uv run musilogy run           # fetch → extract → transform → validate → publish (relevés épinglés exigés)
 uv run musilogy snapshot-popularity  # relevé ListenBrainz daté, à épingler
 uv run musilogy snapshot-official    # disques officiels MusicBrainz, ~30 h, reprenable
 uv run musilogy snapshot-discography # disques classés par Wikidata, quelques secondes, à épingler
+uv run musilogy snapshot-listens <dump> # toutes les écoutes ListenBrainz (archive de 242 Go lue en flux), à épingler
 uv run musilogy make-fixtures # depuis les extractions et les relevés épinglés
 uv run musilogy load          # charge data/out/ dans la base du site (environnement libpq)
 MUSILOGY_TEST_PG='host=… dbname=…' uv run pytest  # tests Postgres compris : un Postgres jetable, jamais celui du site
@@ -111,8 +113,23 @@ Sur victorserv, `pytest -m slow` et `musilogy run` partent dans un scope
 plafonné : `build.connect()` borne DuckDB (2 Go, 2 threads, 10 Go de
 débordement dans `data/tmp/`), mais pas le cache disque ni Python, et les
 services de la machine occupent déjà la moitié de ses 16 Go. Le 2026-10-02,
-une requête sans borne l'a gelée. Construire, publier et charger le dump de
-référence culmine à 2,1 Go de mémoire résidente (2026-10-04).
+une requête sans borne l'a gelée. La co-écoute sur toutes les écoutes culmine
+à 3,9 Go sans plafond et prend 10 h (2026-10-10) : `musilogy run` part alors
+dans un scope de 5,5 Go visés et 6 Go au plus, quand la passe hebdomadaire de
+la radio ne tourne pas. Un plafond visé (`MemoryHigh`) se pose au-dessus du pic
+mesuré, jamais dessus : à 4 Go, le noyau a freiné le calcul des heures durant
+(2026-10-11). Après le lancement, `memory.pressure` de l'unité le dit. DuckDB
+y déborde en écrivant des dizaines de Mo/s : `data/tmp/` pointe vers le SSD
+externe (`/media/plex/.musilogy-tmp`), pas vers le NVMe interne, qui porte le
+système, Docker, Postgres et la radio et n'écrit qu'à 23 Mo/s contre 505 pour le
+SSD externe (`dd` de 2 Gio par blocs de 256 Kio en accès direct, 2026-10-11).
+Sur le NVMe, ce débordement a saturé le disque et ralenti toute la machine
+(2026-10-11) ; ni `IOSchedulingClass=idle` (les priorités ne valent qu'avec les
+ordonnanceurs bfq et mq-deadline, docs.kernel.org/block/ioprio.html, et le NVMe
+est en `none`) ni `io.max` (non délégué aux unités utilisateur) ne le bridaient.
+Le calcul part donc dès qu'il est prêt, sans attendre la nuit. Une unité trop
+gourmande se gèle (`systemctl --user freeze`) et reprend où elle était
+(`thaw`).
 
 ```bash
 systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=0 \
