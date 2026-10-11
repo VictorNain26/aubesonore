@@ -115,12 +115,16 @@ de chacun le diviserait par trois, mais retirerait 176 070 artistes (899 265 →
 mesure qui montre que ces écoutes nuisent ; une bibliothèque de produit matriciel creux plus
 rapide n'a rien gagné (mesuré le 2026-10-10).
 
-**La mesure**, une fois, sur la méthode figée : des paires jugées à partir de sources citées
-(même son, parenté, lointain, étranger, inconnu), sur les 61 références de l'étude du 2026-10-08
-et 30 artistes joués tirés par décennie de début ; la part de bons par référence, avec son
-intervalle de confiance, par époque et par tranche d'auditeurs ; une partie des paires jugée deux
-fois pour mesurer l'accord entre juges. On ne montre que des voisins confirmés, sans compléter une
-liste trop courte. Les clics des auditeurs départagent plus tard deux réglages, sans jamais
+**La mesure**, une fois, sur la méthode figée (2026-10-11) : les 8 premiers voisins des
+références de l'étude du 2026-10-08 et de 30 artistes joués tirés par décennie de début, jugés à
+partir de sources citées (même son, parenté, lointain, étranger, inconnu), avec une règle
+d'adoption écrite avant les données. 87 % de bons (même son ou parenté) en moyenne par artiste,
+intervalle à 95 % [83, 91], sur 75 artistes et 508 paires ; aucun étranger, 6 inconnus ; de 85 à
+91 % selon la tranche d'auditeurs, de 69 % (4 artistes des années 1980) à 93 % selon la décennie
+de début. Deux juges s'accordent sur 36 des 39 paires jugées deux fois.
+45 des 62 références ont des voisins : les autres ont moins de 3 auditeurs, ou aucun voisin dont
+la couleur s'accorde. On ne montre que des voisins confirmés, sans compléter une liste trop
+courte. Les clics des auditeurs départagent plus tard deux réglages, sans jamais
 nourrir la similarité, ce qui ferait boucle.
 
 **L'audio**, la couleur du son elle-même, n'est pas une source pour tous : les extraits Deezer
@@ -364,7 +368,7 @@ l'artiste principal, chaque crédité est relié.
 | ouverture de l'article | Wikipédia (CC BY-SA), via l'identifiant Wikidata du dump | — |
 | artistes similaires (même public et même courant), généalogie (courants, faits écrits), groupes et projets | musilogy, datés de leurs dumps et relevés | reproductibles, avec leur provenance |
 
-Un artiste plus récent que le dump épinglé n'a pas de faits jusqu'au suivant (§7, étape 5).
+Un artiste plus récent que le dump épinglé n'a pas de faits jusqu'au suivant (§7, étape 4).
 
 ### 4.6 Une page artiste qui répond toujours
 
@@ -413,47 +417,40 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 1. **La page range les artistes similaires sur une carte par décennie** (#458), quand le §2.4 les
    veut les plus pertinents d'abord : la carte les trie par année de début et les met tous en
    gras. Le seuil d'indexation (§2.4) a été mesuré sur l'ancien voisinage et reste à remesurer.
-2. **Les similaires couvrent mal les petits, les récents et les autres époques** (§2.2) : la
-   co-écoute se calcule sur l'export tronqué (371 602 artistes au lieu de 899 265), dans un seul
-   sens, et la couleur se compare décennie par décennie.
-3. **Les pages de courant n'existent pas encore** (§2.3).
-4. **Statut officiel incomplet** : la page écarte les disques que MusicBrainz ne montre pas
+2. **Les pages de courant n'existent pas encore** (§2.3).
+3. **Statut officiel incomplet** : la page écarte les disques que MusicBrainz ne montre pas
    comme l'œuvre de l'artiste (476 des 4 980 disques des artistes joués, 2026-10-06) ; seuls les
    artistes d'au moins 500 auditeurs sont interrogés.
-5. **Les pages d'artistes jamais joués qui passent le seuil restent à leur MBID** :
+4. **Les pages d'artistes jamais joués qui passent le seuil restent à leur MBID** :
    `/artiste/<mbid>`, sans slug.
-6. **Identité incomplète** : 52 des 397 artistes joués n'ont pas de MBID (2026-10-06) ; la plupart
+5. **Identité incomplète** : 52 des 397 artistes joués n'ont pas de MBID (2026-10-06) ; la plupart
    n'ont aucun lien vers Deezer dans MusicBrainz, ce qui se corrige à la source. 22 des 91 titres
    gardés ne retrouvent ni leur passage ni leur titre exact chez Deezer.
-7. **Les featurings ne relient que l'artiste principal** (§4.4).
-8. **Licences à régulariser** : le portrait et les pochettes Deezer (§2.5).
-9. **Aucune copie hors de la maison** (§4.7).
+6. **Les featurings ne relient que l'artiste principal** (§4.4).
+7. **Licences à régulariser** : le portrait et les pochettes Deezer (§2.5).
+8. **Aucune copie hors de la maison** (§4.7).
 
 ## 7. Feuille de route
 
 Dans cet ordre, en PR courtes fusionnées une à une, chacune avec sa mesure. Le site n'a pas
 encore de public : chaque PR remplace pour de bon et retire ce qu'elle rend inutile. Les étapes
 faites (la vision, l'identité par ISRC, la page artiste, musilogy refondu, la population
-complète, Discogs, notre co-écoute, « Même son » lu par la page et le service ListenBrainz parti)
-sont dans l'historique git.
+complète, Discogs, notre co-écoute, « Même son » lu par la page et le service ListenBrainz parti,
+la co-écoute sur toutes les écoutes dans les deux sens et la couleur toutes époques, et leur mesure) sont dans
+l'historique git.
 
-1. **Les artistes similaires sur toutes les écoutes** (écart 2) : la projection des écoutes
-   complètes de ListenBrainz, épinglée avec l'empreinte publiée du dump (l'archive de 242 Go n'est
-   pas gardée) ; la co-écoute recalculée dessus, toutes les écoutes de chaque auditeur (§2.2),
-   dans les deux sens ; la couleur sans noyau de décennie ; mesurés une
-   fois (§2.2).
-2. **La page artiste** (écart 1) : les artistes similaires en liste, les plus pertinents d'abord,
+1. **La page artiste** (écart 1) : les artistes similaires en liste, les plus pertinents d'abord,
    et la ligne de genres (§2.4), essayées dans le navigateur sur ordinateur et sur téléphone ; le
    seuil d'indexation remesuré.
-3. **Les pages de courant** (écart 3) : un relevé daté des liens entre genres (Wikidata,
+2. **Les pages de courant** (écart 2) : un relevé daté des liens entre genres (Wikidata,
    MusicBrainz, Wikipédia), épinglé, mesuré source par source ; les artistes de chaque courant par
    époque ; la page, reliée depuis la ligne de genres.
-4. **Naviguer et chercher** (§2.6) : la recherche par artiste et par courant, le chemin
+3. **Naviguer et chercher** (§2.6) : la recherche par artiste et par courant, le chemin
    parcouru, essayés sur ordinateur et sur téléphone.
-5. **Les données à jour** : un dump MusicBrainz plus récent, le dump Discogs mensuel, les écoutes
+4. **Les données à jour** : un dump MusicBrainz plus récent, le dump Discogs mensuel, les écoutes
    et les relevés rapides refaits par un timer.
-6. **Un slug pour chaque page qui passe le seuil d'indexation** (écart 5).
-7. **À décider sur mesure** : relier plus d'artistes à Discogs par les sorties que MusicBrainz y
+5. **Un slug pour chaque page qui passe le seuil d'indexation** (écart 4).
+6. **À décider sur mesure** : relier plus d'artistes à Discogs par les sorties que MusicBrainz y
    relie (adopté seulement à 99 % de justesse mesurée) ; les liens écrits entre artistes (§2.3) ;
    les liens d'œuvre (featurings, remixes, producteurs) ; l'audio pour les artistes de la
    bibliothèque.

@@ -213,10 +213,11 @@ AS $$
 $$;
 
 -- « Même son » (88_same_sound.sql, docs/vision.md §2.2): the artist's
--- neighbours of the co-listening whose colour agrees, the first 8 — the depth
--- the rule was measured at (2026-10-08); the table keeps them all — in their
--- rank order, each with its reason — the style, with the artist's decade, or
--- the genre (`source` says which) that weighs most in what the two share —
+-- neighbours of the co-listening, in either direction, whose colour agrees,
+-- the first 8 — the depth the rule was measured at (2026-10-11); the table
+-- keeps them all — in their rank order, each with its reason — the style, with
+-- the artist's decade of most records in it (NULL when none is dated), or the
+-- genre (`source` says which) that weighs most in what the two share —
 -- and its side in time (musilogy.side). Every neighbour is in the dump: a colour comes from
 -- its styles or its genres, which only an artist of the dump has.
 CREATE FUNCTION musilogy.artist_same_sound(artist text)
