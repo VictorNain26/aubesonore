@@ -6,7 +6,6 @@ import { logger } from '../lib/logger';
 export interface DeezerArtist {
   id: string;
   name: string;
-  picture: string | null;
 }
 
 const DEEZER_API = 'https://api.deezer.com';
@@ -31,12 +30,11 @@ let circuitOpenUntil = 0;
 interface RawArtist {
   id?: number;
   name?: string;
-  picture_xl?: string | null;
 }
 
 function toArtist(raw: RawArtist): DeezerArtist | null {
   if (typeof raw.id !== 'number' || typeof raw.name !== 'string') return null;
-  return { id: String(raw.id), name: raw.name, picture: raw.picture_xl ?? null };
+  return { id: String(raw.id), name: raw.name };
 }
 
 type Fetched<T> = { status: 'ok'; body: T } | { status: 'missing' } | { status: 'failed' };
@@ -205,24 +203,6 @@ export async function findTrackByIsrc(isrc: string): Promise<Lookup<DeezerIsrcTr
     deezerCache.set(key, result, result.status === 'none' ? NEGATIVE_TTL_MS : undefined);
     return result;
   })) as Lookup<DeezerIsrcTrack>;
-}
-
-export async function getArtist(id: string): Promise<Lookup<DeezerArtist>> {
-  const key = `artist:${id}`;
-  const cached = deezerCache.get(key);
-  if (cached !== undefined) return cached as Lookup<DeezerArtist>;
-
-  return (await flight(key, async () => {
-    const fetched = await getJson<RawArtist>(`/artist/${encodeURIComponent(id)}`);
-    if (fetched.status === 'failed') return { status: 'failed' };
-
-    const artist = fetched.status === 'ok' ? toArtist(fetched.body) : null;
-    const result: Lookup<DeezerArtist> = artist
-      ? { status: 'found', value: artist }
-      : { status: 'none' };
-    deezerCache.set(key, result, artist ? undefined : NEGATIVE_TTL_MS);
-    return result;
-  })) as Lookup<DeezerArtist>;
 }
 
 /** Test seam: the breaker is module state and would leak between test files. */

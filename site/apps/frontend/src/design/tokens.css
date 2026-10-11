@@ -380,6 +380,28 @@
     var(--surface);
 }
 
+/* L'aube d'un artiste sans image : la même lumière, placée par son identifiant
+   (--sun, --rose, --lilac : positions ; --rise : hauteur), toujours la même pour lui. */
+@utility artist-dawn {
+  background:
+    radial-gradient(
+      48% var(--rise, 32%) at var(--sun, 50%) 100%,
+      color-mix(in oklab, var(--dawn) 80%, transparent) 0%,
+      transparent 72%
+    ),
+    radial-gradient(
+      42% calc(var(--rise, 32%) - 6%) at var(--rose, 25%) 98%,
+      color-mix(in oklab, var(--dawn-rose) 60%, transparent) 0%,
+      transparent 72%
+    ),
+    radial-gradient(
+      42% calc(var(--rise, 32%) - 8%) at var(--lilac, 75%) 98%,
+      color-mix(in oklab, var(--dawn-lilac) 60%, transparent) 0%,
+      transparent 72%
+    ),
+    var(--surface-raised);
+}
+
 /* L'écran d'ouverture remplit toute la fenêtre : la page suivante commence sous le pli, jamais
    coupée en bas du premier écran. Sur tablette en portrait, il suit son contenu. */
 @utility hero-height {

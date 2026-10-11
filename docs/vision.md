@@ -202,14 +202,17 @@ Un ordre de départ, chaque section seulement quand elle a quelque chose à mont
    Les relations qui parlent de la vie plutôt que de la musique (famille, professeur, musicien de
    tournée, groupe hommage) restent hors de la page.
 
-**Le portrait**, puisqu'aucune source ne couvre tous les artistes : la photo Deezer (lien déclaré
-dans MusicBrainz pour 96 % des artistes joués, 45 % des artistes à 500 auditeurs ou plus, 8 % de
-tous), sinon la pochette du premier album, ou du premier EP (Cover Art Archive : 321 des 336
-artistes joués, 199 sur 300 artistes à 500 auditeurs ou plus tirés au hasard, 2026-10-05), sinon le
-visuel « onde » que le site génère. Chaque page a une image, toutes ne sont pas des photos. La
-photo et les pochettes Deezer posent une question de licence (§2.5). L'image Wikidata/Commons attend :
-chaque image a sa licence et son auteur à créditer à côté d'elle. Les identifiants Deezer peuvent
-aussi venir des ISRC des enregistrements du dump, vérifiés comme ceux de l'antenne (§4.4).
+**Le portrait**, seulement sous une licence connue (§2.5), puisqu'aucune source ne couvre tous
+les artistes : la photo de l'élément Wikidata sur Wikimedia Commons, sinon la pochette du premier
+album, ou du premier EP (Cover Art Archive), sinon l'aube de l'artiste, que le site dessine depuis
+son identifiant : toujours la même pour lui. L'une ou l'autre image existe pour 95,7 % des artistes
+joués et 60,3 % de 300 artistes tirés parmi les proches que les pages montrent (2026-10-11) ; la
+photo Deezer, 96,2 % des joués, est partie avec sa licence d'usage privé. Chaque page a une image,
+toutes ne sont pas des photos. Un clic ouvre l'image en grand ; une photo y porte le crédit que sa
+licence demande (auteur, licence, page source, chacun un lien), et un petit « © » sur la vignette
+dit qu'elle en a un : la licence demande un crédit « reasonable to the medium », sans fixer sa place
+(CC BY-SA 2.0 §4c ; Creative Commons, *Recommended practices for attribution*). Une photo ne sert
+pas d'image de partage, qu'un aperçu de lien montrerait sans son crédit.
 
 **Indexée quand elle est riche** : une page est proposée aux moteurs de recherche au-delà d'un
 seuil de contenu ; en deçà, elle existe mais n'est pas listée. La page d'un artiste joué l'est
@@ -233,7 +236,7 @@ Revue du 2026-10-06, textes lus ce jour-là ; ce n'est pas un avis juridique.
 | Wikipédia (faits écrits, ouverture de l'article) | CC BY-SA | la page renvoie à l'article et les Mentions légales créditent la licence ; on n'en garde que des liens entre artistes, jamais le texte |
 | MLHD+ (historiques Last.fm, 583 000 utilisateurs) | exclu | aucune licence affichée (wiki MusicBrainz, 2026-10-09) ; tiré de données Last.fm réservées au non-commercial |
 | API Discogs | pas pour ce qui est publié | ses conditions imposent fraîcheur et mention de Discogs : tout ce que la page montre vient des dumps |
-| API Deezer | usage privé seulement | developers.deezer.com/termsofuse §IV : « The use of the Content is limited to a strictly private use within a family scope », pas de « data » générée, pas d'association à une marque. Les extraits ne servent donc pas au son publié ; le portrait et les pochettes que le site affiche sont à régulariser par un accord écrit (§IX) ou à remplacer par des images sous licence connue |
+| API Deezer | usage privé seulement | developers.deezer.com/termsofuse §IV : « The use of the Content is limited to a strictly private use within a family scope », pas de « data » générée, pas d'association à une marque. Les extraits ne servent donc pas au son publié ; le portrait Deezer a été remplacé par une photo Commons ou une pochette (§2.4, 2026-10-11) ; les pochettes des titres que le site affiche restent à régulariser par un accord écrit (§IX) ou à remplacer par des images sous licence connue |
 | Spotify, Apple, YouTube, SoundCloud | exclus | analyse ou copie du contenu interdites par leurs conditions |
 | modèle Discogs-EffNet (pipeline) | non commercial | essentia.upf.edu : CC BY-NC-SA ou BY-NC-ND selon la page ; tient tant qu'AubeSonore n'a aucun revenu |
 
@@ -335,7 +338,7 @@ ligne.
 ### 4.4 L'identité d'un titre et d'un artiste
 
 Le titre se reconnaît par son **ISRC**, l'artiste par son **MBID** (le pivot vers musilogy) et par
-son **identifiant Deezer** (portrait, liens d'écoute). Le pipeline connaît l'identifiant Deezer de
+son **identifiant Deezer** (liens d'écoute). Le pipeline connaît l'identifiant Deezer de
 chaque titre qu'il publie ; il en tire l'ISRC et l'écrit dans le fichier, où AzuraCast le lit. Le
 site résout ensuite, dans cet ordre :
 
@@ -363,7 +366,7 @@ l'artiste principal, chaque crédité est relié.
 |---|---|---|
 | ce que l'antenne a joué | `radio_play` (site) | aucune source externe ne le sait |
 | ce que l'auditeur a gardé | `liked_tracks` (site) | idem |
-| portrait | Deezer, puis une pochette, puis l'onde (§2.4) | l'image de l'artiste exact quand une source l'a |
+| portrait | Wikimedia Commons (photo créditée), puis une pochette, puis l'aube de l'artiste (§2.4) | l'image de l'artiste exact sous une licence connue |
 | faits (type, lieu, années), liens d'écoute, albums et EP | le dump MusicBrainz, via musilogy | une seule source pour toute page, reproductible |
 | ouverture de l'article | Wikipédia (CC BY-SA), via l'identifiant Wikidata du dump | — |
 | artistes similaires (même public et même courant), généalogie (courants, faits écrits), groupes et projets | musilogy, datés de leurs dumps et relevés | reproductibles, avec leur provenance |
@@ -430,7 +433,7 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
    n'ont aucun lien vers Deezer dans MusicBrainz, ce qui se corrige à la source. 22 des 91 titres
    gardés ne retrouvent ni leur passage ni leur titre exact chez Deezer.
 6. **Les featurings ne relient que l'artiste principal** (§4.4).
-7. **Licences à régulariser** : le portrait et les pochettes Deezer (§2.5).
+7. **Licences à régulariser** : les pochettes Deezer des titres (§2.5).
 8. **Aucune copie hors de la maison** (§4.7).
 
 ## 7. Feuille de route

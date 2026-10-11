@@ -1,5 +1,6 @@
 import { describe, it, expect, spyOn, afterAll, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
+import type { ArtistImage } from '@aubesonore/shared-types/client';
 
 const VALID_ID = '11111111-1111-1111-1111-111111111111';
 const UNKNOWN_ID = '22222222-2222-2222-2222-222222222222';
@@ -25,7 +26,9 @@ const SHELL = `<!doctype html><html lang="fr"><head>
 </head><body><div id="root"></div></body></html>`;
 
 let profileName = 'Daft Punk';
-let profileImage: string | null = 'https://cdn-images.dzcdn.net/images/artist/dp.jpg';
+const COVER = 'https://coverartarchive.org/release-group/homework/front-500';
+const cover = (url: string) => ({ kind: 'cover' as const, url, title: 'Homework', year: 1997 });
+let profileImage: ArtistImage | null = cover(COVER);
 
 // spyOn on the real exports, restored after this file: mock.module would
 // replace these modules for every other test file of the run (Bun 1.3).
@@ -111,7 +114,7 @@ afterEach(() => {
   __resetArtistShell();
   __resetRateLimits();
   profileName = 'Daft Punk';
-  profileImage = 'https://cdn-images.dzcdn.net/images/artist/dp.jpg';
+  profileImage = cover(COVER);
   musilogyAnswer = null;
   discovered = [];
   renderAnswer = () => Promise.resolve(new Response(null, { status: 503 }));
@@ -168,9 +171,7 @@ describe('GET /artiste/:slug', () => {
     expect(html).toContain(`<meta property="og:url" content="${pageUrl}" />`);
     expect(html).toContain('<meta property="og:title" content="Daft Punk · AubeSonore" />');
     expect(html).toContain('<meta name="description" content="Un duo français." />');
-    expect(html).toContain(
-      '<meta property="og:image" content="https://cdn-images.dzcdn.net/images/artist/dp.jpg" />'
-    );
+    expect(html).toContain(`<meta property="og:image" content="${COVER}" />`);
     expect(html).not.toContain('og-fr.png');
     expect(html).not.toContain('og:image:width');
     expect(html).not.toContain('https://aubesonore.fr/"');
@@ -229,7 +230,7 @@ describe('GET /artiste/:slug', () => {
       '@type': 'MusicGroup',
       name: 'Daft Punk',
       url: `${env.FRONTEND_BASE_URL}/artiste/daft-punk`,
-      image: 'https://cdn-images.dzcdn.net/images/artist/dp.jpg',
+      image: COVER,
       description: 'Un duo français.',
       sameAs: ['https://fr.wikipedia.org/wiki/Daft_Punk'],
     });
@@ -247,7 +248,7 @@ describe('GET /artiste/:slug', () => {
 
   it('keeps the default share image when the artist image is not on an allowed host', async () => {
     mockShell();
-    profileImage = 'https://evil.example/pwn.jpg';
+    profileImage = cover('https://evil.example/pwn.jpg');
 
     const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
@@ -259,13 +260,35 @@ describe('GET /artiste/:slug', () => {
     expect(html).toContain('og:image:width');
   });
 
-  it('drops a non-https og:image', async () => {
+  it('keeps the default share image for a Commons photo, whose credit a preview cannot carry', async () => {
     mockShell();
-    profileImage = 'http://cdn-images.dzcdn.net/images/artist/dp.jpg';
+    profileImage = {
+      kind: 'photo',
+      url: 'https://upload.wikimedia.org/wikipedia/commons/6/61/Can_1972.jpg',
+      credit: {
+        author: 'Heinrich Klaffs',
+        licence: 'CC BY-SA 2.0',
+        licenceUrl: 'https://creativecommons.org/licenses/by-sa/2.0',
+        source: 'https://commons.wikimedia.org/wiki/File:Can_1972.jpg',
+      },
+    };
 
     const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
-    expect(await res.text()).not.toContain('http://cdn-images.dzcdn.net');
+    const html = await res.text();
+    expect(html).not.toContain('upload.wikimedia.org');
+    expect(html).toContain(
+      '<meta property="og:image" content="https://aubesonore.fr/og-fr.png" />'
+    );
+  });
+
+  it('drops a non-https og:image', async () => {
+    mockShell();
+    profileImage = cover('http://coverartarchive.org/release-group/homework/front-500');
+
+    const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
+
+    expect(await res.text()).not.toContain('http://coverartarchive.org');
   });
 
   it('answers a malformed slug like an unknown artist, without a lookup', async () => {

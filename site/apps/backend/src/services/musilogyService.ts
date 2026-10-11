@@ -1,6 +1,7 @@
 import { DrizzleQueryError, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import {
   coverArtUrl,
+  type ArtistCover,
   type ArtistFacts,
   type ArtistLink,
   type ArtistPageRef,
@@ -401,11 +402,12 @@ interface ReleaseRow extends Record<string, unknown> {
 
 /**
  * The cover of the artist's first album, else of its first EP: the portrait
- * when Deezer has none (docs/vision.md §2.4); without one the page falls back
- * on its generated wave. A first album has one for 321 of the 336 played
- * artists, 199 of 300 sampled with 500 listeners or more (2026-10-05).
+ * when Wikimedia Commons has no photo of the artist (docs/vision.md §2.4); the
+ * page draws the artist's dawn without one. A photo or this cover exist for
+ * 95.7 % of the played artists, 60.3 % of 300 neighbours pages show
+ * (2026-10-11).
  */
-function firstCoverOf(releases: ReleaseRow[]): string | null {
+function firstCoverOf(releases: ReleaseRow[]): ArtistCover | null {
   // The earliest dated one, whatever order artist_releases gives.
   const earliest = (rows: ReleaseRow[]) =>
     rows.reduce<ReleaseRow | undefined>(
@@ -414,7 +416,7 @@ function firstCoverOf(releases: ReleaseRow[]): string | null {
     );
   const albums = releases.filter((r) => r.primary_type === 'Album');
   const first = earliest(albums) ?? albums[0] ?? earliest(releases) ?? releases[0];
-  return first ? coverArtUrl(first.mbid, 500) : null;
+  return first ? { url: coverArtUrl(first.mbid, 500), title: first.title, year: first.y } : null;
 }
 
 const DEEZER_ARTIST = /^https:\/\/www\.deezer\.com\/artist\/(\d+)$/;
@@ -433,7 +435,7 @@ export interface ArtistIdentity {
   /** The Wikidata item, the way to the artist's Wikipedia articles. */
   wikidataId: string | null;
   /** The cover of the first record, hotlinked from the Cover Art Archive. */
-  firstCover: string | null;
+  firstCover: ArtistCover | null;
   /** The Deezer artist the dump declares, when it declares exactly one. */
   deezerId: string | null;
 }

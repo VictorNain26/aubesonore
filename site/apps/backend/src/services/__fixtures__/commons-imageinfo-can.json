@@ -1,0 +1,42 @@
+{
+  "continue": { "iistart": "2023-09-24T04:54:56Z", "continue": "||" },
+  "query": {
+    "pages": [
+      {
+        "pageid": 11983772,
+        "ns": 6,
+        "title": "File:Can 1972 (Heinrich Klaffs Collection 102).jpg",
+        "imagerepository": "local",
+        "imageinfo": [
+          {
+            "thumburl": "https://upload.wikimedia.org/wikipedia/commons/6/61/Can_1972_%28Heinrich_Klaffs_Collection_102%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+            "thumbwidth": 1280,
+            "thumbheight": 850,
+            "thumbattribs": {
+              "src": "https://upload.wikimedia.org/wikipedia/commons/6/61/Can_1972_%28Heinrich_Klaffs_Collection_102%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+              "decoding": "async",
+              "loading": "lazy",
+              "width": 1280,
+              "height": 850
+            },
+            "url": "https://upload.wikimedia.org/wikipedia/commons/6/61/Can_1972_%28Heinrich_Klaffs_Collection_102%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+            "descriptionurl": "https://commons.wikimedia.org/wiki/File:Can_1972_(Heinrich_Klaffs_Collection_102).jpg",
+            "descriptionshorturl": "https://commons.wikimedia.org/w/index.php?curid=11983772",
+            "extmetadata": {
+              "Artist": { "value": "Heinrich Klaffs", "source": "commons-desc-page" },
+              "LicenseShortName": {
+                "value": "CC BY-SA 2.0",
+                "source": "commons-desc-page",
+                "hidden": ""
+              },
+              "LicenseUrl": {
+                "value": "https://creativecommons.org/licenses/by-sa/2.0",
+                "source": "commons-desc-page"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

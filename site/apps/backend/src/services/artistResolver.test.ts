@@ -263,7 +263,7 @@ describe('resolveArtist', () => {
 
   it('binds a Deezer match and takes its spelling', async () => {
     playRows = [{ title: 'Kelly Watch the Stars' }];
-    search = { status: 'match', artist: { id: '27', name: 'Daft Punk', picture: null } };
+    search = { status: 'match', artist: { id: '27', name: 'Daft Punk' } };
 
     await resolveArtist('daft punk');
 
@@ -281,7 +281,7 @@ describe('resolveArtist', () => {
 
   it('keys a name with no letter of its own on the played name', async () => {
     playRows = [{ title: 'Kelly Watch the Stars' }];
-    search = { status: 'match', artist: { id: '9', name: '!!!', picture: null } };
+    search = { status: 'match', artist: { id: '9', name: '!!!' } };
 
     expect(await resolveArtist('Chk Chk Chk')).toMatchObject({ slug: 'chk-chk-chk' });
   });
@@ -296,7 +296,7 @@ describe('resolveArtist', () => {
 describe('the MBID, pivot to Musilogy', () => {
   const DAFT_PUNK = {
     status: 'match',
-    artist: { id: '27', name: 'Daft Punk', picture: null },
+    artist: { id: '27', name: 'Daft Punk' },
   } as const;
 
   it('takes the MBID MusicBrainz declares for the Deezer artist found by name', async () => {
@@ -400,7 +400,7 @@ describe('identity by ISRC', () => {
       status: 'found',
       value: {
         title,
-        artists: artists.map(([id, name]) => ({ id, name, picture: null })),
+        artists: artists.map(([id, name]) => ({ id, name })),
         link: null,
         cover: null,
       },
@@ -441,7 +441,7 @@ describe('identity by ISRC', () => {
     playRows = [{ title: 'Band on the Run', isrc: 'GBCCS1500158' }];
     isrcLookup = { status: 'found', value: [recording('Band on the Run', ['mb-wings', 'Wings'])] };
     deezerByIsrc = deezerTrack('Band On The Run', ['2709', 'Wings']);
-    search = { status: 'match', artist: { id: '1', name: 'Paul McCartney', picture: null } };
+    search = { status: 'match', artist: { id: '1', name: 'Paul McCartney' } };
     mbLookup = { status: 'found', value: 'mb-paul' };
 
     await resolveArtist('Paul McCartney');
@@ -564,7 +564,7 @@ describe('reverifyArtist', () => {
       status: 'found',
       value: [{ title: 'Band on the Run', credits: [{ mbid: 'mb-wings', names: ['Wings'] }] }],
     };
-    search = { status: 'match', artist: { id: '1', name: 'Paul McCartney', picture: null } };
+    search = { status: 'match', artist: { id: '1', name: 'Paul McCartney' } };
     mbLookup = { status: 'found', value: 'mb-paul' };
 
     expect(await reverifyArtist('paul mccartney', 'Paul McCartney')).toBe('changed');

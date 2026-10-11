@@ -96,6 +96,27 @@ describe('artworkSrcSet', () => {
     expect(artworkAt(url, 1000)).toBe(url);
   });
 
+  it("offers a Commons thumbnail at Wikimedia's standard widths only", () => {
+    // The thumbnail the imageinfo API gives (2026-10-11), its tracking query kept.
+    const url =
+      'https://thumb.wikimedia.org/wikipedia/commons/thumb/3/3b/Stereolab_%281994%29.jpg/' +
+      '1280px-Stereolab_%281994%29.jpg?utm_source=commons.wikimedia.org';
+    const srcset = artworkSrcSet(url);
+    expect(srcset?.split(', ').map((candidate) => candidate.split(' ')[1])).toEqual([
+      '330w',
+      '500w',
+      '960w',
+      '1280w',
+    ]);
+    expect(srcset).toContain(
+      '/500px-Stereolab_%281994%29.jpg?utm_source=commons.wikimedia.org 500w'
+    );
+    // An original under 1280 px has no thumbnail path: it is served as it is.
+    expect(
+      artworkSrcSet('https://upload.wikimedia.org/wikipedia/commons/6/61/Can_1972.jpg')
+    ).toBeUndefined();
+  });
+
   it('offers nothing for a host that cannot resize', () => {
     expect(artworkSrcSet('https://radio.aubesonore.fr/api/station/1/art/abc-1691234.jpg')).toBe(
       undefined

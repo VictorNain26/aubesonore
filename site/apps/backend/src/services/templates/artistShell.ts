@@ -11,9 +11,11 @@ function scriptJson(value: unknown): string {
   return JSON.stringify(value).replaceAll('<', '\\u003c');
 }
 
-// Only Deezer's CDN may end up in og:image: an attacker-controlled host there
-// would let a poisoned profile dictate what social networks display for us.
-const ALLOWED_IMAGE_HOSTS = ['cdn-images.dzcdn.net', 'e-cdns-images.dzcdn.net', 'cdn.deezer.com'];
+// Only the Cover Art Archive may end up in og:image: an attacker-controlled
+// host there would let a poisoned profile dictate what social networks display
+// for us. A Commons photo stays out: a link preview cannot carry the credit its
+// licence asks for (docs/vision.md §2.5).
+const ALLOWED_IMAGE_HOSTS = ['coverartarchive.org'];
 
 const OG_DESCRIPTION_MAX = 200;
 
@@ -86,7 +88,8 @@ export function renderArtistShell(
     : locale === 'en'
       ? `${profile.name}${profile.played ? ', played' : ''} on AubeSonore, a music discovery radio.`
       : `${profile.name}${profile.played ? ', passé' : ''} sur AubeSonore, radio de découverte musicale.`;
-  const image = isAllowedImage(profile.image) ? profile.image : null;
+  const cover = profile.image?.kind === 'cover' ? profile.image.url : null;
+  const image = isAllowedImage(cover) ? cover : null;
 
   const content: Record<string, string> = {
     'meta[name="description"]': description,
