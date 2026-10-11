@@ -65,16 +65,20 @@ export interface Axis {
 }
 
 /**
- * The decades every span fits in, a label every ten years, twenty past sixty, forty past a
- * hundred and twenty: labels never crowd the narrowest track.
+ * From the decade the first span starts in to this year, which closes the axis as « today » rather
+ * than a year still to come. A label every ten years, twenty past sixty, forty past a hundred and
+ * twenty, the last one far enough from today not to crowd it: labels never meet on the narrowest
+ * track.
  */
-export function axisOf(spans: readonly Span[]): Axis | null {
+export function axisOf(spans: readonly Span[], thisYear: number): Axis | null {
   if (spans.length === 0) return null;
   const from = Math.floor(Math.min(...spans.map((span) => span.from)) / 10) * 10;
-  const to = Math.ceil((Math.max(...spans.map((span) => span.to)) + 1) / 10) * 10;
+  const to = Math.max(thisYear, ...spans.map((span) => span.to));
   const step = to - from > 120 ? 40 : to - from > 60 ? 20 : 10;
   const ticks: number[] = [];
-  for (let year = Math.ceil(from / step) * step; year <= to; year += step) ticks.push(year);
+  for (let year = Math.ceil(from / step) * step; year <= to - step * 0.75; year += step) {
+    ticks.push(year);
+  }
   return { from, to, ticks };
 }
 
@@ -142,7 +146,10 @@ export function MusilogyTimeline({
     thisYear
   );
   const spans = close.map((n) => spanOf(n.y0, n.yEnd, n.ended, thisYear));
-  const axis = axisOf([...spans, own].filter((span): span is Span => span !== null));
+  const axis = axisOf(
+    [...spans, own].filter((span): span is Span => span !== null),
+    thisYear
+  );
 
   return (
     <div className="@container">
@@ -158,6 +165,9 @@ export function MusilogyTimeline({
                 {year}
               </span>
             ))}
+            <span className="text-label text-text-muted absolute right-0 font-mono">
+              {m.musilogy_today()}
+            </span>
           </span>
         </div>
       ) : null}

@@ -43,19 +43,19 @@ describe('spanOf', () => {
 });
 
 describe('axisOf', () => {
-  it('covers every span in whole decades, a label every ten years or twenty past sixty', () => {
+  it('runs from a decade to today, labels never crowding it', () => {
     expect(
-      axisOf([
-        { from: 1971, to: 1975 },
-        { from: 1990, to: 2026 },
-      ])
-    ).toEqual({
-      from: 1970,
-      to: 2030,
-      ticks: [1970, 1980, 1990, 2000, 2010, 2020, 2030],
-    });
-    expect(axisOf([{ from: 1955, to: 2026 }])?.ticks).toEqual([1960, 1980, 2000, 2020]);
-    expect(axisOf([])).toBeNull();
+      axisOf(
+        [
+          { from: 1971, to: 1975 },
+          { from: 1990, to: 2026 },
+        ],
+        2026
+      )
+    ).toEqual({ from: 1970, to: 2026, ticks: [1970, 1980, 1990, 2000, 2010] });
+    // Twenty years apart past sixty; 2020 would sit on « today ».
+    expect(axisOf([{ from: 1955, to: 2026 }], 2026)?.ticks).toEqual([1960, 1980, 2000]);
+    expect(axisOf([], 2026)).toBeNull();
   });
 });
 

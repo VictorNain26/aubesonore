@@ -250,5 +250,6 @@
   "musilogy_close_same": "Le même son.",
   "musilogy_close_band": "La bande en fond : {name}.",
   "musilogy_start_unknown": "début inconnu",
-  "musilogy_end_unknown": "{y0}, fin inconnue"
+  "musilogy_end_unknown": "{y0}, fin inconnue",
+  "musilogy_today": "aujourd'hui"
 }
