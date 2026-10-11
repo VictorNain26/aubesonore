@@ -147,6 +147,37 @@ def test_each_title_goes_to_the_hour_that_resembles_it_and_the_hour_drifts() -> 
     assert order[:-1] == sorted(order[:-1], reverse=True)
 
 
+def _styled(tid: int, style: list[float]) -> Titre:
+    v = np.array(style, dtype=np.float64)
+    return replace(_titre(tid, "decouvertes", 0.5), style=v / np.linalg.norm(v))
+
+
+def test_at_equal_mood_the_hour_keeps_the_style_of_the_title_before() -> None:
+    # Breaks if the choice of titles ignores the style: the hour would mix both groups.
+    # Sans le style, la rotation départage par id : techno, aux plus petits, passerait.
+    folk = [_styled(100 + i, [1, 0.1 * (i % 3)]) for i in range(16)]
+    techno = [_styled(i, [0.1 * (i % 3), 1]) for i in range(16)]
+    before = _styled(999, [1, 0])
+    plan = plan_day(
+        techno + folk, {}, _grille(decouvertes=32), FRIDAY, _spans([3]), MIDNIGHT, XF, before
+    )
+    assert {t.tid for t in plan.hours[3]} == {t.tid for t in folk}
+
+
+def test_the_thread_goes_to_the_closest_style_at_equal_mood() -> None:
+    # Breaks if the order of the hour ignores the style: it would follow the ids.
+    titres = [
+        _styled(1, [0, 1]),
+        _styled(2, [1, 0]),
+        _styled(3, [0.1, 1]),
+        _styled(4, [1, 0.1]),
+    ]
+    before = _styled(999, [1, 0.05])
+    plan = plan_day(titres, {}, _grille(decouvertes=4), FRIDAY, _spans([3]), MIDNIGHT, XF, before)
+    assert [t.tid for t in plan.hours[3]][:2] in ([2, 4], [4, 2])
+    assert {t.tid for t in plan.hours[3][2:]} == {1, 3}
+
+
 def test_an_artist_waits_three_hours_and_a_title_goes_back_in_rotation() -> None:
     # 20 titres d'artistes distincts pour 16 créneaux par heure.
     titres = [_titre(i, "decouvertes", 0.5) for i in range(20)]
@@ -443,6 +474,20 @@ def test_titles_on_air_are_read_with_their_measures_as_quantiles(tmp_path: Path)
     assert list(titres[200000].q) == [0.5, 0.5, 0.5] and list(titres[200001].q) == [1, 1, 1]
     assert not titres[200002].measured and list(titres[200002].q_end) == [0.5, 0.5, 0.5]
     assert titres[200000].since == MIDNIGHT - 86400
+    assert titres[200000].style is not None
+    assert float(np.linalg.norm(titres[200000].style)) == pytest.approx(1.0)
+
+
+def test_a_title_without_style_print_reads_as_none(tmp_path: Path) -> None:
+    conn = make_model_db(tmp_path)
+    conn.execute(
+        "INSERT INTO antenne VALUES (200000, 'decouverte', 'decouvertes', 1, 's1', "
+        "'antenne/1.mp3', ?, ?)",
+        (ENTERED, ENTERED),
+    )
+    conn.execute("DELETE FROM track_measures WHERE deezer_track_id = 200000")
+    conn.commit()
+    assert load_titres(conn)[0].style is None
 
 
 class FakeStation:

@@ -11,12 +11,14 @@ La grille se remplit créneau par créneau, avec la mécanique des logiciels de 
    règles incassables : un titre se repose au moins `repos` tour de sa catégorie, un artiste ne
    repasse pas avant `separation_h` heures. Parmi les titres permis, la ressemblance à la cible de
    l'heure est un objectif, jamais une condition : un titre en retard de `avantage` tours y gagne,
-   et à `force` tours il passe d'office (règle anti-famine de GSelector). Un titre placé repart en
+   et à `force` tours il passe d'office (règle anti-famine de GSelector). La ressemblance de style
+   au titre placé juste avant (empreinte Discogs-EffNet) s'y ajoute, pesée par `style` : sans
+   elle, les titres d'une heure étaient aussi disparates qu'au hasard. Un titre placé repart en
    fin de rotation.
 3. Chaque heure est ensuite ordonnée en fil qui dérive : elle part du dernier titre de la
-   précédente et va chaque fois au plus proche, de la fin d'un titre au début du suivant. Les
-   titres qui partent à coup sûr avant la fin de l'heure, les plus en retard, viennent d'abord ;
-   les moins pressés finissent l'heure, que la suivante peut couper.
+   précédente et va chaque fois au plus proche, de la fin d'un titre au début du suivant, en
+   mesures et en style. Les titres qui partent à coup sûr avant la fin de l'heure, les plus en
+   retard, viennent d'abord ; les moins pressés finissent l'heure, que la suivante peut couper.
 """
 
 import math
@@ -33,12 +35,16 @@ import numpy as np
 import numpy.typing as npt
 
 from radio.core.config import Bloc, Categorie, GrilleConfig
+from radio.signals.audio import MODEL_TAG, from_blob
 
 Vector = npt.NDArray[np.float64]
 
 CATEGORIES: tuple[Categorie, ...] = ("nouveautes", "decouvertes", "fond", "reperes")
 JOURS = ("lun", "mar", "mer", "jeu", "ven", "sam", "dim")
 NEUTRE = np.full(3, 0.5)
+# Distance de style de deux titres pris au hasard à l'antenne (1 - cosinus médian, mesuré le
+# 2026-10-11) : celle d'un titre sans empreinte, ni favorisé ni écarté.
+STYLE_NEUTRE = 0.6
 
 
 def bloc(day: int, hour: int) -> Bloc:
@@ -74,6 +80,8 @@ class Titre:
     since: float
     # Durée du fichier (`radio mesures`) ; None tant qu'il n'est pas mesuré.
     duration_s: float | None
+    # Empreinte Discogs-EffNet de l'extrait Deezer, normée ; None sans empreinte.
+    style: Vector | None = None
 
 
 Span = tuple[float, float]
@@ -96,20 +104,23 @@ class Plan:
 def load_titres(conn: sqlite3.Connection) -> list[Titre]:
     """Titres à l'antenne, chaque mesure (énergie = arousal, dansabilité, tempo) ramenée à son
     quantile parmi les titres mesurés : les cibles suivent la couleur de l'antenne. Un titre pas
-    encore mesuré est neutre (0,5)."""
+    encore mesuré est neutre (0,5). L'empreinte de style est celle de `signals`."""
     rows = conn.execute(
         """
         SELECT n.deezer_track_id, COALESCE(t.deezer_artist_id, -n.deezer_track_id), n.categorie,
                n.path, n.song_id, f.status = 'ok',
                f.arousal, f.danceability, f.bpm,
                f.arousal_start, f.danceability_start, f.bpm_start,
-               f.arousal_end, f.danceability_end, f.bpm_end, n.since, f.duration_s
+               f.arousal_end, f.danceability_end, f.bpm_end, n.since, f.duration_s, m.embedding
         FROM antenne n
         LEFT JOIN tracks t USING (deezer_track_id)
         LEFT JOIN track_features f USING (deezer_track_id)
+        LEFT JOIN track_measures m
+               ON m.deezer_track_id = n.deezer_track_id AND m.status = 'ok' AND m.model = ?
         WHERE n.categorie != 'repos'
         ORDER BY n.deezer_track_id
-        """
+        """,
+        (MODEL_TAG,),
     ).fetchall()
     ok = [r for r in rows if r[5]]
     ref = [np.sort(np.array([float(r[6 + k]) for r in ok])) for k in range(3)]
@@ -135,6 +146,7 @@ def load_titres(conn: sqlite3.Connection) -> list[Titre]:
                 measured,
                 datetime.fromisoformat(str(r[15])).timestamp(),
                 float(r[16]) if measured else None,
+                None if r[17] is None else _unit(from_blob(r[17])),
             )
         )
     return out
@@ -282,10 +294,14 @@ def plan_day(
                 continue
             stuck.clear()
             starved = [t for t in eligible if overdue(t, now) >= grille.force]
+            before = plan.hours[h][-1] if plan.hours[h] else last
             t = (
                 max(starved, key=lambda t: overdue(t, now))
                 if starved
-                else min(eligible, key=lambda t: score(t, now, target))
+                else min(
+                    eligible,
+                    key=lambda t: score(t, now, target) + grille.style * _style(before, t),
+                )
             )
             urgency[t.tid] = overdue(t, now)
             clock[t.tid] = now
@@ -299,8 +315,8 @@ def plan_day(
             plan.short_hours += 1
         sure = _sure(plan.hours[h], length - carry, urgency, on_air)
         spare = [t for t in plan.hours[h] if t not in sure]
-        ordered = _drift(sure, last, target)
-        ordered += _drift(spare, ordered[-1] if ordered else last, target)
+        ordered = _drift(sure, last, target, grille.style)
+        ordered += _drift(spare, ordered[-1] if ordered else last, target, grille.style)
         plan.hours[h] = ordered
         if ordered:
             last = ordered[-1]
@@ -334,16 +350,38 @@ def _target(grille: GrilleConfig, day: int, hour: int) -> Vector:
     return np.array([c.energie, c.dansabilite, c.tempo])
 
 
-def _drift(titres: list[Titre], previous: Titre | None, target: Vector) -> list[Titre]:
-    """Fil qui dérive : chaque titre est le plus proche, à son début, de la fin du précédent."""
+def _unit(v: npt.NDArray[np.float32]) -> Vector:
+    return np.asarray(v / np.linalg.norm(v), dtype=np.float64)
+
+
+def _style(a: Titre | None, b: Titre) -> float:
+    """Distance de style (1 - cosinus des empreintes) ; nulle sans titre avant."""
+    if a is None:
+        return 0.0
+    if a.style is None or b.style is None:
+        return STYLE_NEUTRE
+    return 1.0 - float(a.style @ b.style)
+
+
+def _drift(
+    titres: list[Titre], previous: Titre | None, target: Vector, style: float
+) -> list[Titre]:
+    """Fil qui dérive : chaque titre est le plus proche du précédent, de sa fin au début du
+    suivant pour les mesures, et en style."""
     left = list(titres)
     out: list[Titre] = []
-    end = previous.q_end if previous is not None else target
+    prev, end = previous, previous.q_end if previous is not None else target
     while left:
-        nxt = min(left, key=lambda t: (float(np.linalg.norm(t.q_start - end)), t.tid))
+        nxt = min(
+            left,
+            key=lambda t: (
+                float(np.linalg.norm(t.q_start - end)) + style * _style(prev, t),
+                t.tid,
+            ),
+        )
         left.remove(nxt)
         out.append(nxt)
-        end = nxt.q_end
+        prev, end = nxt, nxt.q_end
     return out
 
 

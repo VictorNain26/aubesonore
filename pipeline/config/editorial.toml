@@ -103,6 +103,10 @@ repos = 0.6
 separation_h = 3
 avantage = 1.5
 force = 2.0
+# Poids de la ressemblance de style (empreinte Discogs-EffNet) au titre d'avant, à côté de
+# l'écart d'ambiance, au choix des titres comme à leur ordre
+# (docs/recherches/2026-10-11-fil-de-style.md).
+style = 1.0
 
 # Part d'antenne de chaque catégorie et passages par semaine d'un même titre : le stock à
 # l'antenne s'en déduit (part × titres par heure × 168 / passages).
