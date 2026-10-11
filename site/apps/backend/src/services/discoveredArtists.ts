@@ -5,7 +5,7 @@ import { getArtistIdentity, getMusilogyArtist } from './musilogyService';
 
 /**
  * Which pages of artists the antenna never played are offered to search engines
- * (docs/vision.md §2.3, step 7.5). Rule measured on 2026-10-06 over the 8,126
+ * (docs/vision.md §2.4). Rule measured on 2026-10-06 over the 8,126
  * artists the played pages link to: linked from at least 10 played pages (522),
  * with a Wikidata item (the way to their Wikipedia opening) and at least 3
  * albums or EPs, about 490 pages. Google's spam policies count pages stitched
