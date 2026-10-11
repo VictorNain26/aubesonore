@@ -63,15 +63,16 @@ function AlsoIn({ projects }: { projects: readonly MusilogyProject[] }) {
   const [open, setOpen] = useState(false);
   const shown = open ? projects : projects.slice(0, PROJECTS_SHOWN);
   return (
-    <div className="text-ui text-text-muted flex flex-wrap items-center gap-x-1.5">
+    <div className="text-ui text-text-muted flex flex-wrap items-start gap-x-1.5">
       <span>{m.musilogy_also_in()}</span>
-      <ul className="m-0 flex min-w-0 list-none flex-wrap items-center p-0">
+      <ul className="m-0 flex min-w-0 list-none flex-wrap items-start p-0">
         {shown.map((project, i) => (
-          <li key={project.mbid} className="inline-flex items-center">
+          <li key={project.mbid} className="inline-flex items-start">
             <Link
               to={pagePathOf(project)}
               state={DISCOVERY}
-              className={cn(ARTIST_LINK, 'text-text flex min-h-11 items-center underline-offset-4')}
+              // The text at the top of its 44 px target, close to the name above it.
+              className={cn(ARTIST_LINK, 'text-text flex min-h-11 items-start underline-offset-4')}
             >
               {project.name}
             </Link>
@@ -79,7 +80,7 @@ function AlsoIn({ projects }: { projects: readonly MusilogyProject[] }) {
           </li>
         ))}
         {projects.length > shown.length ? (
-          <li className="inline-flex items-center pl-3">
+          <li className="inline-flex items-start pl-3">
             <ShowMore count={projects.length - shown.length} onOpen={() => setOpen(true)} />
           </li>
         ) : null}
@@ -97,13 +98,19 @@ function MemberRow({
   projects: readonly MusilogyProject[];
 }) {
   const years = linkYears(member);
+  // With a line under it, the name sits at the foot of its 44 px target, close to that line.
+  const below = member.disambiguation || projects.length > 0;
   return (
     <li className="border-border reveal flex min-h-14 flex-col justify-center border-b py-1 md:px-1">
-      <span className="flex items-center justify-between gap-6">
+      <span className={cn('flex justify-between gap-6', below ? 'items-end' : 'items-center')}>
         <Link
           to={pagePathOf(member)}
           state={DISCOVERY}
-          className={cn(ARTIST_LINK, 'text-row flex min-h-11 items-center underline-offset-4')}
+          className={cn(
+            ARTIST_LINK,
+            'text-row flex min-h-11 underline-offset-4',
+            below ? 'items-end' : 'items-center'
+          )}
         >
           {member.name}
         </Link>
