@@ -113,9 +113,11 @@ plafonné : `build.connect()` borne DuckDB (2 Go, 2 threads, 10 Go de
 débordement dans `data/tmp/`), mais pas le cache disque ni Python, et les
 services de la machine occupent déjà la moitié de ses 16 Go. Le 2026-10-02,
 une requête sans borne l'a gelée. La co-écoute sur toutes les écoutes culmine
-à 3,9 Go et prend 10 h (2026-10-10) : `musilogy run` part alors dans un scope
-de 4 Go visés et 5 Go au plus, quand la passe hebdomadaire de la radio ne
-tourne pas.
+à 3,9 Go sans plafond et prend 10 h (2026-10-10) : `musilogy run` part alors
+dans un scope de 5,5 Go visés et 6 Go au plus, quand la passe hebdomadaire de
+la radio ne tourne pas. Un plafond visé (`MemoryHigh`) se pose au-dessus du pic
+mesuré, jamais dessus : à 4 Go, le noyau a freiné le calcul des heures durant
+(2026-10-11). Après le lancement, `memory.pressure` de l'unité le dit.
 
 ```bash
 systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=0 \
