@@ -368,7 +368,7 @@ l'artiste principal, chaque crédité est relié.
 | ouverture de l'article | Wikipédia (CC BY-SA), via l'identifiant Wikidata du dump | — |
 | artistes similaires (même public et même courant), généalogie (courants, faits écrits), groupes et projets | musilogy, datés de leurs dumps et relevés | reproductibles, avec leur provenance |
 
-Un artiste plus récent que le dump épinglé n'a pas de faits jusqu'au suivant (§7, étape 5).
+Un artiste plus récent que le dump épinglé n'a pas de faits jusqu'au suivant (§7, étape 4).
 
 ### 4.6 Une page artiste qui répond toujours
 
