@@ -10,6 +10,7 @@ from radio.votes.select import (
     pending_ballots,
     record_vote,
     select_batch,
+    week_votes,
 )
 from tests_radio.model_factory import NOW, make_model_db, serve_scores
 
@@ -109,7 +110,6 @@ def test_votes_empty_the_queue_and_titles_never_return(tmp_path: Path) -> None:
     for b in pending_ballots(conn):
         assert record_vote(conn, b.deezer_track_id, "oui", NOW)
     assert pending_ballots(conn) == []
-    assert not record_vote(conn, first.exam[0], "non", NOW)  # déjà voté
     assert not record_vote(conn, 400000, "oui", NOW)  # jamais présenté
     kinds = dict(
         conn.execute("SELECT deezer_track_id, kind FROM votes WHERE source = 'page'").fetchall()
@@ -162,3 +162,28 @@ def test_needs_a_serving_model_and_its_scores(tmp_path: Path) -> None:
     conn.commit()
     with pytest.raises(NoScoresError):
         select_batch(conn, _rng(), 10, 10, NOW)
+
+
+def test_a_vote_is_corrected_until_the_next_selection_freezes_it(tmp_path: Path) -> None:
+    conn = make_model_db(tmp_path)
+    serve_scores(conn)
+    first = select_batch(conn, _rng(), 10, 10, NOW)
+    for b in pending_ballots(conn):
+        assert record_vote(conn, b.deezer_track_id, "oui", NOW)
+    tid = first.lesson[0]
+    assert record_vote(conn, tid, "non", "2026-10-11T12:00:00+00:00")
+    row = conn.execute(
+        "SELECT kind, vote, voted_at FROM votes WHERE deezer_track_id = ?", (tid,)
+    ).fetchone()
+    assert tuple(row) == ("lesson", "non", NOW)  # l'heure du premier vote reste
+    week = week_votes(conn)
+    assert [c.ballot.position for c in week] == list(range(20))
+    assert {c.ballot.deezer_track_id: c.vote for c in week}[tid] == "non"
+
+    select_batch(conn, _rng(1), 10, 10, NOW)
+    assert not record_vote(conn, tid, "oui", NOW)  # figé par la nouvelle sélection
+    assert (
+        conn.execute("SELECT vote FROM votes WHERE deezer_track_id = ?", (tid,)).fetchone()[0]
+        == "non"
+    )
+    assert week_votes(conn) == []

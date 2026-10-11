@@ -13,6 +13,9 @@
   le titre.
 - Un titre voté ou déjà présenté ne revient jamais. Tant qu'un bulletin attend, aucune nouvelle
   sélection : les semaines sans vote ne s'empilent pas.
+- Un vote se corrige tant que sa sélection est la dernière : la passe suivante l'apprend
+  (`train`), puis tire une nouvelle sélection qui le fige. Tous les bulletins en attente sont
+  dans la dernière sélection, puisqu'aucune n'est tirée tant qu'un bulletin attend.
 """
 
 import sqlite3
@@ -47,6 +50,12 @@ class Ballot:
 
 
 @dataclass(frozen=True)
+class CastVote:
+    ballot: Ballot
+    vote: str
+
+
+@dataclass(frozen=True)
 class Selection:
     selection_id: int | None  # None : rien à présenter
     model_id: int
@@ -71,25 +80,44 @@ def pending_ballots(conn: sqlite3.Connection) -> list[Ballot]:
     return [Ballot(int(r[0]), str(r[1]), int(r[2]), str(r[3]), str(r[4])) for r in rows]
 
 
+def week_votes(conn: sqlite3.Connection) -> list[CastVote]:
+    """Votes de la dernière sélection, dans l'ordre de présentation : ceux qui se corrigent."""
+    rows = conn.execute(
+        """
+        SELECT b.deezer_track_id, b.kind, b.position, a.name, t.title, v.vote
+        FROM ballots b
+        JOIN votes v ON v.deezer_track_id = b.deezer_track_id
+        JOIN tracks t ON t.deezer_track_id = b.deezer_track_id
+        JOIN artists a ON a.deezer_artist_id = t.deezer_artist_id
+        WHERE b.selection_id = (SELECT MAX(selection_id) FROM selections)
+        ORDER BY b.position
+        """
+    ).fetchall()
+    return [
+        CastVote(Ballot(int(r[0]), str(r[1]), int(r[2]), str(r[3]), str(r[4])), str(r[5]))
+        for r in rows
+    ]
+
+
 def record_vote(conn: sqlite3.Connection, track_id: int, vote: str, now: str) -> bool:
-    """Enregistre le vote d'un bulletin en attente. False si le titre n'attend pas de vote."""
-    try:
-        with conn:
-            row = conn.execute(
-                """
-                SELECT b.kind FROM ballots b
-                LEFT JOIN votes v ON v.deezer_track_id = b.deezer_track_id
-                WHERE b.deezer_track_id = ? AND v.deezer_track_id IS NULL
-                """,
-                (track_id,),
-            ).fetchone()
-            if row is None:
-                return False
-            conn.execute(
-                "INSERT INTO votes VALUES (?, ?, ?, ?, 'page')", (track_id, row[0], vote, now)
-            )
-    except sqlite3.IntegrityError:
-        return False  # double geste simultané : le premier a été enregistré
+    """Enregistre ou corrige le vote d'un bulletin de la dernière sélection. False sinon.
+
+    Une correction garde l'heure du premier vote : la fenêtre d'examen, ordonnée par heure de
+    vote (radio/model/dataset.py), ne bouge pas.
+    """
+    with conn:
+        row = conn.execute(
+            "SELECT kind FROM ballots WHERE deezer_track_id = ? "
+            "AND selection_id = (SELECT MAX(selection_id) FROM selections)",
+            (track_id,),
+        ).fetchone()
+        if row is None:
+            return False
+        conn.execute(
+            "INSERT INTO votes VALUES (?, ?, ?, ?, 'page') "
+            "ON CONFLICT (deezer_track_id) DO UPDATE SET vote = excluded.vote",
+            (track_id, row[0], vote, now),
+        )
     return True
 
 
