@@ -117,15 +117,18 @@ une requête sans borne l'a gelée. La co-écoute sur toutes les écoutes culmin
 dans un scope de 5,5 Go visés et 6 Go au plus, quand la passe hebdomadaire de
 la radio ne tourne pas. Un plafond visé (`MemoryHigh`) se pose au-dessus du pic
 mesuré, jamais dessus : à 4 Go, le noyau a freiné le calcul des heures durant
-(2026-10-11). Après le lancement, `memory.pressure` de l'unité le dit. Ce
-calcul part la nuit : DuckDB y déborde en écrivant des dizaines de Mo/s, que
-`IOSchedulingClass=idle` ne freine pas (les priorités ne valent qu'avec les
+(2026-10-11). Après le lancement, `memory.pressure` de l'unité le dit. DuckDB
+y déborde en écrivant des dizaines de Mo/s : `data/tmp/` pointe vers le SSD
+externe (`/media/plex/.musilogy-tmp`), pas vers le NVMe interne, qui porte le
+système, Docker, Postgres et la radio et n'écrit qu'à 23 Mo/s contre 505 pour le
+SSD externe (`dd` de 2 Gio par blocs de 256 Kio en accès direct, 2026-10-11).
+Sur le NVMe, ce débordement a saturé le disque et ralenti toute la machine
+(2026-10-11) ; ni `IOSchedulingClass=idle` (les priorités ne valent qu'avec les
 ordonnanceurs bfq et mq-deadline, docs.kernel.org/block/ioprio.html, et le NVMe
-de victorserv est en `none`) et qu'une unité utilisateur ne peut pas brider
-(`io.max` ne lui est pas délégué) ;
-en plein jour, il a saturé le disque et rendu la machine lente (2026-10-11).
-Une unité trop gourmande se gèle (`systemctl --user freeze`) et reprend où elle
-était (`thaw`).
+est en `none`) ni `io.max` (non délégué aux unités utilisateur) ne le bridaient.
+Le calcul part donc dès qu'il est prêt, sans attendre la nuit. Une unité trop
+gourmande se gèle (`systemctl --user freeze`) et reprend où elle était
+(`thaw`).
 
 ```bash
 systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=0 \
