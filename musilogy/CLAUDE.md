@@ -80,6 +80,7 @@ d'acceptation se donne en nombre ou en code de sortie. « le chiffre `links` de
 cd musilogy                   # toutes les commandes partent d'ici
 uv sync
 uv run pytest                 # suite rapide, sur les témoins
+uv run ruff check && uv run ruff format --check && uv run mypy  # les contrôles de la CI, tels quels : `mypy src` seul saute les tests
 uv run pytest -m slow         # ligne de base sur le dump réel, exige data/work/
 uv run musilogy run           # fetch → extract → transform → validate → publish (relevés épinglés exigés)
 uv run musilogy snapshot-popularity  # relevé ListenBrainz daté, à épingler

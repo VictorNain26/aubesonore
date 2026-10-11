@@ -15,7 +15,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Generator, Iterable, Iterator
 from email.message import Message
 from functools import partial
 from http import HTTPStatus
@@ -137,7 +137,7 @@ class _Digested(io.RawIOBase):
         return n
 
 
-def spark_listens(ref: str, expected: str, tmp: Path) -> Iterator[Path]:
+def spark_listens(ref: str, expected: str, tmp: Path) -> Generator[Path]:
     """Each Parquet file of the 242 GB archive, written under `tmp` and deleted
     once the caller has read it: the archive is streamed, never stored. Its
     digest is only known once the last byte is read, so the caller keeps what it
