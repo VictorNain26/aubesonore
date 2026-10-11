@@ -7,6 +7,7 @@ import type {
   MusilogyArtistRef,
   MusilogyBandmate,
   MusilogyOtherName,
+  MusilogyProject,
   MusilogySearchHit,
 } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
@@ -21,6 +22,7 @@ import { closeArtistsOf, MusilogyTimeline, timelineNote } from './MusilogyTimeli
 
 // A list shows its closest first; the rest opens on demand.
 const FIRST_SHOWN = 12;
+const PROJECTS_SHOWN = 8;
 
 const NAME_KINDS: Record<MusilogyOtherName['kind'], () => string> = {
   alias: () => m.musilogy_name_alias(),
@@ -33,43 +35,9 @@ const NAME_KINDS: Record<MusilogyOtherName['kind'], () => string> = {
 // 56 px target instead of the name's 21 px. The row is the link's positioned ancestor.
 const STRETCHED = "after:absolute after:inset-0 after:content-['']";
 
-function ArtistRow({
-  artist,
-  years,
-  detail,
-}: {
-  artist: MusilogyArtistRef;
-  years?: string | null;
-  /** The line under the name; MusicBrainz's disambiguation by default. */
-  detail?: string | null;
-}) {
-  const when = years === undefined ? (artist.y0 ? String(artist.y0) : null) : years;
-  const under = detail === undefined ? artist.disambiguation : detail;
-  return (
-    <li className="border-border reveal relative grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1">
-      <span className="flex min-w-0 flex-col">
-        <Link
-          to={pagePathOf(artist)}
-          state={DISCOVERY}
-          className={cn(ARTIST_LINK, STRETCHED, 'text-row self-start truncate underline-offset-4')}
-        >
-          {artist.name}
-        </Link>
-        {under ? <span className="text-ui text-text-muted truncate">{under}</span> : null}
-      </span>
-      <span className="flex items-center">
-        {when ? (
-          <span className="text-ui text-text-muted font-mono whitespace-nowrap tabular-nums">
-            {when}
-          </span>
-        ) : null}
-      </span>
-    </li>
-  );
-}
-
-/** Years in a group: "de 1971 à 1975", "depuis 1971" or "jusqu'en 1975". */
+/** Years in a group: "de 1971 à 1975", "1971" within one year, "depuis 1971" or "jusqu'en 1975". */
 export function linkYears(link: Pick<MusilogyBandmate, 'yBegin' | 'yEnd'>): string | null {
+  if (link.yBegin && link.yBegin === link.yEnd) return String(link.yBegin);
   if (link.yBegin && link.yEnd)
     return m.years_range({ from: String(link.yBegin), to: String(link.yEnd) });
   if (link.yBegin) return m.artist_since({ year: String(link.yBegin) });
@@ -77,37 +45,135 @@ export function linkYears(link: Pick<MusilogyBandmate, 'yBegin' | 'yEnd'>): stri
   return null;
 }
 
-function ArtistList<T extends MusilogyArtistRef>({
-  artists,
-  yearsOf,
-  detailOf,
+/** « Voir N de plus », for a list folded past its first names. */
+function ShowMore({ count, onOpen }: { count: number; onOpen: () => void }) {
+  return (
+    <button type="button" onClick={onOpen} className={TEXT_ACTION}>
+      {m.musilogy_show_more({ count: String(count) })}
+    </button>
+  );
+}
+
+/**
+ * The other groups of a member, on one line under its name: Discogs' « In Groups », RYM's « Member
+ * of ». Each name is a 44 px target; past the first eight (99 % of the dump's musicians are in at
+ * most seven groups, 2026-10-12), the rest open on demand.
+ */
+function AlsoIn({ projects }: { projects: readonly MusilogyProject[] }) {
+  const [open, setOpen] = useState(false);
+  const shown = open ? projects : projects.slice(0, PROJECTS_SHOWN);
+  return (
+    <div className="text-ui text-text-muted flex flex-wrap items-start gap-x-1.5">
+      <span>{m.musilogy_also_in()}</span>
+      <ul className="m-0 flex min-w-0 list-none flex-wrap items-start p-0">
+        {shown.map((project, i) => (
+          <li key={project.mbid} className="inline-flex items-start">
+            <Link
+              to={pagePathOf(project)}
+              state={DISCOVERY}
+              // The text at the top of its 44 px target, close to the name above it.
+              className={cn(ARTIST_LINK, 'text-text flex min-h-11 items-start underline-offset-4')}
+            >
+              {project.name}
+            </Link>
+            {i < shown.length - 1 ? <span className="pr-1.5">,</span> : null}
+          </li>
+        ))}
+        {projects.length > shown.length ? (
+          <li className="inline-flex items-start pl-3">
+            <ShowMore count={projects.length - shown.length} onOpen={() => setOpen(true)} />
+          </li>
+        ) : null}
+      </ul>
+    </div>
+  );
+}
+
+/** A member with its years, MusicBrainz's line on who it is, and the other groups it leads to. */
+function MemberRow({
+  member,
+  projects,
 }: {
-  artists: readonly T[];
-  yearsOf?: (artist: T) => string | null;
-  detailOf?: (artist: T) => string | null;
+  member: MusilogyBandmate;
+  projects: readonly MusilogyProject[];
+}) {
+  const years = linkYears(member);
+  // With a line under it, the name sits at the foot of its 44 px target, close to that line.
+  const below = member.disambiguation || projects.length > 0;
+  return (
+    <li className="border-border reveal flex min-h-14 flex-col justify-center border-b py-1 md:px-1">
+      <span className={cn('flex justify-between gap-6', below ? 'items-end' : 'items-center')}>
+        <Link
+          to={pagePathOf(member)}
+          state={DISCOVERY}
+          className={cn(
+            ARTIST_LINK,
+            'text-row flex min-h-11 underline-offset-4',
+            below ? 'items-end' : 'items-center'
+          )}
+        >
+          {member.name}
+        </Link>
+        {years ? (
+          <span className="text-ui text-text-muted font-mono whitespace-nowrap tabular-nums">
+            {years}
+          </span>
+        ) : null}
+      </span>
+      {member.disambiguation ? (
+        <span className="text-ui text-text-muted truncate">{member.disambiguation}</span>
+      ) : null}
+      {projects.length > 0 ? <AlsoIn projects={projects} /> : null}
+    </li>
+  );
+}
+
+/**
+ * Each member's projects, by the names musilogy gives as `via` (artist_member_projects), which come
+ * from the same links and names as the members (artist_bands). A name two members share leads to
+ * no one: their projects stay loose, said with the names that lead there (168 of 205 606 groups,
+ * 2026-10-12).
+ */
+function tieProjects(
+  members: readonly MusilogyBandmate[],
+  projects: readonly MusilogyProject[]
+): { byMember: Map<string, MusilogyProject[]>; loose: MusilogyProject[] } {
+  const names = members.map((member) => member.name);
+  const shared = new Set(names.filter((name, i) => names.indexOf(name) !== i));
+  const byMember = new Map(
+    members.map((member) => [
+      member.mbid,
+      shared.has(member.name) ? [] : projects.filter((p) => p.via.includes(member.name)),
+    ])
+  );
+  const loose = projects.filter((p) => p.via.every((name) => shared.has(name)));
+  return { byMember, loose };
+}
+
+/**
+ * The members, the earliest first, each with the other groups it leads to: the reference works
+ * (Discogs, RYM, AllMusic) tie a member's groups to the member, never list them apart.
+ */
+function Members({
+  members,
+  byMember,
+}: {
+  members: readonly MusilogyBandmate[];
+  byMember: Map<string, MusilogyProject[]>;
 }) {
   const [open, setOpen] = useState(false);
-  const shown = open ? artists : artists.slice(0, FIRST_SHOWN);
+  const shown = open ? members : members.slice(0, FIRST_SHOWN);
   return (
     <>
       <ol className="m-0 list-none p-0">
-        {shown.map((artist) => (
-          <ArtistRow
-            key={artist.mbid}
-            artist={artist}
-            {...(yearsOf ? { years: yearsOf(artist) } : {})}
-            {...(detailOf ? { detail: detailOf(artist) } : {})}
-          />
+        {shown.map((member) => (
+          <MemberRow key={member.mbid} member={member} projects={byMember.get(member.mbid) ?? []} />
         ))}
       </ol>
-      {artists.length > shown.length ? (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className={`${TEXT_ACTION} self-start pt-3`}
-        >
-          {m.musilogy_show_more({ count: String(artists.length - shown.length) })}
-        </button>
+      {members.length > shown.length ? (
+        <span className="self-start pt-1">
+          <ShowMore count={members.length - shown.length} onOpen={() => setOpen(true)} />
+        </span>
       ) : null}
     </>
   );
@@ -126,37 +192,65 @@ function SubList({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-/** Other names on one line, each with what it is to the artist. */
-function OtherNames({ names }: { names: readonly MusilogyOtherName[] }) {
+/** Names on one line, each with a word on what it is: other names, a person's groups. */
+function InlineArtists<T extends MusilogyArtistRef>({
+  artists,
+  noteOf,
+  limit = Infinity,
+}: {
+  artists: readonly T[];
+  noteOf: (artist: T) => string | null;
+  /** How many show before « Voir N de plus ». */
+  limit?: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const shown = open ? artists : artists.slice(0, limit);
   return (
     <ul className="m-0 flex list-none flex-wrap gap-x-6 gap-y-2 p-0">
-      {names.map((name) => (
-        <li key={name.mbid} className="reveal inline-flex min-h-11 items-baseline gap-2">
-          <Link
-            to={pagePathOf(name)}
-            state={DISCOVERY}
-            className={cn(ARTIST_LINK, 'text-row underline-offset-4')}
-          >
-            {name.name}
-          </Link>
-          <span className="text-ui text-text-muted">{NAME_KINDS[name.kind]()}</span>
+      {shown.map((artist) => {
+        const note = noteOf(artist);
+        return (
+          <li key={artist.mbid} className="reveal inline-flex min-h-11 items-baseline gap-2">
+            <Link
+              to={pagePathOf(artist)}
+              state={DISCOVERY}
+              className={cn(ARTIST_LINK, 'text-row underline-offset-4')}
+            >
+              {artist.name}
+            </Link>
+            {note ? <span className="text-ui text-text-muted">{note}</span> : null}
+          </li>
+        );
+      })}
+      {artists.length > shown.length ? (
+        <li className="inline-flex items-center">
+          <ShowMore count={artists.length - shown.length} onOpen={() => setOpen(true)} />
         </li>
-      ))}
+      ) : null}
     </ul>
   );
 }
 
 /**
- * Members or bands, the members' other projects, other names: three sections
- * rather than MusicBrainz's dozen relation types (docs/vision.md §2.4).
+ * Members, each with its other groups, or a person's groups; then other names (docs/vision.md
+ * §2.4), rather than MusicBrainz's dozen relation types.
  */
 function Bands({ artist }: { artist: MusilogyArtist }) {
   const { bands, memberProjects, otherNames } = artist;
+  const { byMember, loose } = tieProjects(bands?.members ?? [], memberProjects ?? []);
   return (
     <div className="flex flex-col gap-8">
       {bands && bands.members.length > 0 ? (
         <SubList label={m.musilogy_members()}>
-          <ArtistList artists={bands.members} yearsOf={linkYears} />
+          <Members members={bands.members} byMember={byMember} />
+        </SubList>
+      ) : null}
+      {loose.length > 0 ? (
+        <SubList label={m.musilogy_member_projects()}>
+          <InlineArtists
+            artists={loose}
+            noteOf={(project) => m.musilogy_via({ names: project.via.join(', ') })}
+          />
         </SubList>
       ) : null}
       {bands && bands.groups.length > 0 ? (
@@ -164,20 +258,12 @@ function Bands({ artist }: { artist: MusilogyArtist }) {
         <SubList
           label={artist.card.kind === 'person' ? m.musilogy_groups() : m.musilogy_joint_projects()}
         >
-          <ArtistList artists={bands.groups} yearsOf={linkYears} />
-        </SubList>
-      ) : null}
-      {memberProjects && memberProjects.length > 0 ? (
-        <SubList label={m.musilogy_member_projects()}>
-          <ArtistList
-            artists={memberProjects}
-            detailOf={(project) => m.musilogy_via({ names: project.via.join(', ') })}
-          />
+          <InlineArtists artists={bands.groups} noteOf={linkYears} limit={FIRST_SHOWN} />
         </SubList>
       ) : null}
       {otherNames && otherNames.length > 0 ? (
         <SubList label={m.musilogy_other_names()}>
-          <OtherNames names={otherNames} />
+          <InlineArtists artists={otherNames} noteOf={(name) => NAME_KINDS[name.kind]()} />
         </SubList>
       ) : null}
     </div>

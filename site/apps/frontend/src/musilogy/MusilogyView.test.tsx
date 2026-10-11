@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import type { MusilogyArtist, MusilogyNeighbour } from '@aubesonore/shared-types/client';
@@ -146,18 +146,110 @@ describe('MusilogySections', () => {
     expect(screen.getByRole('heading', { name: 'Groupes' })).toBeInTheDocument();
   });
 
-  it("names who leads to each member's project, and what each other name is", () => {
+  it('puts the other groups under the member who leads there, and says what each other name is', () => {
+    const took = { ...neighbour(52, { name: 'Steve Peregrine Took' }), yBegin: 1967, yEnd: 1969 };
     show(
       artist({
-        memberProjects: [{ ...neighbour(50, { name: 'Shagrat' }), via: ['Steve Peregrine Took'] }],
+        bands: {
+          members: [{ ...neighbour(20, { name: 'Marc Bolan' }), yBegin: 1967, yEnd: 1977 }, took],
+          groups: [],
+        },
+        memberProjects: [
+          { ...neighbour(50, { name: 'Shagrat' }), via: ['Steve Peregrine Took'] },
+          { ...neighbour(53, { name: 'John’s Children' }), via: ['Marc Bolan'] },
+        ],
         otherNames: [{ ...neighbour(51, { name: 'Tyrannosaurus Rex' }), kind: 'former' }],
       })
     );
 
-    expect(screen.getByRole('heading', { name: 'Projets des membres' })).toBeInTheDocument();
-    expect(screen.getByText('avec Steve Peregrine Took')).toBeInTheDocument();
+    const rowOf = (name: string) =>
+      screen
+        .getAllByRole('listitem')
+        .find((row) => within(row).queryByRole('link', { name })) as HTMLElement;
+    expect(
+      within(rowOf('Steve Peregrine Took')).getByRole('link', { name: 'Shagrat' })
+    ).toBeTruthy();
+    expect(within(rowOf('Steve Peregrine Took')).getByText('de 1967 à 1969')).toBeTruthy();
+    expect(within(rowOf('Marc Bolan')).queryByRole('link', { name: 'Shagrat' })).toBeNull();
+    expect(within(rowOf('Marc Bolan')).getByRole('link', { name: 'John’s Children' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Projets des membres' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Tyrannosaurus Rex' })).toBeInTheDocument();
     expect(screen.getByText('ancien nom')).toBeInTheDocument();
+  });
+
+  it('puts a project two members share under both, folds a long line, and says who each member is', async () => {
+    const project = (n: number, via: string[]) => ({
+      ...neighbour(100 + n, { name: `Project ${n}` }),
+      via,
+    });
+    show(
+      artist({
+        bands: {
+          members: [
+            {
+              ...neighbour(20, { name: 'Ann', disambiguation: 'drummer' }),
+              yBegin: null,
+              yEnd: null,
+            },
+            { ...neighbour(21, { name: 'Bob' }), yBegin: null, yEnd: null },
+          ],
+          groups: [],
+        },
+        memberProjects: [
+          project(0, ['Ann', 'Bob']),
+          ...Array.from({ length: 9 }, (_, i) => project(i + 1, ['Bob'])),
+        ],
+      })
+    );
+
+    const rowOf = (name: string) =>
+      screen
+        .getAllByRole('listitem')
+        .find((row) => within(row).queryByRole('link', { name })) as HTMLElement;
+    expect(within(rowOf('Ann')).getByRole('link', { name: 'Project 0' })).toBeTruthy();
+    expect(within(rowOf('Ann')).getByText('drummer')).toBeTruthy();
+    expect(within(rowOf('Ann')).getByText('aussi dans')).toBeTruthy();
+    expect(within(rowOf('Bob')).getByRole('link', { name: 'Project 0' })).toBeTruthy();
+    expect(within(rowOf('Bob')).queryByRole('link', { name: 'Project 9' })).toBeNull();
+    await userEvent.click(within(rowOf('Bob')).getByRole('button', { name: 'Voir 2 de plus' }));
+    expect(within(rowOf('Bob')).getByRole('link', { name: 'Project 9' })).toBeTruthy();
+  });
+
+  it('ties no project to a name two members share, and says who leads there', () => {
+    const twin = (n: number) => ({
+      ...neighbour(n, { name: 'John Smith' }),
+      yBegin: null,
+      yEnd: null,
+    });
+    show(
+      artist({
+        bands: { members: [twin(30), twin(31)], groups: [] },
+        memberProjects: [{ ...neighbour(50, { name: 'Shagrat' }), via: ['John Smith'] }],
+      })
+    );
+
+    expect(screen.queryByText('aussi dans')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Projets des membres' })).toBeInTheDocument();
+    expect(screen.getByText('avec John Smith')).toBeInTheDocument();
+  });
+
+  it("gives a person's groups on one line, a single year alone, folded past twelve", () => {
+    const group = (n: number, yBegin: number | null = null, yEnd: number | null = null) => ({
+      ...neighbour(60 + n, { name: `Group ${n}` }),
+      yBegin,
+      yEnd,
+    });
+    const person = artist({
+      bands: {
+        members: [],
+        groups: [group(0, 1997, 1997), ...Array.from({ length: 13 }, (_, i) => group(i + 1))],
+      },
+    });
+    show({ ...person, card: { ...person.card, kind: 'person' } });
+
+    expect(screen.getByText('1997')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Group 13' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Voir 2 de plus' })).toBeInTheDocument();
   });
 
   it('shows every close artist at once, with nothing to open', () => {
@@ -192,6 +284,7 @@ describe('linkYears', () => {
     expect(linkYears(link)).toBe('de 1971 à 1975');
     expect(linkYears({ ...link, yEnd: null })).toBe('depuis 1971');
     expect(linkYears({ ...link, yBegin: null })).toBe("jusqu'en 1975");
+    expect(linkYears({ ...link, yEnd: 1971 })).toBe('1971');
     expect(linkYears({ ...link, yBegin: null, yEnd: null })).toBeNull();
   });
 });
