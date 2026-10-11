@@ -9,7 +9,12 @@ on:
   # not directly target master, which was a real foot-gun during the
   # player-page refactor (PRs B-E had no Quality/Build/Tests until each
   # one was retargeted and a no-op commit was pushed).
+  # ready_for_review too: the jobs skip drafts, and a draft marked ready
+  # triggers none of the default types (opened, synchronize, reopened), so
+  # its checks stayed skipped until another push (docs.github.com, « Events
+  # that trigger workflows », pull_request).
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 # Cancel any in-flight run when a new push lands on the same PR / branch.
 # AI-agent iteration loops can push 5-10 times in a few minutes; without
