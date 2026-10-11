@@ -173,6 +173,8 @@
   "artist_photo_by": "Photo by {author}",
   "artist_photo": "Photo",
   "artist_cover_caption": "{title}, {year}",
+  "cover_open": "See the cover of {title} larger",
+  "track_caption": "{title}, {artist}",
   "artist_cover_alt": "Cover of {title}",
   "artist_kind_person": "Artist",
   "artist_kind_group": "Band",

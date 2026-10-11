@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
 import { useTrends, type TrendEntry } from '../hooks/useTrends';
 import { artistPath } from '../lib/artistProfile';
-import { Cover } from './Cover';
+import { CoverOpenLarge } from './CoverOpenLarge';
 import { ARTIST_LINK } from './styles';
 import * as m from '@/paraglide/messages.js';
 
@@ -33,12 +33,17 @@ function Ranking({ entries, period }: { entries: TrendEntry[]; period: Period })
           key={`${entry.artist}|${entry.title}`}
           className="reveal flex w-38 shrink-0 flex-col gap-2 md:w-auto md:gap-3"
         >
-          <Cover
+          <CoverOpenLarge
             src={entry.artworkUrl}
             alt=""
             seed={`${entry.artist}|${entry.title}`}
+            label={m.cover_open({ title: entry.title })}
+            title={entry.title}
+            largeAlt={m.now_cover_alt({ title: entry.title, artist: entry.artist })}
+            caption={m.track_caption({ title: entry.title, artist: entry.artist })}
             // w-38 on phones; one of five columns of the page from md.
             sizes="(min-width: 48rem) 20vw, 9.5rem"
+            triggerClassName="w-full"
             className="ease-out-soft hover:shadow-lift aspect-square w-full transition-[translate,box-shadow] duration-500 motion-safe:hover:-translate-y-1.5"
           />
           <span className="text-label text-text-muted flex justify-between font-mono">

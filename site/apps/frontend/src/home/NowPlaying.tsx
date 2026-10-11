@@ -10,7 +10,7 @@ import { usePlayer } from '../lib/player';
 import { useTrackActions } from '../hooks/player/useTrackActions';
 import { useArtistPage } from '../hooks/useArtistPage';
 import { artistPath } from '../lib/artistProfile';
-import { Cover } from './Cover';
+import { CoverOpenLarge } from './CoverOpenLarge';
 import { VolumeControl, type VolumeControlProps } from './VolumeControl';
 import { ARTIST_LINK, TEXT_ACTION } from './styles';
 import { CastControl } from './CastControl';
@@ -94,14 +94,19 @@ export function NowPlayingView({
     <div className="wide:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] wide:items-end wide:gap-x-16 grid w-full gap-6">
       <div className="lift-in">
         {track ? (
-          <Cover
+          <CoverOpenLarge
             key={trackKey}
             src={track.art}
             alt={m.now_cover_alt({ title: track.title, artist: track.artist })}
             seed={`${track.artist}|${track.title}`}
+            label={m.cover_open({ title: track.title })}
+            title={track.title}
+            largeAlt={m.now_cover_alt({ title: track.title, artist: track.artist })}
+            caption={m.track_caption({ title: track.title, artist: track.artist })}
             priority
             // artwork-size: 46svh wide, 60svh from 64rem (design/tokens.css).
             sizes="(min-width: 64rem) 60vh, 46vh"
+            triggerClassName="w-fit"
             className={cn('artwork-size shadow-cover aspect-square', hasChanged && 'swap-in')}
           />
         ) : (

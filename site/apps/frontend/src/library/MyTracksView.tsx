@@ -3,7 +3,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Play, Search, X } from 'lucide-react';
 import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
 import { getLocale } from '@/paraglide/runtime.js';
-import { Cover } from '../home/Cover';
+import { CoverOpenLarge } from '../home/CoverOpenLarge';
 import { KeepHeart } from '../home/KeepHeart';
 import { ARTIST_LINK, TEXT_ACTION } from '../home/styles';
 import { artistPath } from '../lib/artistProfile';
@@ -98,11 +98,16 @@ const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
         'border-border reveal min-h-18 gap-y-0.5 border-b py-2.5 focus-within:animate-none'
       )}
     >
-      <Cover
+      <CoverOpenLarge
         src={track.artworkUrl}
         alt=""
         seed={`${track.artist}|${track.title}`}
-        className="row-span-2 size-11 md:row-span-1"
+        label={m.cover_open({ title: track.title })}
+        title={track.title}
+        largeAlt={m.now_cover_alt({ title: track.title, artist: track.artist })}
+        caption={m.track_caption({ title: track.title, artist: track.artist })}
+        triggerClassName="row-span-2 size-11 md:row-span-1"
+        className="size-11"
         sizes="2.75rem"
       />
       <span className="text-row self-end truncate md:self-center">{track.title}</span>
