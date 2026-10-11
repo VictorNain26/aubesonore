@@ -281,7 +281,7 @@ export function ArtistPageView({
   musilogy?: MusilogyArtist | null;
   /** The artists walked through to reach this one. */
   trail?: readonly TrailStep[];
-  /** Where an active artist's span ends on the map. */
+  /** Where an active artist's years end on the close artists' timeline. */
   thisYear?: number;
 }) {
   return (

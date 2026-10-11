@@ -267,12 +267,14 @@ export interface MusilogyOtherName extends MusilogyArtistRef {
   kind: 'alias' | 'person' | 'former' | 'later';
 }
 
-/** Close neighbours who started more than 3 years before, within 3 years, after, or undated. */
 export interface MusilogyArtist {
   card: MusilogyCard;
-  /** Null while the data behind a section is not loaded yet; empty when it holds none. */
-  /** The artist's close artists, by their rank, the closest first. */
+  /**
+   * The artist's close artists, by their rank, the closest first. Null, like every section
+   * below, while the data behind it is not loaded yet; empty when it holds none.
+   */
   neighbours: MusilogyNeighbour[] | null;
+  /** Null while the data behind a section is not loaded yet; empty when it holds none. */
   releases: MusilogyRelease[] | null;
   bands: MusilogyBands | null;
   memberProjects: MusilogyProject[] | null;

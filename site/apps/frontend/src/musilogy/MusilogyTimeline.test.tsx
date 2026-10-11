@@ -22,9 +22,13 @@ describe('sharedTerm', () => {
   it('names the style at least half of them share, said once above them', () => {
     expect(
       sharedTerm(['Krautrock', 'Krautrock', 'Ambient', 'Krautrock'].map((t) => neighbour(t)))
-    ).toBe('Krautrock');
-    expect(sharedTerm(['Krautrock', 'Ambient'].map((t) => neighbour(t)))).toBe('Krautrock');
+    ).toBe('krautrock');
+    expect(sharedTerm(['Krautrock', 'Ambient'].map((t) => neighbour(t)))).toBe('krautrock');
     expect(sharedTerm(['Krautrock', 'Ambient', 'Post Rock'].map((t) => neighbour(t)))).toBeNull();
+    // A Discogs style and a MusicBrainz genre of one name are one.
+    expect(
+      sharedTerm(['Krautrock', 'krautrock', 'Ambient', 'Post Rock'].map((t) => neighbour(t)))
+    ).toBe('krautrock');
   });
 });
 
@@ -61,7 +65,8 @@ describe('yearsOf', () => {
     expect(yearsOf(neighbour('Krautrock', { ended: false, yEnd: null, y0: 1969 }))).toBe(
       'depuis 1969'
     );
-    expect(yearsOf(neighbour('Krautrock', { yEnd: null }))).toBe('1971');
+    // Ended without a declared end: never a year alone, which reads as a one-year career.
+    expect(yearsOf(neighbour('Krautrock', { yEnd: null }))).toBe('1971, fin inconnue');
     expect(yearsOf(neighbour('Krautrock', { y0: null }))).toBe('début inconnu');
   });
 });
@@ -92,10 +97,10 @@ describe('timelineNote', () => {
 
   it('says the shared sound, then what the light band marks', () => {
     expect(timelineNote(can(), 2026)).toBe(
-      'Le même son, surtout krautrock. La bande claire marque les années de Can.'
+      'Le même son, surtout krautrock. La bande en fond : Can.'
     );
     expect(timelineNote(can({}, ['Krautrock', 'Ambient', 'Post Rock']), 2026)).toBe(
-      'Le même son. La bande claire marque les années de Can.'
+      'Le même son. La bande en fond : Can.'
     );
     // Without a start, no band to speak of.
     expect(timelineNote(can({ y0: null }), 2026)).toBe('Le même son, surtout krautrock.');

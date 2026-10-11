@@ -420,8 +420,7 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 
 ## 6. Écarts actuels
 
-1. **Le seuil d'indexation** (§2.4) a été mesuré sur l'ancien voisinage et reste à remesurer ;
-   les pages d'artistes jamais joués n'ont pas encore d'adresse lisible (écart 4).
+1. **Le seuil d'indexation** (§2.4) a été mesuré sur l'ancien voisinage et reste à remesurer.
 2. **Les pages de courant n'existent pas encore** (§2.3).
 3. **Statut officiel incomplet** : la page écarte les disques que MusicBrainz ne montre pas
    comme l'œuvre de l'artiste (476 des 4 980 disques des artistes joués, 2026-10-06) ; seuls les

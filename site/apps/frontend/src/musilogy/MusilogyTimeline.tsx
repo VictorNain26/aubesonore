@@ -15,13 +15,18 @@ export function closeArtistsOf({ neighbours }: MusilogyArtist): readonly Musilog
   return neighbours ?? [];
 }
 
+/** A style or genre as the page says it: Discogs' « Krautrock » and MusicBrainz' « krautrock » are one. */
+export function termOf(artist: MusilogyNeighbour): string {
+  return artist.term.toLowerCase();
+}
+
 /**
  * The style or genre at least half of the close artists share, said once above them rather than
  * on every row; a tie goes to the closer one. Null when none is shared that widely.
  */
 export function sharedTerm(close: readonly MusilogyNeighbour[]): string | null {
   const counts = new Map<string, number>();
-  for (const artist of close) counts.set(artist.term, (counts.get(artist.term) ?? 0) + 1);
+  for (const artist of close) counts.set(termOf(artist), (counts.get(termOf(artist)) ?? 0) + 1);
   let best: string | null = null;
   let most = 0;
   for (const [term, count] of counts) {
@@ -59,12 +64,15 @@ export interface Axis {
   ticks: number[];
 }
 
-/** The decades every span fits in, a label every ten years, or twenty past sixty. */
+/**
+ * The decades every span fits in, a label every ten years, twenty past sixty, forty past a
+ * hundred and twenty: labels never crowd the narrowest track.
+ */
 export function axisOf(spans: readonly Span[]): Axis | null {
   if (spans.length === 0) return null;
   const from = Math.floor(Math.min(...spans.map((span) => span.from)) / 10) * 10;
   const to = Math.ceil((Math.max(...spans.map((span) => span.to)) + 1) / 10) * 10;
-  const step = to - from > 60 ? 20 : 10;
+  const step = to - from > 120 ? 40 : to - from > 60 ? 20 : 10;
   const ticks: number[] = [];
   for (let year = Math.ceil(from / step) * step; year <= to; year += step) ticks.push(year);
   return { from, to, ticks };
@@ -82,7 +90,9 @@ function placed(span: Span, axis: Axis): CSSProperties {
 export function yearsOf(artist: MusilogyNeighbour): string {
   if (artist.y0 === null) return m.musilogy_start_unknown();
   if (!artist.ended) return m.artist_since({ year: String(artist.y0) });
-  return artist.yEnd !== null && artist.yEnd !== artist.y0
+  // Ended without a declared end: a year alone would read as a one-year career.
+  if (artist.yEnd === null) return m.musilogy_end_unknown({ y0: String(artist.y0) });
+  return artist.yEnd !== artist.y0
     ? m.years_range({ from: String(artist.y0), to: String(artist.yEnd) })
     : String(artist.y0);
 }
@@ -90,9 +100,7 @@ export function yearsOf(artist: MusilogyNeighbour): string {
 /** The intro: the sound they share, then what the light band marks. */
 export function timelineNote(artist: MusilogyArtist, thisYear: number): string {
   const shared = sharedTerm(closeArtistsOf(artist));
-  const note = shared
-    ? m.musilogy_close_shared({ term: shared.toLowerCase() })
-    : m.musilogy_close_same();
+  const note = shared ? m.musilogy_close_shared({ term: shared }) : m.musilogy_close_same();
   const { card } = artist;
   const own = spanOf(
     card.y0,
@@ -106,8 +114,10 @@ export function timelineNote(artist: MusilogyArtist, thisYear: number): string {
 // The columns: the rank, the name and its years, the years drawn. On a narrow container the
 // drawing takes a line of its own under the name.
 const ROW =
-  'grid grid-cols-[2rem_minmax(0,1fr)] gap-x-3 @min-[48rem]:grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,22rem)] @min-[48rem]:gap-x-4';
-const TRACK = 'relative col-start-2 h-6 @min-[48rem]:col-start-3 @min-[48rem]:row-start-1';
+  'grid grid-cols-[2rem_minmax(0,1fr)] gap-x-3 @min-[44rem]:grid-cols-[2.5rem_minmax(0,1fr)_minmax(0,20rem)] @min-[44rem]:gap-x-4';
+// Clicks pass through to the row's link: the drawing is the row, not a control.
+const TRACK =
+  'pointer-events-none relative col-start-2 h-6 @min-[44rem]:col-start-3 @min-[44rem]:row-start-1';
 
 /**
  * The close artists of an artist, the closest first, each with its years drawn on one axis shared
@@ -138,7 +148,7 @@ export function MusilogyTimeline({
     <div className="@container">
       {axis ? (
         <div aria-hidden="true" className={cn(ROW, 'pb-2')}>
-          <span className="relative col-start-2 h-5 @min-[48rem]:col-start-3">
+          <span className="relative col-start-2 h-5 @min-[44rem]:col-start-3">
             {axis.ticks.map((year) => (
               <span
                 key={year}
@@ -154,7 +164,7 @@ export function MusilogyTimeline({
       <ol className="border-accent m-0 list-none border-t p-0">
         {close.map((neighbour, i) => {
           const span = spans[i] ?? null;
-          const differs = shared !== null && neighbour.term !== shared;
+          const differs = shared !== null && termOf(neighbour) !== shared;
           return (
             <li
               key={neighbour.mbid}
@@ -179,14 +189,14 @@ export function MusilogyTimeline({
                 </Link>
                 <span className="text-sub text-text-muted">
                   {yearsOf(neighbour)}
-                  {shared === null || differs ? ` · ${neighbour.term.toLowerCase()}` : null}
+                  {shared === null || differs ? ` · ${termOf(neighbour)}` : null}
                 </span>
               </span>
               {axis ? (
                 <span aria-hidden="true" className={TRACK}>
                   {own ? (
                     <span
-                      className="bg-surface-raised group-hover:bg-border group-focus-within:bg-border absolute inset-y-0 transition-colors duration-200"
+                      className="bg-border group-hover:bg-text-muted/25 group-focus-within:bg-text-muted/25 absolute inset-y-0 transition-colors duration-200"
                       style={placed(own, axis)}
                     />
                   ) : null}

@@ -81,9 +81,7 @@ describe('MusilogySections', () => {
       `/artiste/${neighbour(3).mbid}`
     );
     expect(
-      screen.getByText(
-        'Le même son, surtout glam rock. La bande claire marque les années de T. Rex.'
-      )
+      screen.getByText('Le même son, surtout glam rock. La bande en fond : T. Rex.')
     ).toBeInTheDocument();
     // The one that differs says what it shares.
     expect(screen.getByText('depuis 1974 · punk')).toBeInTheDocument();
