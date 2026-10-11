@@ -219,7 +219,7 @@ def reduce_listens(con: duckdb.DuckDBPyConnection, parts: Iterable[Path], out: P
         slice_parts = (split / "*" / f"bucket={b}" / "*.parquet").as_posix()
         con.execute(
             "COPY (SELECT user_id, artist_mbid, sum(listens)::INTEGER AS listens "
-            f"FROM read_parquet('{slice_parts}') GROUP BY 1, 2) "
+            f"FROM read_parquet('{slice_parts}') GROUP BY 1, 2 ORDER BY 1, 2) "
             f"TO '{target.as_posix()}' (FORMAT parquet, COMPRESSION zstd)"
         )
         row = con.execute("SELECT count(*) FROM read_parquet(?)", [target.as_posix()]).fetchone()

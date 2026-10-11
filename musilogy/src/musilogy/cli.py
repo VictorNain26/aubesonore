@@ -259,10 +259,12 @@ def snapshot_listens(ref: str) -> None:
     shutil.rmtree(partial, ignore_errors=True)
     partial.mkdir(parents=True)
     rows = reduce_listens(connect(), spark_listens(ref, expected, DATA_DIR / "tmp"), partial)
-    partial.replace(dest)
+    # Pinned before the folder takes its name: a stop in between leaves a
+    # partial folder to start again, never slices without their digests.
     lines = [f"{expected}  {spark_name(ref)}"]
-    lines += [f"{sha256_file(p)}  {p.name}" for p in sorted(dest.glob("*.parquet"))]
+    lines += [f"{sha256_file(p)}  {p.name}" for p in sorted(partial.glob("*.parquet"))]
     listening_sums(ref).write_text("\n".join(lines) + "\n", encoding="utf-8")
+    partial.replace(dest)
     print(f"{rows} user-artist rows; pin it: REFERENCE_LISTENING = {ref!r}")
 
 

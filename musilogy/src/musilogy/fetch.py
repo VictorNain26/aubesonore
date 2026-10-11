@@ -8,6 +8,7 @@ import http.client
 import io
 import itertools
 import json
+import re
 import shutil
 import tarfile
 import time
@@ -110,9 +111,13 @@ def spark_digest(ref: str) -> str:
     req = urllib.request.Request(SPARK_URL.format(ref=ref) + ".sha256", headers={"User-Agent": UA})
     try:
         with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as r:
-            return str(r.read().decode().split()[0])
+            body = r.read().decode(errors="replace")
     except (urllib.error.HTTPError, urllib.error.URLError) as e:
         raise DownloadError(f"failed to download the Spark dump's digest: {e}") from e
+    digest = body.split()[0] if body.split() else ""
+    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise DownloadError(f"the Spark dump's digest is not a SHA-256: {body[:80]!r}")
+    return digest
 
 
 class _Digested(io.RawIOBase):
@@ -148,14 +153,18 @@ def spark_listens(ref: str, expected: str, tmp: Path) -> Iterator[Path]:
                     source = tar.extractfile(member) if member.name.endswith(".parquet") else None
                     if source is None:
                         continue
-                    with part.open("wb") as out:
-                        shutil.copyfileobj(source, out, 1 << 20)
-                    yield part
-                    part.unlink()
-            # The end-of-archive blocks tar stops short of belong to the digest.
-            while stream.read(1 << 20):
-                pass
-    except (urllib.error.HTTPError, urllib.error.URLError) as e:
+                    try:
+                        with part.open("wb") as out:
+                            shutil.copyfileobj(source, out, 1 << 20)
+                        yield part
+                    finally:
+                        part.unlink(missing_ok=True)
+            # The end-of-archive blocks tar stops short of belong to the digest;
+            # anything but zeros there is an archive tar stopped reading.
+            while chunk := stream.read(1 << 20):
+                if chunk.count(0) != len(chunk):
+                    raise DownloadError(f"{spark_name(ref)}: data after the end of the archive")
+    except (urllib.error.URLError, http.client.HTTPException, ConnectionError, TimeoutError) as e:
         raise DownloadError(f"failed to download the Spark dump: {e}") from e
     actual = stream.sha256.hexdigest()
     if actual != expected:
