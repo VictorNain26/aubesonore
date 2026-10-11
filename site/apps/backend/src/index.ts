@@ -70,7 +70,7 @@ if (typeof purgeTimer === 'object' && purgeTimer !== null && 'unref' in purgeTim
   (purgeTimer as { unref: () => void }).unref();
 }
 
-startAntennaWatcher();
+if (env.RECORD_ANTENNA) startAntennaWatcher();
 startYouTubeLinks();
 startDiscoveredArtists();
 

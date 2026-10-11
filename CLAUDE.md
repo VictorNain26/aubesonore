@@ -39,9 +39,14 @@ them all. `azuracast/RUNBOOK.md` covers rebuilding the whole system from nothing
   Each pass also runs `uv sync --locked` in `pipeline/`, so a dependency change reaches the
   `.venv` the radio-* units run.
 - **Where to develop.** `site/` runs on any workstation clone (`site/README.md`: local Postgres,
-  `pnpm dev`, the public station for now-playing). `pipeline/` and `musilogy/` need the server's
-  data (Plex, AzuraCast, MusicBrainz dumps), so they are developed on the server, in a git
-  worktree next to the checkout. Never in `~/aubesonore` itself: it is the production checkout.
+  `pnpm dev`, the public station for now-playing), which reads the artist pages and Musilogy from
+  production: enough for a change of the interface alone. A change of the site's backend or of
+  the data it reads is tried on the **preview of its branch** on the server
+  (`site/scripts/preview.sh`, `site/README.md`): production's own `compose.yaml` under another
+  project, with its own database holding the real Musilogy, reached through an SSH tunnel.
+  `pipeline/` and `musilogy/` need the server's data (Plex, AzuraCast, MusicBrainz dumps), so
+  they are developed on the server, in a git worktree next to the checkout. Never in
+  `~/aubesonore` itself: it is the production checkout.
 
 ## How the pieces fit together
 
