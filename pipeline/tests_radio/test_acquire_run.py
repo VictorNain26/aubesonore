@@ -132,8 +132,20 @@ def _artist(conn: Any, tid: int) -> int:
     return int(row[0])
 
 
-def test_one_title_per_artist_enters_and_the_next_waits_its_turn(tmp_path: Path) -> None:
-    # Breaks if an artist gets two titles in rotation, or if a waiting title is not counted.
+@pytest.mark.parametrize(
+    ("origin", "categorie"),
+    [
+        ("decouverte", "decouvertes"),
+        ("decouverte", "fond"),
+        ("decouverte", "repos"),
+        ("repere", "reperes"),
+    ],
+)
+def test_one_title_per_artist_enters_and_the_next_waits_its_turn(
+    tmp_path: Path, origin: str, categorie: str
+) -> None:
+    # Breaks if an artist with any title on air, at rest included, gets a second one, or if a
+    # waiting title is not counted.
     conn = make_model_db(tmp_path)
     serve_scores(conn)
     cfg = AcquisitionConfig(max_per_pass=100, max_attempts=2)
@@ -141,16 +153,15 @@ def test_one_title_per_artist_enters_and_the_next_waits_its_turn(tmp_path: Path)
     artists = [_artist(conn, t) for t in first.tids]
     assert len(artists) == len(set(artists)) and first.waiting > 0
 
-    # Le premier artiste a désormais un titre en découvertes : son retenu attend.
+    # Le premier artiste a désormais un titre à l'antenne : son retenu attend.
     on_air = artists[0]
     other = conn.execute(
         "SELECT deezer_track_id FROM tracks WHERE deezer_artist_id = ? AND deezer_track_id != ?",
         (on_air, first.tids[0]),
     ).fetchone()[0]
     conn.execute(
-        "INSERT INTO antenne VALUES "
-        "(?, 'decouverte', 'decouvertes', 1, 's1', 'antenne/1.mp3', ?, ?)",
-        (other, NOW, NOW),
+        "INSERT INTO antenne VALUES (?, ?, ?, 1, 's1', 'antenne/1.mp3', ?, ?)",
+        (other, origin, categorie, NOW, NOW),
     )
     conn.commit()
     again = pending(conn, cfg)

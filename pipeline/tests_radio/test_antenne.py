@@ -195,16 +195,16 @@ def test_publish_ready_files_and_references(tmp_path: Path, no_tools: list[Tags]
     assert all(m.path.startswith("antenne/") for m in station.media[1:])
 
 
-def test_a_reference_never_gives_an_artist_a_third_title(
+def test_a_reference_never_gives_an_artist_a_second_title(
     tmp_path: Path, no_tools: list[Tags]
 ) -> None:
-    # Breaks if a reference is drawn for an artist who already has two titles on air.
+    # Breaks if a reference is drawn for an artist who already has a title on air.
     conn = make_model_db(tmp_path)
     _library_files(conn)
-    two_each = [(100000 + 10 * a + k, "decouverte", "fond") for a in range(12) for k in (0, 1)]
-    station = _on_air(conn, two_each, LATER)
+    one_each = [(100000 + 10 * a, "decouverte", "fond") for a in range(12)]
+    station = _on_air(conn, one_each, LATER)
 
-    rep = _run(conn, station, fond=24, reperes=12)
+    rep = _run(conn, station, fond=12, reperes=12)
 
     assert (rep.n_references, rep.n_references_artist_full) == (0, 2)
     assert no_tools == []
@@ -259,12 +259,14 @@ def test_after_its_first_stay_the_best_rests_and_the_rest_leaves(
     assert rep.n_total == 1  # le repos est hors antenne
 
 
-def test_a_promotion_never_gives_an_artist_a_third_title(tmp_path: Path, no_tools: None) -> None:
-    # Breaks if the end of the first stay promotes a title whose artist already has two on air.
+def test_a_promotion_never_gives_an_artist_a_second_title(tmp_path: Path, no_tools: None) -> None:
+    # Breaks if the end of the first stay promotes a title whose artist still has another one on
+    # air (here a title in play, which the dedup leaves for the next pass).
     conn = make_model_db(tmp_path)
     serve_scores(conn)
     station = _on_air(conn, [(200001, "decouverte", "fond")], LATER)
-    cohort = [200000, 200002, 200003, 200101, 200102, 200103]
+    station.busy = {"s200001"}
+    cohort = [200003, 200103, 200203, 200303]
     old = _on_air(
         conn, [(t, "decouverte", "decouvertes") for t in cohort], LATER - timedelta(weeks=7)
     )
@@ -272,12 +274,57 @@ def test_a_promotion_never_gives_an_artist_a_third_title(tmp_path: Path, no_tool
 
     rep = _run(conn, station, promotion_share=0.5)
 
-    # 3 promus sur 6, par note : 200003 et 200103 (0,75), puis 200002 (0,6875), qui donnerait un
-    # troisième titre à l'artiste 2000 ; sa place va à 200102.
+    # 2 promus sur 4, par note : 200003 (0,75) donnerait un second titre à l'artiste 2000, dont
+    # 200001 joue ; sa place va au suivant.
     cats = _categories(conn)
-    assert (rep.n_promoted, rep.n_promotions_artist_full, rep.n_ended) == (3, 1, 3)
-    assert {t for t, (c, _) in cats.items() if c == "repos"} == {200003, 200103, 200102}
-    assert 200002 not in cats
+    assert (rep.n_artist_doubles, rep.n_promoted, rep.n_promotions_artist_full) == (0, 2, 1)
+    assert cats[200001][0] == "fond"
+    assert 200003 not in cats
+    assert 200103 in cats and cats[200103][0] == "repos"
+
+
+def test_an_artist_keeps_one_title_the_liked_then_in_rotation_then_best_scored(
+    tmp_path: Path, no_tools: None
+) -> None:
+    # Breaks if an artist keeps more than one title on air, or keeps the wrong one.
+    conn = make_model_db(tmp_path)
+    serve_scores(conn)
+    rows = [
+        (200000, "decouverte", "fond"),
+        (200001, "decouverte", "decouvertes"),
+        (200002, "decouverte", "decouvertes"),
+        (200100, "decouverte", "fond"),
+        (200101, "decouverte", "decouvertes"),
+        (200102, "decouverte", "decouvertes"),
+        (200200, "decouverte", "decouvertes"),
+        (200201, "decouverte", "fond"),
+        (100000, "repere", "reperes"),
+        (100001, "repere", "reperes"),
+    ]
+    station = _on_air(conn, rows, LATER)
+    add_vote(conn, 200000, "exam", "oui")
+    station.busy = {"s200201"}
+    best = max(
+        (200101, 200102),
+        key=lambda t: conn.execute(
+            "SELECT score FROM scores WHERE deezer_track_id = ?", (t,)
+        ).fetchone()[0],
+    )
+
+    rep = _run(conn, station, fond=10, reperes=2)
+
+    kept = set(_categories(conn))
+    assert kept == {200000, best, 200200, 200201, 100000}  # 200201, en trop, joue : il attend
+    assert rep.n_artist_doubles == 5
+    assert set(station.deleted) == {
+        "antenne/200001.mp3",
+        "antenne/200002.mp3",
+        "antenne/200100.mp3",
+        f"antenne/{200101 + 200102 - best}.mp3",
+        "antenne/100001.mp3",
+    }
+    left = [r[0] for r in conn.execute("SELECT deezer_track_id FROM repere_sorties")]
+    assert left == [100001]  # un repère sorti n'est pas retiré avant son repos
 
 
 def test_a_young_title_stays_whatever_its_score(tmp_path: Path, no_tools: None) -> None:
@@ -297,17 +344,17 @@ def test_platooning_rests_the_tired_and_brings_back_the_longest_rested(
     conn = make_model_db(tmp_path)
     tired = _on_air(
         conn,
-        [(200000, "decouverte", "fond"), (200001, "decouverte", "fond")],
+        [(200000, "decouverte", "fond"), (200300, "decouverte", "fond")],
         LATER - timedelta(weeks=7),
     )
     rested = _on_air(
         conn,
-        [(200100, "decouverte", "repos"), (200101, "decouverte", "repos")],
+        [(200100, "decouverte", "repos"), (200400, "decouverte", "repos")],
         LATER - timedelta(weeks=13),
         folder="repos",
     )
     conn.execute(
-        "UPDATE antenne SET since = ? WHERE deezer_track_id = 200101",
+        "UPDATE antenne SET since = ? WHERE deezer_track_id = 200400",
         ((LATER - timedelta(weeks=20)).isoformat(),),
     )
     resting = _on_air(conn, [(200200, "decouverte", "repos")], LATER - timedelta(weeks=5), "repos")
@@ -317,7 +364,7 @@ def test_platooning_rests_the_tired_and_brings_back_the_longest_rested(
 
     cats = _categories(conn)
     assert (rep.n_rested, rep.n_returned) == (2, 1)
-    assert cats[200101] == ("fond", "antenne/200101.mp3")  # au repos depuis le plus longtemps
+    assert cats[200400] == ("fond", "antenne/200400.mp3")  # au repos depuis le plus longtemps
     assert cats[200100][0] == cats[200200][0] == "repos"
     assert cats[200000] == ("repos", "repos/200000.mp3")
     assert rep.n_total == 1
@@ -432,7 +479,9 @@ def test_a_failed_reference_is_skipped_without_failing_the_pass(
     rep = _run(conn, FakeStation(), FakeDeezer(), reperes=48)
 
     assert rep.errors == []
-    assert rep.n_references + len(rep.skipped_references) == 8
+    # 8 tirages : chacun entre, échoue, ou trouve son artiste déjà à l'antenne.
+    drawn = rep.n_references + len(rep.skipped_references) + rep.n_references_artist_full
+    assert drawn == 8
     assert rep.skipped_references
     assert all(s.endswith("ffmpeg : code 1") for s in rep.skipped_references)
 
