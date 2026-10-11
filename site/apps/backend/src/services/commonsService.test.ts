@@ -126,6 +126,25 @@ describe('getPhoto', () => {
     );
   });
 
+  it('shows no photo whose addresses are not https on Wikimedia', async () => {
+    const page = imageinfoCan.query.pages[0]!;
+    const info = page.imageinfo[0]!;
+    serve(p18Can, {
+      query: {
+        pages: [{ ...page, imageinfo: [{ ...info, descriptionurl: 'javascript:alert(1)' }] }],
+      },
+    });
+    expect(await getPhoto('Q170132')).toEqual({ status: 'none' });
+
+    commonsCache.dispose();
+    serve(p18Can, {
+      query: {
+        pages: [{ ...page, imageinfo: [{ ...info, thumburl: 'https://evil.example/a.jpg' }] }],
+      },
+    });
+    expect(await getPhoto('Q170132')).toEqual({ status: 'none' });
+  });
+
   it('shows no photo it could not credit', async () => {
     const page = imageinfoCan.query.pages[0]!;
     const info = page.imageinfo[0]!;
@@ -150,14 +169,18 @@ describe('getPhoto', () => {
 });
 
 describe('plainText', () => {
-  it('keeps the words of an HTML author, entities decoded', () => {
-    expect(plainText('<a href="//commons.wikimedia.org/wiki/User:X">X</a> &amp; Y&#39;s')).toBe(
-      "X & Y's"
+  it('keeps the words of an HTML author, entities decoded', async () => {
+    expect(
+      await plainText('<a href="//commons.wikimedia.org/wiki/User:X">X</a> &amp; Y&#39;s')
+    ).toBe("X & Y's");
+    expect(await plainText('Bj&#xF6;rk&nbsp;Gu&eth;mundsd&#243;ttir')).toBe(
+      'Björk Gu&eth;mundsdóttir'
     );
-    expect(plainText('Bj&#xF6;rk&nbsp;Gu&eth;mundsd&#243;ttir')).toBe('Björk Gu&eth;mundsdóttir');
   });
 
-  it('drops a character reference Unicode does not have, rather than fail', () => {
-    expect(plainText('A&#1114112;B&#x110000;C')).toBe('ABC');
+  it('drops a character reference Unicode does not have, rather than fail', async () => {
+    // Tags a regex would leave half-open are read by the parser as text or markup, never kept.
+    expect(await plainText('<scr<script>ipt>Greg</a>')).not.toContain('<');
+    expect(await plainText('A&#1114112;B&#x110000;C')).toBe('ABC');
   });
 });

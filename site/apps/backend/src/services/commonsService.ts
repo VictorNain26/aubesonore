@@ -57,16 +57,44 @@ function character(code: number): string {
   return Number.isInteger(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '';
 }
 
-/** Commons gives the author as HTML (a link to a user page, a Flickr profile): its text. */
-export function plainText(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, '')
+/**
+ * Commons gives the author as HTML (a link to a user page, a Flickr profile):
+ * its text, read by an HTML parser (Bun's HTMLRewriter) rather than by
+ * stripping tags, then its character references decoded. The page shows it as
+ * text, never as markup.
+ */
+export async function plainText(html: string): Promise<string> {
+  const parts: string[] = [];
+  await new HTMLRewriter()
+    .onDocument({
+      text(chunk) {
+        parts.push(chunk.text);
+      },
+    })
+    .transform(new Response(html))
+    .text();
+  return parts
+    .join('')
     .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => character(parseInt(hex, 16)))
     .replace(/&#(\d+);/g, (_, decimal: string) => character(Number(decimal)))
     .replace(/&([a-z]+);/gi, (entity: string, name: string) => ENTITIES[name] ?? entity)
     .replace(/\s+/g, ' ')
     .trim();
 }
+
+/** An address the API gave, kept only when it is https on one of `hosts`. */
+function httpsOn(url: string | undefined, hosts: readonly string[]): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' && hosts.includes(parsed.hostname) ? parsed.href : null;
+  } catch {
+    return null;
+  }
+}
+
+const IMAGE_HOSTS = ['upload.wikimedia.org', 'thumb.wikimedia.org'];
+const PAGE_HOSTS = ['commons.wikimedia.org'];
 
 // The licence's address comes from the file's page, which anyone can edit: a
 // link is kept only to the licences' own sites, else the licence stays words.
@@ -101,18 +129,21 @@ async function describe(file: string): Promise<ArtistPhoto | null> {
   );
   const info = body.query?.pages?.[0]?.imageinfo?.[0];
   const licence = info?.extmetadata?.LicenseShortName?.value;
+  // The page links and shows these: https on Wikimedia's own hosts, or no photo.
+  const url = httpsOn(info?.thumburl, IMAGE_HOSTS);
+  const source = httpsOn(info?.descriptionurl, PAGE_HOSTS);
   // Without its licence, the photo cannot be credited as Commons asks: no photo.
-  if (!info?.thumburl || !info.descriptionurl || !licence) return null;
-  const author = plainText(info.extmetadata?.Artist?.value ?? '');
+  if (!info || !url || !source || !licence) return null;
+  const author = await plainText(info.extmetadata?.Artist?.value ?? '');
   return {
-    url: info.thumburl,
+    url,
     width: info.thumbwidth ?? null,
     height: info.thumbheight ?? null,
     credit: {
       author: author || null,
-      licence: plainText(licence),
+      licence: await plainText(licence),
       licenceUrl: licenceLink(info.extmetadata?.LicenseUrl?.value),
-      source: info.descriptionurl,
+      source,
     },
   };
 }
