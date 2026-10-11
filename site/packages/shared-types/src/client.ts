@@ -220,8 +220,12 @@ export interface MusilogyCard extends MusilogyArtistRef {
 /** A neighbour of « Même son »: listened to by the same public, of the same colour. */
 export interface MusilogyNeighbour extends MusilogyArtistRef {
   yEnd: number | null;
+  /** MusicBrainz says it has ended, even without a date. */
+  ended: boolean;
   /** Its place among the artist's neighbours, from 1: the order that counts, ties settled. */
   rank: number;
+  /** The style or genre the two share most: why it is close. */
+  term: string;
 }
 
 /** A record of the artist's work (docs/vision.md §2.4). */
@@ -263,18 +267,14 @@ export interface MusilogyOtherName extends MusilogyArtistRef {
   kind: 'alias' | 'person' | 'former' | 'later';
 }
 
-/** Close neighbours who started more than 3 years before, within 3 years, after, or undated. */
-export interface MusilogyNeighbours {
-  before: MusilogyNeighbour[];
-  during: MusilogyNeighbour[];
-  after: MusilogyNeighbour[];
-  undated: MusilogyNeighbour[];
-}
-
 export interface MusilogyArtist {
   card: MusilogyCard;
+  /**
+   * The artist's close artists, by their rank, the closest first. Null, like every section
+   * below, while the data behind it is not loaded yet; empty when it holds none.
+   */
+  neighbours: MusilogyNeighbour[] | null;
   /** Null while the data behind a section is not loaded yet; empty when it holds none. */
-  neighbours: MusilogyNeighbours | null;
   releases: MusilogyRelease[] | null;
   bands: MusilogyBands | null;
   memberProjects: MusilogyProject[] | null;

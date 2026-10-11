@@ -17,7 +17,9 @@ function neighbour(n: number, overrides: Partial<MusilogyNeighbour> = {}): Musil
     y0: 1960 + n,
     played: null,
     yEnd: null,
+    ended: false,
     rank: n + 1,
+    term: 'Glam Rock',
     ...overrides,
   };
 }
@@ -37,14 +39,11 @@ function artist(overrides: Partial<MusilogyArtist> = {}): MusilogyArtist {
       ended: true,
       genres: ['glam rock', 'rock'],
     },
-    neighbours: {
-      before: [neighbour(3, { name: 'The Kinks' })],
-      during: [
-        neighbour(4, { name: 'David Bowie', played: { id: 'a-bowie', slug: 'david-bowie' } }),
-      ],
-      after: [neighbour(14, { name: 'Ramones' })],
-      undated: [],
-    },
+    neighbours: [
+      neighbour(3, { name: 'The Kinks' }),
+      neighbour(4, { name: 'David Bowie', played: { id: 'a-bowie', slug: 'david-bowie' } }),
+      neighbour(14, { name: 'Ramones', term: 'Punk' }),
+    ],
     releases: [],
     bands: {
       members: [{ ...neighbour(20, { name: 'Marc Bolan' }), yBegin: 1967, yEnd: 1977 }],
@@ -73,24 +72,29 @@ function show(shown: MusilogyArtist) {
 }
 
 describe('MusilogySections', () => {
-  it('places the close artists by decade, each a link to its page, with no lists apart', () => {
+  it('lists the close artists by rank, each a link to its page, the sound they share said once', () => {
     show(artist());
 
     expect(screen.getByRole('heading', { name: 'Artistes proches' })).toBeInTheDocument();
-    for (const link of screen.getAllByRole('link', { name: /The Kinks/ })) {
-      expect(link).toHaveAttribute('href', `/artiste/${neighbour(3).mbid}`);
-    }
-    expect(screen.getAllByRole('link', { name: /Ramones/ }).length).toBeGreaterThan(0);
-    expect(screen.queryByRole('heading', { name: 'Avant' })).not.toBeInTheDocument();
-    expect(screen.getByText(/par décennie de leurs débuts/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'The Kinks' })).toHaveAttribute(
+      'href',
+      `/artiste/${neighbour(3).mbid}`
+    );
+    expect(
+      screen.getByText('Le même son, surtout glam rock. La bande en fond : T. Rex.')
+    ).toBeInTheDocument();
+    // The one that differs says what it shares.
+    expect(screen.getByText('depuis 1974 · punk')).toBeInTheDocument();
+    expect(screen.getByText('depuis 1963')).toBeInTheDocument();
   });
 
   it('leads straight to the page of a neighbour the antenna played', () => {
     show(artist());
 
-    for (const link of screen.getAllByRole('link', { name: /David Bowie/ })) {
-      expect(link).toHaveAttribute('href', '/artiste/david-bowie');
-    }
+    expect(screen.getByRole('link', { name: 'David Bowie' })).toHaveAttribute(
+      'href',
+      '/artiste/david-bowie'
+    );
   });
 
   it('names each band link from the artist side', () => {
@@ -157,19 +161,18 @@ describe('MusilogySections', () => {
   });
 
   it('shows every close artist at once, with nothing to open', () => {
-    const before = Array.from({ length: 40 }, (_, i) => neighbour(i));
-    show(artist({ neighbours: { before, during: [], after: [], undated: [] } }));
+    show(artist({ neighbours: Array.from({ length: 8 }, (_, i) => neighbour(i)) }));
 
-    expect(screen.getAllByRole('link', { name: /Artist 39/ }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('listitem').length).toBeGreaterThanOrEqual(8);
+    expect(screen.getByRole('link', { name: 'Artist 7' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Voir/ })).not.toBeInTheDocument();
   });
 
-  it('names the close artists whose start is unknown', () => {
-    const undated = [neighbour(30, { name: 'Undated Band', y0: null })];
-    show(artist({ neighbours: { before: [neighbour(3)], during: [], after: [], undated } }));
+  it('keeps a close artist whose start is unknown in its rank, said so', () => {
+    show(artist({ neighbours: [neighbour(3), neighbour(30, { name: 'Undated Band', y0: null })] }));
 
-    expect(screen.getByText('Débuts inconnus')).toBeInTheDocument();
-    expect(screen.getAllByRole('link', { name: /Undated Band/ }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: 'Undated Band' })).toBeInTheDocument();
+    expect(screen.getByText('début inconnu')).toBeInTheDocument();
   });
 
   it('names no source, licence or tool, and links nowhere outside the site', () => {

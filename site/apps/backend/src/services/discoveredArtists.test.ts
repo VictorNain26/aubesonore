@@ -13,13 +13,15 @@ const ref = (mbid: string, played = false): MusilogyNeighbour => ({
   y0: null,
   played: played ? { id: mbid, slug: mbid } : null,
   yEnd: null,
+  ended: false,
   rank: 1,
+  term: 'Krautrock',
 });
 
 function page(close: MusilogyNeighbour[], releases = 0): MusilogyArtist {
   return {
     card: {} as MusilogyArtist['card'],
-    neighbours: { before: close, during: [], after: [], undated: [] },
+    neighbours: close,
     releases: Array.from({ length: releases }, (_, i) => ({
       mbid: `rg${i}`,
       title: `r${i}`,
