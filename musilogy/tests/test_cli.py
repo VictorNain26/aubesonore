@@ -289,3 +289,55 @@ def test_listens_that_are_not_the_pinned_slices_stop_the_run(pinned_listens, cha
     change(pinned_listens)
     with pytest.raises(SystemExit):
         cli.verified_listening()
+
+
+@pytest.fixture
+def spark(tmp_path, monkeypatch):
+    """snapshot-listens with the archive replaced: `reduce` stands for the
+    reduction of the streamed parts."""
+    dest = tmp_path / "listens"
+    sums = tmp_path / "SHA256SUMS"
+    monkeypatch.setattr(cli, "listening_snapshot", lambda _ref: dest)
+    monkeypatch.setattr(cli, "listening_sums", lambda _ref: sums)
+    monkeypatch.setattr(cli, "spark_digest", lambda _ref: "a" * 64)
+    monkeypatch.setattr(cli, "spark_listens", lambda *_: iter(()))
+    monkeypatch.setattr(cli, "connect", lambda: None)
+
+    def reduce(_con, _parts, out):
+        (out / "00.parquet").write_bytes(b"slice 0")
+        return 1
+
+    monkeypatch.setattr(cli, "reduce_listens", reduce)
+    return dest, sums
+
+
+def test_reduced_listens_are_pinned_with_the_archive_digest(spark):
+    dest, sums = spark
+    cli.snapshot_listens("2692-20261001-000003")
+    assert sums.read_text().splitlines() == [
+        f"{'a' * 64}  listenbrainz-spark-dump-2692-20261001-000003-full.tar",
+        f"{sha256_file(dest / '00.parquet')}  00.parquet",
+    ]
+
+
+def test_an_archive_that_is_not_the_published_one_stores_nothing(spark, monkeypatch):
+    dest, sums = spark
+
+    def reduce(*_):
+        raise ChecksumError("not the published archive")
+
+    monkeypatch.setattr(cli, "reduce_listens", reduce)
+    with pytest.raises(ChecksumError):
+        cli.snapshot_listens("2692-20261001-000003")
+    assert not dest.exists()
+    assert not sums.exists()
+
+
+def test_a_stop_before_the_pin_leaves_no_folder_that_looks_reduced(spark, monkeypatch):
+    # A folder under its final name refuses a new reduction: it must never
+    # exist without the digests the run checks it against.
+    dest, _ = spark
+    monkeypatch.setattr(cli, "listening_sums", lambda _ref: dest.parent / "missing" / "SUMS")
+    with pytest.raises(FileNotFoundError):
+        cli.snapshot_listens("2692-20261001-000003")
+    assert not dest.exists()
