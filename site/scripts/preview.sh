@@ -4,15 +4,14 @@
 # branch, with its own database and the real Musilogy. Reachable on the box's loopback only,
 # through an SSH tunnel. README « Aperçu d'une branche ».
 #
-#   scripts/preview.sh up <branch>   build and start <branch> (origin's); the first run also
-#                                    writes the preview's .env and certificates, then its schema
-#                                    and test listener (dev-init)
+#   scripts/preview.sh up <branch>   build and start <branch> (origin's); an empty database
+#                                    first gets its schema and test listener (dev-init)
 #   scripts/preview.sh musilogy      load musilogy's current delivery into the preview's database
 #   scripts/preview.sh down          stop the preview, keeping its database
 #   scripts/preview.sh destroy       stop it and delete its database
 #
-# Never touches production: its own project, containers, ports, image tags and volumes; the
-# worktree is not ~/aubesonore, which deploy.sh needs clean.
+# Never touches production: its own project, containers, ports, image tags, journal tags and
+# volumes; the worktree is not ~/aubesonore, which deploy.sh needs clean.
 set -euo pipefail
 # uv, for the Musilogy load, lives here on the box.
 export PATH="$HOME/.local/bin:$PATH"
@@ -24,32 +23,70 @@ PROJECT=aubesonore-preview
 PORT=3012
 DB_PORT=5434
 
+if [ "$(realpath -m "$ROOT")" = "$(realpath -m "$PROD")" ]; then
+  echo "the preview's worktree cannot be production's checkout ($PROD)" >&2
+  exit 1
+fi
+
 compose() {
   docker compose -p "$PROJECT" --project-directory "$SITE" \
     -f "$SITE/compose.yaml" -f "$SITE/compose.preview.yaml" "$@"
 }
 
-# The preview's own settings: random secrets, the tunnel's origin, no mail, no production key.
+psql_preview() {
+  compose exec -T postgres psql -U aubesonore -d aubesonore -At -c "$1"
+}
+
+# The preview's settings, rewritten at each `up` so a new setting reaches an older preview;
+# its secrets, drawn once, are kept. COMPOSE_PROJECT_NAME and COMPOSE_FILE make a bare
+# `docker compose` run in this folder the preview's, never production's.
 write_env() {
+  local env="$SITE/.env"
+  secret() {
+    local found
+    found="$( [ -f "$env" ] && sed -n "s/^$1=//p" "$env" || true)"
+    if [ -n "$found" ]; then echo "$found"; else openssl rand -hex "$2"; fi
+  }
+  local pg auth listener
+  pg="$(secret POSTGRES_PASSWORD 24)"
+  auth="$(secret BETTER_AUTH_SECRET 32)"
+  listener="$(secret DEV_USER_PASSWORD 12)"
   (
     umask 077
-    cat >"$SITE/.env" <<EOF
-# The preview's settings (scripts/preview.sh): no production secret, no listener's data.
+    cat >"$env.next" <<EOF
+# The preview's settings (scripts/preview.sh, rewritten at each up): no production secret, no
+# listener's data, no mail, no recording of the antenna.
+COMPOSE_PROJECT_NAME=$PROJECT
+COMPOSE_FILE=compose.yaml:compose.preview.yaml
 NODE_ENV=production
-POSTGRES_PASSWORD=$(openssl rand -hex 24)
-BETTER_AUTH_SECRET=$(openssl rand -hex 32)
+POSTGRES_PASSWORD=$pg
+BETTER_AUTH_SECRET=$auth
 BETTER_AUTH_URL=http://localhost:$PORT
 BACKEND_BASE_URL=http://localhost:$PORT
 FRONTEND_BASE_URL=http://localhost:$PORT
 ALLOWED_ORIGINS=http://localhost:$PORT
 COOKIE_DOMAIN=
 DISABLE_EMAILS=true
-ENABLE_CRON=false
+RECORD_ANTENNA=false
 DEV_USER_EMAIL=preview@aubesonore.test
-DEV_USER_PASSWORD=$(openssl rand -hex 12)
+DEV_USER_PASSWORD=$listener
 DEV_USER_NAME=Aperçu
 EOF
+    mv "$env.next" "$env"
   )
+}
+
+# A database migrated by a later branch has lost what an earlier one reads (a dropped
+# column): the preview refuses rather than serve that branch errors.
+check_schema() {
+  local branch="$1" name
+  for name in $(psql_preview "SELECT name FROM __app_migrations" 2>/dev/null || true); do
+    if [ ! -f "$SITE/apps/backend/drizzle/$name.sql" ]; then
+      echo "the preview's database has the migration $name, which $branch does not know:" >&2
+      echo "scripts/preview.sh destroy, then up $branch and musilogy" >&2
+      exit 1
+    fi
+  done
 }
 
 up() {
@@ -60,12 +97,12 @@ up() {
   fi
   git -C "$ROOT" fetch -q origin
   git -C "$ROOT" checkout -q --detach "origin/$branch"
-  [ -f "$SITE/.env" ] || write_env
+  write_env
   "$SITE/scripts/make-certs.sh" >/dev/null
-  local fresh=false
-  docker volume inspect "${PROJECT}_postgres_data" >/dev/null 2>&1 || fresh=true
+  compose up -d --wait postgres
+  check_schema "$branch"
   compose build backend frontend renderer
-  if $fresh; then
+  if [ "$(psql_preview "SELECT to_regclass('public.artist') IS NOT NULL")" != t ]; then
     # An empty database: the schema from schema.ts and the test listener, as on a workstation.
     compose --profile dev run --rm dev-init
   fi
@@ -73,7 +110,9 @@ up() {
   echo "preview of $branch at $(git -C "$ROOT" rev-parse --short HEAD)"
   echo "from the workstation: ssh -N -L $PORT:127.0.0.1:$PORT victormoi@victorserv,"
   echo "then http://localhost:$PORT (test listener: DEV_USER_* in $SITE/.env)"
-  $fresh && echo "empty Musilogy: scripts/preview.sh musilogy" || true
+  if [ "$(psql_preview "SELECT to_regclass('musilogy.artists') IS NOT NULL")" != t ]; then
+    echo "no Musilogy yet: scripts/preview.sh musilogy"
+  fi
 }
 
 musilogy() {

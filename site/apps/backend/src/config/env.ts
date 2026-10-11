@@ -59,6 +59,13 @@ interface EnvConfig {
   SMTP_PASSWORD: string | undefined;
   SMTP_FROM: string;
   DISABLE_EMAILS: boolean;
+
+  /**
+   * Whether this backend records what the antenna plays and resolves its artists
+   * (antennaWatcher): production's job only. A preview turns it off, or it would
+   * record the same plays and ask MusicBrainz again from the same address.
+   */
+  RECORD_ANTENNA: boolean;
 }
 
 function required(name: string): string {
@@ -142,6 +149,7 @@ export const env: EnvConfig = {
   SMTP_PASSWORD: optional('SMTP_PASSWORD'),
   SMTP_FROM: Bun.env.SMTP_FROM ?? 'AubeSonore <noreply@aubesonore.fr>',
   DISABLE_EMAILS: Bun.env.DISABLE_EMAILS === 'true',
+  RECORD_ANTENNA: Bun.env.RECORD_ANTENNA !== 'false',
 };
 
 // Cross-field validation: secrets must be coherent.

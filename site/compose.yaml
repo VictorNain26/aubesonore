@@ -36,7 +36,7 @@ x-backend-environment: &backend-environment
   SMTP_PASSWORD: ${SMTP_PASSWORD:-}
   SMTP_FROM: ${SMTP_FROM:-AubeSonore <noreply@aubesonore.fr>}
   DISABLE_EMAILS: ${DISABLE_EMAILS:-false}
-  ENABLE_CRON: ${ENABLE_CRON:-false}
+  RECORD_ANTENNA: ${RECORD_ANTENNA:-true}
   AZURACAST_BASE_URL: ${AZURACAST_BASE_URL:-http://host.docker.internal:8080}
   AZURACAST_API_KEY: ${AZURACAST_API_KEY:-}
   AZURACAST_STATION_ID: ${AZURACAST_STATION_ID:-1}
