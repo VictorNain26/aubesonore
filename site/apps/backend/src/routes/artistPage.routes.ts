@@ -139,7 +139,7 @@ async function handle(
     return '';
   }
   // A page by MBID stays out of search results unless it passes the
-  // threshold (services/discoveredArtists.ts, docs/vision.md §2.3).
+  // threshold (services/discoveredArtists.ts, docs/vision.md §2.4).
   const indexable = profile.played || isDiscovered(profile.mbid);
   if (!indexable) set.headers['x-robots-tag'] = 'noindex';
 
