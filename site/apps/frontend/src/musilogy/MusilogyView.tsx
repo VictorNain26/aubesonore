@@ -210,11 +210,14 @@ function InlineArtists<T extends MusilogyArtistRef>({
       {shown.map((artist) => {
         const note = noteOf(artist);
         return (
-          <li key={artist.mbid} className="reveal inline-flex min-h-11 items-baseline gap-2">
+          <li key={artist.mbid} className="reveal inline-flex items-baseline gap-2">
             <Link
               to={pagePathOf(artist)}
               state={DISCOVERY}
-              className={cn(ARTIST_LINK, 'text-row underline-offset-4')}
+              className={cn(
+                ARTIST_LINK,
+                'text-row inline-flex min-h-11 items-center underline-offset-4'
+              )}
             >
               {artist.name}
             </Link>
