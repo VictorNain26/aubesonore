@@ -84,8 +84,9 @@ interface NeighbourRow extends Record<string, unknown> {
   disambiguation: string | null;
   y0: number | null;
   y_end: number | null;
+  ended: boolean | null;
   rank: number;
-  side: 'before' | 'during' | 'after' | null;
+  term: string;
 }
 
 interface BandRow extends Record<string, unknown> {
@@ -202,7 +203,9 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
   const neighbour = (row: NeighbourRow): MusilogyNeighbour => ({
     ...ref(row.mbid, row.name, row.disambiguation, row.y0),
     yEnd: row.y_end,
+    ended: row.ended === true,
     rank: row.rank,
+    term: row.term,
   });
   const bandmate = (row: BandRow): MusilogyBandmate => ({
     ...ref(row.mbid, row.name, row.disambiguation, row.y0),
@@ -228,12 +231,8 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
       ended: card.ended,
       genres: (card.genres ?? []).map((genre) => genre.name),
     },
-    neighbours: neighbourRows && {
-      before: neighbourRows.filter((row) => row.side === 'before').map(neighbour),
-      during: neighbourRows.filter((row) => row.side === 'during').map(neighbour),
-      after: neighbourRows.filter((row) => row.side === 'after').map(neighbour),
-      undated: neighbourRows.filter((row) => row.side === null).map(neighbour),
-    },
+    // By rank, not score: musilogy settles equal scores, common among artists with few listeners.
+    neighbours: neighbourRows && neighbourRows.map(neighbour).sort((a, b) => a.rank - b.rank),
     releases: releaseRows && releaseRows.map(release),
     bands: bandRows && {
       members: bandRows.filter((row) => row.role === 'member').map(bandmate),
