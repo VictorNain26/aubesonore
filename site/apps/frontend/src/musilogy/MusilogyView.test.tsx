@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import type { MusilogyArtist, MusilogyNeighbour } from '@aubesonore/shared-types/client';
@@ -146,16 +146,33 @@ describe('MusilogySections', () => {
     expect(screen.getByRole('heading', { name: 'Groupes' })).toBeInTheDocument();
   });
 
-  it("names who leads to each member's project, and what each other name is", () => {
+  it('puts the other groups under the member who leads there, and says what each other name is', () => {
+    const took = { ...neighbour(52, { name: 'Steve Peregrine Took' }), yBegin: 1967, yEnd: 1969 };
     show(
       artist({
-        memberProjects: [{ ...neighbour(50, { name: 'Shagrat' }), via: ['Steve Peregrine Took'] }],
+        bands: {
+          members: [{ ...neighbour(20, { name: 'Marc Bolan' }), yBegin: 1967, yEnd: 1977 }, took],
+          groups: [],
+        },
+        memberProjects: [
+          { ...neighbour(50, { name: 'Shagrat' }), via: ['Steve Peregrine Took'] },
+          { ...neighbour(53, { name: 'John’s Children' }), via: ['Marc Bolan'] },
+        ],
         otherNames: [{ ...neighbour(51, { name: 'Tyrannosaurus Rex' }), kind: 'former' }],
       })
     );
 
-    expect(screen.getByRole('heading', { name: 'Projets des membres' })).toBeInTheDocument();
-    expect(screen.getByText('avec Steve Peregrine Took')).toBeInTheDocument();
+    const rowOf = (name: string) =>
+      screen
+        .getAllByRole('listitem')
+        .find((row) => within(row).queryByRole('link', { name })) as HTMLElement;
+    expect(
+      within(rowOf('Steve Peregrine Took')).getByRole('link', { name: 'Shagrat' })
+    ).toBeTruthy();
+    expect(within(rowOf('Steve Peregrine Took')).getByText('de 1967 à 1969')).toBeTruthy();
+    expect(within(rowOf('Marc Bolan')).queryByRole('link', { name: 'Shagrat' })).toBeNull();
+    expect(within(rowOf('Marc Bolan')).getByRole('link', { name: 'John’s Children' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Projets des membres' })).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Tyrannosaurus Rex' })).toBeInTheDocument();
     expect(screen.getByText('ancien nom')).toBeInTheDocument();
   });
@@ -192,6 +209,7 @@ describe('linkYears', () => {
     expect(linkYears(link)).toBe('de 1971 à 1975');
     expect(linkYears({ ...link, yEnd: null })).toBe('depuis 1971');
     expect(linkYears({ ...link, yBegin: null })).toBe("jusqu'en 1975");
+    expect(linkYears({ ...link, yEnd: 1971 })).toBe('1971');
     expect(linkYears({ ...link, yBegin: null, yEnd: null })).toBeNull();
   });
 });

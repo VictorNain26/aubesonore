@@ -191,12 +191,14 @@ Un ordre de départ, chaque section seulement quand elle a quelque chose à mont
    quand un cas réel la contredit. Le 2026-10-05, Protomartyr, Bloc Party ou Can gardent leur
    discographie entière, les Beatles s'arrêtent en 1970.
 4. **Où aller ensuite** : les artistes similaires (§2.2), les plus pertinents d'abord, chaque nom
-   menant à sa page ; puis les groupes et projets en trois rubriques plutôt que
+   menant à sa page ; puis les groupes et projets en deux rubriques plutôt que
    les douze types de relation de MusicBrainz :
-   - **Membres** d'un groupe, ou **Groupes** d'une personne, avec leurs années ;
-   - **Projets des membres** : leurs autres groupes et projets solo, seulement ceux qui ont un
-     disque, pour que chaque lien mène à de la musique, du plus ancien au plus récent, repliés
-     au-delà d'une dizaine ;
+   - **Membres** d'un groupe, avec leurs années, chacun suivi de ses autres groupes et projets
+     solo (« aussi dans … »), seulement ceux qui ont un disque, pour que chaque lien mène à de la
+     musique, du plus ancien au plus récent ; les membres repliés au-delà d'une douzaine. Les
+     ouvrages de référence rattachent ainsi les groupes d'un musicien au musicien (« In Groups »
+     de Discogs, « Member of » de Rate Your Music et d'AllMusic), jamais en liste à part
+     (2026-10-12). Les **Groupes** d'une personne, sur une ligne, avec leurs années ;
    - **Autres noms**, sur une ligne : pseudonymes et changements de nom.
 
    Les relations qui parlent de la vie plutôt que de la musique (famille, professeur, musicien de
