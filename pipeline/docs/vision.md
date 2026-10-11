@@ -130,13 +130,14 @@ priorité.
   la bibliothèque n'est plus noté : ce n'est plus une découverte.
 - **Un titre par artiste.** Une fournée retient au plus un titre par artiste, toutes familles
   confondues : son mieux noté (règle de Spotify Release Radar, « one song per artist per week »).
-  L'acquisition ne prend pas un retenu dont l'artiste a déjà un titre en nouveautés, en
-  découvertes ou prêt à publier : il attend la fin du premier séjour du précédent, comme BBC
-  6 Music enchaîne les singles d'un artiste au lieu de les empiler. Un artiste a au plus deux
-  titres à l'antenne, repos compris (un titre au repos revient au fond), le second au fond ou en
-  repère. Faute d'artistes libres, il entre moins de
-  titres ; le rapport compte les retenus en attente (`recherches/2026-10-02-programmation.md` §1
-  et §2 : FIP joue 2,8 titres par artiste et par an, Nova 1,6).
+  **Un artiste n'a qu'un titre à l'antenne**, repos compris (un titre au repos revient au fond),
+  repères compris : décision de Victor du 2026-10-11, la variété d'abord. L'acquisition ne prend
+  pas un retenu dont l'artiste a déjà un titre à l'antenne ou prêt à publier : il attend que le
+  précédent soit sorti, comme BBC 6 Music enchaîne les singles d'un artiste au lieu de les
+  empiler. Faute d'artistes libres, il entre moins de titres ; le rapport compte les retenus en
+  attente (`recherches/2026-10-02-programmation.md` §1 et §2 : FIP joue 2,8 titres par artiste et
+  par an, Nova 1,6). La règle précédente, deux titres dont un au fond ou en repère, laissait 100
+  artistes à plusieurs titres le 2026-10-11 (jusqu'à 9 pour Holy Wave, hérités du 2026-10-01).
 - **Pistes écartées après mesure** : ressemblance kNN sur l'empreinte (AUC 0,67), filtre
   « couleur » à négatifs par catégories, têtes de style Essentia, modèle Jev (texte seul). Leurs
   recherches sont dans l'historique git (`git show f7d7081:docs/recherches/`).
@@ -275,12 +276,16 @@ score choisit seulement qui est promu. La passe hebdomadaire applique ces règle
   à « publiée » dans la transaction de son entrée : sortie ensuite, elle n'est jamais republiée.
 - **Votes « non ».** Un titre voté « non » sort à la passe suivante, quelle que soit sa catégorie.
   Un fichier prêt voté « non » n'est jamais publié. Un repère voté « non » n'est jamais tiré.
+- **Un titre par artiste.** Un artiste à plusieurs titres n'en garde qu'un : un « oui » d'abord,
+  puis un titre en nouveautés ou découvertes, puis la note du modèle, puis le plus récent. Les
+  autres sortent ; un repère sorti n'est pas retiré avant 12 semaines. À la première passe, le
+  2026-10-11, cela fait sortir 191 titres (156 découvertes, 35 repères) et en laisse 511, un par
+  artiste ; chaque titre passe donc plus souvent, jusqu'à ce que les entrées regarnissent le
+  stock.
 - **Fin du premier séjour** (`stay_weeks`, 6 semaines, KEXP) : la part `promotion_share` (12 %)
   la meilleure de la cohorte, un « oui » d'abord puis la note du modèle, part au repos ; le reste
-  sort. Un titre qui donnerait un troisième titre à son artiste n'est pas promu : il est compté
-  et sa place va au suivant. Sans cette règle, la cohorte du 2026-10-01, entrée avant la règle
-  d'un titre par artiste, aurait mis au fond pour 18 mois 3 titres de Holy Wave et 3 de Ventre
-  De Biche (simulation sur la base du 2026-10-05).
+  sort. Un titre dont l'artiste a encore un autre titre à l'antenne (un titre en trop qui jouait
+  à la passe et attend la suivante) n'est pas promu : il est compté et sa place va au suivant.
 - **Fond, par auto-platooning** (MusicMaster) : un recurrent présent au fond depuis 6 semaines
   part au repos ; les places libres du fond reviennent à ceux qui se reposent depuis le plus
   longtemps, au moins `rest_weeks` (12 semaines).
@@ -288,8 +293,8 @@ score choisit seulement qui est promu. La passe hebdomadaire applique ces règle
   après sa première diffusion.
 - **Repères** : chacun reste 6 semaines, puis cède sa place à un autre, tiré selon l'écoute parmi
   ceux qui ne sont pas passés depuis 12 semaines (`repere_sorties`). Au plus `stock / 6` entrées
-  par passe : le stock se remplit au rythme où il se renouvelle. Un tirage qui donnerait un
-  troisième titre à un artiste est écarté et compté.
+  par passe : le stock se remplit au rythme où il se renouvelle. Un tirage dont l'artiste a déjà
+  un titre à l'antenne est écarté et compté.
 - **Stocks.** Ceux du fond et des repères découlent de la grille (`[grille]` de
   `editorial.toml`) : part d'antenne × titres par heure × 168 / passages par semaine, ~409
   chacun. Les nouveautés et les découvertes entrent au rythme de la rétention (§4).
@@ -391,7 +396,7 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
     replaçait dans la journée un titre déjà en file.
   - Un titre placé repart en fin de rotation. Le rapport donne le tour de chaque catégorie, les
     heures courtes, les créneaux cédés, les titres pas joués depuis plus de deux tours (doit être
-    nul) et le plus grand nombre de titres d'un même artiste à l'antenne (doit rester à 2).
+    nul) et le plus grand nombre de titres d'un même artiste à l'antenne (doit rester à 1).
   - **Une catégorie sans titre permis cède son créneau** à la suivante : l'heure continue au
     lieu de laisser un trou, et le rapport compte les créneaux cédés.
   - **Une heure trop courte fait échouer la commande**, après la publication : ses titres ne la

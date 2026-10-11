@@ -506,7 +506,7 @@ def acquire() -> None:
                 "prêts": rep.n_ready,
                 "sans pochette": rep.n_no_cover,
                 "non tentés": rep.n_unindexed,
-                "artiste déjà en rotation ou deux fois à l'antenne": rep.n_artist_waiting,
+                "artiste déjà à l'antenne": rep.n_artist_waiting,
                 "échecs": dict(rep.failures),
             },
         )
@@ -516,8 +516,7 @@ def acquire() -> None:
             f"({_pct(rep.n_ready, rep.n_attempted)} des tentés), "
             f"{_n(sum(rep.failures.values()))} en échec",
             f"  prêts sans pochette : {_n(rep.n_no_cover)}",
-            f"  retenus en attente, leur artiste ayant déjà un titre en rotation ou deux à "
-            f"l'antenne : "
+            f"  retenus en attente, leur artiste ayant déjà un titre à l'antenne : "
             f"{_n(rep.n_artist_waiting)}",
             *(f"  {reason} : {_n(n)}" for reason, n in rep.failures.most_common()),
         ]
@@ -573,14 +572,15 @@ def antenne() -> None:
                 "repères sans pochette": rep.n_references_no_cover,
                 "repères sautés": len(rep.skipped_references),
                 "votés non écartés": rep.n_voted_out,
+                "titres en trop d'un artiste sortis": rep.n_artist_doubles,
                 "promus": rep.n_promoted,
-                "non promus, artiste déjà deux fois à l'antenne": rep.n_promotions_artist_full,
+                "non promus, artiste déjà à l'antenne": rep.n_promotions_artist_full,
                 "fins de séjour": rep.n_ended,
                 "mis au repos": rep.n_rested,
                 "revenus au fond": rep.n_returned,
                 "périmés": rep.n_expired,
                 "repères sortis": rep.n_references_out,
-                "repères écartés, artiste déjà deux fois à l'antenne": rep.n_references_artist_full,
+                "repères écartés, artiste déjà à l'antenne": rep.n_references_artist_full,
                 "repères écartés, artiste inconnu": rep.n_references_no_artist,
                 "oubliés": rep.n_forgotten,
                 "inconnus": rep.n_unknown,
@@ -593,15 +593,16 @@ def antenne() -> None:
             f"Antenne : {_n(rep.n_total)} titres ({_n(rep.n_published)} publiés, "
             f"{_n(rep.n_references)} repères ajoutés, {_n(rep.n_references_out)} sortis)",
             f"  votés « non » écartés : {_n(rep.n_voted_out)}",
+            f"  titres en trop d'un artiste sortis : {_n(rep.n_artist_doubles)}",
             f"  fin du premier séjour : {_n(rep.n_promoted)} promus au repos, "
             f"{_n(rep.n_ended)} sortis, {_n(rep.n_promotions_artist_full)} non promus "
-            f"(artiste déjà deux fois à l'antenne)",
+            f"(artiste déjà à l'antenne)",
             f"  fond : {_n(rep.n_rested)} mis au repos, {_n(rep.n_returned)} revenus, "
             f"{_n(rep.n_expired)} périmés",
             f"  réalignement : {_n(rep.n_forgotten)} disparus d'AzuraCast oubliés, "
             f"{_n(rep.n_unknown)} fichiers inconnus dans antenne/ et repos/",
             f"  repères sans pochette : {_n(rep.n_references_no_cover)}",
-            f"  repères écartés, artiste déjà deux fois à l'antenne : "
+            f"  repères écartés, artiste déjà à l'antenne : "
             f"{_n(rep.n_references_artist_full)}, artiste inconnu : "
             f"{_n(rep.n_references_no_artist)}",
             *(f"  sauté : {s}" for s in rep.skipped_references),

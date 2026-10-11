@@ -4,9 +4,9 @@ Chaque issue est écrite dès qu'elle est connue : une panne de Deezer arrête l
 le travail fait. Un titre en échec est retenté aux passes suivantes, jusqu'à `max_attempts`. Un
 titre voté « non » n'est jamais acquis.
 
-Un artiste n'a qu'un titre à la fois en rotation, et au plus deux à l'antenne
-(docs/recherches/2026-10-02-programmation.md §1) : le titre suivant d'un artiste attend que le
-précédent ait fini son premier séjour. Faute d'artistes libres, il entre moins de titres.
+Un artiste n'a qu'un titre à l'antenne, repos compris (décision du 2026-10-11 : la variété
+d'abord) : le titre suivant d'un artiste attend que le précédent soit sorti. Faute d'artistes
+libres, il entre moins de titres.
 """
 
 import logging
@@ -42,7 +42,7 @@ class AcquireReport:
 
 class Pending(NamedTuple):
     tids: list[int]
-    # Retenus mis en attente : leur artiste a déjà son titre en rotation, ou deux à l'antenne.
+    # Retenus mis en attente : leur artiste a déjà son titre à l'antenne, ou un titre prêt.
     waiting: int
 
 
@@ -62,30 +62,25 @@ def pending(conn: sqlite3.Connection, cfg: AcquisitionConfig) -> Pending:
         """,
         (cfg.max_attempts,),
     ).fetchall()
-    on_air: Counter[int] = Counter()
-    rotating: set[int] = set()
-    # Un titre au repos revient au fond : il compte dans les deux titres de son artiste.
-    for artist, categorie in conn.execute(
-        "SELECT t.deezer_artist_id, n.categorie FROM antenne n JOIN tracks t USING "
-        "(deezer_track_id)"
-    ):
-        on_air[int(artist)] += 1
-        if categorie in ("nouveautes", "decouvertes"):
-            rotating.add(int(artist))
-    rotating |= {
+    # Un titre au repos revient au fond : son artiste n'est pas libre.
+    taken = {
         int(r[0])
         for r in conn.execute(
-            "SELECT t.deezer_artist_id FROM acquisitions a JOIN tracks t USING (deezer_track_id) "
-            "WHERE a.status = 'ready'"
+            """
+            SELECT t.deezer_artist_id FROM antenne n JOIN tracks t USING (deezer_track_id)
+            UNION
+            SELECT t.deezer_artist_id FROM acquisitions a JOIN tracks t USING (deezer_track_id)
+            WHERE a.status = 'ready'
+            """
         )
     }
     tids: list[int] = []
     waiting = 0
     for tid, artist in rows:
-        if artist in rotating or on_air[artist] >= 2:
+        if artist in taken:
             waiting += 1
         elif len(tids) < cfg.max_per_pass:
-            rotating.add(int(artist))
+            taken.add(int(artist))
             tids.append(int(tid))
     return Pending(tids, waiting)
 

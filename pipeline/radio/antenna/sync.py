@@ -8,12 +8,14 @@ découverte n'est publiée qu'une fois : sortie de l'antenne, elle n'y revient p
 
 Un titre sort par âge, jamais par score : le score choisit seulement qui est promu au fond. Le
 titre en cours et la file de l'AutoDJ ne bougent jamais : ils attendent la passe suivante.
+
+Un artiste n'a qu'un titre à l'antenne, repos compris puisqu'un titre au repos revient au fond
+(décision du 2026-10-11 : la variété d'abord).
 """
 
 import math
 import sqlite3
 import tempfile
-from collections import Counter
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path, PurePosixPath
@@ -68,6 +70,7 @@ class AntenneReport:
     n_published: int = 0
     n_references: int = 0
     n_references_no_cover: int = 0
+    n_artist_doubles: int = 0
     n_promoted: int = 0
     n_promotions_artist_full: int = 0
     n_ended: int = 0
@@ -221,6 +224,40 @@ def _move(
     return len(done)
 
 
+def one_per_artist(
+    conn: sqlite3.Connection, station: Station, busy: set[str], now: datetime, rep: AntenneReport
+) -> None:
+    """Un artiste à plusieurs titres n'en garde qu'un : un « oui » d'abord, puis un titre en
+    rotation, puis la note du modèle, puis le plus récent. Les autres sortent ; un repère sorti
+    n'est pas retiré avant `rest_weeks`. Un titre en cours ou en file attend la passe suivante."""
+    rows = conn.execute(
+        """
+        SELECT n.deezer_track_id, n.path, n.song_id, n.origin, t.deezer_artist_id FROM antenne n
+        JOIN tracks t USING (deezer_track_id)
+        LEFT JOIN scores s USING (deezer_track_id)
+        LEFT JOIN votes v ON v.deezer_track_id = n.deezer_track_id AND v.vote = 'oui'
+        ORDER BY t.deezer_artist_id, v.deezer_track_id IS NULL,
+                 n.categorie NOT IN ('nouveautes', 'decouvertes'), COALESCE(s.score, 0) DESC,
+                 n.published_at DESC, n.deezer_track_id
+        """
+    ).fetchall()
+    kept: set[int] = set()
+    out: list[tuple[int, str, str]] = []
+    for tid, path, song, origin, artist in rows:
+        if artist not in kept:
+            kept.add(int(artist))
+        elif song not in busy:
+            out.append((int(tid), str(path), str(origin)))
+    rep.n_artist_doubles = _remove(conn, station, [p for _, p, _ in out], rep)
+    still = {int(r[0]) for r in conn.execute("SELECT deezer_track_id FROM antenne")}
+    with conn:
+        conn.executemany(
+            "INSERT INTO repere_sorties VALUES (?, ?) "
+            "ON CONFLICT (deezer_track_id) DO UPDATE SET left_at = excluded.left_at",
+            [(t, now.isoformat()) for t, _, o in out if o == "repere" and t not in still],
+        )
+
+
 def _weeks_ago(now: datetime, weeks: int) -> str:
     return (now - timedelta(weeks=weeks)).isoformat()
 
@@ -235,8 +272,8 @@ def end_first_stay(
 ) -> None:
     """Après `stay_weeks` semaines, la part `promotion_share` la meilleure d'une cohorte (un
     « oui » d'abord, puis la note du modèle) part au repos avant le fond ; le reste sort. Un
-    artiste a au plus deux titres à l'antenne, repos compris : un titre qui lui en donnerait un
-    troisième n'est pas promu, il est compté et sa place va au suivant de la cohorte."""
+    titre dont l'artiste a un autre titre à l'antenne n'est pas promu : il est compté et sa place
+    va au suivant de la cohorte."""
     rows = conn.execute(
         """
         SELECT n.path, n.song_id, t.deezer_artist_id FROM antenne n
@@ -250,22 +287,22 @@ def end_first_stay(
     ).fetchall()
     due = [(str(p), int(a)) for p, song, a in rows if song not in busy]
     leaving = {p for p, _ in due}
-    on_air = Counter(
+    taken = {
         int(a)
         for p, a in conn.execute(
             "SELECT n.path, t.deezer_artist_id FROM antenne n JOIN tracks t USING (deezer_track_id)"
         )
         if p not in leaving
-    )
+    }
     k = round(cfg.promotion_share * len(due))
     promoted: list[str] = []
     for path, artist in due:
         if len(promoted) == k:
             break
-        if on_air[artist] >= 2:
+        if artist in taken:
             rep.n_promotions_artist_full += 1
             continue
-        on_air[artist] += 1
+        taken.add(artist)
         promoted.append(path)
     rep.n_promoted = _move(conn, station, promoted, REST, "repos", now.isoformat(), rep)
     rep.n_ended = _remove(conn, station, [p for p, _ in due if p not in set(promoted)], rep)
@@ -334,10 +371,9 @@ def rotate_references(
     """Les repères tournent aussi : chacun reste `stay_weeks` semaines, puis cède sa place à un
     autre, tiré selon l'écoute parmi ceux qui ne sont pas passés depuis `rest_weeks` semaines.
     Au plus `stock / stay_weeks` entrées par passe : le stock se remplit au rythme où il se
-    renouvelle. Un artiste a au plus deux titres à l'antenne, repos compris puisqu'un titre au
-    repos revient au fond (docs/recherches/2026-10-02-programmation.md §1) : un tirage qui lui
-    en donnerait un troisième, ou dont l'artiste est inconnu, est écarté et compté. Le fichier
-    Plex n'est que lu ; la copie préparée est déposée puis effacée."""
+    renouvelle. Un tirage dont l'artiste a déjà un titre à l'antenne, ou dont l'artiste est
+    inconnu, est écarté et compté. Le fichier Plex n'est que lu ; la copie préparée est déposée
+    puis effacée."""
     stamp = now.isoformat()
     tired = conn.execute(
         "SELECT deezer_track_id, path, song_id FROM antenne WHERE categorie = 'reperes' "
@@ -381,12 +417,12 @@ def rotate_references(
         return
     w = np.array([play_weight(int(r[4])) for r in pool])
     picked = rng.choice(len(pool), size=min(need, len(pool)), replace=False, p=w / w.sum())
-    on_air = Counter(
+    taken = {
         int(r[0])
         for r in conn.execute(
             "SELECT t.deezer_artist_id FROM antenne n JOIN tracks t USING (deezer_track_id)"
         )
-    )
+    }
     with tempfile.TemporaryDirectory() as tmp:
         for i in picked:
             tid, artist, title, file = int(pool[i][0]), str(pool[i][1]), str(pool[i][2]), pool[i][3]
@@ -395,10 +431,10 @@ def rotate_references(
                 # Sans artiste connu, le plafond ne se vérifie pas : écarté, compté.
                 rep.n_references_no_artist += 1
                 continue
-            if on_air[int(artist_id)] >= 2:
+            if int(artist_id) in taken:
                 rep.n_references_artist_full += 1
                 continue
-            on_air[int(artist_id)] += 1
+            taken.add(int(artist_id))
             dest = Path(tmp) / f"{tid}.mp3"
             try:
                 page = deezer.track_page(tid)
@@ -434,6 +470,7 @@ def antenne_pass(
     withdraw_rejected(conn, station, rep)
     publish_ready(conn, station, stamp, rep)
     busy = station.busy_song_ids()
+    one_per_artist(conn, station, busy, now, rep)
     end_first_stay(conn, station, cfg, busy, now, rep)
     expire(conn, station, cfg, busy, now, rep)
     platoon(conn, station, cfg, grille.stock("fond"), busy, now, rep)
