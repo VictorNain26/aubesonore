@@ -9,7 +9,7 @@ import type {
 import { getLocale } from '@/paraglide/runtime.js';
 import { ArrowUpRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Cover } from '../home/Cover';
+import { ArtistPortrait } from './ArtistPortrait';
 import { ARTIST_LINK } from '../home/styles';
 import * as m from '@/paraglide/messages.js';
 import { KIND_LABELS } from '../lib/artistKind';
@@ -190,15 +190,17 @@ function Profile({
     <>
       {/* The sections' 4/8 grid: the portrait in the title column, who they are beside it. */}
       <div className="px-page wide:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] wide:gap-16 grid gap-6 pt-10 md:pt-16">
-        <Cover
-          src={profile.image}
-          alt={m.artist_portrait_alt({ name: profile.name })}
-          seed={profile.name}
-          priority
-          // w-40 on phones, w-64 on upright tablets; the 4/12 title column where it is wide.
-          sizes="(min-width: 64rem) 33vw, (min-width: 48rem) and (orientation: landscape) 33vw, (min-width: 48rem) 16rem, 10rem"
-          className="lift-in wide:w-full aspect-square w-40 md:w-64"
-        />
+        {/* Its entrance on a wrapper: an animation filled forward would hold the hover's lift. */}
+        <div className="lift-in wide:w-full w-40 md:w-64">
+          <ArtistPortrait
+            images={profile.images}
+            name={profile.name}
+            seed={profile.mbid ?? profile.name}
+            // w-40 on phones, w-64 on upright tablets; the 4/12 title column where it is wide.
+            sizes="(min-width: 64rem) 33vw, (min-width: 48rem) and (orientation: landscape) 33vw, (min-width: 48rem) 16rem, 10rem"
+            className="aspect-square w-full"
+          />
+        </div>
         {/* Who first, in three lines: what they are, their name, their music; then a few words,
             where to hear them, and the way down the page. */}
         <div className="lift-in-late wide:justify-end flex min-w-0 flex-col">

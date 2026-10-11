@@ -1,6 +1,6 @@
 import { describe, it, expect, spyOn, afterEach } from 'bun:test';
 
-const { searchArtist, getArtist, findTrackByIsrc, deezerCache, __resetDeezerCircuit } =
+const { searchArtist, findTrackByIsrc, deezerCache, __resetDeezerCircuit } =
   await import('./deezerService');
 
 const norm = (value: string): string =>
@@ -40,7 +40,7 @@ describe('searchArtist', () => {
 
     expect(await searchArtist('Cassius', 'Cassius 1999', norm)).toEqual({
       status: 'match',
-      artist: { id: '2049', name: 'Cassius', picture: 'https://cdn.deezer.com/2049.jpg' },
+      artist: { id: '2049', name: 'Cassius' },
     });
     expect(fetchSpy.mock.calls.length).toBe(1);
   });
@@ -54,7 +54,7 @@ describe('searchArtist', () => {
 
     expect(await searchArtist('daft punk', 'Veridis Quo', norm)).toEqual({
       status: 'match',
-      artist: { id: '27', name: 'Daft Punk', picture: 'https://cdn.deezer.com/dp.jpg' },
+      artist: { id: '27', name: 'Daft Punk' },
     });
   });
 
@@ -147,7 +147,7 @@ describe('searchArtist', () => {
 
     expect(first).toEqual({
       status: 'match',
-      artist: { id: '7', name: 'Air', picture: 'https://cdn.deezer.com/7.jpg' },
+      artist: { id: '7', name: 'Air' },
     });
     expect(second).toEqual(first);
     expect(third).toEqual(first);
@@ -163,29 +163,6 @@ describe('searchArtist', () => {
     const [trackUrl, artistUrl] = fetchSpy.mock.calls.map(([url]) => url as string);
     expect(trackUrl).toContain('Simon%20%26%20Garfunkel%20The%20Boxer');
     expect(artistUrl).toContain('/search/artist?limit=10&q=Simon%20%26%20Garfunkel');
-  });
-});
-
-describe('getArtist', () => {
-  it('caches the "no data" answer (code 800) as a definitive miss', async () => {
-    const fetchSpy = spyOn(globalThis, 'fetch').mockResolvedValue(
-      json({ error: { type: 'DataException', message: 'no data', code: 800 } })
-    );
-
-    expect(await getArtist('999999999999')).toEqual({ status: 'none' });
-    expect(await getArtist('999999999999')).toEqual({ status: 'none' });
-    expect(fetchSpy.mock.calls.length).toBe(1);
-  });
-
-  it('retries after any other error body', async () => {
-    const fetchSpy = spyOn(globalThis, 'fetch').mockImplementation((() =>
-      Promise.resolve(
-        json({ error: { type: 'Exception', message: 'Quota limit exceeded', code: 4 } })
-      )) as unknown as typeof fetch);
-
-    expect(await getArtist('27')).toEqual({ status: 'failed' });
-    expect(await getArtist('27')).toEqual({ status: 'failed' });
-    expect(fetchSpy.mock.calls.length).toBe(2);
   });
 });
 
@@ -214,8 +191,8 @@ describe('findTrackByIsrc', () => {
       value: {
         title: "Since I Don't Have You (Mono)",
         artists: [
-          { id: '1887', name: 'Manfred Mann', picture: null },
-          { id: '99', name: 'Guest', picture: null },
+          { id: '1887', name: 'Manfred Mann' },
+          { id: '99', name: 'Guest' },
         ],
         link: 'https://www.deezer.com/track/17590811',
         cover: 'https://cdn-images.dzcdn.net/images/cover/c1/250x250-000000-80-0-0.jpg',

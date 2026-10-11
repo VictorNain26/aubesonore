@@ -9,6 +9,9 @@
 // - The station's covers: AzuraCast serves one 1000 px art (~95 KB); nginx shrinks it at /covers/ to
 //   96, 192, 384 and 768 px, 2.4, 6.2 and 18.9 KB for the first three (nginx.conf, measured
 //   2026-10-06). The original stays the largest choice, for the now-playing cover on dense screens.
+// - Wikimedia Commons thumbnails (`…/thumb/…/1280px-File.jpg`): Wikimedia serves a hotlink only at
+//   its standard widths (mediawiki.org/wiki/Common_thumbnail_sizes); an original smaller than
+//   1280 px comes without /thumb/ and keeps its URL.
 // Other hosts (the Cover Art Archive, our own store) keep their URL.
 const APPLE_SIZED = /^(https:\/\/is\d+-ssl\.mzstatic\.com\/image\/thumb\/.+)\/\d+x\d+bb\.jpg$/;
 // Only this station's art: nginx fetches it from radio.aubesonore.fr.
@@ -16,6 +19,8 @@ const STATION_ART =
   /^https:\/\/radio\.aubesonore\.fr\/api\/station\/aubesonore\/art\/([0-9a-f]+-\d+)\.jpg$/;
 const STATION_WIDTHS = [96, 192, 384, 768] as const;
 const STATION_ORIGINAL = 1000;
+const COMMONS_THUMB =
+  /^(https:\/\/(?:upload|thumb)\.wikimedia\.org\/wikipedia\/commons\/thumb\/.+)\/\d+px-([^/]+)$/;
 const DEEZER_SIZED =
   /^(https:\/\/cdn-images\.dzcdn\.net\/images\/(?:artist|cover)\/[0-9a-f]+)\/\d+x\d+(-[^/]+\.jpg)$/;
 
@@ -42,6 +47,13 @@ function sizer(url: string): Sizer | null {
     return {
       at: (pixels) => `${deezer[1]}/${pixels}x${pixels}${deezer[2]}`,
       widths: [250, 500, 1000],
+    };
+  }
+  const commons = COMMONS_THUMB.exec(url);
+  if (commons) {
+    return {
+      at: (pixels) => `${commons[1]}/${pixels}px-${commons[2]}`,
+      widths: [330, 500, 960, 1280],
     };
   }
   const art = STATION_ART.exec(url);

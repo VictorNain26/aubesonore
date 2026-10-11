@@ -112,6 +112,36 @@ export interface ArtistSummary {
   url: string;
 }
 
+/**
+ * What a Wikimedia Commons photo's licence asks to credit (docs/vision.md §2.5):
+ * shown where the photo opens large.
+ */
+export interface ImageCredit {
+  /** The author as the file names them; null when it names none. */
+  author: string | null;
+  licence: string;
+  licenceUrl: string | null;
+  /** The file's page on Commons. */
+  source: string;
+}
+
+export interface ArtistPhoto {
+  url: string;
+  /** The size Commons gives for `url`, so the large view opens at its shape. */
+  width: number | null;
+  height: number | null;
+  credit: ImageCredit;
+}
+
+/** The cover of the artist's first record, with what it is. */
+export interface ArtistCover {
+  url: string;
+  title: string;
+  year: number | null;
+}
+
+export type ArtistImage = ({ kind: 'photo' } & ArtistPhoto) | ({ kind: 'cover' } & ArtistCover);
+
 export interface ArtistProfile {
   id: string;
   name: string;
@@ -124,11 +154,12 @@ export interface ArtistProfile {
    */
   played: boolean;
   /**
-   * The Deezer portrait, else the cover of the first record at the Cover Art
-   * Archive; absolute https, hotlinked, never re-hosted. The page shows its
-   * generated wave when it is null or fails to load.
+   * The artist's images, the first to show first: the photo of its Wikidata
+   * item on Wikimedia Commons, then the cover of its first record at the Cover
+   * Art Archive; absolute https, hotlinked, never re-hosted. The page shows the
+   * next when one fails to load, and draws the artist's dawn past the last.
    */
-  image: string | null;
+  images: ArtistImage[];
   facts: ArtistFacts | null;
   summary: ArtistSummary | null;
   links: ArtistLink[];

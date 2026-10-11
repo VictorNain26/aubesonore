@@ -11,7 +11,7 @@ import {
   customType,
 } from 'drizzle-orm/pg-core';
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
-import type { ArtistSummary, PlatformLinks } from '@aubesonore/shared-types/client';
+import type { ArtistPhoto, ArtistSummary, PlatformLinks } from '@aubesonore/shared-types/client';
 import type { StatsState } from '@aubesonore/shared-types/stats';
 
 // Re-export so existing imports (`from '../db/schema'`) keep working.
@@ -257,7 +257,7 @@ export const artistProfile = pgTable('artist_profile', {
   artistId: text('artist_id')
     .primaryKey()
     .references(() => artist.id, { onDelete: 'cascade' }),
-  image: text('image'),
+  photo: jsonb('photo').$type<ArtistPhoto>(),
   summaryFr: jsonb('summary_fr').$type<ArtistSummary>(),
   summaryEn: jsonb('summary_en').$type<ArtistSummary>(),
   // When every source last answered; a refresh cut short keeps the old date.

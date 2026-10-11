@@ -83,9 +83,19 @@ const urls = [
 const HOMEWORK = 'a7da8a4c-6e8b-3d3e-b6f1-7c0fd3ed3d5b';
 // As artist_releases gives them: the latest first.
 const releases = [
-  { mbid: 'f2a1c0b7-6b3e-4f3a-9d8e-5c4b3a291807', primary_type: 'Album', y: 2001 },
-  { mbid: HOMEWORK, primary_type: 'Album', y: 1997 },
-  { mbid: 'b1c9a6f0-3c8f-3e5a-9a8e-2f1b4c0d9e77', primary_type: 'EP', y: 1994 },
+  {
+    mbid: 'f2a1c0b7-6b3e-4f3a-9d8e-5c4b3a291807',
+    title: 'Discovery',
+    primary_type: 'Album',
+    y: 2001,
+  },
+  { mbid: HOMEWORK, title: 'Homework', primary_type: 'Album', y: 1997 },
+  {
+    mbid: 'b1c9a6f0-3c8f-3e5a-9a8e-2f1b4c0d9e77',
+    title: 'The New Wave',
+    primary_type: 'EP',
+    y: 1994,
+  },
 ];
 
 beforeEach(() => {
@@ -117,15 +127,21 @@ describe('getArtistIdentity', () => {
         { platform: 'official', url: 'https://daftpunk.com/' },
       ],
       wikidataId: 'Q185828',
-      firstCover: `https://coverartarchive.org/release-group/${HOMEWORK}/front-500`,
+      firstCover: {
+        url: `https://coverartarchive.org/release-group/${HOMEWORK}/front-500`,
+        title: 'Homework',
+        year: 1997,
+      },
     });
   });
 
   it("takes the first EP's cover when there is no album, and none without a record", async () => {
     answers.artist_releases = [releases[2]!];
-    expect((await getArtistIdentity(DAFT_PUNK))?.firstCover).toBe(
-      `https://coverartarchive.org/release-group/${releases[2]!.mbid}/front-500`
-    );
+    expect((await getArtistIdentity(DAFT_PUNK))?.firstCover).toEqual({
+      url: `https://coverartarchive.org/release-group/${releases[2]!.mbid}/front-500`,
+      title: 'The New Wave',
+      year: 1994,
+    });
 
     identityCache.dispose();
     coreCache.dispose();
@@ -136,9 +152,11 @@ describe('getArtistIdentity', () => {
   it('prefers an undated album to a dated EP', async () => {
     const undated = { ...releases[1]!, y: null };
     answers.artist_releases = [releases[2]!, undated];
-    expect((await getArtistIdentity(DAFT_PUNK))?.firstCover).toBe(
-      `https://coverartarchive.org/release-group/${HOMEWORK}/front-500`
-    );
+    expect((await getArtistIdentity(DAFT_PUNK))?.firstCover).toEqual({
+      url: `https://coverartarchive.org/release-group/${HOMEWORK}/front-500`,
+      title: 'Homework',
+      year: null,
+    });
   });
 
   it('never reads a birth as a career for a person', async () => {

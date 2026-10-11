@@ -35,7 +35,26 @@ const summaryEn = {
 };
 
 const LONG_AGO = new Date('2026-01-01T00:00:00Z');
-const HOMEWORK_COVER = 'https://coverartarchive.org/release-group/homework/front-500';
+const HOMEWORK_COVER = {
+  url: 'https://coverartarchive.org/release-group/homework/front-500',
+  title: 'Homework',
+  year: 1997,
+};
+const PHOTO = {
+  url: 'https://upload.wikimedia.org/wikipedia/commons/d/dp/Daft_Punk.jpg',
+  width: 1280,
+  height: 853,
+  credit: {
+    author: 'Jane Doe',
+    licence: 'CC BY-SA 4.0',
+    licenceUrl: 'https://creativecommons.org/licenses/by-sa/4.0',
+    source: 'https://commons.wikimedia.org/wiki/File:Daft_Punk.jpg',
+  },
+};
+const STORED_PHOTO = {
+  ...PHOTO,
+  url: 'https://upload.wikimedia.org/wikipedia/commons/s/st/Stored.jpg',
+};
 
 let rows: Array<{ artist: ArtistRow; artist_profile: StoredProfile | null }> = [];
 let stored: StoredProfile[] = [];
@@ -84,16 +103,13 @@ void mock.module('../db', () => ({
 
 // spyOn on the real exports, restored after this file: mock.module would
 // replace these modules for every other test file of the run (Bun 1.3).
-const deezer = await import('./deezerService');
+const commons = await import('./commonsService');
 const musicbrainz = await import('./musicbrainzService');
 const musilogy = await import('./musilogyService');
 const wikipedia = await import('./wikipediaService');
 
 const spies = {
-  deezer: spyOn(deezer, 'getArtist').mockResolvedValue({
-    status: 'found',
-    value: { id: '27', name: 'Daft Punk', picture: 'https://cdn.deezer.com/dp.jpg' },
-  }),
+  photo: spyOn(commons, 'getPhoto').mockResolvedValue({ status: 'found', value: PHOTO }),
   mbid: spyOn(musicbrainz, 'findMbidByDeezerId').mockResolvedValue({
     status: 'found',
     value: 'mb-1',
@@ -120,7 +136,7 @@ const { getArtistProfile } = await import('./artistProfileService');
 function storedProfile(values: Partial<StoredProfile> = {}): StoredProfile {
   return {
     artistId: 'artist-1',
-    image: 'https://cdn.deezer.com/stored.jpg',
+    photo: STORED_PHOTO,
     summaryFr,
     summaryEn,
     refreshedAt: new Date(),
@@ -148,7 +164,10 @@ describe('getArtistProfile', () => {
       slug: 'daft-punk',
       mbid: null,
       played: true,
-      image: 'https://cdn.deezer.com/dp.jpg',
+      images: [
+        { kind: 'photo', ...PHOTO },
+        { kind: 'cover', ...HOMEWORK_COVER },
+      ],
       facts,
       summary: summaryEn,
       links: [
@@ -159,6 +178,7 @@ describe('getArtistProfile', () => {
     expect(stored).toHaveLength(1);
     expect(stored[0]).toMatchObject({ summaryFr, summaryEn });
     expect(spies.summary).toHaveBeenCalledWith('Q185828', 'fr');
+    expect(spies.photo).toHaveBeenCalledWith('Q185828');
     expect(spies.identity).toHaveBeenCalledWith('mb-1');
     expect(stored[0]!.refreshedAt.getTime()).toBeGreaterThan(LONG_AGO.getTime());
   });
@@ -174,10 +194,10 @@ describe('getArtistProfile', () => {
 
     const profile = await getArtistProfile('daft-punk', 'fr');
 
-    expect(profile?.image).toBe('https://cdn.deezer.com/stored.jpg');
+    expect(profile?.images[0]).toEqual({ kind: 'photo', ...STORED_PHOTO });
     expect(profile?.summary).toEqual(summaryFr);
     expect(profile?.facts).toEqual(facts);
-    expect(spies.deezer).not.toHaveBeenCalled();
+    expect(spies.photo).not.toHaveBeenCalled();
     expect(spies.summary).not.toHaveBeenCalled();
     expect(stored).toEqual([]);
   });
@@ -201,8 +221,8 @@ describe('getArtistProfile', () => {
     ]);
   });
 
-  it('keeps the stored openings and stays stale while musilogy is not loaded', async () => {
-    // Without the dump, the article to ask is unknown: what was stored stays,
+  it('keeps the stored photo and openings and stays stale while musilogy is not loaded', async () => {
+    // Without the dump, the item to ask is unknown: what was stored stays,
     // and the old date makes the next view try again.
     rows = [{ artist: baseRow, artist_profile: storedProfile({ refreshedAt: LONG_AGO }) }];
     spies.identity.mockRejectedValueOnce(new musilogy.MusilogyUnavailable('3F000'));
@@ -215,8 +235,14 @@ describe('getArtistProfile', () => {
       { platform: 'deezer', url: 'https://www.deezer.com/artist/27' },
     ]);
     expect(profile?.summary).toEqual(summaryFr);
-    expect(stored[0]).toMatchObject({ summaryFr, summaryEn, refreshedAt: LONG_AGO });
+    expect(stored[0]).toMatchObject({
+      photo: STORED_PHOTO,
+      summaryFr,
+      summaryEn,
+      refreshedAt: LONG_AGO,
+    });
     expect(spies.summary).not.toHaveBeenCalled();
+    expect(spies.photo).not.toHaveBeenCalled();
   });
 
   it('serves a stale profile at once and refreshes it behind the answer', async () => {
@@ -225,19 +251,19 @@ describe('getArtistProfile', () => {
     const profile = await getArtistProfile('daft-punk', 'fr');
     await settle();
 
-    expect(profile?.image).toBe('https://cdn.deezer.com/stored.jpg');
+    expect(profile?.images[0]).toEqual({ kind: 'photo', ...STORED_PHOTO });
     expect(stored).toHaveLength(1);
-    expect(stored[0]!.image).toBe('https://cdn.deezer.com/dp.jpg');
+    expect(stored[0]!.photo).toEqual(PHOTO);
   });
 
   it('keeps a section as stored when its source fails, and stays stale', async () => {
     rows = [{ artist: baseRow, artist_profile: storedProfile({ refreshedAt: LONG_AGO }) }];
-    spies.deezer.mockResolvedValueOnce({ status: 'failed' });
+    spies.photo.mockResolvedValueOnce({ status: 'failed' });
 
     await getArtistProfile('daft-punk', 'fr');
     await settle();
 
-    expect(stored[0]!.image).toBe('https://cdn.deezer.com/stored.jpg');
+    expect(stored[0]!.photo).toEqual(STORED_PHOTO);
     expect(stored[0]!.refreshedAt).toEqual(LONG_AGO);
   });
 
@@ -254,13 +280,12 @@ describe('getArtistProfile', () => {
     expect(spies.summary).not.toHaveBeenCalled();
   });
 
-  it("shows the first record's cover when Deezer has no portrait", async () => {
-    spies.deezer.mockResolvedValueOnce({
-      status: 'found',
-      value: { id: '27', name: 'Daft Punk', picture: null },
-    });
+  it("shows the first record's cover when Commons has no photo", async () => {
+    spies.photo.mockResolvedValueOnce({ status: 'none' });
 
-    expect((await getArtistProfile('daft-punk', 'fr'))?.image).toBe(HOMEWORK_COVER);
+    expect((await getArtistProfile('daft-punk', 'fr'))?.images).toEqual([
+      { kind: 'cover', ...HOMEWORK_COVER },
+    ]);
   });
 
   it('still answers when the artist matched no upstream', async () => {
@@ -268,7 +293,7 @@ describe('getArtistProfile', () => {
 
     const profile = await getArtistProfile('daft-punk', 'fr');
 
-    expect(profile?.image).toBeNull();
+    expect(profile?.images).toEqual([]);
     expect(profile?.facts).toBeNull();
     expect(profile?.links).toEqual([]);
   });
@@ -285,7 +310,10 @@ describe('getArtistProfile', () => {
       slug: MBID,
       mbid: MBID,
       played: false,
-      image: 'https://cdn.deezer.com/dp.jpg',
+      images: [
+        { kind: 'photo', ...PHOTO },
+        { kind: 'cover', ...HOMEWORK_COVER },
+      ],
       facts,
       summary: summaryEn,
       links: [
@@ -297,7 +325,7 @@ describe('getArtistProfile', () => {
     expect(stored).toEqual([]);
   });
 
-  it('shows the first record cover of an artist never played that Deezer does not know', async () => {
+  it('shows the first record cover of an artist never played without a Wikidata item', async () => {
     rows = [];
     spies.identity.mockResolvedValueOnce({
       name: 'Protomartyr',
@@ -310,9 +338,9 @@ describe('getArtistProfile', () => {
 
     const profile = await getArtistProfile('8d3431db-bc83-4dc2-93b8-0e46e31d09f7', 'fr');
 
-    expect(profile?.image).toBe(HOMEWORK_COVER);
+    expect(profile?.images).toEqual([{ kind: 'cover', ...HOMEWORK_COVER }]);
     expect(profile?.links).toEqual([]);
-    expect(spies.deezer).not.toHaveBeenCalled();
+    expect(spies.photo).not.toHaveBeenCalled();
   });
 
   it('knows no page for an MBID the dump does not hold, nor for an unknown slug', async () => {

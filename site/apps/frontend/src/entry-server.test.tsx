@@ -9,7 +9,7 @@ const PROFILE: ArtistProfile = {
   slug: 'кино',
   mbid: null,
   played: true,
-  image: null,
+  images: [],
   facts: null,
   summary: {
     text: 'Groupe de rock soviétique.',

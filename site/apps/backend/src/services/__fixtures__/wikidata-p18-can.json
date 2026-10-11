@@ -1,0 +1,43 @@
+{
+  "claims": {
+    "P18": [
+      {
+        "mainsnak": {
+          "snaktype": "value",
+          "property": "P18",
+          "hash": "ab54d0a4f21e49307537117077b4fc53df944969",
+          "datavalue": {
+            "value": "Can 1972 (Heinrich Klaffs Collection 102).jpg",
+            "type": "string"
+          },
+          "datatype": "commonsMedia"
+        },
+        "type": "statement",
+        "qualifiers": {
+          "P585": [
+            {
+              "snaktype": "value",
+              "property": "P585",
+              "hash": "6f192c28c2d81c283fe0407115207dd895a0e636",
+              "datavalue": {
+                "value": {
+                  "time": "+1972-00-00T00:00:00Z",
+                  "timezone": 0,
+                  "before": 0,
+                  "after": 0,
+                  "precision": 9,
+                  "calendarmodel": "http://www.wikidata.org/entity/Q1985727"
+                },
+                "type": "time"
+              },
+              "datatype": "time"
+            }
+          ]
+        },
+        "qualifiers-order": ["P585"],
+        "id": "Q170132$bb4a9365-4de8-4157-d0cf-607ec56ada5a",
+        "rank": "normal"
+      }
+    ]
+  }
+}

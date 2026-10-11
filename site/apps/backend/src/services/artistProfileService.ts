@@ -1,11 +1,12 @@
-import type { ArtistProfile, SiteLocale } from '@aubesonore/shared-types/client';
+import type { ArtistImage, ArtistProfile, SiteLocale } from '@aubesonore/shared-types/client';
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import { artist, artistProfile, artistSlug } from '../db/schema';
 import { logger } from '../lib/logger';
 import type { Lookup } from '../lib/lookup';
 import { createSingleFlight } from '../lib/singleFlight';
-import { deezerArtistUrl, getArtist } from './deezerService';
+import { getPhoto } from './commonsService';
+import { deezerArtistUrl } from './deezerService';
 import { ensureMbid } from './artistResolver';
 import { getArtistIdentity, type ArtistIdentity } from './musilogyService';
 import { getSummary } from './wikipediaService';
@@ -63,9 +64,23 @@ function settle<V, T>(lookup: Lookup<V>, read: (value: V) => T, previous: T): T 
 const refreshing = createSingleFlight<StoredProfile>();
 
 /**
+ * The photo, then the first record's cover (docs/vision.md §2.4): the page
+ * falls back on the cover when the photo fails to load, and shares the cover.
+ */
+function imagesOf(
+  photo: StoredProfile['photo'],
+  cover: ArtistIdentity['firstCover']
+): ArtistImage[] {
+  return [
+    ...(photo ? [{ kind: 'photo' as const, ...photo }] : []),
+    ...(cover ? [{ kind: 'cover' as const, ...cover }] : []),
+  ];
+}
+
+/**
  * Asks the live sources again and stores their answers (docs/vision.md §4.6):
- * the Deezer portrait, and the Wikipedia openings of the Wikidata item the
- * dump names. A source that fails leaves its section as stored, and the
+ * the Wikimedia Commons photo and the Wikipedia openings of the Wikidata item
+ * the dump names. A source that fails leaves its section as stored, and the
  * profile keeps its old date, so the next view retries.
  */
 function refresh(
@@ -75,18 +90,20 @@ function refresh(
 ): Promise<StoredProfile> {
   return refreshing(row.id, async () => {
     const wikidataId = identity.status === 'found' ? identity.value.wikidataId : null;
-    const [deezer, fr, en] = await Promise.all([
-      row.deezerId ? bounded('deezer', getArtist(row.deezerId)) : NONE,
+    const [photo, fr, en] = await Promise.all([
+      wikidataId ? bounded('commons', getPhoto(wikidataId)) : NONE,
       wikidataId ? bounded('wikipedia', getSummary(wikidataId, 'fr')) : NONE,
       wikidataId ? bounded('wikipedia', getSummary(wikidataId, 'en')) : NONE,
     ]);
-    // Without the dump's answer, the article to ask is unknown: the stored
-    // openings stay, and so does the date.
+    // Without the dump's answer, the item to ask is unknown: the stored photo
+    // and openings stay, and so does the date.
     const unknown = identity.status === 'failed';
-    const failed = unknown || [deezer, fr, en].some((lookup) => lookup.status === 'failed');
+    const failed = unknown || [photo, fr, en].some((lookup) => lookup.status === 'failed');
     const next: StoredProfile = {
       artistId: row.id,
-      image: settle(deezer, (found) => found.picture, previous?.image ?? null),
+      photo: unknown
+        ? (previous?.photo ?? null)
+        : settle(photo, (found) => found, previous?.photo ?? null),
       summaryFr: unknown
         ? (previous?.summaryFr ?? null)
         : settle(fr, (summary) => summary, previous?.summaryFr ?? null),
@@ -106,15 +123,15 @@ function refresh(
 /**
  * The page of an artist the antenna never played, made from what Musilogy
  * knows of its MBID (docs/vision.md §5): no row is stored for it, so a crawler
- * walking Musilogy fills no table. The portrait and the Wikipedia opening are
+ * walking Musilogy fills no table. The photo and the Wikipedia opening are
  * the live sources' cached answers. Null when the dump does not know the
  * MBID; MusilogyUnavailable while it is not loaded.
  */
 async function unplayedProfile(mbid: string, locale: SiteLocale): Promise<ArtistProfile | null> {
   const identity = await getArtistIdentity(mbid);
   if (!identity) return null;
-  const [deezer, summary] = await Promise.all([
-    identity.deezerId ? bounded('deezer', getArtist(identity.deezerId)) : NONE,
+  const [photo, summary] = await Promise.all([
+    identity.wikidataId ? bounded('commons', getPhoto(identity.wikidataId)) : NONE,
     identity.wikidataId ? bounded('wikipedia', getSummary(identity.wikidataId, locale)) : NONE,
   ]);
   return {
@@ -123,7 +140,7 @@ async function unplayedProfile(mbid: string, locale: SiteLocale): Promise<Artist
     slug: mbid,
     mbid,
     played: false,
-    image: (deezer.status === 'found' ? deezer.value.picture : null) ?? identity.firstCover,
+    images: imagesOf(photo.status === 'found' ? photo.value : null, identity.firstCover),
     facts: identity.facts,
     summary: summary.status === 'found' ? summary.value : null,
     links: [
@@ -179,7 +196,7 @@ export async function getArtistProfile(
     slug,
     mbid: row.mbid,
     played: true,
-    image: stored.image ?? (identity.status === 'found' ? identity.value.firstCover : null),
+    images: imagesOf(stored.photo, identity.status === 'found' ? identity.value.firstCover : null),
     facts: identity.status === 'found' ? identity.value.facts : null,
     summary: locale === 'fr' ? stored.summaryFr : stored.summaryEn,
     links: [
