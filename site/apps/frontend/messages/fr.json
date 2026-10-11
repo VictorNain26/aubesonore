@@ -200,7 +200,6 @@
   "musilogy_search_label": "Chercher un artiste",
   "musilogy_search_placeholder": "Un artiste ou un groupe",
   "musilogy_search_empty": "Aucun artiste de ce nom.",
-  "musilogy_neighbours_note": "Le même son, par décennie de leurs débuts ; en relief, les années de {name}.",
   "musilogy_close_title": "Artistes proches",
   "musilogy_links_title": "Groupes et projets",
   "musilogy_members": "Membres",
@@ -220,7 +219,6 @@
   "artist_record_remix": "remix",
   "musilogy_show_more": "Voir {count} de plus",
   "musilogy_unavailable_body": "Rien à montrer pour l'instant. Revenez plus tard.",
-  "musilogy_undated_title": "Débuts inconnus",
   "musilogy_search_error": "La recherche a échoué. Réessayez dans un moment.",
   "musilogy_until": "jusqu'en {year}",
   "auth_error_credentials": "E-mail ou mot de passe incorrect.",
@@ -248,6 +246,8 @@
   "musilogy_col_artist": "Artiste",
   "musilogy_col_kind": "Type",
   "musilogy_col_start": "Débuts",
-  "musilogy_decade": "Années {decade}",
-  "musilogy_neighbours_note_undated": "Le même son, par décennie de leurs débuts."
+  "musilogy_close_shared": "Le même son, surtout {term}.",
+  "musilogy_close_same": "Le même son.",
+  "musilogy_close_band": "La bande claire marque les années de {name}.",
+  "musilogy_start_unknown": "début inconnu"
 }
