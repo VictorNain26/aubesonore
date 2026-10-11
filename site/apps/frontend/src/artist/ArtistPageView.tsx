@@ -193,7 +193,7 @@ function Profile({
         {/* Its entrance on a wrapper: an animation filled forward would hold the hover's lift. */}
         <div className="lift-in wide:w-full w-40 md:w-64">
           <ArtistPortrait
-            image={profile.image}
+            images={profile.images}
             name={profile.name}
             seed={profile.mbid ?? profile.name}
             // w-40 on phones, w-64 on upright tablets; the 4/12 title column where it is wide.

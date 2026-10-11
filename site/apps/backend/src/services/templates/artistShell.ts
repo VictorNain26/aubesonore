@@ -88,7 +88,7 @@ export function renderArtistShell(
     : locale === 'en'
       ? `${profile.name}${profile.played ? ', played' : ''} on AubeSonore, a music discovery radio.`
       : `${profile.name}${profile.played ? ', passé' : ''} sur AubeSonore, radio de découverte musicale.`;
-  const cover = profile.image?.kind === 'cover' ? profile.image.url : null;
+  const cover = profile.images.find((image) => image.kind === 'cover')?.url ?? null;
   const image = isAllowedImage(cover) ? cover : null;
 
   const content: Record<string, string> = {

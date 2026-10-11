@@ -43,20 +43,51 @@ async function imageFile(wikidataId: string): Promise<string | null> {
   return typeof value === 'string' ? value : null;
 }
 
-const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" };
+const ENTITIES: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: ' ',
+};
+
+/** A character reference's character; nothing for a code point Unicode does not have. */
+function character(code: number): string {
+  return Number.isInteger(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : '';
+}
 
 /** Commons gives the author as HTML (a link to a user page, a Flickr profile): its text. */
 export function plainText(html: string): string {
   return html
     .replace(/<[^>]*>/g, '')
-    .replace(/&(amp|lt|gt|quot|#39);/g, (_, entity: string) => ENTITIES[entity] ?? '')
-    .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex: string) => character(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, decimal: string) => character(Number(decimal)))
+    .replace(/&([a-z]+);/gi, (entity: string, name: string) => ENTITIES[name] ?? entity)
     .replace(/\s+/g, ' ')
     .trim();
 }
 
+// The licence's address comes from the file's page, which anyone can edit: a
+// link is kept only to the licences' own sites, else the licence stays words.
+const LICENCE_HOSTS = ['creativecommons.org', 'www.gnu.org'];
+
+function licenceLink(url: string | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url.startsWith('//') ? `https:${url}` : url);
+    return parsed.protocol === 'https:' && LICENCE_HOSTS.includes(parsed.hostname)
+      ? parsed.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 interface ImageInfo {
   thumburl?: string;
+  thumbwidth?: number;
+  thumbheight?: number;
   descriptionurl?: string;
   extmetadata?: Record<string, { value?: string } | undefined>;
 }
@@ -75,10 +106,12 @@ async function describe(file: string): Promise<ArtistPhoto | null> {
   const author = plainText(info.extmetadata?.Artist?.value ?? '');
   return {
     url: info.thumburl,
+    width: info.thumbwidth ?? null,
+    height: info.thumbheight ?? null,
     credit: {
       author: author || null,
       licence: plainText(licence),
-      licenceUrl: info.extmetadata?.LicenseUrl?.value ?? null,
+      licenceUrl: licenceLink(info.extmetadata?.LicenseUrl?.value),
       source: info.descriptionurl,
     },
   };

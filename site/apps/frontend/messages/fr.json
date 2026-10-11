@@ -173,6 +173,7 @@
   "artist_photo_by": "Photo {author}",
   "artist_photo": "Photo",
   "artist_cover_caption": "{title}, {year}",
+  "artist_cover_alt": "Pochette de {title}",
   "artist_kind_person": "Artiste",
   "artist_kind_group": "Groupe",
   "artist_kind_orchestra": "Orchestre",

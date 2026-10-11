@@ -63,13 +63,18 @@ function settle<V, T>(lookup: Lookup<V>, read: (value: V) => T, previous: T): T 
 
 const refreshing = createSingleFlight<StoredProfile>();
 
-/** The photo, else the first record's cover (docs/vision.md §2.4). */
-function imageOf(
+/**
+ * The photo, then the first record's cover (docs/vision.md §2.4): the page
+ * falls back on the cover when the photo fails to load, and shares the cover.
+ */
+function imagesOf(
   photo: StoredProfile['photo'],
   cover: ArtistIdentity['firstCover']
-): ArtistImage | null {
-  if (photo) return { kind: 'photo', ...photo };
-  return cover ? { kind: 'cover', ...cover } : null;
+): ArtistImage[] {
+  return [
+    ...(photo ? [{ kind: 'photo' as const, ...photo }] : []),
+    ...(cover ? [{ kind: 'cover' as const, ...cover }] : []),
+  ];
 }
 
 /**
@@ -135,7 +140,7 @@ async function unplayedProfile(mbid: string, locale: SiteLocale): Promise<Artist
     slug: mbid,
     mbid,
     played: false,
-    image: imageOf(photo.status === 'found' ? photo.value : null, identity.firstCover),
+    images: imagesOf(photo.status === 'found' ? photo.value : null, identity.firstCover),
     facts: identity.facts,
     summary: summary.status === 'found' ? summary.value : null,
     links: [
@@ -191,7 +196,7 @@ export async function getArtistProfile(
     slug,
     mbid: row.mbid,
     played: true,
-    image: imageOf(stored.photo, identity.status === 'found' ? identity.value.firstCover : null),
+    images: imagesOf(stored.photo, identity.status === 'found' ? identity.value.firstCover : null),
     facts: identity.status === 'found' ? identity.value.facts : null,
     summary: locale === 'fr' ? stored.summaryFr : stored.summaryEn,
     links: [

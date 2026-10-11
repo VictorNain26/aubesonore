@@ -42,6 +42,8 @@ const HOMEWORK_COVER = {
 };
 const PHOTO = {
   url: 'https://upload.wikimedia.org/wikipedia/commons/d/dp/Daft_Punk.jpg',
+  width: 1280,
+  height: 853,
   credit: {
     author: 'Jane Doe',
     licence: 'CC BY-SA 4.0',
@@ -162,7 +164,10 @@ describe('getArtistProfile', () => {
       slug: 'daft-punk',
       mbid: null,
       played: true,
-      image: { kind: 'photo', ...PHOTO },
+      images: [
+        { kind: 'photo', ...PHOTO },
+        { kind: 'cover', ...HOMEWORK_COVER },
+      ],
       facts,
       summary: summaryEn,
       links: [
@@ -189,7 +194,7 @@ describe('getArtistProfile', () => {
 
     const profile = await getArtistProfile('daft-punk', 'fr');
 
-    expect(profile?.image).toEqual({ kind: 'photo', ...STORED_PHOTO });
+    expect(profile?.images[0]).toEqual({ kind: 'photo', ...STORED_PHOTO });
     expect(profile?.summary).toEqual(summaryFr);
     expect(profile?.facts).toEqual(facts);
     expect(spies.photo).not.toHaveBeenCalled();
@@ -246,7 +251,7 @@ describe('getArtistProfile', () => {
     const profile = await getArtistProfile('daft-punk', 'fr');
     await settle();
 
-    expect(profile?.image).toEqual({ kind: 'photo', ...STORED_PHOTO });
+    expect(profile?.images[0]).toEqual({ kind: 'photo', ...STORED_PHOTO });
     expect(stored).toHaveLength(1);
     expect(stored[0]!.photo).toEqual(PHOTO);
   });
@@ -278,10 +283,9 @@ describe('getArtistProfile', () => {
   it("shows the first record's cover when Commons has no photo", async () => {
     spies.photo.mockResolvedValueOnce({ status: 'none' });
 
-    expect((await getArtistProfile('daft-punk', 'fr'))?.image).toEqual({
-      kind: 'cover',
-      ...HOMEWORK_COVER,
-    });
+    expect((await getArtistProfile('daft-punk', 'fr'))?.images).toEqual([
+      { kind: 'cover', ...HOMEWORK_COVER },
+    ]);
   });
 
   it('still answers when the artist matched no upstream', async () => {
@@ -289,7 +293,7 @@ describe('getArtistProfile', () => {
 
     const profile = await getArtistProfile('daft-punk', 'fr');
 
-    expect(profile?.image).toBeNull();
+    expect(profile?.images).toEqual([]);
     expect(profile?.facts).toBeNull();
     expect(profile?.links).toEqual([]);
   });
@@ -306,7 +310,10 @@ describe('getArtistProfile', () => {
       slug: MBID,
       mbid: MBID,
       played: false,
-      image: { kind: 'photo', ...PHOTO },
+      images: [
+        { kind: 'photo', ...PHOTO },
+        { kind: 'cover', ...HOMEWORK_COVER },
+      ],
       facts,
       summary: summaryEn,
       links: [
@@ -331,7 +338,7 @@ describe('getArtistProfile', () => {
 
     const profile = await getArtistProfile('8d3431db-bc83-4dc2-93b8-0e46e31d09f7', 'fr');
 
-    expect(profile?.image).toEqual({ kind: 'cover', ...HOMEWORK_COVER });
+    expect(profile?.images).toEqual([{ kind: 'cover', ...HOMEWORK_COVER }]);
     expect(profile?.links).toEqual([]);
     expect(spies.photo).not.toHaveBeenCalled();
   });

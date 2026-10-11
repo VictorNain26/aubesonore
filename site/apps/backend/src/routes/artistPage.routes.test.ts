@@ -28,7 +28,7 @@ const SHELL = `<!doctype html><html lang="fr"><head>
 let profileName = 'Daft Punk';
 const COVER = 'https://coverartarchive.org/release-group/homework/front-500';
 const cover = (url: string) => ({ kind: 'cover' as const, url, title: 'Homework', year: 1997 });
-let profileImage: ArtistImage | null = cover(COVER);
+let profileImages: ArtistImage[] = [cover(COVER)];
 
 // spyOn on the real exports, restored after this file: mock.module would
 // replace these modules for every other test file of the run (Bun 1.3).
@@ -43,7 +43,7 @@ const unplayed = {
   slug: UNPLAYED_MBID,
   mbid: UNPLAYED_MBID,
   played: false,
-  image: null,
+  images: [],
   facts: null,
   summary: null,
   links: [],
@@ -64,7 +64,7 @@ const profileSpy = spyOn(profileService, 'getArtistProfile').mockImplementation(
           slug: slug === DAFT_PUNK_MBID ? 'daft-punk' : slug,
           mbid: null,
           played: true,
-          image: profileImage,
+          images: profileImages,
           facts: null,
           summary: {
             text: 'Un duo français.',
@@ -114,7 +114,7 @@ afterEach(() => {
   __resetArtistShell();
   __resetRateLimits();
   profileName = 'Daft Punk';
-  profileImage = cover(COVER);
+  profileImages = [cover(COVER)];
   musilogyAnswer = null;
   discovered = [];
   renderAnswer = () => Promise.resolve(new Response(null, { status: 503 }));
@@ -248,7 +248,7 @@ describe('GET /artiste/:slug', () => {
 
   it('keeps the default share image when the artist image is not on an allowed host', async () => {
     mockShell();
-    profileImage = cover('https://evil.example/pwn.jpg');
+    profileImages = [cover('https://evil.example/pwn.jpg')];
 
     const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
@@ -260,11 +260,13 @@ describe('GET /artiste/:slug', () => {
     expect(html).toContain('og:image:width');
   });
 
-  it('keeps the default share image for a Commons photo, whose credit a preview cannot carry', async () => {
+  it('shares the cover, never a Commons photo, whose credit a preview cannot carry', async () => {
     mockShell();
-    profileImage = {
+    const photo: ArtistImage = {
       kind: 'photo',
       url: 'https://upload.wikimedia.org/wikipedia/commons/6/61/Can_1972.jpg',
+      width: 1280,
+      height: 850,
       credit: {
         author: 'Heinrich Klaffs',
         licence: 'CC BY-SA 2.0',
@@ -272,19 +274,27 @@ describe('GET /artiste/:slug', () => {
         source: 'https://commons.wikimedia.org/wiki/File:Can_1972.jpg',
       },
     };
+    profileImages = [photo, cover(COVER)];
 
-    const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
+    const withCover = await (
+      await app.handle(new Request('http://localhost/artiste/daft-punk'))
+    ).text();
+    expect(withCover).not.toContain('upload.wikimedia.org');
+    expect(withCover).toContain(`<meta property="og:image" content="${COVER}" />`);
 
-    const html = await res.text();
-    expect(html).not.toContain('upload.wikimedia.org');
-    expect(html).toContain(
+    profileImages = [photo];
+    const photoOnly = await (
+      await app.handle(new Request('http://localhost/artiste/daft-punk'))
+    ).text();
+    expect(photoOnly).not.toContain('upload.wikimedia.org');
+    expect(photoOnly).toContain(
       '<meta property="og:image" content="https://aubesonore.fr/og-fr.png" />'
     );
   });
 
   it('drops a non-https og:image', async () => {
     mockShell();
-    profileImage = cover('http://coverartarchive.org/release-group/homework/front-500');
+    profileImages = [cover('http://coverartarchive.org/release-group/homework/front-500')];
 
     const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
@@ -304,7 +314,7 @@ describe('GET /artiste/:slug', () => {
 
   it('serves the English page under /en/ with its own url, language and fallback text', async () => {
     mockShell();
-    profileImage = null;
+    profileImages = [];
 
     const res = await app.handle(new Request('http://localhost/en/artist/daft-punk'));
 

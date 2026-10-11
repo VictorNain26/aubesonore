@@ -40,6 +40,7 @@ describe('getPhoto', () => {
 
     if (photo.status !== 'found') throw new Error(`expected a photo, got ${photo.status}`);
     expect(photo.value.url).toContain('upload.wikimedia.org/wikipedia/commons/6/61/Can_1972');
+    expect([photo.value.width, photo.value.height]).toEqual([1280, 850]);
     expect(photo.value.credit).toEqual({
       author: 'Heinrich Klaffs',
       licence: 'CC BY-SA 2.0',
@@ -96,6 +97,35 @@ describe('getPhoto', () => {
     expect(fetchSpy.mock.calls[1]?.[0]).toContain(encodeURIComponent('File:Best.jpg'));
   });
 
+  it('links a licence only on its own site: the file page that names it is open to anyone', async () => {
+    const page = imageinfoCan.query.pages[0]!;
+    const info = page.imageinfo[0]!;
+    const licensedAt = (value: string) => ({
+      query: {
+        pages: [
+          {
+            ...page,
+            imageinfo: [{ ...info, extmetadata: { ...info.extmetadata, LicenseUrl: { value } } }],
+          },
+        ],
+      },
+    });
+
+    serve(p18Can, licensedAt('https://evil.example/licence'));
+    const elsewhere = await getPhoto('Q170132');
+    expect(elsewhere.status === 'found' && elsewhere.value.credit).toMatchObject({
+      licence: 'CC BY-SA 2.0',
+      licenceUrl: null,
+    });
+
+    commonsCache.dispose();
+    serve(p18Can, licensedAt('//creativecommons.org/licenses/by-sa/2.0/'));
+    const protocolRelative = await getPhoto('Q170132');
+    expect(protocolRelative.status === 'found' && protocolRelative.value.credit.licenceUrl).toBe(
+      'https://creativecommons.org/licenses/by-sa/2.0/'
+    );
+  });
+
   it('shows no photo it could not credit', async () => {
     const page = imageinfoCan.query.pages[0]!;
     const info = page.imageinfo[0]!;
@@ -124,5 +154,10 @@ describe('plainText', () => {
     expect(plainText('<a href="//commons.wikimedia.org/wiki/User:X">X</a> &amp; Y&#39;s')).toBe(
       "X & Y's"
     );
+    expect(plainText('Bj&#xF6;rk&nbsp;Gu&eth;mundsd&#243;ttir')).toBe('Björk Gu&eth;mundsdóttir');
+  });
+
+  it('drops a character reference Unicode does not have, rather than fail', () => {
+    expect(plainText('A&#1114112;B&#x110000;C')).toBe('ABC');
   });
 });

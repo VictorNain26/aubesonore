@@ -7,6 +7,8 @@ import { ArtistPortrait, dawnOf } from './ArtistPortrait';
 const PHOTO: ArtistImage = {
   kind: 'photo',
   url: 'https://upload.wikimedia.org/wikipedia/commons/6/61/Can_1972.jpg',
+  width: 1280,
+  height: 850,
   credit: {
     author: 'Heinrich Klaffs',
     licence: 'CC BY-SA 2.0',
@@ -26,15 +28,15 @@ const SEED = '13501c7d-d181-45ba-af52-5f101d8516a0';
 
 describe('ArtistPortrait', () => {
   it('opens a photo large with the credit its licence asks for, each part a link', async () => {
-    render(<ArtistPortrait image={PHOTO} name="Can" seed={SEED} />);
+    render(<ArtistPortrait images={[PHOTO]} name="Can" seed={SEED} />);
 
     fireEvent.click(screen.getByRole('button', { name: "Voir l'image de Can en grand" }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Can' });
-    expect(within(dialog).getByRole('img', { name: 'Portrait de Can' })).toHaveProperty(
-      'src',
-      PHOTO.url
-    );
+    const large = within(dialog).getByRole('img', { name: 'Portrait de Can' });
+    expect(large).toHaveProperty('src', PHOTO.url);
+    // Opened at its shape, before the file arrives.
+    expect([large.getAttribute('width'), large.getAttribute('height')]).toEqual(['1280', '850']);
     expect(within(dialog).getByRole('link', { name: 'Photo Heinrich Klaffs' })).toHaveProperty(
       'href',
       'https://commons.wikimedia.org/wiki/File:Can_1972.jpg'
@@ -46,30 +48,48 @@ describe('ArtistPortrait', () => {
   });
 
   it('marks a photo, and only a photo, with a small ©', () => {
-    const { rerender } = render(<ArtistPortrait image={PHOTO} name="Can" seed={SEED} />);
+    const { rerender } = render(<ArtistPortrait images={[PHOTO]} name="Can" seed={SEED} />);
     expect(screen.getByText('©')).toBeTruthy();
 
-    rerender(<ArtistPortrait image={COVER} name="Neu!" seed={SEED} />);
+    rerender(<ArtistPortrait images={[COVER]} name="Neu!" seed={SEED} />);
     expect(screen.queryByText('©')).toBeNull();
   });
 
   it('opens a cover at 1200 px with its record and year, crediting nobody', async () => {
-    render(<ArtistPortrait image={COVER} name="Neu!" seed={SEED} />);
+    render(<ArtistPortrait images={[COVER]} name="Neu!" seed={SEED} />);
 
     fireEvent.click(screen.getByRole('button', { name: "Voir l'image de Neu! en grand" }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Neu!' });
-    expect(within(dialog).getByRole('img').getAttribute('src')).toMatch(/\/front-1200$/);
+    const large = within(dialog).getByRole('img', { name: 'Pochette de Neu!' });
+    expect(large.getAttribute('src')).toMatch(/\/front-1200$/);
+    // A cover without its large file keeps the one already shown.
+    fireEvent.error(large);
+    expect(large.getAttribute('src')).toBe(COVER.url);
     expect(within(dialog).getByText('Neu!, 1972')).toBeTruthy();
     expect(within(dialog).queryByRole('link')).toBeNull();
   });
 
+  it("shows the next image when one fails to load, and the artist's dawn past the last", () => {
+    render(<ArtistPortrait images={[PHOTO, COVER]} name="Can" seed={SEED} />);
+    expect(screen.getByText('©')).toBeTruthy();
+
+    fireEvent.error(within(screen.getByRole('button')).getByRole('presentation'));
+    expect(screen.queryByText('©')).toBeNull();
+    expect(within(screen.getByRole('button')).getByRole('presentation').getAttribute('src')).toBe(
+      COVER.url
+    );
+
+    fireEvent.error(within(screen.getByRole('button')).getByRole('presentation'));
+    expect(screen.getByTestId('artist-dawn')).toBeTruthy();
+  });
+
   it("draws the artist's dawn without an image, and when the image fails to load", () => {
-    const { rerender } = render(<ArtistPortrait image={null} name="Can" seed={SEED} />);
+    const { rerender } = render(<ArtistPortrait images={[]} name="Can" seed={SEED} />);
     expect(screen.getByTestId('artist-dawn')).toBeTruthy();
     expect(screen.queryByRole('button')).toBeNull();
 
-    rerender(<ArtistPortrait image={PHOTO} name="Can" seed={SEED} />);
+    rerender(<ArtistPortrait images={[PHOTO]} name="Can" seed={SEED} />);
     // The thumbnail is decoration: the button around it carries the name.
     fireEvent.error(within(screen.getByRole('button')).getByRole('presentation'));
     expect(screen.getByTestId('artist-dawn')).toBeTruthy();
