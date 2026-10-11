@@ -157,6 +157,10 @@ priorité.
 
 La page de vote (FastAPI derrière Cloudflare Access, rappel WhatsApp) est en service depuis le
 2026-10-01 sur `votes.aubesonore.fr`. Chaque passe tire une nouvelle sélection après `train`.
+La page `/semaine` relit les votes de la sélection en cours, avec leur extrait, et permet de
+corriger un geste malheureux jusqu'à la passe suivante : `train` apprend alors le vote corrigé,
+puis la nouvelle sélection le fige. Une correction garde l'heure du premier vote, pour que la
+fenêtre d'examen ne bouge pas.
 
 ## 5. Acquisition (étape 5)
 

@@ -5,6 +5,8 @@
   (signée, elle expire) et relaie l'audio : l'URL ne quitte jamais le serveur et n'est jamais
   journalisée.
 - Le vote est enregistré tout de suite en SQLite ; la page passe au titre suivant.
+- /semaine relit les votes de la dernière sélection et permet de les corriger jusqu'à la passe
+  suivante (radio/votes/select.py).
 - /suivi montre le parcours des sources et ce qui est à ajuster (radio/votes/suivi.py).
 - Fonctions synchrones : FastAPI les exécute dans son pool de fils, une connexion SQLite par
   requête.
@@ -27,7 +29,7 @@ from starlette.background import BackgroundTask
 from radio.core.config import FreshConfig
 from radio.core.db import connect
 from radio.sources.deezer import DeezerError, DeezerTrack, DeezerUnavailable
-from radio.votes.select import Ballot, pending_ballots, record_vote
+from radio.votes.select import Ballot, CastVote, pending_ballots, record_vote, week_votes
 from radio.votes.suivi import Suivi, load_suivi, pct
 
 logger = logging.getLogger(__name__)
@@ -55,6 +57,15 @@ table{border-collapse:collapse;font-size:.9rem;font-variant-numeric:tabular-nums
 th,td{padding:.25rem .4rem;text-align:right}
 th:first-child,td:first-child{text-align:left}
 ul{margin:0;padding-left:1.2rem}
+.semaine{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1.4rem}
+.semaine li{display:flex;flex-direction:column;gap:.4rem}
+.semaine .titre{margin:0;font-weight:600}
+.corriger{grid-template-columns:repeat(3,1fr);gap:.5rem}
+.corriger button{padding:.6rem}
+.corriger .passer{grid-column:auto}
+.corriger button[aria-pressed=false]{background:transparent;color:var(--texte);
+border:1px solid var(--doux)}
+.corriger .passer[aria-pressed=true]{background:var(--doux);color:var(--fond)}
 """
 
 _CHOICES = (("oui", "Oui"), ("non", "Non"), ("passer", "Passer"))
@@ -75,11 +86,20 @@ def _shell(body: str) -> str:
     )
 
 
-def _page(ballots: list[Ballot]) -> str:
+def _week_link(n_voted: int) -> str:
+    return (
+        f'<p><a href="/semaine">Revoir les votes de la semaine ({n_voted})</a></p>'
+        if n_voted
+        else ""
+    )
+
+
+def _page(ballots: list[Ballot], n_voted: int) -> str:
     if not ballots:
         return _shell(
             "<h1>Rien à écouter</h1>"
             '<p class="reste">La prochaine sélection arrivera avec le rappel WhatsApp.</p>'
+            + _week_link(n_voted)
         )
     b = ballots[0]
     buttons = "".join(
@@ -95,7 +115,35 @@ def _page(ballots: list[Ballot]) -> str:
         '<p class="question">À sa place sur AubeSonore ?</p>'
         '<form method="post" action="/vote">'
         f'<input type="hidden" name="tid" value="{b.deezer_track_id}">{buttons}</form>'
+        + _week_link(n_voted)
     )
+
+
+def _week_page(votes: list[CastVote]) -> str:
+    def item(c: CastVote) -> str:
+        tid = c.ballot.deezer_track_id
+        buttons = "".join(
+            f'<button name="choix" value="{v}" class="{v}" '
+            f'aria-pressed="{"true" if v == c.vote else "false"}">{label}</button>'
+            for v, label in _CHOICES
+        )
+        return (
+            f'<li><p class="titre">{html.escape(c.ballot.title)}</p>'
+            f'<p class="artiste">{html.escape(c.ballot.artist)}</p>'
+            f'<audio controls preload="none" src="/extrait/{tid}"></audio>'
+            f'<form method="post" action="/vote" class="corriger" '
+            f'aria-label="{html.escape(c.ballot.title)}">'
+            f'<input type="hidden" name="tid" value="{tid}">'
+            f'<input type="hidden" name="retour" value="/semaine">{buttons}</form></li>'
+        )
+
+    body = (
+        '<p class="reste">Corrigeables jusqu\'à la passe du dimanche, qui les apprend.</p>'
+        f'<ol class="semaine">{"".join(map(item, votes))}</ol>'
+        if votes
+        else '<p class="reste">Aucun vote cette semaine.</p>'
+    )
+    return _shell(f'<h1>Votes de la semaine</h1>{body}<p><a href="/">Retour au vote</a></p>')
 
 
 def _suivi_page(s: Suivi) -> str:
@@ -144,6 +192,13 @@ def create_app(
         finally:
             conn.close()
 
+    def week() -> list[CastVote]:
+        conn = connect(db_path)
+        try:
+            return week_votes(conn)
+        finally:
+            conn.close()
+
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     # FileResponse ne lance pas sa tâche de nettoyage quand il répond 400 ou 416 à un Range
     # invalide : les extraits vivent dans un répertoire supprimé avec l'application.
@@ -156,7 +211,11 @@ def create_app(
 
     @app.get("/", response_class=HTMLResponse, dependencies=guarded)
     def page() -> str:
-        return _page(waiting())
+        return _page(waiting(), len(week()))
+
+    @app.get("/semaine", response_class=HTMLResponse, dependencies=guarded)
+    def semaine() -> str:
+        return _week_page(week())
 
     @app.get("/suivi", response_class=HTMLResponse, dependencies=guarded)
     def suivi() -> str:
@@ -168,7 +227,9 @@ def create_app(
 
     @app.post("/vote", dependencies=guarded)
     def vote(
-        tid: Annotated[int, Form()], choix: Annotated[Literal["oui", "non", "passer"], Form()]
+        tid: Annotated[int, Form()],
+        choix: Annotated[Literal["oui", "non", "passer"], Form()],
+        retour: Annotated[Literal["/", "/semaine"], Form()] = "/",
     ) -> Response:
         conn = connect(db_path)
         try:
@@ -177,14 +238,19 @@ def create_app(
             conn.close()
         if not recorded:
             return HTMLResponse(
-                _shell('<p>Ce titre n\'attend plus de vote.</p><p><a href="/">Continuer</a></p>'),
+                _shell(
+                    "<p>Ce vote est figé : la passe du dimanche l'a déjà appris.</p>"
+                    '<p><a href="/">Continuer</a></p>'
+                ),
                 status_code=409,
             )
-        return RedirectResponse("/", status_code=303)
+        return RedirectResponse(retour, status_code=303)
 
     @app.get("/extrait/{tid}", dependencies=guarded)
     def extrait(tid: int) -> Response:
-        if not any(b.deezer_track_id == tid for b in waiting()):
+        if tid not in {b.deezer_track_id for b in waiting()} | {
+            c.ballot.deezer_track_id for c in week()
+        }:
             raise HTTPException(404, "Titre inconnu")
         try:
             found = deezer.track(tid)

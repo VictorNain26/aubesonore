@@ -106,10 +106,51 @@ def test_vote_is_recorded_and_page_moves_on(db: Path) -> None:
     assert tuple(row) == (b.kind, "non", "page")
     assert len(pending_ballots(conn)) == 19
     conn.close()
-    again = c.post("/vote", data={"tid": str(b.deezer_track_id), "choix": "oui"}, headers=OK)
-    assert again.status_code == 409
+    unknown = c.post("/vote", data={"tid": "400000", "choix": "oui"}, headers=OK)
+    assert unknown.status_code == 409
     bad = c.post("/vote", data={"tid": str(b.deezer_track_id), "choix": "bof"}, headers=OK)
     assert bad.status_code == 422
+    elsewhere = c.post(
+        "/vote",
+        data={"tid": str(b.deezer_track_id), "choix": "oui", "retour": "https://ailleurs.example"},
+        headers=OK,
+    )
+    assert elsewhere.status_code == 422
+
+
+def test_the_week_page_corrects_a_vote_blind(db: Path) -> None:
+    b = _first(db)
+    c = _client(db)
+    assert c.get("/semaine").status_code == 403
+    assert "/semaine" not in c.get("/", headers=OK).text  # rien voté encore
+    c.post("/vote", data={"tid": str(b.deezer_track_id), "choix": "non"}, headers=OK)
+    assert "Revoir les votes de la semaine (1)" in c.get("/", headers=OK).text
+
+    page = c.get("/semaine", headers=OK).text
+    assert b.title in page and b.artist in page
+    assert f'src="/extrait/{b.deezer_track_id}"' in page
+    assert 'value="non" class="non" aria-pressed="true"' in page
+    assert 'value="oui" class="oui" aria-pressed="false"' in page
+    for hidden in ("exam", "lesson", "leçon", "score", "seuil"):  # à l'aveugle
+        assert hidden not in page
+    assert c.get(f"/extrait/{b.deezer_track_id}", headers=OK).status_code == 200
+
+    r = c.post(
+        "/vote",
+        data={"tid": str(b.deezer_track_id), "choix": "oui", "retour": "/semaine"},
+        headers=OK,
+        follow_redirects=False,
+    )
+    assert r.status_code == 303 and r.headers["location"] == "/semaine"
+    conn = connect(db)
+    assert (
+        conn.execute(
+            "SELECT vote FROM votes WHERE deezer_track_id = ?", (b.deezer_track_id,)
+        ).fetchone()[0]
+        == "oui"
+    )
+    assert len(pending_ballots(conn)) == 19
+    conn.close()
 
 
 def test_empty_queue_says_so(db: Path) -> None:
