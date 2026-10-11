@@ -424,6 +424,12 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
   (décision du 2026-09-23). Un titre pas encore mesuré est neutre.
 - **Ordre** : fil qui dérive, du dernier titre de l'heure précédente au plus proche, de la fin
   d'un titre au début du suivant, sur les titres qui partent à coup sûr, puis sur les autres.
+- **Style** (`style`, 1) : la proximité se mesure aussi en style, 1 - cosinus des empreintes
+  Discogs-EffNet, au choix de chaque créneau (le titre qui ressemble au précédent) comme à
+  l'ordre. Sans elle, deux titres qui se suivaient se ressemblaient presque comme deux titres au
+  hasard (cosinus médian 0,44 contre 0,40 ; 0,62 pour deux titres d'un même artiste) ; avec,
+  0,57 en simulation, sans heure courte ni titre en retard, et le style dérive toujours d'une
+  heure à l'autre (`recherches/2026-10-11-fil-de-style.md`).
 - **AzuraCast** : 168 playlists « Grille {jour} {hh}h », séquentielles, programmées une heure par
   semaine avec `loop_once`, sans `avoid_duplicates`, créées au premier usage
   (`POST /station/1/playlists` avec `schedule_items` ; `start_date` et `end_date` à `null`

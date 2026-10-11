@@ -167,6 +167,7 @@ class GrilleConfig(BaseModel):
     separation_h: float = Field(default=3, ge=0, le=24)
     avantage: float = Field(default=1.5, gt=1)
     force: float = Field(default=2.0, gt=1)
+    style: float = Field(default=1.0, ge=0)
 
     @model_validator(mode="after")
     def _starvation_window(self) -> "GrilleConfig":
