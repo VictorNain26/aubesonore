@@ -60,6 +60,28 @@ pnpm stack                # Postgres, backend, front, sur http://localhost:5173
 
 `docker compose down` arrête la pile ; `docker compose down -v` efface aussi la base locale.
 
+La pile locale lit les pages artistes et Musilogy en production : elle sert aux changements de la seule interface. Un changement du backend ou des données s'essaie sur l'aperçu.
+
+### Aperçu d'une branche (serveur)
+
+Le même `compose.yaml` que la production, sous un autre projet Compose (`aubesonore-preview`), à côté d'elle sur victorserv : sa propre base, avec la vraie Musilogy, ses propres conteneurs, ports et images, construits depuis un worktree de la branche (`~/aubesonore-preview`). C'est la parité entre développement et production que demande la méthode twelve-factor (12factor.net/dev-prod-parity) : mêmes services, de même type et de même version ; Compose isole les projets par leur nom (docs.docker.com/compose/how-tos/project-name/).
+
+```bash
+# sur victorserv
+~/aubesonore/site/scripts/preview.sh up <branche>   # construit et lance la branche d'origin
+~/aubesonore-preview/site/scripts/preview.sh musilogy   # charge la livraison de musilogy dans sa base
+~/aubesonore-preview/site/scripts/preview.sh down       # l'arrête, base gardée ; destroy l'efface
+
+# sur le poste
+ssh -N -L 3012:127.0.0.1:3012 victormoi@victorserv     # puis http://localhost:3012
+```
+
+- `compose.preview.yaml` ne change que ce qui doit différer pour tourner à côté de la production : les noms des conteneurs, les ports (3011, 3012, 5434, en boucle locale seulement), le nom de l'image du backend, qui sinon deviendrait celle que la production relance, et l'API servie sur la même origine que la page (`preview/api.conf`, que le nginx de production n'inclut pas).
+- Le premier `up` écrit le `.env` de l'aperçu (secrets tirés au hasard, aucun secret de production, mails coupés), ses certificats, puis son schéma et un auditeur de test (`dev-init`) ; ses identifiants sont dans ce `.env`. Les sources en direct (Wikipédia, Commons, Deezer, AzuraCast en lecture) répondent comme en production ; aucune donnée d'auditeur réel n'y entre.
+- Musilogy arrive par `musilogy load`, comme en production (environ 20 min), et reste dans le volume de l'aperçu d'une branche à l'autre ; on la recharge quand la production reçoit une nouvelle livraison.
+- `deploy.sh` ne touche jamais l'aperçu, et l'aperçu ne touche jamais `~/aubesonore`.
+- Ce qu'il coûte, mesuré le 2026-10-11 avec Musilogy chargée : environ 620 Mo de mémoire (534 Mo pour sa base), 4,8 Go de disque pour sa base ; les images partagent presque toutes leurs couches avec celles de la production. `down` rend la mémoire, `destroy` le disque.
+
 ## Commandes
 
 ```bash

@@ -391,7 +391,10 @@ choix assumé, et il impose :
 - **le déploiement par fusion sur `master`**, tiré par un timer, jamais pendant la passe
   hebdomadaire ;
 - **des sauvegardes sur un disque distinct**, dont les médias de l'antenne (restic, quotidien) ;
-- **une surveillance par Gatus**, chaque tâche planifiée envoyant son battement de cœur.
+- **une surveillance par Gatus**, chaque tâche planifiée envoyant son battement de cœur ;
+- **un aperçu de chaque branche du site avant sa fusion**, sur la même machine : le même
+  `compose.yaml` sous un autre projet, avec sa propre base et la vraie Musilogy
+  (`site/scripts/preview.sh`).
 
 Risques acceptés tant que leur déclencheur ne s'est pas produit :
 
