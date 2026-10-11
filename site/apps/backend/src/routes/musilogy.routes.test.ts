@@ -68,7 +68,7 @@ const card = {
   user_count: '31415',
 };
 
-const neighbour = (mbid: string, name: string, y0: number | null, side: string | null) => ({
+const neighbour = (mbid: string, name: string, y0: number | null, rank: number) => ({
   mbid,
   name,
   disambiguation: null,
@@ -76,8 +76,11 @@ const neighbour = (mbid: string, name: string, y0: number | null, side: string |
   y0,
   y_end: null,
   ended: null,
-  rank: 1,
-  side,
+  rank,
+  source: 'styles',
+  term: 'Glam',
+  decade: 1970,
+  side: null,
 });
 
 function get(path: string, ip = '203.0.113.1'): Promise<Response> {
@@ -96,14 +99,14 @@ beforeEach(() => {
 });
 
 describe('GET /api/musilogy/artist/:mbid', () => {
-  it('places each neighbour before, during or after the artist, as musilogy says', async () => {
+  it('gives the close artists by their rank, each with what it shares', async () => {
     answers = {
       artist_card: [card],
       artist_same_sound: [
-        neighbour(KINKS, 'The Kinks', 1963, 'before'),
-        neighbour(BOWIE, 'David Bowie', 1964, 'during'),
-        neighbour(RAMONES, 'Ramones', 1974, 'after'),
-        neighbour('0bfba3d3-6a04-4779-bb0a-df07df5b0558', 'Undated', null, null),
+        neighbour(RAMONES, 'Ramones', 1974, 3),
+        neighbour(KINKS, 'The Kinks', 1963, 1),
+        neighbour('0bfba3d3-6a04-4779-bb0a-df07df5b0558', 'Undated', null, 4),
+        neighbour(BOWIE, 'David Bowie', 1964, 2),
       ],
     };
     pageRows = [{ id: 'a-bowie', slug: 'david-bowie', mbid: BOWIE }];
@@ -111,7 +114,7 @@ describe('GET /api/musilogy/artist/:mbid', () => {
     const res = await get(`/artist/${T_REX.toUpperCase()}`);
     const body = (await res.json()) as {
       card: { name: string; genres: string[]; played: unknown };
-      neighbours: Record<string, Array<{ name: string; played: unknown }>>;
+      neighbours: Array<{ name: string; played: unknown; term: string; ended: boolean }>;
     };
 
     expect(res.status).toBe(200);
@@ -119,13 +122,18 @@ describe('GET /api/musilogy/artist/:mbid', () => {
       name: 'T. Rex',
       genres: ['glam rock'],
     });
-    expect(body.neighbours.before!.map((n) => n.name)).toEqual(['The Kinks']);
-    expect(body.neighbours.during![0]).toMatchObject({
+    expect(body.neighbours.map((n) => n.name)).toEqual([
+      'The Kinks',
+      'David Bowie',
+      'Ramones',
+      'Undated',
+    ]);
+    expect(body.neighbours[1]).toMatchObject({
       name: 'David Bowie',
       played: { id: 'a-bowie', slug: 'david-bowie' },
+      term: 'Glam',
+      ended: false,
     });
-    expect(body.neighbours.after!.map((n) => n.name)).toEqual(['Ramones']);
-    expect(body.neighbours.undated!.map((n) => n.name)).toEqual(['Undated']);
   });
 
   it("gives the work, the band, the members' projects and other names, as musilogy reads them", async () => {

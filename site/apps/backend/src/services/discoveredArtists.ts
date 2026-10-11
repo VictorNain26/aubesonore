@@ -34,9 +34,7 @@ export function listDiscovered(): string[] {
 function linkedArtists(page: MusilogyArtist): MusilogyArtistRef[] {
   const { neighbours, bands } = page;
   return [
-    ...(neighbours
-      ? [...neighbours.before, ...neighbours.during, ...neighbours.after, ...neighbours.undated]
-      : []),
+    ...(neighbours ?? []),
     ...(bands ? [...bands.members, ...bands.groups] : []),
     ...(page.memberProjects ?? []),
     ...(page.otherNames ?? []),

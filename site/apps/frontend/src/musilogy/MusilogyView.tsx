@@ -17,7 +17,7 @@ import { ARTIST_LINK, TEXT_ACTION } from '../home/styles';
 import { cn } from '@/lib/utils';
 import { DISCOVERY } from '../lib/discoveryTrail';
 import { pagePathOf } from '../lib/musilogy';
-import { closestOf, MusilogyMap } from './MusilogyMap';
+import { closeArtistsOf, MusilogyTimeline, timelineNote } from './MusilogyTimeline';
 
 // A list shows its closest first; the rest opens on demand.
 const FIRST_SHOWN = 12;
@@ -194,7 +194,7 @@ function bandCount({ bands, memberProjects, otherNames }: MusilogyArtist): numbe
 
 /** The sections MusilogySections shows, for the page's anchors (PageNav). */
 export function musilogyNav(artist: MusilogyArtist): PageNavItem[] {
-  const close = closestOf(artist).length > 0;
+  const close = closeArtistsOf(artist).length > 0;
   return [
     close ? { id: 'close', label: m.musilogy_close_title() } : null,
     bandCount(artist) > 0 ? { id: 'bands', label: m.musilogy_links_title() } : null,
@@ -202,9 +202,9 @@ export function musilogyNav(artist: MusilogyArtist): PageNavItem[] {
 }
 
 /**
- * Where to go next from an artist: its close artists in time, the whole width of the page; then
- * the bands and their projects. A section with nothing in it is left out: no « nothing yet »
- * under a title.
+ * Where to go next from an artist: its close artists, the closest first, their years drawn on one
+ * axis; then the bands and their projects. A section with nothing in it is left out: no « nothing
+ * yet » under a title.
  */
 export function MusilogySections({
   artist,
@@ -213,21 +213,17 @@ export function MusilogySections({
   artist: MusilogyArtist;
   thisYear: number;
 }) {
-  const close = closestOf(artist).length > 0;
+  const close = closeArtistsOf(artist).length > 0;
   return (
     <>
       {close ? (
         <Section
           id="close"
           title={m.musilogy_close_title()}
-          body={
-            artist.card.y0 === null
-              ? m.musilogy_neighbours_note_undated()
-              : m.musilogy_neighbours_note({ name: artist.card.name })
-          }
-          full
+          body={timelineNote(artist, thisYear)}
+          sticky
         >
-          <MusilogyMap artist={artist} thisYear={thisYear} />
+          <MusilogyTimeline artist={artist} thisYear={thisYear} />
         </Section>
       ) : null}
       {bandCount(artist) > 0 ? (

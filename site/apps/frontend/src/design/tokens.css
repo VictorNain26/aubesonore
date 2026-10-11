@@ -579,10 +579,10 @@
   }
 }
 
-/* Reveal's fade, ended halfway in: in a dense list whose faint names mean « less close », a name
-   still fading at the bottom of the screen would read as one of them. Never faded while focused,
-   so a focused name and its outline keep their contrast. Its own utility: `reveal` stays as the
-   home page has it. */
+/* Reveal's fade, ended halfway in: in a list of links (the close artists), a row still fading at
+   the bottom of the screen would read as a muted one. Never faded while focused, so a focused
+   name and its outline keep their contrast. Its own utility: `reveal` stays as the home page has
+   it. */
 @utility reveal-early {
   @supports (animation-timeline: view()) {
     @media (prefers-reduced-motion: no-preference) {

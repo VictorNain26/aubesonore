@@ -237,7 +237,11 @@ RETURNS TABLE (
 )
 LANGUAGE sql STABLE
 AS $$
-  SELECT o.mbid, o.name, o.disambiguation, o.type, o.y0, o.y_end, o.ended, s.rank,
+  -- An end only when declared: a last album's year is not an end (artist_releases
+  -- reads it the same way), and 67 297 of 108 743 neighbours shown carried one
+  -- while still active (2026-10-11).
+  SELECT o.mbid, o.name, o.disambiguation, o.type, o.y0,
+         CASE WHEN o.y_end_source = 'declared' THEN o.y_end END, o.ended, s.rank,
          s.source, s.term, s.decade, musilogy.side(a.y0, o.y0)
   FROM musilogy.artists a
   JOIN musilogy.same_sound s ON s.artist_mbid = a.mbid

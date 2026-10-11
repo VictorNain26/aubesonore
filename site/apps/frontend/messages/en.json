@@ -202,7 +202,6 @@
   "musilogy_search_label": "Find an artist",
   "musilogy_search_placeholder": "An artist or band name",
   "musilogy_search_empty": "No artist by that name.",
-  "musilogy_neighbours_note": "The same sound, by the decade they started; raised, the years of {name}.",
   "musilogy_close_title": "Close artists",
   "musilogy_links_title": "Bands and projects",
   "musilogy_members": "Members",
@@ -222,7 +221,6 @@
   "artist_record_remix": "remix",
   "musilogy_show_more": "Show {count} more",
   "musilogy_unavailable_body": "Nothing to show for now. Come back later.",
-  "musilogy_undated_title": "Start unknown",
   "musilogy_search_error": "The search failed. Try again in a moment.",
   "musilogy_until": "until {year}",
   "auth_error_credentials": "Wrong email or password.",
@@ -250,6 +248,10 @@
   "musilogy_col_artist": "Artist",
   "musilogy_col_kind": "Kind",
   "musilogy_col_start": "Started",
-  "musilogy_decade": "The {decade}s",
-  "musilogy_neighbours_note_undated": "The same sound, by the decade they started."
+  "musilogy_close_shared": "The same sound, mostly {term}.",
+  "musilogy_close_same": "The same sound.",
+  "musilogy_close_band": "The band behind them: {name}.",
+  "musilogy_start_unknown": "start unknown",
+  "musilogy_end_unknown": "{y0}, end unknown",
+  "musilogy_today": "today"
 }
