@@ -4,6 +4,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { CoverOpenLarge, largeArtworkOf } from './CoverOpenLarge';
 
 const ART = 'https://radio.aubesonore.fr/api/station/aubesonore/art/abc123-1700000000.jpg';
+const OTHER = 'https://radio.aubesonore.fr/api/station/aubesonore/art/def456-1700000100.jpg';
 
 function show(src: string | null) {
   return render(
@@ -64,5 +65,44 @@ describe('CoverOpenLarge', () => {
     );
     fireEvent.error(within(screen.getByRole('button')).getByRole('presentation'));
     expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('keeps the place of the cover in its layout, with nothing to open', () => {
+    const { container } = render(
+      <CoverOpenLarge
+        src={null}
+        alt=""
+        seed="Gwenno|Ardamm"
+        label="Voir la pochette de Ardamm en grand"
+        title="Ardamm"
+        largeAlt="Pochette de Ardamm, Gwenno"
+        caption="Ardamm, Gwenno"
+        triggerClassName="row-span-2 size-11"
+        className="size-11"
+      />
+    );
+    expect(container.innerHTML).toMatch(
+      /^<div class="row-span-2 size-11"><div class="bg-surface-raised /
+    );
+  });
+
+  it('opens again for another cover after one failed', () => {
+    const { rerender } = show(ART);
+    fireEvent.error(within(screen.getByRole('button')).getByRole('presentation'));
+
+    rerender(
+      <CoverOpenLarge
+        src={OTHER}
+        alt=""
+        seed="Gwenno|Tresor"
+        label="Voir la pochette de Tresor en grand"
+        title="Tresor"
+        largeAlt="Pochette de Tresor, Gwenno"
+        caption="Tresor, Gwenno"
+      />
+    );
+    expect(
+      screen.getByRole('button', { name: 'Voir la pochette de Tresor en grand' })
+    ).toBeTruthy();
   });
 });

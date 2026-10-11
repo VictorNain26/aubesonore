@@ -112,11 +112,7 @@ export function ArtistPortrait({ images, name, seed, className, sizes }: ArtistP
         ...(usable.kind === 'photo' ? { width: usable.width, height: usable.height } : {}),
       }}
       caption={<Caption image={usable} />}
-      className={cn(
-        // The covers' hover: one style for every image of the site (Releases, MostKept).
-        'bg-surface-raised ease-out-soft hover:shadow-lift relative overflow-hidden transition-[translate,box-shadow,scale] duration-500 active:scale-98 motion-safe:hover:-translate-y-1.5',
-        className
-      )}
+      className={cn('bg-surface-raised relative overflow-hidden', className)}
     >
       <img
         src={usable.url}

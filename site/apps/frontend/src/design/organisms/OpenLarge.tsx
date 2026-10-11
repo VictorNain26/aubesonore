@@ -58,7 +58,8 @@ export function OpenLarge({ label, title, large, caption, className, children }:
       <Dialog.Trigger
         aria-label={label}
         className={cn(
-          'focus-visible:outline-accent block cursor-zoom-in rounded-sm p-0 focus-visible:outline-2 focus-visible:outline-offset-4',
+          // The covers' hover, one for every image that opens: it lifts, and gives way under the press.
+          'ease-out-soft hover:shadow-lift focus-visible:outline-accent block cursor-zoom-in rounded-sm p-0 transition-[translate,box-shadow,scale] duration-500 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-98 motion-safe:hover:-translate-y-1.5',
           className
         )}
       >
@@ -70,7 +71,7 @@ export function OpenLarge({ label, title, large, caption, className, children }:
           <Dialog.Title className="sr-only">{title}</Dialog.Title>
           <Large key={large.src} image={large} />
           <div className="flex items-center justify-between gap-4 pl-1">
-            <div className="text-ui text-text-muted min-w-0">{caption}</div>
+            <div className="text-ui text-text-muted">{caption}</div>
             <Dialog.Close aria-label={m.close()} className={CLOSE_BUTTON}>
               <X className="size-4.5" strokeWidth={1.8} aria-hidden="true" />
             </Dialog.Close>

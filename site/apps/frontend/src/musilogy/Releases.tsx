@@ -22,7 +22,6 @@ function Record({ release }: { release: MusilogyRelease }) {
   ].filter(Boolean);
   return (
     <li className="reveal flex min-w-0 flex-col gap-2">
-      {/* The home page's hover on a cover (MostKept): one style for every cover of the site. */}
       <CoverOpenLarge
         src={coverOf(release)}
         alt=""
@@ -36,7 +35,7 @@ function Record({ release }: { release: MusilogyRelease }) {
             : release.title
         }
         triggerClassName="w-full"
-        className="ease-out-soft hover:shadow-lift aspect-square w-full transition-[translate,box-shadow] duration-500 motion-safe:hover:-translate-y-1.5"
+        className="aspect-square w-full"
       />
       <span className="flex min-w-0 flex-col">
         <span className="text-ui break-words">{release.title}</span>

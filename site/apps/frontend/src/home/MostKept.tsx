@@ -27,7 +27,7 @@ function Ranking({ entries, period }: { entries: TrendEntry[]; period: Period })
   }
 
   return (
-    <ol className="m-0 -mx-6 flex scrollbar-none list-none gap-3.5 overflow-x-auto px-6 md:mx-0 md:grid md:grid-cols-5 md:gap-6 md:overflow-visible md:px-0">
+    <ol className="m-0 -mx-6 -my-2 flex scrollbar-none list-none gap-3.5 overflow-x-auto px-6 py-2 md:mx-0 md:my-0 md:grid md:grid-cols-5 md:gap-6 md:overflow-visible md:px-0 md:py-0">
       {entries.slice(0, 5).map((entry, i) => (
         <li
           key={`${entry.artist}|${entry.title}`}
@@ -44,7 +44,7 @@ function Ranking({ entries, period }: { entries: TrendEntry[]; period: Period })
             // w-38 on phones; one of five columns of the page from md.
             sizes="(min-width: 48rem) 20vw, 9.5rem"
             triggerClassName="w-full"
-            className="ease-out-soft hover:shadow-lift aspect-square w-full transition-[translate,box-shadow] duration-500 motion-safe:hover:-translate-y-1.5"
+            className="aspect-square w-full"
           />
           <span className="text-label text-text-muted flex justify-between font-mono">
             <span>{String(i + 1).padStart(2, '0')}</span>

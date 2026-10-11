@@ -126,6 +126,22 @@ describe('NowPlayingView', () => {
     rerender(<NowPlayingView {...props({ isKept: true })} />);
     expect(keep()).toContainHTML('keep-pop');
   });
+
+  it('keeps the large cover open into the next track, showing the new one', async () => {
+    const art = (id: string) => `https://radio.aubesonore.fr/api/station/aubesonore/art/${id}.jpg`;
+    const next = { title: 'Respire', artist: 'Mickey 3D', album: 'Live', art: art('b') };
+    const { rerender } = render(
+      <NowPlayingView {...props({ track: { ...props().track!, art: art('a') } })} />
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Voir la pochette de Mimoun en grand' })
+    );
+    await screen.findByRole('dialog', { name: 'Mimoun' });
+
+    rerender(<NowPlayingView {...props({ track: next, hasChanged: true })} />);
+    const dialog = screen.getByRole('dialog', { name: 'Respire' });
+    expect(within(dialog).getByRole('img')).toHaveProperty('src', art('b'));
+  });
 });
 
 describe('NowPlayingFallback', () => {

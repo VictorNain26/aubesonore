@@ -95,7 +95,6 @@ export function NowPlayingView({
       <div className="lift-in">
         {track ? (
           <CoverOpenLarge
-            key={trackKey}
             src={track.art}
             alt={m.now_cover_alt({ title: track.title, artist: track.artist })}
             seed={`${track.artist}|${track.title}`}
@@ -106,8 +105,8 @@ export function NowPlayingView({
             priority
             // artwork-size: 46svh wide, 60svh from 64rem (design/tokens.css).
             sizes="(min-width: 64rem) 60vh, 46vh"
-            triggerClassName="w-fit"
-            className={cn('artwork-size shadow-cover aspect-square', hasChanged && 'swap-in')}
+            triggerClassName="artwork-size aspect-square"
+            className={cn('shadow-cover size-full', hasChanged && 'swap-in')}
           />
         ) : (
           <div

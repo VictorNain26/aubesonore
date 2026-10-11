@@ -24,7 +24,10 @@ export interface CoverOpenLargeProps extends CoverProps {
   /** What the large view says under it. */
   caption: ReactNode;
   largeAlt: string;
-  /** The trigger's classes: the place the cover takes in its layout. */
+  /**
+   * The place the cover takes in its layout, held by the trigger, or by a plain box when there is
+   * nothing to open: the cover fills it either way.
+   */
   triggerClassName?: string;
 }
 
@@ -37,10 +40,16 @@ export function CoverOpenLarge({
   triggerClassName,
   ...cover
 }: CoverOpenLargeProps) {
-  const [failed, setFailed] = useState(false);
-  const { src } = cover;
-  if (!src || isDefaultArtwork(src) || failed)
-    return <Cover {...cover} src={failed ? null : src} />;
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const { src, seed } = cover;
+  // Keyed by its seed, the cover replays its entrance for another track, while the window, and
+  // the focus on its trigger, stay.
+  if (!src || isDefaultArtwork(src) || src === failedSrc)
+    return (
+      <div className={triggerClassName}>
+        <Cover key={seed} {...cover} src={src === failedSrc ? null : src} />
+      </div>
+    );
   return (
     <OpenLarge
       label={label}
@@ -49,7 +58,7 @@ export function CoverOpenLarge({
       caption={caption}
       className={triggerClassName}
     >
-      <Cover {...cover} onError={() => setFailed(true)} />
+      <Cover key={seed} {...cover} onError={() => setFailedSrc(src)} />
     </OpenLarge>
   );
 }
