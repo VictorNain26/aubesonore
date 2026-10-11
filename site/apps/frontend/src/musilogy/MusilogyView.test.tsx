@@ -177,6 +177,81 @@ describe('MusilogySections', () => {
     expect(screen.getByText('ancien nom')).toBeInTheDocument();
   });
 
+  it('puts a project two members share under both, folds a long line, and says who each member is', async () => {
+    const project = (n: number, via: string[]) => ({
+      ...neighbour(100 + n, { name: `Project ${n}` }),
+      via,
+    });
+    show(
+      artist({
+        bands: {
+          members: [
+            {
+              ...neighbour(20, { name: 'Ann', disambiguation: 'drummer' }),
+              yBegin: null,
+              yEnd: null,
+            },
+            { ...neighbour(21, { name: 'Bob' }), yBegin: null, yEnd: null },
+          ],
+          groups: [],
+        },
+        memberProjects: [
+          project(0, ['Ann', 'Bob']),
+          ...Array.from({ length: 9 }, (_, i) => project(i + 1, ['Bob'])),
+        ],
+      })
+    );
+
+    const rowOf = (name: string) =>
+      screen
+        .getAllByRole('listitem')
+        .find((row) => within(row).queryByRole('link', { name })) as HTMLElement;
+    expect(within(rowOf('Ann')).getByRole('link', { name: 'Project 0' })).toBeTruthy();
+    expect(within(rowOf('Ann')).getByText('drummer')).toBeTruthy();
+    expect(within(rowOf('Ann')).getByText('aussi dans')).toBeTruthy();
+    expect(within(rowOf('Bob')).getByRole('link', { name: 'Project 0' })).toBeTruthy();
+    expect(within(rowOf('Bob')).queryByRole('link', { name: 'Project 9' })).toBeNull();
+    await userEvent.click(within(rowOf('Bob')).getByRole('button', { name: 'Voir 2 de plus' }));
+    expect(within(rowOf('Bob')).getByRole('link', { name: 'Project 9' })).toBeTruthy();
+  });
+
+  it('ties no project to a name two members share, and says who leads there', () => {
+    const twin = (n: number) => ({
+      ...neighbour(n, { name: 'John Smith' }),
+      yBegin: null,
+      yEnd: null,
+    });
+    show(
+      artist({
+        bands: { members: [twin(30), twin(31)], groups: [] },
+        memberProjects: [{ ...neighbour(50, { name: 'Shagrat' }), via: ['John Smith'] }],
+      })
+    );
+
+    expect(screen.queryByText('aussi dans')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Projets des membres' })).toBeInTheDocument();
+    expect(screen.getByText('avec John Smith')).toBeInTheDocument();
+  });
+
+  it("gives a person's groups on one line, a single year alone, folded past twelve", () => {
+    const group = (n: number, yBegin: number | null = null, yEnd: number | null = null) => ({
+      ...neighbour(60 + n, { name: `Group ${n}` }),
+      yBegin,
+      yEnd,
+    });
+    const person = artist({
+      bands: {
+        members: [],
+        groups: [group(0, 1997, 1997), ...Array.from({ length: 13 }, (_, i) => group(i + 1))],
+      },
+    });
+    show({ ...person, card: { ...person.card, kind: 'person' } });
+
+    expect(screen.getByText('1997')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Group 13' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Voir 2 de plus' })).toBeInTheDocument();
+  });
+
   it('shows every close artist at once, with nothing to open', () => {
     show(artist({ neighbours: Array.from({ length: 8 }, (_, i) => neighbour(i)) }));
 

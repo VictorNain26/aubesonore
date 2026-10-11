@@ -198,7 +198,8 @@ Un ordre de départ, chaque section seulement quand elle a quelque chose à mont
      musique, du plus ancien au plus récent ; les membres repliés au-delà d'une douzaine. Les
      ouvrages de référence rattachent ainsi les groupes d'un musicien au musicien (« In Groups »
      de Discogs, « Member of » de Rate Your Music et d'AllMusic), jamais en liste à part
-     (2026-10-12). Les **Groupes** d'une personne, sur une ligne, avec leurs années ;
+     (2026-10-12). Les **Groupes** d'une personne, ou les projets communs d'un groupe, sur une ligne,
+     avec leurs années ;
    - **Autres noms**, sur une ligne : pseudonymes et changements de nom.
 
    Les relations qui parlent de la vie plutôt que de la musique (famille, professeur, musicien de
