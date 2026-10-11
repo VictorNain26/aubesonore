@@ -193,7 +193,8 @@ musilogy.artist_card(artist text) RETURNS TABLE (
 -- mesurée (la table les garde tous), dans leur rang, chacun avec sa raison
 -- (source 'styles' : term est un style Discogs, decade la décennie où l'artiste
 -- en a le plus de disques, NULL s'il n'en a aucun daté ; 'genres' : term est un
--- genre MusicBrainz, decade NULL) et son côté dans le temps (§3, musilogy.side).
+-- genre MusicBrainz, decade NULL) et son côté dans le temps (§3, musilogy.side) ;
+-- y_end seulement déclaré, jamais l'année d'un dernier album.
 musilogy.artist_same_sound(artist text) RETURNS TABLE (
   mbid text, name text, disambiguation text, type text, y0 integer,
   y_end integer, ended boolean, rank integer, source text, term text,

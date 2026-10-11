@@ -13,6 +13,7 @@ from conftest import (
     loaded,
     pg_query,
     synthetic_artist,
+    synthetic_release_group,
 )
 
 from musilogy import colisten
@@ -280,6 +281,27 @@ def test_the_site_reads_same_sound_in_rank_order_each_with_its_reason_and_side(t
         (F, 4, "styles", "Krautrock", 1970, "during"),
     ]
     assert pg_query(pg, f"SELECT count(*) FROM musilogy.artist_same_sound('{ABSENT}')") == [(0,)]
+
+
+def test_the_site_reads_a_neighbours_end_only_when_declared(tmp_path, pg):
+    # B declares its end; D's is only the year of its last album, which is not an end.
+    artists = [
+        *(a for a in ARTISTS if a["mbid"] != B),
+        synthetic_artist(B, "1970", "1979", urls=[discogs_url(2)]),
+    ]
+    loaded(
+        tmp_path,
+        pg,
+        artists,
+        release_groups=[synthetic_release_group("00000000-0000-4000-8000-0000000007d1", D, "1999")],
+        listening=LISTENERS,
+        discogs=RELEASES,
+    )
+    assert pg_query(pg, f"SELECT y_end, y_end_source FROM musilogy.artists WHERE mbid = '{D}'") == [
+        (1999, "last_album")
+    ]
+    ends = dict(pg_query(pg, f"SELECT mbid, y_end FROM musilogy.artist_same_sound('{A}')"))
+    assert (ends[B], ends[D]) == (1979, None)
 
 
 def test_artist_same_sound_keeps_the_signature_the_site_reads(tmp_path, pg):
