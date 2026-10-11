@@ -3,6 +3,7 @@ every artist, so the co-listening scores A's neighbours alike and they rank by
 MBID, and the Discogs records and MusicBrainz genres below make each rule of
 the colour visible."""
 
+import pytest
 from conftest import (
     build_synthetic,
     discogs_file,
@@ -172,6 +173,62 @@ def test_the_shrink_counts_only_the_dated_records(tmp_path):
     assert [row[0] for row in same_sound(built(tmp_path, releases=releases))] == [D, E, F]
 
 
+def test_a_style_the_artist_has_no_dated_record_of_gives_no_decade(tmp_path):
+    # A's thirty records carry no date: A keeps its colour, the shrink reads
+    # the neighbours' dated records, and the reason has no decade to give.
+    releases = [r for r in RELEASES if r["artists"] != [1]] + records(1, "Krautrock", None, 30, 100)
+    assert same_sound(built(tmp_path, releases=releases)) == [
+        (B, 1, "styles", "Krautrock", None),
+        (D, 2, "styles", "Krautrock", None),
+        (E, 3, "genres", "krautrock", None),
+        (F, 4, "styles", "Krautrock", None),
+    ]
+
+
+A_B = f"artist_mbid = '{A}' AND neighbour_mbid = '{B}'"
+
+
+@pytest.mark.parametrize(
+    ("invariant", "mutation"),
+    [
+        # B and D tie on the score: the tie must fall to the MBID.
+        (
+            "same_sound_out_of_order",
+            f"UPDATE same_sound SET rank = 3 - rank WHERE artist_mbid = '{A}' AND rank <= 2",
+        ),
+        (
+            "same_sound_unsourced",
+            f"UPDATE same_sound SET colisten_score = colisten_score / 2 WHERE {A_B}",
+        ),
+        (
+            "same_sound_unexplained",
+            f"UPDATE same_sound SET decade = NULL WHERE {A_B}",
+        ),
+        (
+            "same_sound_unexplained",
+            f"UPDATE same_sound SET decade = 1990 WHERE {A_B}",
+        ),
+        (
+            "same_sound_colour_out_of_range",
+            f"UPDATE same_sound SET colour = 0.3 WHERE {A_B}",
+        ),
+        (
+            "same_sound_rank_out_of_range",
+            f"UPDATE same_sound SET rank = 9 WHERE artist_mbid = '{A}' AND neighbour_mbid = '{F}'",
+        ),
+        (
+            "colisten_out_of_order",
+            f"UPDATE colisten SET rank = CASE rank WHEN 1 THEN 2 ELSE 1 END "
+            f"WHERE artist_mbid = '{A}' AND rank <= 2",
+        ),
+    ],
+)
+def test_a_broken_same_sound_is_reported(tmp_path, invariant, mutation):
+    c = built(tmp_path)
+    c.execute(mutation)
+    assert invariant in dict(check_invariants(c, SQL_DIR))
+
+
 def test_the_reason_sums_a_style_over_its_decades(tmp_path):
     # Krautrock is the heaviest style of a single decade (12 records against
     # 8), but Ambient sums 16 over the 1980s and the 1990s. Within Ambient, the
@@ -194,7 +251,7 @@ def test_the_reason_sums_a_style_over_its_decades(tmp_path):
     assert same_sound(c) == [(B, 1, "styles", "Ambient", 1980)]
 
 
-def test_no_listening_export_gives_no_same_sound(tmp_path):
+def test_no_listens_give_no_same_sound(tmp_path):
     c = build_synthetic(tmp_path, ARTISTS, discogs=discogs_file(tmp_path / "d.jsonl", RELEASES))
     assert c.execute("SELECT count(*) FROM same_sound").fetchone() == (0,)
 

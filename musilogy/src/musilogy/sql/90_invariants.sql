@@ -351,7 +351,8 @@ CREATE OR REPLACE VIEW discogs_link_ambiguous AS
   WHERE artist_mbid NOT IN (SELECT mbid FROM alone);
 -- colisten (colisten.py): one row per pair, never the artist itself, ranks
 -- 1..K without a gap, at least MIN_COMMON listeners in common, and each rank
--- scoring no more than the one before it.
+-- scoring no more than the one before it, a tie ranked by the neighbour's
+-- MBID.
 CREATE OR REPLACE VIEW duplicate_colisten AS
   SELECT artist_mbid, neighbour_mbid FROM colisten GROUP BY ALL HAVING count(*) > 1;
 CREATE OR REPLACE VIEW colisten_self AS
@@ -364,12 +365,12 @@ CREATE OR REPLACE VIEW colisten_below_min_common AS
   WHERE common < getvariable('colisten_min_common');
 CREATE OR REPLACE VIEW colisten_out_of_order AS
   SELECT artist_mbid, rank FROM (
-    SELECT artist_mbid, rank, score,
-           lag(score) OVER (PARTITION BY artist_mbid ORDER BY rank) AS before
-    FROM colisten
-  ) WHERE score > before;
+    SELECT artist_mbid, rank, score, neighbour_mbid,
+           lag(score) OVER w AS score_before, lag(neighbour_mbid) OVER w AS neighbour_before
+    FROM colisten WINDOW w AS (PARTITION BY artist_mbid ORDER BY rank)
+  ) WHERE score > score_before OR (score = score_before AND neighbour_mbid < neighbour_before);
 -- 88_same_sound.sql: one row per pair, never the artist itself, ranks 1..n
--- without a gap, by the co-listening's score; every pair a co-listening pair
+-- without a gap, by the co-listening's score then the neighbour's MBID; every pair a co-listening pair
 -- in one direction or the other, with the higher score of the two, of colour
 -- 0.35 or more (a literal: the build reads a variable), explained by a style
 -- or genre both artists carry; a style's decade one the artist has it in, NULL
@@ -383,10 +384,11 @@ CREATE OR REPLACE VIEW same_sound_rank_out_of_range AS
   HAVING min(rank) <> 1 OR max(rank) <> count(*);
 CREATE OR REPLACE VIEW same_sound_out_of_order AS
   SELECT artist_mbid, rank FROM (
-    SELECT artist_mbid, rank, colisten_score,
-           lag(colisten_score) OVER (PARTITION BY artist_mbid ORDER BY rank) AS before
-    FROM same_sound
-  ) WHERE colisten_score > before;
+    SELECT artist_mbid, rank, colisten_score, neighbour_mbid,
+           lag(colisten_score) OVER w AS score_before, lag(neighbour_mbid) OVER w AS neighbour_before
+    FROM same_sound WINDOW w AS (PARTITION BY artist_mbid ORDER BY rank)
+  ) WHERE colisten_score > score_before
+     OR (colisten_score = score_before AND neighbour_mbid < neighbour_before);
 CREATE OR REPLACE VIEW same_sound_unsourced AS
   WITH both_ways AS (
     SELECT artist_mbid, neighbour_mbid, max(score) AS score FROM (

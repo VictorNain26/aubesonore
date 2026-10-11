@@ -1,19 +1,20 @@
 -- « Même son » (docs/vision.md §2.2): a neighbour of the co-listening, in
 -- either direction, that shares the artist's colour in any era. Taste and
--- colour must agree; measured on 61 reference artists against sourced
--- descriptions of their sound: with the colour compared decade by decade,
--- 81 % of the neighbours shown judged the same sound or a kinship, none
--- foreign, against 54 % for the co-listening alone (2026-10-08); in any era
--- and both directions, on all listens, 90.5 % of the 105 pairs already judged
--- among the first 8, none foreign (2026-10-10). Neither signal is shown alone:
--- the styles alone stay below 40 % where the co-listening has nothing to say.
+-- colour must agree. Measured once, against sourced descriptions of the
+-- sound, on the first 8 neighbours of 75 artists: 87 % judged the same sound
+-- or a kinship [83, 91], none foreign (2026-10-11), where the co-listening
+-- alone gave 54 % (2026-10-08). Neither signal is shown alone: the styles
+-- alone stay below 40 % where the co-listening has nothing to say.
 -- A derived table: it reads the sources' tables and rewrites none
 -- (docs/conception.md §1).
 
 SET VARIABLE same_sound_min_colour = 0.35::DOUBLE;
 -- A profile of a few records matches anything: the similarity of a neighbour
--- whose profile counts n records (or votes) is shrunk by n / (n + shrink),
--- counting for styles the dated records, as measured.
+-- whose profile counts n records (or votes) is shrunk by n / (n + shrink).
+-- For styles n counts the dated records only: the rule the measure of
+-- 2026-10-11 judged. It leaves without a colour the 2 834 of 503 892 Discogs
+-- profiles whose records are all undated (2026-10-11); counting them is a
+-- change to measure, not to assume.
 SET VARIABLE same_sound_styles_shrink = 10::INTEGER;
 SET VARIABLE same_sound_genres_shrink = 3::INTEGER;
 -- Under three style-records an artist has no Discogs colour, only genres.
@@ -110,8 +111,7 @@ WHERE NOT (
     SELECT 1 FROM colour_norms n WHERE n.source = 'styles' AND n.artist_mbid = p.neighbour_mbid))
 GROUP BY ALL;
 
--- The candidates whose colour agrees. A neighbour without a dated record is
--- shrunk to no colour: n / (n + shrink) = 0.
+-- The candidates whose colour agrees.
 CREATE OR REPLACE TABLE same_sound_pairs AS
 SELECT c.artist_mbid, c.neighbour_mbid, c.colisten_score, s.source, s.colour
 FROM same_sound_candidates c
@@ -155,7 +155,7 @@ decades AS (
 )
 SELECT p.artist_mbid, p.neighbour_mbid,
   row_number() OVER (
-    PARTITION BY p.artist_mbid ORDER BY p.colisten_score DESC, p.neighbour_mbid)::SMALLINT AS rank,
+    PARTITION BY p.artist_mbid ORDER BY p.colisten_score DESC, p.neighbour_mbid)::INTEGER AS rank,
   p.colisten_score, p.source, p.colour, r.term,
   CASE WHEN p.source = 'styles' THEN d.decade END AS decade
 FROM same_sound_pairs p
