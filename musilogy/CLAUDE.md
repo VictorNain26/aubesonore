@@ -117,7 +117,13 @@ une requête sans borne l'a gelée. La co-écoute sur toutes les écoutes culmin
 dans un scope de 5,5 Go visés et 6 Go au plus, quand la passe hebdomadaire de
 la radio ne tourne pas. Un plafond visé (`MemoryHigh`) se pose au-dessus du pic
 mesuré, jamais dessus : à 4 Go, le noyau a freiné le calcul des heures durant
-(2026-10-11). Après le lancement, `memory.pressure` de l'unité le dit.
+(2026-10-11). Après le lancement, `memory.pressure` de l'unité le dit. Ce
+calcul part la nuit : DuckDB y déborde en écrivant des dizaines de Mo/s, que
+`IOSchedulingClass=idle` ne freine pas (il ne joue que sur les lectures) et
+qu'une unité utilisateur ne peut pas brider (`io.max` ne lui est pas délégué) ;
+en plein jour, il a saturé le disque et rendu la machine lente (2026-10-11).
+Une unité trop gourmande se gèle (`systemctl --user freeze`) et reprend où elle
+était (`thaw`).
 
 ```bash
 systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=0 \
