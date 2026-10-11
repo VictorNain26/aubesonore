@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { coverArtUrl, type MusilogyRelease } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
 import { Section } from '../design/molecules/Section';
-import { Cover } from '../home/Cover';
+import { CoverOpenLarge } from '../home/CoverOpenLarge';
 import { TEXT_ACTION } from '../home/styles';
 
 // A prolific artist files dozens of EPs (the Rolling Stones about 150 regional
@@ -22,12 +22,20 @@ function Record({ release }: { release: MusilogyRelease }) {
   ].filter(Boolean);
   return (
     <li className="reveal flex min-w-0 flex-col gap-2">
-      {/* The home page's hover on a cover (MostKept): one style for every cover of the site. */}
-      <Cover
+      <CoverOpenLarge
         src={coverOf(release)}
         alt=""
         seed={release.title}
-        className="ease-out-soft hover:shadow-lift aspect-square w-full transition-[translate,box-shadow] duration-500 motion-safe:hover:-translate-y-1.5"
+        label={m.cover_open({ title: release.title })}
+        title={release.title}
+        largeAlt={m.artist_cover_alt({ title: release.title })}
+        caption={
+          release.year
+            ? m.artist_cover_caption({ title: release.title, year: String(release.year) })
+            : release.title
+        }
+        triggerClassName="w-full"
+        className="aspect-square w-full"
       />
       <span className="flex min-w-0 flex-col">
         <span className="text-ui break-words">{release.title}</span>

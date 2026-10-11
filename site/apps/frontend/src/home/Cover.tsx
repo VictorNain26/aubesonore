@@ -16,9 +16,11 @@ export interface CoverProps {
    * browser downloads the smallest file that fills it on this screen.
    */
   sizes?: string;
+  /** Told when the image does not load, after the glyph takes its place. */
+  onError?: () => void;
 }
 
-export function Cover({ src, alt, seed, className, priority = false, sizes }: CoverProps) {
+export function Cover({ src, alt, seed, className, priority = false, sizes, onError }: CoverProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const usable = !isDefaultArtwork(src) && src !== failedSrc;
 
@@ -40,7 +42,10 @@ export function Cover({ src, alt, seed, className, priority = false, sizes }: Co
           loading={priority ? 'eager' : 'lazy'}
           fetchPriority={priority ? 'high' : 'auto'}
           className="size-full object-cover"
-          onError={() => setFailedSrc(src ?? null)}
+          onError={() => {
+            setFailedSrc(src ?? null);
+            onError?.();
+          }}
         />
       ) : (
         <CoverGlyph seed={seed} size="md" className="size-full" />

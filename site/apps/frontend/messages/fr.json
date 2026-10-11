@@ -173,6 +173,8 @@
   "artist_photo_by": "Photo {author}",
   "artist_photo": "Photo",
   "artist_cover_caption": "{title}, {year}",
+  "cover_open": "Voir la pochette de {title} en grand",
+  "track_caption": "{title}, {artist}",
   "artist_cover_alt": "Pochette de {title}",
   "artist_kind_person": "Artiste",
   "artist_kind_group": "Groupe",

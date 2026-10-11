@@ -8,7 +8,7 @@ import { useLikeAction } from '../hooks/player/useLikeAction';
 import { useLikedTracksStore, isTrackLiked } from '../stores/likedTracksStore';
 import { useArtistPages } from '../hooks/useArtistPages';
 import { artistPath } from '../lib/artistProfile';
-import { Cover } from './Cover';
+import { CoverOpenLarge } from './CoverOpenLarge';
 import { formatClock } from './time';
 import { ARTIST_LINK, TEXT_ACTION } from './styles';
 import * as m from '@/paraglide/messages.js';
@@ -86,11 +86,16 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
                   {row.isNow ? <span className="sr-only">{m.on_air_sr()} </span> : null}
                   {formatClock(row.playedAt)}
                 </span>
-                <Cover
+                <CoverOpenLarge
                   src={row.art}
                   alt=""
                   seed={`${row.artist}|${row.title}`}
+                  label={m.cover_open({ title: row.title })}
+                  title={row.title}
+                  largeAlt={m.now_cover_alt({ title: row.title, artist: row.artist })}
+                  caption={m.track_caption({ title: row.title, artist: row.artist })}
                   sizes="2.75rem"
+                  triggerClassName="size-11"
                   className="size-11"
                 />
                 <span className="flex min-w-0 flex-col lg:contents">

@@ -1,11 +1,10 @@
 import { useState, type CSSProperties } from 'react';
-import { Dialog } from '@base-ui/react/dialog';
-import { X } from 'lucide-react';
 import type { ArtistImage } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
 import { cn } from '@/lib/utils';
 import { artworkSrcSet } from '../lib/artwork';
-import { ARTIST_LINK, CLOSE_BUTTON } from '../home/styles';
+import { ARTIST_LINK } from '../home/styles';
+import { OpenLarge } from '../design/organisms/OpenLarge';
 
 const OUTSIDE_LINK = { rel: 'noopener noreferrer', target: '_blank' } as const;
 
@@ -40,7 +39,7 @@ const CREDIT_LINK = cn(ARTIST_LINK, 'text-text-muted underline-offset-4');
 function Caption({ image }: { image: ArtistImage }) {
   if (image.kind === 'cover') {
     return (
-      <p className="text-ui text-text-muted m-0">
+      <p className="m-0">
         {image.year
           ? m.artist_cover_caption({ title: image.title, year: String(image.year) })
           : image.title}
@@ -49,7 +48,7 @@ function Caption({ image }: { image: ArtistImage }) {
   }
   const { credit } = image;
   return (
-    <p className="text-ui text-text-muted m-0">
+    <p className="m-0">
       <a href={credit.source} {...OUTSIDE_LINK} className={CREDIT_LINK}>
         {credit.author ? m.artist_photo_by({ author: credit.author }) : m.artist_photo()}
       </a>
@@ -72,26 +71,6 @@ function altOf(image: ArtistImage, name: string): string {
     : m.artist_portrait_alt({ name });
 }
 
-/** The large image, opened at its shape: a photo's from Commons, a cover square. */
-function LargeImage({ image, name }: { image: ArtistImage; name: string }) {
-  const [failed, setFailed] = useState(false);
-  const shape =
-    image.kind === 'photo' && image.width && image.height
-      ? { width: image.width, height: image.height }
-      : { width: 1200, height: 1200 };
-  return (
-    <img
-      // The thumbnail already shown, when the large file does not load.
-      src={failed ? image.url : largeOf(image)}
-      {...shape}
-      alt={altOf(image, name)}
-      referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
-      className="h-auto max-h-[calc(100dvh-9rem)] w-auto max-w-full min-w-0 rounded-sm object-contain"
-    />
-  );
-}
-
 export interface ArtistPortraitProps {
   /** The images to try, the first first (ArtistProfile.images). */
   images: readonly ArtistImage[];
@@ -109,7 +88,6 @@ export interface ArtistPortraitProps {
  */
 export function ArtistPortrait({ images, name, seed, className, sizes }: ArtistPortraitProps) {
   const [failed, setFailed] = useState<readonly string[]>([]);
-  const [open, setOpen] = useState(false);
   const usable = images.find((image) => !failed.includes(image.url)) ?? null;
 
   if (!usable) {
@@ -124,49 +102,37 @@ export function ArtistPortrait({ images, name, seed, className, sizes }: ArtistP
   }
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger
-        aria-label={m.artist_image_open({ name })}
-        className={cn(
-          // The covers' hover: one style for every image of the site (Releases, MostKept).
-          'bg-surface-raised ease-out-soft hover:shadow-lift focus-visible:outline-accent relative block cursor-zoom-in overflow-hidden rounded-sm p-0 transition-[translate,box-shadow,scale] duration-500 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-98 motion-safe:hover:-translate-y-1.5',
-          className
-        )}
-      >
-        <img
-          src={usable.url}
-          srcSet={sizes ? artworkSrcSet(usable.url) : undefined}
-          sizes={sizes}
-          alt=""
-          referrerPolicy="no-referrer"
-          decoding="async"
-          fetchPriority="high"
-          className="size-full object-cover"
-          onError={() => setFailed((before) => [...before, usable.url])}
-        />
-        {usable.kind === 'photo' ? (
-          <span
-            aria-hidden="true"
-            className="bg-surface text-text-muted text-label absolute right-2 bottom-2 inline-flex size-6 items-center justify-center rounded-full font-mono"
-          >
-            ©
-          </span>
-        ) : null}
-      </Dialog.Trigger>
-      <Dialog.Portal>
-        {/* The site's windows (Modal): the veil and the paper fade in, the paper from 95 %. */}
-        <Dialog.Backdrop className="bg-scrim ease-out-quart fixed inset-0 z-50 transition-opacity duration-300 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
-        <Dialog.Popup className="bg-surface border-border ease-out-soft fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-3 rounded-md border p-3 transition-[opacity,scale] duration-300 focus-visible:outline-none data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 md:p-4">
-          <Dialog.Title className="sr-only">{name}</Dialog.Title>
-          <LargeImage key={usable.url} image={usable} name={name} />
-          <div className="flex items-center justify-between gap-4 pl-1">
-            <Caption image={usable} />
-            <Dialog.Close aria-label={m.close()} className={CLOSE_BUTTON}>
-              <X className="size-4.5" strokeWidth={1.8} aria-hidden="true" />
-            </Dialog.Close>
-          </div>
-        </Dialog.Popup>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <OpenLarge
+      label={m.artist_image_open({ name })}
+      title={name}
+      large={{
+        src: largeOf(usable),
+        fallback: usable.url,
+        alt: altOf(usable, name),
+        ...(usable.kind === 'photo' ? { width: usable.width, height: usable.height } : {}),
+      }}
+      caption={<Caption image={usable} />}
+      className={cn('bg-surface-raised relative overflow-hidden', className)}
+    >
+      <img
+        src={usable.url}
+        srcSet={sizes ? artworkSrcSet(usable.url) : undefined}
+        sizes={sizes}
+        alt=""
+        referrerPolicy="no-referrer"
+        decoding="async"
+        fetchPriority="high"
+        className="size-full object-cover"
+        onError={() => setFailed((before) => [...before, usable.url])}
+      />
+      {usable.kind === 'photo' ? (
+        <span
+          aria-hidden="true"
+          className="bg-surface text-text-muted text-label absolute right-2 bottom-2 inline-flex size-6 items-center justify-center rounded-full font-mono"
+        >
+          ©
+        </span>
+      ) : null}
+    </OpenLarge>
   );
 }
