@@ -2,7 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import type { ArtistImage } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
 import { cn } from '@/lib/utils';
-import { artworkSrcSet } from '../lib/artwork';
+import { artworkSrc, artworkSrcSet } from '../lib/artwork';
 import { ARTIST_LINK } from '../home/styles';
 import { OpenLarge } from '../design/organisms/OpenLarge';
 
@@ -115,7 +115,7 @@ export function ArtistPortrait({ images, name, seed, className, sizes }: ArtistP
       className={cn('bg-surface-raised relative overflow-hidden', className)}
     >
       <img
-        src={usable.url}
+        src={artworkSrc(usable.url)}
         srcSet={sizes ? artworkSrcSet(usable.url) : undefined}
         sizes={sizes}
         alt=""

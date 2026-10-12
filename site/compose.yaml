@@ -180,6 +180,10 @@ services:
     restart: unless-stopped
     ports:
       - '127.0.0.1:3002:80'
+    # The Cover Art Archive's thumbnails nginx keeps (nginx.conf, /caa/): kept across deploys, so
+    # archive.org is asked once per cover rather than after every rebuild.
+    volumes:
+      - caa_cache:/var/cache/nginx/caa
     cpus: 0.5
     mem_limit: 128m
     pids_limit: 128
@@ -284,6 +288,7 @@ services:
       - '127.0.0.1:5173:5173'
 
 volumes:
+  caa_cache:
   postgres_data:
   pg_certs:
   pnpm_store:

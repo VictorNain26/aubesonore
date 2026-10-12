@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { artworkAt, artworkSrcSet } from './artwork';
+import { artworkAt, artworkSrc, artworkSrcSet } from './artwork';
 
 describe('artworkAt', () => {
   it("asks Apple's CDN for the size the cover is shown at", () => {
@@ -121,5 +121,30 @@ describe('artworkSrcSet', () => {
     expect(artworkSrcSet('https://radio.aubesonore.fr/api/station/1/art/abc-1691234.jpg')).toBe(
       undefined
     );
+  });
+});
+
+describe('the Cover Art Archive, through this site', () => {
+  const RG = '00b3e683-47fa-3302-add0-4c0cecc5224e';
+
+  it('is fetched at /caa/ at the size its URL names, the original without one', () => {
+    expect(artworkSrc(`https://coverartarchive.org/release-group/${RG}/front-250`)).toBe(
+      `/caa/250/${RG}.jpg`
+    );
+    expect(artworkSrc(`https://coverartarchive.org/release-group/${RG}/front`)).toBe(
+      `/caa/1200/${RG}.jpg`
+    );
+    // Anything else is left as given: nothing but a release group's id reaches the proxy.
+    expect(artworkSrc(`https://coverartarchive.org/release/${RG}/front-250`)).toBe(
+      `https://coverartarchive.org/release/${RG}/front-250`
+    );
+  });
+
+  it('offers its three sizes to the browser', () => {
+    const url = `https://coverartarchive.org/release-group/${RG}/front-250`;
+    expect(artworkSrcSet(url)).toBe(
+      `/caa/250/${RG}.jpg 250w, /caa/500/${RG}.jpg 500w, /caa/1200/${RG}.jpg 1200w`
+    );
+    expect(artworkAt(url, 400)).toBe(`/caa/500/${RG}.jpg`);
   });
 });
