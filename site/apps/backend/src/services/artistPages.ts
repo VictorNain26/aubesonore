@@ -35,7 +35,10 @@ export async function findArtistPages(
     .leftJoin(mbidSlug, eq(mbidSlug.mbid, artist.mbid))
     .leftJoin(ownSlug, eq(ownSlug.artistId, artist.id))
     .where(inArray(artist.normalizedName, keys));
-  return matchPages(names, rows);
+  return matchPages(
+    names,
+    rows.flatMap((row) => (row.slug ? [{ ...row, slug: row.slug }] : []))
+  );
 }
 
 /** The MBIDs of the artists the antenna played: the pages Musilogy's links start from. */

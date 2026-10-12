@@ -112,9 +112,10 @@ async function nameNewPages(): Promise<void> {
     // Pages read before these slugs existed would link to MBIDs for the cache's hour.
     if (given > 0) musilogyCache.clear();
   } catch (err) {
+    // Whatever stops it, the threshold is computed all the same; the next run goes on naming.
     const code = (err as { code?: string }).code;
-    if (code !== '42883' && code !== '3F000') throw err;
-    logger.warn('artist_slugs.musilogy_absent', { code });
+    if (code === '42883' || code === '3F000') logger.warn('artist_slugs.musilogy_absent', { code });
+    else logger.warn('artist_slugs.failed', { message: (err as Error).message });
   }
 }
 

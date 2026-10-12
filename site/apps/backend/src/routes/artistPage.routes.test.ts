@@ -37,7 +37,7 @@ const musilogyService = await import('../services/musilogyService');
 const DAFT_PUNK_MBID = '056e4f3e-d505-4dad-8ec1-d04f521cbb56';
 const UNPLAYED_MBID = '8d3431db-bc83-4dc2-93b8-0e46e31d09f7';
 const NOT_LOADED_MBID = '00000000-0000-4000-8000-000000000000';
-// A page never played that passed the threshold and was given a slug.
+// A page never played, at its slug.
 const NAMED_MBID = '6e0e6c7a-1b8c-4f7b-9d4e-0a6c2f1d8b3e';
 const unplayed = {
   id: UNPLAYED_MBID,
@@ -382,7 +382,7 @@ describe('GET /artiste/:slug', () => {
     );
   });
 
-  it('sends the MBID of a page given a slug at the threshold to that slug, in both languages', async () => {
+  it('sends the MBID of a page to its slug, in both languages', async () => {
     mockShell();
 
     const fr = await app.handle(new Request(`http://localhost/artiste/${NAMED_MBID}`));

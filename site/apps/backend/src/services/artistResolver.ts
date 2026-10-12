@@ -38,7 +38,8 @@ export function artistKey(raw: string): string {
 
 type Resolved = { id: string; slug: string };
 type Identity = { id: string; displayName: string; deezerId: string | null; mbid: string | null };
-type Row = Resolved & Identity & { identifiedBy: 'isrc' | 'name' };
+// The row's page slug, null only while it has none: see pageOfRow.
+type Row = Identity & { slug: string | null; identifiedBy: 'isrc' | 'name' };
 
 const ROW = {
   id: artist.id,
@@ -78,11 +79,14 @@ export async function ensureMbid(row: Identity): Promise<string | null> {
   const found = await findMbidByDeezerId(row.deezerId);
   if (found.status !== 'found') return null;
   try {
-    await db
+    const written = await db
       .update(artist)
       .set({ mbid: found.value })
-      .where(and(eq(artist.id, row.id), isNull(artist.mbid)));
-    await bindArtistSlug(db, row.id, found.value, row.displayName);
+      .where(and(eq(artist.id, row.id), isNull(artist.mbid)))
+      .returning({ id: artist.id });
+    // Only the MBID written here moves the row's slug: another written meanwhile (a play's
+    // ISRC) is that identity's, bound where it was written.
+    if (written[0]) await bindArtistSlug(db, row.id, found.value, row.displayName);
   } catch (err) {
     // artist_mbid_unique: another row already holds it, two spellings of one
     // artist. The page still shows the MusicBrainz facts; only the write is
@@ -313,8 +317,10 @@ async function writeIdentity(row: Row, identity: Identification): Promise<boolea
     return false;
   }
   if (changed) await db.delete(artistProfile).where(eq(artistProfile.artistId, row.id));
+  // The page is the new MBID's; without one, the row's own again, the slug it kept or a new one.
   if (changed && identity.mbid)
     await bindArtistSlug(db, row.id, identity.mbid, identity.displayName);
+  else if (changed) await claimSlug(db, { artistId: row.id }, identity.displayName);
   return changed;
 }
 
@@ -379,7 +385,7 @@ async function resolveOn(
         : existing.mbid === null && (await ensureMbid(existing)) !== null;
     // A new MBID can give the page another address: its MBID's slug.
     const slug = moved ? await slugOfArtistPage(existing.id) : existing.slug;
-    return { id: existing.id, slug: slug ?? existing.slug };
+    return pageOfRow({ ...existing, slug });
   }
 
   const played = await evidence(normalizedName);
@@ -424,7 +430,16 @@ async function resolveOn(
   const row =
     (await findBy(normalizedName)) ?? (await findByIdentity(identity.deezerId, identity.mbid));
   if (!row) return null;
-  return { id: row.id, slug: row.slug };
+  return pageOfRow(row);
+}
+
+/**
+ * The page of a row: its page slug, or, should it have none (an MBID lost before this rule),
+ * a slug of its own claimed now, so a played artist always has its page.
+ */
+async function pageOfRow(row: Pick<Row, 'id' | 'slug' | 'displayName'>): Promise<Resolved | null> {
+  const slug = row.slug ?? (await claimSlug(db, { artistId: row.id }, row.displayName));
+  return slug ? { id: row.id, slug } : null;
 }
 
 async function findByIdentity(deezerId: string | null, mbid: string | null): Promise<Row | null> {

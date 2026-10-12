@@ -82,10 +82,12 @@ void mock.module('../db', () => ({
     }),
     update: () => ({
       set: (values: Record<string, unknown>) => ({
-        where: () => {
-          mbidWrites.push(values);
-          return Promise.resolve();
-        },
+        where: () => ({
+          returning: () => {
+            mbidWrites.push(values);
+            return Promise.resolve([{ id: 'artist-1' }]);
+          },
+        }),
       }),
     }),
   },

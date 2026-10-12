@@ -132,9 +132,8 @@ async function handle(
     set.status = 404;
     return html;
   }
-  // A page has one address: a played artist's slug, the slug a page never played was given at
-  // the indexing threshold, else its MBID. Its MBID, or an old slug of an artist played since,
-  // leads there.
+  // A page has one address: its slug, played on the antenna or not, its MBID while it has none.
+  // Its MBID, or a row's older slug, leads there.
   if (profile.slug !== params.slug) {
     set.status = 301;
     set.headers.location = artistPagePath(locale, profile.slug);

@@ -133,7 +133,7 @@ async function playedByMbid(mbids: string[]): Promise<Map<string, ArtistPageRef>
     .leftJoin(ownSlug, eq(ownSlug.artistId, artist.id))
     .where(inArray(artist.mbid, [...new Set(mbids)]));
   return new Map(
-    rows.flatMap((r) => (r.mbid ? [[r.mbid, { id: r.id, slug: r.slug }] as const] : []))
+    rows.flatMap((r) => (r.mbid && r.slug ? [[r.mbid, { id: r.id, slug: r.slug }] as const] : []))
   );
 }
 

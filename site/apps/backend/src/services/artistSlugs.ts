@@ -19,7 +19,7 @@ type Executor = Pick<typeof db, 'select' | 'insert' | 'update'>;
 /** The page slug of an artist row: its MBID's when it has one, else its own. */
 export const mbidSlug = alias(artistSlug, 'mbid_slug');
 export const ownSlug = alias(artistSlug, 'own_slug');
-export const pageSlug = sql<string>`coalesce(${mbidSlug.slug}, ${ownSlug.slug})`;
+export const pageSlug = sql<string | null>`coalesce(${mbidSlug.slug}, ${ownSlug.slug})`;
 
 /** The first of `base`, `base-2`, `base-3`… that no page holds. */
 export function freeSlug(base: string, taken: ReadonlySet<string>): string {
@@ -36,16 +36,30 @@ function baseOf(name: string): string | null {
   return base && isValidArtistSlug(base) ? base : null;
 }
 
-/** The slugs held under each base: the base itself and its suffixed forms. */
-async function takenUnder(ex: Executor, bases: readonly string[]): Promise<Set<string>> {
-  if (bases.length === 0) return new Set();
-  // A slug holds letters, digits and hyphens only: nothing LIKE would read as a wildcard.
+/** The slugs held under a base: the base itself and its suffixed forms. */
+async function takenUnder(ex: Executor, base: string): Promise<Set<string>> {
+  // A slug holds letters, digits and hyphens only: nothing LIKE or the pattern would read as
+  // special. The LIKE reads the index (artist_slug_slug_pattern); the pattern keeps `base-N`
+  // only, not every slug that merely starts so (`the-…` under `the`).
   const rows = await ex
     .select({ slug: artistSlug.slug })
     .from(artistSlug)
     .where(
-      or(inArray(artistSlug.slug, [...bases]), ...bases.map((b) => like(artistSlug.slug, `${b}-%`)))
+      or(
+        eq(artistSlug.slug, base),
+        and(like(artistSlug.slug, `${base}-%`), sql`${artistSlug.slug} ~ ${`^${base}-[0-9]+$`}`)
+      )
     );
+  return new Set(rows.map((row) => row.slug));
+}
+
+/** Which of these slugs a page already holds. */
+async function takenAmong(ex: Executor, slugs: readonly string[]): Promise<Set<string>> {
+  if (slugs.length === 0) return new Set();
+  const rows = await ex
+    .select({ slug: artistSlug.slug })
+    .from(artistSlug)
+    .where(inArray(artistSlug.slug, [...slugs]));
   return new Set(rows.map((row) => row.slug));
 }
 
@@ -74,7 +88,7 @@ export async function claimSlug(ex: Executor, owner: Owner, name: string): Promi
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const owned = await slugOf(ex, owner);
     if (owned) return owned;
-    const slug = freeSlug(base, await takenUnder(ex, [base]));
+    const slug = freeSlug(base, await takenUnder(ex, base));
     if (!isValidArtistSlug(slug)) return null;
     const claimed = await ex
       .insert(artistSlug)
@@ -153,22 +167,46 @@ interface Named {
   name: string;
 }
 
+// The suffixes a batch asks about for each name, beyond its homonyms in the batch: a name with
+// more pages already than these goes to claimSlug, which reads all of them.
+const SUFFIXES_ASKED = 4;
+
+/** The slugs a batch asks about: each name alone and its first suffixes. */
+export function candidatesOf(pages: readonly Named[]): string[] {
+  const count = new Map<string, number>();
+  for (const page of pages) {
+    const base = baseOf(page.name);
+    if (base) count.set(base, (count.get(base) ?? 0) + 1);
+  }
+  return [...count].flatMap(([base, n]) => [
+    base,
+    ...Array.from({ length: n + SUFFIXES_ASKED }, (_, i) => `${base}-${i + 2}`),
+  ]);
+}
+
 /**
- * The slugs a run gives, in the order given: the first of homonyms takes the plain name.
- * `taken` holds what pages already hold under these names, and gains what is given.
+ * The slugs a batch gives, in the order given: the first of homonyms takes the plain name.
+ * `asked` are the slugs looked up, `taken` those of them a page holds, which gains what is given.
+ * A page whose free slug lies past what was asked is `deferred`; a name that makes none is left.
  */
 export function planSlugs(
   pages: readonly Named[],
+  asked: ReadonlySet<string>,
   taken: Set<string>
-): Array<{ mbid: string; slug: string }> {
-  return pages.flatMap((page) => {
+): { planned: Array<{ mbid: string; slug: string }>; deferred: Named[] } {
+  const planned: Array<{ mbid: string; slug: string }> = [];
+  const deferred: Named[] = [];
+  for (const page of pages) {
     const base = baseOf(page.name);
-    if (!base) return [];
+    if (!base) continue;
     const slug = freeSlug(base, taken);
-    if (!isValidArtistSlug(slug)) return [];
-    taken.add(slug);
-    return [{ mbid: page.mbid, slug }];
-  });
+    if (!asked.has(slug)) deferred.push(page);
+    else if (isValidArtistSlug(slug)) {
+      taken.add(slug);
+      planned.push({ mbid: page.mbid, slug });
+    }
+  }
+  return { planned, deferred };
 }
 
 const BATCH = 2_000;
@@ -195,9 +233,9 @@ export async function assignSlugs(): Promise<{ given: number; nameless: number }
     for (;;) {
       const { rows } = await client.query<Named>(`FETCH ${BATCH} FROM pages`);
       if (rows.length === 0) break;
-      const bases = new Set(rows.flatMap((row) => baseOf(row.name) ?? []));
-      const planned = planSlugs(rows, await takenUnder(db, [...bases]));
-      nameless += rows.length - planned.length;
+      const asked = candidatesOf(rows);
+      const { planned, deferred } = planSlugs(rows, new Set(asked), await takenAmong(db, asked));
+      nameless += rows.length - planned.length - deferred.length;
       const written =
         planned.length === 0
           ? []
@@ -207,13 +245,11 @@ export async function assignSlugs(): Promise<{ given: number; nameless: number }
               .onConflictDoNothing()
               .returning({ mbid: artistSlug.mbid });
       given += written.length;
-      // A slug the antenna claimed meanwhile for another page: these few one at a time.
+      // A name with many pages already, or a slug the antenna claimed meanwhile: one at a time.
       const done = new Set(written.map((row) => row.mbid));
       const missed = new Set(planned.flatMap((p) => (done.has(p.mbid) ? [] : [p.mbid])));
-      for (const page of rows) {
-        if (missed.has(page.mbid) && (await claimSlug(db, { mbid: page.mbid }, page.name))) {
-          given += 1;
-        }
+      for (const page of [...deferred, ...rows.filter((row) => missed.has(row.mbid))]) {
+        if (await claimSlug(db, { mbid: page.mbid }, page.name)) given += 1;
       }
     }
     await client.query('CLOSE pages');
