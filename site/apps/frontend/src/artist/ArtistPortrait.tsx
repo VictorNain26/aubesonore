@@ -71,22 +71,56 @@ function altOf(image: ArtistImage, name: string): string {
     : m.artist_portrait_alt({ name });
 }
 
+interface Size {
+  width: number;
+  height: number;
+}
+
+const SQUARE: Size = { width: 1, height: 1 };
+
+/** A photo's own size, as Commons gives it; a cover's is not known, nearly always square. */
+function sizeOf(image: ArtistImage): Size | null {
+  if (image.kind === 'cover') return null;
+  return image.width && image.height ? { width: image.width, height: image.height } : null;
+}
+
+/** At its own shape, as wide as its room and no taller than its cap (`portrait-room`). */
+function shapeOf({ width, height }: Size): CSSProperties {
+  return {
+    aspectRatio: `${width} / ${height}`,
+    width: `min(100%, var(--portrait-cap) * ${width} / ${height})`,
+  };
+}
+
+/**
+ * How wide it is drawn, by `portrait-room`'s caps: a third of the screen beside the text, 5:4 of
+ * it at most; above the name, the line less the gutters, or the cap times its ratio.
+ */
+function sizesOf({ width, height }: Size): string {
+  const ratio = `${width} / ${height}`;
+  const beside = `min(33vw, 41vw * ${ratio})`;
+  return [
+    `(min-width: 64rem) ${beside}`,
+    `(min-width: 48rem) and (orientation: landscape) ${beside}`,
+    `(min-width: 48rem) min(100vw - 5rem, 20rem * ${ratio})`,
+    `min(100vw - 3rem, 13.75rem * ${ratio})`,
+  ].join(', ');
+}
+
 export interface ArtistPortraitProps {
   /** The images to try, the first first (ArtistProfile.images). */
   images: readonly ArtistImage[];
   name: string;
   /** What places the artist's dawn: its MBID, else its name. */
   seed: string;
-  className?: string;
-  sizes?: string;
 }
 
 /**
- * The artist's image, opening large on a click, where a photo's credit stands
- * (docs/vision.md §2.5); a small © on the photo says it has one. An image that
- * fails to load gives way to the next; past the last, the artist's dawn.
+ * The artist's image at its own shape, never cut, inside a `portrait-room`; opening large on a
+ * click, where a photo's credit stands (docs/vision.md §2.5); a small © on the photo says it has
+ * one. An image that fails to load gives way to the next; past the last, the artist's dawn.
  */
-export function ArtistPortrait({ images, name, seed, className, sizes }: ArtistPortraitProps) {
+export function ArtistPortrait({ images, name, seed }: ArtistPortraitProps) {
   const [failed, setFailed] = useState<readonly string[]>([]);
   const usable = images.find((image) => !failed.includes(image.url)) ?? null;
 
@@ -95,11 +129,13 @@ export function ArtistPortrait({ images, name, seed, className, sizes }: ArtistP
       <div
         aria-hidden="true"
         data-testid="artist-dawn"
-        className={cn('artist-dawn rounded-sm', className)}
-        style={dawnOf(seed)}
+        className="artist-dawn rounded-sm"
+        style={{ ...shapeOf(SQUARE), ...dawnOf(seed) }}
       />
     );
   }
+
+  const size = sizeOf(usable);
 
   return (
     <OpenLarge
@@ -112,17 +148,19 @@ export function ArtistPortrait({ images, name, seed, className, sizes }: ArtistP
         ...(usable.kind === 'photo' ? { width: usable.width, height: usable.height } : {}),
       }}
       caption={<Caption image={usable} />}
-      className={cn('bg-surface-raised relative overflow-hidden', className)}
+      className="bg-surface-raised relative overflow-hidden"
+      style={shapeOf(size ?? SQUARE)}
     >
       <img
         src={artworkSrc(usable.url)}
-        srcSet={sizes ? artworkSrcSet(usable.url) : undefined}
-        sizes={sizes}
+        srcSet={artworkSrcSet(usable.url)}
+        sizes={sizesOf(size ?? SQUARE)}
         alt=""
         referrerPolicy="no-referrer"
         decoding="async"
         fetchPriority="high"
-        className="size-full object-cover"
+        // At its own shape where it is known; else whole inside a square, never cut.
+        className={cn('size-full', size === null ? 'object-contain' : 'object-cover')}
         onError={() => setFailed((before) => [...before, usable.url])}
       />
       {usable.kind === 'photo' ? (

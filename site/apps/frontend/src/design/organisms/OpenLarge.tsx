@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { X } from 'lucide-react';
 import * as m from '@/paraglide/messages.js';
@@ -44,6 +44,8 @@ export interface OpenLargeProps {
   caption: ReactNode;
   /** The trigger's own classes: its size where it holds the place of the image. */
   className?: string | undefined;
+  /** The trigger's own style: a shape that only the image knows, its ratio. */
+  style?: CSSProperties | undefined;
   /** The image as the page shows it. */
   children: ReactNode;
 }
@@ -53,11 +55,20 @@ export interface OpenLargeProps {
  * veil and the paper fading in, the paper from 95 %. One gesture for every image of the site
  * (the artist's portrait, the covers).
  */
-export function OpenLarge({ label, title, large, caption, className, children }: OpenLargeProps) {
+export function OpenLarge({
+  label,
+  title,
+  large,
+  caption,
+  className,
+  style,
+  children,
+}: OpenLargeProps) {
   return (
     <Dialog.Root>
       <Dialog.Trigger
         aria-label={label}
+        style={style}
         className={cn(
           // The covers' hover, one for every image that opens: it lifts, and gives way under the press.
           'ease-out-soft hover:shadow-lift focus-visible:outline-accent block cursor-zoom-in rounded-sm p-0 transition-[translate,box-shadow,scale] duration-500 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-98 motion-safe:hover:-translate-y-1.5',

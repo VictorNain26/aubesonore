@@ -316,6 +316,23 @@
   }
 }
 
+/* The room of the artist's portrait (ArtistPortrait), which keeps its own shape, never cut: as wide
+   as the room and no taller than --portrait-cap, so a tall photo comes narrower and a panorama
+   shorter, as Wikipedia sizes its infobox images (MOS:IMAGES, « upright »). Above the name on a
+   phone or an upright tablet, then 5:4 of the title column beside it. */
+@utility portrait-room {
+  container-type: inline-size;
+  --portrait-cap: 13.75rem;
+
+  @media (width >= 48rem) {
+    --portrait-cap: 20rem;
+  }
+
+  @media (width >= 64rem), (width >= 48rem) and (orientation: landscape) {
+    --portrait-cap: 125cqi;
+  }
+}
+
 /* Inside a centred block, runs out to the left edge of the screen (the overflow past it,
    a scrollbar's width at most, is clipped by the hero). */
 @utility bleed-left {

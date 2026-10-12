@@ -47,6 +47,28 @@ describe('ArtistPortrait', () => {
     );
   });
 
+  it('shows an image at its own shape, never cut: a photo its own, a cover square', () => {
+    const tall: ArtistImage = { ...PHOTO, width: 1280, height: 1920 };
+    const { rerender } = render(<ArtistPortrait images={[tall]} name="Can" seed={SEED} />);
+    const shown = () => within(screen.getByRole('button')).getByRole('presentation');
+    expect(screen.getByRole('button').style.aspectRatio).toBe('1280 / 1920');
+    expect(shown().className).toContain('object-cover');
+    // Fetched at the width it is drawn: a tall photo narrower than the line.
+    expect(shown().getAttribute('sizes')).toContain('min(100vw - 3rem, 13.75rem * 1280 / 1920)');
+
+    // A cover's size is not known: whole inside a square, even one that is not quite square.
+    rerender(<ArtistPortrait images={[COVER]} name="Neu!" seed={SEED} />);
+    expect(screen.getByRole('button').style.aspectRatio).toBe('1 / 1');
+    expect(shown().className).toContain('object-contain');
+
+    // Commons gave no size: the whole photo inside a square.
+    rerender(
+      <ArtistPortrait images={[{ ...PHOTO, width: null, height: null }]} name="Can" seed={SEED} />
+    );
+    expect(screen.getByRole('button').style.aspectRatio).toBe('1 / 1');
+    expect(shown().className).toContain('object-contain');
+  });
+
   it('marks a photo, and only a photo, with a small ©', () => {
     const { rerender } = render(<ArtistPortrait images={[PHOTO]} name="Can" seed={SEED} />);
     expect(screen.getByText('©')).toBeTruthy();
