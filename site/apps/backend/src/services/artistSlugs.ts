@@ -3,6 +3,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../db';
 import { artist, artistSlug } from '../db/schema';
 import { slugify } from '../lib/artistName';
+import { logger } from '../lib/logger';
 import { isValidArtistSlug } from '../validators/artistValidator';
 
 /**
@@ -34,7 +35,15 @@ export function freeSlug(base: string, taken: ReadonlySet<string>, rank = 1): st
   }
 }
 
-/** Each MBID's rank among the artists of its name; empty while Musilogy is not loaded. */
+/** An MBID's rank among the artists of its name; none for one the loaded dump does not hold. */
+export async function homonymRank(mbid: string): Promise<number | undefined> {
+  return (await homonymRanks([mbid])).get(mbid);
+}
+
+/**
+ * Each MBID's rank among the artists of its name; none for one the loaded dump does not hold
+ * (newer in MusicBrainz), nor while Musilogy is not loaded.
+ */
 async function homonymRanks(mbids: readonly string[]): Promise<Map<string, number>> {
   if (mbids.length === 0) return new Map();
   try {
@@ -101,8 +110,8 @@ async function slugOf(ex: Executor, owner: Owner): Promise<string | null> {
 /**
  * Gives a page the first free slug of `name` from the one its rank proposes, or the one it
  * already has. A slug is never taken back nor handed to another page. Null when the name makes
- * none, or for an MBID whose rank Musilogy cannot tell yet (not loaded): its page keeps its MBID
- * until then, rather than take a better known homonym's plain name.
+ * none, or for an MBID Musilogy cannot rank (newer than the loaded dump, or Musilogy not loaded):
+ * its page keeps its MBID until then, rather than take a better known homonym's plain name.
  */
 export async function claimSlug(
   ex: Executor,
@@ -254,8 +263,48 @@ export async function slugsFor(pages: readonly Named[]): Promise<Map<string, str
     ...new Map(pages.filter((p) => !slugs.has(p.mbid)).map((p) => [p.mbid, p])).values(),
   ];
   if (fresh.length === 0) return slugs;
-  const ranks = await homonymRanks(fresh.map((page) => page.mbid));
-  const ranked = fresh.flatMap((page) => {
+  try {
+    await publish(fresh, slugs);
+  } catch (err) {
+    // The page is read all the same: these pages keep their MBIDs until they are published again.
+    logger.warn('artist_slugs.publish_failed', { message: (err as Error).message });
+  }
+  return slugs;
+}
+
+/**
+ * A played artist's row may hold a slug its MBID's page lacks: given before Musilogy could rank
+ * the MBID (newer than the dump), or before the MBID was known. That slug is the page's, so the
+ * address already shared stays rather than turn into a 301 to a new one.
+ */
+async function adoptRowSlugs(mbids: readonly string[]): Promise<Map<string, string>> {
+  const rows = await db
+    .execute<{ mbid: string; slug: string }>(
+      sql`UPDATE artist_slug s SET mbid = a.mbid, artist_id = NULL
+          FROM artist a
+          WHERE s.artist_id = a.id AND a.mbid IN (${sql.join(
+            mbids.map((m) => sql`${m}`),
+            sql`, `
+          )})
+            AND NOT EXISTS (SELECT 1 FROM artist_slug o WHERE o.mbid = a.mbid)
+          RETURNING s.mbid, s.slug`
+    )
+    .catch((err: unknown) => {
+      // artist_slug_mbid_unique: a concurrent publication named the page first.
+      if ((err as { cause?: { code?: string } }).cause?.code === '23505') return { rows: [] };
+      throw err;
+    });
+  return new Map(rows.rows.map((row) => [row.mbid, row.slug]));
+}
+
+async function publish(fresh: readonly Named[], slugs: Map<string, string>): Promise<void> {
+  for (const [mbid, slug] of await adoptRowSlugs(fresh.map((page) => page.mbid))) {
+    slugs.set(mbid, slug);
+  }
+  const unnamed = fresh.filter((page) => !slugs.has(page.mbid));
+  if (unnamed.length === 0) return;
+  const ranks = await homonymRanks(unnamed.map((page) => page.mbid));
+  const ranked = unnamed.flatMap((page) => {
     const rank = ranks.get(page.mbid);
     return rank === undefined ? [] : [{ ...page, rank }];
   });
@@ -276,5 +325,4 @@ export async function slugsFor(pages: readonly Named[]): Promise<Map<string, str
     const slug = await claimSlug(db, { mbid: page.mbid }, page.name, page.rank);
     if (slug) slugs.set(page.mbid, slug);
   }
-  return slugs;
 }

@@ -17,6 +17,7 @@ import { fetchNowPlaying } from './nowPlaying';
 import {
   bindArtistSlug,
   claimSlug,
+  homonymRank,
   mbidSlug,
   ownSlug,
   pageSlug,
@@ -395,6 +396,8 @@ async function resolveOn(
   // A source down: resolve again next time rather than persist a guess.
   if (identity === 'failed') return null;
 
+  // Read before the transaction, which would otherwise hold a second connection meanwhile.
+  const rank = identity.mbid ? await homonymRank(identity.mbid) : undefined;
   // The row and its slug land together: a page without an address would be unreachable.
   const created = await db.transaction(async (tx) => {
     const inserted = await tx
@@ -412,10 +415,12 @@ async function resolveOn(
     if (!inserted[0]) return null;
     const id = inserted[0].id;
     // The page of an MBID is named by it, the one it may already have; a row names its own page
-    // only when it has no MBID, or one whose name makes no slug.
-    const byMbid = identity.mbid
-      ? await claimSlug(tx, { mbid: identity.mbid }, identity.displayName)
-      : null;
+    // only when it has no MBID, one Musilogy cannot rank yet (its slug goes to the MBID's page
+    // once published, artistSlugs.adoptRowSlugs), or one whose name makes no slug.
+    const byMbid =
+      identity.mbid && rank !== undefined
+        ? await claimSlug(tx, { mbid: identity.mbid }, identity.displayName, rank)
+        : null;
     const slug =
       byMbid ??
       (await claimSlug(tx, { artistId: id }, identity.displayName)) ??
