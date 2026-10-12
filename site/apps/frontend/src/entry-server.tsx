@@ -1,11 +1,13 @@
 import { StrictMode, type ReactElement } from 'react';
 import { prerenderToNodeStream } from 'react-dom/static';
-import { StaticRouter } from 'react-router';
+import { createStaticHandler, createStaticRouter, StaticRouterProvider } from 'react-router';
 import { overwriteGetLocale, type Locale } from './paraglide/runtime.js';
 import * as m from './paraglide/messages.js';
 import { useLocaleStore } from './stores/localeStore';
-import { seedArtistPage, type ArtistPageData } from './lib/artistPageData';
-import App from './App';
+import { seedArtistPage, type ArtistLoaded, type ArtistPageData } from './lib/artistPageData';
+import { routes } from './routes';
+
+const handler = createStaticHandler(routes);
 
 async function toHtml(element: ReactElement): Promise<string> {
   // In one piece: past progressiveChunkSize (12,800 bytes by default) React sends a finished
@@ -24,13 +26,36 @@ async function toHtml(element: ReactElement): Promise<string> {
  * A page as a crawler without JavaScript should read it, in one language: the home page, the
  * legal page, or the 404 (rendered at a path no route knows). The client hydrates each.
  */
-export function pageHtml(locale: Locale, path = locale === 'en' ? '/en/' : '/'): Promise<string> {
+export async function pageHtml(
+  locale: Locale,
+  path = locale === 'en' ? '/en/' : '/',
+  pageData: unknown = null
+): Promise<string> {
   overwriteGetLocale(() => locale);
   useLocaleStore.setState({ locale });
+  // The origin is a placeholder: the routes match on the path.
+  // No loader runs here: the server draws from the data it is given (dataStrategy, React Router's
+  // hook over how loaders run). A page that has a loader gets that data in its stead, null for
+  // the home page, pre-rendered without its lists.
+  const context = await handler.query(new Request(new URL(path, 'http://aubesonore.local')), {
+    dataStrategy: ({ matches }) =>
+      Promise.resolve(
+        Object.fromEntries(
+          matches
+            .filter((match) => match.shouldLoad)
+            .map((match) => [match.route.id, { type: 'data' as const, result: pageData }])
+        )
+      ),
+  });
+  if (context instanceof Response) throw new Error(`${path} answered ${context.status}`);
+  // hydrate={false}: no inline hydration script, which the CSP (script-src 'self') blocks;
+  // main.tsx hydrates from the page itself.
   return toHtml(
-    <StaticRouter location={path}>
-      <App />
-    </StaticRouter>
+    <StaticRouterProvider
+      router={createStaticRouter(handler.dataRoutes, context)}
+      context={context}
+      hydrate={false}
+    />
   );
 }
 
@@ -40,7 +65,11 @@ export function pageHtml(locale: Locale, path = locale === 'en' ? '/en/' : '/'):
  */
 export function artistPageHtml(data: ArtistPageData, path: string): Promise<string> {
   seedArtistPage(data);
-  return pageHtml(data.locale, path);
+  const loaded: ArtistLoaded = {
+    state: { status: 'ready', profile: data.profile },
+    musilogy: data.musilogy,
+  };
+  return pageHtml(data.locale, path, loaded);
 }
 
 export function meta(

@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { Logo } from '../design/atoms/Logo';
 import { localizeHref } from '@/paraglide/runtime.js';
 import { useAuthStore } from '../stores/authStore';
-import { useLocale, useLocaleStore } from '../stores/localeStore';
+import { useLocale, useSwitchLocale } from '../stores/localeStore';
 import { CLOSE_BUTTON, TEXT_ACTION } from './styles';
 import * as m from '@/paraglide/messages.js';
 
@@ -27,7 +27,7 @@ export function MobileMenu() {
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
   const locale = useLocale();
-  const setLocale = useLocaleStore((s) => s.setLocale);
+  const setLocale = useSwitchLocale();
   const close = () => setOpen(false);
 
   const pages = [

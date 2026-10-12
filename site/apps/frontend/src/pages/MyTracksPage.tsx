@@ -63,7 +63,6 @@ export function MyTracksPage() {
   useEffect(() => {
     const previous = document.title;
     document.title = `${m.library_title()} · AubeSonore`;
-    window.scrollTo(0, 0);
     return () => {
       document.title = previous;
     };

@@ -1,4 +1,5 @@
-import { useSyncExternalStore } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { create } from 'zustand';
 import {
   baseLocale,
@@ -10,8 +11,9 @@ import {
 } from '@/paraglide/runtime.js';
 
 // Each language has its own URL (/ and /en/, the url strategy). Paraglide's
-// setLocale() navigates there, which would kill the live stream; this store
-// swaps the URL in place, then re-renders from the app root. The <audio>
+// setLocale() navigates there, which would kill the live stream; the site
+// moves to the other language's URL through its router instead
+// (useSwitchLocale), and this store re-renders from the app root. The <audio>
 // element lives outside React (lib/player) so playback keeps going.
 
 // The listener's last explicit choice, so a returning English listener who
@@ -28,6 +30,7 @@ export function readLocaleChoice(): string | null {
 
 interface LocaleState {
   locale: Locale;
+  /** The listener's choice, remembered; the URL follows it through the router (useSwitchLocale). */
   setLocale: (locale: Locale) => void;
   /** Back and forward can land on a URL of the other language: follow it. */
   syncWithUrl: () => void;
@@ -36,12 +39,6 @@ interface LocaleState {
 export const useLocaleStore = create<LocaleState>((set, get) => ({
   locale: getLocale(),
   setLocale: (locale) => {
-    // The router keeps its own entry state in history.state: keep it.
-    window.history.replaceState(
-      window.history.state,
-      '',
-      localizeUrl(window.location.href, { locale }).href
-    );
     try {
       localStorage.setItem(CHOICE_KEY, locale);
     } catch {
@@ -71,5 +68,29 @@ export function useLocale(): Locale {
     useLocaleStore.subscribe,
     () => useLocaleStore.getState().locale,
     getLocale
+  );
+}
+
+/**
+ * Switches the page to another language: its URL in that language, reached through the router so
+ * the page's data loads again in it (React Router's loaders), in place of the entry and where the
+ * reader stands (`preventScrollReset`). No reload: the stream keeps playing.
+ */
+export function useSwitchLocale(): (locale: Locale) => void {
+  const navigate = useNavigate();
+  const { pathname, search, hash } = useLocation();
+  return useCallback(
+    (locale: Locale) => {
+      useLocaleStore.getState().setLocale(locale);
+      // The origin is a placeholder: only the path is localized.
+      const url = localizeUrl(new URL(`${pathname}${search}${hash}`, 'http://aubesonore.local'), {
+        locale,
+      });
+      void navigate(`${url.pathname}${url.search}${url.hash}`, {
+        replace: true,
+        preventScrollReset: true,
+      });
+    },
+    [navigate, pathname, search, hash]
   );
 }
