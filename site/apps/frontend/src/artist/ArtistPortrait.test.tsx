@@ -53,9 +53,13 @@ describe('ArtistPortrait', () => {
     const shown = () => within(screen.getByRole('button')).getByRole('presentation');
     expect(screen.getByRole('button').style.aspectRatio).toBe('1280 / 1920');
     expect(shown().className).toContain('object-cover');
+    // Fetched at the width it is drawn: a tall photo narrower than the line.
+    expect(shown().getAttribute('sizes')).toContain('min(100vw - 3rem, 13.75rem * 1280 / 1920)');
 
+    // A cover's size is not known: whole inside a square, even one that is not quite square.
     rerender(<ArtistPortrait images={[COVER]} name="Neu!" seed={SEED} />);
     expect(screen.getByRole('button').style.aspectRatio).toBe('1 / 1');
+    expect(shown().className).toContain('object-contain');
 
     // Commons gave no size: the whole photo inside a square.
     rerender(

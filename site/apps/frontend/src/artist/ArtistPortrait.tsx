@@ -78,9 +78,9 @@ interface Size {
 
 const SQUARE: Size = { width: 1, height: 1 };
 
-/** A photo's own size, a cover's square; none when Commons gave no size. */
+/** A photo's own size, as Commons gives it; a cover's is not known, nearly always square. */
 function sizeOf(image: ArtistImage): Size | null {
-  if (image.kind === 'cover') return SQUARE;
+  if (image.kind === 'cover') return null;
   return image.width && image.height ? { width: image.width, height: image.height } : null;
 }
 
@@ -92,13 +92,27 @@ function shapeOf({ width, height }: Size): CSSProperties {
   };
 }
 
+/**
+ * How wide it is drawn, by `portrait-room`'s caps: a third of the screen beside the text, 5:4 of
+ * it at most; above the name, the line less the gutters, or the cap times its ratio.
+ */
+function sizesOf({ width, height }: Size): string {
+  const ratio = `${width} / ${height}`;
+  const beside = `min(33vw, 41vw * ${ratio})`;
+  return [
+    `(min-width: 64rem) ${beside}`,
+    `(min-width: 48rem) and (orientation: landscape) ${beside}`,
+    `(min-width: 48rem) min(100vw - 5rem, 20rem * ${ratio})`,
+    `min(100vw - 3rem, 13.75rem * ${ratio})`,
+  ].join(', ');
+}
+
 export interface ArtistPortraitProps {
   /** The images to try, the first first (ArtistProfile.images). */
   images: readonly ArtistImage[];
   name: string;
   /** What places the artist's dawn: its MBID, else its name. */
   seed: string;
-  sizes?: string;
 }
 
 /**
@@ -106,7 +120,7 @@ export interface ArtistPortraitProps {
  * click, where a photo's credit stands (docs/vision.md §2.5); a small © on the photo says it has
  * one. An image that fails to load gives way to the next; past the last, the artist's dawn.
  */
-export function ArtistPortrait({ images, name, seed, sizes }: ArtistPortraitProps) {
+export function ArtistPortrait({ images, name, seed }: ArtistPortraitProps) {
   const [failed, setFailed] = useState<readonly string[]>([]);
   const usable = images.find((image) => !failed.includes(image.url)) ?? null;
 
@@ -139,13 +153,13 @@ export function ArtistPortrait({ images, name, seed, sizes }: ArtistPortraitProp
     >
       <img
         src={artworkSrc(usable.url)}
-        srcSet={sizes ? artworkSrcSet(usable.url) : undefined}
-        sizes={sizes}
+        srcSet={artworkSrcSet(usable.url)}
+        sizes={sizesOf(size ?? SQUARE)}
         alt=""
         referrerPolicy="no-referrer"
         decoding="async"
         fetchPriority="high"
-        // Its own shape, where it is known; else whole inside a square.
+        // At its own shape where it is known; else whole inside a square, never cut.
         className={cn('size-full', size === null ? 'object-contain' : 'object-cover')}
         onError={() => setFailed((before) => [...before, usable.url])}
       />

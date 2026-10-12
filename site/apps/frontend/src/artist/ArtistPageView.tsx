@@ -197,8 +197,6 @@ function Profile({
             images={profile.images}
             name={profile.name}
             seed={profile.mbid ?? profile.name}
-            // The 4/12 title column where it is wide; above the name, up to the line's width.
-            sizes="(min-width: 64rem) 33vw, (min-width: 48rem) and (orientation: landscape) 33vw, 100vw"
           />
         </div>
         {/* Who first, in three lines: what they are, their name, their music; then a few words,
