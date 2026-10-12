@@ -12,7 +12,11 @@
 // - Wikimedia Commons thumbnails (`…/thumb/…/1280px-File.jpg`): Wikimedia serves a hotlink only at
 //   its standard widths (mediawiki.org/wiki/Common_thumbnail_sizes); an original smaller than
 //   1280 px comes without /thumb/ and keeps its URL.
-// Other hosts (the Cover Art Archive, our own store) keep their URL.
+// - The Cover Art Archive (`coverartarchive.org/release-group/<id>/front-<size>`): served by this
+//   site at /caa/<size>/<id>.jpg (nginx.conf), its three sizes, 250, 500 and 1200 px. Asked
+//   directly, a thumbnail took 2.6 s at the median behind two redirects, and 1 in 15 failed
+//   (2026-10-12).
+// Other hosts (our own store) keep their URL.
 const APPLE_SIZED = /^(https:\/\/is\d+-ssl\.mzstatic\.com\/image\/thumb\/.+)\/\d+x\d+bb\.jpg$/;
 // Only this station's art: nginx fetches it from radio.aubesonore.fr.
 const STATION_ART =
@@ -21,6 +25,9 @@ const STATION_WIDTHS = [96, 192, 384, 768] as const;
 const STATION_ORIGINAL = 1000;
 const COMMONS_THUMB =
   /^(https:\/\/(?:upload|thumb)\.wikimedia\.org\/wikipedia\/commons\/thumb\/.+)\/\d+px-([^/]+)$/;
+const CAA =
+  /^https:\/\/coverartarchive\.org\/release-group\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/front(?:-(250|500|1200))?$/;
+const CAA_WIDTHS = [250, 500, 1200] as const;
 const DEEZER_SIZED =
   /^(https:\/\/cdn-images\.dzcdn\.net\/images\/(?:artist|cover)\/[0-9a-f]+)\/\d+x\d+(-[^/]+\.jpg)$/;
 
@@ -56,6 +63,13 @@ function sizer(url: string): Sizer | null {
       widths: [330, 500, 960, 1280],
     };
   }
+  const caa = CAA.exec(url);
+  if (caa) {
+    return {
+      at: (pixels) => `/caa/${CAA_WIDTHS.find((w) => w >= pixels) ?? 1200}/${caa[1]}.jpg`,
+      widths: CAA_WIDTHS,
+    };
+  }
   const art = STATION_ART.exec(url);
   if (art) {
     return {
@@ -68,6 +82,15 @@ function sizer(url: string): Sizer | null {
     };
   }
   return null;
+}
+
+/**
+ * The address a cover is fetched at: the Cover Art Archive's through this site, at the size its
+ * URL names (the original's, 1200, when it names none); any other as given.
+ */
+export function artworkSrc(url: string): string {
+  const caa = CAA.exec(url);
+  return caa ? `/caa/${caa[2] ?? '1200'}/${caa[1]}.jpg` : url;
 }
 
 /** The cover at `pixels` on its longer side where its host can serve that size, else as given. */
