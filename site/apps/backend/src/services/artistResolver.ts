@@ -322,9 +322,10 @@ async function identify(primary: string, played: Played): Promise<Identification
     if (linked.status === 'failed') return 'failed';
     mbid = linked.status === 'found' ? linked.value : null;
   }
-  // Bound by name, with no Deezer link to MusicBrainz: a recording of the played title credited
-  // to the name. Never after an ISRC: its identity is a checked one, re-identified never again.
-  if (!mbid && !byIsrc && bareTitle(played.title) !== '') {
+  // Still no MBID: a recording of the played title credited to the name. After an ISRC too, which
+  // most often leaves just that (62 of the 65 played artists without an MBID had a Deezer artist
+  // its ISRC checked, 2026-10-12): the artist found must then declare no other Deezer page.
+  if (!mbid && bareTitle(played.title) !== '') {
     const found = await identifyByTitle(primary, played, deezerId);
     if (found.status === 'failed') return 'failed';
     mbid = found.status === 'found' ? found.value : null;
