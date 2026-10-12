@@ -5,8 +5,10 @@ import { Section } from '../design/molecules/Section';
 import { CoverOpenLarge } from '../home/CoverOpenLarge';
 import { TEXT_ACTION } from '../home/styles';
 
-// A prolific artist files dozens of EPs (the Rolling Stones about 150 regional
-// ones): the first show, the rest open on demand. Albums all show.
+// The first records show, the rest a step at a time: 99 % of the dump's artists file fewer
+// than 25, but a prolific one files dozens of EPs (the Rolling Stones about 150 regional ones)
+// and a composer thousands of albums (Bach 4 502, 2026-10-12), which no page can draw at once.
+const ALBUMS_SHOWN = 24;
 const EPS_SHOWN = 8;
 
 /** The release's thumbnail; without one, Cover shows its wave. */
@@ -59,12 +61,29 @@ function Records({ releases }: { releases: readonly MusilogyRelease[] }) {
   );
 }
 
+/** The first `step` records, and a button that shows `step` more at each press. */
+function FoldedRecords({ releases, step }: { releases: readonly MusilogyRelease[]; step: number }) {
+  const [shown, setShown] = useState(step);
+  return (
+    <>
+      <Records releases={releases.slice(0, shown)} />
+      {releases.length > shown ? (
+        <button
+          type="button"
+          onClick={() => setShown((before) => before + step)}
+          className={`${TEXT_ACTION} self-start`}
+        >
+          {m.musilogy_show_more({ count: String(Math.min(step, releases.length - shown)) })}
+        </button>
+      ) : null}
+    </>
+  );
+}
+
 /** Albums, then EPs, each from the earliest: the order musilogy gives them in. */
 export function ReleasesSection({ releases }: { releases: readonly MusilogyRelease[] }) {
-  const [open, setOpen] = useState(false);
   const albums = releases.filter((release) => release.type === 'album');
   const eps = releases.filter((release) => release.type === 'ep');
-  const shownEps = open ? eps : eps.slice(0, EPS_SHOWN);
   const both = albums.length > 0 && eps.length > 0;
   return (
     <Section id="records" title={m.artist_records_title()} sticky>
@@ -76,7 +95,7 @@ export function ReleasesSection({ releases }: { releases: readonly MusilogyRelea
                 {m.artist_records_albums()}
               </h3>
             ) : null}
-            <Records releases={albums} />
+            <FoldedRecords releases={albums} step={ALBUMS_SHOWN} />
           </div>
         ) : null}
         {eps.length > 0 ? (
@@ -84,16 +103,7 @@ export function ReleasesSection({ releases }: { releases: readonly MusilogyRelea
             {both ? (
               <h3 className="text-ui text-text-muted m-0 font-normal">{m.artist_records_eps()}</h3>
             ) : null}
-            <Records releases={shownEps} />
-            {eps.length > shownEps.length ? (
-              <button
-                type="button"
-                onClick={() => setOpen(true)}
-                className={`${TEXT_ACTION} self-start`}
-              >
-                {m.musilogy_show_more({ count: String(eps.length - shownEps.length) })}
-              </button>
-            ) : null}
+            <FoldedRecords releases={eps} step={EPS_SHOWN} />
           </div>
         ) : null}
       </div>

@@ -136,6 +136,26 @@ describe('MusilogySections', () => {
     expect(screen.getByText('Record 19')).toBeInTheDocument();
   });
 
+  it("shows a composer's thousands of albums a step at a time", async () => {
+    const albums = Array.from({ length: 50 }, (_, i) => ({
+      mbid: `rg-a${i}`,
+      title: `Album ${i}`,
+      type: 'album' as const,
+      soundtrack: false,
+      remix: false,
+      year: 2000 - i,
+    }));
+    show(artist({ releases: albums }));
+
+    expect(screen.getByText('Album 23')).toBeInTheDocument();
+    expect(screen.queryByText('Album 24')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Voir 24 de plus' }));
+    expect(screen.getByText('Album 47')).toBeInTheDocument();
+    expect(screen.queryByText('Album 48')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Voir 2 de plus' }));
+    expect(screen.getByText('Album 49')).toBeInTheDocument();
+  });
+
   it("calls a person's groups its bands, and a group's its joint projects", () => {
     const uilab = { ...neighbour(60, { name: 'Uilab' }), yBegin: 1997, yEnd: 1997 };
     const { rerender } = show(artist({ bands: { members: [], groups: [uilab] } }));
