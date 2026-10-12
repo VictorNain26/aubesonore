@@ -20,6 +20,9 @@ let insertConflict = false;
 let takenSlugs = new Set<string>();
 let claimedSlugs: Array<{ slug: string; artistId: string }> = [];
 let isrcLookup: Lookup<IsrcRecording[]> = { status: 'none' };
+// What MusicBrainz's search finds under the played title and name.
+let titleLookup: Lookup<IsrcRecording[]> = { status: 'none' };
+let titleSearches: Array<[string, string]> = [];
 let isrcLookups = 0;
 let declaredDeezerId: Lookup<string> = { status: 'none' };
 let deezerByIsrc: Lookup<DeezerIsrcTrack> = { status: 'none' };
@@ -117,6 +120,10 @@ const spies = [
   spyOn(musicbrainz, 'findDeezerIdByMbid').mockImplementation(() =>
     Promise.resolve(declaredDeezerId)
   ),
+  spyOn(musicbrainz, 'findRecordingsByTitle').mockImplementation((name, title) => {
+    titleSearches.push([name, title]);
+    return Promise.resolve(titleLookup);
+  }),
   spyOn(deezer, 'findTrackByIsrc').mockImplementation(() => Promise.resolve(deezerByIsrc)),
 ];
 
@@ -143,6 +150,8 @@ beforeEach(() => {
   adopted = [];
   isrcLookup = { status: 'none' };
   isrcLookups = 0;
+  titleLookup = { status: 'none' };
+  titleSearches = [];
   declaredDeezerId = { status: 'none' };
   deezerByIsrc = { status: 'none' };
   deletedProfiles = 0;
@@ -429,6 +438,39 @@ describe('identity by ISRC', () => {
       mbid: 'mb-dp',
       identifiedBy: 'isrc',
     });
+  });
+
+  it('finds the MBID through a recording of the played title credited to the name, as a last resort', async () => {
+    playRows = [{ title: 'Talulah Gosh', isrc: null }];
+    titleLookup = {
+      status: 'found',
+      value: [
+        recording('Talulah Gosh', ['mb-tg', 'Talulah Gosh']),
+        // Another song, and the same title under another artist: neither counts.
+        recording('Steaming Train', ['mb-other', 'Talulah Gosh']),
+        recording('Talulah Gosh', ['mb-cover', 'Someone Else']),
+      ],
+    };
+
+    await resolveArtist('Talulah Gosh');
+
+    expect(titleSearches).toEqual([['Talulah Gosh', 'Talulah Gosh']]);
+    expect(inserted[0]).toMatchObject({ mbid: 'mb-tg', identifiedBy: 'name' });
+  });
+
+  it('takes no MBID from a title two artists of that name recorded', async () => {
+    playRows = [{ title: 'How Did This Happen?!', isrc: null }];
+    titleLookup = {
+      status: 'found',
+      value: [
+        recording('How Did This Happen?!', ['mb-1', 'BODEGA']),
+        recording('How Did This Happen?!', ['mb-2', 'Bodega']),
+      ],
+    };
+
+    await resolveArtist('BODEGA');
+
+    expect(inserted[0]).toMatchObject({ mbid: null });
   });
 
   it('takes over the slug its page got at the indexing threshold, never played then', async () => {

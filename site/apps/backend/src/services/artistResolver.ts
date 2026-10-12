@@ -4,7 +4,13 @@ import { db } from '../db';
 import { artist, artistProfile, artistSlug, likedTracks, radioPlay } from '../db/schema';
 import { logger } from '../lib/logger';
 import { findTrackByIsrc, searchArtist } from './deezerService';
-import { findDeezerIdByMbid, findMbidByDeezerId, findRecordingsByIsrc } from './musicbrainzService';
+import {
+  findDeezerIdByMbid,
+  findMbidByDeezerId,
+  findRecordingsByIsrc,
+  findRecordingsByTitle,
+  type IsrcRecording,
+} from './musicbrainzService';
 import { fetchNowPlaying } from './nowPlaying';
 
 // Only explicit featuring markers. Splitting on `&`, `+`, `x` or `,` would
@@ -191,6 +197,28 @@ export function sameTitle(played: string, other: string): boolean {
  * completes the other through the link MusicBrainz declares. Null when no
  * answer is the played track; 'failed' when a source could not answer.
  */
+/**
+ * The one artist credited under the played name on a recording of the played title, whatever
+ * gave the recordings (an ISRC, a search); null when none is, or several.
+ */
+function creditedArtist(
+  recordings: readonly IsrcRecording[],
+  played: Played,
+  primary: string
+): string | null {
+  const playedName = comparable(primary);
+  const mbids = new Set(
+    recordings
+      .filter((recording) => sameTitle(played.title, recording.title))
+      .flatMap((recording) =>
+        recording.credits.filter((c) => c.names.some((name) => comparable(name) === playedName))
+      )
+      .map((credit) => credit.mbid)
+  );
+  const [only] = mbids;
+  return mbids.size === 1 && only ? only : null;
+}
+
 async function identifyByIsrc(
   isrc: string,
   played: Played,
@@ -201,14 +229,7 @@ async function identifyByIsrc(
 
   const recordings = await findRecordingsByIsrc(isrc);
   if (recordings.status === 'failed') return 'failed';
-  const mbids = new Set(
-    (recordings.status === 'found' ? recordings.value : [])
-      .filter((recording) => sameTitle(played.title, recording.title))
-      .flatMap((recording) => recording.credits.filter((c) => credited(c.names)))
-      .map((credit) => credit.mbid)
-  );
-  const [onlyMbid] = mbids;
-  let mbid = mbids.size === 1 && onlyMbid ? onlyMbid : null;
+  let mbid = creditedArtist(recordings.status === 'found' ? recordings.value : [], played, primary);
 
   let deezerId: string | null = null;
   if (mbid) {
@@ -234,7 +255,8 @@ async function identifyByIsrc(
 /**
  * Who played a track: its ISRC when the answer proves to be that track, then
  * the name bound to the played title for what the ISRC left unknown (Deezer
- * through `searchArtist`, MusicBrainz through the Deezer link it declares).
+ * through `searchArtist`, MusicBrainz through the Deezer link it declares, else
+ * through a recording of that title credited to that name).
  * 'failed' when a source could not answer: nothing is written, the next play
  * retries.
  */
@@ -257,6 +279,12 @@ async function identify(primary: string, played: Played): Promise<Identification
     const linked = await findMbidByDeezerId(deezerId);
     if (linked.status === 'failed') return 'failed';
     mbid = linked.status === 'found' ? linked.value : null;
+  }
+  // Neither the ISRC nor a Deezer link: a recording of the played title credited to the name.
+  if (!mbid) {
+    const found = await findRecordingsByTitle(primary, played.title);
+    if (found.status === 'failed') return 'failed';
+    mbid = found.status === 'found' ? creditedArtist(found.value, played, primary) : null;
   }
   return { deezerId, mbid, identifiedBy: byIsrc ? 'isrc' : 'name', displayName };
 }
