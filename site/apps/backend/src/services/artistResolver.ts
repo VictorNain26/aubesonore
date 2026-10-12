@@ -3,6 +3,7 @@ import { and, desc, DrizzleQueryError, eq, isNull, or, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { artist, artistProfile, artistSlug, likedTracks, radioPlay } from '../db/schema';
 import { logger } from '../lib/logger';
+import type { Lookup } from '../lib/lookup';
 import { findTrackByIsrc, searchArtist } from './deezerService';
 import {
   findDeezerIdByMbid,
@@ -188,28 +189,19 @@ export function sameTitle(played: string, other: string): boolean {
 }
 
 /**
- * The identity a played track's ISRC gives (docs/vision.md §4.4), once the
- * answer is shown to be that track: an ISRC can be filed on another
- * recording, or credit another artist (measured 2026-10-04: Paul McCartney's
- * track credited to Wings, Daniel Avery's to ANNA, The Pirouettes' answered
- * by another Deezer track). MusicBrainz must name a recording of the played
- * title crediting the played name; Deezer, the same. Each identity then
- * completes the other through the link MusicBrainz declares. Null when no
- * answer is the played track; 'failed' when a source could not answer.
- */
-/**
  * The one artist credited under the played name on a recording of the played title, whatever
  * gave the recordings (an ISRC, a search); null when none is, or several.
  */
 function creditedArtist(
   recordings: readonly IsrcRecording[],
   played: Played,
-  primary: string
+  primary: string,
+  same: (played: string, other: string) => boolean = sameTitle
 ): string | null {
   const playedName = comparable(primary);
   const mbids = new Set(
     recordings
-      .filter((recording) => sameTitle(played.title, recording.title))
+      .filter((recording) => same(played.title, recording.title))
       .flatMap((recording) =>
         recording.credits.filter((c) => c.names.some((name) => comparable(name) === playedName))
       )
@@ -219,6 +211,33 @@ function creditedArtist(
   return mbids.size === 1 && only ? only : null;
 }
 
+// A version said in brackets or after a dash: « Song (feat. X) », « Song - 2011 Remaster ».
+const VERSION =
+  /\s*(?:[([][^)\]]*\b(?:feat|ft|with|remaster(?:ed)?|version|edit|mix|live|mono|stereo)\b[^)\]]*[)\]]|\s-\s.*\b(?:remaster(?:ed)?|version|edit|mix|live|mono|stereo)\b.*)/gi;
+
+/** A title without its version: what MusicBrainz names a recording (Style guidelines). */
+export function bareTitle(title: string): string {
+  return title.replace(VERSION, '').trim();
+}
+
+/**
+ * The same song exactly, versions aside: the search's answers are only as good as the title, so
+ * no prefix of it counts (« Home » is not « Home Again »), unlike an ISRC's.
+ */
+function exactTitle(played: string, other: string): boolean {
+  return comparable(bareTitle(played)) === comparable(bareTitle(other));
+}
+
+/**
+ * The identity a played track's ISRC gives (docs/vision.md §4.4), once the
+ * answer is shown to be that track: an ISRC can be filed on another
+ * recording, or credit another artist (measured 2026-10-04: Paul McCartney's
+ * track credited to Wings, Daniel Avery's to ANNA, The Pirouettes' answered
+ * by another Deezer track). MusicBrainz must name a recording of the played
+ * title crediting the played name; Deezer, the same. Each identity then
+ * completes the other through the link MusicBrainz declares. Null when no
+ * answer is the played track; 'failed' when a source could not answer.
+ */
 async function identifyByIsrc(
   isrc: string,
   played: Played,
@@ -253,6 +272,29 @@ async function identifyByIsrc(
 }
 
 /**
+ * The MBID of the one artist credited under the played name on a recording of exactly the played
+ * title, from MusicBrainz's search; refused when that artist declares another Deezer artist than
+ * the one the name was bound to (two homonyms).
+ */
+async function identifyByTitle(
+  primary: string,
+  played: Played,
+  deezerId: string | null
+): Promise<Lookup<string>> {
+  const found = await findRecordingsByTitle(primary, bareTitle(played.title));
+  if (found.status === 'failed') return found;
+  const mbid =
+    found.status === 'found' ? creditedArtist(found.value, played, primary, exactTitle) : null;
+  if (!mbid) return { status: 'none' };
+  if (!deezerId) return { status: 'found', value: mbid };
+  const declared = await findDeezerIdByMbid(mbid);
+  if (declared.status === 'failed') return declared;
+  return declared.status === 'found' && declared.value !== deezerId
+    ? { status: 'none' }
+    : { status: 'found', value: mbid };
+}
+
+/**
  * Who played a track: its ISRC when the answer proves to be that track, then
  * the name bound to the played title for what the ISRC left unknown (Deezer
  * through `searchArtist`, MusicBrainz through the Deezer link it declares, else
@@ -280,11 +322,12 @@ async function identify(primary: string, played: Played): Promise<Identification
     if (linked.status === 'failed') return 'failed';
     mbid = linked.status === 'found' ? linked.value : null;
   }
-  // Neither the ISRC nor a Deezer link: a recording of the played title credited to the name.
-  if (!mbid) {
-    const found = await findRecordingsByTitle(primary, played.title);
+  // Bound by name, with no Deezer link to MusicBrainz: a recording of the played title credited
+  // to the name. Never after an ISRC: its identity is a checked one, re-identified never again.
+  if (!mbid && !byIsrc && bareTitle(played.title) !== '') {
+    const found = await identifyByTitle(primary, played, deezerId);
     if (found.status === 'failed') return 'failed';
-    mbid = found.status === 'found' ? creditedArtist(found.value, played, primary) : null;
+    mbid = found.status === 'found' ? found.value : null;
   }
   return { deezerId, mbid, identifiedBy: byIsrc ? 'isrc' : 'name', displayName };
 }

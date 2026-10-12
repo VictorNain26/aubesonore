@@ -3,10 +3,13 @@ import { describe, it, expect, spyOn, afterEach, beforeEach, jest } from 'bun:te
 import group from './__fixtures__/musicbrainz-artist-group.json';
 import deezerUrl from './__fixtures__/musicbrainz-url-deezer.json';
 import isrcAnswer from './__fixtures__/musicbrainz-isrc.json';
+// A real search answer (2026-10-12), trimmed to the fields the service reads.
+import searchAnswer from './__fixtures__/musicbrainz-search-recording.json';
 
 const {
   findMbidByDeezerId,
   findRecordingsByIsrc,
+  findRecordingsByTitle,
   findDeezerIdByMbid,
   musicbrainzCache,
   __resetMusicbrainzThrottle,
@@ -151,5 +154,36 @@ describe('findRecordingsByIsrc', () => {
     spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ error: 'Not Found' }, 404));
 
     expect(await findRecordingsByIsrc('ZZZ000000000')).toEqual({ status: 'none' });
+  });
+});
+
+describe('findRecordingsByTitle', () => {
+  it('searches the title and the name as phrases, and reads each recording and its credits', async () => {
+    const fetchSpy = spyOn(globalThis, 'fetch').mockResolvedValueOnce(json(searchAnswer));
+
+    const found = await findRecordingsByTitle('Talulah Gosh', 'Talulah Gosh');
+
+    const [url] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(decodeURIComponent(url)).toContain(
+      '/recording/?query=recording:"Talulah Gosh" AND artist:"Talulah Gosh"&limit=100'
+    );
+    if (found.status !== 'found') throw new Error(`expected recordings, got ${found.status}`);
+    expect(found.value).toHaveLength(searchAnswer.recordings.length);
+    const [first] = searchAnswer.recordings;
+    const [credit] = first?.['artist-credit'] ?? [];
+    if (!first || !credit) throw new Error('the fixture holds a credited recording');
+    expect(found.value[0]).toEqual({
+      title: first.title,
+      credits: [{ mbid: credit.artist.id, names: ['Talulah Gosh', 'Talulah Gosh'] }],
+    });
+  });
+
+  it('escapes a quote and a backslash inside the phrases', async () => {
+    const fetchSpy = spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ recordings: [] }));
+
+    await findRecordingsByTitle('A\\B', 'Say "Hi"');
+
+    const [url] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(decodeURIComponent(url)).toContain('recording:"Say \\"Hi\\"" AND artist:"A\\\\B"');
   });
 });

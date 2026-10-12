@@ -146,9 +146,10 @@ export function findRecordingsByTitle(
   title: string
 ): Promise<Lookup<IsrcRecording[]>> {
   return cached(`title:${name}\u0000${title}`, async () => {
+    // 100, the most a page holds: a homonym ranked past the first page would go unseen.
     const query = `recording:${phrase(title)} AND artist:${phrase(name)}`;
     const fetched = await fetchJson<RawIsrc>(
-      `/recording/?query=${encodeURIComponent(query)}&limit=25&fmt=json`
+      `/recording/?query=${encodeURIComponent(query)}&limit=100&fmt=json`
     );
     return fetched.status === 'found' ? recordingsOf(fetched.value) : fetched;
   });

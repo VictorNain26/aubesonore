@@ -473,6 +473,53 @@ describe('identity by ISRC', () => {
     expect(inserted[0]).toMatchObject({ mbid: null });
   });
 
+  it('takes no MBID from a longer title, nor from an artist declaring another Deezer page', async () => {
+    playRows = [{ title: 'Home', isrc: null }];
+    titleLookup = { status: 'found', value: [recording('Home Again', ['mb-home', 'Home Band'])] };
+    await resolveArtist('Home Band');
+    expect(inserted[0]).toMatchObject({ mbid: null });
+
+    inserted = [];
+    playRows = [{ title: 'Testcard Girl', isrc: null }];
+    search = { status: 'match', artist: { id: '27', name: 'Talulah Gosh' } };
+    titleLookup = {
+      status: 'found',
+      value: [recording('Testcard Girl', ['mb-tg', 'Talulah Gosh'])],
+    };
+    declaredDeezerId = { status: 'found', value: '99' };
+    await resolveArtist('Talulah Gosh');
+    expect(inserted[0]).toMatchObject({ deezerId: '27', mbid: null });
+  });
+
+  it('searches a title without its version, and not at all once a link or an ISRC answered', async () => {
+    playRows = [{ title: 'Testcard Girl (2011 Remaster)', isrc: null }];
+    await resolveArtist('Talulah Gosh');
+    expect(titleSearches).toEqual([['Talulah Gosh', 'Testcard Girl']]);
+
+    titleSearches = [];
+    search = { status: 'match', artist: { id: '27', name: 'Daft Punk' } };
+    mbLookup = { status: 'found', value: 'mb-daft-punk' };
+    await resolveArtist('Daft Punk');
+    expect(titleSearches).toEqual([]);
+
+    titleSearches = [];
+    playRows = [{ title: 'One More Time', isrc: ISRC }];
+    // The ISRC's Deezer track credits the played name: a checked identity, without an MBID.
+    deezerByIsrc = deezerTrack('One More Time', ['27', 'Daft Punk']);
+    search = { status: 'none' };
+    mbLookup = { status: 'none' };
+    await resolveArtist('Daft Punk');
+    expect(titleSearches).toEqual([]);
+  });
+
+  it('writes nothing when the search fails, to try again at the next play', async () => {
+    playRows = [{ title: 'Talulah Gosh', isrc: null }];
+    titleLookup = { status: 'failed' };
+
+    expect(await resolveArtist('Talulah Gosh')).toBeNull();
+    expect(inserted).toEqual([]);
+  });
+
   it('takes over the slug its page got at the indexing threshold, never played then', async () => {
     playRows = [{ title: 'One More Time', isrc: ISRC }];
     isrcLookup = { status: 'found', value: [recording('One More Time', ['mb-dp', 'Daft Punk'])] };
