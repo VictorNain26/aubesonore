@@ -250,16 +250,23 @@ AS $$
   ORDER BY s.rank;
 $$;
 
--- Every artist of the dump, for the site to give each one its page and its
--- address (docs/vision.md §5): the most listened on ListenBrainz first, those
--- it does not know last, then by MBID; so among homonyms the best known takes
--- the plain name, and the order is the same at every load.
-CREATE FUNCTION musilogy.artist_index()
-RETURNS TABLE (mbid text, name text, user_count bigint)
+-- The rank of each artist among those of its very name (name_key): the most
+-- listened on ListenBrainz first, those it does not know last, then by MBID.
+-- The site names a page by it when it first publishes its address
+-- (docs/vision.md §5): the plain name for the first, a suffix by rank for the
+-- others, so the best known takes the plain name whichever is seen first.
+CREATE FUNCTION musilogy.artist_homonym_rank(artists text[])
+RETURNS TABLE (mbid text, homonym_rank integer)
 LANGUAGE sql STABLE
 AS $$
-  SELECT a.mbid, a.name, p.user_count
+  SELECT a.mbid, (
+    SELECT count(*)::integer + 1
+    FROM musilogy.search o
+    WHERE o.name_key = a.name_key COLLATE "C"
+      AND (coalesce(o.user_count, -1) > coalesce(p.user_count, -1)
+           OR (coalesce(o.user_count, -1) = coalesce(p.user_count, -1) AND o.mbid < a.mbid))
+  )
   FROM musilogy.artists a
   LEFT JOIN musilogy.popularity p USING (mbid)
-  ORDER BY p.user_count DESC NULLS LAST, a.mbid;
+  WHERE a.mbid = ANY (artists);
 $$;
