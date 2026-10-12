@@ -1,24 +1,32 @@
 import type { MusilogyArtist, MusilogyArtistRef } from '@aubesonore/shared-types/client';
+import { db } from '../db';
+import { discoveredArtist } from '../db/schema';
 import { logger } from '../lib/logger';
 import { listPlayedMbids } from './artistPages';
 import { getArtistIdentity, getMusilogyArtist } from './musilogyService';
 
 /**
  * Which pages of artists the antenna never played are offered to search engines
- * (docs/vision.md §2.4). Rule measured on 2026-10-06 over the 8,126
- * artists the played pages link to: linked from at least 10 played pages (522),
- * with a Wikidata item (the way to their Wikipedia opening) and at least 3
- * albums or EPs, about 490 pages. Google's spam policies count pages stitched
- * from other sites at scale as abuse; these sit in the radio's own graph.
+ * (docs/vision.md §2.4): linked from at least 2 played pages, with a Wikidata
+ * item (the way to their Wikipedia opening) and at least 3 albums or EPs.
+ * Measured on 2026-10-12, once a page links its 8 artists of the same sound
+ * (besides its members, their projects and its other names) rather than dozens
+ * of neighbours: the 479 played pages link to 4,406 artists
+ * never played, 617 from at least 2 pages, 474 pass; at 10 links, the rule of
+ * 2026-10-06, 5 passed. All 25 of a random sample at exactly 2 links had a
+ * Wikipedia opening (The Cranberries, Gorillaz, Erykah Badu…). Google's spam
+ * policies count pages stitched from other sites at scale as abuse; these sit
+ * in the radio's own graph.
  * https://developers.google.com/search/docs/essentials/spam-policies
  */
-export const MIN_PLAYED_LINKS = 10;
+export const MIN_PLAYED_LINKS = 2;
 const MIN_RECORDS = 3;
 
 const REFRESH_EVERY_MS = 24 * 60 * 60 * 1000;
 const FIRST_RUN_AFTER_MS = 60_000;
 
-// Empty until the first run: a page stays out of search results until it is shown to qualify.
+// Read back from the database at start, then recomputed: a page stays out of search results until
+// it is shown to qualify.
 let discovered: ReadonlySet<string> = new Set();
 
 export function isDiscovered(mbid: string | null): boolean {
@@ -44,7 +52,7 @@ function linkedArtists(page: MusilogyArtist): MusilogyArtistRef[] {
 /** How many played pages link to each artist never played. */
 async function playedLinks(): Promise<Map<string, number>> {
   const counts = new Map<string, number>();
-  // One at a time: a run reads ~900 artists, the site's database serves pages meanwhile.
+  // One at a time: a run reads ~1,100 artists, the site's database serves pages meanwhile.
   for (const mbid of await listPlayedMbids()) {
     const page = await getMusilogyArtist(mbid);
     if (!page) continue;
@@ -60,9 +68,7 @@ async function playedLinks(): Promise<Map<string, number>> {
 
 async function qualifies(mbid: string): Promise<boolean> {
   const identity = await getArtistIdentity(mbid);
-  if (!identity?.wikidataId) return false;
-  const page = await getMusilogyArtist(mbid);
-  return (page?.releases?.length ?? 0) >= MIN_RECORDS;
+  return identity !== null && identity.wikidataId !== null && identity.records >= MIN_RECORDS;
 }
 
 /** Recomputes the set; a failed run keeps the previous one. */
@@ -72,12 +78,26 @@ export async function refreshDiscovered(): Promise<void> {
   for (const [mbid, count] of links) {
     if (count >= MIN_PLAYED_LINKS && (await qualifies(mbid))) next.add(mbid);
   }
+  await db.transaction(async (tx) => {
+    await tx.delete(discoveredArtist);
+    if (next.size > 0)
+      await tx.insert(discoveredArtist).values([...next].map((mbid) => ({ mbid })));
+  });
   discovered = next;
   logger.info('discoveredArtists.refreshed', { linked: links.size, discovered: next.size });
 }
 
-/** Computes the set a minute after start, then every day. */
+/** The set the last run stored: what a restart serves until the next run. */
+export async function loadDiscovered(): Promise<void> {
+  const rows = await db.select({ mbid: discoveredArtist.mbid }).from(discoveredArtist);
+  discovered = new Set(rows.map((row) => row.mbid));
+}
+
+/** Reads the stored set at once, computes it again a minute after start, then every day. */
 export function startDiscoveredArtists(): () => void {
+  loadDiscovered().catch((err: unknown) => {
+    logger.warn('discoveredArtists.load_failed', { message: (err as Error).message });
+  });
   const tick = () => {
     refreshDiscovered().catch((err: unknown) => {
       logger.warn('discoveredArtists.refresh_failed', { message: (err as Error).message });

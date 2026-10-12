@@ -248,6 +248,16 @@ export const artistSlug = pgTable('artist_slug', {
 });
 
 // ─────────────────────────────────────────────
+// DISCOVERED_ARTIST TABLE — the unplayed pages offered to search engines
+// ─────────────────────────────────────────────
+// The last set services/discoveredArtists.ts computed, read back at start: a
+// restart (every site deploy) never leaves these pages noindex nor their
+// sitemap empty while the first run of the day computes it again.
+export const discoveredArtist = pgTable('discovered_artist', {
+  mbid: text('mbid').primaryKey(),
+});
+
+// ─────────────────────────────────────────────
 // ARTIST_PROFILE TABLE — the last known answer of each live source
 // ─────────────────────────────────────────────
 // A restart or a deploy keeps every page answering at once; a source that

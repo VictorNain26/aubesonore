@@ -132,6 +132,7 @@ describe('getArtistIdentity', () => {
         title: 'Homework',
         year: 1997,
       },
+      records: releases.length,
     });
   });
 
