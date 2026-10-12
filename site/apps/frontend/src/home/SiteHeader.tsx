@@ -12,9 +12,10 @@ import { useHeaderOnScroll } from '../lib/headerOnScroll';
 const NAV_LINK =
   'text-ui ease-out-quart focus-visible:outline-accent hidden min-h-11 items-center rounded-sm transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-97 md:inline-flex';
 
-// The padding makes a 44 px target of the 25 px lockup; the margin keeps the header's layout.
+// The padding makes a 44 px target of the lockup (21 px on a phone, 25 wider); the margin keeps the
+// header's layout.
 const BRAND_LINK =
-  'focus-visible:outline-accent -my-2.5 flex flex-col gap-2 rounded-sm py-2.5 focus-visible:outline-2 focus-visible:outline-offset-4';
+  'focus-visible:outline-accent -my-3 flex flex-col gap-2 rounded-sm py-3 focus-visible:outline-2 focus-visible:outline-offset-4';
 
 const OUTLINE_PILL =
   'text-ui border-accent ease-out-quart hover:bg-accent hover:text-on-accent focus-visible:outline-accent inline-flex min-h-11 items-center rounded-full border px-4.5 transition-[color,background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
