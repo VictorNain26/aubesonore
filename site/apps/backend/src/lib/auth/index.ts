@@ -94,7 +94,7 @@ export const auth = betterAuth({
   account: {
     accountLinking: {
       enabled: true,
-      trustedProviders: ['google', 'spotify'],
+      trustedProviders: ['google'],
     },
   },
 
@@ -104,16 +104,6 @@ export const auth = betterAuth({
           google: {
             clientId: env.GOOGLE_CLIENT_ID,
             clientSecret: env.GOOGLE_CLIENT_SECRET,
-          },
-        }
-      : {}),
-    ...(env.SPOTIFY_CLIENT_ID && env.SPOTIFY_CLIENT_SECRET
-      ? {
-          spotify: {
-            clientId: env.SPOTIFY_CLIENT_ID,
-            clientSecret: env.SPOTIFY_CLIENT_SECRET,
-            scope: ['user-read-email', 'playlist-modify-private', 'playlist-modify-public'],
-            callbackUrl: `${env.BACKEND_BASE_URL}/api/auth/spotify/callback`,
           },
         }
       : {}),

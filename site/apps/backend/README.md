@@ -6,9 +6,9 @@ API de la webradio, construite avec [Elysia](https://elysiajs.com/) sur [Bun](ht
 
 - **Radio** : proxy de l'historique et du « en train de jouer » AzuraCast.
 - **Likes** : ajout / retrait / liste des morceaux aimés.
-- **Enrichissement** : résolution des liens multi-plateformes (iTunes, Deezer, Spotify) en tâche de fond ; profil d'artiste par Deezer, MusicBrainz et Wikipédia.
+- **Enrichissement** : résolution des liens multi-plateformes (iTunes, Deezer) en tâche de fond ; profil d'artiste par Deezer, MusicBrainz et Wikipédia.
 - **Pochettes** : à l'enrichissement, une pochette iTunes est retenue si l'artiste correspond (une autre pochette du même artiste reste acceptable) ; sinon l'URL AzuraCast est conservée et le client affiche un visuel « onde » déterministe.
-- **Auth** : [Better Auth](https://www.better-auth.com/) — email vérifié requis, OAuth Google et Spotify, cookies sécurisés, rate limiting.
+- **Auth** : [Better Auth](https://www.better-auth.com/) — email vérifié requis, OAuth Google, cookies sécurisés, rate limiting.
 - **Statistiques d'écoute**.
 - **Sécurité** : garde SSRF (`assertSafeUrl`), en-têtes de sécurité, rate limiting par IP/utilisateur.
 

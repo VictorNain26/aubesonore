@@ -19,7 +19,7 @@ aubesonore/
 ## Fonctionnalités
 
 - **Écouter** : le flux AzuraCast, le titre en cours, ce qui est passé depuis l'aube et les titres les plus gardés.
-- **Garder** : un auditeur connecté garde un titre ; ses liens d'écoute viennent des API d'iTunes, de Deezer et de Spotify (par ISRC). Chaque titre gardé est relié à sa diffusion et à son artiste.
+- **Garder** : un auditeur connecté garde un titre ; ses liens d'écoute viennent des API d'iTunes et de Deezer (par ISRC). Chaque titre gardé est relié à sa diffusion et à son artiste.
 - **Mes titres** (`/mes-titres`, `/en/my-tracks`) : les titres gardés, par date d'ajout ou par artiste (`?sort=artist`), le nom de l'artiste menant à sa page, chacun à écouter sur YouTube (son Art Track vérifiée quand l'API YouTube en trouve une, sinon une recherche) ; retirer un titre s'annule pendant 5 secondes.
 - **Page artiste** (tout artiste que Musilogy connaît : à son slug quand l'antenne l'a joué, à son MBID sinon) : portrait sous licence connue (photo Wikimedia Commons créditée, sinon pochette du premier disque, sinon l'aube de l'artiste), faits MusicBrainz, ouverture de l'article Wikipédia ou, sans article, les faits dits en une phrase ; vos titres gardés de l'artiste ; où l'écouter ; les sections de Musilogy qui ont du contenu. L'artiste est identifié par l'ISRC du titre joué, vérifié contre le titre et le nom.
 - **Musilogy** : pour tout artiste de MusicBrainz, qui faisait cette musique avant lui, en même temps, après lui (proximité ListenBrainz rangée par les dates) et ses groupes (MusicBrainz), en carte (une liste sur téléphone) ; recherche par nom.
@@ -35,7 +35,7 @@ aubesonore/
 | Frontend  | React 19, Vite 8, Tailwind CSS 4, Zustand                   |
 | Outillage | pnpm 10, Turbo, ESLint 9 (flat), Vitest + bun test          |
 
-Auth : Better Auth (email vérifié + OAuth Google/Spotify). Liens d'écoute : API iTunes, Deezer et Spotify (Songlink/Odesli a fermé son API le 2026-07-31). Pochettes : iTunes vérifiée (artiste) ou visuel « onde » généré côté client.
+Auth : Better Auth (email vérifié + OAuth Google). Liens d'écoute : API iTunes et Deezer (Songlink/Odesli a fermé son API le 2026-07-31). Pochettes : iTunes vérifiée (artiste) ou visuel « onde » généré côté client.
 
 ## Démarrage
 
