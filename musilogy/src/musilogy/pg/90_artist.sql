@@ -249,3 +249,17 @@ AS $$
   WHERE a.mbid = artist AND s.rank <= 8
   ORDER BY s.rank;
 $$;
+
+-- Every artist of the dump, for the site to give each one its page and its
+-- address (docs/vision.md §5): the most listened on ListenBrainz first, those
+-- it does not know last, then by MBID; so among homonyms the best known takes
+-- the plain name, and the order is the same at every load.
+CREATE FUNCTION musilogy.artist_index()
+RETURNS TABLE (mbid text, name text, user_count bigint)
+LANGUAGE sql STABLE
+AS $$
+  SELECT a.mbid, a.name, p.user_count
+  FROM musilogy.artists a
+  LEFT JOIN musilogy.popularity p USING (mbid)
+  ORDER BY p.user_count DESC NULLS LAST, a.mbid;
+$$;

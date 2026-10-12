@@ -179,8 +179,15 @@ absente (code `42883`).
 | `artist_releases` | livrée par #337, règle de la page par #338 |
 | `artist_urls` | livrée par #337 |
 | `artist_same_sound` | livrée avec la table `same_sound` |
+| `artist_index` | livrée pour l'adresse de chaque page (docs/vision.md §5) |
 
 ```sql
+-- Tous les artistes, pour que le site donne à chacun sa page et son adresse :
+-- les plus écoutés sur ListenBrainz d'abord, ceux qu'il ne connaît pas en
+-- dernier, puis par MBID ; parmi des homonymes, le plus connu prend le nom seul.
+-- Sans argument : la seule fonction qui ne réponde pas pour un MBID.
+musilogy.artist_index() RETURNS TABLE (mbid text, name text, user_count bigint)
+
 -- Fiche.
 musilogy.artist_card(artist text) RETURNS TABLE (
   mbid text, name text, disambiguation text, type text, country text,
@@ -244,6 +251,9 @@ musilogy.artist_other_names(artist text) RETURNS TABLE (
 -- type puis URL.
 musilogy.artist_urls(artist text) RETURNS TABLE (type text, url text)
 ```
+
+`artist_index` rend les 2 980 293 artistes en 26 s, tri sur disque de 190 Mo
+(production, 2026-10-12) : le site la lit une fois par chargement.
 
 `artist_same_sound`, mesurée le 2026-10-09 sur un Postgres jetable : 0,07 ms
 pour Daft Punk, index chaud. La table pèse 484 Mo dans la base, index compris.
