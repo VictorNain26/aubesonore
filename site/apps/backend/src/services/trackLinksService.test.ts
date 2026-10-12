@@ -36,63 +36,31 @@ const DEEZER_SEARCH = {
   ],
 };
 
-/** Answers like each platform; `spotify` overrides the Spotify search answer. */
-function platforms(spotify?: () => Promise<Response>): void {
+/** Answers like each platform. */
+function platforms(): void {
   globalThis.fetch = ((url: string) => {
     calls.push(url);
     if (url.startsWith('https://itunes.apple.com/')) return json(ITUNES);
     if (url.startsWith('https://api.deezer.com/search')) return json(DEEZER_SEARCH);
     if (url.startsWith('https://api.deezer.com/track/')) return json({ isrc: 'USQE92100206' });
-    if (url.startsWith('https://accounts.spotify.com/'))
-      return json({ access_token: 't', expires_in: 3600 });
-    if (url.startsWith('https://api.spotify.com/v1/search'))
-      return spotify
-        ? spotify()
-        : json({
-            tracks: {
-              items: [{ external_urls: { spotify: 'https://open.spotify.com/track/s1' } }],
-            },
-          });
     throw new Error(`unexpected ${url}`);
   }) as unknown as typeof fetch;
 }
 
 describe('findTrackLinks', () => {
-  it('links the track on Spotify (by ISRC), Apple Music and Deezer, with its cover', async () => {
+  it('links the track on Apple Music and Deezer, with its cover', async () => {
     platforms();
 
     const links = await findTrackLinks('In Flight', 'Sunflower Bean');
 
     expect(links).toEqual({
       platformLinks: {
-        spotify: 'https://open.spotify.com/track/s1',
         appleMusic: 'https://music.apple.com/fr/song/in-flight/1',
         deezer: 'https://www.deezer.com/track/1616626132',
       },
       songlinkUrl: 'https://song.link/https://www.deezer.com/track/1616626132',
       artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/a/600x600bb.jpg',
     });
-    expect(calls.some((u) => u.includes(encodeURIComponent('isrc:USQE92100206')))).toBe(true);
-  });
-
-  it('keeps the other links when Spotify refuses (owner without Premium), and retries later', async () => {
-    platforms(() =>
-      Promise.resolve(
-        new Response('Active premium subscription required for the owner of the app.', {
-          status: 403,
-        })
-      )
-    );
-
-    const first = await findTrackLinks('In Flight', 'Sunflower Bean');
-    expect(first?.platformLinks).toEqual({
-      appleMusic: 'https://music.apple.com/fr/song/in-flight/1',
-      deezer: 'https://www.deezer.com/track/1616626132',
-    });
-
-    calls = [];
-    await findTrackLinks('In Flight', 'Sunflower Bean');
-    expect(calls.length).toBeGreaterThan(0);
   });
 
   it('never links another artist that Deezer or iTunes return', async () => {
@@ -146,24 +114,18 @@ describe('findTrackLinks with the ISRC of the play', () => {
       if (url.startsWith('https://itunes.apple.com/')) return json(ITUNES);
       if (url.startsWith('https://api.deezer.com/search')) return json(DEEZER_SEARCH);
       if (url.startsWith('https://api.deezer.com/track/')) return json({ isrc: 'USQE92100206' });
-      if (url.startsWith('https://accounts.spotify.com/'))
-        return json({ access_token: 't', expires_in: 3600 });
-      if (url.startsWith('https://api.spotify.com/v1/search'))
-        return json({
-          tracks: { items: [{ external_urls: { spotify: 'https://open.spotify.com/track/s1' } }] },
-        });
       throw new Error(`unexpected ${url}`);
     }) as unknown as typeof fetch;
   }
 
-  it('links the very recording on Deezer and Spotify, without a text search', async () => {
+  it('links the very recording on Deezer, without a text search', async () => {
     withIsrc(() => json(EXACT));
 
     const links = await findTrackLinks('In Flight', 'Sunflower Bean', 'GBUM71029604');
 
     expect(links?.platformLinks.deezer).toBe('https://www.deezer.com/track/999');
     expect(calls.some((u) => u.startsWith('https://api.deezer.com/search'))).toBe(false);
-    expect(calls.some((u) => u.includes(encodeURIComponent('isrc:GBUM71029604')))).toBe(true);
+    expect(calls).toContain('https://api.deezer.com/track/isrc:GBUM71029604');
   });
 
   it('falls back to the text search when Deezer does not know the ISRC', async () => {
@@ -172,9 +134,7 @@ describe('findTrackLinks with the ISRC of the play', () => {
     const links = await findTrackLinks('In Flight', 'Sunflower Bean', 'GBUM71029604');
 
     expect(links?.platformLinks.deezer).toBe('https://www.deezer.com/track/1616626132');
-    // Spotify still looks up the play's recording, not the one the search found.
-    expect(calls.some((u) => u.includes(encodeURIComponent('isrc:GBUM71029604')))).toBe(true);
-    expect(calls.some((u) => u.includes(encodeURIComponent('isrc:USQE92100206')))).toBe(false);
+    expect(calls).toContain('https://api.deezer.com/track/isrc:GBUM71029604');
   });
 
   it('does not cache an answer whose ISRC lookup failed', async () => {

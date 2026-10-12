@@ -178,7 +178,7 @@ describe('likeTrack → background enrichment', () => {
   it('uses the verified iTunes artwork directly when a Songlink match is found', async () => {
     findTrackLinksMock.mockResolvedValueOnce({
       songlinkUrl: 'https://song.link/abc',
-      platformLinks: { spotify: 'https://open.spotify.com/track/abc' },
+      platformLinks: { deezer: 'https://www.deezer.com/track/abc' },
       artworkUrl: 'https://apple-cdn.example.com/art/hd.jpg',
     });
 
@@ -195,14 +195,14 @@ describe('likeTrack → background enrichment', () => {
 
     expect(rows[0]?.artworkUrl).toBe('https://apple-cdn.example.com/art/hd.jpg');
     expect(rows[0]?.songlinkUrl).toBe('https://song.link/abc');
-    expect(rows[0]?.platformLinks).toEqual({ spotify: 'https://open.spotify.com/track/abc' });
+    expect(rows[0]?.platformLinks).toEqual({ deezer: 'https://www.deezer.com/track/abc' });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('keeps the AzuraCast artwork when a match carries links but no iTunes cover', async () => {
     findTrackLinksMock.mockResolvedValueOnce({
       songlinkUrl: 'https://song.link/nocover',
-      platformLinks: { spotify: 'https://open.spotify.com/track/nocover' },
+      platformLinks: { deezer: 'https://www.deezer.com/track/nocover' },
     });
 
     await likeTrack({
@@ -218,7 +218,7 @@ describe('likeTrack → background enrichment', () => {
 
     expect(rows[0]?.artworkUrl).toBe('https://azuracast.example.com/art/noc.jpg');
     expect(rows[0]?.songlinkUrl).toBe('https://song.link/nocover');
-    expect(rows[0]?.platformLinks).toEqual({ spotify: 'https://open.spotify.com/track/nocover' });
+    expect(rows[0]?.platformLinks).toEqual({ deezer: 'https://www.deezer.com/track/nocover' });
   });
 
   it('leaves artwork_url untouched when there is no AzuraCast art and no Songlink match', async () => {
@@ -309,7 +309,7 @@ describe('refreshTrackLinks', () => {
     ];
     findTrackLinksMock.mockResolvedValueOnce({
       songlinkUrl: 'https://song.link/xyz',
-      platformLinks: { spotify: 'https://open.spotify.com/track/xyz' },
+      platformLinks: { deezer: 'https://www.deezer.com/track/xyz' },
       artworkUrl: 'https://apple-cdn.example.com/art/xyz.jpg',
     });
 
@@ -349,7 +349,7 @@ describe('refreshAllLinks', () => {
     ];
     findTrackLinksMock.mockResolvedValueOnce({
       songlinkUrl: 'https://song.link/batch',
-      platformLinks: { spotify: 'https://open.spotify.com/track/batch' },
+      platformLinks: { deezer: 'https://www.deezer.com/track/batch' },
       artworkUrl: 'https://apple-cdn.example.com/art/batch.jpg',
     });
 

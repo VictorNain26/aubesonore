@@ -22,7 +22,6 @@ export interface AuthResponse {
 }
 
 export interface PlatformLinks {
-  spotify?: string;
   appleMusic?: string;
   deezer?: string;
   youtubeMusic?: string;
@@ -166,7 +165,6 @@ export interface ArtistProfile {
 }
 
 export const PLATFORM_NAMES: Record<keyof PlatformLinks, string> = {
-  spotify: 'Spotify',
   appleMusic: 'Apple Music',
   deezer: 'Deezer',
   youtubeMusic: 'YouTube Music',

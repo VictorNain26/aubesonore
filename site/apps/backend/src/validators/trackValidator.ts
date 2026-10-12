@@ -28,7 +28,7 @@ export const likeTrackSchema = object({
   album: optional(string()),
   artworkUrl: optional(httpsImageUrl),
   youtubeUrl,
-  // Sent to Deezer and Spotify, and kept for every later refresh: ISO 3901 or nothing.
+  // Sent to Deezer, and kept for every later refresh: ISO 3901 or nothing.
   isrc: optional(
     pipe(
       string(),

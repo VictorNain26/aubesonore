@@ -46,11 +46,7 @@ function mockPlatforms(): void {
         ],
       });
     if (url.startsWith('https://api.deezer.com/track/')) return json({ isrc: 'FR0000000001' });
-    if (url.startsWith('https://accounts.spotify.com/'))
-      return json({ access_token: 't', expires_in: 3600 });
-    return json({
-      tracks: { items: [{ external_urls: { spotify: 'https://open.spotify.com/track/1' } }] },
-    });
+    throw new Error(`unexpected ${url}`);
   }) as unknown as typeof fetch;
 }
 
@@ -76,7 +72,7 @@ describe('GET /t', () => {
     expect(html).toContain('Psychic Lines');
     expect(html).toContain('content="« Balance Act », Psychic Lines"');
     expect(html).toContain('https://is1-ssl.mzstatic.com/image/thumb/600x600bb.jpg');
-    expect(html).toContain('Écouter sur Spotify');
+    expect(html).toContain('Écouter sur Deezer');
   });
 
   it('escapes HTML in title and artist', async () => {
@@ -140,7 +136,7 @@ describe('GET /t', () => {
     const html = await res.text();
     expect(html).toContain('<html lang="en">');
     expect(html).toContain('Listen live');
-    expect(html).toContain('Listen on Spotify');
+    expect(html).toContain('Listen on Deezer');
     expect(html).toContain('Heard on AubeSonore');
     expect(res.headers.get('vary')).toContain('accept-language');
   });

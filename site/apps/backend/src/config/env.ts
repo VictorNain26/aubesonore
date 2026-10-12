@@ -32,8 +32,6 @@ interface EnvConfig {
   // Social OAuth
   GOOGLE_CLIENT_ID: string | undefined;
   GOOGLE_CLIENT_SECRET: string | undefined;
-  SPOTIFY_CLIENT_ID: string | undefined;
-  SPOTIFY_CLIENT_SECRET: string | undefined;
 
   // External APIs
   // MusicBrainz and Wikimedia require a User-Agent with a contact and block callers without one.
@@ -131,8 +129,6 @@ export const env: EnvConfig = {
 
   GOOGLE_CLIENT_ID: optional('GOOGLE_CLIENT_ID'),
   GOOGLE_CLIENT_SECRET: optional('GOOGLE_CLIENT_SECRET'),
-  SPOTIFY_CLIENT_ID: optional('SPOTIFY_CLIENT_ID'),
-  SPOTIFY_CLIENT_SECRET: optional('SPOTIFY_CLIENT_SECRET'),
 
   OUTBOUND_USER_AGENT: optional('OUTBOUND_USER_AGENT') ?? 'AubeSonore/1.0 (https://aubesonore.fr)',
   FRONTEND_ORIGIN_INTERNAL: Bun.env.FRONTEND_ORIGIN_INTERNAL ?? 'http://frontend',
@@ -166,9 +162,6 @@ if (env.IS_PROD && env.BETTER_AUTH_SECRET.length < 32) {
 
 if (env.GOOGLE_CLIENT_ID && !env.GOOGLE_CLIENT_SECRET) {
   throw new Error('GOOGLE_CLIENT_ID set but GOOGLE_CLIENT_SECRET missing');
-}
-if (env.SPOTIFY_CLIENT_ID && !env.SPOTIFY_CLIENT_SECRET) {
-  throw new Error('SPOTIFY_CLIENT_ID set but SPOTIFY_CLIENT_SECRET missing');
 }
 if (env.SMTP_HOST && (!env.SMTP_USER || !env.SMTP_PASSWORD)) {
   throw new Error('SMTP_HOST set but SMTP_USER or SMTP_PASSWORD missing');

@@ -1,4 +1,3 @@
-import { env } from '../config/env';
 import type { PlatformLinks } from '../db/schema';
 import { TtlCache } from '../lib/cache/ttlCache';
 import { logger } from '../lib/logger';
@@ -13,9 +12,6 @@ import { similarity, artistMatch, songMatch } from '../lib/text/matchScore';
 // - Deezer: the track of the kept track's ISRC when it is known, an exact
 //   recording (the pipeline acquires every track from its Deezer page and
 //   writes that page's ISRC); else its public search, then that track's ISRC;
-// - Spotify: search by the ISRC (an exact recording match), with the app's
-//   client credentials. Since February 2026 a development-mode app answers 403
-//   unless its owner holds Premium: that is logged and retried, never cached;
 // - every other platform: the song.link landing page, which resolves itself.
 // ─────────────────────────────────────────────
 
@@ -166,44 +162,6 @@ export async function searchDeezer(
   return { link: pick.link, isrc: (known && track?.isrc) || null };
 }
 
-// ── Spotify ──────────────────────────────────
-
-let spotifyToken: { value: string; expiresAt: number } | null = null;
-
-async function spotifyAccessToken(id: string, secret: string): Promise<string> {
-  if (spotifyToken && spotifyToken.expiresAt > Date.now()) return spotifyToken.value;
-  const data = await getJson<{ access_token: string; expires_in: number }>(
-    'https://accounts.spotify.com/api/token',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${btoa(`${id}:${secret}`)}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: 'grant_type=client_credentials',
-    }
-  );
-  if (!data) throw new TransientError('Spotify token: 404');
-  // Renewed a minute early, so a request never carries a token about to expire.
-  spotifyToken = {
-    value: data.access_token,
-    expiresAt: Date.now() + (data.expires_in - 60) * 1000,
-  };
-  return data.access_token;
-}
-
-async function searchSpotifyByIsrc(isrc: string): Promise<string | null> {
-  if (!env.SPOTIFY_CLIENT_ID || !env.SPOTIFY_CLIENT_SECRET) return null;
-  const token = await spotifyAccessToken(env.SPOTIFY_CLIENT_ID, env.SPOTIFY_CLIENT_SECRET);
-  const data = await getJson<{
-    tracks?: { items: Array<{ external_urls: { spotify?: string } }> };
-  }>(
-    `https://api.spotify.com/v1/search?type=track&limit=1&market=FR&q=${encodeURIComponent(`isrc:${isrc}`)}`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  return data?.tracks?.items[0]?.external_urls.spotify ?? null;
-}
-
 // ── All of them ──────────────────────────────
 
 async function settle<T>(
@@ -226,7 +184,7 @@ async function settle<T>(
 
 /**
  * The links and cover of a track. With its ISRC (the play's, stored on the
- * kept track), Deezer and Spotify link that very recording. A complete answer
+ * kept track), Deezer links that very recording. A complete answer
  * (found or not) is cached 7 days; one with a failed lookup is not, so the
  * next call retries it.
  */
@@ -246,17 +204,12 @@ export async function findTrackLinks(
     settle('apple', searchItunes(title, artist), context),
     settle('deezer', findDeezer(title, artist, isrc), context),
   ]);
-  const recording = isrc ?? deezer.value?.isrc;
-  const spotify = recording
-    ? await settle('spotify', searchSpotifyByIsrc(recording), context)
-    : { value: null, transient: false };
 
   const platformLinks: PlatformLinks = {};
-  if (spotify.value) platformLinks.spotify = spotify.value;
   if (itunes.value?.exactSong) platformLinks.appleMusic = itunes.value.trackViewUrl;
   if (deezer.value) platformLinks.deezer = deezer.value.link;
 
-  const anchor = deezer.value?.link ?? platformLinks.spotify ?? platformLinks.appleMusic;
+  const anchor = deezer.value?.link ?? platformLinks.appleMusic;
   const result: TrackLinks | null =
     anchor || itunes.value?.artworkUrl
       ? {
@@ -266,7 +219,7 @@ export async function findTrackLinks(
         }
       : null;
 
-  if (!itunes.transient && !deezer.transient && !spotify.transient) {
+  if (!itunes.transient && !deezer.transient) {
     linksCache.set(cacheKey, result);
   }
   return result;
