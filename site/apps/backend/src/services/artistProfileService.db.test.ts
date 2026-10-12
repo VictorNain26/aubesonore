@@ -9,6 +9,7 @@ import * as musicbrainz from './musicbrainzService';
 import * as musilogy from './musilogyService';
 import * as wikipedia from './wikipediaService';
 import { getArtistProfile } from './artistProfileService';
+import { ownerOfSlug } from './artistSlugs';
 
 const MBID = '00000000-0000-4000-8000-000000000001';
 const UNPLAYED = '00000000-0000-4000-8000-000000000002';
@@ -137,10 +138,22 @@ describe("a played artist's page", () => {
       refreshedAt: new Date(Date.now() - 8 * DAY_MS),
     });
 
+    // Commons holds its answer until the test lets it go: the page must not wait for it.
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    spies.photo.mockImplementationOnce(async () => {
+      await held;
+      return { status: 'found', value: PHOTO };
+    });
+
     const profile = await getArtistProfile('air', 'fr');
 
-    // As stored: the refresh runs behind it.
+    // As stored, while the refresh still waits on Commons behind it.
     expect(profile?.images).toEqual([]);
+    expect((await stored())[0]?.photo).toBeNull();
+    release();
     await until(async () => (await stored())[0]?.photo !== null);
     expect((await stored())[0]?.photo).toEqual(PHOTO);
   });
@@ -180,15 +193,33 @@ describe("a played artist's page", () => {
     await playedAir();
     await getArtistProfile('air', 'fr');
     identities[MBID] = 'down';
+    spies.summary.mockClear();
 
     const profile = await getArtistProfile('air', 'fr');
 
     expect(profile).toMatchObject({ name: 'Air', facts: null, summary: summary('fr') });
+    // Its opening is the stored one: no live source was asked.
+    expect(spies.summary).not.toHaveBeenCalled();
+  });
+
+  it('is named by the MBID a view finds for it, through the slug its row held', async () => {
+    // Bound by its Deezer artist only: the view finds its MBID, whose page takes the row's slug.
+    await db
+      .insert(artist)
+      .values({ id: 'a-air', normalizedName: 'air', displayName: 'Air', deezerId: '27' });
+    await db.insert(artistSlug).values({ slug: 'air', artistId: 'a-air' });
+    spies.mbid.mockResolvedValueOnce({ status: 'found', value: MBID });
+
+    const profile = await getArtistProfile('air', 'fr');
+
+    expect(profile).toMatchObject({ slug: 'air', summary: summary('fr') });
+    expect(await ownerOfSlug('air')).toEqual({ mbid: MBID });
   });
 });
 
 describe("a page the antenna never played (today's behaviour, which the profile's refactor changes)", () => {
-  it('is made at each view from the live answers, in the page language, and stores nothing', async () => {
+  it('is made at each view from the live answers, in the page language; no profile is stored, its slug is', async () => {
+    await getArtistProfile(UNPLAYED, 'fr');
     const profile = await getArtistProfile(UNPLAYED, 'fr');
 
     expect(profile).toMatchObject({
@@ -199,7 +230,9 @@ describe("a page the antenna never played (today's behaviour, which the profile'
       images: [{ kind: 'photo', ...PHOTO }],
       summary: summary('fr'),
     });
-    expect(spies.summary).toHaveBeenCalledTimes(1);
+    // One opening per view, in the page language only.
+    expect(spies.summary).toHaveBeenCalledTimes(2);
+    expect(spies.summary.mock.calls.every(([, locale]) => locale === 'fr')).toBe(true);
     expect(await stored()).toEqual([]);
   });
 
@@ -226,7 +259,17 @@ describe('the page of a played artist without an MBID', () => {
 
     const profile = await getArtistProfile('x', 'fr');
 
-    expect(profile).toMatchObject({ id: 'a-x', name: 'X', slug: 'x', mbid: null, images: [] });
+    expect(profile).toMatchObject({
+      id: 'a-x',
+      name: 'X',
+      slug: 'x',
+      mbid: null,
+      images: [],
+      facts: null,
+      summary: null,
+    });
+    expect(spies.identity).not.toHaveBeenCalled();
     expect(spies.photo).not.toHaveBeenCalled();
+    expect(spies.summary).not.toHaveBeenCalled();
   });
 });
