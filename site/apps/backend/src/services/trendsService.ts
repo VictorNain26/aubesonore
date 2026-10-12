@@ -1,8 +1,9 @@
-import { count, desc, eq, gt, max } from 'drizzle-orm';
+import { count, desc, eq, gt, max, sql } from 'drizzle-orm';
 import type { KeptArtistPage } from '@aubesonore/shared-types/client';
 import { db, schema } from '../db/index';
 import { TtlCache } from '../lib/cache/ttlCache';
 import { createSingleFlight } from '../lib/singleFlight';
+import { mbidSlug, ownSlug, pageSlug } from './artistSlugs';
 
 export interface TrendEntry {
   title: string;
@@ -35,14 +36,15 @@ async function topLikedTracks(since?: Date): Promise<TrendEntry[]> {
       // never artwork_base64 (payload size rule).
       artworkUrl: max(schema.likedTracks.artworkUrl),
       likes: count(),
-      // Both joins match at most one row (the artist's key, its one slug), so they leave the
-      // counts as they are; MAX keeps the page of a group whose tracks are tied.
-      slug: max(schema.artistSlug.slug),
+      // The joins match at most one row each (the artist's key, its MBID's slug, its own), so
+      // they leave the counts as they are; MAX keeps the page of a group whose tracks are tied.
+      slug: sql<string | null>`max(${pageSlug})`,
       name: max(schema.artist.displayName),
     })
     .from(schema.likedTracks)
     .leftJoin(schema.artist, eq(schema.artist.id, schema.likedTracks.artistId))
-    .leftJoin(schema.artistSlug, eq(schema.artistSlug.artistId, schema.likedTracks.artistId))
+    .leftJoin(mbidSlug, eq(mbidSlug.mbid, schema.artist.mbid))
+    .leftJoin(ownSlug, eq(ownSlug.artistId, schema.artist.id))
     .$dynamic();
 
   if (since) {

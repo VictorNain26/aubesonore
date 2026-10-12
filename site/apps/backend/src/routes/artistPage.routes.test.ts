@@ -88,7 +88,8 @@ const profileSpy = spyOn(profileService, 'getArtistProfile').mockImplementation(
 });
 
 const pages = await import('../services/artistPages');
-const slugSpy = spyOn(pages, 'slugOfArtist').mockImplementation((id: string) =>
+const slugs = await import('../services/artistSlugs');
+const slugSpy = spyOn(slugs, 'slugOfArtistPage').mockImplementation((id: string) =>
   Promise.resolve(id === VALID_ID ? 'daft-punk' : null)
 );
 const discoveredService = await import('../services/discoveredArtists');

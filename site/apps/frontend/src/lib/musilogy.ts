@@ -10,11 +10,11 @@ import { artistPath } from './artistProfile';
 export class MusilogyUnavailableError extends Error {}
 
 /**
- * One page per artist, at its address (docs/vision.md §5): its slug when the antenna played it,
- * the slug it was given at the indexing threshold, else its MBID.
+ * One page per artist, at its address (docs/vision.md §5): its slug, played on the antenna or not;
+ * its MBID while it has none yet.
  */
-export function pagePathOf(artist: MusilogyArtistRef): string {
-  return artistPath(artist.played ?? { slug: artist.slug ?? artist.mbid });
+export function pagePathOf(artist: Pick<MusilogyArtistRef, 'mbid' | 'slug'>): string {
+  return artistPath({ slug: artist.slug ?? artist.mbid });
 }
 
 async function read<T>(path: string, signal?: AbortSignal): Promise<T | null> {

@@ -425,7 +425,7 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 | Surface | Route | Indexée | Geste |
 |---|---|---|---|
 | Accueil | `/`, `/en` | oui, pré-rendue | Écouter |
-| Page artiste | `/artiste/:slug` (`/en/artist/:slug`) : le slug d'un artiste joué, ou celui qu'une page jamais jouée reçoit en passant le seuil d'indexation ; `/artiste/:mbid` pour les autres, et en 301 vers le slug quand il existe ; un slug par page, jamais réattribué | au-delà d'un seuil de contenu (§2.4), décidé par le serveur | Savoir, Découvrir |
+| Page artiste | `/artiste/:slug` (`/en/artist/:slug`) : le slug de la page, le même processus pour chaque artiste, joué ou non : chaque artiste que Musilogy connaît reçoit le sien à son chargement, le plus écouté d'abord parmi des homonymes (le Nirvana connu prend `nirvana`), un artiste joué sans MBID le sien à son premier passage ; `/artiste/:mbid` le temps qu'un artiste n'en ait pas, et en 301 vers le slug ; un slug par page, jamais réattribué | au-delà d'un seuil de contenu (§2.4), décidé par le serveur | Savoir, Découvrir |
 | Page de courant | à créer (§2.3) | quand elle est riche | Comprendre, Découvrir |
 | Musilogy | `/musilogy` (recherche) ; `/musilogy/:mbid/…` renvoie en 301 à la page artiste | non | Découvrir |
 | Connexion | `/connexion`, `/en/sign-in` | non | Garder |

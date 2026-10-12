@@ -1,7 +1,8 @@
 import { env } from '../config/env';
 import type { Lookup } from '../lib/lookup';
 import { logger } from '../lib/logger';
-import { artistKey, normalizeArtistName, primaryArtistName } from './artistResolver';
+import { normalizeArtistName } from '../lib/artistName';
+import { artistKey, primaryArtistName } from './artistResolver';
 
 // YouTube Data API v3: search.list draws on its own bucket of 100 calls a day, videos.list on
 // the 10,000 units of every other method, one unit for up to 50 ids
