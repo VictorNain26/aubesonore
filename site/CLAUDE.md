@@ -55,7 +55,7 @@ Env vars are read only in `apps/backend/src/config/env.ts`; never read `process.
 
 ## Working with Better Auth (1.6)
 
-- Config lives in `apps/backend/src/lib/auth/index.ts`. Cookies are `secure` + `httpOnly`; `sameSite: 'none'` in prod, `'lax'` in dev.
+- Config lives in `apps/backend/src/lib/auth/index.ts`. Cookies are `secure` + `httpOnly` + `sameSite: 'lax'` (the site and the API share one registrable domain).
 - Rate limits are tuned: 5/min sign-in, 3/min sign-up & forget-password.
 - Email verification is **required** for new accounts (`requireEmailVerification: true`). That makes SMTP load-bearing for registration, so `config/env.ts` **refuses to boot in production** when `SMTP_HOST` is unset and `DISABLE_EMAILS` is not explicitly `true`. Without that guard the app answers 200 everywhere while no one can create an account — which is exactly what happened until July 2026. Setting `DISABLE_EMAILS=true` in production is legal but logs `email.disabled_in_production` at every start.
 - Google + Spotify OAuth providers configured.
