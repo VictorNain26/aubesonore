@@ -121,6 +121,7 @@ const spies = {
     links: [{ platform: 'official', url: 'https://daftpunk.com/' }],
     wikidataId: 'Q185828',
     firstCover: HOMEWORK_COVER,
+    records: 1,
   }),
   summary: spyOn(wikipedia, 'getSummary').mockImplementation((_id, locale) =>
     Promise.resolve({ status: 'found', value: locale === 'fr' ? summaryFr : summaryEn })
@@ -209,6 +210,7 @@ describe('getArtistProfile', () => {
       links: [],
       wikidataId: 'Q185828',
       firstCover: null,
+      records: 0,
       name: 'Daft Punk',
       deezerId: '27',
     });
@@ -334,6 +336,7 @@ describe('getArtistProfile', () => {
       links: [],
       wikidataId: null,
       firstCover: HOMEWORK_COVER,
+      records: 1,
     });
 
     const profile = await getArtistProfile('8d3431db-bc83-4dc2-93b8-0e46e31d09f7', 'fr');

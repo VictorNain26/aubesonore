@@ -222,7 +222,8 @@ seuil de contenu ; en deçà, elle existe mais n'est pas listée. La page d'un a
 toujours. Celle d'un artiste jamais joué l'est quand au moins 2 pages d'artistes joués y
 mènent, qu'elle a un élément Wikidata (le chemin vers son article Wikipédia) et au moins 3
 albums ou EP (`site/apps/backend/src/services/discoveredArtists.ts`). Remesuré le 2026-10-12,
-quand chaque page ne mène plus qu'à ses 8 artistes du même son : les 479 pages jouées mènent à
+quand chaque page ne mène plus qu'à ses 8 artistes du même son, outre ses membres, leurs projets
+et ses autres noms : les 479 pages jouées mènent à
 4 406 artistes jamais joués, 617 depuis au moins 2 pages, 474 passent (au seuil de 10 pages
 mesuré le 2026-10-06 sur l'ancien voisinage, il n'en restait que 5) ; les 25 pages d'un
 échantillon tiré au hasard parmi celles à 2 liens exactement ont toutes leur introduction
@@ -378,7 +379,7 @@ l'artiste principal, chaque crédité est relié.
 | ouverture de l'article | Wikipédia (CC BY-SA), via l'identifiant Wikidata du dump | — |
 | artistes similaires (même public et même courant), généalogie (courants, faits écrits), groupes et projets | musilogy, datés de leurs dumps et relevés | reproductibles, avec leur provenance |
 
-Un artiste plus récent que le dump épinglé n'a pas de faits jusqu'au suivant (§7, étape 4).
+Un artiste plus récent que le dump épinglé n'a pas de faits jusqu'au suivant (§7, étape 3).
 
 ### 4.6 Une page artiste qui répond toujours
 

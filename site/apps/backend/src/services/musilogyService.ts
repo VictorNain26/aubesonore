@@ -437,6 +437,8 @@ export interface ArtistIdentity {
   firstCover: ArtistCover | null;
   /** The Deezer artist the dump declares, when it declares exactly one. */
   deezerId: string | null;
+  /** How many albums and EPs the page shows. */
+  records: number;
 }
 
 export const identityCache = new TtlCache<ArtistIdentity | null>(ONE_HOUR_MS);
@@ -462,6 +464,7 @@ export function getArtistIdentity(mbid: string): Promise<ArtistIdentity | null> 
           wikidataId: wikidataIdOf(urls),
           firstCover: firstCoverOf(releases ?? []),
           deezerId: deezerIdOf(urls),
+          records: releases?.length ?? 0,
         }
       : null;
     identityCache.set(mbid, identity);
