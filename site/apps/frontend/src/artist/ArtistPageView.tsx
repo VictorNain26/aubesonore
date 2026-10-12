@@ -190,15 +190,15 @@ function Profile({
     <>
       {/* The sections' 4/8 grid: the portrait in the title column, who they are beside it. */}
       <div className="px-page wide:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] wide:gap-16 grid gap-6 pt-10 md:pt-16">
-        {/* Its entrance on a wrapper: an animation filled forward would hold the hover's lift. */}
-        <div className="lift-in wide:w-full w-40 md:w-64">
+        {/* Its entrance on a wrapper: an animation filled forward would hold the hover's lift.
+            Beside the text, its foot on the text's foot, whatever its shape. */}
+        <div className="lift-in portrait-room wide:self-end">
           <ArtistPortrait
             images={profile.images}
             name={profile.name}
             seed={profile.mbid ?? profile.name}
-            // w-40 on phones, w-64 on upright tablets; the 4/12 title column where it is wide.
-            sizes="(min-width: 64rem) 33vw, (min-width: 48rem) and (orientation: landscape) 33vw, (min-width: 48rem) 16rem, 10rem"
-            className="aspect-square w-full"
+            // The 4/12 title column where it is wide; above the name, up to the line's width.
+            sizes="(min-width: 64rem) 33vw, (min-width: 48rem) and (orientation: landscape) 33vw, 100vw"
           />
         </div>
         {/* Who first, in three lines: what they are, their name, their music; then a few words,

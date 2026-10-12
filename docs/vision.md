@@ -211,8 +211,11 @@ album, ou du premier EP (Cover Art Archive), sinon l'aube de l'artiste, que le s
 son identifiant : toujours la même pour lui. L'une ou l'autre image existe pour 95,7 % des artistes
 joués et 60,3 % de 300 artistes tirés parmi les proches que les pages montrent (2026-10-11) ; la
 photo Deezer, 96,2 % des joués, est partie avec sa licence d'usage privé. Chaque page a une image,
-toutes ne sont pas des photos. Un clic ouvre l'image en grand ; une photo y porte le crédit que sa
-licence demande (auteur, licence, page source, chacun un lien), et un petit « © » sur la vignette
+toutes ne sont pas des photos. L'image garde sa forme, jamais recadrée : à la largeur de sa colonne,
+une photo haute plus étroite et un panorama plus bas, comme les encyclopédies présentent les leurs
+(Wikipédia, MOS:IMAGES ; AllMusic, Discogs), où seuls les services d'écoute recadrent, sur des
+images faites pour l'emplacement (2026-10-12). Un clic ouvre l'image en grand ; une photo y porte
+le crédit que sa licence demande (auteur, licence, page source, chacun un lien), et un petit « © » sur la vignette
 dit qu'elle en a un : la licence demande un crédit « reasonable to the medium », sans fixer sa place
 (CC BY-SA 2.0 §4c ; Creative Commons, *Recommended practices for attribution*). Une photo ne sert
 pas d'image de partage, qu'un aperçu de lien montrerait sans son crédit.

@@ -71,22 +71,42 @@ function altOf(image: ArtistImage, name: string): string {
     : m.artist_portrait_alt({ name });
 }
 
+interface Size {
+  width: number;
+  height: number;
+}
+
+const SQUARE: Size = { width: 1, height: 1 };
+
+/** A photo's own size, a cover's square; none when Commons gave no size. */
+function sizeOf(image: ArtistImage): Size | null {
+  if (image.kind === 'cover') return SQUARE;
+  return image.width && image.height ? { width: image.width, height: image.height } : null;
+}
+
+/** At its own shape, as wide as its room and no taller than its cap (`portrait-room`). */
+function shapeOf({ width, height }: Size): CSSProperties {
+  return {
+    aspectRatio: `${width} / ${height}`,
+    width: `min(100%, var(--portrait-cap) * ${width} / ${height})`,
+  };
+}
+
 export interface ArtistPortraitProps {
   /** The images to try, the first first (ArtistProfile.images). */
   images: readonly ArtistImage[];
   name: string;
   /** What places the artist's dawn: its MBID, else its name. */
   seed: string;
-  className?: string;
   sizes?: string;
 }
 
 /**
- * The artist's image, opening large on a click, where a photo's credit stands
- * (docs/vision.md §2.5); a small © on the photo says it has one. An image that
- * fails to load gives way to the next; past the last, the artist's dawn.
+ * The artist's image at its own shape, never cut, inside a `portrait-room`; opening large on a
+ * click, where a photo's credit stands (docs/vision.md §2.5); a small © on the photo says it has
+ * one. An image that fails to load gives way to the next; past the last, the artist's dawn.
  */
-export function ArtistPortrait({ images, name, seed, className, sizes }: ArtistPortraitProps) {
+export function ArtistPortrait({ images, name, seed, sizes }: ArtistPortraitProps) {
   const [failed, setFailed] = useState<readonly string[]>([]);
   const usable = images.find((image) => !failed.includes(image.url)) ?? null;
 
@@ -95,11 +115,13 @@ export function ArtistPortrait({ images, name, seed, className, sizes }: ArtistP
       <div
         aria-hidden="true"
         data-testid="artist-dawn"
-        className={cn('artist-dawn rounded-sm', className)}
-        style={dawnOf(seed)}
+        className="artist-dawn rounded-sm"
+        style={{ ...shapeOf(SQUARE), ...dawnOf(seed) }}
       />
     );
   }
+
+  const size = sizeOf(usable);
 
   return (
     <OpenLarge
@@ -112,7 +134,8 @@ export function ArtistPortrait({ images, name, seed, className, sizes }: ArtistP
         ...(usable.kind === 'photo' ? { width: usable.width, height: usable.height } : {}),
       }}
       caption={<Caption image={usable} />}
-      className={cn('bg-surface-raised relative overflow-hidden', className)}
+      className="bg-surface-raised relative overflow-hidden"
+      style={shapeOf(size ?? SQUARE)}
     >
       <img
         src={artworkSrc(usable.url)}
@@ -122,7 +145,8 @@ export function ArtistPortrait({ images, name, seed, className, sizes }: ArtistP
         referrerPolicy="no-referrer"
         decoding="async"
         fetchPriority="high"
-        className="size-full object-cover"
+        // Its own shape, where it is known; else whole inside a square.
+        className={cn('size-full', size === null ? 'object-contain' : 'object-cover')}
         onError={() => setFailed((before) => [...before, usable.url])}
       />
       {usable.kind === 'photo' ? (

@@ -47,6 +47,24 @@ describe('ArtistPortrait', () => {
     );
   });
 
+  it('shows an image at its own shape, never cut: a photo its own, a cover square', () => {
+    const tall: ArtistImage = { ...PHOTO, width: 1280, height: 1920 };
+    const { rerender } = render(<ArtistPortrait images={[tall]} name="Can" seed={SEED} />);
+    const shown = () => within(screen.getByRole('button')).getByRole('presentation');
+    expect(screen.getByRole('button').style.aspectRatio).toBe('1280 / 1920');
+    expect(shown().className).toContain('object-cover');
+
+    rerender(<ArtistPortrait images={[COVER]} name="Neu!" seed={SEED} />);
+    expect(screen.getByRole('button').style.aspectRatio).toBe('1 / 1');
+
+    // Commons gave no size: the whole photo inside a square.
+    rerender(
+      <ArtistPortrait images={[{ ...PHOTO, width: null, height: null }]} name="Can" seed={SEED} />
+    );
+    expect(screen.getByRole('button').style.aspectRatio).toBe('1 / 1');
+    expect(shown().className).toContain('object-contain');
+  });
+
   it('marks a photo, and only a photo, with a small ©', () => {
     const { rerender } = render(<ArtistPortrait images={[PHOTO]} name="Can" seed={SEED} />);
     expect(screen.getByText('©')).toBeTruthy();
