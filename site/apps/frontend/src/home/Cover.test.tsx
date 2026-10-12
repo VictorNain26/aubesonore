@@ -1,10 +1,22 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { Cover } from './Cover';
 
 const APPLE =
   'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/25/94/a12594ce/00077778777656.jpg/600x600bb.jpg';
+
+const ART =
+  'https://coverartarchive.org/release-group/00b3e683-47fa-3302-add0-4c0cecc5224e/front-250';
+
+// jsdom loads no image: say whether one is still loading.
+function loading(still: boolean) {
+  vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(!still);
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('Cover', () => {
   it('lets the browser pick the size a resizing host serves for its layout width', () => {
@@ -27,5 +39,33 @@ describe('Cover', () => {
     );
 
     expect(screen.getByRole('img', { name: 'Pochette' })).not.toHaveAttribute('srcset');
+  });
+
+  it('fades a cover in once it has loaded, when it mounts still loading', () => {
+    loading(true);
+    render(<Cover src={ART} alt="Pochette" seed="seed" />);
+    const image = screen.getByRole('img', { name: 'Pochette' });
+
+    expect(image.className).toContain('opacity-0');
+    fireEvent.load(image);
+    expect(image.className).not.toContain('opacity-0');
+  });
+
+  it('never hides a cover already there, nor a priority one the server drew', () => {
+    loading(false);
+    const { unmount } = render(<Cover src={ART} alt="Pochette" seed="seed" />);
+    expect(screen.getByRole('img', { name: 'Pochette' }).className).not.toContain('opacity-0');
+    unmount();
+
+    loading(true);
+    render(<Cover src={ART} alt="Pochette" seed="seed" priority />);
+    expect(screen.getByRole('img', { name: 'Pochette' }).className).not.toContain('opacity-0');
+  });
+
+  it('asks this site for a Cover Art Archive cover', () => {
+    render(<Cover src={ART} alt="Pochette" seed="seed" />);
+    expect(screen.getByRole('img', { name: 'Pochette' }).getAttribute('src')).toBe(
+      '/caa/250/00b3e683-47fa-3302-add0-4c0cecc5224e.jpg'
+    );
   });
 });

@@ -38,8 +38,10 @@ function Record({ release }: { release: MusilogyRelease }) {
         }
         triggerClassName="w-full"
         className="aspect-square w-full"
-        // Two columns on a phone, three from 40 rem, four from 64 rem, in the section's 8 of 12.
-        sizes="(min-width: 64rem) 14rem, (min-width: 40rem) 30vw, 45vw"
+        // Two columns on a phone, three from 40 rem, four from 64 rem; a landscape tablet lays the
+        // grid in the section's 8 columns of 12. Measured from the gutters and gaps, so a 3x phone
+        // takes the 500 px file rather than the 1200.
+        sizes="(min-width: 64rem) 14rem, (min-width: 48rem) and (orientation: landscape) calc((100vw - 9rem) * 2 / 9), (min-width: 40rem) calc((100vw - 8rem) / 3), calc((100vw - 4.5rem) / 2)"
       />
       <span className="flex min-w-0 flex-col">
         <span className="text-ui break-words">{release.title}</span>

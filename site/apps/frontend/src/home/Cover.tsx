@@ -23,7 +23,7 @@ export interface CoverProps {
 export function Cover({ src, alt, seed, className, priority = false, sizes, onError }: CoverProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const usable = !isDefaultArtwork(src) && src !== failedSrc;
-  const { watch, fadeClass, onLoad } = useFadeIn(src);
+  const { watch, fadeClass, onLoad } = useFadeIn(!priority);
 
   return (
     <div
@@ -58,25 +58,27 @@ export function Cover({ src, alt, seed, className, priority = false, sizes, onEr
 }
 
 /**
- * A cover that arrives after the page fades in rather than drops in. The server's render shows it
- * at once (an image is never hidden before the script runs); once mounted, one still loading waits
- * unseen over the placeholder, then appears. Under prefers-reduced-motion it simply appears.
+ * A cover that arrives after the page fades in rather than drops in. Only when it mounts still
+ * loading: the server's render shows it at once (an image is never hidden before the script
+ * runs), and a cover whose source changes keeps showing the old one until the new arrives. Off for
+ * a priority image, which the server already drew (the hero, the portrait). Under
+ * prefers-reduced-motion it simply appears.
  */
-export function useFadeIn(src: string | null | undefined) {
-  const [waiting, setWaiting] = useState<string | null>(null);
-  // A callback ref: it sees the image once it is in the page, without reading a ref while drawing.
+export function useFadeIn(enabled = true) {
+  const [waiting, setWaiting] = useState(false);
+  // A callback ref, the same function every time: React calls it once, when the image mounts.
   const watch = useCallback(
     (image: HTMLImageElement | null) => {
-      if (image && !image.complete) setWaiting(src ?? null);
+      if (enabled && image && !image.complete) setWaiting(true);
     },
-    [src]
+    [enabled]
   );
   return {
     watch,
     fadeClass: cn(
       'motion-safe:ease-out-quart motion-safe:transition-opacity motion-safe:duration-300',
-      waiting !== null && waiting === (src ?? null) && 'opacity-0'
+      waiting && 'opacity-0'
     ),
-    onLoad: () => setWaiting(null),
+    onLoad: () => setWaiting(false),
   };
 }

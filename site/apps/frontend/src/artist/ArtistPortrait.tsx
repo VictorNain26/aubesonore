@@ -3,7 +3,6 @@ import type { ArtistImage } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
 import { cn } from '@/lib/utils';
 import { artworkSrc, artworkSrcSet } from '../lib/artwork';
-import { useFadeIn } from '../home/Cover';
 import { ARTIST_LINK } from '../home/styles';
 import { OpenLarge } from '../design/organisms/OpenLarge';
 
@@ -90,7 +89,6 @@ export interface ArtistPortraitProps {
 export function ArtistPortrait({ images, name, seed, className, sizes }: ArtistPortraitProps) {
   const [failed, setFailed] = useState<readonly string[]>([]);
   const usable = images.find((image) => !failed.includes(image.url)) ?? null;
-  const { watch, fadeClass, onLoad } = useFadeIn(usable?.url);
 
   if (!usable) {
     return (
@@ -117,7 +115,6 @@ export function ArtistPortrait({ images, name, seed, className, sizes }: ArtistP
       className={cn('bg-surface-raised relative overflow-hidden', className)}
     >
       <img
-        ref={watch}
         src={artworkSrc(usable.url)}
         srcSet={sizes ? artworkSrcSet(usable.url) : undefined}
         sizes={sizes}
@@ -125,8 +122,7 @@ export function ArtistPortrait({ images, name, seed, className, sizes }: ArtistP
         referrerPolicy="no-referrer"
         decoding="async"
         fetchPriority="high"
-        className={cn('size-full object-cover', fadeClass)}
-        onLoad={onLoad}
+        className="size-full object-cover"
         onError={() => setFailed((before) => [...before, usable.url])}
       />
       {usable.kind === 'photo' ? (
