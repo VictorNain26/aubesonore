@@ -16,7 +16,8 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
-    "test": "bun test --isolate",
+    "test": "bun test --isolate --path-ignore-patterns='**/*.db.test.ts'",
+    "test:db": "bun test --isolate .db.test.ts",
     "test:coverage": "bun test --isolate --coverage",
     "clean": "rm -rf dist"
   },
