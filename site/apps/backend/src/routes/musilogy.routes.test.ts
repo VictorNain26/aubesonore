@@ -34,7 +34,11 @@ void mock.module('../db/index', () => ({
   db: {
     execute: answer,
     select: () => ({
-      from: () => ({ innerJoin: () => ({ where: () => Promise.resolve(pageRows) }) }),
+      // The played artists' slugs (innerJoin), and the discovered pages' slugs (where).
+      from: () => ({
+        innerJoin: () => ({ where: () => Promise.resolve(pageRows) }),
+        where: () => Promise.resolve([]),
+      }),
     }),
   },
 }));
@@ -131,6 +135,7 @@ describe('GET /api/musilogy/artist/:mbid', () => {
     expect(body.neighbours[1]).toMatchObject({
       name: 'David Bowie',
       played: { id: 'a-bowie', slug: 'david-bowie' },
+      slug: null,
       term: 'Glam',
       ended: false,
     });

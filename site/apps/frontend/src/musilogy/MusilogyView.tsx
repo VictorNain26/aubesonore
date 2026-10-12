@@ -342,7 +342,7 @@ function SearchHitRow({ hit }: { hit: MusilogySearchHit }) {
     >
       <span className="flex min-w-0 flex-col gap-0.5">
         <Link
-          to={pagePathOf({ ...hit, played: null })}
+          to={pagePathOf({ ...hit, played: null, slug: null })}
           state={DISCOVERY}
           className={cn(ARTIST_LINK, STRETCHED, 'text-row self-start truncate underline-offset-4')}
         >

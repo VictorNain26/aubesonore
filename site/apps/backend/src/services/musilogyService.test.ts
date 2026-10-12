@@ -32,7 +32,11 @@ void mock.module('../db/index', () => ({
   db: {
     execute: answer,
     select: () => ({
-      from: () => ({ innerJoin: () => ({ where: () => Promise.resolve([]) }) }),
+      // The played artists' slugs (innerJoin), and the discovered pages' slugs (where).
+      from: () => ({
+        innerJoin: () => ({ where: () => Promise.resolve([]) }),
+        where: () => Promise.resolve([]),
+      }),
     }),
   },
 }));

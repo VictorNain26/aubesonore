@@ -123,6 +123,16 @@ interface SearchRow extends Record<string, unknown> {
   y0: number | null;
 }
 
+/** The slugs pages never played were given at the indexing threshold (artist_slug.mbid). */
+async function slugsByMbid(mbids: string[]): Promise<Map<string, string>> {
+  if (mbids.length === 0) return new Map();
+  const rows = await db
+    .select({ slug: artistSlug.slug, mbid: artistSlug.mbid })
+    .from(artistSlug)
+    .where(inArray(artistSlug.mbid, [...new Set(mbids)]));
+  return new Map(rows.flatMap((r) => (r.mbid ? [[r.mbid, r.slug] as const] : [])));
+}
+
 async function playedByMbid(mbids: string[]): Promise<Map<string, ArtistPageRef>> {
   if (mbids.length === 0) return new Map();
   const rows = await db
@@ -181,12 +191,13 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
     return null;
   }
 
-  const played = await playedByMbid([
+  const linked = [
     card.mbid,
     ...[neighbourRows, bandRows, projectRows, nameRows].flatMap((rows) =>
       (rows ?? []).map((row) => row.mbid)
     ),
-  ]);
+  ];
+  const [played, slugs] = await Promise.all([playedByMbid(linked), slugsByMbid(linked)]);
   const ref = (
     mbidOf: string,
     name: string,
@@ -198,6 +209,7 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
     disambiguation,
     y0,
     played: played.get(mbidOf) ?? null,
+    slug: slugs.get(mbidOf) ?? null,
   });
 
   const neighbour = (row: NeighbourRow): MusilogyNeighbour => ({

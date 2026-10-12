@@ -420,7 +420,7 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 | Surface | Route | Indexée | Geste |
 |---|---|---|---|
 | Accueil | `/`, `/en` | oui, pré-rendue | Écouter |
-| Page artiste | `/artiste/:slug` (`/en/artist/:slug`) ; `/artiste/:mbid` tant que l'artiste n'a pas de slug ; un slug par artiste, jamais réattribué | au-delà d'un seuil de contenu (§2.4), décidé par le serveur | Savoir, Découvrir |
+| Page artiste | `/artiste/:slug` (`/en/artist/:slug`) : le slug d'un artiste joué, ou celui qu'une page jamais jouée reçoit en passant le seuil d'indexation ; `/artiste/:mbid` pour les autres, et en 301 vers le slug quand il existe ; un slug par page, jamais réattribué | au-delà d'un seuil de contenu (§2.4), décidé par le serveur | Savoir, Découvrir |
 | Page de courant | à créer (§2.3) | quand elle est riche | Comprendre, Découvrir |
 | Musilogy | `/musilogy` (recherche) ; `/musilogy/:mbid/…` renvoie en 301 à la page artiste | non | Découvrir |
 | Connexion | `/connexion`, `/en/sign-in` | non | Garder |
@@ -432,14 +432,12 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 2. **Statut officiel incomplet** : la page écarte les disques que MusicBrainz ne montre pas
    comme l'œuvre de l'artiste (476 des 4 980 disques des artistes joués, 2026-10-06) ; seuls les
    artistes d'au moins 500 auditeurs sont interrogés.
-3. **Les pages d'artistes jamais joués qui passent le seuil restent à leur MBID** :
-   `/artiste/<mbid>`, sans slug.
-4. **Identité incomplète** : 52 des 397 artistes joués n'ont pas de MBID (2026-10-06) ; la plupart
+3. **Identité incomplète** : 52 des 397 artistes joués n'ont pas de MBID (2026-10-06) ; la plupart
    n'ont aucun lien vers Deezer dans MusicBrainz, ce qui se corrige à la source. 22 des 91 titres
    gardés ne retrouvent ni leur passage ni leur titre exact chez Deezer.
-5. **Les featurings ne relient que l'artiste principal** (§4.4).
-6. **Licences à régulariser** : les pochettes Deezer des titres (§2.5).
-7. **Aucune copie hors de la maison** (§4.7).
+4. **Les featurings ne relient que l'artiste principal** (§4.4).
+5. **Licences à régulariser** : les pochettes Deezer des titres (§2.5).
+6. **Aucune copie hors de la maison** (§4.7).
 
 ## 7. Feuille de route
 
@@ -457,8 +455,7 @@ l'historique git.
    parcouru, essayés sur ordinateur et sur téléphone.
 3. **Les données à jour** : un dump MusicBrainz plus récent, le dump Discogs mensuel, les écoutes
    et les relevés rapides refaits par un timer.
-4. **Un slug pour chaque page qui passe le seuil d'indexation** (écart 3).
-5. **À décider sur mesure** : relier plus d'artistes à Discogs par les sorties que MusicBrainz y
+4. **À décider sur mesure** : relier plus d'artistes à Discogs par les sorties que MusicBrainz y
    relie (adopté seulement à 99 % de justesse mesurée) ; les liens écrits entre artistes (§2.3) ;
    les liens d'œuvre (featurings, remixes, producteurs) ; l'audio pour les artistes de la
    bibliothèque.

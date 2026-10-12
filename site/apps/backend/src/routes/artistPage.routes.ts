@@ -4,10 +4,9 @@ import { env } from '../config/env';
 import { logger } from '../lib/logger';
 import { checkRate, getClientIp, tooManyRequests } from '../lib/rateLimit';
 import { getArtistProfile } from '../services/artistProfileService';
-import { parseMbid } from '../validators/musilogyValidator';
 import { getMusilogyArtist, MusilogyUnavailable } from '../services/musilogyService';
 import { listArtistSlugs, slugOfArtist } from '../services/artistPages';
-import { isDiscovered, listDiscovered } from '../services/discoveredArtists';
+import { isDiscovered, listDiscoveredPages } from '../services/discoveredArtists';
 import { renderArtistShell, type RenderedPage } from '../services/templates/artistShell';
 import { isValidArtistId, isValidArtistSlug } from '../validators/artistValidator';
 
@@ -132,8 +131,10 @@ async function handle(
     set.status = 404;
     return html;
   }
-  // An artist the antenna played has one address, its slug.
-  if (parseMbid(params.slug) && profile.played) {
+  // A page has one address: a played artist's slug, the slug a page never played was given at
+  // the indexing threshold, else its MBID. Its MBID, or an old slug of an artist played since,
+  // leads there.
+  if (profile.slug !== params.slug) {
     set.status = 301;
     set.headers.location = artistPagePath(locale, profile.slug);
     return '';
@@ -177,7 +178,7 @@ ${entries.join('\n')}
 `;
 }
 
-/** A sitemap of the pages `list` gives, at their slug or, never played, their MBID. */
+/** A sitemap of the pages `list` gives, at their address: their slug, or their MBID without one. */
 function sitemapOf(list: () => string[] | Promise<string[]>) {
   return async ({ request, set }: { request: Request; set: ResponseSet }) => {
     if (!checkRate('artistSitemap', getClientIp(request.headers), PAGE_LIMIT, PAGE_WINDOW_MS)) {
@@ -223,7 +224,7 @@ async function english(context: HandlerContext): Promise<string> {
 export const artistPageRoutes = new Elysia()
   .get('/sitemap-artists.xml', sitemapOf(listArtistSlugs))
   // Its own file: Search Console reports how these pages fare apart from the played ones.
-  .get('/sitemap-artists-discovered.xml', sitemapOf(listDiscovered))
+  .get('/sitemap-artists-discovered.xml', sitemapOf(listDiscoveredPages))
   .get('/artiste/:slug', (context) => handle('fr', context))
   .get('/en/artist/:slug', english)
   .get('/en/artist/:slug/:old', ({ params, set }) => legacy('en', params.slug, set))

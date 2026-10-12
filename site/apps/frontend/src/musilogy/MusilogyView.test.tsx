@@ -16,6 +16,7 @@ function neighbour(n: number, overrides: Partial<MusilogyNeighbour> = {}): Musil
     disambiguation: null,
     y0: 1960 + n,
     played: null,
+    slug: null,
     yEnd: null,
     ended: false,
     rank: n + 1,
@@ -32,6 +33,7 @@ function artist(overrides: Partial<MusilogyArtist> = {}): MusilogyArtist {
       disambiguation: 'British glam rock band',
       y0: 1967,
       played: null,
+      slug: null,
       kind: 'group',
       y0Source: 'declared',
       yEnd: 1977,
@@ -97,6 +99,21 @@ describe('MusilogySections', () => {
     expect(screen.getByRole('link', { name: 'David Bowie' })).toHaveAttribute(
       'href',
       '/artiste/david-bowie'
+    );
+  });
+
+  it('leads to the slug a page never played was given, else to its MBID', () => {
+    const named = neighbour(40, { name: 'Gorillaz', slug: 'gorillaz' });
+    const unnamed = neighbour(41, { name: 'Unnamed' });
+    show(artist({ neighbours: [named, unnamed] }));
+
+    expect(screen.getByRole('link', { name: 'Gorillaz' })).toHaveAttribute(
+      'href',
+      '/artiste/gorillaz'
+    );
+    expect(screen.getByRole('link', { name: 'Unnamed' })).toHaveAttribute(
+      'href',
+      `/artiste/${unnamed.mbid}`
     );
   });
 

@@ -204,6 +204,8 @@ export interface MusilogyArtistRef {
   /** The start of the career: declared, else the first album's year. */
   y0: number | null;
   played: ArtistPageRef | null;
+  /** Never played, the slug its page was given at the indexing threshold; else null. */
+  slug: string | null;
 }
 
 export interface MusilogyCard extends MusilogyArtistRef {

@@ -9,8 +9,9 @@ import {
   index,
   uniqueIndex,
   customType,
+  check,
 } from 'drizzle-orm/pg-core';
-import type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
+import { sql, type InferSelectModel, type InferInsertModel } from 'drizzle-orm';
 import type { ArtistPhoto, ArtistSummary, PlatformLinks } from '@aubesonore/shared-types/client';
 import type { StatsState } from '@aubesonore/shared-types/stats';
 
@@ -238,14 +239,29 @@ export const artist = pgTable(
 // ARTIST_SLUG TABLE — the name of each artist page in its URL
 // ─────────────────────────────────────────────
 // A slug, once given, never changes nor goes to another artist: a page shared
-// or indexed keeps its address. A homonym takes the next free suffix.
-export const artistSlug = pgTable('artist_slug', {
-  slug: text('slug').primaryKey(),
-  artistId: text('artist_id')
-    .notNull()
-    .unique('artist_slug_artist_id_unique')
-    .references(() => artist.id, { onDelete: 'cascade' }),
-});
+// or indexed keeps its address. A homonym takes the next free suffix. A slug
+// names a played artist (artist_id) or the page of an artist never played that
+// passed the indexing threshold (mbid, services/discoveredArtists.ts): one
+// namespace for both. Once such an artist is played, its old slug leads to the
+// played page (a 301), so no address breaks.
+export const artistSlug = pgTable(
+  'artist_slug',
+  {
+    slug: text('slug').primaryKey(),
+    artistId: text('artist_id')
+      .unique('artist_slug_artist_id_unique')
+      .references(() => artist.id, { onDelete: 'cascade' }),
+    mbid: text('mbid'),
+  },
+  (table) => ({
+    // An index, as migration 0020 creates it.
+    mbidUnique: uniqueIndex('artist_slug_mbid_unique').on(table.mbid),
+    oneOwner: check(
+      'artist_slug_one_owner',
+      sql`num_nonnulls(${table.artistId}, ${table.mbid}) = 1`
+    ),
+  })
+);
 
 // ─────────────────────────────────────────────
 // DISCOVERED_ARTIST TABLE — the unplayed pages offered to search engines

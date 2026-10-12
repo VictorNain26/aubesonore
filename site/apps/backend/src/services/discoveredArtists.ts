@@ -2,7 +2,7 @@ import type { MusilogyArtist, MusilogyArtistRef } from '@aubesonore/shared-types
 import { db } from '../db';
 import { discoveredArtist } from '../db/schema';
 import { logger } from '../lib/logger';
-import { listPlayedMbids } from './artistPages';
+import { claimDiscoveredSlug, discoveredSlugs, listPlayedMbids } from './artistPages';
 import { getArtistIdentity, getMusilogyArtist } from './musilogyService';
 
 /**
@@ -84,7 +84,34 @@ export async function refreshDiscovered(): Promise<void> {
       await tx.insert(discoveredArtist).values([...next].map((mbid) => ({ mbid })));
   });
   discovered = next;
-  logger.info('discoveredArtists.refreshed', { linked: links.size, discovered: next.size });
+  const named = await nameNewPages(next);
+  logger.info('discoveredArtists.refreshed', {
+    linked: links.size,
+    discovered: next.size,
+    named,
+  });
+}
+
+/**
+ * Gives a slug to each discovered page that has none yet: its address from then on, kept even if
+ * it later falls below the threshold. A failure leaves the page at its MBID until the next run.
+ */
+async function nameNewPages(pages: ReadonlySet<string>): Promise<number> {
+  const named = await discoveredSlugs([...pages]);
+  let count = 0;
+  for (const mbid of pages) {
+    if (named.has(mbid)) continue;
+    const identity = await getArtistIdentity(mbid);
+    if (identity && (await claimDiscoveredSlug(mbid, identity.name))) count += 1;
+  }
+  return count;
+}
+
+/** The discovered pages' addresses, sorted: their slug, else their MBID. */
+export async function listDiscoveredPages(): Promise<string[]> {
+  const mbids = listDiscovered();
+  const slugs = await discoveredSlugs(mbids);
+  return mbids.map((mbid) => slugs.get(mbid) ?? mbid).sort();
 }
 
 /** The set the last run stored: what a restart serves until the next run. */
