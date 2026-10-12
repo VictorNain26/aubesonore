@@ -1,7 +1,7 @@
 import { Elysia } from 'elysia';
 import { validateBody } from '../lib/validate';
 import { hasError } from '../lib/routeHelpers';
-import { likeTrackSchema, checkLikedSchema } from '../validators/trackValidator';
+import { likeTrackSchema } from '../validators/trackValidator';
 import * as trackService from '../services/trackService';
 import type { LikedTrackListItem } from '../services/trackService';
 import { auth } from '../lib/auth/index';
@@ -107,93 +107,6 @@ export const trackRoutes = new Elysia({ prefix: '/api/track' })
     }
 
     const result = await trackService.unlikeTrack({ user, id: trackId });
-    if (result.error) {
-      set.status = result.status || 400;
-    }
-    return result;
-  })
-
-  // ─────────────────────────────────────────────
-  // POST /api/track/check-liked - Vérifier si un morceau est liké
-  // ─────────────────────────────────────────────
-  .post(
-    '/check-liked',
-    async ({
-      user,
-      body,
-      set,
-    }): Promise<{ liked: boolean; track?: LikedTrack } | { error: string }> => {
-      if (!user) {
-        set.status = 401;
-        return { error: 'Non authentifié' };
-      }
-
-      const data = validateBody(checkLikedSchema, body);
-      if (hasError(data)) {
-        set.status = 400;
-        return data;
-      }
-
-      const track = await trackService.getLikedTrackByTitleArtist({
-        user,
-        title: data.title,
-        artist: data.artist,
-      });
-
-      if (track) {
-        return { liked: true, track };
-      }
-      return { liked: false };
-    }
-  )
-
-  // ─────────────────────────────────────────────
-  // POST /api/track/refresh-all-links - Rafraîchir tous les liens
-  // ─────────────────────────────────────────────
-  .post(
-    '/refresh-all-links',
-    async ({ user, set }): Promise<{ message: string; updated: number } | { error: string }> => {
-      if (!user) {
-        set.status = 401;
-        return { error: 'Non authentifié' };
-      }
-
-      const result = await trackService.refreshAllLinks({ user });
-      if (result.status && result.error) {
-        set.status = result.status;
-        return { error: result.error };
-      }
-      return { message: result.message, updated: result.updated };
-    }
-  )
-
-  // ─────────────────────────────────────────────
-  // POST /api/track/:trackId/refresh-links - Rafraîchir les liens Songlink
-  // ─────────────────────────────────────────────
-  .post('/:trackId/refresh-links', async ({ user, params, set }): Promise<ServiceResponse> => {
-    if (!user) {
-      set.status = 401;
-      return { error: 'Non authentifié' };
-    }
-
-    if (
-      !checkRate(
-        'track-mutation',
-        `user:${user.id}`,
-        TRACK_MUTATION_LIMIT,
-        TRACK_MUTATION_WINDOW_MS
-      )
-    ) {
-      return tooManyRequests(set);
-    }
-
-    const { trackId } = params;
-    if (!trackId || typeof trackId !== 'string') {
-      set.status = 400;
-      return { error: 'ID invalide' };
-    }
-
-    const result = await trackService.refreshTrackLinks({ user, id: trackId });
     if (result.error) {
       set.status = result.status || 400;
     }
