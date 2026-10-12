@@ -148,7 +148,9 @@ export function ArtistPortrait({ images, name, seed }: ArtistPortraitProps) {
         ...(usable.kind === 'photo' ? { width: usable.width, height: usable.height } : {}),
       }}
       caption={<Caption image={usable} />}
-      className="bg-surface-raised relative overflow-hidden"
+      // No ground of its own: one would edge the image with a hairline at a fractional width,
+      // and band a cover that is not quite square.
+      className="relative overflow-hidden"
       style={shapeOf(size ?? SQUARE)}
     >
       <img
