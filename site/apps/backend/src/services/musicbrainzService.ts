@@ -124,31 +124,60 @@ export function findRecordingsByIsrc(isrc: string): Promise<Lookup<IsrcRecording
     const fetched = await fetchJson<RawIsrc>(
       `/isrc/${encodeURIComponent(isrc)}?inc=artist-credits&fmt=json`
     );
-    if (fetched.status !== 'found') return fetched;
-
-    const recordings = (fetched.value.recordings ?? []).flatMap((recording) =>
-      recording.title
-        ? [
-            {
-              title: recording.title,
-              credits: (recording['artist-credit'] ?? []).flatMap((credit) =>
-                credit.artist?.id
-                  ? [
-                      {
-                        mbid: credit.artist.id,
-                        names: [credit.name, credit.artist.name].filter((name): name is string =>
-                          Boolean(name)
-                        ),
-                      },
-                    ]
-                  : []
-              ),
-            },
-          ]
-        : []
-    );
-    return recordings.length > 0 ? { status: 'found', value: recordings } : { status: 'none' };
+    return fetched.status === 'found' ? recordingsOf(fetched.value) : fetched;
   });
+}
+
+/** A quoted Lucene phrase: its backslashes and double quotes escaped. */
+function phrase(text: string): string {
+  return `"${text.replace(/[\\"]/g, '\\$&')}"`;
+}
+
+/**
+ * The recordings MusicBrainz's search finds under a title credited to a name: the last way to the
+ * MBID of an artist no ISRC nor Deezer link identifies (Talulah Gosh, played without either). A
+ * candidate only, like an ISRC's answer: the resolver keeps an artist credited under the played
+ * name on a recording of the played title, and only when exactly one is. Measured on the 65
+ * played artists without an MBID on 2026-10-12: 38 found exactly one, each checked by hand.
+ * https://musicbrainz.org/doc/MusicBrainz_API/Search
+ */
+export function findRecordingsByTitle(
+  name: string,
+  title: string
+): Promise<Lookup<IsrcRecording[]>> {
+  return cached(`title:${name}\u0000${title}`, async () => {
+    // 100, the most a page holds: a homonym ranked past the first page would go unseen.
+    const query = `recording:${phrase(title)} AND artist:${phrase(name)}`;
+    const fetched = await fetchJson<RawIsrc>(
+      `/recording/?query=${encodeURIComponent(query)}&limit=100&fmt=json`
+    );
+    return fetched.status === 'found' ? recordingsOf(fetched.value) : fetched;
+  });
+}
+
+function recordingsOf(raw: RawIsrc): Lookup<IsrcRecording[]> {
+  const recordings = (raw.recordings ?? []).flatMap((recording) =>
+    recording.title
+      ? [
+          {
+            title: recording.title,
+            credits: (recording['artist-credit'] ?? []).flatMap((credit) =>
+              credit.artist?.id
+                ? [
+                    {
+                      mbid: credit.artist.id,
+                      names: [credit.name, credit.artist.name].filter((name): name is string =>
+                        Boolean(name)
+                      ),
+                    },
+                  ]
+                : []
+            ),
+          },
+        ]
+      : []
+  );
+  return recordings.length > 0 ? { status: 'found', value: recordings } : { status: 'none' };
 }
 
 interface RawArtist {

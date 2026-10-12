@@ -20,6 +20,9 @@ let insertConflict = false;
 let takenSlugs = new Set<string>();
 let claimedSlugs: Array<{ slug: string; artistId: string }> = [];
 let isrcLookup: Lookup<IsrcRecording[]> = { status: 'none' };
+// What MusicBrainz's search finds under the played title and name.
+let titleLookup: Lookup<IsrcRecording[]> = { status: 'none' };
+let titleSearches: Array<[string, string]> = [];
 let isrcLookups = 0;
 let declaredDeezerId: Lookup<string> = { status: 'none' };
 let deezerByIsrc: Lookup<DeezerIsrcTrack> = { status: 'none' };
@@ -117,6 +120,10 @@ const spies = [
   spyOn(musicbrainz, 'findDeezerIdByMbid').mockImplementation(() =>
     Promise.resolve(declaredDeezerId)
   ),
+  spyOn(musicbrainz, 'findRecordingsByTitle').mockImplementation((name, title) => {
+    titleSearches.push([name, title]);
+    return Promise.resolve(titleLookup);
+  }),
   spyOn(deezer, 'findTrackByIsrc').mockImplementation(() => Promise.resolve(deezerByIsrc)),
 ];
 
@@ -143,6 +150,8 @@ beforeEach(() => {
   adopted = [];
   isrcLookup = { status: 'none' };
   isrcLookups = 0;
+  titleLookup = { status: 'none' };
+  titleSearches = [];
   declaredDeezerId = { status: 'none' };
   deezerByIsrc = { status: 'none' };
   deletedProfiles = 0;
@@ -429,6 +438,86 @@ describe('identity by ISRC', () => {
       mbid: 'mb-dp',
       identifiedBy: 'isrc',
     });
+  });
+
+  it('finds the MBID through a recording of the played title credited to the name, as a last resort', async () => {
+    playRows = [{ title: 'Talulah Gosh', isrc: null }];
+    titleLookup = {
+      status: 'found',
+      value: [
+        recording('Talulah Gosh', ['mb-tg', 'Talulah Gosh']),
+        // Another song, and the same title under another artist: neither counts.
+        recording('Steaming Train', ['mb-other', 'Talulah Gosh']),
+        recording('Talulah Gosh', ['mb-cover', 'Someone Else']),
+      ],
+    };
+
+    await resolveArtist('Talulah Gosh');
+
+    expect(titleSearches).toEqual([['Talulah Gosh', 'Talulah Gosh']]);
+    expect(inserted[0]).toMatchObject({ mbid: 'mb-tg', identifiedBy: 'name' });
+  });
+
+  it('takes no MBID from a title two artists of that name recorded', async () => {
+    playRows = [{ title: 'How Did This Happen?!', isrc: null }];
+    titleLookup = {
+      status: 'found',
+      value: [
+        recording('How Did This Happen?!', ['mb-1', 'BODEGA']),
+        recording('How Did This Happen?!', ['mb-2', 'Bodega']),
+      ],
+    };
+
+    await resolveArtist('BODEGA');
+
+    expect(inserted[0]).toMatchObject({ mbid: null });
+  });
+
+  it('takes no MBID from a longer title, nor from an artist declaring another Deezer page', async () => {
+    playRows = [{ title: 'Home', isrc: null }];
+    titleLookup = { status: 'found', value: [recording('Home Again', ['mb-home', 'Home Band'])] };
+    await resolveArtist('Home Band');
+    expect(inserted[0]).toMatchObject({ mbid: null });
+
+    inserted = [];
+    playRows = [{ title: 'Testcard Girl', isrc: null }];
+    search = { status: 'match', artist: { id: '27', name: 'Talulah Gosh' } };
+    titleLookup = {
+      status: 'found',
+      value: [recording('Testcard Girl', ['mb-tg', 'Talulah Gosh'])],
+    };
+    declaredDeezerId = { status: 'found', value: '99' };
+    await resolveArtist('Talulah Gosh');
+    expect(inserted[0]).toMatchObject({ deezerId: '27', mbid: null });
+  });
+
+  it('searches a title without its version, and not at all once a link or an ISRC answered', async () => {
+    playRows = [{ title: 'Testcard Girl (2011 Remaster)', isrc: null }];
+    await resolveArtist('Talulah Gosh');
+    expect(titleSearches).toEqual([['Talulah Gosh', 'Testcard Girl']]);
+
+    titleSearches = [];
+    search = { status: 'match', artist: { id: '27', name: 'Daft Punk' } };
+    mbLookup = { status: 'found', value: 'mb-daft-punk' };
+    await resolveArtist('Daft Punk');
+    expect(titleSearches).toEqual([]);
+
+    titleSearches = [];
+    playRows = [{ title: 'One More Time', isrc: ISRC }];
+    // The ISRC's Deezer track credits the played name: a checked identity, without an MBID.
+    deezerByIsrc = deezerTrack('One More Time', ['27', 'Daft Punk']);
+    search = { status: 'none' };
+    mbLookup = { status: 'none' };
+    await resolveArtist('Daft Punk');
+    expect(titleSearches).toEqual([]);
+  });
+
+  it('writes nothing when the search fails, to try again at the next play', async () => {
+    playRows = [{ title: 'Talulah Gosh', isrc: null }];
+    titleLookup = { status: 'failed' };
+
+    expect(await resolveArtist('Talulah Gosh')).toBeNull();
+    expect(inserted).toEqual([]);
   });
 
   it('takes over the slug its page got at the indexing threshold, never played then', async () => {
