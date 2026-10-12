@@ -107,18 +107,20 @@ function world(): void {
   };
   stored = [];
   slugs = [{ slug: 'rich', mbid: 'someone-else' }];
+  richName = 'Rich';
 }
 
 const playedSpy = spyOn(pages, 'listPlayedMbids').mockImplementation(() => Promise.resolve(played));
 const pageSpy = spyOn(musilogy, 'getMusilogyArtist').mockImplementation((mbid: string) =>
   Promise.resolve(pagesByMbid[mbid] ?? null)
 );
+let richName = 'Rich';
 const identitySpy = spyOn(musilogy, 'getArtistIdentity').mockImplementation((mbid: string) =>
   Promise.resolve(
     mbid in wikidata
       ? ({
           wikidataId: wikidata[mbid],
-          name: mbid === 'rich' ? 'Rich' : 'Just Enough',
+          name: mbid === 'rich' ? richName : 'Just Enough',
           records: pagesByMbid[mbid]?.releases?.length ?? 0,
         } as Awaited<ReturnType<typeof musilogy.getArtistIdentity>>)
       : null
@@ -156,6 +158,15 @@ describe('discovered artists', () => {
     clear.mockRestore();
 
     expect(slugs).toContainEqual({ slug: 'rich-2', mbid: 'rich' });
+    expect(slugs).toContainEqual({ slug: 'just-enough', mbid: 'just-enough' });
+  });
+
+  it('leaves a page at its MBID when its name makes no slug the route takes, the others named', async () => {
+    richName = 'x'.repeat(201);
+
+    await refreshDiscovered();
+
+    expect(slugs.some((row) => row.mbid === 'rich')).toBe(false);
     expect(slugs).toContainEqual({ slug: 'just-enough', mbid: 'just-enough' });
   });
 

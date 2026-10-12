@@ -2,6 +2,7 @@ import type { ArtistPageRef } from '@aubesonore/shared-types/client';
 import { eq, inArray, isNotNull } from 'drizzle-orm';
 import { db } from '../db';
 import { artist, artistSlug } from '../db/schema';
+import { isValidArtistSlug } from '../validators/artistValidator';
 import { artistKey, slugify } from './artistResolver';
 
 /** Pairs each raw name with the page stored under its key; a name without one is left out. */
@@ -92,6 +93,8 @@ export async function claimDiscoveredSlug(mbid: string, name: string): Promise<s
   if (!base) return null;
   for (let n = 1; n <= MAX_SUFFIX; n += 1) {
     const slug = n === 1 ? base : `${base}-${n}`;
+    // One the page's route would refuse (too long): the page keeps its MBID.
+    if (!isValidArtistSlug(slug)) return null;
     const claimed = await db
       .insert(artistSlug)
       .values({ slug, mbid })

@@ -61,6 +61,25 @@ async function claimSlug(tx: Tx, artistId: string, base: string): Promise<string
   throw new Error(`artist slug: no free suffix for "${base}"`);
 }
 
+/**
+ * The slug the page of this artist was given when it passed the indexing threshold, never played
+ * then (discoveredArtists.ts): the played page takes it over, so the address already shared and
+ * indexed stays the artist's own rather than a 301 to a suffixed one.
+ */
+async function adoptDiscoveredSlug(
+  tx: Tx,
+  artistId: string,
+  mbid: string | null
+): Promise<string | null> {
+  if (!mbid) return null;
+  const adopted = await tx
+    .update(artistSlug)
+    .set({ artistId, mbid: null })
+    .where(and(eq(artistSlug.mbid, mbid), isNull(artistSlug.artistId)))
+    .returning({ slug: artistSlug.slug });
+  return adopted[0]?.slug ?? null;
+}
+
 type Resolved = { id: string; slug: string };
 type Identity = { id: string; deezerId: string | null; mbid: string | null };
 type Row = Resolved & Identity & { identifiedBy: 'isrc' | 'name' };
@@ -358,8 +377,11 @@ async function resolveOn(
       .onConflictDoNothing()
       .returning({ id: artist.id });
     if (!inserted[0]) return null;
+    const id = inserted[0].id;
+    const adopted = await adoptDiscoveredSlug(tx, id, identity.mbid);
+    if (adopted) return { id, slug: adopted };
     const base = slugify(identity.displayName) || normalizedName.replace(/ /g, '-');
-    return { id: inserted[0].id, slug: await claimSlug(tx, inserted[0].id, base) };
+    return { id, slug: await claimSlug(tx, id, base) };
   });
   if (created) return created;
   // Nothing inserted: a concurrent resolution of this name won the race, or

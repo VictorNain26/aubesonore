@@ -25,6 +25,9 @@ let declaredDeezerId: Lookup<string> = { status: 'none' };
 let deezerByIsrc: Lookup<DeezerIsrcTrack> = { status: 'none' };
 let deletedProfiles = 0;
 let updates: Array<Record<string, unknown>> = [];
+// The discovered page's slug a new played artist takes over (artistResolver.adoptDiscoveredSlug).
+let adoptable: Array<{ slug: string }> = [];
+let adopted: Array<Record<string, unknown>> = [];
 let updateError: Error | null = null;
 let mbLookup: Lookup<string> = { status: 'none' };
 let mbLookups = 0;
@@ -67,9 +70,13 @@ const db = {
     }),
   }),
   transaction: <T>(work: (tx: unknown) => Promise<T>) => work(db),
-  update: () => ({
+  update: (table: unknown) => ({
     set: (values: Record<string, unknown>) => ({
       where: () => {
+        if (table === schema.artistSlug) {
+          adopted.push(values);
+          return { returning: () => Promise.resolve(adoptable) };
+        }
         if (updateError) return Promise.reject(updateError);
         updates.push(values);
         return Promise.resolve();
@@ -132,6 +139,8 @@ beforeEach(() => {
   insertConflict = false;
   takenSlugs = new Set();
   claimedSlugs = [];
+  adoptable = [];
+  adopted = [];
   isrcLookup = { status: 'none' };
   isrcLookups = 0;
   declaredDeezerId = { status: 'none' };
@@ -420,6 +429,20 @@ describe('identity by ISRC', () => {
       mbid: 'mb-dp',
       identifiedBy: 'isrc',
     });
+  });
+
+  it('takes over the slug its page got at the indexing threshold, never played then', async () => {
+    playRows = [{ title: 'One More Time', isrc: ISRC }];
+    isrcLookup = { status: 'found', value: [recording('One More Time', ['mb-dp', 'Daft Punk'])] };
+    declaredDeezerId = page('27');
+    adoptable = [{ slug: 'daft-punk' }];
+
+    const resolved = await resolveArtist('Daft Punk');
+
+    expect(resolved?.slug).toBe('daft-punk');
+    expect(adopted).toEqual([{ artistId: inserted[0]?.id, mbid: null }]);
+    // No new slug claimed: the address already shared stays the artist's own.
+    expect(claimedSlugs).toEqual([]);
   });
 
   it('takes the credited artist bearing the played name, not the first credited', async () => {

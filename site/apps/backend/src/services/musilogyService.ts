@@ -15,6 +15,7 @@ import {
   type MusilogyRelease,
   type MusilogySearchHit,
 } from '@aubesonore/shared-types/client';
+import { discoveredSlugs } from './artistPages';
 import { db } from '../db/index';
 import { artist, artistSlug } from '../db/schema';
 import { TtlCache } from '../lib/cache/ttlCache';
@@ -123,16 +124,6 @@ interface SearchRow extends Record<string, unknown> {
   y0: number | null;
 }
 
-/** The slugs pages never played were given at the indexing threshold (artist_slug.mbid). */
-async function slugsByMbid(mbids: string[]): Promise<Map<string, string>> {
-  if (mbids.length === 0) return new Map();
-  const rows = await db
-    .select({ slug: artistSlug.slug, mbid: artistSlug.mbid })
-    .from(artistSlug)
-    .where(inArray(artistSlug.mbid, [...new Set(mbids)]));
-  return new Map(rows.flatMap((r) => (r.mbid ? [[r.mbid, r.slug] as const] : [])));
-}
-
 async function playedByMbid(mbids: string[]): Promise<Map<string, ArtistPageRef>> {
   if (mbids.length === 0) return new Map();
   const rows = await db
@@ -197,7 +188,7 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
       (rows ?? []).map((row) => row.mbid)
     ),
   ];
-  const [played, slugs] = await Promise.all([playedByMbid(linked), slugsByMbid(linked)]);
+  const [played, slugs] = await Promise.all([playedByMbid(linked), discoveredSlugs(linked)]);
   const ref = (
     mbidOf: string,
     name: string,

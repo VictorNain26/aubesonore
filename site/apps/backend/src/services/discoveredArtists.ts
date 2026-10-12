@@ -85,9 +85,6 @@ export async function refreshDiscovered(): Promise<void> {
   });
   discovered = next;
   const named = await nameNewPages(next);
-  // The run read every played page before these slugs existed: their links would point at the
-  // new pages' MBIDs for the cache's hour.
-  if (named > 0) musilogyCache.clear();
   logger.info('discoveredArtists.refreshed', {
     linked: links.size,
     discovered: next.size,
@@ -97,16 +94,24 @@ export async function refreshDiscovered(): Promise<void> {
 
 /**
  * Gives a slug to each discovered page that has none yet: its address from then on, kept even if
- * it later falls below the threshold. A failure leaves the page at its MBID until the next run.
+ * it later falls below the threshold. A page that fails keeps its MBID until the next run; the
+ * others are named all the same.
  */
 async function nameNewPages(pages: ReadonlySet<string>): Promise<number> {
   const named = await discoveredSlugs([...pages]);
   let count = 0;
   for (const mbid of pages) {
     if (named.has(mbid)) continue;
-    const identity = await getArtistIdentity(mbid);
-    if (identity && (await claimDiscoveredSlug(mbid, identity.name))) count += 1;
+    try {
+      const identity = await getArtistIdentity(mbid);
+      if (identity && (await claimDiscoveredSlug(mbid, identity.name))) count += 1;
+    } catch (err) {
+      logger.warn('discoveredArtists.name_failed', { mbid, message: (err as Error).message });
+    }
   }
+  // The run read every played page before these slugs existed: their links would point at the
+  // new pages' MBIDs for the cache's hour.
+  if (count > 0) musilogyCache.clear();
   return count;
 }
 
