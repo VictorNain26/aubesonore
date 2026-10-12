@@ -18,7 +18,7 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test --isolate --path-ignore-patterns='**/*.db.test.ts'",
     "test:db": "bun test --isolate .db.test.ts",
-    "test:coverage": "bun test --isolate --coverage",
+    "test:coverage": "bun test --isolate --coverage --path-ignore-patterns='**/*.db.test.ts'",
     "clean": "rm -rf dist"
   },
   "dependencies": {

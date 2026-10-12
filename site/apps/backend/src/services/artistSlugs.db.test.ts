@@ -1,7 +1,8 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { eq } from 'drizzle-orm';
 import { db, pool } from '../db';
 import { artist, artistSlug } from '../db/schema';
+import { logger } from '../lib/logger';
 import { assertTestDatabase, emptyArtistTables, installMusilogyRanks, setRanks } from '../test/pg';
 import { bindArtistSlug, claimSlug, ownerOfSlug, slugOfArtistPage, slugsFor } from './artistSlugs';
 
@@ -58,8 +59,12 @@ describe('a slug given when the address is first published', () => {
   });
 
   it('leaves at its MBID a page Musilogy cannot rank, writing nothing', async () => {
+    const warn = spyOn(logger, 'warn');
     expect(await slugsFor([{ mbid: mbid(1), name: 'Air' }])).toEqual(new Map());
     expect(await slugsHeld()).toEqual([]);
+    // Left out because unranked, not because the publication failed and was swallowed.
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 
   it('names the pages published together once each, in one go', async () => {
@@ -80,7 +85,8 @@ describe('a slug given when the address is first published', () => {
     expect(await slugsHeld()).toHaveLength(2);
   });
 
-  it('gives a page published twice at once one slug', async () => {
+  // Whether the second reads the first's slug or meets it at the insert, both see one slug.
+  it('leaves one slug for a page published twice at once', async () => {
     await setRanks({ [mbid(1)]: 1 });
     const page = { mbid: mbid(1), name: 'Air' };
 

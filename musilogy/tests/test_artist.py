@@ -298,6 +298,15 @@ def test_homonyms_ranked_by_listeners_the_unknown_last_then_by_mbid(tmp_path, pg
     }
 
 
+def test_the_rank_keeps_the_signature_the_site_reads(tmp_path, pg):
+    # The site does arithmetic on homonym_rank: a bigint would reach it as a string.
+    loaded(tmp_path, pg, [synthetic_artist(homonym(0), "1990", None, name="Ab")], popularity={})
+    assert pg_query(
+        pg,
+        "SELECT pg_get_function_result('musilogy.artist_homonym_rank(text[])'::regprocedure)",
+    ) == [("TABLE(mbid text, homonym_rank integer)",)]
+
+
 def test_an_artist_the_dump_does_not_hold_has_no_rank(tmp_path, pg):
     loaded(tmp_path, pg, [synthetic_artist(homonym(0), "1990", None, name="Ab")], popularity={})
     assert ranks(pg, homonym(9)) == {}

@@ -1,7 +1,8 @@
 # Local mirror of the required CI checks: the GitHub Actions quota is
 # limited, so the quality gate runs at push time — a red tree never
 # leaves the machine. Mirrors .github/workflows/site.yml (format is
-# already enforced by lint-staged at commit; coverage/audit stay in CI).
+# already enforced by lint-staged at commit; coverage, audit and the tests
+# against Postgres, which need a database, stay in CI).
 set -e
 # The repository also holds pipeline/, azuracast/ and musilogy/ (own CI): skip
 # the site gate when nothing under site/ differs from origin/master. Checked
