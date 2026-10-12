@@ -36,8 +36,8 @@ function page(close: MusilogyNeighbour[], releases = 0): MusilogyArtist {
   };
 }
 
-// Played pages p0…p11: every one links to "rich" and "no-wikidata" and "few-records", p0…p8 to
-// "nine-links", and each links to a played artist and to "rich" twice.
+// Played pages: every one links to "rich" and "no-wikidata" and "few-records", all but two to
+// "nine-links" (one page short of the rule), and each links to a played artist and to "rich" twice.
 const played = Array.from({ length: MIN_PLAYED_LINKS + 2 }, (_, i) => `p${i}`);
 let pagesByMbid: Record<string, MusilogyArtist | null> = {};
 let wikidata: Record<string, string | null> = {};

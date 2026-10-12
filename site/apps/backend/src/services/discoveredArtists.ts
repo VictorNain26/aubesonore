@@ -5,14 +5,18 @@ import { getArtistIdentity, getMusilogyArtist } from './musilogyService';
 
 /**
  * Which pages of artists the antenna never played are offered to search engines
- * (docs/vision.md §2.4). Rule measured on 2026-10-06 over the 8,126
- * artists the played pages link to: linked from at least 10 played pages (522),
- * with a Wikidata item (the way to their Wikipedia opening) and at least 3
- * albums or EPs, about 490 pages. Google's spam policies count pages stitched
- * from other sites at scale as abuse; these sit in the radio's own graph.
+ * (docs/vision.md §2.4): linked from at least 2 played pages, with a Wikidata
+ * item (the way to their Wikipedia opening) and at least 3 albums or EPs.
+ * Measured on 2026-10-12, once a page links its 8 artists of the same sound
+ * rather than dozens of neighbours: the 479 played pages link to 4,406 artists
+ * never played, 617 from at least 2 pages, 474 pass; at 10 links, the rule of
+ * 2026-10-06, 5 passed. All 25 of a random sample at exactly 2 links had a
+ * Wikipedia opening (The Cranberries, Gorillaz, Erykah Badu…). Google's spam
+ * policies count pages stitched from other sites at scale as abuse; these sit
+ * in the radio's own graph.
  * https://developers.google.com/search/docs/essentials/spam-policies
  */
-export const MIN_PLAYED_LINKS = 10;
+export const MIN_PLAYED_LINKS = 2;
 const MIN_RECORDS = 3;
 
 const REFRESH_EVERY_MS = 24 * 60 * 60 * 1000;

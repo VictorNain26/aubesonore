@@ -219,10 +219,14 @@ pas d'image de partage, qu'un aperçu de lien montrerait sans son crédit.
 
 **Indexée quand elle est riche** : une page est proposée aux moteurs de recherche au-delà d'un
 seuil de contenu ; en deçà, elle existe mais n'est pas listée. La page d'un artiste joué l'est
-toujours. Celle d'un artiste jamais joué l'est quand au moins 10 pages d'artistes joués y
+toujours. Celle d'un artiste jamais joué l'est quand au moins 2 pages d'artistes joués y
 mènent, qu'elle a un élément Wikidata (le chemin vers son article Wikipédia) et au moins 3
-albums ou EP (`site/apps/backend/src/services/discoveredArtists.ts`). Mesuré le 2026-10-06 : les 398 pages jouées
-mènent à 8 126 artistes jamais joués, 522 depuis au moins 10 pages, environ 490 passent. La
+albums ou EP (`site/apps/backend/src/services/discoveredArtists.ts`). Remesuré le 2026-10-12,
+quand chaque page ne mène plus qu'à ses 8 artistes du même son : les 479 pages jouées mènent à
+4 406 artistes jamais joués, 617 depuis au moins 2 pages, 474 passent (au seuil de 10 pages
+mesuré le 2026-10-06 sur l'ancien voisinage, il n'en restait que 5) ; les 25 pages d'un
+échantillon tiré au hasard parmi celles à 2 liens exactement ont toutes leur introduction
+Wikipédia. La
 règle tient la page dans le graphe de la radio : Google traite comme abus les pages assemblées
 en masse depuis d'autres sites, et une masse de pages faibles pèse sur tout le site. Elles ont
 leur propre sitemap, `sitemap-artists-discovered.xml`, pour suivre leur sort dans la Search
@@ -423,19 +427,18 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 
 ## 6. Écarts actuels
 
-1. **Le seuil d'indexation** (§2.4) a été mesuré sur l'ancien voisinage et reste à remesurer.
-2. **Les pages de courant n'existent pas encore** (§2.3).
-3. **Statut officiel incomplet** : la page écarte les disques que MusicBrainz ne montre pas
+1. **Les pages de courant n'existent pas encore** (§2.3).
+2. **Statut officiel incomplet** : la page écarte les disques que MusicBrainz ne montre pas
    comme l'œuvre de l'artiste (476 des 4 980 disques des artistes joués, 2026-10-06) ; seuls les
    artistes d'au moins 500 auditeurs sont interrogés.
-4. **Les pages d'artistes jamais joués qui passent le seuil restent à leur MBID** :
+3. **Les pages d'artistes jamais joués qui passent le seuil restent à leur MBID** :
    `/artiste/<mbid>`, sans slug.
-5. **Identité incomplète** : 52 des 397 artistes joués n'ont pas de MBID (2026-10-06) ; la plupart
+4. **Identité incomplète** : 52 des 397 artistes joués n'ont pas de MBID (2026-10-06) ; la plupart
    n'ont aucun lien vers Deezer dans MusicBrainz, ce qui se corrige à la source. 22 des 91 titres
    gardés ne retrouvent ni leur passage ni leur titre exact chez Deezer.
-6. **Les featurings ne relient que l'artiste principal** (§4.4).
-7. **Licences à régulariser** : les pochettes Deezer des titres (§2.5).
-8. **Aucune copie hors de la maison** (§4.7).
+5. **Les featurings ne relient que l'artiste principal** (§4.4).
+6. **Licences à régulariser** : les pochettes Deezer des titres (§2.5).
+7. **Aucune copie hors de la maison** (§4.7).
 
 ## 7. Feuille de route
 
@@ -446,18 +449,15 @@ complète, Discogs, notre co-écoute, « Même son » lu par la page et le servi
 la co-écoute sur toutes les écoutes dans les deux sens et la couleur toutes époques, et leur mesure) sont dans
 l'historique git.
 
-1. **La page artiste** (écart 1) : les artistes similaires en liste, les plus pertinents d'abord,
-   et la ligne de genres (§2.4), essayées dans le navigateur sur ordinateur et sur téléphone ; le
-   seuil d'indexation remesuré.
-2. **Les pages de courant** (écart 2) : un relevé daté des liens entre genres (Wikidata,
+1. **Les pages de courant** (écart 1) : un relevé daté des liens entre genres (Wikidata,
    MusicBrainz, Wikipédia), épinglé, mesuré source par source ; les artistes de chaque courant par
    époque ; la page, reliée depuis la ligne de genres.
-3. **Naviguer et chercher** (§2.6) : la recherche par artiste et par courant, le chemin
+2. **Naviguer et chercher** (§2.6) : la recherche par artiste et par courant, le chemin
    parcouru, essayés sur ordinateur et sur téléphone.
-4. **Les données à jour** : un dump MusicBrainz plus récent, le dump Discogs mensuel, les écoutes
+3. **Les données à jour** : un dump MusicBrainz plus récent, le dump Discogs mensuel, les écoutes
    et les relevés rapides refaits par un timer.
-5. **Un slug pour chaque page qui passe le seuil d'indexation** (écart 4).
-6. **À décider sur mesure** : relier plus d'artistes à Discogs par les sorties que MusicBrainz y
+4. **Un slug pour chaque page qui passe le seuil d'indexation** (écart 3).
+5. **À décider sur mesure** : relier plus d'artistes à Discogs par les sorties que MusicBrainz y
    relie (adopté seulement à 99 % de justesse mesurée) ; les liens écrits entre artistes (§2.3) ;
    les liens d'œuvre (featurings, remixes, producteurs) ; l'audio pour les artistes de la
    bibliothèque.
