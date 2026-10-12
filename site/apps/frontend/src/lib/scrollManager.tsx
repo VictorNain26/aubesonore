@@ -23,11 +23,14 @@ function write(key: string, top: number): void {
   }
 }
 
-/** A reload opens at the top: under a hero that renders after it, mid-page would be lost. */
-let firstPageIsReload =
-  typeof performance !== 'undefined' &&
-  (performance.getEntriesByType('navigation')[0] as { type?: string } | undefined)?.type ===
-    'reload';
+// The first entry is read once: a reload opens at the top, as under a hero that renders after
+// it mid-page would be lost. Read in the effect, never at import (entry-server.test.tsx).
+let firstEntrySeen = false;
+
+function isReload(): boolean {
+  const entry = performance.getEntriesByType('navigation')[0] as { type?: string } | undefined;
+  return entry?.type === 'reload';
+}
 
 function anchorOf(location: Location): HTMLElement | null {
   return location.hash ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
@@ -95,8 +98,9 @@ export function ScrollManager(): null {
 
   // The location object changes with each entry only, as does the way it was reached.
   useLayoutEffect(() => {
-    if (firstPageIsReload) {
-      firstPageIsReload = false;
+    const first = !firstEntrySeen;
+    firstEntrySeen = true;
+    if (first && isReload()) {
       window.scrollTo({ top: 0, behavior: 'instant' });
       return;
     }
