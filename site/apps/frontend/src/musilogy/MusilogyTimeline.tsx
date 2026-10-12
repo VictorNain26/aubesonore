@@ -61,89 +61,76 @@ export function spanOf(
 export interface Axis {
   from: number;
   to: number;
+  /** The labelled years. */
   ticks: number[];
+  /** Every decade (or step) line, labelled or not: the recent years keep theirs. */
+  grid: number[];
 }
 
 /**
  * From the decade the first span starts in to this year, which closes the axis as « today » rather
- * than a year still to come. A label every ten years, twenty past sixty, forty past a hundred and
- * twenty, none past 62 % of the axis: « aujourd'hui » is 97 px wide and the narrowest wide track 352
- * px, so it begins at 72 %, and a year label centred at 62 % ends 18 px earlier (Tim Hecker's 2010
- * sat on it, 2026-10-12). Phones keep fewer (tickClass).
+ * than a year still to come. A line every ten years, twenty past sixty, forty past a hundred and
+ * twenty; a label on those up to 62 % of the axis: « aujourd'hui » is 97 px wide and the narrowest
+ * wide track 352 px, so it begins at 72 %, and a year label centred at 62 % ends 18 px earlier (Tim
+ * Hecker's 2010 sat on it, 2026-10-12). Phones label fewer (tickClass).
  */
 export function axisOf(spans: readonly Span[], thisYear: number): Axis | null {
   if (spans.length === 0) return null;
   const from = Math.floor(Math.min(...spans.map((span) => span.from)) / 10) * 10;
-  const to = Math.max(thisYear, ...spans.map((span) => span.to));
+  const to = Math.max(thisYear, from + 1);
   const step = to - from > 120 ? 40 : to - from > 60 ? 20 : 10;
-  const ticks: number[] = [];
-  for (let year = Math.ceil(from / step) * step; year <= from + (to - from) * 0.62; year += step) {
-    ticks.push(year);
-  }
-  return { from, to, ticks };
+  const grid: number[] = [];
+  for (let year = Math.ceil(from / step) * step; year < to; year += step) grid.push(year);
+  const ticks = grid.filter((year) => year <= from + (to - from) * 0.62);
+  return { from, to, ticks, grid };
 }
 
-/** Where a year falls on the axis, in percent of its width. */
+/** Where a year falls on the axis, in percent of its width, never past either end. */
 function at(year: number, axis: Axis): number {
-  return ((year - axis.from) / (axis.to - axis.from)) * 100;
+  return Math.min(100, Math.max(0, ((year - axis.from) / (axis.to - axis.from)) * 100));
 }
 
 function placed(span: Span, axis: Axis): CSSProperties {
-  const width = axis.to - axis.from;
+  const left = at(span.from, axis);
   return {
-    left: `${at(span.from, axis)}%`,
-    width: `${(Math.max(span.to - span.from, 1) / width) * 100}%`,
+    left: `${left}%`,
+    width: `${Math.max(at(span.to, axis) - left, 100 / (axis.to - axis.from))}%`,
   };
 }
 
 type Years = Pick<MusilogyNeighbour, 'y0' | 'yEnd' | 'ended'>;
 
-export interface BarLabel {
-  text: string;
-  /** Percent of the axis. */
-  at: number;
-  /** Which side of the label sits on `at`: its start (it reads rightwards) or its end. */
-  align: 'start' | 'end';
+export interface BarLabels {
+  /** Written from the bar's start. */
+  first: string;
+  /** Written up to the bar's end: a declared end far enough from the start. */
+  last: string | null;
+  /** The bar's start and end, in percent of the axis. */
+  start: number;
+  end: number;
 }
 
-// Two four-digit labels need about 78 px side by side: 26 % of the narrowest track (298 px on a
-// 390 px phone).
-const PAIR_ROOM = 26;
-// A label beginning past this point would run off the track's end, so it ends there instead.
-const LAST_START = 74;
+// Closer than this (percent of the axis), the start and the end are said as one « 1971–1975 ».
+const PAIR_ROOM = 30;
 
 /**
- * The years written on a bar, always in view (direct labelling: Datawrapper, data.europa.eu):
- * its start at its left end and its declared end at its right end; one « 1971–1975 » when both
- * would meet; the start alone while it runs to today, where the axis says « aujourd'hui ».
+ * The years written on a bar, always in view (direct labelling: Datawrapper, data.europa.eu): its
+ * start from its left end and a declared end up to its right end; one « 1971–1975 » when both are
+ * close; the start alone while it runs to today, where the axis says « aujourd'hui ». Where they
+ * land is CSS's (Drawing): a label slides back only as far as the track's end asks, and two never
+ * meet, at any width.
  */
-export function barLabelsOf(artist: Years, axis: Axis): BarLabel[] {
-  if (artist.y0 === null) return [];
+export function barLabelsOf(artist: Years, axis: Axis): BarLabels | null {
+  if (artist.y0 === null) return null;
   const start = at(artist.y0, axis);
-  const alone = (text: string): BarLabel[] =>
-    start > LAST_START ? [{ text, at: 100, align: 'end' }] : [{ text, at: start, align: 'start' }];
+  const alone = (first: string): BarLabels => ({ first, last: null, start, end: start });
   if (!artist.ended) return alone(String(artist.y0));
   if (artist.yEnd === null) return alone(m.musilogy_end_unknown({ y0: String(artist.y0) }));
   if (artist.yEnd === artist.y0) return alone(String(artist.y0));
   const end = at(artist.yEnd, axis);
-  if (end - start < PAIR_ROOM) {
-    const both = `${artist.y0}–${artist.yEnd}`;
-    return start > LAST_START
-      ? [{ text: both, at: end, align: 'end' }]
-      : [{ text: both, at: start, align: 'start' }];
-  }
-  return [
-    { text: String(artist.y0), at: start, align: 'start' },
-    { text: String(artist.yEnd), at: end, align: 'end' },
-  ];
-}
-
-// The halo's padding (px-1) shifted back, so the year itself starts or ends where the bar does.
-function labelStyle(label: BarLabel): CSSProperties {
-  return {
-    left: `${label.at}%`,
-    transform: label.align === 'end' ? 'translateX(calc(-100% + 0.25rem))' : 'translateX(-0.25rem)',
-  };
+  return end - start < PAIR_ROOM
+    ? { first: `${artist.y0}–${artist.yEnd}`, last: null, start, end }
+    : { first: String(artist.y0), last: String(artist.yEnd), start, end };
 }
 
 /** An artist's years, in words: what the bar draws, for a screen reader. */
@@ -173,9 +160,10 @@ const ROW = cn('grid', COLUMNS);
 const TRACK =
   'pointer-events-none relative col-start-2 h-9 @min-[44rem]:col-start-3 @min-[44rem]:row-start-1';
 const BAR = 'absolute top-6 rounded-full';
-// On the page's colour, so no line runs through a year: a label's halo.
+// On the page's colour, so no line runs through a year: a label's halo, its padding taken back by a
+// margin so the year itself starts or ends where the bar does.
 const LABEL =
-  'text-label bg-surface absolute top-0 px-1 font-mono leading-4 whitespace-nowrap tabular-nums';
+  'text-label bg-surface shrink-0 px-1 font-mono leading-4 whitespace-nowrap tabular-nums';
 // The decades: very light lines (Few, « Grid Lines in Graphs are Rarely Useful »: useful where the
 // rows run far from the scale). The artist's own start and end: darker, over them (Datawrapper,
 // « Range highlights and lines »; Wikipedia's band-member timelines draw their marks so).
@@ -186,13 +174,13 @@ const MARK = 'bg-accent/40 absolute inset-y-0 w-px';
 function Lines({ axis, own, className }: { axis: Axis; own: Span | null; className?: string }) {
   return (
     <>
-      {axis.ticks.map((year) => (
+      {axis.grid.map((year) => (
         <span key={year} className={cn(GRID, className)} style={{ left: `${at(year, axis)}%` }} />
       ))}
       {own ? (
         <span className={cn(MARK, className)} style={{ left: `${at(own.from, axis)}%` }} />
       ) : null}
-      {own && own.to < axis.to ? (
+      {own && own.to > own.from && own.to < axis.to ? (
         <span className={cn(MARK, className)} style={{ left: `${at(own.to, axis)}%` }} />
       ) : null}
     </>
@@ -228,15 +216,27 @@ function Drawing({
   label: string;
 }) {
   const span = spanOf(years.y0, years.yEnd, years.ended, thisYear);
+  const labels = barLabelsOf(years, axis);
   return (
     <span aria-hidden="true" className={TRACK}>
       <Lines axis={axis} own={own} className="@min-[44rem]:hidden" />
       {span ? <span className={cn(BAR, bar)} style={placed(span, axis)} /> : null}
-      {barLabelsOf(years, axis).map((one) => (
-        <span key={one.text} className={cn(LABEL, label)} style={labelStyle(one)}>
-          {one.text}
+      {labels ? (
+        // A row across the track: the spacers before and after hold each label on its year and
+        // give way first, so a label slides back only as far as the track's end asks, and the gap
+        // between the two never closes.
+        <span className="absolute inset-x-0 top-0 flex">
+          <span className="min-w-0 shrink" style={{ flexBasis: `${labels.start}%` }} />
+          <span className={cn(LABEL, '-ml-1', label)}>{labels.first}</span>
+          {labels.last ? (
+            <>
+              <span className="min-w-2 flex-1" />
+              <span className={cn(LABEL, '-mr-1', label)}>{labels.last}</span>
+              <span className="min-w-0 shrink" style={{ flexBasis: `${100 - labels.end}%` }} />
+            </>
+          ) : null}
         </span>
-      ))}
+      ) : null}
     </span>
   );
 }
@@ -314,12 +314,13 @@ export function MusilogyTimeline({
           </div>
         ) : null}
         {own && axis ? (
-          <div className={cn(ROW, 'border-border relative items-center border-b py-3')}>
-            <span aria-hidden="true" />
-            <span className="flex min-w-0 flex-col">
-              <span className="text-row font-semibold">{card.name}</span>
-              <span className="sr-only">{yearsOf(ownYears)}</span>
-            </span>
+          // A reference drawn for the eye: the page's header already says the artist's years.
+          <div
+            aria-hidden="true"
+            className={cn(ROW, 'border-border relative items-center border-b py-3')}
+          >
+            <span />
+            <span className="text-row min-w-0 font-semibold">{card.name}</span>
             <Drawing
               years={ownYears}
               axis={axis}
@@ -355,7 +356,12 @@ export function MusilogyTimeline({
                   <Link
                     to={pagePathOf(neighbour)}
                     state={DISCOVERY}
-                    className={cn(ARTIST_LINK, STRETCHED, 'text-row self-start underline-offset-4')}
+                    // Brought into view below the header and the sticky axis (WCAG 2.4.11).
+                    className={cn(
+                      ARTIST_LINK,
+                      STRETCHED,
+                      'text-row scroll-mt-10 self-start underline-offset-4'
+                    )}
                   >
                     {neighbour.name}
                   </Link>
@@ -372,8 +378,8 @@ export function MusilogyTimeline({
                     axis={axis}
                     own={own}
                     thisYear={thisYear}
-                    bar="bg-text-muted/55 group-hover:bg-text-muted group-focus-within:bg-text-muted h-1.5 transition-colors duration-200"
-                    label="text-text-muted group-hover:text-text group-focus-within:text-text transition-colors duration-200"
+                    bar="bg-text-muted/75 group-hover:bg-text-muted group-focus-within:bg-text-muted ease-out-quart h-1.5 transition-colors duration-200"
+                    label="text-text-muted group-hover:text-text group-focus-within:text-text ease-out-quart transition-colors duration-200"
                   />
                 ) : null}
               </li>

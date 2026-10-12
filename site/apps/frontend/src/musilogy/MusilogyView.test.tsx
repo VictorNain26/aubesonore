@@ -86,7 +86,7 @@ describe('MusilogySections', () => {
     expect(screen.getByText('punk')).toBeInTheDocument();
     expect(screen.getByText('depuis 1974')).toBeInTheDocument();
     expect(screen.getByText('depuis 1963')).toBeInTheDocument();
-    // The artist itself leads the timeline, with its own years, and is no link to its own page.
+    // The artist itself leads the timeline, drawn for the eye, and is no link to its own page.
     expect(screen.getByText('T. Rex')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'T. Rex' })).not.toBeInTheDocument();
   });

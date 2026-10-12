@@ -43,38 +43,39 @@ describe('spanOf', () => {
 });
 
 describe('barLabelsOf', () => {
-  const axis = { from: 1960, to: 2026, ticks: [1960, 1980, 2000] };
+  const axis = { from: 1960, to: 2026, ticks: [1960, 1980], grid: [1960, 1980, 2000, 2020] };
+  const pct = (year: number) => ((year - 1960) / 66) * 100;
 
-  it('writes the start at the left end of the bar and the declared end at its right end', () => {
-    expect(barLabelsOf(neighbour('krautrock', { y0: 1968, yEnd: 1991 }), axis)).toEqual([
-      { text: '1968', at: (8 / 66) * 100, align: 'start' },
-      { text: '1991', at: (31 / 66) * 100, align: 'end' },
-    ]);
+  it('writes the start from the left end of the bar and the declared end up to its right end', () => {
+    expect(barLabelsOf(neighbour('krautrock', { y0: 1968, yEnd: 1991 }), axis)).toEqual({
+      first: '1968',
+      last: '1991',
+      start: pct(1968),
+      end: pct(1991),
+    });
   });
 
-  it('writes one label when the two would meet, the start alone while it runs to today', () => {
-    expect(barLabelsOf(neighbour('krautrock'), axis)).toEqual([
-      { text: '1971–1975', at: (11 / 66) * 100, align: 'start' },
-    ]);
-    expect(barLabelsOf(neighbour('ambient', { y0: 1990, ended: false }), axis)).toEqual([
-      { text: '1990', at: (30 / 66) * 100, align: 'start' },
-    ]);
-    expect(barLabelsOf(neighbour('ambient', { y0: null }), axis)).toEqual([]);
-  });
-
-  it('ends a label at the track end rather than run past it', () => {
-    expect(barLabelsOf(neighbour('ambient', { y0: 2021, ended: false }), axis)).toEqual([
-      { text: '2021', at: 100, align: 'end' },
-    ]);
-    expect(barLabelsOf(neighbour('ambient', { y0: 2015, yEnd: 2020 }), axis)).toEqual([
-      { text: '2015–2020', at: (60 / 66) * 100, align: 'end' },
-    ]);
+  it('says a close start and end as one, and the start alone while it runs to today', () => {
+    expect(barLabelsOf(neighbour('krautrock'), axis)).toEqual({
+      first: '1971–1975',
+      last: null,
+      start: pct(1971),
+      end: pct(1975),
+    });
+    // Started late and still going: its start, never read as an end at the right of the bar.
+    expect(barLabelsOf(neighbour('ambient', { y0: 2010, ended: false }), axis)).toEqual({
+      first: '2010',
+      last: null,
+      start: pct(2010),
+      end: pct(2010),
+    });
+    expect(barLabelsOf(neighbour('ambient', { y0: null }), axis)).toBeNull();
   });
 
   it('says an end is unknown rather than draw a one-year career', () => {
-    expect(barLabelsOf(neighbour('krautrock', { yEnd: null }), axis)).toEqual([
-      { text: '1971, fin inconnue', at: (11 / 66) * 100, align: 'start' },
-    ]);
+    expect(barLabelsOf(neighbour('krautrock', { yEnd: null }), axis)?.first).toBe(
+      '1971, fin inconnue'
+    );
   });
 });
 
@@ -89,7 +90,13 @@ describe('axisOf', () => {
         2026
       )
       // 2010 sat on « aujourd'hui » on Tim Hecker's page: no label past 62 % of the axis.
-    ).toEqual({ from: 1970, to: 2026, ticks: [1970, 1980, 1990, 2000] });
+    ).toEqual({
+      from: 1970,
+      to: 2026,
+      ticks: [1970, 1980, 1990, 2000],
+      // The recent decades keep their lines, unlabelled.
+      grid: [1970, 1980, 1990, 2000, 2010, 2020],
+    });
     // Twenty years apart past sixty; 2000, at 66 % of the axis, would meet « aujourd'hui ».
     expect(axisOf([{ from: 1955, to: 2026 }], 2026)?.ticks).toEqual([1960, 1980]);
     expect(axisOf([], 2026)).toBeNull();
@@ -135,7 +142,7 @@ describe('timelineNote', () => {
   it('says the sound they share, once', () => {
     expect(timelineNote(can())).toBe('Le même son, surtout krautrock.');
     expect(timelineNote(can({}, ['Krautrock', 'Ambient', 'Post Rock']))).toBe('Le même son.');
-    // Without a start, no band to speak of.
+    // Without a start, nothing to draw it from.
     expect(timelineNote(can({ y0: null }))).toBe('Le même son, surtout krautrock.');
   });
 });
