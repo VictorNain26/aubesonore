@@ -3,7 +3,7 @@ import { db } from '../db';
 import { discoveredArtist } from '../db/schema';
 import { logger } from '../lib/logger';
 import { claimDiscoveredSlug, discoveredSlugs, listPlayedMbids } from './artistPages';
-import { getArtistIdentity, getMusilogyArtist } from './musilogyService';
+import { getArtistIdentity, getMusilogyArtist, musilogyCache } from './musilogyService';
 
 /**
  * Which pages of artists the antenna never played are offered to search engines
@@ -85,6 +85,9 @@ export async function refreshDiscovered(): Promise<void> {
   });
   discovered = next;
   const named = await nameNewPages(next);
+  // The run read every played page before these slugs existed: their links would point at the
+  // new pages' MBIDs for the cache's hour.
+  if (named > 0) musilogyCache.clear();
   logger.info('discoveredArtists.refreshed', {
     linked: links.size,
     discovered: next.size,

@@ -8,6 +8,17 @@ describe('TtlCache', () => {
     expect(cache.get('a')).toBe('hello');
   });
 
+  it('forgets every entry on clear, and keeps working', () => {
+    const cache = new TtlCache<number>(60_000);
+    cache.set('a', 1);
+
+    cache.clear();
+    cache.set('b', 2);
+
+    expect(cache.get('a')).toBeUndefined();
+    expect(cache.get('b')).toBe(2);
+  });
+
   it('returns undefined for missing key', () => {
     const cache = new TtlCache<string>(1000);
     expect(cache.get('missing')).toBeUndefined();

@@ -148,7 +148,12 @@ describe('discovered artists', () => {
   });
 
   it('gives each new page a slug from its name, the next suffix when it is taken', async () => {
+    const clear = spyOn(musilogy.musilogyCache, 'clear');
     await refreshDiscovered();
+
+    // The played pages read before these slugs existed are read again, their links with them.
+    expect(clear).toHaveBeenCalledTimes(1);
+    clear.mockRestore();
 
     expect(slugs).toContainEqual({ slug: 'rich-2', mbid: 'rich' });
     expect(slugs).toContainEqual({ slug: 'just-enough', mbid: 'just-enough' });

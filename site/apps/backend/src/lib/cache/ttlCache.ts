@@ -65,6 +65,11 @@ export class TtlCache<V> implements CacheStore<V> {
     this.sweepTimer = timer;
   }
 
+  /** Forget every entry; the sweep goes on. */
+  clear(): void {
+    this.store.clear();
+  }
+
   /** Stop the sweep timer and clear the store. Call on process shutdown. */
   dispose(): void {
     if (this.sweepTimer) {
