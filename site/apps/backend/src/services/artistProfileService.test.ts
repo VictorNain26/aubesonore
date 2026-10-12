@@ -125,7 +125,7 @@ const spies = {
     const row = rows[0];
     return Promise.resolve(slug === 'daft-punk' && row ? { artistId: row.artist.id } : null);
   }),
-  pageSlugs: spyOn(slugs, 'pageSlugs').mockImplementation(() =>
+  slugsFor: spyOn(slugs, 'slugsFor').mockImplementation(() =>
     Promise.resolve(new Map(slugRows.map((row) => [row.mbid, row.slug])))
   ),
   pageSlug: spyOn(slugs, 'slugOfArtistPage').mockResolvedValue('daft-punk'),

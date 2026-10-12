@@ -1,17 +1,18 @@
 import { and, eq, inArray, isNull, like, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../db';
-import { connectLong } from '../db/long';
 import { artist, artistSlug } from '../db/schema';
 import { slugify } from '../lib/artistName';
-import { logger } from '../lib/logger';
 import { isValidArtistSlug } from '../validators/artistValidator';
 
 /**
- * Every artist page has one address, its slug (docs/vision.md §5): the page of an MBID is named
- * by it, whether the antenna played the artist or not; a played artist without an MBID, which
- * Musilogy cannot know, by its row. The slug of a row whose artist has an MBID since is an older
- * address of that MBID's page, which answers a 301 there.
+ * Every artist page has one address, its slug (docs/vision.md §5), given the first time the site
+ * publishes it (a page served, a link drawn, a search's hit, the sitemap) and kept for good: an
+ * address no one was shown need not exist yet. The page of an MBID is named by it, whether the
+ * antenna played the artist or not; a played artist without an MBID, which Musilogy cannot know,
+ * by its row. The slug of a row whose artist has an MBID since is an older address of that MBID's
+ * page, which answers a 301 there. Among homonyms, the plain name goes to the most listened
+ * (musilogy.artist_homonym_rank), whichever is published first.
  */
 type Owner = { mbid: string } | { artistId: string };
 type Executor = Pick<typeof db, 'select' | 'insert' | 'update'>;
@@ -21,12 +22,31 @@ export const mbidSlug = alias(artistSlug, 'mbid_slug');
 export const ownSlug = alias(artistSlug, 'own_slug');
 export const pageSlug = sql<string | null>`coalesce(${mbidSlug.slug}, ${ownSlug.slug})`;
 
-/** The first of `base`, `base-2`, `base-3`… that no page holds. */
-export function freeSlug(base: string, taken: ReadonlySet<string>): string {
-  if (!taken.has(base)) return base;
-  for (let n = 2; ; n += 1) {
+/**
+ * The first slug no page holds, from the one an artist's rank among homonyms proposes: `base`
+ * for the first, `base-2` for the second, then on (`cassius`, `cassius-2`…).
+ */
+export function freeSlug(base: string, taken: ReadonlySet<string>, rank = 1): string {
+  if (rank <= 1 && !taken.has(base)) return base;
+  for (let n = Math.max(rank, 2); ; n += 1) {
     const slug = `${base}-${n}`;
     if (!taken.has(slug)) return slug;
+  }
+}
+
+/** Each MBID's rank among the artists of its name; empty while Musilogy is not loaded. */
+async function homonymRanks(mbids: readonly string[]): Promise<Map<string, number>> {
+  if (mbids.length === 0) return new Map();
+  try {
+    const { rows } = await db.execute<{ mbid: string; homonym_rank: number }>(
+      sql`SELECT * FROM musilogy.artist_homonym_rank(${`{${mbids.join(',')}}`}::text[])`
+    );
+    return new Map(rows.map((row) => [row.mbid, row.homonym_rank]));
+  } catch (err) {
+    // Before the musilogy load that brings it (musilogyService's NOT_LOADED).
+    const code = (err as { cause?: { code?: string } }).cause?.code;
+    if (code === '42883' || code === '3F000' || code === '42P01') return new Map();
+    throw err;
   }
 }
 
@@ -79,16 +99,25 @@ async function slugOf(ex: Executor, owner: Owner): Promise<string | null> {
 }
 
 /**
- * Gives a page the first free slug of `name` (`cassius`, `cassius-2`…), or the one it already
- * has. A slug is never taken back nor handed to another page. Null when the name makes none.
+ * Gives a page the first free slug of `name` from the one its rank proposes, or the one it
+ * already has. A slug is never taken back nor handed to another page. Null when the name makes
+ * none, or for an MBID whose rank Musilogy cannot tell yet (not loaded): its page keeps its MBID
+ * until then, rather than take a better known homonym's plain name.
  */
-export async function claimSlug(ex: Executor, owner: Owner, name: string): Promise<string | null> {
+export async function claimSlug(
+  ex: Executor,
+  owner: Owner,
+  name: string,
+  rank?: number
+): Promise<string | null> {
   const base = baseOf(name);
   if (!base) return slugOf(ex, owner);
+  const from = 'mbid' in owner ? (rank ?? (await homonymRanks([owner.mbid])).get(owner.mbid)) : 1;
+  if (from === undefined) return slugOf(ex, owner);
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const owned = await slugOf(ex, owner);
     if (owned) return owned;
-    const slug = freeSlug(base, await takenUnder(ex, base));
+    const slug = freeSlug(base, await takenUnder(ex, base), from);
     if (!isValidArtistSlug(slug)) return null;
     const claimed = await ex
       .insert(artistSlug)
@@ -167,39 +196,43 @@ interface Named {
   name: string;
 }
 
-// The suffixes a batch asks about for each name, beyond its homonyms in the batch: a name with
-// more pages already than these goes to claimSlug, which reads all of them.
-const SUFFIXES_ASKED = 4;
-
-/** The slugs a batch asks about: each name alone and its first suffixes. */
-export function candidatesOf(pages: readonly Named[]): string[] {
-  const count = new Map<string, number>();
-  for (const page of pages) {
-    const base = baseOf(page.name);
-    if (base) count.set(base, (count.get(base) ?? 0) + 1);
-  }
-  return [...count].flatMap(([base, n]) => [
-    base,
-    ...Array.from({ length: n + SUFFIXES_ASKED }, (_, i) => `${base}-${i + 2}`),
-  ]);
+interface Ranked extends Named {
+  rank: number;
 }
 
-/**
- * The slugs a batch gives, in the order given: the first of homonyms takes the plain name.
- * `asked` are the slugs looked up, `taken` those of them a page holds, which gains what is given.
- * A page whose free slug lies past what was asked is `deferred`; a name that makes none is left.
- */
-export function planSlugs(
-  pages: readonly Named[],
-  asked: ReadonlySet<string>,
-  taken: Set<string>
-): { planned: Array<{ mbid: string; slug: string }>; deferred: Named[] } {
-  const planned: Array<{ mbid: string; slug: string }> = [];
-  const deferred: Named[] = [];
+// The suffixes asked about for each page past the one its rank proposes: a name with more pages
+// already than these goes to claimSlug, which reads all of them.
+const SUFFIXES_ASKED = 4;
+
+/** The slugs asked about for some pages: each one's proposal and the few after it. */
+export function candidatesOf(pages: readonly Ranked[]): string[] {
+  const asked = new Set<string>();
   for (const page of pages) {
     const base = baseOf(page.name);
     if (!base) continue;
-    const slug = freeSlug(base, taken);
+    if (page.rank <= 1) asked.add(base);
+    const from = Math.max(page.rank, 2);
+    for (let n = from; n < from + SUFFIXES_ASKED; n += 1) asked.add(`${base}-${n}`);
+  }
+  return [...asked];
+}
+
+/**
+ * The slugs some pages get, from each one's proposal. `asked` are the slugs looked up, `taken`
+ * those of them a page holds, which gains what is given. A page whose free slug lies past what
+ * was asked is `deferred`; a name that makes none is left.
+ */
+export function planSlugs(
+  pages: readonly Ranked[],
+  asked: ReadonlySet<string>,
+  taken: Set<string>
+): { planned: Array<{ mbid: string; slug: string }>; deferred: Ranked[] } {
+  const planned: Array<{ mbid: string; slug: string }> = [];
+  const deferred: Ranked[] = [];
+  for (const page of pages) {
+    const base = baseOf(page.name);
+    if (!base) continue;
+    const slug = freeSlug(base, taken, page.rank);
     if (!asked.has(slug)) deferred.push(page);
     else if (isValidArtistSlug(slug)) {
       taken.add(slug);
@@ -209,53 +242,39 @@ export function planSlugs(
   return { planned, deferred };
 }
 
-const BATCH = 2_000;
-
 /**
- * Gives every artist Musilogy knows its slug, once (docs/vision.md §5): the MBIDs without one,
- * the most listened first (musilogy.artist_index), so among homonyms the best known takes the
- * plain name. On a connection of its own: the list takes longer than the pool's timeouts allow.
+ * The slug of each of these pages, giving one to those published here for the first time: the
+ * links a page draws, a search's hits, a page served by its MBID. Three queries for the new ones
+ * (their ranks, the slugs they would take, the writing), one at a time only for the rare page
+ * whose name many pages share already. A page Musilogy cannot rank yet is left at its MBID.
  */
-export async function assignSlugs(): Promise<{ given: number; nameless: number }> {
-  const client = await connectLong();
-  let given = 0;
-  let nameless = 0;
-  try {
-    await client.query('BEGIN');
-    // WITH HOLD keeps the list past the commit, so no transaction stays open while the slugs
-    // are written; an MBID the antenna gives a slug meanwhile is skipped by the conflict.
-    await client.query(`
-      DECLARE pages NO SCROLL CURSOR WITH HOLD FOR
-        SELECT i.mbid, i.name FROM musilogy.artist_index() i
-        WHERE NOT EXISTS (SELECT 1 FROM artist_slug s WHERE s.mbid = i.mbid)
-        ORDER BY i.user_count DESC NULLS LAST, i.mbid`);
-    await client.query('COMMIT');
-    for (;;) {
-      const { rows } = await client.query<Named>(`FETCH ${BATCH} FROM pages`);
-      if (rows.length === 0) break;
-      const asked = candidatesOf(rows);
-      const { planned, deferred } = planSlugs(rows, new Set(asked), await takenAmong(db, asked));
-      nameless += rows.length - planned.length - deferred.length;
-      const written =
-        planned.length === 0
-          ? []
-          : await db
-              .insert(artistSlug)
-              .values(planned)
-              .onConflictDoNothing()
-              .returning({ mbid: artistSlug.mbid });
-      given += written.length;
-      // A name with many pages already, or a slug the antenna claimed meanwhile: one at a time.
-      const done = new Set(written.map((row) => row.mbid));
-      const missed = new Set(planned.flatMap((p) => (done.has(p.mbid) ? [] : [p.mbid])));
-      for (const page of [...deferred, ...rows.filter((row) => missed.has(row.mbid))]) {
-        if (await claimSlug(db, { mbid: page.mbid }, page.name)) given += 1;
-      }
-    }
-    await client.query('CLOSE pages');
-  } finally {
-    await client.end();
+export async function slugsFor(pages: readonly Named[]): Promise<Map<string, string>> {
+  const slugs = await pageSlugs(pages.map((page) => page.mbid));
+  const fresh = [
+    ...new Map(pages.filter((p) => !slugs.has(p.mbid)).map((p) => [p.mbid, p])).values(),
+  ];
+  if (fresh.length === 0) return slugs;
+  const ranks = await homonymRanks(fresh.map((page) => page.mbid));
+  const ranked = fresh.flatMap((page) => {
+    const rank = ranks.get(page.mbid);
+    return rank === undefined ? [] : [{ ...page, rank }];
+  });
+  const asked = candidatesOf(ranked);
+  const { planned, deferred } = planSlugs(ranked, new Set(asked), await takenAmong(db, asked));
+  const written =
+    planned.length === 0
+      ? []
+      : await db
+          .insert(artistSlug)
+          .values(planned)
+          .onConflictDoNothing()
+          .returning({ mbid: artistSlug.mbid, slug: artistSlug.slug });
+  for (const row of written) if (row.mbid) slugs.set(row.mbid, row.slug);
+  // Past what was asked, or taken meanwhile by a concurrent publication: one at a time.
+  const missed = new Set(planned.flatMap((p) => (slugs.has(p.mbid) ? [] : [p.mbid])));
+  for (const page of [...deferred, ...ranked.filter((p) => missed.has(p.mbid))]) {
+    const slug = await claimSlug(db, { mbid: page.mbid }, page.name, page.rank);
+    if (slug) slugs.set(page.mbid, slug);
   }
-  logger.info('artist_slugs.assigned', { given, nameless });
-  return { given, nameless };
+  return slugs;
 }

@@ -21,6 +21,13 @@ const db = {
 void mock.module('../db', () => ({ db }));
 
 const pages = await import('./artistPages');
+const slugs = await import('./artistSlugs');
+// The pages it lists in the sitemap, given their slugs.
+let published: Array<{ mbid: string; name: string }> = [];
+const slugsSpy = spyOn(slugs, 'slugsFor').mockImplementation((named) => {
+  published = [...named];
+  return Promise.resolve(new Map<string, string>());
+});
 const musilogy = await import('./musilogyService');
 const { isDiscovered, listDiscovered, loadDiscovered, refreshDiscovered, MIN_PLAYED_LINKS } =
   await import('./discoveredArtists');
@@ -109,6 +116,7 @@ const identitySpy = spyOn(musilogy, 'getArtistIdentity').mockImplementation((mbi
 );
 
 afterAll(() => {
+  slugsSpy.mockRestore();
   playedSpy.mockRestore();
   pageSpy.mockRestore();
   identitySpy.mockRestore();
@@ -128,6 +136,11 @@ describe('discovered artists', () => {
     expect(isDiscovered('few-records')).toBe(false);
     expect(isDiscovered('p0')).toBe(false);
     expect(isDiscovered(null)).toBe(false);
+    // The sitemap publishes their addresses: each is given its slug, by its name.
+    expect(published).toEqual([
+      { mbid: 'rich', name: 'rich' },
+      { mbid: 'just-enough', name: 'just-enough' },
+    ]);
   });
 
   it('keeps the last set when a run fails', async () => {

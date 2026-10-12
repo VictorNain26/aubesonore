@@ -239,11 +239,12 @@ export const artist = pgTable(
 // ARTIST_SLUG TABLE — the name of each artist page in its URL
 // ─────────────────────────────────────────────
 // A slug, once given, never changes nor goes to another page: a page shared or
-// indexed keeps its address. A homonym takes the next free suffix. Every artist
-// page has one, named by its MBID whether the antenna played the artist or not
-// (services/artistSlugs.ts); a row (artist_id) names one only for a played
-// artist without an MBID, and once that artist has one, the row's slug leads
-// to the MBID's page (a 301), so no address breaks.
+// indexed keeps its address. A homonym takes a suffix by its rank. Every artist
+// page has one from the first time the site publishes its address, named by its
+// MBID whether the antenna played the artist or not (services/artistSlugs.ts);
+// a row (artist_id) names one only for a played artist without an MBID, and
+// once that artist has one, the row's slug leads to the MBID's page (a 301),
+// so no address breaks.
 export const artistSlug = pgTable(
   'artist_slug',
   {

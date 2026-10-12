@@ -17,67 +17,68 @@ describe('freeSlug', () => {
   });
 });
 
-describe('a batch of slugs', () => {
-  const plan = (pages: Array<{ mbid: string; name: string }>, taken: Set<string>) =>
+describe('freeSlug from a rank', () => {
+  it('proposes the plain name to the first of homonyms, a suffix by rank to the others', () => {
+    expect(freeSlug('nirvana', new Set(), 1)).toBe('nirvana');
+    expect(freeSlug('nirvana', new Set(), 2)).toBe('nirvana-2');
+    // The third, published before the first: the plain name stays the first's.
+    expect(freeSlug('nirvana', new Set(), 3)).toBe('nirvana-3');
+    expect(freeSlug('nirvana', new Set(['nirvana-3']), 3)).toBe('nirvana-4');
+  });
+});
+
+describe('slugs published together', () => {
+  const plan = (pages: Array<{ mbid: string; name: string; rank: number }>, taken: Set<string>) =>
     planSlugs(pages, new Set(candidatesOf(pages)), taken);
 
-  it('asks about each name alone and its first suffixes, more for homonyms in the batch', () => {
-    expect(candidatesOf([{ mbid: 'm1', name: 'Air' }])).toEqual([
+  it("asks about each page's proposal and the few after it", () => {
+    expect(candidatesOf([{ mbid: 'm1', name: 'Air', rank: 1 }])).toEqual([
       'air',
       'air-2',
       'air-3',
       'air-4',
       'air-5',
-      'air-6',
     ]);
-    expect(
-      candidatesOf([
-        { mbid: 'm1', name: 'Air' },
-        { mbid: 'm2', name: 'AIR' },
-      ])
-    ).toHaveLength(7);
+    expect(candidatesOf([{ mbid: 'm1', name: 'Air', rank: 7 }])).toEqual([
+      'air-7',
+      'air-8',
+      'air-9',
+      'air-10',
+    ]);
   });
 
-  it('gives the plain name to the first of homonyms, the order given, and suffixes to the others', () => {
+  it('names homonyms by their rank, whichever is published first', () => {
     const taken = new Set<string>();
     expect(
       plan(
         [
-          { mbid: 'm1', name: 'Nirvana' },
-          { mbid: 'm2', name: 'Nirvana' },
-          { mbid: 'm3', name: 'Étienne Daho' },
+          { mbid: 'm2', name: 'Nirvana', rank: 2 },
+          { mbid: 'm1', name: 'Nirvana', rank: 1 },
+          { mbid: 'm3', name: 'Étienne Daho', rank: 1 },
         ],
         taken
       )
     ).toEqual({
       planned: [
-        { mbid: 'm1', slug: 'nirvana' },
         { mbid: 'm2', slug: 'nirvana-2' },
+        { mbid: 'm1', slug: 'nirvana' },
         { mbid: 'm3', slug: 'etienne-daho' },
       ],
       deferred: [],
     });
     // What it gave is held from then on.
-    expect(taken).toEqual(new Set(['nirvana', 'nirvana-2', 'etienne-daho']));
+    expect(taken).toEqual(new Set(['nirvana-2', 'nirvana', 'etienne-daho']));
   });
 
   it('never gives a slug a page already holds', () => {
-    expect(plan([{ mbid: 'm1', name: 'Radiohead' }], new Set(['radiohead'])).planned).toEqual([
-      { mbid: 'm1', slug: 'radiohead-2' },
-    ]);
+    expect(
+      plan([{ mbid: 'm1', name: 'Radiohead', rank: 1 }], new Set(['radiohead'])).planned
+    ).toEqual([{ mbid: 'm1', slug: 'radiohead-2' }]);
   });
 
-  it('defers a name whose free slug lies past what was asked, for claimSlug to read them all', () => {
-    // john-smith and its first suffixes are all held: the next free one was not asked about.
-    const taken = new Set([
-      'john-smith',
-      'john-smith-2',
-      'john-smith-3',
-      'john-smith-4',
-      'john-smith-5',
-      'john-smith-6',
-    ]);
-    const page = { mbid: 'm1', name: 'John Smith' };
+  it('defers a page whose free slug lies past what was asked, for claimSlug to read them all', () => {
+    const page = { mbid: 'm1', name: 'John Smith', rank: 1 };
+    const taken = new Set(candidatesOf([page]));
     expect(plan([page], taken)).toEqual({ planned: [], deferred: [page] });
   });
 
@@ -85,9 +86,9 @@ describe('a batch of slugs', () => {
     expect(
       plan(
         [
-          { mbid: 'm1', name: '!!!' },
-          { mbid: 'm2', name: 'x'.repeat(201) },
-          { mbid: 'm3', name: 'Кино' },
+          { mbid: 'm1', name: '!!!', rank: 1 },
+          { mbid: 'm2', name: 'x'.repeat(201), rank: 1 },
+          { mbid: 'm3', name: 'Кино', rank: 1 },
         ],
         new Set()
       )
