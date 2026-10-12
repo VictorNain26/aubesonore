@@ -37,6 +37,8 @@ const musilogyService = await import('../services/musilogyService');
 const DAFT_PUNK_MBID = '056e4f3e-d505-4dad-8ec1-d04f521cbb56';
 const UNPLAYED_MBID = '8d3431db-bc83-4dc2-93b8-0e46e31d09f7';
 const NOT_LOADED_MBID = '00000000-0000-4000-8000-000000000000';
+// A page never played that passed the threshold and was given a slug.
+const NAMED_MBID = '6e0e6c7a-1b8c-4f7b-9d4e-0a6c2f1d8b3e';
 const unplayed = {
   id: UNPLAYED_MBID,
   name: 'Protomartyr',
@@ -54,6 +56,14 @@ const musilogySpy = spyOn(musilogyService, 'getMusilogyArtist').mockImplementati
 );
 const profileSpy = spyOn(profileService, 'getArtistProfile').mockImplementation((slug: string) => {
   if (slug === UNPLAYED_MBID) return Promise.resolve(unplayed);
+  if (slug === NAMED_MBID || slug === 'shame')
+    return Promise.resolve({
+      ...unplayed,
+      id: NAMED_MBID,
+      name: 'Shame',
+      slug: 'shame',
+      mbid: NAMED_MBID,
+    });
   if (slug === NOT_LOADED_MBID)
     return Promise.reject(new musilogyService.MusilogyUnavailable('3F000'));
   return Promise.resolve(
@@ -86,8 +96,10 @@ let discovered: string[] = [];
 const discoveredSpy = spyOn(discoveredService, 'isDiscovered').mockImplementation(
   (mbid: string | null) => mbid !== null && discovered.includes(mbid)
 );
-const discoveredListSpy = spyOn(discoveredService, 'listDiscovered').mockImplementation(
-  () => discovered
+// The discovered pages' addresses: their slug, else their MBID.
+let named: Record<string, string> = {};
+const discoveredListSpy = spyOn(discoveredService, 'listDiscoveredPages').mockImplementation(() =>
+  Promise.resolve(discovered.map((mbid) => named[mbid] ?? mbid).sort())
 );
 const slugsSpy = spyOn(pages, 'listArtistSlugs').mockImplementation(() =>
   Promise.resolve(['daft-punk', 'кино'])
@@ -117,6 +129,7 @@ afterEach(() => {
   profileImages = [cover(COVER)];
   musilogyAnswer = null;
   discovered = [];
+  named = {};
   renderAnswer = () => Promise.resolve(new Response(null, { status: 503 }));
 });
 
@@ -368,6 +381,30 @@ describe('GET /artiste/:slug', () => {
     );
   });
 
+  it('sends the MBID of a page given a slug at the threshold to that slug, in both languages', async () => {
+    mockShell();
+
+    const fr = await app.handle(new Request(`http://localhost/artiste/${NAMED_MBID}`));
+    const en = await app.handle(new Request(`http://localhost/en/artist/${NAMED_MBID}`));
+
+    expect(fr.status).toBe(301);
+    expect(fr.headers.get('location')).toBe('/artiste/shame');
+    expect(en.status).toBe(301);
+    expect(en.headers.get('location')).toBe('/en/artist/shame');
+  });
+
+  it('serves a page never played at its slug, its slug the canonical address', async () => {
+    mockShell();
+    discovered = [NAMED_MBID];
+
+    const res = await app.handle(new Request('http://localhost/artiste/shame'));
+    const html = await res.text();
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('x-robots-tag')).toBeNull();
+    expect(html).toContain(`<link rel="canonical" href="${env.FRONTEND_BASE_URL}/artiste/shame"`);
+  });
+
   it('serves the English page of an artist never played at its MBID', async () => {
     mockShell();
     discovered = [UNPLAYED_MBID];
@@ -585,5 +622,17 @@ describe('GET /sitemap-artists-discovered.xml', () => {
     expect(count(xml, '<url>')).toBe(2);
     expect(xml).toContain(`<loc>${env.FRONTEND_BASE_URL}/artiste/${UNPLAYED_MBID}</loc>`);
     expect(xml).toContain(`<loc>${env.FRONTEND_BASE_URL}/en/artist/${UNPLAYED_MBID}</loc>`);
+  });
+
+  it('lists a page given a slug at its slug', async () => {
+    discovered = [NAMED_MBID];
+    named = { [NAMED_MBID]: 'shame' };
+
+    const xml = await (
+      await app.handle(new Request('http://localhost/sitemap-artists-discovered.xml'))
+    ).text();
+
+    expect(xml).toContain(`<loc>${env.FRONTEND_BASE_URL}/artiste/shame</loc>`);
+    expect(xml).not.toContain(NAMED_MBID);
   });
 });

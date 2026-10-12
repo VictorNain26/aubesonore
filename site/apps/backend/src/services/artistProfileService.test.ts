@@ -57,6 +57,10 @@ const STORED_PHOTO = {
 };
 
 let rows: Array<{ artist: ArtistRow; artist_profile: StoredProfile | null }> = [];
+// The slugs pages never played were given at the threshold.
+let slugRows: Array<{ slug: string; mbid: string }> = [];
+const slugQuery = () =>
+  Object.assign(Promise.resolve(slugRows), { limit: () => Promise.resolve(slugRows) });
 let stored: StoredProfile[] = [];
 let mbidWrites: Array<Record<string, unknown>> = [];
 
@@ -67,6 +71,7 @@ void mock.module('../db', () => ({
   db: {
     select: () => ({
       from: () => ({
+        where: slugQuery,
         innerJoin: () => ({
           leftJoin: () => ({
             where: () => ({
@@ -152,6 +157,7 @@ beforeEach(() => {
   rows = [{ artist: baseRow, artist_profile: null }];
   stored = [];
   mbidWrites = [];
+  slugRows = [];
   for (const spy of Object.values(spies)) spy.mockClear();
 });
 
@@ -298,6 +304,21 @@ describe('getArtistProfile', () => {
     expect(profile?.images).toEqual([]);
     expect(profile?.facts).toBeNull();
     expect(profile?.links).toEqual([]);
+  });
+
+  it('serves a page never played at the slug it was given at the threshold, its address', async () => {
+    rows = [];
+    const MBID = '056e4f3e-d505-4dad-8ec1-d04f521cbb56';
+    slugRows = [{ slug: 'daft-punk', mbid: MBID }];
+
+    const bySlug = await getArtistProfile('daft-punk', 'fr');
+    const byMbid = await getArtistProfile(MBID, 'fr');
+
+    expect(bySlug?.slug).toBe('daft-punk');
+    expect(bySlug?.mbid).toBe(MBID);
+    expect(bySlug?.played).toBe(false);
+    // Its MBID names the same page, at that address: the route sends the reader there.
+    expect(byMbid?.slug).toBe('daft-punk');
   });
 
   it('makes the page of an artist the antenna never played from Musilogy, at its MBID', async () => {

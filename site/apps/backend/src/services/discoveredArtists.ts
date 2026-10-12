@@ -2,8 +2,8 @@ import type { MusilogyArtist, MusilogyArtistRef } from '@aubesonore/shared-types
 import { db } from '../db';
 import { discoveredArtist } from '../db/schema';
 import { logger } from '../lib/logger';
-import { listPlayedMbids } from './artistPages';
-import { getArtistIdentity, getMusilogyArtist } from './musilogyService';
+import { claimDiscoveredSlug, discoveredSlugs, listPlayedMbids } from './artistPages';
+import { getArtistIdentity, getMusilogyArtist, musilogyCache } from './musilogyService';
 
 /**
  * Which pages of artists the antenna never played are offered to search engines
@@ -84,7 +84,42 @@ export async function refreshDiscovered(): Promise<void> {
       await tx.insert(discoveredArtist).values([...next].map((mbid) => ({ mbid })));
   });
   discovered = next;
-  logger.info('discoveredArtists.refreshed', { linked: links.size, discovered: next.size });
+  const named = await nameNewPages(next);
+  logger.info('discoveredArtists.refreshed', {
+    linked: links.size,
+    discovered: next.size,
+    named,
+  });
+}
+
+/**
+ * Gives a slug to each discovered page that has none yet: its address from then on, kept even if
+ * it later falls below the threshold. A page that fails keeps its MBID until the next run; the
+ * others are named all the same.
+ */
+async function nameNewPages(pages: ReadonlySet<string>): Promise<number> {
+  const named = await discoveredSlugs([...pages]);
+  let count = 0;
+  for (const mbid of pages) {
+    if (named.has(mbid)) continue;
+    try {
+      const identity = await getArtistIdentity(mbid);
+      if (identity && (await claimDiscoveredSlug(mbid, identity.name))) count += 1;
+    } catch (err) {
+      logger.warn('discoveredArtists.name_failed', { mbid, message: (err as Error).message });
+    }
+  }
+  // The run read every played page before these slugs existed: their links would point at the
+  // new pages' MBIDs for the cache's hour.
+  if (count > 0) musilogyCache.clear();
+  return count;
+}
+
+/** The discovered pages' addresses, sorted: their slug, else their MBID. */
+export async function listDiscoveredPages(): Promise<string[]> {
+  const mbids = listDiscovered();
+  const slugs = await discoveredSlugs(mbids);
+  return mbids.map((mbid) => slugs.get(mbid) ?? mbid).sort();
 }
 
 /** The set the last run stored: what a restart serves until the next run. */

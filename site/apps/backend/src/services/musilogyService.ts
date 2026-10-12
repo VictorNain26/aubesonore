@@ -15,6 +15,7 @@ import {
   type MusilogyRelease,
   type MusilogySearchHit,
 } from '@aubesonore/shared-types/client';
+import { discoveredSlugs } from './artistPages';
 import { db } from '../db/index';
 import { artist, artistSlug } from '../db/schema';
 import { TtlCache } from '../lib/cache/ttlCache';
@@ -181,12 +182,13 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
     return null;
   }
 
-  const played = await playedByMbid([
+  const linked = [
     card.mbid,
     ...[neighbourRows, bandRows, projectRows, nameRows].flatMap((rows) =>
       (rows ?? []).map((row) => row.mbid)
     ),
-  ]);
+  ];
+  const [played, slugs] = await Promise.all([playedByMbid(linked), discoveredSlugs(linked)]);
   const ref = (
     mbidOf: string,
     name: string,
@@ -198,6 +200,7 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
     disambiguation,
     y0,
     played: played.get(mbidOf) ?? null,
+    slug: slugs.get(mbidOf) ?? null,
   });
 
   const neighbour = (row: NeighbourRow): MusilogyNeighbour => ({

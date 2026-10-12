@@ -7,6 +7,7 @@ import type { Lookup } from '../lib/lookup';
 import { createSingleFlight } from '../lib/singleFlight';
 import { getPhoto } from './commonsService';
 import { deezerArtistUrl } from './deezerService';
+import { discoveredSlugs, mbidOfSlug } from './artistPages';
 import { ensureMbid } from './artistResolver';
 import { getArtistIdentity, type ArtistIdentity } from './musilogyService';
 import { getSummary } from './wikipediaService';
@@ -137,7 +138,8 @@ async function unplayedProfile(mbid: string, locale: SiteLocale): Promise<Artist
   return {
     id: mbid,
     name: identity.name,
-    slug: mbid,
+    // Its address: the slug it was given at the indexing threshold, else its MBID.
+    slug: (await discoveredSlugs([mbid])).get(mbid) ?? mbid,
     mbid,
     played: false,
     images: imagesOf(photo.status === 'found' ? photo.value : null, identity.firstCover),
@@ -172,7 +174,13 @@ export async function getArtistProfile(
     .limit(1);
 
   const found = rows[0];
-  if (!found) return mbid ? unplayedProfile(mbid, locale) : null;
+  if (!found) {
+    if (mbid) return unplayedProfile(mbid, locale);
+    // The slug a page never played was given at the threshold: the page of its MBID, which is
+    // the antenna's if it has played the artist since.
+    const named = await mbidOfSlug(key);
+    return named ? getArtistProfile(named, locale) : null;
+  }
   const row = found.artist;
   const { slug } = found.artist_slug;
   const { id } = row;
