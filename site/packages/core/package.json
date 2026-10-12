@@ -3,29 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "exports": {
-    "./stats": {
-      "types": "./dist/stats.d.ts",
-      "default": "./dist/stats.js"
-    },
-    "./sleep-timer": {
-      "types": "./dist/sleep-timer.d.ts",
-      "default": "./dist/sleep-timer.js"
-    },
-    "./export": {
-      "types": "./dist/export.d.ts",
-      "default": "./dist/export.js"
-    },
     "./api": {
       "types": "./dist/api.d.ts",
       "default": "./dist/api.js"
-    },
-    "./lru-cache": {
-      "types": "./dist/lruCache.d.ts",
-      "default": "./dist/lruCache.js"
-    },
-    "./format": {
-      "types": "./dist/format.d.ts",
-      "default": "./dist/format.js"
     },
     "./azuracast": {
       "types": "./dist/azuracast.d.ts",

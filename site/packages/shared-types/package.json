@@ -14,10 +14,6 @@
     "./stats": {
       "types": "./dist/stats.d.ts",
       "default": "./dist/stats.js"
-    },
-    "./sleep-timer": {
-      "types": "./dist/sleep-timer.d.ts",
-      "default": "./dist/sleep-timer.js"
     }
   },
   "scripts": {
