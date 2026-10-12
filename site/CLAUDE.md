@@ -115,7 +115,7 @@ Musilogy is the artist page's part that leads elsewhere (its close artists, band
 
 ## SSRF, headers, and other security baselines
 
-- Never `fetch()` a user-supplied URL without `assertSafeUrl()` from `lib/security/urlValidation`. It blocks private IPv4/IPv6, link-local (`169.254.0.0/16` = cloud metadata), and enforces `https` in prod.
+- Never `fetch()` a user-supplied URL. The `assertSafeUrl` guard was removed unused (see git history): a route that must fetch one needs a guard first, blocking private IPv4/IPv6 and link-local (`169.254.0.0/16` = cloud metadata) and enforcing `https` in prod.
 - `securityHeaders` Elysia plugin must stay mounted on the app (`X-Content-Type-Options`, `X-Frame-Options`, CSP, HSTS in prod). Don't remove from `index.ts`.
 
 ## Performance landmarks
