@@ -15,22 +15,9 @@ if (!root) {
   throw new Error('Root element not found');
 }
 
-// A reload starts at the top: the browser would put the reader back mid-page, under a hero that
-// renders after it. Back and forward keep restoring their place.
-const navigation = performance.getEntriesByType('navigation')[0];
-if (navigation instanceof PerformanceNavigationTiming && navigation.type === 'reload') {
-  history.scrollRestoration = 'manual';
-  window.scrollTo(0, 0);
-  window.addEventListener(
-    'load',
-    () => {
-      setTimeout(() => {
-        history.scrollRestoration = 'auto';
-      });
-    },
-    { once: true }
-  );
-}
+// The site puts the reader back itself (lib/scrollManager.tsx): the browser's own restoration
+// would land on a page still too short, its content coming after the route.
+history.scrollRestoration = 'manual';
 
 window.addEventListener('vite:preloadError', () => {
   handlePreloadError(sessionStorage, () => window.location.reload(), Date.now());

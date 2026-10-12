@@ -8,6 +8,7 @@ import { PlayerSideEffects } from './components/Player/PlayerSideEffects';
 import { PlayerBar } from './home/PlayerBar';
 import { SiteFooter } from './home/SiteFooter';
 import Layout from './layout/Layout';
+import { ScrollManager } from './lib/scrollManager';
 import HomePage from './pages/HomePage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { LegalPage } from './pages/LegalPage';
@@ -74,6 +75,7 @@ export default function App() {
     <>
       <AuthInit />
       <NowPlayingPoller />
+      <ScrollManager />
       <Layout>
         <Routes>
           <Route path="/" element={<HomePage />} />

@@ -8,7 +8,6 @@ import { artistPath, fetchArtistProfile } from '../lib/artistProfile';
 import { profileKey, seenMusilogy, seenProfiles } from '../lib/artistPageData';
 import { useDiscoveryTrail } from '../lib/discoveryTrail';
 import { fetchMusilogyArtist } from '../lib/musilogy';
-import { useScrollMemory } from '../lib/scrollMemory';
 import { useAuthStore } from '../stores/authStore';
 import * as m from '@/paraglide/messages.js';
 import { useLikedTracksStore } from '../stores/likedTracksStore';
@@ -97,9 +96,8 @@ export default function ArtistPage() {
   const musilogyArtist =
     musilogy !== null && musilogy.mbid === mbid ? musilogy.artist : (musilogySeen ?? null);
 
-  // Ready once Musilogy has answered too: back restores the place in its lists.
+  // Settled once Musilogy has answered too: the footer comes under the whole page.
   const settled = state.status !== 'loading' && (!mbid || musilogySeen !== undefined);
-  useScrollMemory(settled);
 
   // A played artist reached at its MBID has one address, its slug.
   const location = useLocation();
