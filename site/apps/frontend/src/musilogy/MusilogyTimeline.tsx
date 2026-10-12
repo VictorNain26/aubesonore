@@ -163,7 +163,7 @@ const BAR = 'absolute top-6 rounded-full';
 // On the page's colour, so no line runs through a year: a label's halo, its padding taken back by a
 // margin so the year itself starts or ends where the bar does.
 const LABEL =
-  'text-label bg-surface shrink-0 px-1 font-mono leading-4 whitespace-nowrap tabular-nums';
+  'text-label @min-[44rem]:text-ui bg-surface shrink-0 px-1 font-mono leading-4 whitespace-nowrap tabular-nums';
 // The decades: very light lines (Few, « Grid Lines in Graphs are Rarely Useful »: useful where the
 // rows run far from the scale). The artist's own start and end: darker, over them (Datawrapper,
 // « Range highlights and lines »; Wikipedia's band-member timelines draw their marks so).
