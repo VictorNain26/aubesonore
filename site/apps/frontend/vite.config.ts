@@ -132,6 +132,14 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/covers\/\d+\//, '/api/station/aubesonore/art/'),
         },
+        // nginx keeps the Cover Art Archive's covers at /caa/ (nginx.conf); here the archive answers
+        // with its own redirects, which the browser follows.
+        '/caa': {
+          target: 'https://coverartarchive.org',
+          changeOrigin: true,
+          rewrite: (path) =>
+            path.replace(/^\/caa\/(\d+)\/([0-9a-f-]+)\.jpg$/, '/release-group/$2/front-$1'),
+        },
       },
       cors: {
         origin: true,

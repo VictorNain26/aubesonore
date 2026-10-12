@@ -38,6 +38,8 @@ function Record({ release }: { release: MusilogyRelease }) {
         }
         triggerClassName="w-full"
         className="aspect-square w-full"
+        // Two columns on a phone, three from 40 rem, four from 64 rem, in the section's 8 of 12.
+        sizes="(min-width: 64rem) 14rem, (min-width: 40rem) 30vw, 45vw"
       />
       <span className="flex min-w-0 flex-col">
         <span className="text-ui break-words">{release.title}</span>

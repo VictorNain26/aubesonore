@@ -62,10 +62,11 @@ describe('ArtistPortrait', () => {
 
     const dialog = await screen.findByRole('dialog', { name: 'Neu!' });
     const large = within(dialog).getByRole('img', { name: 'Pochette de Neu!' });
-    expect(large.getAttribute('src')).toMatch(/\/front-1200$/);
+    // The Cover Art Archive's covers come through this site (nginx.conf, /caa/).
+    expect(large.getAttribute('src')).toBe('/caa/1200/00b3e683-47fa-3302-add0-4c0cecc5224e.jpg');
     // A cover without its large file keeps the one already shown.
     fireEvent.error(large);
-    expect(large.getAttribute('src')).toBe(COVER.url);
+    expect(large.getAttribute('src')).toBe('/caa/500/00b3e683-47fa-3302-add0-4c0cecc5224e.jpg');
     expect(within(dialog).getByText('Neu!, 1972')).toBeTruthy();
     expect(within(dialog).queryByRole('link')).toBeNull();
   });
@@ -77,7 +78,7 @@ describe('ArtistPortrait', () => {
     fireEvent.error(within(screen.getByRole('button')).getByRole('presentation'));
     expect(screen.queryByText('©')).toBeNull();
     expect(within(screen.getByRole('button')).getByRole('presentation').getAttribute('src')).toBe(
-      COVER.url
+      '/caa/500/00b3e683-47fa-3302-add0-4c0cecc5224e.jpg'
     );
 
     fireEvent.error(within(screen.getByRole('button')).getByRole('presentation'));

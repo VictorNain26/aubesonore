@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import * as m from '@/paraglide/messages.js';
 import { cn } from '@/lib/utils';
 import { CLOSE_BUTTON } from '../../home/styles';
+import { artworkSrc } from '../../lib/artwork';
 
 export interface LargeImage {
   src: string;
@@ -23,7 +24,7 @@ function Large({ image }: { image: LargeImage }) {
       : { width: 1200, height: 1200 };
   return (
     <img
-      src={failed ? image.fallback : image.src}
+      src={artworkSrc(failed ? image.fallback : image.src)}
       {...shape}
       alt={image.alt}
       referrerPolicy="no-referrer"
