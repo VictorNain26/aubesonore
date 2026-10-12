@@ -112,6 +112,22 @@ jobs:
     if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # The tests against a real Postgres (*.db.test.ts): the same image as production
+    # (site/compose.yaml), a database named *_test, which their helper requires. Syntax:
+    # docs.github.com, « Creating PostgreSQL service containers ».
+    services:
+      postgres:
+        image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: aubesonore_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
@@ -140,6 +156,16 @@ jobs:
 
       - name: Run backend tests
         run: pnpm --filter=@aubesonore/backend test
+
+      - name: Push the schema to the test database
+        run: pnpm --filter=@aubesonore/backend db:push
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/aubesonore_test
+
+      - name: Run backend tests against Postgres
+        run: pnpm --filter=@aubesonore/backend test:db
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/aubesonore_test
 
   build:
     name: Build all
