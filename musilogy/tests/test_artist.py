@@ -264,3 +264,34 @@ def test_the_band_sections_keep_the_signatures_the_site_reads(tmp_path, pg):
             "TABLE(kind text, mbid text, name text, disambiguation text, y0 integer)",
         ),
     ]
+
+
+def index_mbid(i):
+    return f"00000000-0000-4000-8000-0000000002{i:02d}"
+
+
+def test_every_artist_the_most_listened_first_the_unknown_last(tmp_path, pg):
+    # Two homonyms: the one ListenBrainz knows best comes first, so the site gives
+    # it the plain name; one ListenBrainz does not know at all comes after them.
+    artists = [
+        synthetic_artist(index_mbid(0), "1990", None, name="Nirvana"),
+        synthetic_artist(index_mbid(1), "1987", None, name="Nirvana"),
+        synthetic_artist(index_mbid(2), "2001", None, name="Ab"),
+    ]
+    loaded(tmp_path, pg, artists, popularity={index_mbid(0): 3, index_mbid(1): 900})
+    assert pg_query(pg, "SELECT mbid, name, user_count FROM musilogy.artist_index()") == [
+        (index_mbid(1), "Nirvana", 900),
+        (index_mbid(0), "Nirvana", 3),
+        (index_mbid(2), "Ab", None),
+    ]
+
+
+def test_artists_listenbrainz_does_not_know_keep_one_order(tmp_path, pg):
+    loaded(
+        tmp_path,
+        pg,
+        [synthetic_artist(index_mbid(i), "1990", None, name=f"A{i}") for i in (3, 1, 2)],
+        popularity={},
+    )
+    rows = pg_query(pg, "SELECT mbid FROM musilogy.artist_index()")
+    assert [r[0] for r in rows] == [index_mbid(1), index_mbid(2), index_mbid(3)]
