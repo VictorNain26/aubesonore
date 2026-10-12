@@ -266,32 +266,38 @@ def test_the_band_sections_keep_the_signatures_the_site_reads(tmp_path, pg):
     ]
 
 
-def index_mbid(i):
+def homonym(i):
     return f"00000000-0000-4000-8000-0000000002{i:02d}"
 
 
-def test_every_artist_the_most_listened_first_the_unknown_last(tmp_path, pg):
-    # Two homonyms: the one ListenBrainz knows best comes first, so the site gives
-    # it the plain name; one ListenBrainz does not know at all comes after them.
-    artists = [
-        synthetic_artist(index_mbid(0), "1990", None, name="Nirvana"),
-        synthetic_artist(index_mbid(1), "1987", None, name="Nirvana"),
-        synthetic_artist(index_mbid(2), "2001", None, name="Ab"),
-    ]
-    loaded(tmp_path, pg, artists, popularity={index_mbid(0): 3, index_mbid(1): 900})
-    assert pg_query(pg, "SELECT mbid, name, user_count FROM musilogy.artist_index()") == [
-        (index_mbid(1), "Nirvana", 900),
-        (index_mbid(0), "Nirvana", 3),
-        (index_mbid(2), "Ab", None),
-    ]
-
-
-def test_artists_listenbrainz_does_not_know_keep_one_order(tmp_path, pg):
-    loaded(
-        tmp_path,
-        pg,
-        [synthetic_artist(index_mbid(i), "1990", None, name=f"A{i}") for i in (3, 1, 2)],
-        popularity={},
+def ranks(conninfo, *mbids):
+    listed = ",".join(f"'{m}'" for m in mbids)
+    return dict(
+        pg_query(
+            conninfo,
+            f"SELECT mbid, homonym_rank FROM musilogy.artist_homonym_rank(ARRAY[{listed}])",
+        )
     )
-    rows = pg_query(pg, "SELECT mbid FROM musilogy.artist_index()")
-    assert [r[0] for r in rows] == [index_mbid(1), index_mbid(2), index_mbid(3)]
+
+
+def test_homonyms_ranked_by_listeners_the_unknown_last_then_by_mbid(tmp_path, pg):
+    # Three Nirvanas: the best known first; two ListenBrainz does not know, after it, by MBID.
+    # Its accents and case aside, "NIRVÁNA" bears the same name; Ab bears another.
+    artists = [
+        synthetic_artist(homonym(0), "1990", None, name="Nirvana"),
+        synthetic_artist(homonym(1), "1987", None, name="Nirvana"),
+        synthetic_artist(homonym(2), "1970", None, name="NIRVÁNA"),
+        synthetic_artist(homonym(3), "2001", None, name="Ab"),
+    ]
+    loaded(tmp_path, pg, artists, popularity={homonym(1): 900})
+    assert ranks(pg, homonym(0), homonym(1), homonym(2), homonym(3)) == {
+        homonym(1): 1,
+        homonym(0): 2,
+        homonym(2): 3,
+        homonym(3): 1,
+    }
+
+
+def test_an_artist_the_dump_does_not_hold_has_no_rank(tmp_path, pg):
+    loaded(tmp_path, pg, [synthetic_artist(homonym(0), "1990", None, name="Ab")], popularity={})
+    assert ranks(pg, homonym(9)) == {}
