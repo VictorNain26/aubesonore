@@ -2,7 +2,8 @@ import type { MusilogyArtist, MusilogyArtistRef } from '@aubesonore/shared-types
 import { db } from '../db';
 import { discoveredArtist } from '../db/schema';
 import { logger } from '../lib/logger';
-import { claimDiscoveredSlug, discoveredSlugs, listPlayedMbids } from './artistPages';
+import { listPlayedMbids } from './artistPages';
+import { assignSlugs, pageSlugs } from './artistSlugs';
 import { getArtistIdentity, getMusilogyArtist, musilogyCache } from './musilogyService';
 
 /**
@@ -84,41 +85,13 @@ export async function refreshDiscovered(): Promise<void> {
       await tx.insert(discoveredArtist).values([...next].map((mbid) => ({ mbid })));
   });
   discovered = next;
-  const named = await nameNewPages(next);
-  logger.info('discoveredArtists.refreshed', {
-    linked: links.size,
-    discovered: next.size,
-    named,
-  });
-}
-
-/**
- * Gives a slug to each discovered page that has none yet: its address from then on, kept even if
- * it later falls below the threshold. A page that fails keeps its MBID until the next run; the
- * others are named all the same.
- */
-async function nameNewPages(pages: ReadonlySet<string>): Promise<number> {
-  const named = await discoveredSlugs([...pages]);
-  let count = 0;
-  for (const mbid of pages) {
-    if (named.has(mbid)) continue;
-    try {
-      const identity = await getArtistIdentity(mbid);
-      if (identity && (await claimDiscoveredSlug(mbid, identity.name))) count += 1;
-    } catch (err) {
-      logger.warn('discoveredArtists.name_failed', { mbid, message: (err as Error).message });
-    }
-  }
-  // The run read every played page before these slugs existed: their links would point at the
-  // new pages' MBIDs for the cache's hour.
-  if (count > 0) musilogyCache.clear();
-  return count;
+  logger.info('discoveredArtists.refreshed', { linked: links.size, discovered: next.size });
 }
 
 /** The discovered pages' addresses, sorted: their slug, else their MBID. */
 export async function listDiscoveredPages(): Promise<string[]> {
   const mbids = listDiscovered();
-  const slugs = await discoveredSlugs(mbids);
+  const slugs = await pageSlugs(mbids);
   return mbids.map((mbid) => slugs.get(mbid) ?? mbid).sort();
 }
 
@@ -128,15 +101,38 @@ export async function loadDiscovered(): Promise<void> {
   discovered = new Set(rows.map((row) => row.mbid));
 }
 
-/** Reads the stored set at once, computes it again a minute after start, then every day. */
+/**
+ * A slug for every artist Musilogy gained since the last run (artistSlugs.assignSlugs), so each
+ * page has its address before anything links to it; nothing while Musilogy, or its index, is not
+ * loaded (42883).
+ */
+async function nameNewPages(): Promise<void> {
+  try {
+    const { given } = await assignSlugs();
+    // Pages read before these slugs existed would link to MBIDs for the cache's hour.
+    if (given > 0) musilogyCache.clear();
+  } catch (err) {
+    // Whatever stops it, the threshold is computed all the same; the next run goes on naming.
+    const code = (err as { code?: string }).code;
+    if (code === '42883' || code === '3F000') logger.warn('artist_slugs.musilogy_absent', { code });
+    else logger.warn('artist_slugs.failed', { message: (err as Error).message });
+  }
+}
+
+/**
+ * Reads the stored set at once; a minute after start, then every day, names the new pages and
+ * computes the set again.
+ */
 export function startDiscoveredArtists(): () => void {
   loadDiscovered().catch((err: unknown) => {
     logger.warn('discoveredArtists.load_failed', { message: (err as Error).message });
   });
   const tick = () => {
-    refreshDiscovered().catch((err: unknown) => {
-      logger.warn('discoveredArtists.refresh_failed', { message: (err as Error).message });
-    });
+    nameNewPages()
+      .then(refreshDiscovered)
+      .catch((err: unknown) => {
+        logger.warn('discoveredArtists.refresh_failed', { message: (err as Error).message });
+      });
   };
   const first = setTimeout(tick, FIRST_RUN_AFTER_MS);
   const every = setInterval(tick, REFRESH_EVERY_MS);

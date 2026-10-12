@@ -15,9 +15,9 @@ import {
   type MusilogyRelease,
   type MusilogySearchHit,
 } from '@aubesonore/shared-types/client';
-import { discoveredSlugs } from './artistPages';
+import { mbidSlug, ownSlug, pageSlug, pageSlugs } from './artistSlugs';
 import { db } from '../db/index';
-import { artist, artistSlug } from '../db/schema';
+import { artist } from '../db/schema';
 import { TtlCache } from '../lib/cache/ttlCache';
 import { createSingleFlight } from '../lib/singleFlight';
 
@@ -127,12 +127,13 @@ interface SearchRow extends Record<string, unknown> {
 async function playedByMbid(mbids: string[]): Promise<Map<string, ArtistPageRef>> {
   if (mbids.length === 0) return new Map();
   const rows = await db
-    .select({ id: artist.id, slug: artistSlug.slug, mbid: artist.mbid })
+    .select({ id: artist.id, slug: pageSlug, mbid: artist.mbid })
     .from(artist)
-    .innerJoin(artistSlug, eq(artistSlug.artistId, artist.id))
+    .leftJoin(mbidSlug, eq(mbidSlug.mbid, artist.mbid))
+    .leftJoin(ownSlug, eq(ownSlug.artistId, artist.id))
     .where(inArray(artist.mbid, [...new Set(mbids)]));
   return new Map(
-    rows.flatMap((r) => (r.mbid ? [[r.mbid, { id: r.id, slug: r.slug }] as const] : []))
+    rows.flatMap((r) => (r.mbid && r.slug ? [[r.mbid, { id: r.id, slug: r.slug }] as const] : []))
   );
 }
 
@@ -188,7 +189,7 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
       (rows ?? []).map((row) => row.mbid)
     ),
   ];
-  const [played, slugs] = await Promise.all([playedByMbid(linked), discoveredSlugs(linked)]);
+  const [played, slugs] = await Promise.all([playedByMbid(linked), pageSlugs(linked)]);
   const ref = (
     mbidOf: string,
     name: string,
@@ -268,12 +269,14 @@ export async function searchMusilogy(query: string): Promise<MusilogySearchHit[]
   const rows = await call<SearchRow>(
     sql`SELECT * FROM musilogy.search_artists(${query}, ${SEARCH_PAGE})`
   );
+  const slugs = await pageSlugs(rows.map((row) => row.mbid));
   return rows.map((row) => ({
     mbid: row.mbid,
     name: row.name,
     disambiguation: row.disambiguation,
     kind: kindOf(row.type),
     y0: row.y0,
+    slug: slugs.get(row.mbid) ?? null,
   }));
 }
 

@@ -16,9 +16,13 @@ let artistRows: ArtistRow[] = [];
 // When set, each artist query answers the next entry: the resolver's lookups in order.
 let artistAnswers: ArtistRow[][] | null = null;
 let insertConflict = false;
-// Slugs already held by other artists, and every slug the resolver tried to claim.
+// Slugs already held by other pages, the slug each MBID's page already has, and every slug the
+// resolver claimed (artistSlugs.claimSlug).
 let takenSlugs = new Set<string>();
-let claimedSlugs: Array<{ slug: string; artistId: string }> = [];
+let mbidSlugs = new Map<string, string>();
+let claimedSlugs: Array<{ slug: string; artistId?: string; mbid?: string }> = [];
+// The MBIDs an artist row was bound to (artistSlugs.bindArtistSlug).
+let bound: Array<{ artistId: string; mbid: string }> = [];
 let isrcLookup: Lookup<IsrcRecording[]> = { status: 'none' };
 // What MusicBrainz's search finds under the played title and name.
 let titleLookup: Lookup<IsrcRecording[]> = { status: 'none' };
@@ -28,9 +32,6 @@ let declaredDeezerId: Lookup<string> = { status: 'none' };
 let deezerByIsrc: Lookup<DeezerIsrcTrack> = { status: 'none' };
 let deletedProfiles = 0;
 let updates: Array<Record<string, unknown>> = [];
-// The discovered page's slug a new played artist takes over (artistResolver.adoptDiscoveredSlug).
-let adoptable: Array<{ slug: string }> = [];
-let adopted: Array<Record<string, unknown>> = [];
 let updateError: Error | null = null;
 let mbLookup: Lookup<string> = { status: 'none' };
 let mbLookups = 0;
@@ -51,20 +52,13 @@ const db = {
           table === schema.radioPlay ? playRows : (artistAnswers?.shift() ?? artistRows)
         );
       const filtered = { where: () => ({ limit: answer, orderBy: () => ({ limit: answer }) }) };
-      return { ...filtered, innerJoin: () => filtered };
+      return { ...filtered, leftJoin: () => ({ leftJoin: () => filtered }) };
     },
   }),
-  insert: (table: unknown) => ({
+  insert: () => ({
     values: (row: Record<string, unknown>) => ({
       onConflictDoNothing: () => ({
         returning: () => {
-          if (table === schema.artistSlug) {
-            const claim = row as { slug: string; artistId: string };
-            if (takenSlugs.has(claim.slug)) return Promise.resolve([]);
-            takenSlugs.add(claim.slug);
-            claimedSlugs.push(claim);
-            return Promise.resolve([{ slug: claim.slug }]);
-          }
           if (insertConflict) return Promise.resolve([]);
           inserted.push(row);
           return Promise.resolve([{ id: row.id }]);
@@ -73,16 +67,20 @@ const db = {
     }),
   }),
   transaction: <T>(work: (tx: unknown) => Promise<T>) => work(db),
-  update: (table: unknown) => ({
+  update: () => ({
     set: (values: Record<string, unknown>) => ({
+      // Awaited as is (writeIdentity), or with returning (ensureMbid: the row it wrote).
       where: () => {
-        if (table === schema.artistSlug) {
-          adopted.push(values);
-          return { returning: () => Promise.resolve(adoptable) };
-        }
-        if (updateError) return Promise.reject(updateError);
-        updates.push(values);
-        return Promise.resolve();
+        const settle = (): Promise<Array<{ id: string }>> => {
+          if (updateError) return Promise.reject(updateError);
+          updates.push(values);
+          return Promise.resolve([{ id: 'written' }]);
+        };
+        return {
+          then: (onDone: (v: unknown) => unknown, onFail: (e: unknown) => unknown) =>
+            settle().then(onDone, onFail),
+          returning: settle,
+        };
       },
     }),
   }),
@@ -101,6 +99,7 @@ void mock.module('../db', () => ({ schema, db }));
 const deezer = await import('./deezerService');
 const onAir = await import('./nowPlaying');
 const musicbrainz = await import('./musicbrainzService');
+const slugs = await import('./artistSlugs');
 
 const spies = [
   spyOn(deezer, 'searchArtist').mockImplementation((_name: string, title: string) => {
@@ -125,20 +124,38 @@ const spies = [
     return Promise.resolve(titleLookup);
   }),
   spyOn(deezer, 'findTrackByIsrc').mockImplementation(() => Promise.resolve(deezerByIsrc)),
+  spyOn(slugs, 'claimSlug').mockImplementation((_ex, owner, name) => {
+    const key = 'mbid' in owner ? owner.mbid : owner.artistId;
+    const owned = mbidSlugs.get(key);
+    if (owned) return Promise.resolve(owned);
+    const base = slugify(name);
+    if (!base) return Promise.resolve(null);
+    const slug = slugs.freeSlug(base, takenSlugs);
+    takenSlugs.add(slug);
+    mbidSlugs.set(key, slug);
+    claimedSlugs.push({ slug, ...owner });
+    return Promise.resolve(slug);
+  }),
+  spyOn(slugs, 'bindArtistSlug').mockImplementation((_ex, artistId, mbid) => {
+    bound.push({ artistId, mbid });
+    return Promise.resolve();
+  }),
+  // The page slug: its new MBID page's once bound, else the row's own, as claimed or as stored
+  // while the row has no MBID.
+  spyOn(slugs, 'slugOfArtistPage').mockImplementation((id) => {
+    if (bound.some((b) => b.artistId === id)) return Promise.resolve(`page-of-${id}`);
+    const row = artistRows.find((r) => r.id === id);
+    return Promise.resolve(mbidSlugs.get(id) ?? (row && !row.mbid ? row.slug : null));
+  }),
 ];
 
 afterAll(() => {
   for (const spy of spies) spy.mockRestore();
 });
 
-const {
-  normalizeArtistName,
-  primaryArtistName,
-  resolveArtist,
-  reverifyArtist,
-  sameTitle,
-  slugify,
-} = await import('./artistResolver');
+const { primaryArtistName, resolveArtist, reverifyArtist, sameTitle } =
+  await import('./artistResolver');
+const { normalizeArtistName, slugify } = await import('../lib/artistName');
 
 beforeEach(() => {
   artistRows = [];
@@ -146,8 +163,8 @@ beforeEach(() => {
   insertConflict = false;
   takenSlugs = new Set();
   claimedSlugs = [];
-  adoptable = [];
-  adopted = [];
+  mbidSlugs = new Map();
+  bound = [];
   isrcLookup = { status: 'none' };
   isrcLookups = 0;
   titleLookup = { status: 'none' };
@@ -528,18 +545,26 @@ describe('identity by ISRC', () => {
     expect(inserted).toEqual([]);
   });
 
-  it('takes over the slug its page got at the indexing threshold, never played then', async () => {
+  it('names a new played artist by its MBID page, the slug that page already has', async () => {
     playRows = [{ title: 'One More Time', isrc: ISRC }];
     isrcLookup = { status: 'found', value: [recording('One More Time', ['mb-dp', 'Daft Punk'])] };
     declaredDeezerId = page('27');
-    adoptable = [{ slug: 'daft-punk' }];
+    mbidSlugs = new Map([['mb-dp', 'daft-punk']]);
 
     const resolved = await resolveArtist('Daft Punk');
 
     expect(resolved?.slug).toBe('daft-punk');
-    expect(adopted).toEqual([{ artistId: inserted[0]?.id, mbid: null }]);
-    // No new slug claimed: the address already shared stays the artist's own.
+    // No new slug: the page's address, already shared, is the played artist's.
     expect(claimedSlugs).toEqual([]);
+  });
+
+  it("gives a new played artist's MBID page a slug when it has none yet, and the row none", async () => {
+    playRows = [{ title: 'One More Time', isrc: ISRC }];
+    isrcLookup = { status: 'found', value: [recording('One More Time', ['mb-dp', 'Daft Punk'])] };
+    declaredDeezerId = page('27');
+
+    expect(await resolveArtist('Daft Punk')).toMatchObject({ slug: 'daft-punk' });
+    expect(claimedSlugs).toEqual([{ slug: 'daft-punk', mbid: 'mb-dp' }]);
   });
 
   it('takes the credited artist bearing the played name, not the first credited', async () => {
@@ -635,9 +660,25 @@ describe('identity by ISRC', () => {
     isrcLookup = { status: 'found', value: [recording('Vitamin C', ['mb-can', 'Can'])] };
     declaredDeezerId = page('8213');
 
-    expect(await resolveArtist('Can')).toEqual({ id: 'a-can', slug: 'can' });
+    // The page is now its MBID's, at that page's address.
+    expect(await resolveArtist('Can')).toEqual({ id: 'a-can', slug: 'page-of-a-can' });
+    expect(bound).toEqual([{ artistId: 'a-can', mbid: 'mb-can' }]);
     expect(updates).toEqual([{ deezerId: '8213', mbid: 'mb-can', identifiedBy: 'isrc' }]);
     expect(deletedProfiles).toBe(1);
+  });
+
+  it('gives a row its own page again when a checked ISRC finds it has no MBID', async () => {
+    // Its slug was its old MBID page's (migration 0021): that page is another artist's now.
+    artistRows = [
+      { id: 'a-can', slug: 'can', deezerId: '366546802', mbid: 'mb-homonym', identifiedBy: 'name' },
+    ];
+    playRows = [{ title: 'Vitamin C', isrc: 'DEAE87200093' }];
+    deezerByIsrc = deezerTrack('Vitamin C', ['8213', 'Can']);
+    takenSlugs = new Set(['can']);
+
+    expect(await resolveArtist('Can')).toEqual({ id: 'a-can', slug: 'can-2' });
+    expect(updates).toEqual([{ deezerId: '8213', mbid: null, identifiedBy: 'isrc' }]);
+    expect(claimedSlugs).toEqual([{ slug: 'can-2', artistId: 'a-can' }]);
   });
 
   it('leaves a row identified by its ISRC alone', async () => {

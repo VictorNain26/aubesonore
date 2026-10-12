@@ -8,6 +8,7 @@ import { linkYears, MusilogyHomeView, MusilogySections } from './MusilogyView';
 import { coverOf, ReleasesSection } from './Releases';
 
 const T_REX = 'c842d29f-a297-48cd-bb71-4f77fd672b16';
+const TYRANNOSAURUS = '00000000-0000-4000-8000-00000000a1e7';
 
 function neighbour(n: number, overrides: Partial<MusilogyNeighbour> = {}): MusilogyNeighbour {
   return {
@@ -43,7 +44,11 @@ function artist(overrides: Partial<MusilogyArtist> = {}): MusilogyArtist {
     },
     neighbours: [
       neighbour(3, { name: 'The Kinks' }),
-      neighbour(4, { name: 'David Bowie', played: { id: 'a-bowie', slug: 'david-bowie' } }),
+      neighbour(4, {
+        name: 'David Bowie',
+        played: { id: 'a-bowie', slug: 'david-bowie' },
+        slug: 'david-bowie',
+      }),
       neighbour(14, { name: 'Ramones', term: 'Punk' }),
     ],
     releases: [],
@@ -93,7 +98,7 @@ describe('MusilogySections', () => {
     expect(screen.queryByRole('link', { name: 'T. Rex' })).not.toBeInTheDocument();
   });
 
-  it('leads straight to the page of a neighbour the antenna played', () => {
+  it('leads straight to the page of a neighbour the antenna played, at its slug', () => {
     show(artist());
 
     expect(screen.getByRole('link', { name: 'David Bowie' })).toHaveAttribute(
@@ -102,7 +107,7 @@ describe('MusilogySections', () => {
     );
   });
 
-  it('leads to the slug a page never played was given, else to its MBID', () => {
+  it('leads to the page of a neighbour never played at its slug too, else at its MBID', () => {
     const named = neighbour(40, { name: 'Gorillaz', slug: 'gorillaz' });
     const unnamed = neighbour(41, { name: 'Unnamed' });
     show(artist({ neighbours: [named, unnamed] }));
@@ -345,6 +350,15 @@ describe('MusilogyHomeView', () => {
               disambiguation: null,
               kind: 'group',
               y0: 1967,
+              slug: 't-rex',
+            },
+            {
+              mbid: TYRANNOSAURUS,
+              name: 'Tyrannosaurus Rex',
+              disambiguation: null,
+              kind: 'group',
+              y0: 1967,
+              slug: null,
             },
           ],
         }}
@@ -354,9 +368,11 @@ describe('MusilogyHomeView', () => {
 
     await userEvent.type(screen.getByRole('searchbox', { name: 'Chercher un artiste' }), 't');
     expect(onQueryChange).toHaveBeenCalledWith('t');
-    expect(screen.getByRole('link', { name: 'T. Rex' })).toHaveAttribute(
+    // Each hit at its page's address: its slug, else its MBID while it has none.
+    expect(screen.getByRole('link', { name: 'T. Rex' })).toHaveAttribute('href', '/artiste/t-rex');
+    expect(screen.getByRole('link', { name: 'Tyrannosaurus Rex' })).toHaveAttribute(
       'href',
-      `/artiste/${T_REX}`
+      `/artiste/${TYRANNOSAURUS}`
     );
   });
 
@@ -367,6 +383,7 @@ describe('MusilogyHomeView', () => {
       disambiguation: 'glam rock band',
       kind: 'group' as const,
       y0: 1967,
+      slug: null,
     };
     const view = (search: Parameters<typeof MusilogyHomeView>[0]['search']) => (
       <MusilogyHomeView query="t. r" onQueryChange={vi.fn()} search={search} />

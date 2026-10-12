@@ -238,12 +238,12 @@ export const artist = pgTable(
 // ─────────────────────────────────────────────
 // ARTIST_SLUG TABLE — the name of each artist page in its URL
 // ─────────────────────────────────────────────
-// A slug, once given, never changes nor goes to another artist: a page shared
-// or indexed keeps its address. A homonym takes the next free suffix. A slug
-// names a played artist (artist_id) or the page of an artist never played that
-// passed the indexing threshold (mbid, services/discoveredArtists.ts): one
-// namespace for both. Once such an artist is played, its old slug leads to the
-// played page (a 301), so no address breaks.
+// A slug, once given, never changes nor goes to another page: a page shared or
+// indexed keeps its address. A homonym takes the next free suffix. Every artist
+// page has one, named by its MBID whether the antenna played the artist or not
+// (services/artistSlugs.ts); a row (artist_id) names one only for a played
+// artist without an MBID, and once that artist has one, the row's slug leads
+// to the MBID's page (a 301), so no address breaks.
 export const artistSlug = pgTable(
   'artist_slug',
   {
@@ -256,6 +256,8 @@ export const artistSlug = pgTable(
   (table) => ({
     // An index, as migration 0020 creates it.
     mbidUnique: uniqueIndex('artist_slug_mbid_unique').on(table.mbid),
+    // LIKE 'base-%' for a homonym's free suffix (migration 0021).
+    slugPattern: index('artist_slug_slug_pattern').on(table.slug.op('text_pattern_ops')),
     oneOwner: check(
       'artist_slug_one_owner',
       sql`num_nonnulls(${table.artistId}, ${table.mbid}) = 1`

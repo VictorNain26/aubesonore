@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { and, desc, DrizzleQueryError, eq, isNull, or, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { artist, artistProfile, artistSlug, likedTracks, radioPlay } from '../db/schema';
+import { artist, artistProfile, likedTracks, radioPlay } from '../db/schema';
+import { normalizeArtistName } from '../lib/artistName';
 import { logger } from '../lib/logger';
 import type { Lookup } from '../lib/lookup';
 import { findTrackByIsrc, searchArtist } from './deezerService';
@@ -13,6 +14,14 @@ import {
   type IsrcRecording,
 } from './musicbrainzService';
 import { fetchNowPlaying } from './nowPlaying';
+import {
+  bindArtistSlug,
+  claimSlug,
+  mbidSlug,
+  ownSlug,
+  pageSlug,
+  slugOfArtistPage,
+} from './artistSlugs';
 
 // Only explicit featuring markers. Splitting on `&`, `+`, `x` or `,` would
 // destroy legitimate names ("Simon & Garfunkel", "Earth, Wind & Fire").
@@ -22,78 +31,20 @@ export function primaryArtistName(raw: string): string {
   return (raw.split(FEATURING_SEPARATOR)[0] ?? raw).trim();
 }
 
-/**
- * The resolution key. Letters and digits of every script survive, so "坂本龍一"
- * or "Кино" get a key; accents and punctuation do not, so "Beyoncé" and
- * "beyonce" share one.
- */
-export function normalizeArtistName(name: string): string {
-  return name
-    .normalize('NFKD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
-}
-
 /** The key a raw AzuraCast name is stored and compared under: its first credited artist, normalized. */
 export function artistKey(raw: string): string {
   return normalizeArtistName(primaryArtistName(raw));
 }
 
-export function slugify(name: string): string {
-  return normalizeArtistName(name).replace(/ /g, '-');
-}
-
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
-// Far more homonyms than the antenna will ever play under one name.
-const MAX_SUFFIX = 100;
-
-/**
- * Gives the artist the first free slug of its name, the name alone or with a
- * suffix (`cassius`, `cassius-2`…). A slug is never taken back: whoever holds
- * it keeps it, so the next homonym gets the next suffix.
- */
-async function claimSlug(tx: Tx, artistId: string, base: string): Promise<string> {
-  for (let n = 1; n <= MAX_SUFFIX; n += 1) {
-    const slug = n === 1 ? base : `${base}-${n}`;
-    const claimed = await tx
-      .insert(artistSlug)
-      .values({ slug, artistId })
-      .onConflictDoNothing({ target: artistSlug.slug })
-      .returning({ slug: artistSlug.slug });
-    if (claimed[0]) return claimed[0].slug;
-  }
-  throw new Error(`artist slug: no free suffix for "${base}"`);
-}
-
-/**
- * The slug the page of this artist was given when it passed the indexing threshold, never played
- * then (discoveredArtists.ts): the played page takes it over, so the address already shared and
- * indexed stays the artist's own rather than a 301 to a suffixed one.
- */
-async function adoptDiscoveredSlug(
-  tx: Tx,
-  artistId: string,
-  mbid: string | null
-): Promise<string | null> {
-  if (!mbid) return null;
-  const adopted = await tx
-    .update(artistSlug)
-    .set({ artistId, mbid: null })
-    .where(and(eq(artistSlug.mbid, mbid), isNull(artistSlug.artistId)))
-    .returning({ slug: artistSlug.slug });
-  return adopted[0]?.slug ?? null;
-}
-
 type Resolved = { id: string; slug: string };
-type Identity = { id: string; deezerId: string | null; mbid: string | null };
-type Row = Resolved & Identity & { identifiedBy: 'isrc' | 'name' };
+type Identity = { id: string; displayName: string; deezerId: string | null; mbid: string | null };
+// The row's page slug, null only while it has none: see pageOfRow.
+type Row = Identity & { slug: string | null; identifiedBy: 'isrc' | 'name' };
 
 const ROW = {
   id: artist.id,
-  slug: artistSlug.slug,
+  slug: pageSlug,
+  displayName: artist.displayName,
   deezerId: artist.deezerId,
   mbid: artist.mbid,
   identifiedBy: artist.identifiedBy,
@@ -103,7 +54,8 @@ async function findBy(normalizedName: string): Promise<Row | null> {
   const rows = await db
     .select(ROW)
     .from(artist)
-    .innerJoin(artistSlug, eq(artistSlug.artistId, artist.id))
+    .leftJoin(mbidSlug, eq(mbidSlug.mbid, artist.mbid))
+    .leftJoin(ownSlug, eq(ownSlug.artistId, artist.id))
     .where(eq(artist.normalizedName, normalizedName))
     .limit(1);
   return rows[0] ?? null;
@@ -127,10 +79,14 @@ export async function ensureMbid(row: Identity): Promise<string | null> {
   const found = await findMbidByDeezerId(row.deezerId);
   if (found.status !== 'found') return null;
   try {
-    await db
+    const written = await db
       .update(artist)
       .set({ mbid: found.value })
-      .where(and(eq(artist.id, row.id), isNull(artist.mbid)));
+      .where(and(eq(artist.id, row.id), isNull(artist.mbid)))
+      .returning({ id: artist.id });
+    // Only the MBID written here moves the row's slug: another written meanwhile (a play's
+    // ISRC) is that identity's, bound where it was written.
+    if (written[0]) await bindArtistSlug(db, row.id, found.value, row.displayName);
   } catch (err) {
     // artist_mbid_unique: another row already holds it, two spellings of one
     // artist. The page still shows the MusicBrainz facts; only the write is
@@ -361,6 +317,10 @@ async function writeIdentity(row: Row, identity: Identification): Promise<boolea
     return false;
   }
   if (changed) await db.delete(artistProfile).where(eq(artistProfile.artistId, row.id));
+  // The page is the new MBID's; without one, the row's own again, the slug it kept or a new one.
+  if (changed && identity.mbid)
+    await bindArtistSlug(db, row.id, identity.mbid, identity.displayName);
+  else if (changed) await claimSlug(db, { artistId: row.id }, identity.displayName);
   return changed;
 }
 
@@ -419,12 +379,13 @@ async function resolveOn(
     // code designates the recording, a name can be a homonym's.
     const played = existing.identifiedBy === 'name' ? await evidence(normalizedName) : null;
     const identity = played?.isrc ? await identify(primary, played) : null;
-    if (identity && identity !== 'failed' && identity.identifiedBy === 'isrc') {
-      await writeIdentity(existing, identity);
-    } else {
-      await ensureMbid(existing);
-    }
-    return { id: existing.id, slug: existing.slug };
+    const moved =
+      identity && identity !== 'failed' && identity.identifiedBy === 'isrc'
+        ? await writeIdentity(existing, identity)
+        : existing.mbid === null && (await ensureMbid(existing)) !== null;
+    // A new MBID can give the page another address: its MBID's slug.
+    const slug = moved ? await slugOfArtistPage(existing.id) : existing.slug;
+    return pageOfRow({ ...existing, slug });
   }
 
   const played = await evidence(normalizedName);
@@ -450,10 +411,17 @@ async function resolveOn(
       .returning({ id: artist.id });
     if (!inserted[0]) return null;
     const id = inserted[0].id;
-    const adopted = await adoptDiscoveredSlug(tx, id, identity.mbid);
-    if (adopted) return { id, slug: adopted };
-    const base = slugify(identity.displayName) || normalizedName.replace(/ /g, '-');
-    return { id, slug: await claimSlug(tx, id, base) };
+    // The page of an MBID is named by it, the one it may already have; a row names its own page
+    // only when it has no MBID, or one whose name makes no slug.
+    const byMbid = identity.mbid
+      ? await claimSlug(tx, { mbid: identity.mbid }, identity.displayName)
+      : null;
+    const slug =
+      byMbid ??
+      (await claimSlug(tx, { artistId: id }, identity.displayName)) ??
+      (await claimSlug(tx, { artistId: id }, normalizedName));
+    if (!slug) throw new Error(`artist slug: none for "${normalizedName}"`);
+    return { id, slug };
   });
   if (created) return created;
   // Nothing inserted: a concurrent resolution of this name won the race, or
@@ -462,7 +430,16 @@ async function resolveOn(
   const row =
     (await findBy(normalizedName)) ?? (await findByIdentity(identity.deezerId, identity.mbid));
   if (!row) return null;
-  return { id: row.id, slug: row.slug };
+  return pageOfRow(row);
+}
+
+/**
+ * The page of a row: its page slug, or, should it have none (an MBID lost before this rule),
+ * a slug of its own claimed now, so a played artist always has its page.
+ */
+async function pageOfRow(row: Pick<Row, 'id' | 'slug' | 'displayName'>): Promise<Resolved | null> {
+  const slug = row.slug ?? (await claimSlug(db, { artistId: row.id }, row.displayName));
+  return slug ? { id: row.id, slug } : null;
 }
 
 async function findByIdentity(deezerId: string | null, mbid: string | null): Promise<Row | null> {
@@ -474,7 +451,8 @@ async function findByIdentity(deezerId: string | null, mbid: string | null): Pro
   const rows = await db
     .select(ROW)
     .from(artist)
-    .innerJoin(artistSlug, eq(artistSlug.artistId, artist.id))
+    .leftJoin(mbidSlug, eq(mbidSlug.mbid, artist.mbid))
+    .leftJoin(ownSlug, eq(ownSlug.artistId, artist.id))
     .where(or(...keys))
     .limit(1);
   return rows[0] ?? null;

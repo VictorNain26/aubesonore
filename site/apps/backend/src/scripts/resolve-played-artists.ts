@@ -3,9 +3,9 @@ import { env } from '../config/env';
 import { db, pool } from '../db/index';
 import { artist, likedTracks, radioPlay } from '../db/schema';
 import { toIsrc } from '../lib/isrc';
+import { normalizeArtistName } from '../lib/artistName';
 import {
   artistKey,
-  normalizeArtistName,
   resolveArtist,
   resolveKeptArtist,
   reverifyArtist,

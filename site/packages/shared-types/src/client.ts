@@ -202,7 +202,7 @@ export interface MusilogyArtistRef {
   /** The start of the career: declared, else the first album's year. */
   y0: number | null;
   played: ArtistPageRef | null;
-  /** Never played, the slug its page was given at the indexing threshold; else null. */
+  /** Its page's address; null while the artist has none yet (`/artiste/<mbid>` then). */
   slug: string | null;
 }
 
@@ -287,4 +287,6 @@ export interface MusilogySearchHit {
   disambiguation: string | null;
   kind: ArtistFacts['kind'];
   y0: number | null;
+  /** Its page's address; null while the artist has none yet (`/artiste/<mbid>` then). */
+  slug: string | null;
 }

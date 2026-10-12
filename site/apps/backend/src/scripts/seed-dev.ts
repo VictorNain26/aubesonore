@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import { auth } from '../lib/auth/index';
 import { db } from '../db/index';
 import { artist, artistSlug, likedTracks, user as userTable } from '../db/schema';
-import { normalizeArtistName } from '../services/artistResolver';
+import { normalizeArtistName } from '../lib/artistName';
 
 const { DEV_USER_EMAIL, DEV_USER_PASSWORD, DEV_USER_NAME } = Bun.env;
 if (!DEV_USER_EMAIL || !DEV_USER_PASSWORD) {

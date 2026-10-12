@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { desc, eq } from 'drizzle-orm';
 import { db } from '../db';
 import { radioPlay } from '../db/schema';
-import { artistKey, normalizeArtistName } from './artistResolver';
+import { normalizeArtistName } from '../lib/artistName';
+import { artistKey } from './artistResolver';
 import { fetchNowPlaying } from './nowPlaying';
 
 export function buildPlayRow(

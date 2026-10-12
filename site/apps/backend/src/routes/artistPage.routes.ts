@@ -5,7 +5,8 @@ import { logger } from '../lib/logger';
 import { checkRate, getClientIp, tooManyRequests } from '../lib/rateLimit';
 import { getArtistProfile } from '../services/artistProfileService';
 import { getMusilogyArtist, MusilogyUnavailable } from '../services/musilogyService';
-import { listArtistSlugs, slugOfArtist } from '../services/artistPages';
+import { listArtistSlugs } from '../services/artistPages';
+import { slugOfArtistPage } from '../services/artistSlugs';
 import { isDiscovered, listDiscoveredPages } from '../services/discoveredArtists';
 import { renderArtistShell, type RenderedPage } from '../services/templates/artistShell';
 import { isValidArtistId, isValidArtistSlug } from '../validators/artistValidator';
@@ -131,9 +132,8 @@ async function handle(
     set.status = 404;
     return html;
   }
-  // A page has one address: a played artist's slug, the slug a page never played was given at
-  // the indexing threshold, else its MBID. Its MBID, or an old slug of an artist played since,
-  // leads there.
+  // A page has one address: its slug, played on the antenna or not, its MBID while it has none.
+  // Its MBID, or a row's older slug, leads there.
   if (profile.slug !== params.slug) {
     set.status = 301;
     set.headers.location = artistPagePath(locale, profile.slug);
@@ -196,7 +196,7 @@ function sitemapOf(list: () => string[] | Promise<string[]>) {
  * and search results: a permanent redirect hands them to the page's address.
  */
 async function legacy(locale: SiteLocale, id: string, set: ResponseSet): Promise<string> {
-  const slug = isValidArtistId(id) ? await slugOfArtist(id) : null;
+  const slug = isValidArtistId(id) ? await slugOfArtistPage(id) : null;
   if (!slug) {
     set.status = 404;
     return locale === 'en' ? 'Artist not found' : 'Artiste introuvable';
@@ -212,7 +212,7 @@ async function legacy(locale: SiteLocale, id: string, set: ResponseSet): Promise
  */
 async function english(context: HandlerContext): Promise<string> {
   const { params, set } = context;
-  const slug = isValidArtistId(params.slug) ? await slugOfArtist(params.slug) : null;
+  const slug = isValidArtistId(params.slug) ? await slugOfArtistPage(params.slug) : null;
   if (!slug) return handle('en', context);
   set.status = 301;
   set.headers.location = artistPagePath('en', slug);

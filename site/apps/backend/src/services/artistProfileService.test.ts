@@ -57,10 +57,8 @@ const STORED_PHOTO = {
 };
 
 let rows: Array<{ artist: ArtistRow; artist_profile: StoredProfile | null }> = [];
-// The slugs pages never played were given at the threshold.
+// The slugs of MBID pages; a played artist's row is at 'daft-punk' (artistSlugs).
 let slugRows: Array<{ slug: string; mbid: string }> = [];
-const slugQuery = () =>
-  Object.assign(Promise.resolve(slugRows), { limit: () => Promise.resolve(slugRows) });
 let stored: StoredProfile[] = [];
 let mbidWrites: Array<Record<string, unknown>> = [];
 
@@ -71,20 +69,7 @@ void mock.module('../db', () => ({
   db: {
     select: () => ({
       from: () => ({
-        where: slugQuery,
-        innerJoin: () => ({
-          leftJoin: () => ({
-            where: () => ({
-              limit: () =>
-                Promise.resolve(
-                  rows.map((row) => ({
-                    artist_slug: { slug: 'daft-punk', artistId: row.artist.id },
-                    ...row,
-                  }))
-                ),
-            }),
-          }),
-        }),
+        leftJoin: () => ({ where: () => ({ limit: () => Promise.resolve(rows) }) }),
       }),
     }),
     insert: () => ({
@@ -97,10 +82,12 @@ void mock.module('../db', () => ({
     }),
     update: () => ({
       set: (values: Record<string, unknown>) => ({
-        where: () => {
-          mbidWrites.push(values);
-          return Promise.resolve();
-        },
+        where: () => ({
+          returning: () => {
+            mbidWrites.push(values);
+            return Promise.resolve([{ id: 'artist-1' }]);
+          },
+        }),
       }),
     }),
   },
@@ -112,6 +99,7 @@ const commons = await import('./commonsService');
 const musicbrainz = await import('./musicbrainzService');
 const musilogy = await import('./musilogyService');
 const wikipedia = await import('./wikipediaService');
+const slugs = await import('./artistSlugs');
 
 const spies = {
   photo: spyOn(commons, 'getPhoto').mockResolvedValue({ status: 'found', value: PHOTO }),
@@ -131,6 +119,17 @@ const spies = {
   summary: spyOn(wikipedia, 'getSummary').mockImplementation((_id, locale) =>
     Promise.resolve({ status: 'found', value: locale === 'fr' ? summaryFr : summaryEn })
   ),
+  owner: spyOn(slugs, 'ownerOfSlug').mockImplementation((slug) => {
+    const page = slugRows.find((row) => row.slug === slug);
+    if (page) return Promise.resolve({ mbid: page.mbid });
+    const row = rows[0];
+    return Promise.resolve(slug === 'daft-punk' && row ? { artistId: row.artist.id } : null);
+  }),
+  pageSlugs: spyOn(slugs, 'pageSlugs').mockImplementation(() =>
+    Promise.resolve(new Map(slugRows.map((row) => [row.mbid, row.slug])))
+  ),
+  pageSlug: spyOn(slugs, 'slugOfArtistPage').mockResolvedValue('daft-punk'),
+  bind: spyOn(slugs, 'bindArtistSlug').mockResolvedValue(),
 };
 
 afterAll(() => {
@@ -306,7 +305,7 @@ describe('getArtistProfile', () => {
     expect(profile?.links).toEqual([]);
   });
 
-  it('serves a page never played at the slug it was given at the threshold, its address', async () => {
+  it("serves an MBID's page at its slug, the address its MBID sends to", async () => {
     rows = [];
     const MBID = '056e4f3e-d505-4dad-8ec1-d04f521cbb56';
     slugRows = [{ slug: 'daft-punk', mbid: MBID }];

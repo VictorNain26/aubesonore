@@ -12,6 +12,8 @@ const dialect = new PgDialect();
 let answers: Record<string, Array<Record<string, unknown>>> = {};
 let notLoaded = new Set<string>();
 let pageRows: Array<{ id: string; slug: string; mbid: string | null }> = [];
+// The slug of each MBID's page (artistSlugs.pageSlugs).
+let slugRows: Array<{ slug: string; mbid: string | null }> = [];
 
 function answer(query: SQL) {
   const built = dialect.sqlToQuery(query);
@@ -34,10 +36,10 @@ void mock.module('../db/index', () => ({
   db: {
     execute: answer,
     select: () => ({
-      // The played artists' slugs (innerJoin), and the discovered pages' slugs (where).
+      // The played artists with their page slugs (the joins), and the MBIDs' slugs (where).
       from: () => ({
-        innerJoin: () => ({ where: () => Promise.resolve(pageRows) }),
-        where: () => Promise.resolve([]),
+        leftJoin: () => ({ leftJoin: () => ({ where: () => Promise.resolve(pageRows) }) }),
+        where: () => Promise.resolve(slugRows),
       }),
     }),
   },
@@ -97,6 +99,7 @@ beforeEach(() => {
   answers = {};
   notLoaded = new Set();
   pageRows = [];
+  slugRows = [];
   musilogyCache.dispose();
   coreCache.dispose();
   __resetRateLimits();
@@ -266,6 +269,8 @@ describe('GET /api/musilogy/search', () => {
       ],
     };
 
+    slugRows = [{ slug: 't-rex', mbid: T_REX }];
+
     const res = await get('/search?q=t.%20rex');
 
     expect(res.status).toBe(200);
@@ -276,6 +281,7 @@ describe('GET /api/musilogy/search', () => {
         disambiguation: null,
         kind: 'group',
         y0: 1967,
+        slug: 't-rex',
       },
     ]);
   });

@@ -1,13 +1,13 @@
 import type { ArtistImage, ArtistProfile, SiteLocale } from '@aubesonore/shared-types/client';
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
-import { artist, artistProfile, artistSlug } from '../db/schema';
+import { artist, artistProfile } from '../db/schema';
 import { logger } from '../lib/logger';
 import type { Lookup } from '../lib/lookup';
 import { createSingleFlight } from '../lib/singleFlight';
 import { getPhoto } from './commonsService';
 import { deezerArtistUrl } from './deezerService';
-import { discoveredSlugs, mbidOfSlug } from './artistPages';
+import { ownerOfSlug, pageSlugs, slugOfArtistPage } from './artistSlugs';
 import { ensureMbid } from './artistResolver';
 import { getArtistIdentity, type ArtistIdentity } from './musilogyService';
 import { getSummary } from './wikipediaService';
@@ -138,8 +138,8 @@ async function unplayedProfile(mbid: string, locale: SiteLocale): Promise<Artist
   return {
     id: mbid,
     name: identity.name,
-    // Its address: the slug it was given at the indexing threshold, else its MBID.
-    slug: (await discoveredSlugs([mbid])).get(mbid) ?? mbid,
+    // Its address: its slug, else its MBID while it has none yet.
+    slug: (await pageSlugs([mbid])).get(mbid) ?? mbid,
     mbid,
     played: false,
     images: imagesOf(photo.status === 'found' ? photo.value : null, identity.firstCover),
@@ -155,39 +155,35 @@ async function unplayedProfile(mbid: string, locale: SiteLocale): Promise<Artist
 }
 
 /**
- * An artist page by its slug, or by its MBID: the antenna's page when it
- * played the artist (its slug then is the address to send the reader to),
- * the page made from Musilogy otherwise.
+ * An artist page by its slug, or by its MBID: the page of an MBID, or of a
+ * played artist's row while it has none. The antenna's page when it played the
+ * artist, the page made from Musilogy otherwise. Its `slug` is the address to
+ * send the reader to.
  */
 export async function getArtistProfile(
   key: string,
   locale: SiteLocale
 ): Promise<ArtistProfile | null> {
-  // A key that is an MBID is the address of an artist page without a slug.
   const mbid = parseMbid(key);
+  const owner = mbid ? { mbid } : await ownerOfSlug(key);
+  if (!owner) return null;
   const rows = await db
     .select()
-    .from(artistSlug)
-    .innerJoin(artist, eq(artist.id, artistSlug.artistId))
+    .from(artist)
     .leftJoin(artistProfile, eq(artistProfile.artistId, artist.id))
-    .where(mbid ? eq(artist.mbid, mbid) : eq(artistSlug.slug, key))
+    .where('mbid' in owner ? eq(artist.mbid, owner.mbid) : eq(artist.id, owner.artistId))
     .limit(1);
 
   const found = rows[0];
-  if (!found) {
-    if (mbid) return unplayedProfile(mbid, locale);
-    // The slug a page never played was given at the threshold: the page of its MBID, which is
-    // the antenna's if it has played the artist since.
-    const named = await mbidOfSlug(key);
-    return named ? getArtistProfile(named, locale) : null;
-  }
+  if (!found) return 'mbid' in owner ? unplayedProfile(owner.mbid, locale) : null;
   const row = found.artist;
-  const { slug } = found.artist_slug;
   const { id } = row;
 
   // The dump is local: read on every view, cached by musilogyService. The
   // first view waits for the live sources; later ones never do.
   const identity = await identityOf(await ensureMbid(row));
+  // After ensureMbid: an MBID found names the page.
+  const slug = (await slugOfArtistPage(id)) ?? key;
   let stored = found.artist_profile;
   if (!stored) {
     stored = await refresh(row, identity, null);

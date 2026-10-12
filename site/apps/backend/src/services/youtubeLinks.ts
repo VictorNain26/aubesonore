@@ -1,7 +1,8 @@
 import { and, eq, gt, inArray, isNotNull, lt, or } from 'drizzle-orm';
 import { db, schema } from '../db/index';
 import { logger } from '../lib/logger';
-import { artistKey, normalizeArtistName } from './artistResolver';
+import { normalizeArtistName } from '../lib/artistName';
+import { artistKey } from './artistResolver';
 import {
   existingVideos,
   findArtTrack,
