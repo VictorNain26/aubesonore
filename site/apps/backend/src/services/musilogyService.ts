@@ -15,7 +15,7 @@ import {
   type MusilogyRelease,
   type MusilogySearchHit,
 } from '@aubesonore/shared-types/client';
-import { mbidSlug, ownSlug, pageSlug, pageSlugs } from './artistSlugs';
+import { mbidSlug, ownSlug, pageSlug, slugsFor } from './artistSlugs';
 import { db } from '../db/index';
 import { artist } from '../db/schema';
 import { TtlCache } from '../lib/cache/ttlCache';
@@ -183,13 +183,17 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
     return null;
   }
 
+  // The page and every page it links to: their addresses are published here.
   const linked = [
-    card.mbid,
+    { mbid: card.mbid, name: card.name },
     ...[neighbourRows, bandRows, projectRows, nameRows].flatMap((rows) =>
-      (rows ?? []).map((row) => row.mbid)
+      (rows ?? []).map((row) => ({ mbid: row.mbid, name: row.name }))
     ),
   ];
-  const [played, slugs] = await Promise.all([playedByMbid(linked), pageSlugs(linked)]);
+  const [played, slugs] = await Promise.all([
+    playedByMbid(linked.map((page) => page.mbid)),
+    slugsFor(linked),
+  ]);
   const ref = (
     mbidOf: string,
     name: string,
@@ -269,7 +273,7 @@ export async function searchMusilogy(query: string): Promise<MusilogySearchHit[]
   const rows = await call<SearchRow>(
     sql`SELECT * FROM musilogy.search_artists(${query}, ${SEARCH_PAGE})`
   );
-  const slugs = await pageSlugs(rows.map((row) => row.mbid));
+  const slugs = await slugsFor(rows);
   return rows.map((row) => ({
     mbid: row.mbid,
     name: row.name,

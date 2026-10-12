@@ -101,6 +101,9 @@ const onAir = await import('./nowPlaying');
 const musicbrainz = await import('./musicbrainzService');
 const slugs = await import('./artistSlugs');
 
+// Every MBID of these tests is in the loaded dump, first of its name.
+const rankSpy = spyOn(slugs, 'homonymRank').mockResolvedValue(1);
+
 const spies = [
   spyOn(deezer, 'searchArtist').mockImplementation((_name: string, title: string) => {
     searches += 1;
@@ -136,6 +139,7 @@ const spies = [
     claimedSlugs.push({ slug, ...owner });
     return Promise.resolve(slug);
   }),
+  rankSpy,
   spyOn(slugs, 'bindArtistSlug').mockImplementation((_ex, artistId, mbid) => {
     bound.push({ artistId, mbid });
     return Promise.resolve();
@@ -556,6 +560,18 @@ describe('identity by ISRC', () => {
     expect(resolved?.slug).toBe('daft-punk');
     // No new slug: the page's address, already shared, is the played artist's.
     expect(claimedSlugs).toEqual([]);
+  });
+
+  it('names a new played artist by its row while Musilogy cannot rank its MBID yet', async () => {
+    // Newer in MusicBrainz than the loaded dump: its slug goes to the MBID's page once that page
+    // is published (artistSlugs.adoptRowSlugs), never to a homonym's plain name meanwhile.
+    playRows = [{ title: 'One More Time', isrc: ISRC }];
+    isrcLookup = { status: 'found', value: [recording('One More Time', ['mb-dp', 'Daft Punk'])] };
+    declaredDeezerId = page('27');
+    rankSpy.mockResolvedValueOnce(undefined);
+
+    expect(await resolveArtist('Daft Punk')).toMatchObject({ slug: 'daft-punk' });
+    expect(claimedSlugs).toEqual([{ slug: 'daft-punk', artistId: inserted[0]?.id as string }]);
   });
 
   it("gives a new played artist's MBID page a slug when it has none yet, and the row none", async () => {

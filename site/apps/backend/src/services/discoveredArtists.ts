@@ -3,8 +3,8 @@ import { db } from '../db';
 import { discoveredArtist } from '../db/schema';
 import { logger } from '../lib/logger';
 import { listPlayedMbids } from './artistPages';
-import { assignSlugs, pageSlugs } from './artistSlugs';
-import { getArtistIdentity, getMusilogyArtist, musilogyCache } from './musilogyService';
+import { pageSlugs, slugsFor } from './artistSlugs';
+import { getArtistIdentity, getMusilogyArtist } from './musilogyService';
 
 /**
  * Which pages of artists the antenna never played are offered to search engines
@@ -67,18 +67,25 @@ async function playedLinks(): Promise<Map<string, number>> {
   return counts;
 }
 
-async function qualifies(mbid: string): Promise<boolean> {
+/** The artist's name when it qualifies, else null. */
+async function qualifies(mbid: string): Promise<string | null> {
   const identity = await getArtistIdentity(mbid);
-  return identity !== null && identity.wikidataId !== null && identity.records >= MIN_RECORDS;
+  return identity !== null && identity.wikidataId !== null && identity.records >= MIN_RECORDS
+    ? identity.name
+    : null;
 }
 
 /** Recomputes the set; a failed run keeps the previous one. */
 export async function refreshDiscovered(): Promise<void> {
   const links = await playedLinks();
-  const next = new Set<string>();
+  const named: Array<{ mbid: string; name: string }> = [];
   for (const [mbid, count] of links) {
-    if (count >= MIN_PLAYED_LINKS && (await qualifies(mbid))) next.add(mbid);
+    const name = count >= MIN_PLAYED_LINKS ? await qualifies(mbid) : null;
+    if (name !== null) named.push({ mbid, name });
   }
+  const next = new Set(named.map((page) => page.mbid));
+  // The sitemap publishes their addresses: each has its slug from now on.
+  await slugsFor(named);
   await db.transaction(async (tx) => {
     await tx.delete(discoveredArtist);
     if (next.size > 0)
@@ -101,38 +108,15 @@ export async function loadDiscovered(): Promise<void> {
   discovered = new Set(rows.map((row) => row.mbid));
 }
 
-/**
- * A slug for every artist Musilogy gained since the last run (artistSlugs.assignSlugs), so each
- * page has its address before anything links to it; nothing while Musilogy, or its index, is not
- * loaded (42883).
- */
-async function nameNewPages(): Promise<void> {
-  try {
-    const { given } = await assignSlugs();
-    // Pages read before these slugs existed would link to MBIDs for the cache's hour.
-    if (given > 0) musilogyCache.clear();
-  } catch (err) {
-    // Whatever stops it, the threshold is computed all the same; the next run goes on naming.
-    const code = (err as { code?: string }).code;
-    if (code === '42883' || code === '3F000') logger.warn('artist_slugs.musilogy_absent', { code });
-    else logger.warn('artist_slugs.failed', { message: (err as Error).message });
-  }
-}
-
-/**
- * Reads the stored set at once; a minute after start, then every day, names the new pages and
- * computes the set again.
- */
+/** Reads the stored set at once, computes it again a minute after start, then every day. */
 export function startDiscoveredArtists(): () => void {
   loadDiscovered().catch((err: unknown) => {
     logger.warn('discoveredArtists.load_failed', { message: (err as Error).message });
   });
   const tick = () => {
-    nameNewPages()
-      .then(refreshDiscovered)
-      .catch((err: unknown) => {
-        logger.warn('discoveredArtists.refresh_failed', { message: (err as Error).message });
-      });
+    refreshDiscovered().catch((err: unknown) => {
+      logger.warn('discoveredArtists.refresh_failed', { message: (err as Error).message });
+    });
   };
   const first = setTimeout(tick, FIRST_RUN_AFTER_MS);
   const every = setInterval(tick, REFRESH_EVERY_MS);

@@ -12,7 +12,7 @@ const dialect = new PgDialect();
 let answers: Record<string, Array<Record<string, unknown>>> = {};
 let notLoaded = new Set<string>();
 let pageRows: Array<{ id: string; slug: string; mbid: string | null }> = [];
-// The slug of each MBID's page (artistSlugs.pageSlugs).
+// The slug of each MBID's page already published (artistSlugs.slugsFor reads them first).
 let slugRows: Array<{ slug: string; mbid: string | null }> = [];
 
 function answer(query: SQL) {
