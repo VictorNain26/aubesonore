@@ -80,12 +80,15 @@ describe('MusilogySections', () => {
       'href',
       `/artiste/${neighbour(3).mbid}`
     );
-    expect(
-      screen.getByText('Le même son, surtout glam rock. La bande en fond : T. Rex.')
-    ).toBeInTheDocument();
-    // The one that differs says what it shares.
-    expect(screen.getByText('depuis 1974 · punk')).toBeInTheDocument();
+    expect(screen.getByText('Le même son, surtout glam rock.')).toBeInTheDocument();
+    // The one that differs says what it shares; the years, written on the bars, are said in words
+    // to a screen reader.
+    expect(screen.getByText('punk')).toBeInTheDocument();
+    expect(screen.getByText('depuis 1974')).toBeInTheDocument();
     expect(screen.getByText('depuis 1963')).toBeInTheDocument();
+    // The artist itself leads the timeline, drawn for the eye, and is no link to its own page.
+    expect(screen.getByText('T. Rex')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'T. Rex' })).not.toBeInTheDocument();
   });
 
   it('leads straight to the page of a neighbour the antenna played', () => {

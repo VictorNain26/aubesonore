@@ -306,12 +306,7 @@ export function MusilogySections({
   return (
     <>
       {close ? (
-        <Section
-          id="close"
-          title={m.musilogy_close_title()}
-          body={timelineNote(artist, thisYear)}
-          sticky
-        >
+        <Section id="close" title={m.musilogy_close_title()} body={timelineNote(artist)} sticky>
           <MusilogyTimeline artist={artist} thisYear={thisYear} />
         </Section>
       ) : null}

@@ -251,7 +251,6 @@
   "musilogy_col_start": "Started",
   "musilogy_close_shared": "The same sound, mostly {term}.",
   "musilogy_close_same": "The same sound.",
-  "musilogy_close_band": "The band behind them: {name}.",
   "musilogy_start_unknown": "start unknown",
   "musilogy_end_unknown": "{y0}, end unknown",
   "musilogy_today": "today"
