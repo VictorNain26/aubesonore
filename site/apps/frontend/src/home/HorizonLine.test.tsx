@@ -168,11 +168,39 @@ describe('HorizonLine', () => {
     );
 
     render(<HorizonLine isPlaying={false} />);
+    ctx.beginPath.mockClear();
+    ctx.stroke.mockClear();
     runFrames(2);
 
-    expect(ctx.beginPath).toHaveBeenCalledTimes(4);
-    expect(ctx.stroke).toHaveBeenCalledTimes(4);
+    expect(ctx.beginPath).toHaveBeenCalledTimes(2 * LAYERS.length);
+    expect(ctx.stroke).toHaveBeenCalledTimes(2 * LAYERS.length);
     expect(ctx.lineTo).toHaveBeenCalled();
+  });
+
+  it('draws the line at once, and again as soon as a new size clears it, before any frame', () => {
+    // The entrance reveals the line from 0.3 s (draw-in): a frame can come long after, once
+    // the page has hydrated, and the reveal must not uncover an empty canvas meanwhile.
+    let resized: ResizeObserverCallback = () => undefined;
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: ResizeObserverCallback) {
+          resized = callback;
+        }
+        observe = vi.fn();
+        disconnect = vi.fn();
+      }
+    );
+    const ctx = fakeContext();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      ctx as unknown as CanvasRenderingContext2D
+    );
+
+    render(<HorizonLine isPlaying={false} />);
+    expect(ctx.stroke).toHaveBeenCalledTimes(LAYERS.length);
+
+    resized([], {} as ResizeObserver);
+    expect(ctx.stroke).toHaveBeenCalledTimes(2 * LAYERS.length);
   });
 
   it('stops drawing on unmount', () => {

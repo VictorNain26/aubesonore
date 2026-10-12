@@ -266,7 +266,7 @@ export function HorizonLine({ isPlaying, className }: HorizonLineProps) {
     };
 
     // Drawn in device pixels so the stroke stays crisp on dense screens. A new size clears the
-    // canvas: a line at rest is drawn again.
+    // canvas: the line is drawn again at once, moving or not, never left blank until a frame.
     const resize = () => {
       dpr = window.devicePixelRatio || 1;
       canvas.width = Math.max(1, Math.round(canvas.clientWidth * dpr));
@@ -275,7 +275,7 @@ export function HorizonLine({ isPlaying, className }: HorizonLineProps) {
     resize();
     const resizeObserver = new ResizeObserver(() => {
       resize();
-      if (!looping) paint(performance.now());
+      paint(performance.now());
     });
     resizeObserver.observe(canvas);
     const intersectionObserver = new IntersectionObserver(([entry]) => {
@@ -286,6 +286,10 @@ export function HorizonLine({ isPlaying, className }: HorizonLineProps) {
     document.addEventListener('visibilitychange', sync);
     reducedMotion.addEventListener('change', sync);
     sync();
+    // The entrance reveals the line from 0.3 s (draw-in, tokens.css), while the first frame can
+    // come long after, once the page has hydrated: drawn now, the reveal never uncovers an
+    // empty canvas. Under reduced motion, sync has drawn it.
+    if (!reducedMotion.matches) paint(performance.now());
 
     return () => {
       cancelAnimationFrame(frame);
