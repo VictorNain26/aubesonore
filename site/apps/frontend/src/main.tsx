@@ -4,6 +4,7 @@ import {
   createBrowserRouter,
   matchRoutes,
   RouterProvider,
+  type RouteMatch,
   type HydrationState,
 } from 'react-router';
 import '@fontsource-variable/bricolage-grotesque';
@@ -21,32 +22,38 @@ if (!root) {
   throw new Error('Root element not found');
 }
 
+// A reload starts at the top: the browser would put the reader back mid-page on a page the server
+// drew, under lists that come after it. ScrollRestoration handles every other navigation.
+const navigation = performance.getEntriesByType('navigation')[0];
+if (navigation instanceof PerformanceNavigationTiming && navigation.type === 'reload') {
+  history.scrollRestoration = 'manual';
+  window.scrollTo(0, 0);
+}
+
 window.addEventListener('vite:preloadError', () => {
   handlePreloadError(sessionStorage, () => window.location.reload(), Date.now());
 });
 
 /**
- * The page the document arrived at is drawn at once: its code first (a page loaded when opened,
- * resolved before hydrating, reactrouter.com decision « lazy route modules »), and no loader run
- * for it. The production home arrives pre-rendered (scripts/prerender.mjs), an artist page
- * rendered by the backend with its data, which seeds the page's cache; the others fetch their
- * own. Loaders serve the navigations that follow.
+ * The data of the page the server drew, so the router hydrates it without running a loader: its
+ * code first (a page loaded when opened, resolved before hydrating, reactrouter.com decision « lazy
+ * route modules »), then an artist page's data, seeded from what it embeds, or null for the home
+ * page, pre-rendered without its lists, which it asks once drawn (HomePage). null when the page's
+ * code fails to load: the router then loads the page itself and shows its error.
  */
-async function start(container: HTMLElement): Promise<void> {
-  const artistPage = readArtistPageData(document);
-  if (artistPage) seedArtistPage(artistPage);
-
-  const matches = matchRoutes(routes, window.location) ?? [];
-  await Promise.all(
-    matches.map(async ({ route }) => {
-      if (typeof route.lazy !== 'function') return;
-      Object.assign(route, { ...(await route.lazy()), lazy: undefined });
-    })
-  );
-  // The page's data as the server drew it: an artist page's, seeded from what it embeds; null for
-  // the home page, pre-rendered without its lists, which it asks once drawn (HomePage).
+async function hydrationOf(matches: RouteMatch[]): Promise<HydrationState | null> {
+  try {
+    await Promise.all(
+      matches.map(async ({ route }) => {
+        if (typeof route.lazy !== 'function') return;
+        Object.assign(route, { ...(await route.lazy()), lazy: undefined });
+      })
+    );
+  } catch {
+    return null;
+  }
   const locale = extractLocaleFromUrl(window.location.href) ?? baseLocale;
-  const hydrationData: HydrationState = {
+  return {
     loaderData: Object.fromEntries(
       matches.flatMap(({ route, params }) =>
         route.loader && route.id
@@ -60,16 +67,27 @@ async function start(container: HTMLElement): Promise<void> {
       )
     ),
   };
-  // Drawn by the server: hydrated from its data. Else (the dev server's empty root) the router
-  // loads the first page's data itself before drawing it.
-  const drawn = container.hasChildNodes();
-  const router = createBrowserRouter(routes, drawn ? { hydrationData } : undefined);
+}
+
+/**
+ * The production home arrives pre-rendered (scripts/prerender.mjs), an artist page rendered by the
+ * backend with its data: hydrated from it. Else (the dev server's empty root, a page the server
+ * leaves to the client) the router loads the first page's code and data before drawing it.
+ */
+async function start(container: HTMLElement): Promise<void> {
+  const artistPage = readArtistPageData(document);
+  if (artistPage) seedArtistPage(artistPage);
+
+  const matches = matchRoutes(routes, window.location) ?? [];
+  const hydrationData = container.hasChildNodes() ? await hydrationOf(matches) : null;
+  const router = createBrowserRouter(routes, hydrationData ? { hydrationData } : undefined);
   const app = (
     <StrictMode>
       <RouterProvider router={router} />
     </StrictMode>
   );
-  if (drawn) hydrateRoot(container, app);
+  if (hydrationData) hydrateRoot(container, app);
+  // Over a drawn page whose code failed, createRoot replaces the server's markup.
   else createRoot(container).render(app);
 }
 

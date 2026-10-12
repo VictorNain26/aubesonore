@@ -17,7 +17,7 @@ export interface ArtistPageData {
 export const ARTIST_PAGE_DATA_ID = 'artist-page-data';
 
 export const seenProfiles = seenStore<ArtistPageState>();
-// null: the dump does not know the MBID, or Musilogy failed; the page shows without its sections.
+// null: the dump does not know the MBID; the page shows without its sections.
 export const seenMusilogy = seenStore<MusilogyArtist | null>();
 
 export function profileKey(slug: string, locale: Locale): string {
@@ -79,7 +79,8 @@ export async function artistLoader({
   let state = seenProfiles.get(key);
   if (!state) {
     try {
-      const profile = await fetchArtistProfile(slug, request.signal);
+      // The locale of the URL the router goes to: getLocale() reads the one it leaves.
+      const profile = await fetchArtistProfile(slug, locale, request.signal);
       state = profile ? { status: 'ready', profile } : { status: 'missing' };
       seenProfiles.set(key, state);
     } catch {
@@ -88,8 +89,13 @@ export async function artistLoader({
   }
   const mbid = state.status === 'ready' ? state.profile.mbid : null;
   if (!mbid) return { state, musilogy: null };
-  // A failure or Musilogy not loaded leaves the page without those sections.
-  const musilogy = await fetchMusilogyArtist(mbid, request.signal).catch(() => null);
+  let musilogy: MusilogyArtist | null;
+  try {
+    musilogy = await fetchMusilogyArtist(mbid, request.signal);
+  } catch {
+    // A failure or Musilogy not loaded leaves the page without those sections, this time only.
+    return { state, musilogy: null };
+  }
   if (!request.signal.aborted) seenMusilogy.set(mbid, musilogy);
   return { state, musilogy };
 }

@@ -10,14 +10,15 @@ import Layout from './layout/Layout';
 import { useLocale, useLocaleStore } from './stores/localeStore';
 
 /**
- * Where ScrollRestoration keeps a place (its getKey): the page and its anchor. An anchor link
- * (PageNav, the skip link) is a plain `<a href="#…">`, which the browser follows with its own
- * scroll and focus; its history entry has no state, which React Router keys "default" like the
- * first page of the tab, and would put back that page's place over the anchor. Keyed so, the
- * anchor's entry has no place yet: the router scrolls to the anchor, back returns to the page's.
+ * Where ScrollRestoration keeps a place (its getKey): the history entry, as by default, so a page
+ * reached again through a link opens at the top (a key shared by path restores on every visit).
+ * An anchor link (PageNav, the skip link) is a plain `<a href="#…">`, which the browser follows
+ * with its own scroll and focus; its entry has no state, which React Router keys "default" like the
+ * first page of the tab, and would put back that page's place over the anchor. Such entries are
+ * keyed by the page and its anchor instead: back returns to the page's place.
  */
-function scrollKey(location: Location): string {
-  return `${location.pathname}${location.hash}`;
+export function scrollKey(location: Location): string {
+  return location.key === 'default' ? `${location.pathname}${location.hash}` : location.key;
 }
 
 /** A page that failed to load (its code, offline): its error, in the frame of every page. */

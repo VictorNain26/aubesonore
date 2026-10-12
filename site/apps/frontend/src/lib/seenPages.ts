@@ -1,5 +1,5 @@
 // What a page loaded, kept for the tab: back and forward draw it at once,
-// at its full height, while it is asked again behind.
+// at its full height.
 const MAX_PAGES = 30;
 
 export function seenStore<V>() {

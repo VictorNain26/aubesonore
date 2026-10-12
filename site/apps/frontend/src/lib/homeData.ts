@@ -57,7 +57,7 @@ async function fetchTrends(signal: AbortSignal): Promise<TrendsResult> {
  * The home page's lists, before it is drawn (React Router's loader): the day's history and the
  * ranking, so the page comes at its height and ScrollRestoration puts the reader back on it. What
  * this tab loaded in the last five minutes is drawn at once (a client cache,
- * reactrouter.com/how-to/client-data); a list that fails is drawn as failing.
+ * reactrouter.com/how-to/client-data); a list that fails is drawn as failing, and asked again next time.
  */
 export async function homeLoader({ request }: { request: Request }): Promise<HomeData> {
   if (last && Date.now() - last.at < FRESH_MS) return last.data;
@@ -69,7 +69,10 @@ export async function homeLoader({ request }: { request: Request }): Promise<Hom
     history: history.status === 'fulfilled' ? history.value : 'failed',
     trends: trends.status === 'fulfilled' ? trends.value : 'failed',
   };
-  if (!request.signal.aborted) last = { data, at: Date.now() };
+  // A list that failed is asked again at the next visit.
+  if (!request.signal.aborted && data.history !== 'failed' && data.trends !== 'failed') {
+    last = { data, at: Date.now() };
+  }
   return data;
 }
 

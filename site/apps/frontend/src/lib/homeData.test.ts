@@ -42,6 +42,15 @@ describe("the home page's loader", () => {
     expect(await load()).toEqual({ history: 'failed', trends: TRENDS });
   });
 
+  it('asks again at the next visit for lists of which one failed', async () => {
+    server.use(
+      http.get(HISTORY_URL, () => new HttpResponse(null, { status: 500 }), { once: true })
+    );
+    await load();
+
+    expect(await load()).toEqual({ history: [], trends: TRENDS });
+  });
+
   it('draws what it loaded in the last five minutes at once, and asks again after', async () => {
     vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 9, 2, 12, 0) });
     await load();
