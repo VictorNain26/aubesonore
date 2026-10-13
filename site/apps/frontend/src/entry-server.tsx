@@ -72,6 +72,31 @@ export function artistPageHtml(data: ArtistPageData, path: string): Promise<stri
   return pageHtml(data.locale, path, loaded);
 }
 
+/**
+ * The renderer's render before it listens (scripts/renderer.mjs): it loads the artist page's
+ * code and warms the JIT. Typed here, so its profile follows ArtistProfile.
+ */
+export function warmUp(): Promise<string> {
+  return artistPageHtml(
+    {
+      locale: 'fr',
+      profile: {
+        id: 'warm-up',
+        name: 'AubeSonore',
+        slug: 'warm-up',
+        mbid: null,
+        played: true,
+        images: [],
+        facts: null,
+        summary: null,
+        links: [],
+      },
+      musilogy: null,
+    },
+    '/artiste/warm-up'
+  );
+}
+
 export function meta(
   locale: Locale,
   page: 'home' | 'legal' | 'notFound' = 'home'

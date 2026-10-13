@@ -4,7 +4,7 @@
 //   GET  /health
 import { createServer } from 'node:http';
 
-const { artistPageHtml } = await import('./dist-ssr/entry-server.js');
+const { artistPageHtml, warmUp } = await import('./dist-ssr/entry-server.js');
 
 const PORT = Number(process.env.PORT ?? 3000);
 const MAX_BODY = 1_000_000;
@@ -73,21 +73,7 @@ const server = createServer(async (request, response) => {
 
 // The first render loads the lazy routes and warms the JIT: ~300 ms against ~100 after, past the
 // backend's budget. Done before listening, so no listener's page pays it.
-await render('/artiste/warm-up', {
-  locale: 'fr',
-  profile: {
-    id: 'warm-up',
-    name: 'AubeSonore',
-    slug: 'warm-up',
-    mbid: null,
-    played: true,
-    image: null,
-    facts: null,
-    summary: null,
-    links: [],
-  },
-  musilogy: null,
-});
+await warmUp();
 
 server.listen(PORT, () => console.log(JSON.stringify({ event: 'listening', port: PORT })));
 for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => server.close(() => process.exit(0)));
