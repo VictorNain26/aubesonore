@@ -1,25 +1,30 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import { makeNowPlaying } from '../mocks/handlers';
-import { renderWithProviders } from '../test-utils';
+import { createBrowserRouter, RouterProvider } from 'react-router';
 import { useNowPlayingStore, __resetNowPlayingStore } from '../lib/azuracast';
+import { forgetHomeData } from '../lib/homeData';
 import { useLocaleStore } from '../stores/localeStore';
 import type { NowPlaying } from '../lib/azuracast';
-import HomePage from './HomePage';
+import { routes } from '../routes';
 
 const API = 'http://localhost:3000';
 
-// The app root subscribes to the locale so a language switch re-renders the tree.
-function Root() {
-  useLocaleStore((s) => s.locale);
-  return <HomePage />;
+/**
+ * The site at its home page, its routes and loaders as it serves them, in the browser's history:
+ * the page's language is its URL's (Paraglide), which the router moves.
+ */
+function openHome() {
+  window.history.replaceState(null, '', '/');
+  return render(<RouterProvider router={createBrowserRouter(routes)} />);
 }
 
 beforeEach(() => {
+  forgetHomeData();
   window.matchMedia = vi.fn().mockReturnValue({
     matches: false,
     addEventListener: vi.fn(),
@@ -32,6 +37,8 @@ beforeEach(() => {
   np.song_history = [];
   useNowPlayingStore.setState({ data: np, isConnected: true, error: null });
   server.use(
+    // The app's poller asks the live too: the same track.
+    http.get('*/api/nowplaying_static/aubesonore.json', () => HttpResponse.json(np)),
     http.get(`${API}/api/radio/history`, () => HttpResponse.json([])),
     http.get(`${API}/api/trends`, () =>
       HttpResponse.json({
@@ -43,16 +50,17 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  window.history.replaceState(null, '', '/');
   __resetNowPlayingStore();
   useLocaleStore.getState().setLocale('fr');
 });
 
 describe('HomePage', () => {
   it('puts the promise, the track on air, the thread and the ranking on one page', async () => {
-    renderWithProviders(<Root />);
+    openHome();
 
     expect(
-      screen.getByRole('heading', { name: /Des titres à l'aube de vous plaire\./ })
+      await screen.findByRole('heading', { name: /Des titres à l'aube de vous plaire\./ })
     ).toBeInTheDocument();
     expect(screen.getAllByText('Nüchtern').length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: "Depuis l'aube" })).toBeInTheDocument();
@@ -61,9 +69,9 @@ describe('HomePage', () => {
   });
 
   it('switches the page to English from the footer', async () => {
-    renderWithProviders(<Root />);
+    openHome();
 
-    await userEvent.click(screen.getByRole('link', { name: 'en' }));
+    await userEvent.click(await screen.findByRole('link', { name: 'en' }));
 
     expect(
       await screen.findByRole('heading', { name: /The first light of your next favourite songs\./ })

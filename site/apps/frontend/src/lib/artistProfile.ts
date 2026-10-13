@@ -1,6 +1,6 @@
 import type { ArtistPageRef, ArtistProfile } from '@aubesonore/shared-types/client';
 import { object, record, safeParse, string } from 'valibot';
-import { getLocale, localizeHref } from '@/paraglide/runtime.js';
+import { getLocale, localizeHref, type Locale } from '@/paraglide/runtime.js';
 import { API_BASE_URL } from '../utils/config';
 
 const SLUG = '__slug__';
@@ -23,10 +23,11 @@ export function artistPath(page: { slug: string }): string {
 /** The profile in the page language: its summary is the Wikipedia article in that language. */
 export async function fetchArtistProfile(
   slug: string,
+  locale: Locale,
   signal?: AbortSignal
 ): Promise<ArtistProfile | null> {
   const response = await fetch(
-    `${API_BASE_URL}/api/artist/page/${encodeURIComponent(slug)}?lang=${getLocale()}`,
+    `${API_BASE_URL}/api/artist/page/${encodeURIComponent(slug)}?lang=${locale}`,
     { signal: signal ?? null }
   );
   // 400: a malformed id, from a truncated link — as unknown as a 404.

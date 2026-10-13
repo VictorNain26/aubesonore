@@ -1,7 +1,7 @@
 import { Tabs } from '@base-ui/react/tabs';
 import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
-import { useTrends, type TrendEntry } from '../hooks/useTrends';
+import type { Loaded, TrendEntry, TrendsResult } from '../lib/homeData';
 import { artistPath } from '../lib/artistProfile';
 import { CoverOpenLarge } from './CoverOpenLarge';
 import { ARTIST_LINK } from './styles';
@@ -123,9 +123,11 @@ export function MostKeptView({ trends, status }: MostKeptViewProps) {
   );
 }
 
-export function MostKept() {
-  const { data, isLoading, hasError } = useTrends();
+export function MostKept({ trends }: { trends: Loaded<TrendsResult> | null }) {
   return (
-    <MostKeptView trends={data} status={isLoading ? 'loading' : hasError ? 'error' : 'ready'} />
+    <MostKeptView
+      trends={trends === null || trends === 'failed' ? null : trends}
+      status={trends === null ? 'loading' : trends === 'failed' ? 'error' : 'ready'}
+    />
   );
 }

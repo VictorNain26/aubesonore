@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
 import { KeepHeart } from './KeepHeart';
-import { useNowPlayingStore } from '../lib/azuracast';
+import { useNowPlayingStore, type SongEntry } from '../lib/azuracast';
+import type { Loaded } from '../lib/homeData';
 import { useTodayHistory } from '../hooks/useTodayHistory';
 import { useLikeAction } from '../hooks/player/useLikeAction';
 import { useLikedTracksStore, isTrackLiked } from '../stores/likedTracksStore';
@@ -150,8 +151,8 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
   );
 }
 
-export function SinceDawn() {
-  const { entries, isLoading, error } = useTodayHistory();
+export function SinceDawn({ history }: { history: Loaded<SongEntry[]> | null }) {
+  const { entries, isLoading, error } = useTodayHistory(history);
   const nowId = useNowPlayingStore((s) => s.data?.now_playing?.sh_id);
   const tracks = useLikedTracksStore((s) => s.tracks);
   const { likingTrackId, toggleLike } = useLikeAction();

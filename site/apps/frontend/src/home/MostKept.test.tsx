@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import type { TrendEntry } from '../hooks/useTrends';
+import type { TrendEntry } from '../lib/homeData';
 import { MostKeptView } from './MostKept';
 
 const entry = (title: string, likes: number, values: Partial<TrendEntry> = {}): TrendEntry => ({

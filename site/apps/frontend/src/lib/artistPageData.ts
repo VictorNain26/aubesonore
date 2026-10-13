@@ -1,6 +1,8 @@
 import type { ArtistProfile, MusilogyArtist } from '@aubesonore/shared-types/client';
 import type { ArtistPageState } from '../artist/ArtistPageView';
-import type { Locale } from '@/paraglide/runtime.js';
+import { baseLocale, extractLocaleFromUrl, type Locale } from '@/paraglide/runtime.js';
+import { fetchArtistProfile } from './artistProfile';
+import { fetchMusilogyArtist } from './musilogy';
 import { seenStore } from './seenPages';
 
 /** What the server rendered an artist page from, embedded in the page for the client to start from. */
@@ -15,7 +17,7 @@ export interface ArtistPageData {
 export const ARTIST_PAGE_DATA_ID = 'artist-page-data';
 
 export const seenProfiles = seenStore<ArtistPageState>();
-// null: the dump does not know the MBID, or Musilogy failed; the page shows without its sections.
+// null: the dump does not know the MBID; the page shows without its sections.
 export const seenMusilogy = seenStore<MusilogyArtist | null>();
 
 export function profileKey(slug: string, locale: Locale): string {
@@ -37,4 +39,63 @@ export function readArtistPageData(doc: Document): ArtistPageData | null {
   } catch {
     return null;
   }
+}
+
+/** An artist page's data: its profile's state and what Musilogy holds of the artist. */
+export interface ArtistLoaded {
+  state: ArtistPageState;
+  /** null: no MBID, the dump does not know it, or Musilogy failed: the page shows without it. */
+  musilogy: MusilogyArtist | null;
+}
+
+/** The page as this tab already holds it, whole (its Musilogy sections included); else null. */
+export function seenArtist(slug: string, locale: Locale): ArtistLoaded | null {
+  const state = seenProfiles.get(profileKey(slug, locale));
+  if (!state) return null;
+  const mbid = state.status === 'ready' ? state.profile.mbid : null;
+  if (!mbid) return { state, musilogy: null };
+  const musilogy = seenMusilogy.get(mbid);
+  return musilogy === undefined ? null : { state, musilogy };
+}
+
+/**
+ * An artist page's data, before the page is drawn (React Router's loader): the page comes at its
+ * height, and ScrollRestoration puts the reader back on it. What this tab already holds is drawn
+ * at once (a client cache, reactrouter.com/how-to/client-data); a page that fails to load says so
+ * and is asked again next time.
+ */
+export async function artistLoader({
+  params,
+  request,
+}: {
+  params: { slug?: string };
+  request: Request;
+}): Promise<ArtistLoaded> {
+  const slug = params.slug ?? '';
+  const locale = extractLocaleFromUrl(request.url) ?? baseLocale;
+  const seen = seenArtist(slug, locale);
+  if (seen) return seen;
+  const key = profileKey(slug, locale);
+  let state = seenProfiles.get(key);
+  if (!state) {
+    try {
+      // The locale of the URL the router goes to: getLocale() reads the one it leaves.
+      const profile = await fetchArtistProfile(slug, locale, request.signal);
+      state = profile ? { status: 'ready', profile } : { status: 'missing' };
+      seenProfiles.set(key, state);
+    } catch {
+      return { state: { status: 'error' }, musilogy: null };
+    }
+  }
+  const mbid = state.status === 'ready' ? state.profile.mbid : null;
+  if (!mbid) return { state, musilogy: null };
+  let musilogy: MusilogyArtist | null;
+  try {
+    musilogy = await fetchMusilogyArtist(mbid, request.signal);
+  } catch {
+    // A failure or Musilogy not loaded leaves the page without those sections, this time only.
+    return { state, musilogy: null };
+  }
+  if (!request.signal.aborted) seenMusilogy.set(mbid, musilogy);
+  return { state, musilogy };
 }
