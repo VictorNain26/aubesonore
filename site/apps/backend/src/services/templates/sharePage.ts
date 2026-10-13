@@ -50,7 +50,7 @@ interface SharePageInput {
   artist: string;
   /** Canonical URL of this share page, used for og:url. */
   shareUrl: string;
-  songlink: TrackLinks | null;
+  links: TrackLinks | null;
   /** Copy language, picked from Accept-Language by the route. */
   locale?: ShareLocale;
 }
@@ -61,13 +61,13 @@ export function renderSharePage({
   title,
   artist,
   shareUrl,
-  songlink,
+  links,
   locale = 'fr',
 }: SharePageInput): string {
   const copy = COPY[locale];
-  const artworkUrl = songlink?.artworkUrl?.startsWith('https://') ? songlink.artworkUrl : undefined;
-  const platformLinks = songlink
-    ? (Object.entries(songlink.platformLinks) as Array<[keyof PlatformLinks, string]>)
+  const artworkUrl = links?.artworkUrl?.startsWith('https://') ? links.artworkUrl : undefined;
+  const platformLinks = links
+    ? (Object.entries(links.platformLinks) as Array<[keyof PlatformLinks, string]>)
         .filter(([, url]) => url.startsWith('https://'))
         .slice(0, 4)
     : [];

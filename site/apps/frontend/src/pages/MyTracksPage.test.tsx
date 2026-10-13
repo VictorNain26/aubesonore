@@ -26,8 +26,6 @@ function kept(id: string, values: Partial<LikedTrack>): LikedTrack {
     artworkUrl: null,
     youtubeUrl: `https://www.youtube.com/results?search_query=${id}`,
     isrc: null,
-    songlinkUrl: null,
-    platformLinks: null,
     artistId: null,
     createdAt: `${YEAR}-10-01T10:00:00.000Z`,
     ...values,

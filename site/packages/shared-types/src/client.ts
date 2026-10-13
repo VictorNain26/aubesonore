@@ -21,13 +21,10 @@ export interface AuthResponse {
   session: Session;
 }
 
+/** A track on the platforms whose own API links it (trackLinksService). */
 export interface PlatformLinks {
   appleMusic?: string;
   deezer?: string;
-  youtubeMusic?: string;
-  tidal?: string;
-  amazonMusic?: string;
-  soundcloud?: string;
 }
 
 export interface ClientLikedTrack {
@@ -38,8 +35,6 @@ export interface ClientLikedTrack {
   artworkUrl?: string | null;
   youtubeUrl: string;
   isrc?: string | null;
-  songlinkUrl?: string | null;
-  platformLinks?: PlatformLinks | null;
   createdAt: string;
   userId: string;
   /** The artist of the play the track was kept from; null when no play is known. */
@@ -157,10 +152,6 @@ export interface ArtistProfile {
 export const PLATFORM_NAMES: Record<keyof PlatformLinks, string> = {
   appleMusic: 'Apple Music',
   deezer: 'Deezer',
-  youtubeMusic: 'YouTube Music',
-  tidal: 'Tidal',
-  amazonMusic: 'Amazon Music',
-  soundcloud: 'SoundCloud',
 };
 
 /** The address of an artist page: only artists the antenna played have one. */

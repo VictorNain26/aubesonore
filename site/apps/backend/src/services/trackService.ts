@@ -3,7 +3,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import type { User, LikedTrack } from '../db/schema';
 import type { KeptArtistPage } from '@aubesonore/shared-types/client';
-import { findTrackLinks } from './trackLinksService';
+import { findItunesCover } from './trackLinksService';
 import { keepCover } from './coverService';
 import { resolveArtist } from './artistResolver';
 import { findPlay } from './radioPlayService';
@@ -62,8 +62,6 @@ export async function likeTrack({
       artworkUrl: artworkUrl || null,
       youtubeUrl,
       isrc: isrc || null,
-      songlinkUrl: null,
-      platformLinks: null,
     })
     .onConflictDoNothing({
       target: [schema.likedTracks.userId, schema.likedTracks.title, schema.likedTracks.artist],
@@ -74,8 +72,8 @@ export async function likeTrack({
     return { status: 400, error: 'Morceau déjà liké' };
   }
 
-  // Background enrichment — non-blocking Songlink lookup.
-  void enrichTrackInBackground(trackId, title, artist, isrc ?? null).catch((err: unknown) => {
+  // Background enrichment: the verified cover.
+  void enrichTrackInBackground(trackId, title, artist).catch((err: unknown) => {
     logger.warn('track.enrich_failed', { trackId, message: (err as Error).message });
   });
   void linkKeptTrack(trackId, title, artist).catch((err: unknown) => {
@@ -110,40 +108,27 @@ export async function linkKeptTrack(trackId: string, title: string, artist: stri
 async function enrichTrackInBackground(
   trackId: string,
   title: string,
-  artist: string,
-  bodyIsrc: string | null
+  artist: string
 ): Promise<void> {
-  // The play's ISRC, as linkKeptTrack stores it: it runs alongside, so the
-  // stored column may not be written yet. The client's own ISRC comes second.
-  const play = await findPlay(title, artist);
-  const isrc = play?.isrc ?? bodyIsrc;
-
   const [track] = await db
     .select({ artworkUrl: schema.likedTracks.artworkUrl })
     .from(schema.likedTracks)
     .where(eq(schema.likedTracks.id, trackId))
     .limit(1);
 
-  const songlinkData = await findTrackLinks(title, artist, isrc);
-
-  // Prefer the artist-verified iTunes cover when Songlink found one, else
-  // our own copy of the AzuraCast art, which dies with its media.
-  const verifiedArt = songlinkData?.artworkUrl ?? null;
+  // The artist-verified iTunes cover, else our own copy of the AzuraCast art, which dies with its
+  // media.
+  const verifiedArt = await findItunesCover(title, artist);
   const existingAzuracastUrl = track?.artworkUrl ?? null;
   const keptArt =
     !verifiedArt && existingAzuracastUrl ? await keepCover(existingAzuracastUrl) : null;
   const nextArt = verifiedArt ?? keptArt ?? existingAzuracastUrl ?? null;
+  if (!nextArt) return;
 
-  const update: Partial<LikedTrack> = {};
-  if (songlinkData) {
-    update.songlinkUrl = songlinkData.songlinkUrl ?? null;
-    update.platformLinks = songlinkData.platformLinks;
-  }
-  if (nextArt) update.artworkUrl = nextArt;
-
-  if (Object.keys(update).length === 0) return;
-
-  await db.update(schema.likedTracks).set(update).where(eq(schema.likedTracks.id, trackId));
+  await db
+    .update(schema.likedTracks)
+    .set({ artworkUrl: nextArt })
+    .where(eq(schema.likedTracks.id, trackId));
 }
 
 export type LikedTrackListItem = LikedTrack & { artistPage: KeptArtistPage | null };

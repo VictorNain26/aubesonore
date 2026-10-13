@@ -20,7 +20,6 @@ Liste complète dans `.env.example`, lue seulement par `src/config/env.ts` :
 pnpm --filter=@aubesonore/backend test       # tests sur mocks
 pnpm --filter=@aubesonore/backend test:db    # contre un Postgres jetable dont le nom finit par _test
 pnpm --filter=@aubesonore/backend typecheck
-bun run seed:admin                           # crée un compte administrateur
 ```
 
 Santé : `/health`.

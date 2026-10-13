@@ -35,8 +35,6 @@ export const handlers = [
         artworkUrl: null,
         youtubeUrl: 'https://youtube.com/x',
         isrc: null,
-        songlinkUrl: null,
-        platformLinks: null,
         artistId: null,
         createdAt: new Date().toISOString(),
       },

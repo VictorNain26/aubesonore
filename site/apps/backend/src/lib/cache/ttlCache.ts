@@ -15,7 +15,7 @@ export interface CacheStore<V> {
  * with the same surface and swap at the import site.
  *
  * Without the sweep, entries that are written once and never read again
- * (e.g. one-off Songlink lookups) would sit in memory until process restart.
+ * (e.g. one-off link lookups) would sit in memory until process restart.
  */
 export class TtlCache<V> implements CacheStore<V> {
   private readonly store = new Map<string, { value: V; expiresAt: number }>();

@@ -1,6 +1,5 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { admin } from 'better-auth/plugins';
 
 import { env } from '../../config/env';
 import { db } from '../../db/index';
@@ -108,6 +107,4 @@ export const auth = betterAuth({
         }
       : {}),
   },
-
-  plugins: [admin()],
 });

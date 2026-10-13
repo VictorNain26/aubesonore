@@ -17,8 +17,6 @@ function kept(
     artworkUrl: null,
     youtubeUrl: 'https://www.youtube.com/results?search_query=x',
     isrc: null,
-    songlinkUrl: null,
-    platformLinks: null,
     artistId: null,
     createdAt,
     ...values,
