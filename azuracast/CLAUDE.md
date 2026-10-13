@@ -1,14 +1,12 @@
 # CLAUDE.md — azuracast
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Ce que ce dépôt versionne — et ce qu'il ne versionne pas
 
 Ce dossier est d'abord un **runtime**, pas un projet. Le dépôt ne capture que la
 partie reproductible :
 
 - **versionné** — `docker-compose.yml`, `.env.example`, ce guide, `RUNBOOK.md`,
-  `scripts/`, et les fichiers `*.sample.*` fournis par l'installeur amont
+  `scripts/`, l'instantané `backend_config.backup.json`, et les fichiers `*.sample.*` fournis par l'installeur amont
   (référence utile pour voir ce qu'on a modifié).
 - **ignoré** — `stations/` (le catalogue et la config réécrite par l'UI), `.env`,
   `azuracast.env` (mot de passe MariaDB), les journaux.
@@ -47,10 +45,10 @@ pipeline, et vide le lecteur du site.
 - **Le conteneur écrit dans `stations/` en tant que `AZURACAST_PUID:PGID`.** Si
   ces valeurs ne correspondent plus au propriétaire du dossier sur l'hôte, le
   pipeline perd l'accès aux fichiers — panne silencieuse et déroutante.
-- **Une seule règle de séparation est appliquée nativement** (la fenêtre
-  anti-doublon). Les règles plus fines configurées côté pipeline sont
-  documentaires : c'est le séquencement par similarité qui les fait émerger. Un
-  script d'audit du pipeline vérifie que les deux côtés restent d'accord.
+- **AzuraCast n'applique que sa fenêtre anti-doublon.** La séparation entre deux
+  passages d'un même artiste (3 h) est tenue par la grille du pipeline (`radio
+  grille`, `pipeline/docs/vision.md` §7.3), dont les playlists tournent sans
+  `avoid_duplicates`.
 
 ## Modifier la topologie
 

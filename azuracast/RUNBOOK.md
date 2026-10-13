@@ -1,8 +1,8 @@
 # Runbook — remonter la radio depuis zéro
 
-Ordre de remontage : **AzuraCast → pipeline → application web**. Les deux derniers
-consomment le premier ; l'inverse n'est jamais vrai. Les trois vivent dans un seul
-dépôt, cloné une fois :
+Ordre de remontage : **AzuraCast → pipeline → application web → Musilogy**. Le
+pipeline et le site consomment AzuraCast, Musilogy se charge dans la base du site ;
+l'inverse n'est jamais vrai. Tous vivent dans un seul dépôt, cloné une fois :
 
 ```bash
 git clone https://github.com/VictorNain26/aubesonore.git ~/aubesonore
@@ -74,7 +74,8 @@ Points à ne pas rejouer de travers :
 cd ~/aubesonore/pipeline
 uv sync
 # sockseek et rsgain : binaires figés dans ~/.local/bin (versions et sha256 : docs/vision.md)
-# ffmpeg et fpcalc (libchromaprint-tools) : apt ; modèle EffNet dans models/ (radio/signals/audio.py)
+# ffmpeg et fpcalc (libchromaprint-tools) : apt ; dans models/, le modèle EffNet (radio/signals/audio.py)
+# et les quatre modèles de mesure (MODELS de radio/signals/features.py, essentia.upf.edu/models, sha256 vérifiés)
 cp .env.example .env                  # y remettre la clé d'API AzuraCast régénérée
 for u in deploy/systemd/*; do systemctl --user link "$PWD/$u"; done
 systemctl --user daemon-reload
@@ -99,6 +100,19 @@ systemctl --user enable --now aubesonore-deploy.timer aubesonore-backup.timer
 Restaurer PostgreSQL depuis le dump le plus récent de `/media/plex/.backups/aubesonore`
 **dans une base jetable d'abord** — vérifier qu'il se lit avant de le passer sur la
 production.
+
+## 4. Musilogy
+
+La sauvegarde de la base du site laisse de côté le schéma `musilogy`
+(`site/scripts/backup-db.sh`) : tant qu'il n'est pas rechargé, les pages des artistes
+jamais joués répondent qu'elles ne sont pas disponibles.
+
+```bash
+cd ~/aubesonore
+ln -s ~/musilogy-data musilogy/data   # sorties publiées et dump de référence 20260909-001002, seule copie
+cd musilogy && uv sync
+# puis `uv run musilogy load` avec l'environnement libpq de musilogy/CLAUDE.md (« Charger la base du site »)
+```
 
 ## Vérifier que tout est remonté
 

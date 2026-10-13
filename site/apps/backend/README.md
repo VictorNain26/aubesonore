@@ -1,30 +1,10 @@
 # Backend AubeSonore
 
-API de la webradio, construite avec [Elysia](https://elysiajs.com/) sur [Bun](https://bun.sh/). Elle sert le catalogue « now playing » depuis AzuraCast, gère l'authentification, les likes et leur enrichissement multi-plateformes.
+API de la webradio, construite avec [Elysia](https://elysiajs.com/) sur [Bun](https://bun.sh/) : le direct et l'historique d'AzuraCast, les comptes ([Better Auth](https://www.better-auth.com/) : e-mail vérifié, Google), les titres gardés et leurs liens d'écoute (iTunes, Deezer, YouTube), les pages artistes (identité par ISRC et MusicBrainz, photo Wikimedia Commons, ouverture Wikipédia) et Musilogy, lue dans le schéma `musilogy` de la base. Les règles et leurs raisons sont dans [`site/CLAUDE.md`](../../CLAUDE.md) ; l'installation et la pile locale dans le [README du site](../../README.md).
 
-## Ce que fait l'API
+## Variables
 
-- **Radio** : proxy de l'historique et du « en train de jouer » AzuraCast.
-- **Likes** : ajout / retrait / liste des morceaux aimés.
-- **Enrichissement** : résolution des liens multi-plateformes (iTunes, Deezer) en tâche de fond ; profil d'artiste par Deezer, MusicBrainz et Wikipédia.
-- **Pochettes** : à l'enrichissement, une pochette iTunes est retenue si l'artiste correspond (une autre pochette du même artiste reste acceptable) ; sinon l'URL AzuraCast est conservée et le client affiche un visuel « onde » déterministe.
-- **Auth** : [Better Auth](https://www.better-auth.com/) — email vérifié requis, OAuth Google, cookies sécurisés, rate limiting.
-- **Statistiques d'écoute**.
-- **Sécurité** : en-têtes de sécurité, rate limiting par IP/utilisateur.
-
-## Prérequis
-
-- [Bun](https://bun.sh/) installé localement
-- Une base **PostgreSQL** accessible
-
-## Installation
-
-```bash
-bun install
-cp .env.example .env   # renseigner les variables ci-dessous
-```
-
-Variables principales (liste complète dans `.env.example`) :
+Liste complète dans `.env.example`, lue seulement par `src/config/env.ts` :
 
 - `DATABASE_URL` — connexion PostgreSQL
 - `BETTER_AUTH_URL`, `BETTER_AUTH_SECRET` — configuration Better Auth
@@ -32,33 +12,22 @@ Variables principales (liste complète dans `.env.example`) :
 - `ALLOWED_ORIGINS`, `COOKIE_DOMAIN`, `FRONTEND_BASE_URL`, `BACKEND_BASE_URL`
 - `AZURACAST_BASE_URL`, `AZURACAST_API_KEY`, `AZURACAST_STATION_ID`
 - `OUTBOUND_USER_AGENT` — User-Agent avec contact exigé par MusicBrainz et Wikimedia
-- `YOUTUBE_API_KEY` — facultative : clé YouTube Data API v3 (restreinte à cette API) pour le lien direct de chaque titre gardé ; sans elle, chaque titre ouvre une recherche YouTube
+- `YOUTUBE_API_KEY` — facultative : sans elle, chaque titre gardé ouvre une recherche YouTube
 
-## Développement
+## Commandes
 
 ```bash
-bun run db:push   # synchronise le schéma Drizzle vers la base
-bun run start     # démarre l'API
+pnpm --filter=@aubesonore/backend test       # tests sur mocks
+pnpm --filter=@aubesonore/backend test:db    # contre un Postgres jetable dont le nom finit par _test
+pnpm --filter=@aubesonore/backend typecheck
+bun run seed:admin                           # crée un compte administrateur
 ```
 
-Santé : [http://localhost:3000/health](http://localhost:3000/health).
+Santé : `/health`.
 
-## Scripts utiles
+## Base de données
 
-- `bun run db:push` — pousse le schéma (dev + prod)
-- `bun run db:generate` — génère une migration versionnée
-- `bun run seed:admin` — crée un compte administrateur
-- `bun run reset:all` — réinitialise la base
-- `bun test` — tests (bun)
-- `bun run lint` / `bun run typecheck`
-
-## Base de données (Drizzle)
-
-Le schéma (`src/db/schema.ts`) est la source de vérité ; les index sont déclarés inline. `db:push` synchronise directement (dev + prod). Les migrations appliquées sont suivies dans `__app_migrations` et rejouées au démarrage.
-
-## Déploiement
-
-Servie sur un VPS auto-hébergé, exposée via Cloudflare Tunnel. Docker : voir `compose.yaml` à la racine (`pnpm stack` pour la pile locale).
+Le schéma est `src/db/schema.ts`. Un changement de schéma part avec une migration écrite à la main, idempotente, dans `drizzle/`, que le backend applique au démarrage ; `db:push` ne sert qu'à une base de développement ou de test (`site/CLAUDE.md`, « Working with Drizzle »).
 
 ## Licence
 

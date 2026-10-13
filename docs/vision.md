@@ -1,7 +1,7 @@
 # AubeSonore — vision produit et architecture
 
-Révisée le 2026-10-10 : Musilogy est une encyclopédie de la musique pour découvrir des artistes : les artistes similaires et la généalogie des courants (§2). Ce document fixe une direction pour ce qui traverse les pièces : les
-produits, qui possède quoi, comment les pièces se parlent. Chaque pièce garde sa conception propre
+Ce document fixe la direction de ce qui traverse les pièces : les produits, qui possède quoi,
+comment les pièces se parlent. Chaque pièce garde sa conception propre
 (`pipeline/docs/vision.md`, `site/CLAUDE.md`, `azuracast/RUNBOOK.md`, `musilogy/docs/conception.md`)
 et ne doit pas le contredire. C'est une direction, pas un règlement : une règle se rediscute quand
 l'usage ou une mesure la contredit, et quand le système réel contredit ce document, le système a
@@ -26,7 +26,7 @@ Tout fonctionne sans compte ; le compte personnalise (les titres gardés), il ne
 | Geste | Question | Surface | Ce qui y répond |
 |---|---|---|---|
 | **Écouter** | « Qu'est-ce qui passe ? » | accueil | le direct, ce qui vient de passer, les plus gardés |
-| **Garder** | « Je ne veux pas le perdre » | bibliothèque, compte | aimer, retrouver, être prévenu quand l'artiste repasse |
+| **Garder** | « Je ne veux pas le perdre » | bibliothèque, compte | aimer, retrouver |
 | **Savoir** | « Qui est-ce ? » | page artiste | portrait, quelques lignes sur lui, où l'écouter, ses albums et EP, vos titres gardés |
 | **Découvrir** | « Où aller ensuite ? » | la même page ; la recherche pour y entrer par un nom | des artistes similaires, de toutes les époques ; ses groupes et ceux de ses membres |
 | **Comprendre** | « D'où vient ce son ? » | page de courant | les courants dont il est né, ceux qu'il a engendrés, ses artistes époque par époque |
@@ -220,21 +220,17 @@ dit qu'elle en a un : la licence demande un crédit « reasonable to the medium 
 (CC BY-SA 2.0 §4c ; Creative Commons, *Recommended practices for attribution*). Une photo ne sert
 pas d'image de partage, qu'un aperçu de lien montrerait sans son crédit.
 
-**Indexée quand elle est riche** : une page est proposée aux moteurs de recherche au-delà d'un
-seuil de contenu ; en deçà, elle existe mais n'est pas listée. La page d'un artiste joué l'est
-toujours. Celle d'un artiste jamais joué l'est quand au moins 2 pages d'artistes joués y
-mènent, qu'elle a un élément Wikidata (le chemin vers son article Wikipédia) et au moins 3
-albums ou EP (`site/apps/backend/src/services/discoveredArtists.ts`). Remesuré le 2026-10-12,
-quand chaque page ne mène plus qu'à ses 8 artistes du même son, outre ses membres, leurs projets
-et ses autres noms : les 479 pages jouées mènent à
-4 406 artistes jamais joués, 617 depuis au moins 2 pages, 474 passent (au seuil de 10 pages
-mesuré le 2026-10-06 sur l'ancien voisinage, il n'en restait que 5) ; les 25 pages d'un
-échantillon tiré au hasard parmi celles à 2 liens exactement ont toutes leur introduction
-Wikipédia. La
-règle tient la page dans le graphe de la radio : Google traite comme abus les pages assemblées
-en masse depuis d'autres sites, et une masse de pages faibles pèse sur tout le site. Elles ont
-leur propre sitemap, `sitemap-artists-discovered.xml`, pour suivre leur sort dans la Search
-Console avant d'abaisser le seuil.
+**Indexée quand elle est riche** : une page n'est proposée aux moteurs de recherche qu'au-delà
+d'un seuil de contenu ; en deçà, elle existe sans être listée. La page d'un artiste joué l'est
+toujours ; celle d'un artiste jamais joué, quand au moins 2 pages d'artistes joués y mènent,
+qu'elle a un élément Wikidata (le chemin vers son article Wikipédia) et au moins 3 albums ou EP
+(`site/apps/backend/src/services/discoveredArtists.ts` ; 507 pages le 2026-10-13, et les 25
+d'un échantillon tiré parmi celles à 2 liens exactement avaient toutes leur ouverture Wikipédia).
+La règle tient ces pages dans le graphe de la radio : Google traite comme abus les pages
+assemblées en masse depuis d'autres sources (règles anti-spam de Google Search), et Musilogy est
+une encyclopédie, pas un moyen d'attirer du trafic. Leur sitemap propre,
+`sitemap-artists-discovered.xml`, laisse suivre leur sort dans la Search Console : le seuil ne
+se revoit qu'avec ses chiffres, pas avant fin novembre 2026.
 
 ### 2.5 Les licences
 
@@ -292,8 +288,8 @@ ligne.
    la colle.
 6. **Chaque information sert la découverte.** Ce qu'une page montre répond à une question
    d'auditeur et mène à de la musique ; ce qui n'aide pas (rééditions, vie privée, fiches de base
-   de données) reste dans les sources, rechargeable. Une fonction qui ne prouve pas son utilité est
-   retirée.
+   de données) reste dans les sources, rechargeable. Une fonction, du code ou une architecture qui
+   ne prouvent pas leur utilité ne sont pas construits, ou sont retirés.
 7. **Les données déclarées d'abord, les heuristiques assumées.** Une règle sur un fait (une date,
    un type, une appartenance) s'appuie de préférence sur ce que des humains ont déclaré (types et
    statuts MusicBrainz, natures Wikidata). Un artiste similaire ou une filiation, eux, entrent sur
@@ -315,7 +311,7 @@ ligne.
 |---|---|---|---|
 | `azuracast/` | diffuser | l'antenne : médias et leurs métadonnées, playlists, historique de diffusion | — |
 | `pipeline/` | choisir ce qui passe | le goût (modèle, votes, candidats) et la bibliothèque d'antenne, qu'il publie par l'API d'AzuraCast avec l'ISRC de chaque titre | Plex (lecture seule), Deezer, Last.fm, Hype Machine, Soulseek |
-| `site/` | l'expérience de l'auditeur | comptes, titres gardés, identité des artistes joués, ce que les sources en direct disent d'un artiste (portrait, ouverture de Wikipédia), journal de diffusion | AzuraCast (lecture seule), Deezer, Wikipédia, le schéma `musilogy` |
+| `site/` | l'expérience de l'auditeur | comptes, titres gardés, identité des artistes joués, ce que les sources en direct disent d'un artiste (portrait, ouverture de Wikipédia), journal de diffusion | AzuraCast (lecture seule), Deezer, MusicBrainz (identifier un titre joué), Wikipédia, Wikimedia Commons, le schéma `musilogy` |
 | `musilogy/` | ce qui se sait d'un artiste, hors ligne | ses tables, produites depuis des sources épinglées et datées, et le schéma `musilogy` de la base du site, qu'il remplace en bloc à chaque `musilogy load` | dumps MusicBrainz et Discogs, relevés MusicBrainz, ListenBrainz et Wikidata |
 
 ### 4.2 Les flux
@@ -337,7 +333,7 @@ ligne.
 | pipeline → AzuraCast | API AzuraCast, dossier `antenne/` ; l'ISRC de chaque titre écrit dans le fichier (trame ID3 `TSRC`), qu'AzuraCast range dans le champ `isrc` du média ; jamais de `PUT /file/{id}`, qui réécrit et supprime les balises | `pipeline/docs/vision.md` §6 et §7.2 |
 | site ← AzuraCast | now-playing et historique en lecture, dont `song.isrc` | `site/CLAUDE.md` |
 | site ← musilogy | les fonctions SQL de `musilogy/src/musilogy/pg/90_*.sql` : le site n'appelle qu'elles, jamais les tables | `musilogy/docs/conception.md` §4 |
-| site ← Deezer, Wikipédia | chacun isolé, autorisé à tomber seul, son dernier résultat gardé en base (§4.6) ; MusicBrainz n'est appelé en direct que pour identifier un titre joué (§4.4) | `site/CLAUDE.md` |
+| site ← Deezer, Wikipédia, Wikimedia Commons | chacun isolé, autorisé à tomber seul, son dernier résultat gardé en base (§4.6) ; MusicBrainz n'est appelé en direct que pour identifier un titre joué (§4.4) | `site/CLAUDE.md` |
 
 **Couplages interdits** :
 
@@ -416,7 +412,7 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 
 | Risque | Déclencheur de révision |
 |---|---|
-| le flux passe par Cloudflare Tunnel, contre ses conditions CDN (audio « disproportionné ») | un avis de Cloudflare, ou le palier P1 de `site/docs/scaling-roadmap.md` |
+| le flux passe par Cloudflare Tunnel, contre ses conditions CDN (audio « disproportionné ») | un avis de Cloudflare, ou le palier P2 de `site/docs/scaling-roadmap.md` |
 | aucune copie hors de la maison | dès qu'un stockage gratuit (B2 ou R2, 10 Go) est ouvert |
 | une seule machine : si elle tombe, la radio se tait | un budget d'hébergement (≈ 12 € HT/mois au 2026-10-03) |
 
@@ -425,9 +421,9 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 | Surface | Route | Indexée | Geste |
 |---|---|---|---|
 | Accueil | `/`, `/en` | oui, pré-rendue | Écouter |
-| Page artiste | `/artiste/:slug` (`/en/artist/:slug`) : le slug de la page, le même processus pour chaque artiste, joué ou non : il naît la première fois que le site publie l'adresse (la page servie, un lien dessiné, un résultat de recherche, le sitemap) et ne change plus ; une adresse que personne n'a vue n'a pas besoin d'exister (« Cool URIs don't change », W3C 1998). Parmi des homonymes du même nom, le plus écouté prend le nom seul, quel que soit celui publié d'abord (le Nirvana connu prend `nirvana`) ; deux noms qui ne diffèrent que par la ponctuation, ou un nom suivi d'un nombre (« Eve 6 »), restent départagés par l'ordre de publication ; `/artiste/:mbid` en 301 vers le slug ; un slug par page, jamais réattribué | au-delà d'un seuil de contenu (§2.4), décidé par le serveur | Savoir, Découvrir |
+| Page artiste | `/artiste/:slug` (`/en/artist/:slug`), `/artiste/:mbid` en 301 vers le slug. Un slug par page, le même processus pour tout artiste, joué ou non : il naît la première fois que le site publie l'adresse, ne change plus et n'est jamais réattribué (« Cool URIs don't change », W3C) ; parmi des homonymes, le plus écouté prend le nom seul (`site/CLAUDE.md`) | au-delà d'un seuil de contenu (§2.4) | Savoir, Découvrir |
 | Page de courant | à créer (§2.3) | quand elle est riche | Comprendre, Découvrir |
-| Musilogy | `/musilogy` (recherche) ; `/musilogy/:mbid/…` renvoie en 301 à la page artiste | non | Découvrir |
+| Musilogy | `/musilogy` (recherche) ; `/musilogy/:mbid/…` mène à la page artiste | non | Découvrir |
 | Connexion | `/connexion`, `/en/sign-in` | non | Garder |
 | Bibliothèque, compte | panneau et menu de l'en-tête | non | Garder |
 
@@ -437,9 +433,9 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 2. **Statut officiel incomplet** : la page écarte les disques que MusicBrainz ne montre pas
    comme l'œuvre de l'artiste (476 des 4 980 disques des artistes joués, 2026-10-06) ; seuls les
    artistes d'au moins 500 auditeurs sont interrogés.
-3. **Identité incomplète** : 52 des 397 artistes joués n'ont pas de MBID (2026-10-06) ; la plupart
-   n'ont aucun lien vers Deezer dans MusicBrainz, ce qui se corrige à la source. 22 des 91 titres
-   gardés ne retrouvent ni leur passage ni leur titre exact chez Deezer.
+3. **Identité incomplète** : 22 des 568 artistes joués n'ont pas de MBID (2026-10-13), ce qui se
+   corrige à la source (MusicBrainz) ; 20 des 109 titres gardés ne sont reliés à aucun artiste,
+   faute d'avoir retrouvé leur passage ou leur titre exact chez Deezer.
 4. **Les featurings ne relient que l'artiste principal** (§4.4).
 5. **Licences à régulariser** : les pochettes Deezer des titres (§2.5).
 6. **Aucune copie hors de la maison** (§4.7).

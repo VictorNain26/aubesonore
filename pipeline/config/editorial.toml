@@ -164,7 +164,7 @@ dansabilite = 0.85
 tempo = 0.75
 
 [votes]
-# Titres d'examen par sélection hebdomadaire, tirés au hasard sur toute la fournée.
+# Titres d'examen par sélection hebdomadaire, tirés au hasard à parts égales par famille (découvertes, nouveautés).
 exam_per_selection = 10
 # Titres de leçon par sélection : les plus proches de la coupure, un par artiste.
 lesson_per_selection = 10
