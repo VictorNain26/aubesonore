@@ -11,13 +11,8 @@ import {
   customType,
   check,
 } from 'drizzle-orm/pg-core';
-import { sql, type InferSelectModel, type InferInsertModel } from 'drizzle-orm';
-import type { ArtistPhoto, ArtistSummary, PlatformLinks } from '@aubesonore/shared-types/client';
-import type { StatsState } from '@aubesonore/shared-types/stats';
-
-// Re-export so existing imports (`from '../db/schema'`) keep working.
-// Source of truth lives in @aubesonore/shared-types/client.
-export type { PlatformLinks };
+import { sql, type InferSelectModel } from 'drizzle-orm';
+import type { ArtistPhoto, ArtistSummary } from '@aubesonore/shared-types/client';
 
 // ─────────────────────────────────────────────
 // USER TABLE
@@ -28,10 +23,6 @@ export const user = pgTable('user', {
   email: text('email').notNull().unique(),
   emailVerified: boolean('email_verified').notNull().default(false),
   image: text('image'),
-  role: text('role').notNull().default('user'),
-  banned: boolean('banned'),
-  banReason: text('ban_reason'),
-  banExpires: timestamp('ban_expires', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
 });
@@ -124,9 +115,6 @@ export const likedTracks = pgTable(
     youtubeUrl: text('youtube_url').notNull(),
     isrc: text('isrc'),
 
-    songlinkUrl: text('songlink_url'),
-    platformLinks: jsonb('platform_links').$type<PlatformLinks>(),
-
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 
     userId: text('user_id')
@@ -138,7 +126,7 @@ export const likedTracks = pgTable(
   },
   (table) => ({
     likedTracksUserIdIdx: index('liked_tracks_user_id_idx').on(table.userId),
-    // Backs "who kept this artist" (alerts) and "what I kept of them" (artist page).
+    // Backs "what I kept of them" (artist page).
     likedTracksArtistUserIdx: index('liked_tracks_artist_user_idx').on(
       table.artistId,
       table.userId
@@ -158,17 +146,6 @@ export const likedTracks = pgTable(
     ),
   })
 );
-
-// ─────────────────────────────────────────────
-// USER_STATS TABLE
-// ─────────────────────────────────────────────
-export const userStats = pgTable('user_stats', {
-  userId: text('user_id')
-    .primaryKey()
-    .references(() => user.id, { onDelete: 'cascade' }),
-  snapshot: jsonb('snapshot').notNull().$type<StatsState>(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
 
 // ─────────────────────────────────────────────
 // COVERS TABLE
@@ -319,31 +296,13 @@ export const radioPlay = pgTable(
 );
 
 // ─────────────────────────────────────────────
-// TYPES INFÉRÉS
+// INFERRED TYPES
 // ─────────────────────────────────────────────
 
 export type User = InferSelectModel<typeof user>;
-export type NewUser = InferInsertModel<typeof user>;
-
-export type Account = InferSelectModel<typeof account>;
-export type NewAccount = InferInsertModel<typeof account>;
 
 export type Session = InferSelectModel<typeof session>;
-export type NewSession = InferInsertModel<typeof session>;
-
-export type Verification = InferSelectModel<typeof verification>;
-export type NewVerification = InferInsertModel<typeof verification>;
 
 export type LikedTrack = InferSelectModel<typeof likedTracks>;
-export type NewLikedTrack = InferInsertModel<typeof likedTracks>;
-
-export type UserStats = InferSelectModel<typeof userStats>;
-export type NewUserStats = InferInsertModel<typeof userStats>;
 
 export type Artist = InferSelectModel<typeof artist>;
-export type NewArtist = InferInsertModel<typeof artist>;
-
-export type RadioPlayRow = InferSelectModel<typeof radioPlay>;
-export type NewRadioPlayRow = InferInsertModel<typeof radioPlay>;
-
-export type YoutubeLinkRow = InferSelectModel<typeof youtubeLink>;

@@ -10,10 +10,6 @@
     "./azuracast": {
       "types": "./dist/azuracast.d.ts",
       "default": "./dist/azuracast.js"
-    },
-    "./stats": {
-      "types": "./dist/stats.d.ts",
-      "default": "./dist/stats.js"
     }
   },
   "scripts": {
