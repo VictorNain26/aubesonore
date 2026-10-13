@@ -1,4 +1,4 @@
-// Client API types — shared between frontend and mobile
+// Client API types, shared by the backend and the frontend
 // These are the shapes returned by the API to clients (simpler than DB models in auth.ts)
 
 export interface User {

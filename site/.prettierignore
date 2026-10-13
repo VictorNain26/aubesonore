@@ -12,3 +12,6 @@ apps/frontend/src/paraglide/
 # Written by Paraglide on each compile, ignored by git.
 apps/frontend/project.inlang/.meta.json
 apps/frontend/project.inlang/README.md
+
+# Written by brand/build.py from the mark's rules: committed as the script writes it.
+apps/frontend/src/design/atoms/logoArt.ts

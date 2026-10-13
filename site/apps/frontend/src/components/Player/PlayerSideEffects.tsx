@@ -6,11 +6,8 @@ import { usePlayer } from '../../lib/player';
 import { useMediaSession } from '../../hooks/player/useMediaSession';
 import * as m from '@/paraglide/messages.js';
 
-// Invisible component that hosts player side-effects driven by external
-// state (now-playing track flips, audio playing state). Keeps these
-// effects out of the render tree of the visible Player, which means
-// Player no longer needs to exist solely to host them and can be
-// unmounted independently without losing the side-effect bookkeeping.
+// Invisible component that hosts the player's side effects driven by outside state (the track on
+// air changing, the audio playing), mounted once in App whatever the page.
 
 export function PlayerSideEffects(): null {
   const { title, artist, album, art } = useNowPlayingStore(

@@ -64,7 +64,7 @@ export function Cover({ src, alt, seed, className, priority = false, sizes, onEr
  * a priority image, which the server already drew (the hero, the portrait). Under
  * prefers-reduced-motion it simply appears.
  */
-export function useFadeIn(enabled = true) {
+function useFadeIn(enabled = true) {
   const [waiting, setWaiting] = useState(false);
   // A callback ref, the same function every time: React calls it once, when the image mounts.
   const watch = useCallback(

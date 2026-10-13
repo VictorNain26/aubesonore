@@ -16,11 +16,11 @@ export interface ArtistPageData {
 /** The id of the `<script type="application/json">` that carries an ArtistPageData. */
 export const ARTIST_PAGE_DATA_ID = 'artist-page-data';
 
-export const seenProfiles = seenStore<ArtistPageState>();
+const seenProfiles = seenStore<ArtistPageState>();
 // null: the dump does not know the MBID; the page shows without its sections.
-export const seenMusilogy = seenStore<MusilogyArtist | null>();
+const seenMusilogy = seenStore<MusilogyArtist | null>();
 
-export function profileKey(slug: string, locale: Locale): string {
+function profileKey(slug: string, locale: Locale): string {
   return `${slug}:${locale}`;
 }
 

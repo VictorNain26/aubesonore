@@ -9,9 +9,8 @@ interface LikedTracksState {
   tracks: LikedTrack[];
   isLoading: boolean;
   error: string | null;
-  // Cross-component lock for in-flight like/unlike. Lives here (not in
-  // useLikeAction) so simultaneous clicks from TrackArtwork + RecentTracks
-  // on the same track see the same value and can short-circuit.
+  // Cross-component lock for an in-flight keep/unkeep. Lives here (not in useLikeAction) so two
+  // places showing the same track (the hero and the day's list) see the same value.
   likingTrackId: string | null;
 }
 

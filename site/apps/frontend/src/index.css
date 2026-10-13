@@ -1,10 +1,6 @@
 @import 'tailwindcss';
 @import './design/tokens.css';
 
-@theme inline {
-  --radius-lg: 0.5rem;
-}
-
 @layer base {
   /* Keeps a focused element clear of the pinned player bar and of the header when it is back
      over the page (WCAG 2.4.11). */
@@ -47,8 +43,8 @@
     outline-offset: 2px;
   }
 
-  /* Tailwind v4 Preflight laisse le curseur par défaut sur les boutons ;
-     on rétablit l'affordance de clic sur tout élément interactif. */
+  /* Tailwind v4's Preflight leaves buttons with the default cursor: every interactive element
+     gets its pointer back. */
   button:not(:disabled),
   [role='button']:not(:disabled),
   [role='tab']:not([aria-disabled='true']),
@@ -70,9 +66,6 @@
   }
 }
 
-@layer utilities {
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -82,43 +75,4 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-}
-
-input[type='range'] {
-  -webkit-appearance: none;
-  appearance: none;
-  background: transparent;
-  cursor: pointer;
-}
-input[type='range']::-webkit-slider-track {
-  background: var(--border);
-  height: 3px;
-  border-radius: 9999px;
-}
-input[type='range']::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  height: 14px;
-  width: 14px;
-  border-radius: 9999px;
-  background: var(--text);
-  border: none;
-  margin-top: -5.5px;
-  transition: transform 150ms ease;
-}
-input[type='range']::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
-}
-input[type='range']::-moz-range-track {
-  background: var(--border);
-  height: 3px;
-  border-radius: 9999px;
-  border: 0;
-}
-input[type='range']::-moz-range-thumb {
-  height: 14px;
-  width: 14px;
-  border-radius: 9999px;
-  background: var(--text);
-  border: none;
 }

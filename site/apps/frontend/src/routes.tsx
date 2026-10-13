@@ -40,8 +40,6 @@ export const routes: RouteObject[] = [
           { id: 'artist-en', path: '/en/artist/:slug', lazy: artistPage, loader: artistLoader },
           { path: '/musilogy', lazy: musilogyPage },
           { path: '/en/musilogy', lazy: musilogyPage },
-          { path: '/musilogy/:mbid/:slug?', lazy: musilogyPage },
-          { path: '/en/musilogy/:mbid/:slug?', lazy: musilogyPage },
           { path: '/mes-titres', lazy: myTracksPage },
           { path: '/en/my-tracks', lazy: myTracksPage },
         ],

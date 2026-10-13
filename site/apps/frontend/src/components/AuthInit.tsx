@@ -6,10 +6,8 @@ import { takePendingKeep } from '../lib/pendingKeep';
 import { toast } from 'sonner';
 import * as m from '@/paraglide/messages.js';
 
-// Invisible side-effect host that hydrates the auth session once and
-// bridges auth transitions to the liked-tracks store. Replaces the previous AuthProvider mount + AuthDataSync
-// pairing — same observable behavior, one mounted component instead of
-// two and zero React Context.
+// Invisible side-effect host that hydrates the auth session once and bridges auth transitions to
+// the kept-tracks store.
 
 /** Keeps the track the listener tapped before signing in, once the library is loaded. */
 async function keepPendingTrack(): Promise<void> {
