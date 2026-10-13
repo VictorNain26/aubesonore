@@ -29,6 +29,7 @@ from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta, tzinfo
 from typing import Protocol
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import numpy.typing as npt
@@ -430,6 +431,41 @@ class Programmer(Protocol):
     def fill_playlist(self, playlist_id: int, m3u: str) -> int: ...
 
     def empty_playlist(self, playlist_id: int) -> None: ...
+
+
+class Station(Programmer, Protocol):
+    def timezone(self) -> str: ...
+
+    def start_next_s(self) -> float: ...
+
+    def last_played(self, start: str, end: str) -> dict[str, float]: ...
+
+    def queued(self) -> dict[str, float]: ...
+
+
+def grille_pass(
+    conn: sqlite3.Connection, station: Station, cfg: GrilleConfig, today: bool, now: datetime
+) -> tuple[Plan, list[str]]:
+    """Planifie, publie et garde la grille de demain, ou des heures qui restent aujourd'hui ;
+    renvoie le plan et les heures mal écrites."""
+    tz = ZoneInfo(station.timezone())
+    start_next = station.start_next_s()
+    now = now.astimezone(tz)
+    day = now.date() if today else now.date() + timedelta(days=1)
+    hours = list(range(now.hour + 1, 24)) if today else list(range(24))
+    history = station.last_played((now - timedelta(days=14)).isoformat(), now.isoformat())
+    # Un titre en file passe même si son heure est réécrite, une fois remis à Liquidsoap : il
+    # compte comme joué à son heure prévue.
+    for song, at in station.queued().items():
+        history[song] = max(history.get(song, at), at)
+    spans = hour_spans(day, hours, tz)
+    rewritten = [begin for begin, _ in spans.values()]
+    played = with_published(conn, history, now.timestamp(), rewritten)
+    midnight = datetime.combine(day, time(0), tzinfo=tz).timestamp()
+    plan = plan_day(load_titres(conn), played, cfg, day, spans, midnight, start_next)
+    errors = publish(plan, station, [h for h in hours if h not in spans])
+    record(conn, plan)
+    return plan, errors
 
 
 def publish(plan: Plan, station: Programmer, missing: Iterable[int]) -> list[str]:
