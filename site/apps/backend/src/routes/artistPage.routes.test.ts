@@ -364,7 +364,9 @@ describe('GET /artiste/:slug', () => {
     expect(html).toContain(
       `<link rel="canonical" href="${env.FRONTEND_BASE_URL}/artiste/${UNPLAYED_MBID}"`
     );
-    expect(html).toContain('Protomartyr sur AubeSonore, radio de découverte musicale.');
+    expect(html).toContain(
+      'Protomartyr sur AubeSonore, la radio de découverte indé, électro, hip-hop.'
+    );
     expect(html).not.toContain('hreflang');
     expect(jsonLd(html).sameAs).toEqual([`https://musicbrainz.org/artist/${UNPLAYED_MBID}`]);
   });
@@ -555,6 +557,23 @@ describe('the addresses pages had before slugs', () => {
     await app.handle(new Request(`http://localhost/artiste/${UNPLAYED_MBID}`));
 
     expect(asked.map((request) => request.data.musilogy)).toEqual([musilogyAnswer]);
+  });
+
+  it("names the page's similar artists in its title and description", async () => {
+    mockShell();
+    musilogyAnswer = {
+      card: { name: 'Protomartyr' },
+      neighbours: [{ mbid: 'm1', name: 'Preoccupations', rank: 1 }],
+      releases: null,
+      bands: null,
+    };
+
+    const html = await (
+      await app.handle(new Request(`http://localhost/artiste/${UNPLAYED_MBID}`))
+    ).text();
+
+    expect(html).toContain('<title>Protomartyr : artistes similaires · AubeSonore</title>');
+    expect(html).toContain('content="Artistes similaires : Preoccupations."');
   });
 
   it('keeps a value holding </script> inside the embedded data', async () => {

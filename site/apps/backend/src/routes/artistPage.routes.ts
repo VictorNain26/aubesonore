@@ -1,4 +1,4 @@
-import type { ArtistProfile, SiteLocale } from '@aubesonore/shared-types/client';
+import type { ArtistProfile, MusilogyArtist, SiteLocale } from '@aubesonore/shared-types/client';
 import { Elysia } from 'elysia';
 import { env } from '../config/env';
 import { logger } from '../lib/logger';
@@ -58,11 +58,10 @@ export function __resetArtistShell(): void {
 async function renderPage(
   locale: SiteLocale,
   path: string,
-  profile: ArtistProfile
+  profile: ArtistProfile,
+  musilogy: MusilogyArtist | null
 ): Promise<RenderedPage | null> {
   try {
-    // Unknown to the dump, or Musilogy not loaded: the page shows without its sections.
-    const musilogy = profile.mbid ? await getMusilogyArtist(profile.mbid).catch(() => null) : null;
     const data = { locale, profile, musilogy };
     const response = await fetch(`${env.RENDERER_ORIGIN_INTERNAL}/render`, {
       method: 'POST',
@@ -148,8 +147,10 @@ async function handle(
     fr: `${env.FRONTEND_BASE_URL}${artistPagePath('fr', profile.slug)}`,
     en: `${env.FRONTEND_BASE_URL}${artistPagePath('en', profile.slug)}`,
   };
-  const page = await renderPage(locale, artistPagePath(locale, profile.slug), profile);
-  return renderArtistShell(html, profile, pageUrls, locale, page, indexable);
+  // Unknown to the dump, or Musilogy not loaded: the page shows without its sections.
+  const musilogy = profile.mbid ? await getMusilogyArtist(profile.mbid).catch(() => null) : null;
+  const page = await renderPage(locale, artistPagePath(locale, profile.slug), profile, musilogy);
+  return renderArtistShell(html, profile, pageUrls, locale, musilogy, page, indexable);
 }
 
 type ResponseSet = HandlerContext['set'];

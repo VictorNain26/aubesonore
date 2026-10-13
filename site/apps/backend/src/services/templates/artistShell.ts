@@ -1,4 +1,5 @@
 import type { ArtistProfile, MusilogyArtist, SiteLocale } from '@aubesonore/shared-types/client';
+import { artistDescription, artistTitle } from './artistMeta';
 
 /** An artist page drawn by the renderer: the body of #root, and the data the client starts from. */
 export interface RenderedPage {
@@ -17,8 +18,6 @@ function scriptJson(value: unknown): string {
 // licence asks for (docs/vision.md §2.5).
 const ALLOWED_IMAGE_HOSTS = ['coverartarchive.org'];
 
-const OG_DESCRIPTION_MAX = 200;
-
 function isAllowedImage(url: string | null): url is string {
   if (!url) return false;
   try {
@@ -27,10 +26,6 @@ function isAllowedImage(url: string | null): url is string {
   } catch {
     return false;
   }
-}
-
-function truncate(value: string, max: number): string {
-  return value.length <= max ? value : `${value.slice(0, max - 1).trimEnd()}…`;
 }
 
 function isHttps(url: string): boolean {
@@ -78,16 +73,13 @@ export function renderArtistShell(
   profile: ArtistProfile,
   pageUrls: Record<SiteLocale, string>,
   locale: SiteLocale,
+  musilogy: MusilogyArtist | null,
   page: RenderedPage | null = null,
   indexable = profile.played
 ): Promise<string> {
   const pageUrl = pageUrls[locale];
-  const title = `${profile.name} · AubeSonore`;
-  const description = profile.summary
-    ? truncate(profile.summary.text, OG_DESCRIPTION_MAX)
-    : locale === 'en'
-      ? `${profile.name}${profile.played ? ', played' : ''} on AubeSonore, a music discovery radio.`
-      : `${profile.name}${profile.played ? ', passé' : ''} sur AubeSonore, radio de découverte musicale.`;
+  const title = artistTitle(profile, musilogy, locale);
+  const description = artistDescription(profile, musilogy, locale);
   const cover = profile.images.find((image) => image.kind === 'cover')?.url ?? null;
   const image = isAllowedImage(cover) ? cover : null;
 
