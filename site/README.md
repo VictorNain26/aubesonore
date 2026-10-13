@@ -10,8 +10,7 @@ aubesonore/
 │   ├── backend/          # API Bun + Elysia + Drizzle + PostgreSQL
 │   └── frontend/         # Vite + React 19 + Tailwind 4 (PWA)
 ├── packages/
-│   ├── core/             # Client de l'API et adresses AzuraCast du frontend
-│   └── shared-types/     # Types partagés backend ↔ clients
+│   └── shared-types/     # Types partagés backend ↔ frontend
 ├── compose.yaml          # La pile : production, et poste de dev (profil dev)
 └── scripts/              # Déploiement, sauvegardes, certificats de Postgres
 ```

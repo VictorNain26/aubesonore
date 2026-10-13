@@ -76,7 +76,7 @@ jobs:
       # subpath imports to `error` types and emit hundreds of false-positive
       # `no-unsafe-*` violations.
       - name: Build workspace packages
-        run: pnpm turbo build --filter=@aubesonore/shared-types --filter=@aubesonore/core
+        run: pnpm turbo build --filter=@aubesonore/shared-types
 
       - name: Format check
         run: pnpm format:check
@@ -152,7 +152,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build workspace packages
-        run: pnpm turbo build --filter=@aubesonore/shared-types --filter=@aubesonore/core
+        run: pnpm turbo build --filter=@aubesonore/shared-types
 
       - name: Run backend tests
         run: pnpm --filter=@aubesonore/backend test

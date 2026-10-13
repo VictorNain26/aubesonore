@@ -271,7 +271,6 @@ services:
         pnpm config set store-dir /pnpm-store &&
         pnpm install --frozen-lockfile --filter @aubesonore/frontend... &&
         pnpm --filter @aubesonore/shared-types build &&
-        pnpm --filter @aubesonore/core build &&
         pnpm --filter @aubesonore/frontend dev
     volumes:
       - .:/app
@@ -279,8 +278,6 @@ services:
       - /app/node_modules
       - /app/apps/frontend/node_modules
       - /app/apps/frontend/src/paraglide
-      - /app/packages/core/node_modules
-      - /app/packages/core/dist
       - /app/packages/shared-types/node_modules
       - /app/packages/shared-types/dist
     ports:
