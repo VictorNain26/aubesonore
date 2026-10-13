@@ -28,11 +28,15 @@ them all. `azuracast/RUNBOOK.md` covers rebuilding the whole system from nothing
 
 - One branch, one PR per change; a PR stays inside one piece unless the change truly spans them.
 - **CI**: `.github/workflows/site.yml`, `pipeline.yml` and `musilogy.yml` run on every PR, with
-  no path filter: their jobs are required checks on `master`.
+  no path filter: their jobs are required checks on `master`. `codeql.yml` also runs, only on PRs
+  that target `master`, and is not required.
 - **Dependencies**: Renovate (`renovate.json`) covers pnpm, uv, GitHub Actions and Docker images.
-- **Hooks**: husky lives in `site/.husky` (`prepare` runs `cd .. && husky site/.husky`). The
-  commit message is checked by commitlint (Conventional Commits, English) for every commit,
-  whatever the piece; the pre-push gate of the site only runs when `site/` changed.
+- **Hooks**: husky lives in `site/.husky` (`prepare` runs `cd .. && husky site/.husky`), so the
+  hooks exist only in a clone where `pnpm install` has run in `site/`; no CI job checks commit
+  messages. There, commitlint checks every commit message (Conventional Commits, English),
+  whatever the piece, and the site's pre-push gate runs only when `site/` changed. The scope is
+  the piece (`site`, `pipeline`, `musilogy`, `azuracast`), `repo` for what spans them, `deps`
+  for dependencies.
 - **Deploying is merging to `master`.** `aubesonore-deploy.timer` fast-forwards `~/aubesonore`; it
   rebuilds the site containers only when `site/` changed, and never moves the tree while the
   radio's weekly pass (`radio-weekly.service`) runs, since that pass loads `pipeline/` code.
@@ -69,8 +73,9 @@ AzuraCast is the hub. The other two never talk to each other.
   read-only consumer of the station and must stay that way.
 - Any change that seems to need pipeline↔app coupling is a design smell — route it through
   AzuraCast, or reconsider.
-- musilogy is **offline reference data**, outside the radio: it turns a MusicBrainz dump and
-  dated ListenBrainz and Wikidata snapshots into Parquet tables. `musilogy load` copies them into a `musilogy`
+- musilogy is **offline reference data**, outside the radio: it turns a MusicBrainz dump, the
+  Discogs releases dump and dated ListenBrainz, MusicBrainz and Wikidata snapshots into Parquet
+  tables. `musilogy load` copies them into a `musilogy`
   schema of the site's database, and the site reads them only through musilogy's SQL functions
   — never by calling musilogy at runtime (`docs/vision.md` §4.3).
 
@@ -99,3 +104,5 @@ When this file disagrees with the running system, the system is right — correc
   holds listener access logs. Keep all of it out of diffs, pastes, and issue reports.
 - **Language**: commits are English Conventional Commits everywhere (commitlint). Documentation
   follows the piece: the pipeline, azuracast and musilogy document in French, the site in English.
+  At the root, `README.md` and `docs/` are in French, like the product; `CLAUDE.md`,
+  `SECURITY.md` and the workflow comments are in English.
