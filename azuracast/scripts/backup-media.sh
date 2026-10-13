@@ -1,21 +1,14 @@
 #!/usr/bin/env bash
-# Sauvegarde restic de ce qu'aucune autre sauvegarde ne couvre (RUNBOOK.md) :
-# - les médias de l'antenne (stations/) et la configuration non versionnée
-#   d'AzuraCast (.env, azuracast.env dont MYSQL_PASSWORD, gatus.env) ;
-# - les secrets du site et du pipeline (site/.env, pipeline/.env) ;
-# - Musilogy : ses sources (~/musilogy-data/raw : le dump MusicBrainz de
-#   référence, que MetaBrainz ne publie plus, et les relevés épinglés) et ses
-#   tables publiées (out/, que `musilogy load` charge ; sans elles, une dizaine
-#   d'heures de `musilogy run`). work/ se reconstruit depuis raw/.
-# Dépôt chiffré sur /media/plex, disque physique distinct du NVMe. Les bases ont
-# leur propre sauvegarde (AzuraCast, backup-db.sh du site, radio backup).
+# Sauvegarde restic de ce qu'aucune autre sauvegarde ne couvre : les médias de
+# l'antenne (stations/) et la configuration non versionnée d'AzuraCast (.env,
+# azuracast.env, dont MYSQL_PASSWORD). Dépôt chiffré sur /media/plex, disque
+# physique distinct du NVMe. La base a sa propre sauvegarde, faite par AzuraCast.
 #
 # Le mot de passe du dépôt est dans ~/.config/restic/password, sur le NVMe :
 # il doit aussi être gardé ailleurs, sans lui le dépôt est illisible.
 set -euo pipefail
 
 AZURACAST="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-REPO="$(dirname "$AZURACAST")"
 RESTIC="$HOME/.local/bin/restic"
 export RESTIC_REPOSITORY=/media/plex/.backups/restic
 export RESTIC_PASSWORD_FILE="$HOME/.config/restic/password"
@@ -32,12 +25,7 @@ fi
     "$AZURACAST/stations" \
     "$AZURACAST/docker-compose.yml" \
     "$AZURACAST/.env" \
-    "$AZURACAST/azuracast.env" \
-    "$AZURACAST/gatus.env" \
-    "$REPO/site/.env" \
-    "$REPO/pipeline/.env" \
-    "$HOME/musilogy-data/raw" \
-    "$HOME/musilogy-data/out"
+    "$AZURACAST/azuracast.env"
 
 "$RESTIC" forget --tag nightly --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
 

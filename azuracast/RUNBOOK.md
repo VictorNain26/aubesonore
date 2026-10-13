@@ -16,24 +16,20 @@ reconstruire seule depuis un dépôt public.
 
 | Élément | Où il vit | Sauvegarde | Sans lui |
 |---|---|---|---|
-| **Mot de passe du dépôt restic** | `~/.config/restic/password` | **une copie hors de la machine** (gestionnaire de mots de passe) | tout le reste est illisible |
-| `azuracast/.env`, `azuracast.env` (`MYSQL_PASSWORD`), `gatus.env` | hors git | restic | base inaccessible, ports par défaut |
-| `site/.env`, `pipeline/.env` | hors git | restic | secrets à recréer : Plex, AzuraCast, YouTube, Google, SMTP, Gatus |
+| `azuracast/.env`, `azuracast.env` (`MYSQL_PASSWORD`) | hors git | restic | base inaccessible, ports par défaut |
 | `stations/` (médias, et `*/config/` dans la sauvegarde AzuraCast) | NVMe | restic | catalogue perdu, station à reconfigurer |
-| `~/musilogy-data/raw`, `out` | NVMe | restic | dump de référence (plus publié par MetaBrainz) et tables à refaire |
 | Base MariaDB d'AzuraCast | volume Docker | sauvegarde AzuraCast quotidienne | métadonnées, comptes, playlists |
 | Base PostgreSQL du site | volume Docker | `aubesonore-backup` (`site/scripts/backup-db.sh`) | comptes, titres gardés |
 | `pipeline/data/radio.db`, `data/models/` | NVMe | `radio-backup` | les votes, qui n'existent nulle part ailleurs |
+| `site/.env`, `pipeline/.env`, `azuracast/gatus.env` | hors git | **aucune** : une copie à garder soi-même (gestionnaire de mots de passe) | secrets à recréer : Plex, AzuraCast, YouTube, Google, SMTP, Gatus |
+| `~/musilogy-data` | NVMe | **aucune** (choix du 2026-10-13 : 16 Go) | Musilogy se refait sur un dump MusicBrainz plus récent, une journée de calcul, des chiffres un peu différents |
+| Mot de passe du dépôt restic | `~/.config/restic/password` | une copie hors de la machine | le dépôt restic est illisible |
 
 `azuracast-backup.timer` (04:45, `scripts/backup-media.sh`, unités dans `scripts/systemd/`)
-sauvegarde dans un dépôt restic chiffré, `/media/plex/.backups/restic`, disque distinct du
-NVMe : les médias et la configuration d'AzuraCast depuis le 2026-10-03, les secrets du site
-et du pipeline et les données de Musilogy depuis le 2026-10-13. Rétention 7 jours,
-4 semaines, 6 mois ; battement de cœur Gatus `radio_sauvegarde-medias`. Les bases ont leurs
-propres sauvegardes, sur le même disque distinct.
-
-Tous les secrets étant dans le dépôt restic, **son mot de passe est le seul à garder hors de
-la machine** : sans une copie ailleurs, la perte du NVMe rend le dépôt illisible.
+sauvegarde depuis le 2026-10-03 `stations/`, `docker-compose.yml`, `.env` et `azuracast.env`
+dans un dépôt restic chiffré, `/media/plex/.backups/restic`, disque distinct du NVMe ;
+rétention 7 jours, 4 semaines, 6 mois ; battement de cœur Gatus `radio_sauvegarde-medias`.
+Les bases ont leurs propres sauvegardes, sur le même disque distinct.
 
 ## 1. AzuraCast
 
@@ -43,15 +39,17 @@ restic s'installe depuis le binaire officiel signé (https://restic.readthedocs.
 
 ```bash
 cd ~/aubesonore/azuracast
-# tout ce que restic garde reprend sa place : stations/, les .env d'AzuraCast, du site et du
-# pipeline, gatus.env, ~/musilogy-data/raw et out (ajuster les ports de .env si la machine a changé)
+# stations/, .env et azuracast.env reprennent leur place (ajuster les ports de .env si la
+# machine a changé) :
 restic -r /media/plex/.backups/restic --password-file <copie du mot de passe> \
   restore latest --tag nightly --target /
 docker compose up -d
 # la copie du mot de passe reprend sa place, puis la sauvegarde quotidienne :
 install -m 600 <copie du mot de passe> ~/.config/restic/password
 ln -s ~/aubesonore/azuracast/scripts/systemd/* ~/.config/systemd/user/
-chmod 600 .env azuracast.env gatus.env ../site/.env ../pipeline/.env
+# jeton du battement : GATUS_AZURACAST_TOKEN de ta copie de pipeline/.env
+install -m 600 /dev/null gatus.env && echo 'GATUS_TOKEN=<jeton>' > gatus.env
+chmod 600 .env azuracast.env
 systemctl --user enable --now azuracast-backup.timer
 ```
 
@@ -75,7 +73,7 @@ uv sync
 # sockseek et rsgain : binaires figés dans ~/.local/bin (versions et sha256 : docs/vision.md)
 # ffmpeg et fpcalc (libchromaprint-tools) : apt ; dans models/, le modèle EffNet (radio/signals/audio.py)
 # et les quatre modèles de mesure (MODELS de radio/signals/features.py, essentia.upf.edu/models, sha256 vérifiés)
-# .env restauré à l'étape 1 : y remettre la clé d'API AzuraCast régénérée
+# .env : ta copie (sinon .env.example, secrets à recréer), avec la clé d'API AzuraCast régénérée
 for u in deploy/systemd/*; do systemctl --user link "$PWD/$u"; done
 systemctl --user daemon-reload
 systemctl --user enable --now radio-weekly.timer radio-remind.timer radio-backup.timer radio-grille.timer radio-votes.service
@@ -90,7 +88,7 @@ n'existent nulle part ailleurs.
 
 ```bash
 cd ~/aubesonore/site
-# .env restauré à l'étape 1 (secrets d'auth, SMTP, base, clé YouTube)
+# .env : ta copie (sinon .env.example : secrets d'auth, SMTP, base, clé YouTube à recréer)
 docker compose up -d --build
 ln -s ~/aubesonore/site/scripts/systemd/* ~/.config/systemd/user/
 systemctl --user enable --now aubesonore-deploy.timer aubesonore-backup.timer
@@ -108,7 +106,7 @@ jamais joués répondent qu'elles ne sont pas disponibles.
 
 ```bash
 cd ~/aubesonore
-ln -s ~/musilogy-data musilogy/data   # raw/ et out/ restaurés à l'étape 1 ; work/ se refait (`musilogy run`)
+ln -s ~/musilogy-data musilogy/data   # perdu avec le NVMe : `musilogy run` sur un dump récent le refait (une journée)
 cd musilogy && uv sync
 # puis `uv run musilogy load` avec l'environnement libpq de musilogy/CLAUDE.md (« Charger la base du site »)
 ```

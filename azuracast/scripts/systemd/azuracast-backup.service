@@ -1,5 +1,5 @@
 [Unit]
-Description=AubeSonore : sauvegarde restic chiffrée des médias, des secrets et des sources de Musilogy sur un autre disque
+Description=AubeSonore : sauvegarde restic chiffrée des médias et de la configuration d'AzuraCast sur un autre disque
 
 [Service]
 Type=oneshot
