@@ -7,6 +7,7 @@ import { artistKey, normalizeArtistName } from '../lib/artistName';
 import { resolveArtist, resolveKeptArtist, reverifyArtist } from '../services/artistResolver';
 import { findPlay } from '../services/radioPlayService';
 import { searchTrack } from '../services/deezerService';
+import { shareRateWithBackend } from '../services/musicbrainzService';
 
 // One-off catch-up (docs/vision.md §4.4). Plays recorded before AzuraCast
 // reported ISRCs get theirs from the station's media, matched on artist and
@@ -19,6 +20,8 @@ import { searchTrack } from '../services/deezerService';
 // request per second.
 const key = (artistName: string, title: string): string =>
   `${artistKey(artistName)}|${normalizeArtistName(title)}`;
+
+shareRateWithBackend();
 
 const response = await fetch(
   `${env.AZURACAST_BASE_URL}/api/station/${env.AZURACAST_STATION_ID}/files`,
