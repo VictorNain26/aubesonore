@@ -22,14 +22,6 @@ if (!root) {
   throw new Error('Root element not found');
 }
 
-// A reload starts at the top: the browser would put the reader back mid-page on a page the server
-// drew, under lists that come after it. ScrollRestoration handles every other navigation.
-const navigation = performance.getEntriesByType('navigation')[0];
-if (navigation instanceof PerformanceNavigationTiming && navigation.type === 'reload') {
-  history.scrollRestoration = 'manual';
-  window.scrollTo(0, 0);
-}
-
 window.addEventListener('vite:preloadError', () => {
   handlePreloadError(sessionStorage, () => window.location.reload(), Date.now());
 });
