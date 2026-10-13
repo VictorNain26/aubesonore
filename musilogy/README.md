@@ -10,7 +10,7 @@ Produit, hors ligne et depuis des sources épinglées et datées, les données d
 
 ## Les dix tables
 
-Mesurées sur le dump de référence `20260909-001002` :
+Mesurées sur le dump de référence `20260909-001002` (`colisten` et `same_sound` dépendent aussi des écoutes épinglées : leurs chiffres sont mesurés, hors du contrat de `tests/test_baseline.py`, qui construit sans écoutes) :
 
 | Table | Contenu | Lignes |
 |---|---|---|
@@ -32,7 +32,7 @@ Colonnes réelles (voir `src/musilogy/sql/`) :
 - **`genres`** : `genre_mbid`, `name`, `n_artists`.
 - **`links`** : `src_mbid`, `dst_mbid`, `type`, `y_begin`, `y_end`.
 - **`popularity`** : `mbid`, `listen_count`, `user_count`, `snapshot`.
-- **`releases`** : `artist_mbid`, `rg_mbid`, `title`, `primary_type` (`Album` ou `EP`), `soundtrack`, `remix`, `y`, `filed_original` (Wikidata le classe album studio ou EP).
+- **`releases`** : `artist_mbid`, `rg_mbid`, `title`, `primary_type` (`Album` ou `EP`), `soundtrack`, `remix`, `y`, `filed_original` (Wikidata le classe album studio ou EP), `official` (MusicBrainz y relève une édition officielle, `snapshot-official`).
 - **`urls`** : `artist_mbid`, `type` (type de relation MusicBrainz), `url`, `ended`.
 - **`colisten`** : `artist_mbid`, `neighbour_mbid`, `common`, `score`, `rank`.
 - **`styles`** : `artist_mbid`, `decade` (NULL pour un disque sans édition datée), `style`, `records`.
@@ -109,7 +109,7 @@ Relevé du 2026-10-05 : 72 397 lignes, 72 170 release groups.
 
 `data/out/<dump>/` contient les dix tables en Parquet et le manifeste.
 
-`manifest.json` porte le dump et l'empreinte de ses archives (`dump`, `archive_sha256`), la date et l'empreinte de chaque relevé (`popularity`, `discography`, et les parties de `official`), le dump Discogs lu et le compagnon de sa projection — sorties écrites, champs (`discogs`) —, les comptes (`counts`), **les empreintes des fichiers Parquet livrés** (`output_sha256`), les **paramètres** du run (`parameters` : `dump_year`, `min_year`, les seuils de `colisten` et de `same_sound`), les **entrées** (`inputs` : `rows_loaded` par table brute, le sidecar d'extraction et son accord avec les lignes lues), les compteurs (`r2_anomalies`, `neutralised_inferences`, `link_exclusions`, `discography_exclusions`, `release_status`, `discogs_coverage`, `discogs_date_disagreements`), le commit (`git_sha`) et l'empreinte des corrections (`corrections_sha256`).
+`manifest.json` porte le dump et l'empreinte de ses archives (`dump`, `archive_sha256`), la date et l'empreinte de chaque relevé (`popularity`, `discography`, `listening`, et les parties de `official`), le dump Discogs lu et le compagnon de sa projection — sorties écrites, champs (`discogs`) —, les comptes (`counts`), **les empreintes des fichiers Parquet livrés** (`output_sha256`), les **paramètres** du run (`parameters` : `dump_year`, `min_year`, les seuils de `colisten` et de `same_sound`), les **entrées** (`inputs` : `rows_loaded` par table brute, le sidecar d'extraction et son accord avec les lignes lues), les compteurs (`r2_anomalies`, `neutralised_inferences`, `link_exclusions`, `discography_exclusions`, `release_status`, `discogs_coverage`, `discogs_date_disagreements`), le commit (`git_sha`) et l'empreinte des corrections (`corrections_sha256`).
 
 Ces empreintes de sortie sont opposables parce que la livraison est reproductible : à dump et code identiques, deux exécutions écrivent les mêmes octets. L'ordre des lignes est fixé par une clé totale sur chaque table. Un consommateur distingue donc une livraison inchangée d'une nouvelle par sa seule empreinte, sans retélécharger.
 
@@ -165,7 +165,7 @@ uv sync
 Trois niveaux de test :
 
 - `uv run pytest` — suite rapide, quelques secondes, sans dépendance au dump. Tourne sur les témoins réels de `cli.WITNESSES`, versionnés dans `tests/fixtures/` (extraits authentiques du dump de référence, jamais de données inventées) et sur quelques enregistrements synthétiques pour les formes qu'aucun témoin ne porte.
-- `tests/test_load.py`, `tests/test_artist.py`, `tests/test_search.py`, `tests/test_official.py` — le chargement et les fonctions SQL du site, contre un vrai Postgres jetable désigné par `MUSILOGY_TEST_PG` (chaîne de connexion libpq ; les tests y suppriment et recréent les schémas `musilogy`). Sans elle, ces tests sont sautés, sauf en CI, qui fournit un service Postgres 16 et échoue si la variable manque.
+- `tests/test_load.py`, `tests/test_artist.py`, `tests/test_search.py`, `tests/test_official.py`, `tests/test_same_sound.py` — le chargement et les fonctions SQL du site, contre un vrai Postgres jetable désigné par `MUSILOGY_TEST_PG` (chaîne de connexion libpq ; les tests y suppriment et recréent les schémas `musilogy`). Sans elle, ces tests sont sautés, sauf en CI, qui fournit un service Postgres 16 et échoue si la variable manque.
 - `uv run pytest -m slow` — ligne de base : confronte le pipeline entier aux ~3 millions d'enregistrements du dump de référence. Exige les extractions dans `data/work/<dump>/` (non versionnées, ~10 min à produire) ; sinon le test est ignoré.
 
 La suite passe depuis n'importe quel répertoire : tous les chemins sont ancrés sur le paquet (`musilogy.paths`), jamais sur le répertoire courant.

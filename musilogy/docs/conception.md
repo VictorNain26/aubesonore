@@ -113,8 +113,8 @@ albums), `genres` (vocabulaire, publié, non chargé), `links` (appartenances, p
   c / (pop_artiste^0,3 × pop_voisin^0,7) × c / (c + 10), où c compte les
   auditeurs communs et pop les auditeurs de chacun : la règle mesurée le
   2026-10-07 contre le service de ListenBrainz (64 % de voisins justes contre
-  54 %, et nettement plus d'artistes peu connus parmi eux, `docs/vision.md`
-  §2.2). « Même son » cherche la couleur parmi les 50. Un rang de 1 à 50 sans
+  54 %, et nettement plus d'artistes peu connus parmi eux ; la mesure est au
+  commit 57bcd8d3 de `docs/vision.md`). « Même son » cherche la couleur parmi les 50. Un rang de 1 à 50 sans
   trou, jamais l'artiste lui-même ; un voisin absent du dump reste dans la
   table. Publiée, non chargée dans le site : `same_sound` la lit. Cinq invariants :
   une paire en double, un artiste voisin de lui-même, des rangs hors de 1 à K

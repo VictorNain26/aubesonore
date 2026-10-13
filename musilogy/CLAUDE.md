@@ -21,8 +21,9 @@ en ouvrant `tests/`, et `/baseline` pour instruire un écart à la ligne de base
   répertoire courant : `musilogy.paths` existe pour ça, et la suite de tests
   doit passer depuis n'importe où.
 - Séparer le calcul de l'entrée-sortie, comme le fait déjà le paquet :
-  `extract.py` projette sans règle métier, `build.py` orchestre, `publish.py`
-  écrit. Une fonction qui fait les deux est difficile à tester.
+  `extract.py` projette (sa seule règle métier dit qui existe : les artistes à
+  usage spécial écartés, les types de disques gardés), `build.py` orchestre,
+  `publish.py` écrit. Une fonction qui fait les deux est difficile à tester.
 - `ruff` pour le lint et le format, `mypy` pour les types. `ty` est plus rapide
   et cohérent avec l'outillage Astral, mais il est encore en 0.0.x : adosser la
   vérification de types à un outil dont la sémantique peut bouger contredit
@@ -95,7 +96,9 @@ MUSILOGY_TEST_PG='host=… dbname=…' uv run pytest  # tests Postgres compris :
 Le SQL côté Postgres vit dans `src/musilogy/pg/`, numéroté comme `sql/` :
 `10_tables` avant la copie, les suivants sur le schéma de transit, `90_` après
 la bascule. Une règle n'y existe qu'en un exemplaire : ce qu'une fonction
-Postgres calcule n'a pas de double DuckDB.
+Postgres calcule n'a pas de double DuckDB. Une exception, assumée et testée
+(`test_search.py`) : `name_key`, calculée par DuckDB pour les tables et refaite
+en Postgres pour la recherche, qui la compare à ce que tape l'auditeur.
 
 Charger la base du site, depuis victorserv (le port de `aubesonore-db` n'est
 publié que sur `127.0.0.1:5433`, et `pg_hba.conf` impose TLS ; le certificat
