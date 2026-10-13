@@ -4,15 +4,10 @@ import type {
   MusilogyArtist,
   SiteLocale,
 } from '@aubesonore/shared-types/client';
-
-const KINDS: Record<SiteLocale, Record<NonNullable<ArtistFacts['kind']>, string>> = {
-  fr: { person: 'artiste', group: 'groupe', orchestra: 'orchestre', choir: 'chœur' },
-  en: { person: 'artist', group: 'band', orchestra: 'orchestra', choir: 'choir' },
-};
+import { artistPageName, countryName, kindWord } from '@aubesonore/shared-types/artist-page';
 
 const WORDS = {
   fr: {
-    similar: 'artistes similaires',
     since: (y: number) => `depuis ${y}`,
     formed: (y: number) => `formé en ${y}`,
     range: (from: number, to: number) => `de ${from} à ${to}`,
@@ -24,7 +19,6 @@ const WORDS = {
       `${name} sur AubeSonore, la radio de découverte indé, électro, hip-hop.`,
   },
   en: {
-    similar: 'similar artists',
     since: (y: number) => `since ${y}`,
     formed: (y: number) => `formed in ${y}`,
     range: (from: number, to: number) => `${from} to ${to}`,
@@ -37,7 +31,7 @@ const WORDS = {
   },
 } as const;
 
-/** What the page's « Groupes et projets » section counts (bandCount, MusilogyView.tsx). */
+/** What the page's « Groupes et projets » section counts (bandCount, musilogy/ArtistSections.tsx). */
 function bandCount({ bands, memberProjects, otherNames }: MusilogyArtist): number {
   return (
     (bands ? bands.members.length + bands.groups.length : 0) +
@@ -50,35 +44,17 @@ function bandCount({ bands, memberProjects, otherNames }: MusilogyArtist): numbe
 const NAMED_NEIGHBOURS = 4;
 const DESCRIPTION_MAX = 200;
 
-function countryName(code: string, locale: SiteLocale): string | undefined {
-  try {
-    return new Intl.DisplayNames([locale], { type: 'region' }).of(code);
-  } catch {
-    return undefined;
-  }
-}
-
 function truncate(value: string, max: number): string {
   return value.length <= max ? value : `${value.slice(0, max - 1).trimEnd()}…`;
 }
 
-/**
- * "Kraftwerk (groupe, Düsseldorf) : artistes similaires · AubeSonore". The parenthesis tells
- * homonyms apart (nine artists are called Cassius); the page's offer is named only when it holds
- * it.
- */
+/** The page's <title>: its name (artistPageName, shared with the browser's tab) and the site's. */
 export function artistTitle(
   profile: ArtistProfile,
   musilogy: MusilogyArtist | null,
   locale: SiteLocale
 ): string {
-  const facts = profile.facts;
-  const where = facts?.place ?? (facts?.country ? countryName(facts.country, locale) : undefined);
-  const about = [facts?.kind ? KINDS[locale][facts.kind] : undefined, where].filter(Boolean);
-  const name = about.length > 0 ? `${profile.name} (${about.join(', ')})` : profile.name;
-  if (!musilogy?.neighbours?.length) return `${name} · AubeSonore`;
-  const colon = locale === 'fr' ? ' : ' : ': ';
-  return `${name}${colon}${WORDS[locale].similar} · AubeSonore`;
+  return `${artistPageName(profile, musilogy, locale)} · AubeSonore`;
 }
 
 /** "Groupe · Düsseldorf, Allemagne · depuis 1970": what MusicBrainz states, as on the page. */
@@ -93,7 +69,7 @@ function factsLine(facts: ArtistFacts, locale: SiteLocale): string | null {
       : facts.active
         ? words.since(facts.formed)
         : words.formed(facts.formed);
-  const kind = facts.kind ? KINDS[locale][facts.kind] : '';
+  const kind = facts.kind ? kindWord(facts.kind, locale) : '';
   const parts = [kind && `${kind.charAt(0).toUpperCase()}${kind.slice(1)}`, where, when].filter(
     Boolean
   );

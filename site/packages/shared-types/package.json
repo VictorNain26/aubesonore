@@ -10,6 +10,10 @@
     "./azuracast": {
       "types": "./dist/azuracast.d.ts",
       "default": "./dist/azuracast.js"
+    },
+    "./artist-page": {
+      "types": "./dist/artistPage.d.ts",
+      "default": "./dist/artistPage.js"
     }
   },
   "scripts": {

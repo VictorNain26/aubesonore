@@ -9,6 +9,8 @@ import type { artistLoader } from '../lib/artistPageData';
 import { useDiscoveryTrail } from '../lib/discoveryTrail';
 import { useAuthStore } from '../stores/authStore';
 import * as m from '@/paraglide/messages.js';
+import { getLocale } from '@/paraglide/runtime.js';
+import { artistPageName } from '@aubesonore/shared-types/artist-page';
 import { useLikedTracksStore } from '../stores/likedTracksStore';
 
 /** An artist page, drawn from what its loader brought (lib/artistPageData.ts, routes.tsx). */
@@ -49,10 +51,11 @@ export function ArtistPage() {
       : null
   );
 
-  // An unknown artist's tab says so, like the 404's.
+  // The tab says what the server's <title> says (artistPageName), which search engines keep once
+  // they ran the page; an unknown artist's says so, like the 404's.
   const name =
     state.status === 'ready'
-      ? state.profile.name
+      ? artistPageName(state.profile, musilogy, getLocale())
       : state.status === 'missing'
         ? m.notfound_meta_title()
         : null;

@@ -29,8 +29,8 @@ describe('ArtistPage', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Hania Rani' })
     ).toBeInTheDocument();
-    // Set by an effect after the heading renders.
-    await waitFor(() => expect(document.title).toBe('Hania Rani · AubeSonore'));
+    // Set by an effect after the heading renders: what the server's <title> says (artistPageName).
+    await waitFor(() => expect(document.title).toBe('Hania Rani (artiste, Pologne) · AubeSonore'));
   });
 
   it('is drawn once its data has come, content and footer together', async () => {
