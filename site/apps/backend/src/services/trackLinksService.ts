@@ -2,6 +2,7 @@ import type { PlatformLinks } from '../db/schema';
 import { TtlCache } from '../lib/cache/ttlCache';
 import { logger } from '../lib/logger';
 import { similarity, artistMatch, songMatch } from '../lib/text/matchScore';
+import { findTrackByIsrc, searchTrack, type DeezerTrackLink } from './deezerService';
 
 // ─────────────────────────────────────────────
 // Links of a track on each platform, asked to each platform's own API.
@@ -101,65 +102,20 @@ async function searchItunes(title: string, artist: string): Promise<ItunesResult
 
 // ── Deezer ───────────────────────────────────
 
-interface DeezerSearchResponse {
-  data: Array<{ id: number; title: string; link: string; artist: { name: string } }>;
-}
-
-// Deezer answers an unknown ISRC with HTTP 200 and the error body
-// {"error":{"code":800,"message":"no data"}} (measured on /track/isrc:): a
-// definitive miss. Any other error code is a failure, as in deezerService.
-const DEEZER_NO_DATA = 800;
-
-type DeezerBody = { error?: { code?: unknown } } | null;
-
-/** True for Deezer's "no data"; throws on any other error body, so a quota is never cached. */
-function deezerMiss(data: DeezerBody, path: string): boolean {
-  if (!data?.error) return false;
-  if (data.error.code === DEEZER_NO_DATA) return true;
-  throw new TransientError(`Deezer error ${String(data.error.code)}: ${path}`);
-}
-
-/** The Deezer track of this very recording, or null when Deezer does not know the ISRC. */
-async function deezerByIsrc(isrc: string): Promise<{ link: string; isrc: string } | null> {
-  const data = await getJson<{ link?: string; error?: { code?: unknown } }>(
-    `https://api.deezer.com/track/isrc:${encodeURIComponent(isrc)}`
-  );
-  if (deezerMiss(data, '/track/isrc')) return null;
-  return data?.link ? { link: data.link, isrc } : null;
-}
-
 /** By the ISRC when it is known; the text search only when Deezer does not know it. */
 async function findDeezer(
   title: string,
   artist: string,
   isrc: string | null
-): Promise<{ link: string; isrc: string | null } | null> {
-  const exact = isrc ? await deezerByIsrc(isrc) : null;
-  return exact ?? searchDeezer(title, artist);
-}
-
-/**
- * Deezer's advanced filter (`artist:"…"`) is broken: plain text, then the
- * strict title and artist match decides.
- */
-export async function searchDeezer(
-  title: string,
-  artist: string
-): Promise<{ link: string; isrc: string | null } | null> {
-  const query = encodeURIComponent(`${artist} ${title}`);
-  const data = await getJson<Partial<DeezerSearchResponse> & { error?: { code?: unknown } }>(
-    `https://api.deezer.com/search?q=${query}&limit=10`
-  );
-  if (deezerMiss(data, '/search')) return null;
-  const pick = (data?.data ?? []).find((c) =>
-    songMatch({ title, artist }, { title: c.title, artist: c.artist.name })
-  );
-  if (!pick) return null;
-  const track = await getJson<{ isrc?: string; error?: { code?: unknown } }>(
-    `https://api.deezer.com/track/${pick.id}`
-  );
-  const known = !deezerMiss(track, '/track');
-  return { link: pick.link, isrc: (known && track?.isrc) || null };
+): Promise<DeezerTrackLink | null> {
+  if (isrc) {
+    const exact = await findTrackByIsrc(isrc);
+    if (exact.status === 'failed') throw new TransientError('Deezer failed: /track/isrc');
+    if (exact.status === 'found' && exact.value.link) return { link: exact.value.link, isrc };
+  }
+  const found = await searchTrack(title, artist);
+  if (found.status === 'failed') throw new TransientError('Deezer failed: /search');
+  return found.status === 'found' ? found.value : null;
 }
 
 // ── All of them ──────────────────────────────

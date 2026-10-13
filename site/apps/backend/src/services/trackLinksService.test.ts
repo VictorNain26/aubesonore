@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from 'bun:test';
 
 const { findTrackLinks, linksCache, itunesCache } = await import('./trackLinksService');
+const { deezerCache, __resetDeezerCircuit } = await import('./deezerService');
 
 const originalFetch = globalThis.fetch;
 let calls: string[] = [];
@@ -9,6 +10,8 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
   linksCache.dispose();
   itunesCache.dispose();
+  deezerCache.dispose();
+  __resetDeezerCircuit();
   calls = [];
 });
 
@@ -104,7 +107,14 @@ describe('findTrackLinks', () => {
 });
 
 describe('findTrackLinks with the ISRC of the play', () => {
-  const EXACT = { id: 999, link: 'https://www.deezer.com/track/999', isrc: 'GBUM71029604' };
+  // As Deezer answers /track/isrc: (measured 2026-10-04): the track with its title and artist.
+  const EXACT = {
+    id: 999,
+    title: 'In Flight',
+    link: 'https://www.deezer.com/track/999',
+    isrc: 'GBUM71029604',
+    artist: { id: 1, name: 'Sunflower Bean' },
+  };
 
   /** Deezer answers `byIsrc` for /track/isrc:, the other platforms as usual. */
   function withIsrc(byIsrc: () => Promise<Response>): void {

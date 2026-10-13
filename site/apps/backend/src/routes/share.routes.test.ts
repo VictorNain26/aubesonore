@@ -5,6 +5,7 @@ import { artistRoutes } from './artist.routes';
 
 const { shareRoutes } = await import('./share.routes');
 const { linksCache, itunesCache } = await import('../services/trackLinksService');
+const { deezerCache, __resetDeezerCircuit } = await import('../services/deezerService');
 
 // Composed like index.ts so the global securityHeaders hook runs: the share
 // page must keep its own CSP while JSON routes keep `default-src 'none'`.
@@ -18,6 +19,8 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
   linksCache.dispose();
   itunesCache.dispose();
+  deezerCache.dispose();
+  __resetDeezerCircuit();
 });
 
 function mockPlatforms(): void {

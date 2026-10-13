@@ -1,6 +1,6 @@
 import { describe, it, expect, spyOn, afterEach } from 'bun:test';
 
-const { searchArtist, findTrackByIsrc, deezerCache, __resetDeezerCircuit } =
+const { searchArtist, findTrackByIsrc, searchTrack, deezerCache, __resetDeezerCircuit } =
   await import('./deezerService');
 
 const norm = (value: string): string =>
@@ -209,5 +209,45 @@ describe('findTrackByIsrc', () => {
 
     expect(await findTrackByIsrc('ZZZ000000000')).toEqual({ status: 'none' });
     expect(await findTrackByIsrc('ZZZ000000001')).toEqual({ status: 'failed' });
+  });
+});
+
+describe('searchTrack', () => {
+  it('links the track whose title and artist match, with its ISRC', async () => {
+    spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        json({
+          data: [
+            {
+              id: 1,
+              title: 'In Flight',
+              link: 'https://www.deezer.com/track/1',
+              artist: { name: 'Other' },
+            },
+            {
+              id: 2,
+              title: 'In Flight',
+              link: 'https://www.deezer.com/track/2',
+              artist: { name: 'Sunflower Bean' },
+            },
+          ],
+        })
+      )
+      .mockResolvedValueOnce(json({ isrc: 'USQE92100206' }));
+
+    expect(await searchTrack('In Flight', 'Sunflower Bean')).toEqual({
+      status: 'found',
+      value: { link: 'https://www.deezer.com/track/2', isrc: 'USQE92100206' },
+    });
+  });
+
+  it('stays behind the 429 breaker the other lookups open', async () => {
+    const fetchSpy = spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(null, { status: 429 })
+    );
+    expect((await findTrackByIsrc('USQE92100206')).status).toBe('failed');
+
+    expect((await searchTrack('In Flight', 'Sunflower Bean')).status).toBe('failed');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 });
