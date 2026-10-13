@@ -67,7 +67,7 @@ def load_popularity(
     con: duckdb.DuckDBPyConnection, popularity: Path | None, snapshot: str | None
 ) -> None:
     if popularity is None:
-        # Always materialized, even empty, like corrections: synthetic builds
+        # Always materialized, even empty: synthetic builds
         # carry no snapshot, and 87_popularity.sql reads this table anyway.
         con.execute(
             "CREATE OR REPLACE TABLE raw_popularity (artist_mbid VARCHAR, "
@@ -182,38 +182,11 @@ def load_discogs(con: duckdb.DuckDBPyConnection, releases: Path | None, dump: st
     con.execute("SET VARIABLE discogs_dump = " + ("NULL" if dump is None else f"'{dump}'"))
 
 
-def apply_corrections(con: duckdb.DuckDBPyConnection, corrections: Path | None) -> int:
-    if corrections is None:
-        # Always materialized, even empty: the fast suite builds
-        # fixtures with corrections=None, and the corrections_file_too_large
-        # invariant reads this table without depending on the dump.
-        con.execute(
-            "CREATE OR REPLACE TABLE corrections (mbid VARCHAR, field VARCHAR, "
-            "value VARCHAR, justification VARCHAR, source VARCHAR)"
-        )
-        return 0
-    con.execute(
-        "CREATE OR REPLACE TABLE corrections AS SELECT * FROM read_csv("
-        f"'{corrections.as_posix()}', header=true, "
-        "columns={mbid:'VARCHAR', field:'VARCHAR', value:'VARCHAR', "
-        "justification:'VARCHAR', source:'VARCHAR'})"
-    )
-    for field in ("begin", "end"):
-        con.execute(
-            f'UPDATE raw_artists SET "{field}" = c.value FROM corrections c '
-            f"WHERE c.mbid = raw_artists.mbid AND c.field = '{field}'"
-        )
-    row = con.execute("SELECT count(*) FROM corrections").fetchone()
-    assert row is not None  # COUNT(*) always returns exactly one row
-    return int(row[0])
-
-
 def build(
     con: duckdb.DuckDBPyConnection,
     sql_dir: Path,
     artists: Path,
     rgs: Path,
-    corrections: Path | None,
     dump_year: int = 2026,
     min_year: int = 1850,
     popularity: Path | None = None,
@@ -228,7 +201,6 @@ def build(
     listening_snapshot: str | None = None,
 ) -> None:
     load_raw(con, artists, rgs)
-    apply_corrections(con, corrections)
     load_popularity(con, popularity, popularity_snapshot)
     load_discography(con, discography, discography_snapshot)
     load_official(con, official, official_snapshots)
@@ -271,8 +243,6 @@ INVARIANTS = (
     "artist_genres_out_of_order",
     "genre_source_mismatch",
     "genres_from_albums_mismatch",
-    "unknown_genre",
-    "genre_n_artists_mismatch",
     "link_endpoint_missing",
     "link_incomplete",
     "link_unexpected_type",
@@ -303,9 +273,6 @@ INVARIANTS = (
     "style_without_artist",
     "style_decade_malformed",
     "discogs_link_ambiguous",
-    "corrections_file_too_large",
-    "corrections_invalid",
-    "corrections_duplicate",
 )
 
 

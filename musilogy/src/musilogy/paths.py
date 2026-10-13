@@ -8,7 +8,6 @@ PACKAGE_DIR = Path(__file__).resolve().parent
 SQL_DIR = PACKAGE_DIR / "sql"
 PG_DIR = PACKAGE_DIR / "pg"
 REFERENCE_DIR = PACKAGE_DIR / "reference"
-CORRECTIONS_CSV = PACKAGE_DIR / "corrections.csv"
 
 REPO_ROOT = PACKAGE_DIR.parents[1]
 DATA_DIR = REPO_ROOT / "data"

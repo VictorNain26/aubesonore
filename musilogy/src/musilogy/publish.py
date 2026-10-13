@@ -26,7 +26,6 @@ from musilogy.paths import (
 TABLES = (
     "artists",
     "albums",
-    "genres",
     "links",
     "popularity",
     "releases",
@@ -45,7 +44,6 @@ TABLES = (
 ORDER_BY = {
     "artists": "mbid",
     "albums": "rg_mbid",
-    "genres": "genre_mbid",
     "links": "src_mbid, dst_mbid, type, y_begin NULLS LAST, y_end NULLS LAST",
     "popularity": "mbid",
     "releases": "artist_mbid, rg_mbid",
@@ -200,7 +198,6 @@ def publish(
     con: duckdb.DuckDBPyConnection,
     out_dir: Path,
     dump: str,
-    corrections: Path | None,
     extraction: Path | None = None,
 ) -> dict[str, Any]:
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -266,7 +263,6 @@ def publish(
         "discogs_coverage": _counters(con, "discogs_coverage"),
         "discogs_date_disagreements": _counters(con, "discogs_date_disagreements"),
         "git_sha": _git_sha(),
-        "corrections_sha256": sha256_file(corrections) if corrections else None,
     }
     (out_dir / "manifest.json").write_text(
         json.dumps(manifest, indent=1, ensure_ascii=False), encoding="utf-8"

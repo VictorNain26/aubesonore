@@ -20,8 +20,8 @@ REF_SUMS = REFERENCE_DIR / f"{DUMP}.SHA256SUMS"
 
 
 def test_publish_writes_every_table(con, tmp_path):
-    manifest = publish(con, tmp_path, DUMP, None)
-    for name in ("artists", "albums", "genres", "links", "popularity", "same_sound"):
+    manifest = publish(con, tmp_path, DUMP)
+    for name in ("artists", "albums", "links", "popularity", "same_sound"):
         assert (tmp_path / f"{name}.parquet").exists()
         assert name in manifest["counts"]
     assert manifest["dump"] == DUMP
@@ -34,7 +34,7 @@ def test_publish_removes_every_file_it_did_not_write(con, tmp_path):
     retired = tmp_path / "web" / "artists_timeline.json.gz"
     retired.parent.mkdir(parents=True)
     retired.write_bytes(b"retired export")
-    manifest = publish(con, tmp_path, DUMP, None)
+    manifest = publish(con, tmp_path, DUMP)
     assert not retired.exists()
     assert not any(name.startswith("web/") for name in manifest["output_sha256"])
 
@@ -42,19 +42,19 @@ def test_publish_removes_every_file_it_did_not_write(con, tmp_path):
 def test_publish_removes_a_parquet_it_no_longer_writes(con, tmp_path):
     stale = tmp_path / "genre_parents.parquet"
     stale.write_bytes(b"not a parquet, and it must not survive anyway")
-    manifest = publish(con, tmp_path, DUMP, None)
+    manifest = publish(con, tmp_path, DUMP)
     assert not stale.exists()
     assert "genre_parents" not in manifest["counts"]
     assert (tmp_path / "artists.parquet").exists()
 
 
 def test_manifest_carries_archive_checksums(con, tmp_path):
-    manifest = publish(con, tmp_path, DUMP, None)
+    manifest = publish(con, tmp_path, DUMP)
     assert manifest["archive_sha256"] == expected_sums(REF_SUMS)
 
 
 def test_manifest_names_the_popularity_snapshot_the_build_loaded(con, tmp_path):
-    manifest = publish(con, tmp_path, DUMP, None)
+    manifest = publish(con, tmp_path, DUMP)
     assert manifest["popularity"] == {
         "snapshot": REFERENCE_POPULARITY,
         "sha256": expected_sums(popularity_sums(REFERENCE_POPULARITY)),
@@ -75,7 +75,7 @@ def test_manifest_names_the_official_parts_and_counts_the_statuses(tmp_path, mon
         official=[official_file(tmp_path / "o.jsonl", {"a": ["rg-1"]})],
         official_snapshots=["2026-10-05"],
     )
-    manifest = publish(con, tmp_path / "out", DUMP, None)
+    manifest = publish(con, tmp_path / "out", DUMP)
     assert manifest["official"] == [
         {"snapshot": "2026-10-05", "sha256": {"official-release-groups.jsonl": "5" * 64}}
     ]
@@ -84,13 +84,13 @@ def test_manifest_names_the_official_parts_and_counts_the_statuses(tmp_path, mon
 
 def test_a_build_without_snapshot_says_so_in_the_manifest(tmp_path):
     con = build_synthetic(tmp_path, [synthetic_artist("a", "1990", None)])
-    manifest = publish(con, tmp_path / "out", DUMP, None)
+    manifest = publish(con, tmp_path / "out", DUMP)
     assert manifest["popularity"] is None
     assert manifest["official"] is None
 
 
 def test_manifest_carries_r2_anomaly_counters(con, tmp_path):
-    manifest = publish(con, tmp_path, DUMP, None)
+    manifest = publish(con, tmp_path, DUMP)
     assert manifest["r2_anomalies"] == {
         "begin_illegible": 1,
         "end_illegible": 1,
@@ -114,7 +114,7 @@ def test_manifest_carries_the_seven_neutralised_inference_counters(con, tmp_path
     # Philharmoniker and Handel and Haydn Society (begins below 1850) for the
     # begin, Bach (dead in 1750, recorded from 1961) for an end below 1850. A
     # neutralised anomaly stays visible instead of being absorbed.
-    manifest = publish(con, tmp_path, DUMP, None)
+    manifest = publish(con, tmp_path, DUMP)
     assert manifest["neutralised_inferences"] == {
         "first_album_after_declared_end": 0,
         "last_album_before_declared_begin": 1,
@@ -128,7 +128,7 @@ def test_manifest_carries_the_seven_neutralised_inference_counters(con, tmp_path
 
 
 def test_manifest_carries_git_sha(con, tmp_path):
-    manifest = publish(con, tmp_path, DUMP, None)
+    manifest = publish(con, tmp_path, DUMP)
     expected = subprocess.run(
         ["git", "rev-parse", "HEAD"],
         capture_output=True,
@@ -137,18 +137,6 @@ def test_manifest_carries_git_sha(con, tmp_path):
         cwd=PACKAGE_DIR,
     ).stdout.strip()
     assert manifest["git_sha"] == expected
-
-
-def test_manifest_carries_corrections_checksum_when_present(con, tmp_path):
-    corrections = tmp_path / "corrections.csv"
-    corrections.write_text("mbid,field,value,justification,source\n", encoding="utf-8")
-    manifest = publish(con, tmp_path / "out", DUMP, corrections)
-    assert manifest["corrections_sha256"] == sha256_file(corrections)
-
-
-def test_manifest_corrections_checksum_is_none_without_file(con, tmp_path):
-    manifest = publish(con, tmp_path, DUMP, None)
-    assert manifest["corrections_sha256"] is None
 
 
 def test_r2_anomaly_counters_are_not_mismapped_between_subrules(tmp_path):
@@ -176,7 +164,7 @@ def test_r2_anomaly_counters_are_not_mismapped_between_subrules(tmp_path):
         + [synthetic_artist(f"ambiguous-{i}", "2090", None, kind=None) for i in range(12)]
     )
     c = build_synthetic(tmp_path, records)
-    manifest = publish(c, tmp_path / "out", DUMP, None)
+    manifest = publish(c, tmp_path / "out", DUMP)
 
     assert manifest["r2_anomalies"] == {
         "begin_illegible": 2,
@@ -193,7 +181,7 @@ def test_r2_anomaly_counters_are_not_mismapped_between_subrules(tmp_path):
 
 
 def test_parquet_archives_are_zstd_compressed(con, tmp_path):
-    publish(con, tmp_path, DUMP, None)
+    publish(con, tmp_path, DUMP)
     parquet_path = (tmp_path / "artists.parquet").as_posix()
     codecs = con.execute(
         f"SELECT DISTINCT compression FROM parquet_metadata('{parquet_path}')"
@@ -209,7 +197,7 @@ def test_manifest_carries_the_parameters_the_build_actually_used(tmp_path):
     c = build_synthetic(
         tmp_path, [synthetic_artist("a", "1990", None)], dump_year=2030, min_year=1900
     )
-    manifest = publish(c, tmp_path / "out", DUMP, None)
+    manifest = publish(c, tmp_path / "out", DUMP)
     assert manifest["parameters"] == {
         "dump_year": 2030,
         "min_year": 1900,
@@ -222,7 +210,7 @@ def test_manifest_carries_the_parameters_the_build_actually_used(tmp_path):
 
 
 def test_manifest_counts_the_rows_that_fed_the_build(con, tmp_path):
-    manifest = publish(con, tmp_path, DUMP, None)
+    manifest = publish(con, tmp_path, DUMP)
     loaded = manifest["inputs"]["rows_loaded"]
     assert loaded["raw_artists"] == con.execute("SELECT count(*) FROM raw_artists").fetchone()[0]
     assert (
@@ -248,7 +236,7 @@ def test_manifest_replays_the_extraction_counts_beside_the_rows_loaded(con, tmp_
         ),
         encoding="utf-8",
     )
-    manifest = publish(con, tmp_path / "out", DUMP, None, sidecar)
+    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
     assert manifest["inputs"]["extraction"]["artists_kept"] == 7
     assert manifest["inputs"]["extraction"]["release_groups_dropped"] == 11
 
@@ -256,7 +244,7 @@ def test_manifest_replays_the_extraction_counts_beside_the_rows_loaded(con, tmp_
 def test_manifest_says_so_when_no_extraction_record_exists(con, tmp_path):
     # The synthetic builds have no extraction step at all. Null is the honest
     # answer; an absent key would let a reader assume nothing was dropped.
-    manifest = publish(con, tmp_path, DUMP, None)
+    manifest = publish(con, tmp_path, DUMP)
     assert manifest["inputs"]["extraction"] is None
 
 
@@ -267,7 +255,7 @@ def test_manifest_survives_a_truncated_extraction_record(con, tmp_path):
     # parameters, even though those have nothing to do with the sidecar.
     sidecar = tmp_path / "extraction.json"
     sidecar.write_text('{"artists_kept": 7', encoding="utf-8")
-    manifest = publish(con, tmp_path / "out", DUMP, None, sidecar)
+    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
     assert manifest["counts"]
     assert manifest["inputs"]["extraction"] == {"unreadable": True}
 
@@ -277,7 +265,7 @@ def test_manifest_survives_an_extraction_record_that_is_not_an_object(con, tmp_p
     # otherwise flow into the manifest as a shape no reader expects.
     sidecar = tmp_path / "extraction.json"
     sidecar.write_text("[1, 2, 3]", encoding="utf-8")
-    manifest = publish(con, tmp_path / "out", DUMP, None, sidecar)
+    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
     assert manifest["inputs"]["extraction"] == {"unreadable": True}
 
 
@@ -288,13 +276,13 @@ def test_manifest_survives_a_sidecar_truncated_mid_character(con, tmp_path):
     # except clause is narrowed back to json.JSONDecodeError alone.
     sidecar = tmp_path / "extraction.json"
     sidecar.write_bytes('{"name": "Motörhead"}'.encode()[:14])
-    manifest = publish(con, tmp_path / "out", DUMP, None, sidecar)
+    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
     assert manifest["counts"]
     assert manifest["inputs"]["extraction"] == {"unreadable": True}
 
 
 def test_manifest_says_so_when_the_extraction_path_does_not_exist(con, tmp_path):
-    manifest = publish(con, tmp_path, DUMP, None, tmp_path / "missing-extraction.json")
+    manifest = publish(con, tmp_path, DUMP, tmp_path / "missing-extraction.json")
     assert manifest["inputs"]["extraction"] is None
 
 
@@ -306,7 +294,7 @@ def test_manifest_says_extraction_matches_rows_loaded_when_counts_agree(con, tmp
     sidecar.write_text(
         json.dumps({"artists_kept": 697, "release_groups_kept": 10617}), encoding="utf-8"
     )
-    manifest = publish(con, tmp_path / "out", DUMP, None, sidecar)
+    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
     assert manifest["inputs"]["extraction_matches_rows_loaded"] is True
 
 
@@ -318,27 +306,27 @@ def test_manifest_says_extraction_does_not_match_rows_loaded_on_a_mismatch(con, 
     sidecar.write_text(
         json.dumps({"artists_kept": 28, "release_groups_kept": 3627}), encoding="utf-8"
     )
-    manifest = publish(con, tmp_path / "out", DUMP, None, sidecar)
+    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
     assert manifest["inputs"]["extraction_matches_rows_loaded"] is False
 
 
 def test_manifest_extraction_match_is_none_without_a_sidecar(con, tmp_path):
     # "No record" is not "mismatch": three states, not two.
-    manifest = publish(con, tmp_path, DUMP, None)
+    manifest = publish(con, tmp_path, DUMP)
     assert manifest["inputs"]["extraction_matches_rows_loaded"] is None
 
 
 def test_manifest_extraction_match_is_none_when_the_sidecar_is_unreadable(con, tmp_path):
     sidecar = tmp_path / "extraction.json"
     sidecar.write_text('{"artists_kept": 7', encoding="utf-8")
-    manifest = publish(con, tmp_path / "out", DUMP, None, sidecar)
+    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
     assert manifest["inputs"]["extraction_matches_rows_loaded"] is None
 
 
 def test_manifest_extraction_match_is_none_when_a_count_key_is_missing(con, tmp_path):
     sidecar = tmp_path / "extraction.json"
     sidecar.write_text(json.dumps({"artists_kept": 28}), encoding="utf-8")
-    manifest = publish(con, tmp_path / "out", DUMP, None, sidecar)
+    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
     assert manifest["inputs"]["extraction_matches_rows_loaded"] is None
 
 
@@ -350,7 +338,6 @@ def test_manifest_extraction_match_is_none_when_a_count_key_is_missing(con, tmp_
 PARQUET_KEYS = {
     "artists": ["mbid"],
     "albums": ["rg_mbid"],
-    "genres": ["genre_mbid"],
     "links": ["src_mbid", "dst_mbid", "type", "y_begin", "y_end"],
 }
 
@@ -365,7 +352,7 @@ def nulls_last(row):
 
 @pytest.mark.parametrize("table", sorted(PARQUET_KEYS))
 def test_published_parquet_rows_are_ordered_by_their_key(con, tmp_path, table):
-    publish(con, tmp_path, DUMP, None)
+    publish(con, tmp_path, DUMP)
     columns = ", ".join(PARQUET_KEYS[table])
     path = (tmp_path / f"{table}.parquet").as_posix()
     rows = con.execute(f"SELECT {columns} FROM read_parquet('{path}')").fetchall()
@@ -379,7 +366,7 @@ def test_manifest_carries_the_digest_of_every_delivered_file(con, tmp_path):
     # reproducibility cannot be checked by anyone but the producer. Compared as
     # sets, so a file pruned from a previous schema cannot linger in the
     # manifest either.
-    manifest = publish(con, tmp_path, DUMP, None)
+    manifest = publish(con, tmp_path, DUMP)
     delivered = {
         path.relative_to(tmp_path).as_posix()
         for path in tmp_path.rglob("*")

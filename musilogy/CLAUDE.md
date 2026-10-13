@@ -142,7 +142,7 @@ systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=
 ## Licence
 
 Les données de base MusicBrainz sont CC0, mais les genres et tags sont
-CC-BY-NC-SA 3.0. Comme `artists` et `genres` en dépendent, le jeu produit est
+CC-BY-NC-SA 3.0. Comme `artists` en dépend, le jeu produit est
 CC-BY-NC-SA 3.0 : attribution, usage non commercial, partage à l'identique. Les
 fixtures versionnées suivent la même licence. Toute question de diffusion des
 sorties part de là.

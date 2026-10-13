@@ -29,7 +29,6 @@ def con():
         SQL,
         FIX / "artists.jsonl",
         FIX / "release_groups.jsonl",
-        None,
         popularity=FIX / "popularity.jsonl",
         popularity_snapshot=REFERENCE_POPULARITY,
         discography=FIX / "discography.jsonl",
@@ -98,7 +97,7 @@ def build_synthetic(tmp_path, artists, release_groups=(), **build_kwargs):
     artists_path.write_text("".join(json.dumps(a) + "\n" for a in artists), encoding="utf-8")
     rgs_path.write_text("".join(json.dumps(r) + "\n" for r in release_groups), encoding="utf-8")
     c = duckdb.connect(":memory:")
-    build(c, SQL, artists_path, rgs_path, None, **build_kwargs)
+    build(c, SQL, artists_path, rgs_path, **build_kwargs)
     return c
 
 

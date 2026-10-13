@@ -80,7 +80,7 @@ manifeste (`parameters`).
 **Le socle** : `artists` (identité, type, dates et leur provenance, lieu,
 genres ; tout artiste du dump, de tout type ou sans type, hors artistes à usage
 spécial, et seule une formation donne un début déclaré : README, `10_bands`), `albums` (non chargée : elle sert les dates, et ne compte que les
-albums), `genres` (vocabulaire, publié, non chargé), `links` (appartenances, pseudonymes et changements de nom),
+albums), `links` (appartenances, pseudonymes et changements de nom),
 `popularity`.
 
 **L'œuvre, les styles, les pages et la proximité** :

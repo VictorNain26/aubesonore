@@ -1,6 +1,6 @@
 # musilogy
 
-Produit, hors ligne et depuis des sources épinglées et datées, les données de **Musilogy** (`docs/vision.md` à la racine, §2) : pour un artiste, les artistes du même son ; dans quels groupes ses membres ont joué. Un dump JSON MusicBrainz, le dump des sorties Discogs, des relevés ListenBrainz (popularité, toutes les écoutes), MusicBrainz (statut officiel) et Wikidata (discographie) deviennent dix tables reproductibles et testées, publiées en Parquet ; `musilogy load` les copie dans le schéma `musilogy` de la base du site, qui ne lit que des fonctions SQL. La conception en vigueur, avec le contrat de ces fonctions, est `docs/conception.md` ; la feuille de route est `docs/vision.md` §7.
+Produit, hors ligne et depuis des sources épinglées et datées, les données de **Musilogy** (`docs/vision.md` à la racine, §2) : pour un artiste, les artistes du même son ; dans quels groupes ses membres ont joué. Un dump JSON MusicBrainz, le dump des sorties Discogs, des relevés ListenBrainz (popularité, toutes les écoutes), MusicBrainz (statut officiel) et Wikidata (discographie) deviennent neuf tables reproductibles et testées, publiées en Parquet ; `musilogy load` les copie dans le schéma `musilogy` de la base du site, qui ne lit que des fonctions SQL. La conception en vigueur, avec le contrat de ces fonctions, est `docs/conception.md` ; la feuille de route est `docs/vision.md` §7.
 
 ## Principe directeur
 
@@ -8,7 +8,7 @@ Produit, hors ligne et depuis des sources épinglées et datées, les données d
 
 **Les tables portent la population complète.** Aucun filtre d'affichage n'y entre : ce que le site montre d'abord se décide dans les fonctions SQL qu'il appelle, qui ordonnent sans exclure. Une donnée écartée en amont serait irrécupérable en aval.
 
-## Les dix tables
+## Les neuf tables
 
 Mesurées sur le dump de référence `20260909-001002` (`colisten` et `same_sound` dépendent aussi des écoutes épinglées : leurs chiffres sont mesurés, hors du contrat de `tests/test_baseline.py`, qui construit sans écoutes) :
 
@@ -16,7 +16,6 @@ Mesurées sur le dump de référence `20260909-001002` (`colisten` et `same_soun
 |---|---|---|
 | `artists` | un artiste, de tout type MusicBrainz ou sans type, hors artistes à usage spécial : ses preuves de dates, sa ligne de vie dérivée, ses genres votés | 2 980 293 |
 | `albums` | une sortie d'album créditée à un seul artiste ; non chargée dans le site, elle sert les dates | 1 419 423 |
-| `genres` | le vocabulaire porté par `artists` | 1 740 |
 | `links` | un lien typé entre deux artistes qu'une page montre — appartenance, pseudonyme, changement de nom —, avec ses années | 701 614 |
 | `popularity` | les écoutes ListenBrainz d'un artiste, relevées à une date | 1 366 777 |
 | `releases` | un album ou un EP crédité à un artiste, dont les types secondaires se limitent à bande originale et remix ; une ligne par artiste crédité | 2 556 274 |
@@ -29,7 +28,6 @@ Colonnes réelles (voir `src/musilogy/sql/`) :
 
 - **`artists`** : `mbid`, `name`, `disambiguation`, `name_key`, `type`, `y0_declared`, `y_end_declared`, `y_birth`, `ended`, `country`, `begin_area`, `begin_area_mbid`, `genres_declared` et `genres_from_albums` (listes de `{mbid, name, votes}`, triées), `genres`, `genre_source`, `y_first_album`, `y_last_album`, `y0`, `y0_source`, `y_end`, `y_end_source`.
 - **`albums`** : `artist_mbid`, `rg_mbid`, `title`, `y`, `soundtrack`.
-- **`genres`** : `genre_mbid`, `name`, `n_artists`.
 - **`links`** : `src_mbid`, `dst_mbid`, `type`, `y_begin`, `y_end`.
 - **`popularity`** : `mbid`, `listen_count`, `user_count`, `snapshot`.
 - **`releases`** : `artist_mbid`, `rg_mbid`, `title`, `primary_type` (`Album` ou `EP`), `soundtrack`, `remix`, `y`, `filed_original` (Wikidata le classe album studio ou EP), `official` (MusicBrainz y relève une édition officielle, `snapshot-official`).
@@ -66,7 +64,6 @@ Chaque règle vit dans son fichier SQL numéroté (`src/musilogy/sql/`) ; **la n
   | `first_album_before_birth` | premier album antérieur à la naissance : la source se contredit, le début ne s'en déduit pas | 32 |
   | `last_album_before_birth` | dernier album antérieur à la naissance : symétrique, la fin ne s'en déduit pas | 17 |
 
-- **`50_genres` — Vocabulaire.** Les genres effectivement portés par `artists.genres`, y compris ceux qu'aucun artiste ne déclare et que seuls des albums portent.
 
 - **`22_releases` — Discographie.** Chaque release-group de type primaire `Album` ou `EP` dont les types secondaires se limitent à `Soundtrack` et `Remix` (une bande originale composée par l'artiste, un album de remix font partie de l'œuvre ; live, compilation, démo, DJ-mix, interview n'en font pas), une ligne par artiste crédité présent dans `artists`, sa date illisible comprise (`y` NULL). `filed_original` dit que le relevé Wikidata `discography` le classe album studio ou EP : sa forme « bande originale » couvre aussi des compilations de chansons d'un film, elle ne compte pas. Les disques que la page montre (`artist_releases`, docs/vision.md §2.4) se choisissent dans la fonction ; la table les garde tous. Sur le dump de référence, 1 968 255 lignes d'albums et 588 019 d'EP, dont 70 196 classés par Wikidata ; les exclusions du relevé sont comptées dans `manifest.json` (`discography_exclusions`). **`official` dit que MusicBrainz montre le disque comme l'œuvre de l'artiste**, d'après le relevé du statut officiel (en parties épinglées, `REFERENCE_OFFICIAL`) : pour chaque artiste d'au moins 500 auditeurs qui a un album ou un EP, les release groups que son site liste par défaut, c'est-à-dire pas ceux dont toutes les sorties sont promotionnelles, pirates ou pseudo-sorties. Vrai si un artiste crédité relevé le liste, faux si des artistes crédités ont été relevés et qu'aucun ne le liste, NULL si aucun n'a été relevé ; `artist_releases` écarte les faux, qui ne datent pas non plus le premier album. Sur les artistes joués (2026-10-06), 476 des 4 980 disques sont écartés — *Place Pigalle*, *The Cocaine Sessions*, des EP promotionnels — et 149 restent inconnus. Les statuts sont comptés dans `manifest.json` (`release_status`) ; deux invariants : un artiste interrogé par deux parties, un statut que le relevé ne justifie pas.
 
@@ -78,8 +75,6 @@ Chaque règle vit dans son fichier SQL numéroté (`src/musilogy/sql/`) ; **la n
 - **`90_invariants` — Contrôles.** Des vues qui doivent toutes renvoyer zéro ligne ; le nom de la vue *est* le nom de l'invariant. Chacune **recalcule indépendamment** ce qu'elle vérifie : une revue a montré qu'un invariant réutilisant la formule de production restait muet sur 265 violations réelles. Les bornes contractuelles y sont codées en dur, aux deux extrémités, sans relire les variables de session de la production ; changer de dump impose donc une modification délibérée de ce fichier — c'est l'intention.
 
 Deux bornes sont des variables de session posées par `build()` : `dump_year` et `min_year`.
-
-Les corrections manuelles (`src/musilogy/corrections.csv`, colonnes `mbid, field, value, justification, source`) sont appliquées avant la lecture des dates ; chaque ligne cite une source vérifiable, et un garde-fou échoue au-delà de 50 lignes.
 
 - **`82_urls` — Pages web.** Parmi les relations URL d'un artiste de `artists`, celles qu'une page artiste utilise : les plateformes d'écoute par leur domaine (Deezer, Spotify, Apple Music, Bandcamp, SoundCloud), quel que soit le type de relation, et les types `official homepage` et `wikidata` (le site atteint l'article Wikipédia par l'élément Wikidata), avec le type MusicBrainz. Discogs, Wikipédia, les images, VIAF, IMDb, les réseaux sociaux et les autres bases restent dans le dump : aucune page ne les montre. Une relation terminée (`ended`) reste dans la table, marquée ; une même page reliée deux fois sous un même type est une ligne, terminée seulement si toutes le sont. Sur le dump de référence, 1 991 446 pages pour 997 839 artistes, dont 24 671 terminées.
 
@@ -107,9 +102,9 @@ Relevé du 2026-10-05 : 72 397 lignes, 72 170 release groups.
 
 ## Ce que reçoit le site
 
-`data/out/<dump>/` contient les dix tables en Parquet et le manifeste.
+`data/out/<dump>/` contient les neuf tables en Parquet et le manifeste.
 
-`manifest.json` porte le dump et l'empreinte de ses archives (`dump`, `archive_sha256`), la date et l'empreinte de chaque relevé (`popularity`, `discography`, `listening`, et les parties de `official`), le dump Discogs lu et le compagnon de sa projection — sorties écrites, champs (`discogs`) —, les comptes (`counts`), **les empreintes des fichiers Parquet livrés** (`output_sha256`), les **paramètres** du run (`parameters` : `dump_year`, `min_year`, les seuils de `colisten` et de `same_sound`), les **entrées** (`inputs` : `rows_loaded` par table brute, le sidecar d'extraction et son accord avec les lignes lues), les compteurs (`r2_anomalies`, `neutralised_inferences`, `link_exclusions`, `discography_exclusions`, `release_status`, `discogs_coverage`, `discogs_date_disagreements`), le commit (`git_sha`) et l'empreinte des corrections (`corrections_sha256`).
+`manifest.json` porte le dump et l'empreinte de ses archives (`dump`, `archive_sha256`), la date et l'empreinte de chaque relevé (`popularity`, `discography`, `listening`, et les parties de `official`), le dump Discogs lu et le compagnon de sa projection — sorties écrites, champs (`discogs`) —, les comptes (`counts`), **les empreintes des fichiers Parquet livrés** (`output_sha256`), les **paramètres** du run (`parameters` : `dump_year`, `min_year`, les seuils de `colisten` et de `same_sound`), les **entrées** (`inputs` : `rows_loaded` par table brute, le sidecar d'extraction et son accord avec les lignes lues), les compteurs (`r2_anomalies`, `neutralised_inferences`, `link_exclusions`, `discography_exclusions`, `release_status`, `discogs_coverage`, `discogs_date_disagreements`) et le commit (`git_sha`).
 
 Ces empreintes de sortie sont opposables parce que la livraison est reproductible : à dump et code identiques, deux exécutions écrivent les mêmes octets. L'ordre des lignes est fixé par une clé totale sur chaque table. Un consommateur distingue donc une livraison inchangée d'une nouvelle par sa seule empreinte, sans retélécharger.
 
@@ -117,7 +112,7 @@ Ces empreintes de sortie sont opposables parce que la livraison est reproductibl
 
 `uv run musilogy load` vérifie les Parquet publiés contre leur manifeste, les copie dans un schéma `musilogy_next` de la base du site, compare les comptes copiés à ceux du manifeste, puis bascule `musilogy_next` en `musilogy` en une transaction : le site ne lit jamais un chargement partiel, et un chargement raté laisse le précédent en place. La connexion vient de l'environnement libpq (`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGSSLMODE`, `PGSSLROOTCERT`). Le SQL côté Postgres vit dans `src/musilogy/pg/`, numéroté comme `sql/` : `10_tables` avant la copie, les suivants sur le schéma de transit, `90_` une fois la bascule faite.
 
-Six tables sont chargées — `artists`, `links`, `popularity`, `releases`, `urls`, `same_sound` — plus `manifest` (dump, relevés, commit) ; `albums`, `genres`, `colisten` et `styles` restent en Parquet tant qu'aucune fonction ne les lit. Les listes de genres, que Postgres ne sait pas typer en structures anonymes, deviennent du `jsonb`. `20_search.sql` en tire `search`, la projection étroite de la recherche (`name_key` en collation C, nombre d'auditeurs, MBID), rangée par `name_key`. Mesuré sur un Postgres 16 jetable, avec le dump de référence : 408 s de chargement, 1 259 Mo en tout, dont 192 Mo et 68 Mo d'index pour la projection de recherche. Avec `releases` et `urls` (2026-10-05, sur victorserv) : 214 s, 2 667 Mo, dont 549 Mo pour `releases` et 274 Mo pour `urls`. `same_sound` pèse 484 Mo, index compris (2026-10-09, Postgres jetable sur victorserv).
+Six tables sont chargées — `artists`, `links`, `popularity`, `releases`, `urls`, `same_sound` — plus `manifest` (dump, relevés, commit) ; `albums`, `colisten` et `styles` restent en Parquet tant qu'aucune fonction ne les lit. Les listes de genres, que Postgres ne sait pas typer en structures anonymes, deviennent du `jsonb`. `20_search.sql` en tire `search`, la projection étroite de la recherche (`name_key` en collation C, nombre d'auditeurs, MBID), rangée par `name_key`. Mesuré sur un Postgres 16 jetable, avec le dump de référence : 408 s de chargement, 1 259 Mo en tout, dont 192 Mo et 68 Mo d'index pour la projection de recherche. Avec `releases` et `urls` (2026-10-05, sur victorserv) : 214 s, 2 667 Mo, dont 549 Mo pour `releases` et 274 Mo pour `urls`. `same_sound` pèse 484 Mo, index compris (2026-10-09, Postgres jetable sur victorserv).
 
 **Ce que lit le site : des fonctions, pas des tables.** Il appelle les fonctions de `pg/90_*.sql`, testées ici contre Postgres, et dépend de leurs signatures, pas de la disposition des tables. Le contrat complet est `docs/conception.md` §4.
 
@@ -190,13 +185,12 @@ Qualité : `uv run ruff check`, `uv run ruff format --check`, `uv run mypy`. La 
 src/musilogy/
   fetch.py               télécharge et vérifie les archives MusicBrainz et Discogs (SHA-256), relève ListenBrainz, MusicBrainz et Wikidata
   extract.py             projette les enregistrements bruts en flux, sans logique métier
-  build.py               enchaîne les fichiers SQL, applique les corrections, vérifie les invariants
+  build.py               enchaîne les fichiers SQL, vérifie les invariants
   colisten.py            notre co-écoute (produit matriciel creux), la seule étape écrite en Python
   publish.py             écrit les Parquet et manifest.json
   cli.py                 les commandes
   load.py                charge les Parquet publiés dans la base du site
   paths.py               chemins ancrés sur le paquet
-  corrections.csv        corrections manuelles, versionné
   reference/             empreintes des archives et des relevés épinglés
   sql/                   les règles, en ordre topologique
   pg/                    les tables et les fonctions que lit le site, côté Postgres
@@ -210,7 +204,7 @@ docs/research/           notes de recherche datées
 
 ## Licence et attribution
 
-Les données de base MusicBrainz (artistes, dates, albums, relations) sont **CC0**. Les genres et tags sont des données supplémentaires sous **CC-BY-NC-SA 3.0**. Comme `artists` et `genres` en dépendent, **le jeu de données produit par ce pipeline est distribué sous CC-BY-NC-SA 3.0** : attribution à MusicBrainz obligatoire, usage non commercial uniquement, et partage à l'identique imposé à toute redistribution.
+Les données de base MusicBrainz (artistes, dates, albums, relations) sont **CC0**. Les genres et tags sont des données supplémentaires sous **CC-BY-NC-SA 3.0**. Comme `artists` en dépend, **le jeu de données produit par ce pipeline est distribué sous CC-BY-NC-SA 3.0** : attribution à MusicBrainz obligatoire, usage non commercial uniquement, et partage à l'identique imposé à toute redistribution.
 
 Les comptes d'écoute de ListenBrainz et les données de Wikidata sont sous **CC0** et n'ajoutent aucune contrainte. `tests/fixtures/discography.jsonl` est un extrait du relevé Wikidata du 2026-10-05, pour les release groups des témoins.
 
