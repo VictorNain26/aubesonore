@@ -59,8 +59,10 @@ export default defineConfig(({ mode }) => {
         manifest: {
           name: 'AubeSonore',
           short_name: 'AubeSonore',
-          description: "Des titres à l'aube de vous plaire.",
+          description:
+            "Webradio de découverte : rock et pop indé, électronique, hip-hop, des années 60 à aujourd'hui. Gratuite, sans publicité.",
           lang: 'fr',
+          categories: ['music'],
           theme_color: '#e8e0d7',
           background_color: '#e8e0d7',
           display: 'standalone',

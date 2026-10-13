@@ -4,7 +4,7 @@ import { rewriteHead } from './head.mjs';
 
 const template = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const base = {
-  title: 'AubeSonore',
+  title: template.match(/<title>([^<]+)<\/title>/)[1],
   description: template.match(/<meta\s+name="description"\s+content="([^"]+)"/)[1],
 };
 const legal = [
@@ -21,7 +21,7 @@ describe('rewriteHead', () => {
       path: '/mentions-legales/',
       title: 'Mentions légales · AubeSonore',
       description: 'Qui édite AubeSonore.',
-      station: base.description,
+      site: base.description,
     },
     { siblings: legal }
   );
@@ -39,12 +39,12 @@ describe('rewriteHead', () => {
     expect(html).not.toContain('"name": "Mentions légales');
   });
 
-  it('describes the station, not the page, in the JSON-LD', () => {
+  it('describes the site, not the page, in the JSON-LD', () => {
     expect(html).toContain(`"description": ${JSON.stringify(base.description)}`);
     expect(html).toContain('content="Qui édite AubeSonore."');
   });
 
-  it('gives the English pages an English station and site', () => {
+  it('gives the English pages an English site description and language', () => {
     const english = rewriteHead(
       template,
       base,
@@ -53,7 +53,7 @@ describe('rewriteHead', () => {
         path: '/en/',
         title: 'AubeSonore',
         description: 'A discovery radio.',
-        station: 'A discovery radio.',
+        site: 'A discovery radio.',
       },
       { siblings: legal }
     );

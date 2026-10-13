@@ -99,7 +99,9 @@ describe('entry-server', () => {
   });
 
   it('gives each language its own title and description', () => {
-    expect(meta('fr').title).toBe('AubeSonore');
-    expect(meta('en').description).toMatch(/^A discovery radio/);
+    expect(meta('fr').title).toBe('AubeSonore · Radio de découverte indé, électro, hip-hop');
+    expect(meta('en').title).toBe('AubeSonore · Discovery radio: indie, electronic, hip-hop');
+    expect(meta('en').description).toMatch(/^Free, ad-free web radio/);
+    expect(meta('fr', 'legal').description).not.toBe(meta('fr', 'legal').title);
   });
 });

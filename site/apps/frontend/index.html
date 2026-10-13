@@ -15,64 +15,39 @@
     />
 
     <!-- SEO -->
-    <title>AubeSonore</title>
+    <title>AubeSonore · Radio de découverte indé, électro, hip-hop</title>
     <meta
       name="description"
-      content="Une radio de découverte, un titre après l'autre, gratuite et sans publicité. Gardez ceux qui vous arrêtent, retrouvez-les sur votre plateforme."
+      content="Webradio gratuite et sans publicité : rock et pop indé, électronique, hip-hop, des années 60 à aujourd'hui. Des titres à découvrir, et la page de chaque artiste."
     />
     <meta name="author" content="AubeSonore" />
     <meta name="theme-color" content="#e8e0d7" />
     <meta name="color-scheme" content="light" />
     <link rel="canonical" href="https://aubesonore.fr/" />
 
-    <!-- Structured data (schema.org): the station is the organisation, its live stream the
-         broadcast service it runs, the site the website it publishes. Each property sits on a
-         type that defines it (schema.org/RadioStation, /BroadcastService, /WebSite). The
-         pre-render puts the English description and language on /en/ (scripts/head.mjs). -->
+    <!-- Structured data (schema.org): the website, its name and its other spellings, which Google
+         reads to name the site in its results (developers.google.com/search/docs/appearance/
+         site-names). The pre-render puts the English description and language on /en/
+         (scripts/head.mjs). -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@graph": [
-          {
-            "@id": "https://aubesonore.fr/#org",
-            "@type": "RadioStation",
-            "name": "AubeSonore",
-            "alternateName": "AubeSonore Webradio",
-            "url": "https://aubesonore.fr/",
-            "description": "Une radio de découverte, un titre après l'autre, gratuite et sans publicité. Gardez ceux qui vous arrêtent, retrouvez-les sur votre plateforme.",
-            "logo": "https://aubesonore.fr/icon-512.png",
-            "image": "https://aubesonore.fr/og-fr.png"
-          },
-          {
-            "@id": "https://aubesonore.fr/#broadcast",
-            "@type": "BroadcastService",
-            "name": "AubeSonore",
-            "broadcastDisplayName": "AubeSonore",
-            "broadcastTimezone": "Europe/Paris",
-            "broadcaster": { "@id": "https://aubesonore.fr/#org" },
-            "potentialAction": {
-              "@type": "ListenAction",
-              "target": "https://radio.aubesonore.fr/listen/aubesonore/radio.mp3"
-            }
-          },
-          {
-            "@id": "https://aubesonore.fr/#site",
-            "@type": "WebSite",
-            "url": "https://aubesonore.fr/",
-            "name": "AubeSonore",
-            "inLanguage": "fr-FR",
-            "publisher": { "@id": "https://aubesonore.fr/#org" }
-          }
-        ]
+        "@type": "WebSite",
+        "@id": "https://aubesonore.fr/#site",
+        "url": "https://aubesonore.fr/",
+        "name": "AubeSonore",
+        "alternateName": ["Aube Sonore", "aubesonore.fr"],
+        "description": "Webradio gratuite et sans publicité : rock et pop indé, électronique, hip-hop, des années 60 à aujourd'hui. Des titres à découvrir, et la page de chaque artiste.",
+        "inLanguage": "fr-FR"
       }
     </script>
 
     <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="AubeSonore" />
+    <meta property="og:title" content="AubeSonore · Radio de découverte indé, électro, hip-hop" />
     <meta
       property="og:description"
-      content="Une radio de découverte, un titre après l'autre, gratuite et sans publicité. Gardez ceux qui vous arrêtent, retrouvez-les sur votre plateforme."
+      content="Webradio gratuite et sans publicité : rock et pop indé, électronique, hip-hop, des années 60 à aujourd'hui. Des titres à découvrir, et la page de chaque artiste."
     />
     <meta property="og:image" content="https://aubesonore.fr/og-fr.png" />
     <meta property="og:image:width" content="1200" />
@@ -84,12 +59,10 @@
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@aubesonore" />
-    <meta name="twitter:creator" content="@aubesonore" />
-    <meta name="twitter:title" content="AubeSonore" />
+    <meta name="twitter:title" content="AubeSonore · Radio de découverte indé, électro, hip-hop" />
     <meta
       name="twitter:description"
-      content="Une radio de découverte, un titre après l'autre, gratuite et sans publicité. Gardez ceux qui vous arrêtent, retrouvez-les sur votre plateforme."
+      content="Webradio gratuite et sans publicité : rock et pop indé, électronique, hip-hop, des années 60 à aujourd'hui. Des titres à découvrir, et la page de chaque artiste."
     />
     <meta name="twitter:image" content="https://aubesonore.fr/og-fr.png" />
 

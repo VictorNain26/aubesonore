@@ -108,8 +108,10 @@ export function meta(
     };
   }
   if (page === 'legal') {
-    const title = m.legal_title({}, { locale });
-    return { title: `${title} · AubeSonore`, description: title };
+    return {
+      title: `${m.legal_title({}, { locale })} · AubeSonore`,
+      description: m.legal_meta_description({}, { locale }),
+    };
   }
   return {
     title: m.meta_title({}, { locale }),

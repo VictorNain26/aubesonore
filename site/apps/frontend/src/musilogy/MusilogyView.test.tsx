@@ -82,7 +82,7 @@ describe('MusilogySections', () => {
   it('lists the close artists by rank, each a link to its page, the sound they share said once', () => {
     show(artist());
 
-    expect(screen.getByRole('heading', { name: 'Artistes proches' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Artistes similaires' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'The Kinks' })).toHaveAttribute(
       'href',
       `/artiste/${neighbour(3).mbid}`
@@ -132,7 +132,7 @@ describe('MusilogySections', () => {
   it('leaves out every section with nothing in it, without a title over an absence', () => {
     show(artist({ neighbours: null }));
 
-    expect(screen.queryByRole('heading', { name: 'Artistes proches' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Artistes similaires' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Groupes et projets' })).toBeInTheDocument();
   });

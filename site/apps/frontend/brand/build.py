@@ -385,8 +385,8 @@ def main() -> None:
     faces = font_face("Bricolage", FONT, "font-weight:200 800;font-stretch:75% 100%")
     lockup_px = 58
     for lang, title, sub in (
-        ("fr", "Des titres à l’aube de vous plaire.", "Une radio de découverte, un titre après l’autre."),
-        ("en", "The first light of your next favourite songs.", "A discovery radio, one track after another."),
+        ("fr", "Des titres à l’aube de vous plaire.", "Indé, électro, hip-hop, des années 60 à aujourd’hui."),
+        ("en", "The first light of your next favourite songs.", "Indie, electronic, hip-hop, from the 60s to today."),
     ):
         logo = svg_doc(lockup_box, lockup_body("o", DAWN, INK, INK), lockup_px * lockup_box[2] / lockup_box[3], lockup_px)
         html = f"""<style>{faces}
