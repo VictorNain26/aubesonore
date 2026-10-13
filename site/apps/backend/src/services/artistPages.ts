@@ -2,7 +2,7 @@ import type { ArtistPageRef } from '@aubesonore/shared-types/client';
 import { eq, inArray, isNotNull } from 'drizzle-orm';
 import { db } from '../db';
 import { artist } from '../db/schema';
-import { artistKey } from './artistResolver';
+import { artistKey } from '../lib/artistName';
 import { mbidSlug, ownSlug, pageSlug } from './artistSlugs';
 
 /** Pairs each raw name with the page stored under its key; a name without one is left out. */

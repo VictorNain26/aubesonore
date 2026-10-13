@@ -3,7 +3,7 @@ import { desc, eq } from 'drizzle-orm';
 import { db } from '../db';
 import { radioPlay } from '../db/schema';
 import { normalizeArtistName } from '../lib/artistName';
-import { artistKey } from './artistResolver';
+import { artistKey } from '../lib/artistName';
 import { fetchNowPlaying } from './nowPlaying';
 
 export function buildPlayRow(
