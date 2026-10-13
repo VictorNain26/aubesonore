@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
-import { createMemoryRouter, Outlet, RouterProvider, ScrollRestoration } from 'react-router';
+import { render, screen } from '@testing-library/react';
+import { createMemoryRouter, RouterProvider } from 'react-router';
 import { routes } from './routes';
-import { InstantPageScroll, scrollKey } from './App';
+import { scrollKey } from './App';
 
 // The page chunk fails to load, as offline or blocked by an extension.
 vi.mock('./pages/ArtistPage', () => {
@@ -28,40 +28,6 @@ const at = (pathname: string, hash: string, key: string) => ({
   key,
   search: '',
   state: null,
-});
-
-describe('a new page', () => {
-  it('opens at the top at once, whatever the CSS scroll-behavior', async () => {
-    const behaviours: string[] = [];
-    vi.spyOn(window, 'scrollTo').mockImplementation(() => {
-      behaviours.push(document.documentElement.style.scrollBehavior);
-    });
-    const router = createMemoryRouter(
-      [
-        {
-          path: '/',
-          element: (
-            <>
-              <InstantPageScroll />
-              <ScrollRestoration />
-              <Outlet />
-            </>
-          ),
-          children: [
-            { path: 'a', element: <p>a</p> },
-            { path: 'b', element: <p>b</p> },
-          ],
-        },
-      ],
-      { initialEntries: ['/a'] }
-    );
-    render(<RouterProvider router={router} />);
-    await act(() => router.navigate('/b'));
-
-    expect(await screen.findByText('b')).toBeInTheDocument();
-    expect(behaviours.at(-1)).toBe('auto');
-    vi.restoreAllMocks();
-  });
 });
 
 describe('where a place is kept', () => {

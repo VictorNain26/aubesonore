@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect } from 'react';
+import { useEffect } from 'react';
 import { Outlet, ScrollRestoration, useLocation, type Location } from 'react-router';
 import { PageError } from './artist/PageMessage';
 import { AuthInit } from './components/AuthInit';
@@ -19,29 +19,6 @@ import { useLocale, useLocaleStore } from './stores/localeStore';
  */
 export function scrollKey(location: Location): string {
   return location.key === 'default' ? `${location.pathname}${location.hash}` : location.key;
-}
-
-/**
- * ScrollRestoration scrolls with `window.scrollTo(0, y)` and `scrollIntoView()`, which follow the
- * CSS scroll-behavior: under index.css's smooth one, a new page glided up from the last page's
- * place, and a glide cut short as the page grew stopped midway (seen on the preview). Its scroll
- * runs in a layout effect; this one, rendered just before it, runs first and makes it instant, and
- * the next frame gives anchors back their glide. An entry the router did not make (an anchor the
- * browser follows) keeps the browser's own glide.
- */
-export function InstantPageScroll() {
-  const location = useLocation();
-  useLayoutEffect(() => {
-    if (location.key === 'default') return;
-    const root = document.documentElement;
-    root.style.scrollBehavior = 'auto';
-    const frame = requestAnimationFrame(() => root.style.removeProperty('scroll-behavior'));
-    return () => {
-      cancelAnimationFrame(frame);
-      root.style.removeProperty('scroll-behavior');
-    };
-  }, [location]);
-  return null;
 }
 
 /** A page that failed to load (its code, offline): its error, in the frame of every page. */
@@ -79,7 +56,6 @@ export default function App() {
         <PlayerBar />
         <PlayerSideEffects />
       </Layout>
-      <InstantPageScroll />
       <ScrollRestoration getKey={scrollKey} />
     </>
   );
