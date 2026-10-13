@@ -25,7 +25,6 @@ interface EnvConfig {
   BETTER_AUTH_SECRET: string;
   BETTER_AUTH_URL: string;
   FRONTEND_BASE_URL: string;
-  BACKEND_BASE_URL: string;
   ALLOWED_ORIGINS: string[];
   COOKIE_DOMAIN: string | undefined;
 
@@ -36,8 +35,8 @@ interface EnvConfig {
   // External APIs
   // MusicBrainz and Wikimedia require a User-Agent with a contact and block callers without one.
   OUTBOUND_USER_AGENT: string;
-  // Frontend service on the compose network. The artist page reads the deployed
-  // index.html from it to inject OG tags; a shared volume would go stale.
+  // Frontend service on the compose network. The artist page reads the build's empty shell
+  // (app.html) from it and writes its head tags; a shared volume would go stale.
   FRONTEND_ORIGIN_INTERNAL: string;
   // The artist pages' server render on the compose network (apps/frontend/scripts/renderer.mjs).
   RENDERER_ORIGIN_INTERNAL: string;
@@ -107,7 +106,7 @@ function resolveCaCert(): string | undefined {
   return undefined;
 }
 
-const nodeEnv = Bun.env.NODE_ENV ?? Bun.env.ENV ?? 'development';
+const nodeEnv = Bun.env.NODE_ENV ?? 'development';
 const isProd = nodeEnv === 'production';
 
 export const env: EnvConfig = {
@@ -123,7 +122,6 @@ export const env: EnvConfig = {
   BETTER_AUTH_SECRET: required('BETTER_AUTH_SECRET'),
   BETTER_AUTH_URL: required('BETTER_AUTH_URL'),
   FRONTEND_BASE_URL: Bun.env.FRONTEND_BASE_URL ?? 'http://localhost:8080',
-  BACKEND_BASE_URL: Bun.env.BACKEND_BASE_URL ?? 'http://localhost:3000',
   ALLOWED_ORIGINS: parseOrigins('ALLOWED_ORIGINS'),
   COOKIE_DOMAIN: optional('COOKIE_DOMAIN'),
 

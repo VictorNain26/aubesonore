@@ -5,25 +5,16 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "build/**"]
+      "outputs": ["dist/**", "dist-ssr/**", "build/**"]
     },
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
     },
-    "lint": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$"]
-    },
     "typecheck": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", "tsconfig.json"]
-    },
-    "test": {
-      "dependsOn": ["^build"],
-      "inputs": ["$TURBO_DEFAULT$"],
-      "outputs": ["coverage/**"]
     },
     "clean": {
       "cache": false

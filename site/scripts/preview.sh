@@ -62,7 +62,6 @@ NODE_ENV=production
 POSTGRES_PASSWORD=$pg
 BETTER_AUTH_SECRET=$auth
 BETTER_AUTH_URL=http://localhost:$PORT
-BACKEND_BASE_URL=http://localhost:$PORT
 FRONTEND_BASE_URL=http://localhost:$PORT
 ALLOWED_ORIGINS=http://localhost:$PORT
 COOKIE_DOMAIN=

@@ -21,7 +21,6 @@ x-backend-environment: &backend-environment
   DATABASE_CA_CERT_FILE: /certs/ca.crt
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
   BETTER_AUTH_URL: ${BETTER_AUTH_URL:-https://api.aubesonore.fr}
-  BACKEND_BASE_URL: ${BACKEND_BASE_URL:-https://api.aubesonore.fr}
   FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-https://aubesonore.fr}
   ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://aubesonore.fr}
   # Unset: production's domain. Empty (a workstation): host-only cookies.

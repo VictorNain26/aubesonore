@@ -10,12 +10,9 @@
     "db:push": "DRIZZLE_KIT_NO_PROMPT=true bunx drizzle-kit push",
     "seed:dev": "bun run src/scripts/seed-dev.ts",
     "artists:resolve": "bun run src/scripts/resolve-played-artists.ts",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "test": "bun test --isolate --path-ignore-patterns='**/*.db.test.ts'",
     "test:db": "bun test --isolate .db.test.ts",
-    "test:coverage": "bun test --isolate --coverage --path-ignore-patterns='**/*.db.test.ts'",
     "clean": "rm -rf dist"
   },
   "dependencies": {

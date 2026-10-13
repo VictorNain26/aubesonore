@@ -4,7 +4,7 @@ import { createSingleFlight } from '../lib/singleFlight';
 import { logger } from '../lib/logger';
 import { songMatch } from '../lib/text/matchScore';
 
-export interface DeezerArtist {
+interface DeezerArtist {
   id: string;
   name: string;
 }

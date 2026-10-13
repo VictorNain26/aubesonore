@@ -140,18 +140,6 @@ async function gracefulShutdown(signal: string): Promise<void> {
     logger.error('server.stop failed', { err: (err as Error).message });
   }
 
-  linksCache.dispose();
-  itunesCache.dispose();
-  radioHistoryCache.dispose();
-  trendsCache.dispose();
-  deezerCache.dispose();
-  musicbrainzCache.dispose();
-  wikipediaCache.dispose();
-  titlesCache.dispose();
-  musilogyCache.dispose();
-  identityCache.dispose();
-  coreCache.dispose();
-
   try {
     await pool.end();
   } catch (err) {

@@ -1,7 +1,5 @@
-// Public contract every cache backend must satisfy. Consumers type their
-// dependency as `CacheStore<V>` (not `TtlCache<V>`) so we can swap a
-// `RedisCacheStore` impl in later without touching call sites. See
-// CLAUDE.md "Scaling roadmap" for the migration triggers.
+// The surface a Redis-backed store would keep, so a cache can move there without its callers
+// changing (docs/scaling-roadmap.md).
 export interface CacheStore<V> {
   get(key: string): V | undefined;
   set(key: string, value: V, ttlMsOverride?: number): void;
@@ -10,7 +8,7 @@ export interface CacheStore<V> {
 
 /**
  * In-memory TTL cache with periodic sweep.
- * Suitable for a single backend instance (e.g. Koyeb worker).
+ * Suitable for a single backend instance, which the site runs.
  * For multi-instance deployments, implement a Redis-backed `CacheStore<V>`
  * with the same surface and swap at the import site.
  *

@@ -91,9 +91,8 @@ export async function likeTrack({
 
 /**
  * Ties a kept track to the play it was kept from and to that play's artist
- * (docs/vision.md §4.4), so the artist page shows what a listener kept and the
- * alerts know who kept an artist. A track the antenna is not known to have
- * played stays untied: a like can name anything.
+ * (docs/vision.md §4.4), so the artist page shows what a listener kept. A track the antenna is
+ * not known to have played stays untied: a like can name anything.
  */
 export async function linkKeptTrack(trackId: string, title: string, artist: string): Promise<void> {
   const play = await findPlay(title, artist);
