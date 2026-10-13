@@ -1,6 +1,7 @@
 import { toast } from 'sonner';
 import { API_BASE_URL } from './config';
 import * as m from '@/paraglide/messages.js';
+import { getLocale } from '@/paraglide/runtime.js';
 
 interface ShareTrackInput {
   title: string;
@@ -27,7 +28,7 @@ export async function shareTrack({
 }
 
 export function getRadioShareUrl(title: string, artist: string): string {
-  return `${API_BASE_URL}/t?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`;
+  return `${API_BASE_URL}/t?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}&lang=${getLocale()}`;
 }
 
 /** Shares then toasts the outcome — the flow every share entry point uses. */

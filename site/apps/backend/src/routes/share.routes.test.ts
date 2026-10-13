@@ -159,4 +159,34 @@ describe('GET /t', () => {
     );
     expect(await noHeader.text()).toContain('Écouter le direct');
   });
+
+  it("speaks the sharer's language, carried by the link, whatever the reader's", async () => {
+    mockPlatforms();
+
+    const res = await app.handle(
+      new Request('http://localhost/t?title=Balance%20Act&artist=Psychic%20Lines&lang=en', {
+        headers: { 'accept-language': 'fr-FR,fr;q=0.9' },
+      })
+    );
+
+    const html = await res.text();
+    expect(html).toContain('<html lang="en">');
+    expect(html).toContain('Listen live');
+    expect(html).toContain('lang=en" />');
+  });
+
+  it('is kept out of search results, and promises a large card only with a cover', async () => {
+    globalThis.fetch = (() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ results: [], data: [] }))
+      )) as unknown as typeof fetch;
+
+    const html = await (
+      await app.handle(new Request('http://localhost/t?title=Rare&artist=Nobody'))
+    ).text();
+
+    expect(html).toContain('<meta name="robots" content="noindex" />');
+    expect(html).toContain('<meta name="twitter:card" content="summary" />');
+    expect(html).toContain('<meta name="description" content="Entendu sur AubeSonore');
+  });
 });

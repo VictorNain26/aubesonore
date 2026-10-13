@@ -1,4 +1,8 @@
-import { PLATFORM_NAMES, type PlatformLinks } from '@aubesonore/shared-types/client';
+import {
+  PLATFORM_NAMES,
+  type PlatformLinks,
+  type SiteLocale,
+} from '@aubesonore/shared-types/client';
 import type { TrackLinks } from '../trackLinksService';
 import { env } from '../../config/env';
 
@@ -11,13 +15,10 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
-export type ShareLocale = 'fr' | 'en';
-
 const COPY: Record<
-  ShareLocale,
+  SiteLocale,
   {
-    lang: string;
-    ogDescription: string;
+    description: string;
     coverAlt: (title: string) => string;
     heardOn: string;
     listenLive: string;
@@ -26,22 +27,22 @@ const COPY: Record<
   }
 > = {
   fr: {
-    lang: 'fr',
-    ogDescription: 'Entendu sur AubeSonore. Écoutez le direct.',
+    description:
+      'Entendu sur AubeSonore, la radio de découverte indé, électro, hip-hop. Écoutez le direct.',
     coverAlt: (title) => `Pochette de ${title}`,
     heardOn: 'Entendu sur AubeSonore',
     listenLive: 'Écouter le direct',
     listenOn: (platform) => `Écouter sur ${platform}`,
-    footer: 'AubeSonore, radio de découverte musicale',
+    footer: 'AubeSonore, radio de découverte indé, électro, hip-hop',
   },
   en: {
-    lang: 'en',
-    ogDescription: 'Heard on AubeSonore. Listen live.',
-    coverAlt: (title) => `Album art for ${title}`,
+    description:
+      'Heard on AubeSonore, the indie, electronic, hip-hop discovery radio. Listen live.',
+    coverAlt: (title) => `Cover of ${title}`,
     heardOn: 'Heard on AubeSonore',
     listenLive: 'Listen live',
     listenOn: (platform) => `Listen on ${platform}`,
-    footer: 'AubeSonore, a music discovery radio',
+    footer: 'AubeSonore, an indie, electronic, hip-hop discovery radio',
   },
 };
 
@@ -51,12 +52,12 @@ interface SharePageInput {
   /** Canonical URL of this share page, used for og:url. */
   shareUrl: string;
   links: TrackLinks | null;
-  /** Copy language, picked from Accept-Language by the route. */
-  locale?: ShareLocale;
+  locale?: SiteLocale;
 }
 
-// Static HTML page (no JS): link crawlers must read the OG meta without
-// executing scripts, so the CSP allows only inline styles and https images.
+// Static HTML page (no JS): link crawlers must read the OG meta without executing scripts, so the
+// CSP allows only inline styles and https images. Kept out of search results: one page per track
+// someone shared is a sharing card, not a page to find (link previews ignore robots).
 export function renderSharePage({
   title,
   artist,
@@ -67,9 +68,9 @@ export function renderSharePage({
   const copy = COPY[locale];
   const artworkUrl = links?.artworkUrl?.startsWith('https://') ? links.artworkUrl : undefined;
   const platformLinks = links
-    ? (Object.entries(links.platformLinks) as Array<[keyof PlatformLinks, string]>)
-        .filter(([, url]) => url.startsWith('https://'))
-        .slice(0, 4)
+    ? (Object.entries(links.platformLinks) as Array<[keyof PlatformLinks, string]>).filter(
+        ([, url]) => url.startsWith('https://')
+      )
     : [];
 
   const ogImage = artworkUrl
@@ -88,18 +89,22 @@ export function renderSharePage({
           .join('\n')}\n      </nav>`
       : '';
 
+  // The site's paper, ink, muted ink and dawn (apps/frontend/src/design/tokens.css), as hex.
   return `<!doctype html>
-<html lang="${copy.lang}">
+<html lang="${locale}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(title)}, ${escapeHtml(artist)} · AubeSonore</title>
+    <meta name="description" content="${copy.description}" />
+    <meta name="robots" content="noindex" />
     <meta property="og:title" content="« ${escapeHtml(title)} », ${escapeHtml(artist)}" />
-    <meta property="og:description" content="${copy.ogDescription}" />
+    <meta property="og:description" content="${copy.description}" />
     <meta property="og:type" content="music.song" />
     <meta property="og:url" content="${escapeHtml(shareUrl)}" />
     <meta property="og:site_name" content="AubeSonore" />
-    <meta name="twitter:card" content="summary_large_image" />${ogImage}
+    <meta property="og:locale" content="${locale === 'en' ? 'en_GB' : 'fr_FR'}" />
+    <meta name="twitter:card" content="${artworkUrl ? 'summary_large_image' : 'summary'}" />${ogImage}
     <style>
       * { margin: 0; box-sizing: border-box; }
       body {
@@ -108,51 +113,44 @@ export function renderSharePage({
         align-items: center;
         justify-content: center;
         padding: 2rem 1rem;
-        font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-        color: #292524;
-        background: linear-gradient(160deg, #fff7ed 0%, #fde8d7 45%, #f9dce0 100%);
+        font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        color: #211f26;
+        background: radial-gradient(60% 40% at 50% 100%, #f2ac8166 0%, transparent 70%), #e8e0d7;
       }
-      .card {
-        width: 100%;
-        max-width: 24rem;
-        padding: 2rem;
-        text-align: center;
-        background: #fffdfb;
-        border-radius: 1rem;
-        box-shadow: 0 8px 30px rgb(87 42 12 / 12%);
-      }
+      .card { width: 100%; max-width: 24rem; text-align: center; }
       .cover {
         width: 240px;
         height: 240px;
         max-width: 100%;
-        border-radius: 0.75rem;
+        border-radius: 0.5rem;
         object-fit: cover;
+        box-shadow: 0 18px 40px -16px rgb(33 31 38 / 45%);
       }
-      h1 { margin-top: 1.25rem; font-size: 1.5rem; line-height: 1.25; }
-      .artist { margin-top: 0.375rem; font-size: 1.125rem; color: #57534e; }
-      .heard { margin-top: 1rem; font-size: 0.875rem; color: #78716c; }
+      h1 { margin-top: 1.5rem; font-size: 1.75rem; line-height: 1.15; font-weight: 600; letter-spacing: -0.02em; }
+      .artist { margin-top: 0.375rem; font-size: 1.125rem; color: #4a4650; }
+      .heard { margin-top: 1rem; font-size: 0.875rem; color: #4a4650; }
       .cta {
         display: inline-block;
         margin-top: 1.5rem;
-        padding: 0.75rem 1.75rem;
+        padding: 0.875rem 1.75rem;
         font-size: 1rem;
         font-weight: 600;
-        color: #fffdfb;
-        background: #292524;
+        color: #e8e0d7;
+        background: #211f26;
         border-radius: 9999px;
         text-decoration: none;
       }
-      .platforms { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
+      .platforms { margin-top: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; }
       .platform {
         display: block;
-        padding: 0.625rem 1rem;
+        padding: 0.75rem 1rem;
         font-size: 0.9375rem;
-        color: #292524;
-        border: 1px solid #d6d3d1;
-        border-radius: 0.5rem;
+        color: #211f26;
+        border: 1px solid #211f26;
+        border-radius: 9999px;
         text-decoration: none;
       }
-      footer { margin-top: 2rem; font-size: 0.75rem; color: #78716c; }
+      footer { margin-top: 2rem; font-size: 0.75rem; color: #4a4650; }
     </style>
   </head>
   <body>

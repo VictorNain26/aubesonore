@@ -1,137 +1,104 @@
 <!doctype html>
-<html lang="fr">
+<html lang="{{lang}}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
     <title>{{subject}}</title>
   </head>
 
-  <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4">
-    <!-- Pré-header (aperçu) -->
-    <div
-      style="
-        display: none;
-        max-height: 0;
-        overflow: hidden;
-        font-size: 1px;
-        color: #f4f4f4;
-        line-height: 1px;
-        opacity: 0;
-      "
-    >
-      {{preheader}}
-    </div>
-
-    <!-- Main wrapper -->
+  <!-- The site's paper, ink and dawn (apps/frontend/src/design/tokens.css), as plain hex: mail
+       clients read neither oklch nor custom properties. Tables and inline styles, as they need. -->
+  <body
+    style="
+      margin: 0;
+      padding: 0;
+      background-color: #e8e0d7;
+      color: #211f26;
+      font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    "
+  >
+    <div style="display: none; max-height: 0; overflow: hidden; opacity: 0">{{preheader}}</div>
     <table
       width="100%"
-      bgcolor="#f4f4f4"
       cellpadding="0"
       cellspacing="0"
-      style="background-color: #f4f4f4; padding: 20px 0"
+      role="presentation"
+      style="background-color: #e8e0d7"
     >
       <tr>
-        <td align="center">
+        <td align="center" style="padding: 40px 16px">
           <table
-            width="600"
+            width="520"
             cellpadding="0"
             cellspacing="0"
-            bgcolor="#ffffff"
-            style="
-              width: 600px;
-              max-width: 100%;
-              background-color: #ffffff;
-              border-radius: 8px;
-              box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            "
+            role="presentation"
+            style="width: 520px; max-width: 100%"
           >
-            <!-- Header -->
             <tr>
-              <td
-                align="center"
-                bgcolor="#1db954"
-                style="
-                  background-color: #1db954;
-                  color: #ffffff;
-                  font-size: 24px;
-                  padding: 20px;
-                  border-radius: 8px 8px 0 0;
-                "
-              >
+              <td style="padding-bottom: 32px">
                 <img
-                  src="https://aubesonore.fr/logo.png"
-                  alt="AubeSonore Logo"
-                  width="120"
-                  style="display: block; margin-bottom: 10px"
+                  src="https://aubesonore.fr/icon-180.png"
+                  alt=""
+                  width="40"
+                  height="40"
+                  style="display: inline-block; vertical-align: middle; border-radius: 8px"
                 />
-                AubeSonore 🎶
+                <span
+                  style="
+                    display: inline-block;
+                    vertical-align: middle;
+                    margin-left: 10px;
+                    font-size: 22px;
+                    font-weight: 600;
+                    letter-spacing: -0.02em;
+                  "
+                  >aubesonore</span
+                >
               </td>
             </tr>
-
-            <!-- Content -->
             <tr>
-              <td style="padding: 20px; color: #333333">
-                <!-- Bloc vérification email -->
-                {{#if isVerificationEmail}}
-                <h2 style="margin-top: 0; font-size: 22px">🎉 Bienvenue chez AubeSonore !</h2>
-                <p style="color: #666666; font-size: 16px">
-                  Nous sommes ravis de vous accueillir dans la communauté AubeSonore. Veuillez
-                  confirmer votre adresse e-mail pour activer votre compte et commencer à explorer
-                  de nouvelles musiques. 🚀
+              <td>
+                <h1 style="margin: 0; font-size: 28px; line-height: 1.15; font-weight: 600">
+                  {{heading}}
+                </h1>
+                <p style="margin: 16px 0 0; font-size: 16px; line-height: 1.55; color: #4a4650">
+                  {{body}}
                 </p>
-                {{/if}}
-
-                <!-- Bloc reset password -->
-                {{#if isResetPassword}}
-                <h2 style="margin-top: 0; font-size: 22px">🔒 Réinitialisez votre mot de passe</h2>
-                <p style="color: #666666; font-size: 16px">
-                  Pas de panique ! Cliquez sur le bouton ci-dessous pour créer un nouveau mot de
-                  passe sécurisé et accéder à votre compte. 💡
-                </p>
-                {{/if}}
-
-                <!-- Call-to-action button -->
-                {{#if buttonLink}}
-                <p style="text-align: center; margin: 30px 0">
+                <p style="margin: 32px 0 0">
                   <a
                     href="{{buttonLink}}"
                     style="
-                      background-color: #1db954;
-                      color: white;
-                      padding: 12px 24px;
-                      text-decoration: none;
-                      border-radius: 4px;
                       display: inline-block;
-                      font-weight: bold;
+                      padding: 14px 28px;
+                      border-radius: 999px;
+                      background-color: #211f26;
+                      color: #e8e0d7;
                       font-size: 16px;
+                      font-weight: 600;
+                      text-decoration: none;
                     "
+                    >{{buttonText}}</a
                   >
-                    {{buttonText}} 🚀
-                  </a>
                 </p>
-                {{/if}}
-
-                <p style="color: #999999; font-size: 12px; text-align: center; margin-top: 40px">
-                  Si vous n'avez pas demandé cette action, vous pouvez ignorer cet e-mail en toute
-                  sécurité.
+                <p style="margin: 32px 0 0; font-size: 14px; line-height: 1.5; color: #4a4650">
+                  {{ignore}}
                 </p>
               </td>
             </tr>
-
-            <!-- Footer -->
+            <tr>
+              <td style="height: 40px; line-height: 40px; font-size: 0">&nbsp;</td>
+            </tr>
             <tr>
               <td
-                bgcolor="#1db954"
                 style="
-                  background-color: #1db954;
-                  color: #ffffff;
-                  text-align: center;
-                  border-radius: 0 0 8px 8px;
-                  padding: 15px;
-                  font-size: 14px;
+                  padding-top: 16px;
+                  border-top: 1px solid #f2ac81;
+                  font-size: 12px;
+                  color: #4a4650;
                 "
               >
-                &copy; 2025 AubeSonore - Tous droits réservés
+                {{footer}}
               </td>
             </tr>
           </table>
