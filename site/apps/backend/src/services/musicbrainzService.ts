@@ -14,6 +14,15 @@ const TIMEOUT_MS = 5_000;
 // MusicBrainz caps anonymous clients at one request per second and bans
 // callers that ignore it. https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting
 const MIN_INTERVAL_MS = 1_000;
+let intervalMs = MIN_INTERVAL_MS;
+
+/**
+ * A batch run beside the backend (`artists:resolve`, another process behind the same address)
+ * takes every other second, so the two together stay within MusicBrainz's one request a second.
+ */
+export function shareRateWithBackend(): void {
+  intervalMs = 2 * MIN_INTERVAL_MS;
+}
 
 export const musicbrainzCache = new TtlCache<Lookup<unknown>>(TTL_MS);
 const flight = createSingleFlight<Lookup<unknown>>();
@@ -31,7 +40,7 @@ function takeSlot(): number | null {
   const now = performance.now();
   const scheduledAt = Math.max(now, nextSlotAt);
   if (scheduledAt - now > MAX_QUEUE_MS) return null;
-  nextSlotAt = scheduledAt + MIN_INTERVAL_MS;
+  nextSlotAt = scheduledAt + intervalMs;
   return scheduledAt - now;
 }
 

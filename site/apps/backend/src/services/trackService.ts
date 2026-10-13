@@ -28,7 +28,8 @@ interface LikeTrackBody {
   isrc?: string;
 }
 
-interface ServiceResponse<T = LikedTrack> {
+/** A track service's answer; `status` is the HTTP status the route sets, never sent. */
+export interface ServiceResponse<T = LikedTrack> {
   message?: string;
   track?: T;
   status?: number;

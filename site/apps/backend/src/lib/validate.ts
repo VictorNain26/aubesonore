@@ -2,7 +2,6 @@ import { safeParse } from 'valibot';
 import type { BaseSchema, BaseIssue } from 'valibot';
 
 interface ValidationError {
-  status: number;
   error: string;
 }
 
@@ -14,7 +13,7 @@ export function validateBody<T>(
 
   if (!result.success) {
     const messages = result.issues.map((issue) => issue.message).join(', ');
-    return { status: 400, error: `Validation échouée : ${messages}` };
+    return { error: `Validation échouée : ${messages}` };
   }
 
   return result.output;

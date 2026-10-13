@@ -3,21 +3,10 @@ import { validateBody } from '../lib/validate';
 import { hasError } from '../lib/routeHelpers';
 import { likeTrackSchema } from '../validators/trackValidator';
 import * as trackService from '../services/trackService';
-import type { LikedTrackListItem } from '../services/trackService';
+import type { LikedTrackListItem, ServiceResponse } from '../services/trackService';
 import { auth } from '../lib/auth/index';
 import { checkRate, tooManyRequests } from '../lib/rateLimit';
-import type { User, Session, LikedTrack } from '../db/schema';
-
-// ─────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────
-
-interface ServiceResponse<T = LikedTrack> {
-  message?: string;
-  track?: T;
-  status?: number;
-  error?: string;
-}
+import type { User, Session } from '../db/schema';
 
 // ─────────────────────────────────────────────
 // Routes /api/track
@@ -29,7 +18,7 @@ const TRACK_MUTATION_LIMIT = 60;
 const TRACK_MUTATION_WINDOW_MS = 60_000;
 
 export const trackRoutes = new Elysia({ prefix: '/api/track' })
-  // Helper pour récupérer la session
+  // The session, when the request carries one.
   .derive(async ({ request: { headers } }): Promise<{ user?: User; session?: Session }> => {
     const sessionData = await auth.api.getSession({ headers });
     if (!sessionData) {
@@ -39,7 +28,7 @@ export const trackRoutes = new Elysia({ prefix: '/api/track' })
   })
 
   // ─────────────────────────────────────────────
-  // POST /api/track/like - Liker un morceau
+  // POST /api/track/like: keep a track
   // ─────────────────────────────────────────────
   .post('/like', async ({ user, body, set }): Promise<ServiceResponse> => {
     if (!user) {
@@ -73,15 +62,13 @@ export const trackRoutes = new Elysia({ prefix: '/api/track' })
       ...(data.artworkUrl !== undefined && { artworkUrl: data.artworkUrl }),
       ...(data.isrc !== undefined && { isrc: data.isrc }),
     };
-    const result = await trackService.likeTrack({ user, body: requestBody });
-    if (result.error) {
-      set.status = result.status || 400;
-    }
-    return result;
+    const { status, ...answer } = await trackService.likeTrack({ user, body: requestBody });
+    if (answer.error) set.status = status ?? 400;
+    return answer;
   })
 
   // ─────────────────────────────────────────────
-  // GET /api/track/like - Récupérer les morceaux likés
+  // GET /api/track/like: the kept tracks
   // ─────────────────────────────────────────────
   .get('/like', async ({ user, set }): Promise<LikedTrackListItem[] | { error: string }> => {
     if (!user) {
@@ -92,7 +79,7 @@ export const trackRoutes = new Elysia({ prefix: '/api/track' })
   })
 
   // ─────────────────────────────────────────────
-  // DELETE /api/track/like/:trackId - Supprimer un morceau liké
+  // DELETE /api/track/like/:trackId: stop keeping a track
   // ─────────────────────────────────────────────
   .delete('/like/:trackId', async ({ user, params, set }): Promise<ServiceResponse> => {
     if (!user) {
@@ -100,15 +87,7 @@ export const trackRoutes = new Elysia({ prefix: '/api/track' })
       return { error: 'Non authentifié' };
     }
 
-    const { trackId } = params;
-    if (!trackId || typeof trackId !== 'string') {
-      set.status = 400;
-      return { error: 'ID invalide' };
-    }
-
-    const result = await trackService.unlikeTrack({ user, id: trackId });
-    if (result.error) {
-      set.status = result.status || 400;
-    }
-    return result;
+    const { status, ...answer } = await trackService.unlikeTrack({ user, id: params.trackId });
+    if (answer.error) set.status = status ?? 400;
+    return answer;
   });

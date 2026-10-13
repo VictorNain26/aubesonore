@@ -115,7 +115,8 @@ afterAll(() => {
   discoveredListSpy.mockRestore();
 });
 
-const { artistPageRoutes, __resetArtistShell } = await import('./artistPage.routes');
+const { artistPageRoutes } = await import('./artistPage.routes');
+const { __resetArtistShell } = await import('../services/artistPageRender');
 const { env } = await import('../config/env');
 const { __resetRateLimits } = await import('../lib/rateLimit');
 
