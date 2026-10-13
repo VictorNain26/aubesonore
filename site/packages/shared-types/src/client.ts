@@ -63,16 +63,6 @@ export interface LikeTrackRequest {
   isrc?: string;
 }
 
-export interface CheckLikedRequest {
-  title: string;
-  artist: string;
-}
-
-export interface CheckLikedResponse {
-  liked: boolean;
-  track?: ClientLikedTrack;
-}
-
 /** The two languages the site is published in. */
 export type SiteLocale = 'fr' | 'en';
 
