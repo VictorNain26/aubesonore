@@ -1,8 +1,16 @@
 import { randomUUID } from 'node:crypto';
-import { and, desc, DrizzleQueryError, eq, isNull, or, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, or, sql } from 'drizzle-orm';
 import { db } from '../db';
+import { isUniqueViolation } from '../db/errors';
 import { artist, artistProfile, likedTracks, radioPlay } from '../db/schema';
-import { normalizeArtistName } from '../lib/artistName';
+import {
+  artistKey,
+  bareTitle,
+  comparableName,
+  normalizeArtistName,
+  primaryArtistName,
+  sameTitle,
+} from '../lib/artistName';
 import { logger } from '../lib/logger';
 import type { Lookup } from '../lib/lookup';
 import { findTrackByIsrc, searchArtist } from './deezerService';
@@ -23,19 +31,6 @@ import {
   pageSlug,
   slugOfArtistPage,
 } from './artistSlugs';
-
-// Only explicit featuring markers. Splitting on `&`, `+`, `x` or `,` would
-// destroy legitimate names ("Simon & Garfunkel", "Earth, Wind & Fire").
-const FEATURING_SEPARATOR = /\s+(?:feat\.?|ft\.?|featuring)\s+/i;
-
-export function primaryArtistName(raw: string): string {
-  return (raw.split(FEATURING_SEPARATOR)[0] ?? raw).trim();
-}
-
-/** The key a raw AzuraCast name is stored and compared under: its first credited artist, normalized. */
-export function artistKey(raw: string): string {
-  return normalizeArtistName(primaryArtistName(raw));
-}
 
 type Resolved = { id: string; slug: string };
 type Identity = { id: string; displayName: string; deezerId: string | null; mbid: string | null };
@@ -60,13 +55,6 @@ async function findBy(normalizedName: string): Promise<Row | null> {
     .where(eq(artist.normalizedName, normalizedName))
     .limit(1);
   return rows[0] ?? null;
-}
-
-function isUniqueViolation(err: unknown): boolean {
-  return (
-    err instanceof DrizzleQueryError &&
-    (err.cause as { code?: string } | undefined)?.code === '23505'
-  );
 }
 
 /**
@@ -129,22 +117,6 @@ async function playedTrack(normalizedName: string): Promise<Played | null> {
 type Identified = { deezerId: string | null; mbid: string | null };
 type Identification = Identified & { identifiedBy: 'isrc' | 'name'; displayName: string };
 
-// Compared, not keyed: an apostrophe is typed or left out (« Lets Go Surfing »
-// played, « Let’s Go Surfing » in MusicBrainz), so it is dropped, not spaced.
-function comparable(text: string): string {
-  return normalizeArtistName(text.replace(/['’ʼ`´]/g, ''));
-}
-
-/**
- * The same title, versions aside: « Song » and « Song (Radio Edit) » match,
- * two different songs do not.
- */
-export function sameTitle(played: string, other: string): boolean {
-  const a = comparable(played);
-  const b = comparable(other);
-  return a === b || a.startsWith(`${b} `) || b.startsWith(`${a} `);
-}
-
 /**
  * The one artist credited under the played name on a recording of the played title, whatever
  * gave the recordings (an ISRC, a search); null when none is, or several.
@@ -155,12 +127,12 @@ function creditedArtist(
   primary: string,
   same: (played: string, other: string) => boolean = sameTitle
 ): string | null {
-  const playedName = comparable(primary);
+  const playedName = comparableName(primary);
   const mbids = new Set(
     recordings
       .filter((recording) => same(played.title, recording.title))
       .flatMap((recording) =>
-        recording.credits.filter((c) => c.names.some((name) => comparable(name) === playedName))
+        recording.credits.filter((c) => c.names.some((name) => comparableName(name) === playedName))
       )
       .map((credit) => credit.mbid)
   );
@@ -168,21 +140,12 @@ function creditedArtist(
   return mbids.size === 1 && only ? only : null;
 }
 
-// A version said in brackets or after a dash: « Song (feat. X) », « Song - 2011 Remaster ».
-const VERSION =
-  /\s*(?:[([][^)\]]*\b(?:feat|ft|with|remaster(?:ed)?|version|edit|mix|live|mono|stereo)\b[^)\]]*[)\]]|\s-\s.*\b(?:remaster(?:ed)?|version|edit|mix|live|mono|stereo)\b.*)/gi;
-
-/** A title without its version: what MusicBrainz names a recording (Style guidelines). */
-export function bareTitle(title: string): string {
-  return title.replace(VERSION, '').trim();
-}
-
 /**
  * The same song exactly, versions aside: the search's answers are only as good as the title, so
  * no prefix of it counts (« Home » is not « Home Again »), unlike an ISRC's.
  */
 function exactTitle(played: string, other: string): boolean {
-  return comparable(bareTitle(played)) === comparable(bareTitle(other));
+  return comparableName(bareTitle(played)) === comparableName(bareTitle(other));
 }
 
 /**
@@ -200,8 +163,8 @@ async function identifyByIsrc(
   played: Played,
   primary: string
 ): Promise<Identified | null | 'failed'> {
-  const playedName = comparable(primary);
-  const credited = (names: string[]) => names.some((name) => comparable(name) === playedName);
+  const playedName = comparableName(primary);
+  const credited = (names: string[]) => names.some((name) => comparableName(name) === playedName);
 
   const recordings = await findRecordingsByIsrc(isrc);
   if (recordings.status === 'failed') return 'failed';

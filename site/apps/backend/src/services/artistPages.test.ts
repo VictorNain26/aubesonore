@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test';
 import { matchPages } from './artistPages';
-import { artistKey } from './artistResolver';
+import { artistKey } from '../lib/artistName';
 
 const CASSIUS = { normalizedName: 'cassius', id: 'a-1', slug: 'cassius' };
 const DAHO = { normalizedName: 'etienne daho', id: 'a-2', slug: 'etienne-daho' };

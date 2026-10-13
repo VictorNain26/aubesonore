@@ -3,13 +3,8 @@ import { env } from '../config/env';
 import { db, pool } from '../db/index';
 import { artist, likedTracks, radioPlay } from '../db/schema';
 import { toIsrc } from '../lib/isrc';
-import { normalizeArtistName } from '../lib/artistName';
-import {
-  artistKey,
-  resolveArtist,
-  resolveKeptArtist,
-  reverifyArtist,
-} from '../services/artistResolver';
+import { artistKey, normalizeArtistName } from '../lib/artistName';
+import { resolveArtist, resolveKeptArtist, reverifyArtist } from '../services/artistResolver';
 import { findPlay } from '../services/radioPlayService';
 import { searchTrack } from '../services/deezerService';
 

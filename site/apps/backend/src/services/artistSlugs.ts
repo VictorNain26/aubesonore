@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, like, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../db';
+import { isUndefinedObject, isUniqueViolation } from '../db/errors';
 import { artist, artistSlug } from '../db/schema';
 import { slugify } from '../lib/artistName';
 import { logger } from '../lib/logger';
@@ -52,9 +53,8 @@ async function homonymRanks(mbids: readonly string[]): Promise<Map<string, numbe
     );
     return new Map(rows.map((row) => [row.mbid, row.homonym_rank]));
   } catch (err) {
-    // Before the musilogy load that brings it (musilogyService's NOT_LOADED).
-    const code = (err as { cause?: { code?: string } }).cause?.code;
-    if (code === '42883' || code === '3F000' || code === '42P01') return new Map();
+    // Before the musilogy load that brings it.
+    if (isUndefinedObject(err)) return new Map();
     throw err;
   }
 }
@@ -158,7 +158,7 @@ export async function bindArtistSlug(
     .returning({ slug: artistSlug.slug })
     .catch((err: unknown) => {
       // artist_slug_mbid_unique: a concurrent claim gave the MBID its slug first.
-      if ((err as { cause?: { code?: string } }).cause?.code === '23505') return [];
+      if (isUniqueViolation(err)) return [];
       throw err;
     });
   if (moved[0]) return;
@@ -291,7 +291,7 @@ async function adoptRowSlugs(mbids: readonly string[]): Promise<Map<string, stri
     )
     .catch((err: unknown) => {
       // artist_slug_mbid_unique: a concurrent publication named the page first.
-      if ((err as { cause?: { code?: string } }).cause?.code === '23505') return { rows: [] };
+      if (isUniqueViolation(err)) return { rows: [] };
       throw err;
     });
   return new Map(rows.rows.map((row) => [row.mbid, row.slug]));

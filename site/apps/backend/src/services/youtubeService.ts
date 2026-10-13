@@ -1,8 +1,12 @@
 import { env } from '../config/env';
 import type { Lookup } from '../lib/lookup';
 import { logger } from '../lib/logger';
-import { normalizeArtistName } from '../lib/artistName';
-import { artistKey, primaryArtistName } from './artistResolver';
+import {
+  artistKey,
+  comparableName,
+  normalizeArtistName,
+  primaryArtistName,
+} from '../lib/artistName';
 
 // YouTube Data API v3: search.list draws on its own bucket of 100 calls a day, videos.list on
 // the 10,000 units of every other method, one unit for up to 50 ids
@@ -94,7 +98,7 @@ const BESIDE_THE_SONG =
   /\s*[([](?:feat\.?|ft\.?|featuring|with)\s[^)\]]*[)\]]|\s*[([][^)\]]*\bremaster(?:ed)?\b[^)\]]*[)\]]|\s+-\s+[^-]*\bremaster(?:ed)?\b.*$/gi;
 
 function comparable(text: string): string {
-  return normalizeArtistName(text.replace(BESIDE_THE_SONG, '').replace(/['’ʼ`´]/g, ''));
+  return comparableName(text.replace(BESIDE_THE_SONG, ''));
 }
 
 /**

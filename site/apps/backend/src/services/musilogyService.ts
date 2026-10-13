@@ -1,4 +1,4 @@
-import { DrizzleQueryError, eq, inArray, sql, type SQL } from 'drizzle-orm';
+import { eq, inArray, sql, type SQL } from 'drizzle-orm';
 import {
   coverArtUrl,
   type ArtistCover,
@@ -17,6 +17,7 @@ import {
 } from '@aubesonore/shared-types/client';
 import { mbidSlug, ownSlug, pageSlug, slugsFor } from './artistSlugs';
 import { db } from '../db/index';
+import { isUndefinedObject, pgCode } from '../db/errors';
 import { artist } from '../db/schema';
 import { TtlCache } from '../lib/cache/ttlCache';
 import { createSingleFlight } from '../lib/singleFlight';
@@ -37,19 +38,12 @@ const flight = createSingleFlight<MusilogyArtist | null>();
 /** The musilogy schema, or the function asked, is not loaded. */
 export class MusilogyUnavailable extends Error {}
 
-// invalid_schema_name, undefined_function, undefined_table: before the first
-// `musilogy load`, or before the load that brings a function.
-const NOT_LOADED = new Set(['3F000', '42883', '42P01']);
-
 async function call<R extends Record<string, unknown>>(query: SQL): Promise<R[]> {
   try {
     return (await db.execute<R>(query)).rows as R[];
   } catch (err) {
-    const code =
-      err instanceof DrizzleQueryError
-        ? (err.cause as { code?: string } | undefined)?.code
-        : undefined;
-    if (code && NOT_LOADED.has(code)) throw new MusilogyUnavailable(code);
+    // Before the first `musilogy load`, or before the load that brings a function.
+    if (isUndefinedObject(err)) throw new MusilogyUnavailable(pgCode(err));
     throw err;
   }
 }
