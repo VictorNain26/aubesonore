@@ -43,7 +43,6 @@ export const handlers = [
     });
   }),
   http.delete(`${API}/api/track/like/:id`, () => HttpResponse.json({ message: 'ok' })),
-  http.post(`${API}/api/track/check-liked`, () => HttpResponse.json({ liked: false })),
 
   // Artist pages: every name resolves except "Unknown", which the antenna never played.
   http.get(`${API}/api/artist/resolve`, ({ request }) => {

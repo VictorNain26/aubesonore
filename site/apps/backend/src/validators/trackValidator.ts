@@ -28,16 +28,11 @@ export const likeTrackSchema = object({
   album: optional(string()),
   artworkUrl: optional(httpsImageUrl),
   youtubeUrl,
-  // Sent to Deezer, and kept for every later refresh: ISO 3901 or nothing.
+  // Sent to Deezer for its links, kept to tie the track to its artist: ISO 3901 or nothing.
   isrc: optional(
     pipe(
       string(),
       check((value) => toIsrc(value) !== null, 'ISRC invalide')
     )
   ),
-});
-
-export const checkLikedSchema = object({
-  title: pipe(string(), minLength(1, 'Titre requis')),
-  artist: pipe(string(), minLength(1, 'Artiste requis')),
 });

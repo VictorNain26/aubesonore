@@ -47,33 +47,21 @@ const fakeDb = {
   }),
   select: (projection?: Partial<Record<keyof Row, unknown>>) => ({
     from: () => ({
-      // where() itself resolves the unfiltered/unlimited case (refreshAllLinks
-      // awaits it directly), and also exposes .limit() for the call sites that
-      // paginate (where clauses are accepted but not evaluated, as above).
-      where: () => {
-        const project = (slice: Row[]): Array<Partial<Row>> => {
-          if (!projection) return slice;
+      where: () => ({
+        limit: (n: number): Promise<Array<Partial<Row>>> => {
+          const slice = rows.slice(0, n);
+          if (!projection) return Promise.resolve(slice);
           const keys = Object.keys(projection) as (keyof Row)[];
-          return slice.map((row) => pick(row, keys));
-        };
-        const promise = Promise.resolve(project(rows)) as Promise<Array<Partial<Row>>> & {
-          limit: (n: number) => Promise<Array<Partial<Row>>>;
-        };
-        promise.limit = (n: number) => Promise.resolve(project(rows.slice(0, n)));
-        return promise;
-      },
+          return Promise.resolve(slice.map((row) => pick(row, keys)));
+        },
+      }),
     }),
   }),
   update: () => ({
     set: (values: Partial<Row>) => ({
-      where: (): Promise<Row[]> & { returning: () => Promise<Row[]> } => {
+      where: (): Promise<void> => {
         rows = rows.map((row) => ({ ...row, ...values }));
-        const result = [...rows];
-        const promise = Promise.resolve(result) as Promise<Row[]> & {
-          returning: () => Promise<Row[]>;
-        };
-        promise.returning = () => Promise.resolve(result);
-        return promise;
+        return Promise.resolve();
       },
     }),
   }),
@@ -97,8 +85,7 @@ const originalFetch = globalThis.fetch;
 const fetchMock = mock((): Promise<Response> => Promise.reject(new Error('no network in tests')));
 globalThis.fetch = fetchMock as unknown as typeof fetch;
 
-const { likeTrack, linkKeptTrack, refreshTrackLinks, refreshAllLinks } =
-  await import('./trackService');
+const { likeTrack, linkKeptTrack } = await import('./trackService');
 
 const fakeUser: User = {
   id: 'user-1',
@@ -260,22 +247,6 @@ describe('likeTrack → links of the very recording', () => {
   });
 });
 
-describe('refresh → links of the very recording', () => {
-  it('refreshes a kept track with its stored ISRC', async () => {
-    rows = [
-      makeRow({ id: 'track-5', title: 'F Major', artist: 'Hania Rani', isrc: 'DEN271800071' }),
-    ];
-
-    await refreshTrackLinks({ user: fakeUser, id: 'track-5' });
-    await refreshAllLinks({ user: { ...fakeUser, id: 'user-isrc' } });
-
-    expect(findTrackLinksMock.mock.calls).toEqual([
-      ['F Major', 'Hania Rani', 'DEN271800071'],
-      ['F Major', 'Hania Rani', 'DEN271800071'],
-    ]);
-  });
-});
-
 describe('linkKeptTrack', () => {
   it("ties a kept track to its play: the play's ISRC and the resolved artist", async () => {
     rows = [makeRow({ id: 'track-1', title: 'F Major', artist: 'Hania Rani' })];
@@ -293,69 +264,5 @@ describe('linkKeptTrack', () => {
 
     expect(rows[0]?.artistId).toBeNull();
     expect(resolveArtistMock).not.toHaveBeenCalledWith('Typed By Hand');
-  });
-});
-
-describe('refreshTrackLinks', () => {
-  it('sets artwork to the verified iTunes cover on refresh', async () => {
-    rows = [
-      makeRow({
-        id: 'track-2',
-        title: 'Song',
-        artist: 'Artist',
-        artworkUrl: 'https://azuracast.example.com/art/stale.jpg',
-        userId: fakeUser.id,
-      }),
-    ];
-    findTrackLinksMock.mockResolvedValueOnce({
-      songlinkUrl: 'https://song.link/xyz',
-      platformLinks: { deezer: 'https://www.deezer.com/track/xyz' },
-      artworkUrl: 'https://apple-cdn.example.com/art/xyz.jpg',
-    });
-
-    const result = await refreshTrackLinks({ user: fakeUser, id: 'track-2' });
-
-    expect(result.track?.artworkUrl).toBe('https://apple-cdn.example.com/art/xyz.jpg');
-    expect(result.track?.songlinkUrl).toBe('https://song.link/xyz');
-  });
-
-  it('returns an error and leaves artwork unchanged when Songlink still has no match', async () => {
-    rows = [
-      makeRow({
-        id: 'track-3',
-        userId: fakeUser.id,
-        artworkUrl: 'https://azuracast.example.com/art/none.jpg',
-      }),
-    ];
-    findTrackLinksMock.mockResolvedValueOnce(null);
-
-    const result = await refreshTrackLinks({ user: fakeUser, id: 'track-3' });
-
-    expect(result.status).toBe(400);
-    expect(rows[0]?.artworkUrl).toBe('https://azuracast.example.com/art/none.jpg');
-  });
-});
-
-describe('refreshAllLinks', () => {
-  it('sets artwork to the verified iTunes cover for each track it refreshes', async () => {
-    rows = [
-      makeRow({
-        id: 'track-4',
-        title: 'Song',
-        artist: 'Artist',
-        artworkUrl: 'https://azuracast.example.com/art/batch.jpg',
-        userId: fakeUser.id,
-      }),
-    ];
-    findTrackLinksMock.mockResolvedValueOnce({
-      songlinkUrl: 'https://song.link/batch',
-      platformLinks: { deezer: 'https://www.deezer.com/track/batch' },
-      artworkUrl: 'https://apple-cdn.example.com/art/batch.jpg',
-    });
-
-    const result = await refreshAllLinks({ user: fakeUser });
-
-    expect(rows[0]?.artworkUrl).toBe('https://apple-cdn.example.com/art/batch.jpg');
-    expect(result.updated).toBe(1);
   });
 });
