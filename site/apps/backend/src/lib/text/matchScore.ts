@@ -1,15 +1,11 @@
+import { normalizeArtistName } from '../artistName';
+
 const TITLE_THRESHOLD = 0.6;
 const ARTIST_THRESHOLD = 0.7;
 
+/** The name's key (normalizeArtistName: letters and digits of every script), its parentheses and "feat." set aside. */
 export function normalize(s: string): string {
-  return s
-    .normalize('NFKD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/\(.*?\)/g, ' ')
-    .replace(/\bfeat\b\.?/g, ' ')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
+  return normalizeArtistName(s.replace(/\(.*?\)/g, ' ').replace(/\bfeat\b\.?/gi, ' '));
 }
 
 function levenshtein(a: string, b: string): number {
@@ -37,8 +33,9 @@ function levenshtein(a: string, b: string): number {
 export function similarity(a: string, b: string): number {
   const normA = normalize(a);
   const normB = normalize(b);
+  // Nothing left to compare is no evidence of a match.
+  if (normA.length === 0 || normB.length === 0) return 0;
   const maxLength = Math.max(normA.length, normB.length);
-  if (maxLength === 0) return 1;
   const distance = levenshtein(normA, normB);
   return 1 - distance / maxLength;
 }
