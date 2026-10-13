@@ -278,6 +278,10 @@ score choisit seulement qui est promu. La passe hebdomadaire applique ces règle
 - **Entrées.** Tout ce qui a été acquis est publié, dans la catégorie de sa famille :
   `nouveautes` (Hype Machine, Deezer éditorial) ou `decouvertes` (voisins). Une découverte passe
   à « publiée » dans la transaction de son entrée : sortie ensuite, elle n'est jamais republiée.
+  Ici, « découverte » désigne tout titre acquis, nouveautés comprises : c'est la valeur
+  `decouverte` de `antenne.origin`, qui ne change jamais. Un repère, titre de la bibliothèque,
+  y vaut `repere`. La catégorie, elle, suit le cycle de vie, et `radio check` compte toutes les
+  découvertes publiées, nouveautés comprises.
 - **Votes « non ».** Un titre voté « non » sort à la passe suivante, quelle que soit sa catégorie.
   Un fichier prêt voté « non » n'est jamais publié. Un repère voté « non » n'est jamais tiré.
 - **Un titre par artiste.** Un artiste à plusieurs titres n'en garde qu'un : un « oui » d'abord,
