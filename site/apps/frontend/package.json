@@ -17,7 +17,6 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@aubesonore/core": "workspace:*",
     "@aubesonore/shared-types": "workspace:*",
     "@base-ui/react": "^1.6.0",
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",

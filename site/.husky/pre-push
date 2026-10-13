@@ -13,7 +13,7 @@ if git rev-parse -q --verify origin/master >/dev/null && git diff --quiet origin
   exit 0
 fi
 cd site
-pnpm turbo build --filter=@aubesonore/shared-types --filter=@aubesonore/core
+pnpm turbo build --filter=@aubesonore/shared-types
 pnpm lint
 pnpm knip
 pnpm turbo typecheck

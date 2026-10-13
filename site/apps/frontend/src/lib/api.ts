@@ -1,7 +1,9 @@
 import { API_BASE_URL } from '../utils/config';
-import { createTrackApi } from '@aubesonore/core/api';
-import type { ApiClient } from '@aubesonore/core/api';
-import type { AuthResponse } from '@aubesonore/shared-types/client';
+import type {
+  AuthResponse,
+  ClientLikedTrack,
+  LikeTrackRequest as KeepRequest,
+} from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
 
 export type {
@@ -31,8 +33,6 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
   return response.json() as Promise<T>;
 }
 
-const apiClient: ApiClient = { fetch: fetchApi };
-
 // Better Auth's error codes (@better-auth/core, dist/error/codes.mjs). Its
 // messages are English ("Invalid email or password"): they never reach the
 // page, a known code gets its own words and any other the caller's fallback.
@@ -56,7 +56,16 @@ async function authError(response: Response, fallback: () => string): Promise<Er
   return new Error((known ?? fallback)());
 }
 
-export const trackApi = createTrackApi(apiClient);
+type KeepAnswer = { message: string; track: ClientLikedTrack };
+
+export const trackApi = {
+  getLikedTracks: (): Promise<ClientLikedTrack[]> => fetchApi('/api/track/like'),
+  likeTrack: (data: KeepRequest): Promise<KeepAnswer> =>
+    fetchApi('/api/track/like', { method: 'POST', body: JSON.stringify(data) }),
+  // keepalive: a removal sent as the page closes still reaches the server.
+  unlikeTrack: (trackId: string): Promise<KeepAnswer> =>
+    fetchApi(`/api/track/like/${trackId}`, { method: 'DELETE', keepalive: true }),
+};
 
 export const authApi = {
   getSession: async (): Promise<AuthResponse | null> => {

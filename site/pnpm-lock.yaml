@@ -158,9 +158,6 @@ importers:
 
   apps/frontend:
     dependencies:
-      '@aubesonore/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@aubesonore/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
@@ -273,16 +270,6 @@ importers:
       workbox-precaching:
         specifier: 7.4.0
         version: 7.4.0
-
-  packages/core:
-    dependencies:
-      '@aubesonore/shared-types':
-        specifier: workspace:*
-        version: link:../shared-types
-    devDependencies:
-      typescript:
-        specifier: 5.9.3
-        version: 5.9.3
 
   packages/shared-types:
     devDependencies:
