@@ -49,7 +49,6 @@ from musilogy.fetch import (
 )
 from musilogy.load import load
 from musilogy.paths import (
-    CORRECTIONS_CSV,
     DATA_DIR,
     FIXTURES_DIR,
     RAW_DIR,
@@ -417,7 +416,6 @@ def run() -> None:
         SQL_DIR,
         ARTISTS_JSONL,
         RELEASE_GROUPS_JSONL,
-        CORRECTIONS_CSV,
         popularity=popularity,
         popularity_snapshot=REFERENCE_POPULARITY,
         discography=discography,
@@ -438,7 +436,7 @@ def run() -> None:
     _stop_on_extraction_mismatch(con, extraction)
     _stop_on_discogs_mismatch(con)
 
-    manifest = publish(con, out_dir(DUMP), DUMP, CORRECTIONS_CSV, extraction)
+    manifest = publish(con, out_dir(DUMP), DUMP, extraction)
     print(manifest["counts"])
 
 

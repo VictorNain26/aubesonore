@@ -158,16 +158,6 @@ CREATE OR REPLACE VIEW genres_from_albums_mismatch AS
   SELECT b.mbid FROM artists b LEFT JOIN expected e USING (mbid)
   WHERE list_sort(list_transform(b.genres_from_albums, x -> {'mbid': x.mbid, 'votes': x.votes}))
         IS DISTINCT FROM coalesce(e.l, []);
--- NOT EXISTS, not NOT IN: see album_without_artist above, same NULL trap.
-CREATE OR REPLACE VIEW unknown_genre AS
-  SELECT t.g.mbid FROM (SELECT unnest(genres) AS g FROM artists) t
-  WHERE NOT EXISTS (SELECT 1 FROM genres g WHERE g.genre_mbid = t.g.mbid);
--- Independent recomputation, same rationale as last_album_mismatch.
-CREATE OR REPLACE VIEW genre_n_artists_mismatch AS
-  SELECT g.genre_mbid FROM genres g
-  WHERE g.n_artists <> (
-    SELECT count(*) FROM artists b, UNNEST(b.genres) AS t(x) WHERE t.x.mbid = g.genre_mbid
-  );
 -- 80_links.sql. Both ends must be artists of this pipeline.
 -- NOT EXISTS, not NOT IN: see album_without_artist above, same NULL trap.
 CREATE OR REPLACE VIEW link_endpoint_missing AS
@@ -235,20 +225,6 @@ CREATE OR REPLACE VIEW url_unsourced AS
   WHERE NOT EXISTS (
     SELECT 1 FROM raw_artists r, UNNEST(r.urls) AS t(x)
     WHERE r.mbid = u.artist_mbid AND t.x.url = u.url AND t.x.type IS NOT DISTINCT FROM u.type);
--- corrections.csv holds at most 50 rows; materialized even empty
--- by apply_corrections, so available without depending on the dump.
-CREATE OR REPLACE VIEW corrections_file_too_large AS
-  SELECT count(*) AS n FROM corrections HAVING count(*) > 50;
--- A row that touches no raw_artists, or carries a field outside {begin,
--- end}, is loaded (counts toward the 50-row cap) without ever changing
--- anything: a silent no-op, not a correction.
--- NOT EXISTS for the mbid check, not NOT IN: see album_without_artist above,
--- same NULL trap (raw_artists.mbid is never NULL in practice, but nothing
--- guarantees it, and this check must not rely on that).
-CREATE OR REPLACE VIEW corrections_invalid AS
-  SELECT c.mbid, c.field FROM corrections c
-  WHERE c.field NOT IN ('begin', 'end')
-     OR NOT EXISTS (SELECT 1 FROM raw_artists r WHERE r.mbid = c.mbid);
 -- MusicBrainz's six artist types, or none. A seventh would reach the dates
 -- unread: formed() and the person rules know only these.
 CREATE OR REPLACE VIEW artist_unexpected_type AS
@@ -279,11 +255,6 @@ CREATE OR REPLACE VIEW birth_misread AS
      OR (person(a.type)
          AND a.y_birth IS DISTINCT FROM
              CASE WHEN yr(r.begin) <= 2026 THEN yr(r.begin) END);
--- apply_corrections runs UPDATE ... FROM corrections: two rows for the same
--- (mbid, field) make the applied value depend on scan order. The file is empty
--- today, which is exactly when the contract is cheap to state.
-CREATE OR REPLACE VIEW corrections_duplicate AS
-  SELECT mbid, field FROM corrections GROUP BY mbid, field HAVING count(*) > 1;
 -- Popularity: one row per artist, counts as ListenBrainz defines them. A
 -- listener has at least one listen, so user_count can never exceed
 -- listen_count: swapped columns fail here. No zero either, on the reference

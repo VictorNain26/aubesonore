@@ -25,7 +25,6 @@ from musilogy.paths import (
 BASELINE = {
     "artists": 2_980_293,
     "albums": 1_419_423,
-    "genres": 1_740,
     "links": 701_614,
     "popularity": 1_366_777,
     # Albums and EPs whose secondary types are at most Soundtrack and Remix, one
@@ -150,7 +149,6 @@ def test_reference_dump_matches_the_baseline():
         SQL_DIR,
         WORK / "artists.jsonl",
         WORK / "release_groups.jsonl",
-        None,
         popularity=POPULARITY,
         popularity_snapshot=REFERENCE_POPULARITY,
         discography=DISCOGRAPHY,

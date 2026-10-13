@@ -55,7 +55,7 @@ def test_build_skips_90_files():
     # 90_invariants.sql would already have created duplicate_artist, and this
     # test would only depend on its rank within the file.
     c = duckdb.connect(":memory:")
-    build(c, SQL, FIX / "artists.jsonl", FIX / "release_groups.jsonl", None)
+    build(c, SQL, FIX / "artists.jsonl", FIX / "release_groups.jsonl")
     with pytest.raises(duckdb.CatalogException):
         c.execute("SELECT * FROM duplicate_artist")
 
@@ -181,7 +181,7 @@ def test_contractual_bounds_are_not_read_from_the_session_variables():
     # getvariable('dump_year') back made the views agree with whatever the
     # production rules did.
     c = duckdb.connect(":memory:")
-    build(c, SQL, FIX / "artists.jsonl", FIX / "release_groups.jsonl", None, dump_year=2030)
+    build(c, SQL, FIX / "artists.jsonl", FIX / "release_groups.jsonl", dump_year=2030)
     assert dict(check_invariants(c, SQL)) == {
         "end_after_dump_year": 1,
         "album_out_of_window": 1,
@@ -350,60 +350,6 @@ def test_album_genres_that_disagree_with_the_albums_are_reported(con):
     assert violations.get("genres_from_albums_mismatch") == 1
 
 
-def test_unknown_genre_is_reported(con):
-    mbid = con.execute("SELECT mbid FROM artists LIMIT 1").fetchone()[0]
-    original = con.execute("SELECT genres FROM artists WHERE mbid = ?", [mbid]).fetchone()[0]
-    with restored(con, ("UPDATE artists SET genres = ? WHERE mbid = ?", [original, mbid])):
-        con.execute(
-            "UPDATE artists SET genres = list_append(genres, "
-            "{'mbid': 'inconnu', 'name': 'x', 'votes': 1}) WHERE mbid = ?",
-            [mbid],
-        )
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("unknown_genre") == 1
-
-
-def test_unknown_genre_survives_a_null_genre_mbid_in_the_vocabulary(con):
-    # Same NULL trap as album_without_artist: a NULL genre_mbid in the
-    # `genres` subquery used to make NOT IN never true. Demonstrated in
-    # review on this exact invariant.
-    mbid = con.execute("SELECT mbid FROM artists LIMIT 1").fetchone()[0]
-    original = con.execute("SELECT genres FROM artists WHERE mbid = ?", [mbid]).fetchone()[0]
-    with restored(
-        con,
-        ("UPDATE artists SET genres = ? WHERE mbid = ?", [original, mbid]),
-        ("DELETE FROM genres WHERE genre_mbid IS NULL", []),
-    ):
-        con.execute(
-            "UPDATE artists SET genres = list_append(genres, "
-            "{'mbid': 'inconnu-null-poison', 'name': 'x', 'votes': 1}) WHERE mbid = ?",
-            [mbid],
-        )
-        # Named columns, not positional: this row exists to poison genre_mbid
-        # with a NULL, and it must not have to be rewritten every time the
-        # vocabulary gains a column it says nothing about.
-        con.execute(
-            "INSERT INTO genres (genre_mbid, name, n_artists) VALUES (NULL, 'null-poison', 0)"
-        )
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("unknown_genre") == 1
-
-
-def test_genre_n_artists_mismatch_is_reported(con):
-    genre_mbid = con.execute("SELECT genre_mbid FROM genres LIMIT 1").fetchone()[0]
-    original = con.execute(
-        "SELECT n_artists FROM genres WHERE genre_mbid = ?", [genre_mbid]
-    ).fetchone()[0]
-    with restored(
-        con, ("UPDATE genres SET n_artists = ? WHERE genre_mbid = ?", [original, genre_mbid])
-    ):
-        con.execute(
-            "UPDATE genres SET n_artists = ? WHERE genre_mbid = ?", [original + 1, genre_mbid]
-        )
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("genre_n_artists_mismatch") == 1
-
-
 def test_link_endpoint_missing_is_reported(con):
     artist = con.execute("SELECT mbid FROM artists LIMIT 1").fetchone()[0]
     with restored(con, ("DELETE FROM links WHERE dst_mbid = 'inconnu'", [])):
@@ -490,37 +436,6 @@ def test_link_unexpected_type_is_reported(con):
     assert violations.get("link_unexpected_type") == 1
 
 
-def test_corrections_file_too_large_is_reported(con):
-    with restored(con, ("DELETE FROM corrections", [])):
-        con.execute(
-            "INSERT INTO corrections SELECT 'm' || i, 'begin', '2000', 'j', 's' "
-            "FROM range(51) AS t(i)"
-        )
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("corrections_file_too_large") == 1
-
-
-def test_corrections_invalid_is_reported(con):
-    # Three real silent no-ops: an unknown mbid, a misspelled field (typo),
-    # and a field unsupported by apply_corrections.
-    mbid = con.execute("SELECT mbid FROM artists LIMIT 1").fetchone()[0]
-    with restored(
-        con,
-        (
-            "DELETE FROM corrections WHERE mbid = 'inconnu' OR field IN ('Begin', 'country')",
-            [],
-        ),
-    ):
-        con.execute(
-            "INSERT INTO corrections VALUES "
-            "('inconnu', 'begin', '2000', 'j', 's'), "
-            f"('{mbid}', 'Begin', '2000', 'j', 's'), "
-            f"('{mbid}', 'country', 'FR', 'j', 's')"
-        )
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("corrections_invalid") == 3
-
-
 def test_birth_misread_is_reported_on_both_sides(con):
     # A person's begin must land in y_birth only, and no other type may carry
     # one: each half of a swapped CASE in 10_bands.sql is caught.
@@ -583,31 +498,3 @@ def test_begin_misread_is_reported(con):
         con.execute("UPDATE artists SET type = NULL WHERE mbid = ?", [mbid])
         violations = dict(check_invariants(con, SQL))
     assert violations.get("begin_misread") == 1
-
-
-def test_corrections_duplicate_is_reported(con):
-    mbid = con.execute("SELECT mbid FROM artists LIMIT 1").fetchone()[0]
-    with restored(con, ("DELETE FROM corrections WHERE justification = 'dup'", [])):
-        con.execute(
-            "INSERT INTO corrections VALUES (?, 'begin', '2000', 'dup', 's'), "
-            "(?, 'begin', '1999', 'dup', 's')",
-            [mbid, mbid],
-        )
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("corrections_duplicate") == 1
-
-
-def test_corrections_invalid_survives_a_null_mbid_in_raw_artists(con):
-    # Same NULL trap as album_without_artist and unknown_genre: a NULL mbid
-    # in the `raw_artists` subquery used to make NOT IN never true.
-    with restored(
-        con,
-        ("DELETE FROM raw_artists WHERE mbid IS NULL", []),
-        ("DELETE FROM corrections WHERE mbid = 'inconnu-null-poison'", []),
-    ):
-        con.execute("INSERT INTO raw_artists (mbid) VALUES (NULL)")
-        con.execute(
-            "INSERT INTO corrections VALUES ('inconnu-null-poison', 'begin', '2000', 'j', 's')"
-        )
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("corrections_invalid") == 1
