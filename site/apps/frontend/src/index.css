@@ -68,13 +68,6 @@
   button[aria-busy='true'] {
     cursor: progress;
   }
-
-  /* Anchors (« Les plus gardés ») glide instead of jumping. */
-  @media (prefers-reduced-motion: no-preference) {
-    html {
-      scroll-behavior: smooth;
-    }
-  }
 }
 
 @layer utilities {
