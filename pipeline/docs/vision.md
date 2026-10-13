@@ -248,8 +248,7 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
   AzuraCast donne à Liquidsoap un fondu égal au réglage `crossfade`, 2 s, quand sa file compte
   `crossfade` × 1,5, 3 s (`Annotations.php`, `Queue::addDurationToTime`, 0.23.8) : la grille suit
   la file, qui choisit l'heure de chaque titre, et une heure joue ~14 s de plus que prévu, ce
-  que ses titres de fin absorbent. Les titres publiés avant le 2026-10-04 se rattrapent par
-  `radio antenne-cues`, puis `radio mesures`, qui remplace leurs mesures une à une.
+  que ses titres de fin absorbent.
 - **Balises** (ffmpeg, qui remplace toutes les balises d'origine) : artiste et titre Deezer,
   commentaire `deezer:<id>`, ISRC, album et pochette (`album.cover_xl`, 1000 × 1000) lus sur
   `/track/<id>` (la licence de ces pochettes reste à régulariser, `docs/vision.md` §2.5 à la
@@ -329,10 +328,7 @@ Justification : `recherches/…-observabilite.md` §3.
   AzuraCast lit les balises avec getID3, qui range `TSRC` sous `isrc` (`PhpReader`,
   `MetadataTags::Isrc`, `StationMedia` : vérifié dans le conteneur le 2026-10-04) ; le titre en
   cours l'expose dans `song.isrc`, que le site lit pour identifier le titre et son artiste
-  (`docs/vision.md` racine, §4.4). Les titres publiés avant se rattrapent par
-  `radio antenne-isrc` : chaque fichier est relu par `GET /file/{id}/play`, reçoit sa trame
-  (flux et autres balises copiés tels quels) et est redéposé sur son chemin ; le titre en cours
-  et la file attendent une relance, un fichier déjà étiqueté n'est pas redéposé.
+  (`docs/vision.md` racine, §4.4).
 - **Réalignement à chaque passe.** On compare la base au contenu de `antenne/` et on rapporte les
   écarts.
 

@@ -33,7 +33,6 @@ est dans le module.
 | `votes-select` | `votes/select.py` |
 | `acquire` | `acquire/run.py`, `acquire/sockseek.py`, `acquire/audio.py` (contrôle, conversion, points de coupe) |
 | `antenne` | `antenna/sync.py` |
-| `antenne-isrc`, `antenne-cues` | `antenna/sync.py` (rattrapages ponctuels) |
 | `mesures` | `signals/features.py` (mesures MTG des fichiers de l'antenne) |
 | `grille` | `antenna/grille.py` |
 | `backup` | `core/backup.py` |

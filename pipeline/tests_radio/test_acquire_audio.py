@@ -17,11 +17,9 @@ from radio.acquire.audio import (
     cue_of,
     cue_points,
     fingerprint,
-    isrc_of,
     prepare,
     probe,
     similarity,
-    with_cue,
 )
 from radio.core.config import AcquisitionConfig
 
@@ -116,7 +114,7 @@ def test_real_tools_identity_and_preparation(tmp_path: Path) -> None:
         "deezer:123",
     )
     assert "REPLAYGAIN_TRACK_GAIN" in {k.upper() for k in tags}
-    assert isrc_of(dest) == "FRZ039800212"
+    assert _tags(dest)["TSRC"] == "FRZ039800212"
     assert cue_of(dest) == cue_points(full)  # points de coupe du fichier source
     assert _pictures(dest) == 1  # la pochette survit à rsgain
     assert sorted(f.name for f in tmp_path.iterdir() if f.name.startswith(".")) == []
@@ -124,7 +122,7 @@ def test_real_tools_identity_and_preparation(tmp_path: Path) -> None:
     bare = tmp_path / "124.mp3"
     prepare(dest, bare, "mp3", Tags("Artiste", "Titre", 124, "", None), rsgain)
     assert _pictures(bare) == 0
-    assert isrc_of(bare) is None
+    assert "TSRC" not in _tags(bare)
 
 
 def _ffmpeg(*args: str) -> None:
@@ -268,32 +266,6 @@ def test_no_sound_gives_no_cue(tmp_path: Path) -> None:
     wav = tmp_path / "s.wav"
     _sound(wav, (3, None))
     assert cue_points(wav) is None
-
-
-@pytest.mark.skipif(not TOOLS, reason="ffmpeg et rsgain requis")
-def test_cue_tags_are_added_without_touching_anything_else(tmp_path: Path) -> None:
-    src, dest = tmp_path / "a.mp3", tmp_path / "b.mp3"
-    _ffmpeg(
-        "-f",
-        "lavfi",
-        "-i",
-        "sine=d=3",
-        "-c:a",
-        "libmp3lame",
-        "-id3v2_version",
-        "3",
-        "-metadata",
-        "TSRC=FRZ039800212",
-        str(src),
-    )
-    subprocess.run([str(shutil.which("rsgain")), "custom", "-s", "i", "-q", str(src)], check=True)
-    assert cue_of(src) is None
-    with_cue(src, dest, Cue(0.5, 2.5))
-    assert cue_of(dest) == Cue(0.5, 2.5)
-    assert isrc_of(dest) == "FRZ039800212"
-    before, after = _tags(src), _tags(dest)
-    assert before["REPLAYGAIN_TRACK_GAIN"] == after["REPLAYGAIN_TRACK_GAIN"]
-    assert probe(dest).duration_s == probe(src).duration_s
 
 
 def _frames(*m: float, integrated: float = -10.0) -> list[tuple[float, float, float]]:

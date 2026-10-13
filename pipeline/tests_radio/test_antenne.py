@@ -1,6 +1,4 @@
 import json
-import shutil
-import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -10,8 +8,8 @@ import pytest
 import responses
 
 import radio.antenna.sync as sync_mod
-from radio.acquire.audio import Probe, Tags, ToolError, cue_of, isrc_of
-from radio.antenna.sync import CueReport, IsrcReport, antenne_pass, cue_backfill, isrc_backfill
+from radio.acquire.audio import Probe, Tags, ToolError
+from radio.antenna.sync import antenne_pass
 from radio.core.config import AntenneConfig, Creneau, GrilleConfig
 from radio.sources.azuracast import AzuracastClient, AzuracastError, Media
 from radio.sources.deezer import DeezerAlbum, DeezerError, DeezerTrack, TrackPage
@@ -528,8 +526,6 @@ def test_client_shapes() -> None:
         "currentDirectory": "",
         "directory": "repos",
     }
-    responses.get(API + "/file/3/play", body=b"ID3")
-    assert c.download(3) == b"ID3"
     assert all(call.request.headers["X-API-Key"] == "cle" for call in responses.calls)
 
 
@@ -545,121 +541,3 @@ def test_client_refusal_is_an_error() -> None:
     responses.post(API + "/files", status=413)
     with pytest.raises(AzuracastError):
         AzuracastClient("http://127.0.0.1:8080", "k").upload("antenne/1.mp3", b"")
-
-
-ISRC = "FRZ039800212"
-
-
-class IsrcDeezer:
-    """1 a un ISRC, 2 n'en a pas, 3 a disparu de Deezer, les autres ont l'ISRC 1."""
-
-    def track_page(self, tid: int) -> TrackPage | None:
-        if tid == 3:
-            return None
-        track = DeezerTrack(tid, "T", "T", 1, 1, 1, "A", True)
-        return TrackPage(track, None, None, None if tid == 2 else ISRC)
-
-
-def _mp3(path: Path, *tags: str) -> bytes:
-    subprocess.run(
-        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono", "-t", "1"]
-        + ["-c:a", "libmp3lame", "-id3v2_version", "3", "-metadata", "comment=deezer:1"]
-        + [x for t in tags for x in ("-metadata", t)]
-        + [str(path)],
-        check=True,
-    )
-    return path.read_bytes()
-
-
-@pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")), reason="ffmpeg")
-def test_isrc_backfill_tags_each_file_once(tmp_path: Path) -> None:
-    conn = make_model_db(tmp_path)
-    rows = [(t, "decouverte", "decouvertes") for t in (1, 2, 3, 4, 5)]
-    station = _on_air(conn, rows, LATER)
-    bare = _mp3(tmp_path / "bare.mp3")
-    station.blobs = {
-        1: bare,
-        2: bare,
-        3: bare,
-        4: bare,
-        5: _mp3(tmp_path / "t.mp3", f"TSRC={ISRC}"),
-    }
-    station.busy = {"s4"}
-    deezer: Any = IsrcDeezer()
-
-    rep = IsrcReport()
-    isrc_backfill(conn, station, deezer, rep)
-
-    assert (rep.n_tagged, rep.n_already, rep.n_no_isrc, rep.n_gone, rep.n_busy) == (1, 1, 1, 1, 1)
-    assert rep.errors == []
-    media_id, path = conn.execute(
-        "SELECT media_id, path FROM antenne WHERE deezer_track_id = 1"
-    ).fetchone()
-    assert path == "antenne/1.mp3"
-    written = tmp_path / "written.mp3"
-    written.write_bytes(station.blobs[media_id])
-    assert isrc_of(written) == ISRC
-
-    again = IsrcReport()
-    isrc_backfill(conn, station, deezer, again)
-    assert (again.n_tagged, again.n_already) == (0, 2)
-
-
-def _tone(path: Path, *tags: str) -> bytes:
-    """1 s de silence numérique, 2 s de son, 2 s de silence."""
-    subprocess.run(
-        ["ffmpeg", "-v", "error", "-y"]
-        + ["-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono:d=1"]
-        + ["-f", "lavfi", "-i", "sine=r=44100:d=2"]
-        + ["-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono:d=2"]
-        + ["-filter_complex", "[0][1][2]concat=n=3:v=0:a=1", "-c:a", "libmp3lame"]
-        + ["-id3v2_version", "3", "-metadata", "comment=deezer:1"]
-        + [x for t in tags for x in ("-metadata", t)]
-        + [str(path)],
-        check=True,
-    )
-    return path.read_bytes()
-
-
-@pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")), reason="ffmpeg")
-def test_cue_backfill_cuts_each_file_once_and_has_it_measured_again(tmp_path: Path) -> None:
-    conn = make_model_db(tmp_path)
-    rows = [(t, "decouverte", "decouvertes") for t in (1, 2, 3, 4)]
-    station = _on_air(conn, rows, LATER)
-    for tid in (1, 2):
-        conn.execute(
-            "INSERT INTO track_features VALUES (?, 'ok', 'm', 'd', 5.0, "
-            + ", ".join("?" * 12)
-            + ")",
-            (tid, *([0.5] * 12)),
-        )
-    conn.commit()
-    station.blobs = {
-        1: _tone(tmp_path / "a.mp3", f"TSRC={ISRC}"),
-        2: _tone(tmp_path / "b.mp3", "cue_in=0.6", "cue_out=3.4"),
-        3: _mp3(tmp_path / "silent.mp3"),
-        4: _tone(tmp_path / "c.mp3"),
-    }
-    station.busy = {"s4"}
-
-    rep = CueReport()
-    cue_backfill(conn, station, rep)
-
-    assert (rep.n_tagged, rep.n_already, rep.n_silent, rep.n_busy) == (1, 1, 1, 1)
-    assert rep.errors == ["3 : aucun son au-dessus des seuils"]
-    media_id, path = conn.execute(
-        "SELECT media_id, path FROM antenne WHERE deezer_track_id = 1"
-    ).fetchone()
-    assert path == "antenne/1.mp3"
-    written = tmp_path / "written.mp3"
-    written.write_bytes(station.blobs[media_id])
-    cue = cue_of(written)
-    assert cue is not None and 0.5 <= cue.cue_in <= 1.0 and 2.9 <= cue.cue_out <= 3.5
-    assert isrc_of(written) == ISRC  # les autres balises restent
-    # Le titre coupé sera mesuré de nouveau, sur sa partie jouée ; d'ici là, sa mesure reste.
-    models = dict(conn.execute("SELECT deezer_track_id, model FROM track_features"))
-    assert models == {1: "", 2: "m"}
-
-    again = CueReport()
-    cue_backfill(conn, station, again)
-    assert (again.n_tagged, again.n_already) == (0, 2)

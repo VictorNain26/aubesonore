@@ -51,10 +51,6 @@ class AzuracastClient:
         )
         return Media(int(m["id"]), str(m["song_id"]), str(m["path"]))
 
-    def download(self, media_id: int) -> bytes:
-        """Le fichier tel qu'AzuraCast le sert (`GET /file/{id}/play`)."""
-        return self._request("GET", self._at(f"/file/{media_id}/play")).content
-
     def delete(self, paths: list[str]) -> list[str]:
         """Supprime des fichiers ; renvoie les erreurs signalées par AzuraCast."""
         r = self._call("PUT", self._at("/files/batch"), json={"do": "delete", "files": paths})
