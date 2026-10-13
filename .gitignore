@@ -1,4 +1,4 @@
-# Racine du dépôt : chaque dossier (site/, pipeline/, azuracast/) a son propre .gitignore.
+# Racine du dépôt : chaque dossier (site/, pipeline/, azuracast/, musilogy/) a son propre .gitignore.
 # Outillage local, comme dans site/.gitignore : worktrees d'agents Claude Code
 # et cache de Turborepo créés à la racine du checkout.
 .claude/worktrees/

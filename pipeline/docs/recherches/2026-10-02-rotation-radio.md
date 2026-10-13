@@ -143,7 +143,7 @@ horaires et plages de dates). Le reste vient du code `0.23.8`.
 | Ordre | `shuffle` (toute la playlist mélangée puis jouée jusqu'au bout), `random` (tirage indépendant), `sequential` | `Enums/PlaylistOrders.php`, `frontend/.../Playlists/Form/BasicInfo.vue` |
 | Poids | `weight` 1 à 25, défaut 3 ; « Larger numbers play more often » | `Entity/StationPlaylist.php`, `BasicInfo.vue` |
 | Choix entre playlists | par type et par priorité, puis tirage pondéré (`weightedShuffle`, clé `u^(1/w)`) | `Radio/AutoDJ/QueueBuilder.php` |
-| Anti-doublon | `avoid_duplicates` par playlist ; fenêtre station `duplicate_prevention_time_range` en minutes (défaut 120 ; **180 chez AubeSonore**, `azuracast/backend_config.backup.json`) ; compare artiste **et** titre ; sinon prend le moins récemment joué | `Radio/AutoDJ/DuplicatePrevention.php`, `StationBackendConfiguration.php` |
+| Anti-doublon | `avoid_duplicates` par playlist ; fenêtre station `duplicate_prevention_time_range` en minutes (défaut 120 ; **180 chez AubeSonore**, réglage de la station) ; compare artiste **et** titre ; sinon prend le moins récemment joué | `Radio/AutoDJ/DuplicatePrevention.php`, `StationBackendConfiguration.php` |
 | Programmation | plages horaires, `start_date`/`end_date`, `loop_once` | `Entity/StationSchedule.php` |
 | Playlist ↔ dossier | rattachement **récursif** (`path LIKE 'dossier/%'`), resynchronisé toutes les 5 min | `Sync/Task/CheckFolderPlaylistsTask.php`, `StationPlaylistFolderRepository.php` |
 | Déplacement | `PUT /files/batch` `do=move` : déplacement de fichier, pas de réécriture des balises | `Controller/Api/Stations/Files/BatchAction.php` |

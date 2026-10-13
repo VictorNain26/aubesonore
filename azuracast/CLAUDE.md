@@ -5,9 +5,9 @@
 Ce dossier est d'abord un **runtime**, pas un projet. Le dépôt ne capture que la
 partie reproductible :
 
-- **versionné** — `docker-compose.yml`, `.env.example`, ce guide, `RUNBOOK.md`,
-  `scripts/`, l'instantané `backend_config.backup.json`, et les fichiers `*.sample.*` fournis par l'installeur amont
-  (référence utile pour voir ce qu'on a modifié).
+- **versionné** — `docker-compose.yml` (son en-tête liste ce qui diffère de l'exemple amont),
+  `.env.example`, `azuracast.sample.env` (le modèle d'`azuracast.env`), ce guide, `RUNBOOK.md` et
+  `scripts/`.
 - **ignoré** — `stations/` (le catalogue et la config réécrite par l'UI), `.env`,
   `azuracast.env` (mot de passe MariaDB), les journaux.
 
