@@ -12,8 +12,7 @@ import { findTrackByIsrc, searchTrack, type DeezerTrackLink } from './deezerServ
 // - Apple Music: iTunes Search, which also gives the cover;
 // - Deezer: the track of the kept track's ISRC when it is known, an exact
 //   recording (the pipeline acquires every track from its Deezer page and
-//   writes that page's ISRC); else its public search, then that track's ISRC;
-// - every other platform: the song.link landing page, which resolves itself.
+//   writes that page's ISRC); else its public search, then that track's ISRC.
 // ─────────────────────────────────────────────
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -22,8 +21,6 @@ export const linksCache = new TtlCache<TrackLinks | null>(SEVEN_DAYS_MS);
 export const itunesCache = new TtlCache<ItunesResult | null>(SEVEN_DAYS_MS);
 
 export interface TrackLinks {
-  /** song.link landing page for the platforms without a link of their own. */
-  songlinkUrl?: string;
   platformLinks: PlatformLinks;
   /** Cover of the artist-verified iTunes candidate (600px). */
   artworkUrl?: string;
@@ -71,6 +68,11 @@ interface ItunesResult {
  * same artist still gives a fitting cover); the title picks among them and
  * decides whether the Apple Music link points to this very song.
  */
+/** The cover of the artist-verified iTunes candidate (600 px), what a kept track shows. */
+export async function findItunesCover(title: string, artist: string): Promise<string | null> {
+  return (await searchItunes(title, artist))?.artworkUrl ?? null;
+}
+
 async function searchItunes(title: string, artist: string): Promise<ItunesResult | null> {
   const cacheKey = `${title.toLowerCase()}|${artist.toLowerCase()}`;
   const cached = itunesCache.get(cacheKey);
@@ -165,12 +167,10 @@ export async function findTrackLinks(
   if (itunes.value?.exactSong) platformLinks.appleMusic = itunes.value.trackViewUrl;
   if (deezer.value) platformLinks.deezer = deezer.value.link;
 
-  const anchor = deezer.value?.link ?? platformLinks.appleMusic;
   const result: TrackLinks | null =
-    anchor || itunes.value?.artworkUrl
+    platformLinks.appleMusic || platformLinks.deezer || itunes.value?.artworkUrl
       ? {
           platformLinks,
-          ...(anchor ? { songlinkUrl: `https://song.link/${anchor}` } : {}),
           ...(itunes.value?.artworkUrl ? { artworkUrl: itunes.value.artworkUrl } : {}),
         }
       : null;

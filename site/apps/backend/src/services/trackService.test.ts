@@ -72,7 +72,7 @@ void mock.module('../db/index', () => ({ db: fakeDb, schema: realSchema }));
 // spyOn, not mock.module: Bun leaks a mocked module into the other test files
 // even with --isolate, and trackLinksService.test needs the real one.
 const trackLinks = await import('./trackLinksService');
-const findTrackLinksMock = spyOn(trackLinks, 'findTrackLinks').mockResolvedValue(null);
+const findItunesCoverMock = spyOn(trackLinks, 'findItunesCover').mockResolvedValue(null);
 const radioPlays = await import('./radioPlayService');
 const findPlayMock = spyOn(radioPlays, 'findPlay').mockResolvedValue(null);
 const resolver = await import('./artistResolver');
@@ -110,21 +110,21 @@ async function flushBackgroundWork(): Promise<void> {
 
 beforeEach(() => {
   rows = [];
-  findTrackLinksMock.mockClear();
+  findItunesCoverMock.mockClear();
   fetchMock.mockClear();
 });
 
 afterAll(() => {
-  findTrackLinksMock.mockRestore();
+  findItunesCoverMock.mockRestore();
   findPlayMock.mockRestore();
   resolveArtistMock.mockRestore();
   globalThis.fetch = originalFetch;
 });
 
 describe('likeTrack → background enrichment', () => {
-  it('swaps the AzuraCast artwork for our own copy when Songlink has no match', async () => {
+  it('swaps the AzuraCast artwork for our own copy when iTunes has no verified cover', async () => {
     const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
-    findTrackLinksMock.mockResolvedValueOnce(null);
+    findItunesCoverMock.mockResolvedValueOnce(null);
     fetchMock.mockResolvedValueOnce(
       new Response(jpeg, { headers: { 'content-type': 'image/jpeg' } })
     );
@@ -144,8 +144,8 @@ describe('likeTrack → background enrichment', () => {
     expect(rows[0]?.artworkUrl).toBe(`http://localhost:3000/api/covers/${sha256}`);
   });
 
-  it('keeps the AzuraCast artwork when neither Songlink nor the copy succeeds', async () => {
-    findTrackLinksMock.mockResolvedValueOnce(null);
+  it('keeps the AzuraCast artwork when neither iTunes nor the copy succeeds', async () => {
+    findItunesCoverMock.mockResolvedValueOnce(null);
 
     await likeTrack({
       user: fakeUser,
@@ -159,15 +159,10 @@ describe('likeTrack → background enrichment', () => {
     await flushBackgroundWork();
 
     expect(rows[0]?.artworkUrl).toBe('https://azuracast.example.com/art/abc.jpg');
-    expect(rows[0]?.songlinkUrl).toBeNull();
   });
 
-  it('uses the verified iTunes artwork directly when a Songlink match is found', async () => {
-    findTrackLinksMock.mockResolvedValueOnce({
-      songlinkUrl: 'https://song.link/abc',
-      platformLinks: { deezer: 'https://www.deezer.com/track/abc' },
-      artworkUrl: 'https://apple-cdn.example.com/art/hd.jpg',
-    });
+  it('uses the verified iTunes artwork directly when there is one', async () => {
+    findItunesCoverMock.mockResolvedValueOnce('https://apple-cdn.example.com/art/hd.jpg');
 
     await likeTrack({
       user: fakeUser,
@@ -181,35 +176,11 @@ describe('likeTrack → background enrichment', () => {
     await flushBackgroundWork();
 
     expect(rows[0]?.artworkUrl).toBe('https://apple-cdn.example.com/art/hd.jpg');
-    expect(rows[0]?.songlinkUrl).toBe('https://song.link/abc');
-    expect(rows[0]?.platformLinks).toEqual({ deezer: 'https://www.deezer.com/track/abc' });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('keeps the AzuraCast artwork when a match carries links but no iTunes cover', async () => {
-    findTrackLinksMock.mockResolvedValueOnce({
-      songlinkUrl: 'https://song.link/nocover',
-      platformLinks: { deezer: 'https://www.deezer.com/track/nocover' },
-    });
-
-    await likeTrack({
-      user: fakeUser,
-      body: {
-        title: 'Cover-less Song',
-        artist: 'Known Artist',
-        youtubeUrl: 'https://youtube.example.com/watch?v=noc',
-        artworkUrl: 'https://azuracast.example.com/art/noc.jpg',
-      },
-    });
-    await flushBackgroundWork();
-
-    expect(rows[0]?.artworkUrl).toBe('https://azuracast.example.com/art/noc.jpg');
-    expect(rows[0]?.songlinkUrl).toBe('https://song.link/nocover');
-    expect(rows[0]?.platformLinks).toEqual({ deezer: 'https://www.deezer.com/track/nocover' });
-  });
-
-  it('leaves artwork_url untouched when there is no AzuraCast art and no Songlink match', async () => {
-    findTrackLinksMock.mockResolvedValueOnce(null);
+  it('leaves artwork_url untouched when there is no AzuraCast art and no iTunes cover', async () => {
+    findItunesCoverMock.mockResolvedValueOnce(null);
 
     await likeTrack({
       user: fakeUser,
@@ -222,28 +193,6 @@ describe('likeTrack → background enrichment', () => {
     await flushBackgroundWork();
 
     expect(rows[0]?.artworkUrl).toBeNull();
-  });
-});
-
-describe('likeTrack → links of the very recording', () => {
-  it("asks the links with the play's ISRC, not the one the client sent", async () => {
-    // Both background tasks look the play up: the enrichment, then linkKeptTrack.
-    findPlayMock
-      .mockResolvedValueOnce({ title: 'F Major', isrc: 'DEN271800071' })
-      .mockResolvedValueOnce({ title: 'F Major', isrc: 'DEN271800071' });
-
-    await likeTrack({
-      user: fakeUser,
-      body: {
-        title: 'F Major',
-        artist: 'Hania Rani',
-        youtubeUrl: 'https://youtube.example.com/watch?v=f',
-        isrc: 'XX0000000000',
-      },
-    });
-    await flushBackgroundWork();
-
-    expect(findTrackLinksMock).toHaveBeenCalledWith('F Major', 'Hania Rani', 'DEN271800071');
   });
 });
 

@@ -23,8 +23,8 @@ interface ServiceResponse<T = LikedTrack> {
 // Routes /api/track
 // ─────────────────────────────────────────────
 
-// Per-user cap on mutations that fan out to external services (iTunes /
-// Songlink enrichment). Generous enough to never touch real usage.
+// Per-user cap on mutations that fan out to external services (the iTunes
+// cover, the YouTube lookup). Generous enough to never touch real usage.
 const TRACK_MUTATION_LIMIT = 60;
 const TRACK_MUTATION_WINDOW_MS = 60_000;
 

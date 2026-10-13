@@ -11,7 +11,6 @@ import { trackRoutes } from './routes/track.routes';
 import { artistRoutes } from './routes/artist.routes';
 import { musilogyRoutes } from './routes/musilogy.routes';
 import { artistPageRoutes } from './routes/artistPage.routes';
-import { statsRoutes } from './routes/stats.routes';
 import { trendsRoutes } from './routes/trends.routes';
 import { radioRoutes } from './routes/radio.routes';
 import { shareRoutes } from './routes/share.routes';
@@ -83,7 +82,7 @@ const app = new Elysia()
     cors({
       origin: env.ALLOWED_ORIGINS,
       credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
       // The plugin's default (true) lists the request's own header names, Cloudflare's included;
       // the site reads no response header beyond the safelisted ones.
@@ -95,7 +94,6 @@ const app = new Elysia()
   .use(artistRoutes)
   .use(musilogyRoutes)
   .use(artistPageRoutes)
-  .use(statsRoutes)
   .use(trendsRoutes)
   .use(radioRoutes)
   .use(shareRoutes)

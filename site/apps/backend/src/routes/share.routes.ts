@@ -33,12 +33,12 @@ export const shareRoutes = new Elysia().get('/t', async ({ request, query, set }
     return { error: 'Paramètres "artist" et "title" requis' };
   }
 
-  let songlink = null;
+  let links = null;
   try {
-    songlink = await findTrackLinks(title, artist);
+    links = await findTrackLinks(title, artist);
   } catch (error) {
-    // Transient Songlink failure: the page renders without cover/links.
-    logger.warn('share.songlink_error', {
+    // A platform failing: the page renders without its cover or links.
+    logger.warn('share.links_failed', {
       title,
       artist,
       message: error instanceof Error ? error.message : String(error),
@@ -54,5 +54,5 @@ export const shareRoutes = new Elysia().get('/t', async ({ request, query, set }
   // key, a different one would ship two merged CSP values.
   set.headers['Content-Security-Policy'] = SHARE_PAGE_CSP;
   const locale = pickShareLocale(request.headers.get('accept-language'));
-  return renderSharePage({ title, artist, shareUrl, songlink, locale });
+  return renderSharePage({ title, artist, shareUrl, links, locale });
 });

@@ -61,7 +61,6 @@ describe('findTrackLinks', () => {
         appleMusic: 'https://music.apple.com/fr/song/in-flight/1',
         deezer: 'https://www.deezer.com/track/1616626132',
       },
-      songlinkUrl: 'https://song.link/https://www.deezer.com/track/1616626132',
       artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/a/600x600bb.jpg',
     });
   });
