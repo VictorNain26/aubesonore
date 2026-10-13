@@ -1,4 +1,4 @@
-"""Mini-bibliothèque partagée par les tests v3-2."""
+"""Mini-bibliothèque partagée par les tests."""
 
 import sqlite3
 from pathlib import Path

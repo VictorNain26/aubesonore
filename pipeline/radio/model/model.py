@@ -13,7 +13,6 @@ import sqlite3
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import joblib
 import numpy as np
@@ -196,7 +195,9 @@ class TrainReport:
     current_auc: float | None
 
 
-def _decide(current: tuple[int, Any] | None, new: float | None, cur: float | None) -> str | None:
+def _decide(
+    current: tuple[int, Pipeline] | None, new: float | None, cur: float | None
+) -> str | None:
     """Raison du refus, ou None si le nouveau modèle est mis en service."""
     if current is None:
         return None

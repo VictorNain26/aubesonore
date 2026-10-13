@@ -412,6 +412,7 @@ def test_a_discovery_removed_from_antenna_is_never_republished(
     tmp_path: Path, no_tools: None
 ) -> None:
     conn = make_model_db(tmp_path)
+    serve_scores(conn)
     _ready(conn, tmp_path, [200000])
     station = FakeStation()
     assert _run(conn, station).n_published == 1
