@@ -72,7 +72,7 @@ export function __resetYouTubePause(): void {
   pausedUntil = 0;
 }
 
-export interface ArtTrack {
+interface ArtTrack {
   title: string;
   artists: string[];
 }

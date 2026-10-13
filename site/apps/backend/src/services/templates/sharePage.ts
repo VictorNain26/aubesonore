@@ -2,7 +2,7 @@ import { PLATFORM_NAMES, type PlatformLinks } from '@aubesonore/shared-types/cli
 import type { TrackLinks } from '../trackLinksService';
 import { env } from '../../config/env';
 
-export function escapeHtml(value: string): string {
+function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')

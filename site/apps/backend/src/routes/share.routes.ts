@@ -12,7 +12,7 @@ const SHARE_PAGE_CSP = "default-src 'self'; img-src https:; style-src 'unsafe-in
 
 // First fr/en token wins, French by default. Deliberately naive (ignores
 // q-values): the header is nearly always a single locale or fr/en ordered.
-export function pickShareLocale(acceptLanguage: string | null): ShareLocale {
+function pickShareLocale(acceptLanguage: string | null): ShareLocale {
   if (!acceptLanguage) return 'fr';
   const match = /(?:^|,)\s*(fr|en)\b/i.exec(acceptLanguage);
   return match?.[1]?.toLowerCase() === 'en' ? 'en' : 'fr';

@@ -32,8 +32,7 @@ async function topLikedTracks(since?: Date): Promise<TrendEntry[]> {
     .select({
       title: schema.likedTracks.title,
       artist: schema.likedTracks.artist,
-      // MAX picks one representative cover per group; artwork_url only,
-      // never artwork_base64 (payload size rule).
+      // MAX picks one representative cover per group.
       artworkUrl: max(schema.likedTracks.artworkUrl),
       likes: count(),
       // The joins match at most one row each (the artist's key, its MBID's slug, its own), so

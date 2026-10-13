@@ -13,7 +13,7 @@ const MIGRATIONS_TABLE = '__app_migrations';
 // up-to-date, and exits the runner immediately.
 const MIGRATION_LOCK_KEY = 727823746;
 
-// Migrations that are already applied in production on Railway. The runner
+// Migrations already applied in production before this runner existed. The runner
 // records them as applied on first boot WITHOUT executing them — they are
 // historical Drizzle-generated files that are NOT idempotent and would fail
 // if rerun against an existing schema.

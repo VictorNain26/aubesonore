@@ -3,8 +3,7 @@
 // Same multi-instance caveat as `lib/cache/ttlCache.ts`: each replica keeps
 // its own counter, so the *effective* limit per IP is `limit × replicas`.
 // Acceptable today (mono-instance); migrate to Redis with the other
-// in-memory state when horizontal scaling is enabled. See CLAUDE.md
-// "Scaling roadmap" for the trigger.
+// in-memory state when horizontal scaling is enabled (docs/scaling-roadmap.md).
 
 const TOO_MANY = { error: 'Trop de requêtes, réessayez dans 1 minute' } as const;
 

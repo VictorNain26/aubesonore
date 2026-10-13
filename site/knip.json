@@ -5,9 +5,6 @@
     "apps/frontend": {
       "entry": ["scripts/*.mjs", "src/entry-server.tsx"],
       "project": ["src/**/*.{ts,tsx,css}", "scripts/*.mjs"]
-    },
-    "apps/backend": {
-      "entry": ["scripts/dev/*.ts"]
     }
   }
 }

@@ -4,12 +4,12 @@ API de la webradio, construite avec [Elysia](https://elysiajs.com/) sur [Bun](ht
 
 ## Variables
 
-Liste complète dans `.env.example`, lue seulement par `src/config/env.ts` :
+Liste complète dans `site/.env.example`, que lit `pnpm stack`, et lue seulement par `src/config/env.ts` :
 
 - `DATABASE_URL` — connexion PostgreSQL
 - `BETTER_AUTH_URL`, `BETTER_AUTH_SECRET` — configuration Better Auth
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — OAuth Google
-- `ALLOWED_ORIGINS`, `COOKIE_DOMAIN`, `FRONTEND_BASE_URL`, `BACKEND_BASE_URL`
+- `ALLOWED_ORIGINS`, `COOKIE_DOMAIN`, `FRONTEND_BASE_URL`
 - `AZURACAST_BASE_URL`, `AZURACAST_API_KEY`, `AZURACAST_STATION_ID`
 - `OUTBOUND_USER_AGENT` — User-Agent avec contact exigé par MusicBrainz et Wikimedia
 - `YOUTUBE_API_KEY` — facultative : sans elle, chaque titre gardé ouvre une recherche YouTube
