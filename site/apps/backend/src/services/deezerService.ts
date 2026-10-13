@@ -2,6 +2,7 @@ import { TtlCache } from '../lib/cache/ttlCache';
 import type { Lookup } from '../lib/lookup';
 import { createSingleFlight } from '../lib/singleFlight';
 import { logger } from '../lib/logger';
+import { songMatch } from '../lib/text/matchScore';
 
 export interface DeezerArtist {
   id: string;
@@ -203,6 +204,53 @@ export async function findTrackByIsrc(isrc: string): Promise<Lookup<DeezerIsrcTr
     deezerCache.set(key, result, result.status === 'none' ? NEGATIVE_TTL_MS : undefined);
     return result;
   })) as Lookup<DeezerIsrcTrack>;
+}
+
+export interface DeezerTrackLink {
+  link: string;
+  isrc: string | null;
+}
+
+interface RawSearchTrack {
+  id?: number;
+  title?: string;
+  link?: string;
+  artist?: RawArtist;
+}
+
+/**
+ * A track on Deezer by its title and artist, for a kept track without an ISRC Deezer knows.
+ * Deezer's advanced filter (`artist:"…"`) is broken: plain text, then the strict title and artist
+ * match decides (songMatch); the track's own page then gives its ISRC.
+ */
+export async function searchTrack(title: string, artist: string): Promise<Lookup<DeezerTrackLink>> {
+  const key = `track:${title.toLowerCase()}|${artist.toLowerCase()}`;
+  const cached = deezerCache.get(key);
+  if (cached !== undefined) return cached as Lookup<DeezerTrackLink>;
+
+  return (await flight(key, async () => {
+    const found = await getJson<{ data?: RawSearchTrack[] }>(
+      `/search?q=${encodeURIComponent(`${artist} ${title}`)}&limit=${SEARCH_LIMIT}`
+    );
+    if (found.status === 'failed') return { status: 'failed' };
+    const pick = (found.status === 'ok' ? (found.body.data ?? []) : []).find(
+      (c) =>
+        c.title !== undefined &&
+        c.artist?.name !== undefined &&
+        songMatch({ title, artist }, { title: c.title, artist: c.artist.name })
+    );
+    let result: Lookup<DeezerTrackLink> = { status: 'none' };
+    if (pick?.id !== undefined && pick.link) {
+      const track = await getJson<{ isrc?: string }>(`/track/${pick.id}`);
+      if (track.status === 'failed') return { status: 'failed' };
+      result = {
+        status: 'found',
+        value: { link: pick.link, isrc: track.status === 'ok' ? (track.body.isrc ?? null) : null },
+      };
+    }
+    deezerCache.set(key, result, result.status === 'none' ? NEGATIVE_TTL_MS : undefined);
+    return result;
+  })) as Lookup<DeezerTrackLink>;
 }
 
 /** Test seam: the breaker is module state and would leak between test files. */

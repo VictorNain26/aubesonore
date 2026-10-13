@@ -11,7 +11,7 @@ import {
   reverifyArtist,
 } from '../services/artistResolver';
 import { findPlay } from '../services/radioPlayService';
-import { searchDeezer } from '../services/trackLinksService';
+import { searchTrack } from '../services/deezerService';
 
 // One-off catch-up (docs/vision.md §4.4). Plays recorded before AzuraCast
 // reported ISRCs get theirs from the station's media, matched on artist and
@@ -92,7 +92,9 @@ let tied = 0;
 for (const kept of untied) {
   try {
     const play = await findPlay(kept.title, kept.artist);
-    const match = play ? null : await searchDeezer(kept.title, kept.artist);
+    const search = play ? null : await searchTrack(kept.title, kept.artist);
+    if (search?.status === 'failed') throw new Error('Deezer failed');
+    const match = search?.status === 'found' ? search.value : null;
     const isrc = play?.isrc ?? toIsrc(match?.isrc);
     const resolved = play
       ? await resolveArtist(kept.artist)
