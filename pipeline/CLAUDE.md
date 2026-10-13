@@ -14,12 +14,36 @@ uv sync                                  # dépendances (.venv)
 .venv/bin/pytest -q -W error             # suite complète, ~12 s, sans réseau
 .venv/bin/ruff check radio tests_radio && .venv/bin/ruff format --check radio tests_radio
 .venv/bin/mypy                           # strict
-.venv/bin/radio --help                   # library-sync, discover, nouveautes, favoris, negatives-sync,
-                                         # signals, train, votes-select, acquire, antenne,
-                                         # antenne-isrc, antenne-cues (rattrapages ponctuels),
-                                         # mesures, grille, check, report, backup,
-                                         # votes-serve, votes-remind
+.venv/bin/radio --help                   # les commandes ci-dessous
+sqlite3 data/radio.db .schema            # le schéma en vigueur, que les migrations reconstruisent
 ```
+
+`radio/cli.py` lit la configuration, appelle le module et met en forme le rapport ; le travail
+est dans le module.
+
+| Commande | Module, sous `radio/` |
+|---|---|
+| `library-sync` | `library/sync.py` (lecture Plex), `library/match.py` (rapprochement Deezer), `library/artists.py` (inscription) |
+| `discover` | `discover/run.py` (voisins des artistes de la bibliothèque) |
+| `nouveautes` | `discover/fresh.py` (Hype Machine, éditeurs Deezer) |
+| `favoris` | `discover/favorites.py` |
+| `negatives-sync` | `discover/negatives.py` (`config/negatives.toml`) |
+| `signals` | `signals/measure.py` (empreinte EffNet des extraits Deezer, `signals/audio.py`) |
+| `train` | `model/model.py`, `model/dataset.py` |
+| `votes-select` | `votes/select.py` |
+| `acquire` | `acquire/run.py`, `acquire/sockseek.py`, `acquire/audio.py` (contrôle, conversion, points de coupe) |
+| `antenne` | `antenna/sync.py` |
+| `antenne-isrc`, `antenne-cues` | `antenna/sync.py` (rattrapages ponctuels) |
+| `mesures` | `signals/features.py` (mesures MTG des fichiers de l'antenne) |
+| `grille` | `antenna/grille.py` |
+| `backup` | `core/backup.py` |
+| `report`, `check` | `cli.py`, `core/report.py`, `votes/status.py` |
+| `votes-serve` | `votes/app.py` |
+| `votes-remind` | `cli.py`, `notify/whatsapp.py` |
+
+Deux dossiers de modèles : `models/` à la racine porte les poids MTG téléchargés (EffNet et
+mesures), `data/models/` les modèles entraînés par `train`. `core/http.py` n'est pas un client :
+c'est le hook de relance de stamina, enregistré à l'import par les clients de `sources/`.
 
 ## Invariants
 
