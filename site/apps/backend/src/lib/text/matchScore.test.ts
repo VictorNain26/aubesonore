@@ -30,6 +30,20 @@ describe('artistMatch', () => {
   it('rejects a different artist', () => {
     expect(artistMatch('gemstonemario', 'Écho Mémoire')).toBe(false);
   });
+  it('tells apart two names in another script', () => {
+    expect(artistMatch('Кино', 'Ария')).toBe(false);
+    expect(artistMatch('坂本龍一', '久石譲')).toBe(false);
+  });
+
+  it('accepts the same name in another script', () => {
+    expect(artistMatch('Кино', 'кино')).toBe(true);
+    expect(artistMatch('坂本龍一', '坂本龍一')).toBe(true);
+  });
+
+  it('never matches on nothing: a name made only of punctuation', () => {
+    expect(artistMatch('!!!', '???')).toBe(false);
+  });
+
   it('tolerates casing/punctuation drift', () => {
     expect(artistMatch('canaries', 'Canaries')).toBe(true);
     expect(artistMatch('Kiwi jr', 'Kiwi jr.')).toBe(true);
