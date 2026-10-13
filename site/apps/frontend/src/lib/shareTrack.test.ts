@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { shareTrack, getRadioShareUrl } from './shareTrack';
+import { overwriteGetLocale } from '@/paraglide/runtime.js';
 import { API_BASE_URL } from './config';
 
 const input = {
@@ -41,19 +42,28 @@ describe('shareTrack', () => {
 describe('getRadioShareUrl', () => {
   it('builds the /t share URL with artist and title params', () => {
     expect(getRadioShareUrl('Balance Act', 'Psychic Lines')).toBe(
-      `${API_BASE_URL}/t?artist=Psychic%20Lines&title=Balance%20Act`
+      `${API_BASE_URL}/t?artist=Psychic%20Lines&title=Balance%20Act&lang=fr`
     );
   });
 
   it('encodes slashes in the artist name', () => {
     expect(getRadioShareUrl('Back in Black', 'AC/DC')).toBe(
-      `${API_BASE_URL}/t?artist=AC%2FDC&title=Back%20in%20Black`
+      `${API_BASE_URL}/t?artist=AC%2FDC&title=Back%20in%20Black&lang=fr`
     );
+  });
+
+  it("carries the sharer's language, so the card speaks it", () => {
+    overwriteGetLocale(() => 'en');
+    try {
+      expect(getRadioShareUrl('Balance Act', 'Psychic Lines')).toMatch(/&lang=en$/);
+    } finally {
+      overwriteGetLocale(() => 'fr');
+    }
   });
 
   it('encodes spaces in both params', () => {
     expect(getRadioShareUrl('La Vie En Rose', 'Édith Piaf')).toBe(
-      `${API_BASE_URL}/t?artist=${encodeURIComponent('Édith Piaf')}&title=La%20Vie%20En%20Rose`
+      `${API_BASE_URL}/t?artist=${encodeURIComponent('Édith Piaf')}&title=La%20Vie%20En%20Rose&lang=fr`
     );
   });
 });

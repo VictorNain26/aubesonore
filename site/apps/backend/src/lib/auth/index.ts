@@ -6,6 +6,7 @@ import { db } from '../../db/index';
 import { user, session, verification, account } from '../../db/schema';
 import { AUTH_CLIENT_IP, AUTH_RATE_LIMIT } from './limits';
 import { sendBetterAuthEmail } from './sendBetterAuthEmail';
+import { requestLocale } from '../locale';
 
 const isProd = env.IS_PROD;
 
@@ -50,20 +51,12 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: true,
 
-    sendResetPassword: async ({
-      user,
-      url,
-    }: {
-      user: { email: string };
-      url: string;
-    }): Promise<void> => {
+    sendResetPassword: async ({ user, url }, request): Promise<void> => {
       await sendBetterAuthEmail({
         to: user.email,
-        subject: '🔒 Réinitialisez votre mot de passe',
-        preheader: 'Réinitialisez votre mot de passe pour continuer à profiter de AubeSonore 🔒',
+        kind: 'reset',
+        locale: requestLocale(request?.headers.get('accept-language')),
         buttonLink: url,
-        buttonText: 'Réinitialiser mon mot de passe',
-        isResetPassword: true,
       });
     },
   },
@@ -71,21 +64,16 @@ export const auth = betterAuth({
   emailVerification: {
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
+    // The sign-up page and the mail promise 24 hours; Better Auth's default is one hour
+    // (emailVerification.expiresIn, @better-auth/core init-options).
+    expiresIn: 24 * 60 * 60,
 
-    sendVerificationEmail: async ({
-      user,
-      url,
-    }: {
-      user: { email: string };
-      url: string;
-    }): Promise<void> => {
+    sendVerificationEmail: async ({ user, url }, request): Promise<void> => {
       await sendBetterAuthEmail({
         to: user.email,
-        subject: '🎉 Confirmez votre adresse email',
-        preheader: 'Confirmez votre adresse email pour activer votre compte 🎶',
+        kind: 'verify',
+        locale: requestLocale(request?.headers.get('accept-language')),
         buttonLink: url,
-        buttonText: 'Vérifier mon email',
-        isVerificationEmail: true,
       });
     },
   },
