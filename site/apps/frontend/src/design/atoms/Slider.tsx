@@ -2,23 +2,23 @@ import { Slider as BaseSlider } from '@base-ui/react/slider';
 import { cn } from '@/lib/utils';
 
 export interface SliderProps {
-  /** Libellé accessible du curseur (`aria-label`). */
+  /** The slider's accessible name (`aria-label`). */
   label: string;
   /** Valeur courante. */
   value: number;
-  /** Appelé avec la nouvelle valeur lors du déplacement du curseur. */
+  /** Called with the new value as the thumb moves. */
   onValueChange: (value: number) => void;
   /** Valeur minimale. */
   min?: number;
   /** Valeur maximale. */
   max?: number;
-  /** Pas d'incrémentation. */
+  /** The step between values. */
   step?: number;
-  /** Désactive l'interaction. */
+  /** Turns interaction off. */
   disabled?: boolean;
-  /** Sens du curseur. */
+  /** The slider's direction. */
   orientation?: 'horizontal' | 'vertical';
-  /** Fond sur lequel le curseur est posé : papier (`surface`) ou encre (`accent`). */
+  /** What the slider sits on: paper (`surface`) or ink (`accent`). */
   tone?: 'surface' | 'accent';
 }
 
@@ -31,10 +31,7 @@ const TONE = {
   },
 };
 
-/**
- * Curseur de valeur continue (ex. volume) basé sur `Slider` de Base UI,
- * disponible en orientation horizontale ou verticale.
- */
+/** A continuous value (the volume) on Base UI's `Slider`, horizontal or vertical. */
 export function Slider({
   label,
   value,

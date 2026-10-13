@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { nextTrail } from './discoveryTrail';
 
 const STEREOLAB = { path: '/artiste/stereolab', name: 'Stereolab' };
-const MCCARTHY = { path: '/musilogy/m/mccarthy', name: 'McCarthy' };
-const GANE = { path: '/musilogy/g/tim-gane', name: 'Tim Gane' };
+const MCCARTHY = { path: '/artiste/mccarthy', name: 'McCarthy' };
+const GANE = { path: '/artiste/tim-gane', name: 'Tim Gane' };
 
 describe('nextTrail', () => {
   it('goes on along the links from one artist to another', () => {

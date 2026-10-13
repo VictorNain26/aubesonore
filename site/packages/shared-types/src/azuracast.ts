@@ -1,4 +1,4 @@
-// AzuraCast API types — shared between frontend and mobile
+// AzuraCast API types
 
 export interface Song {
   id: string;

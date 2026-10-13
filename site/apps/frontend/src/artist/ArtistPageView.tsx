@@ -97,7 +97,6 @@ function formatKeptAt(iso: string): string {
   }).format(new Date(iso));
 }
 
-/** A page with nothing to show, like the 404: what happened, and the way back to the live. */
 const OUTSIDE_LINK = { rel: 'noopener noreferrer', target: '_blank' } as const;
 
 /** The opening of the article, its link closing the paragraph rather than taking a line. */

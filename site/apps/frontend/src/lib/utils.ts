@@ -11,7 +11,6 @@ const twMerge = extendTailwindMerge({
         'body',
         'caption',
         'hero',
-        'logo',
         'mark',
         'section',
         'headline',
@@ -21,9 +20,7 @@ const twMerge = extendTailwindMerge({
         'ui',
         'label',
       ],
-      'font-weight': ['display', 'heading'],
       shadow: ['cover', 'lift', 'bar'],
-      animate: ['breathe', 'pulse-now'],
     },
   },
 });

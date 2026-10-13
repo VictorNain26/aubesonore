@@ -1,10 +1,10 @@
 /*
-  AubeSonore — design system. Source unique des tokens.
-  Un seul style, confortable de jour comme de nuit : papier rosé-grège (moins
-  éblouissant qu'un blanc le soir), encre adoucie, une seule lumière abricot (l'aube).
-  Couche primitive (--p-*) : jamais consommée par les composants.
-  Couche sémantique : la seule API, exposée à Tailwind via @theme inline.
-  AA prouvé par scripts/check-contrast.mjs.
+  AubeSonore's design system: the one source of its tokens.
+  One style, easy by day and by night: rose-greige paper (less glaring than white at night),
+  softened ink, one apricot light (the dawn).
+  The semantic tokens are the only API, exposed to Tailwind through @theme inline; the --p-*
+  primitives hold the font stacks they read.
+  AA is proven by scripts/check-contrast.mjs.
 */
 
 :root {
@@ -22,16 +22,17 @@
   --accent: oklch(0.245 0.014 300);
   --on-accent: oklch(0.91 0.015 72);
   --on-accent-muted: oklch(0.79 0.014 310);
-  /* L'aube : une seule lumière, abricot, frangée de rose et de lilas. Décor seul, jamais de texte. */
+  /* The dawn: one light, apricot, fringed with rose and lilac. Decoration only, never under text. */
   --dawn: oklch(0.8 0.1 52);
   --dawn-rose: oklch(0.83 0.05 352);
   --dawn-lilac: oklch(0.85 0.03 290);
-  /* Voile de modale (overlay, jamais de texte dessus → pas de paire AA). */
+  /* The veil behind a large image (OpenLarge): no text on it, so no AA pair. */
   --scrim: oklch(0.245 0.014 300 / 0.5);
-  --glyph-1: oklch(0.8 0.1 52);
-  --glyph-2: oklch(0.83 0.05 352);
-  --glyph-3: oklch(0.85 0.03 290);
-  --glyph-4: oklch(0.82 0.022 68);
+  /* The missing cover's tints: the dawn's three lights and the rule. */
+  --glyph-1: var(--dawn);
+  --glyph-2: var(--dawn-rose);
+  --glyph-3: var(--dawn-lilac);
+  --glyph-4: var(--border);
   --bar-space: calc(5.75rem + env(safe-area-inset-bottom));
   /* The header back over the page when it scrolls up: py-3 around a 44 px row, and its rule. */
   --header-space: 4.5rem;
@@ -63,8 +64,6 @@
   --font-weight-*: initial;
   --font-weight-normal: 400;
   --font-weight-medium: 500;
-  --font-weight-display: 520;
-  --font-weight-heading: 560;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
@@ -72,15 +71,11 @@
   --text-title: clamp(1.35rem, 1.1rem + 1vw, 1.75rem);
   --text-title--line-height: 1.15;
   --text-title--font-weight: 600;
-  /* Échelle de l'accueil v4. */
+  /* The type scale. */
   --text-hero: clamp(2.375rem, 1.5rem + 3.6vw, 6.25rem);
   --text-hero--line-height: 0.98;
   --text-hero--font-weight: 520;
   --text-hero--letter-spacing: -0.032em;
-  --text-logo: clamp(2.75rem, 2rem + 3vw, 4.25rem);
-  --text-logo--line-height: 1;
-  --text-logo--font-weight: 700;
-  --text-logo--letter-spacing: -0.045em;
   --text-mark: clamp(1.625rem, 1.4rem + 0.8vw, 2rem);
   --text-mark--line-height: 1;
   --text-mark--font-weight: 700;
@@ -129,16 +124,13 @@
   --shadow-lift: 0 22px 40px -22px oklch(0.3 0.04 330 / 0.55);
   --shadow-bar: 0 16px 40px -12px oklch(0.204 0.012 293 / 0.5);
 
-  /* La lumière respire, le point « maintenant » bat, les blocs se dévoilent au défilement. */
-  --animate-breathe: breathe 14s ease-in-out infinite;
-
-  /* Mesures de lecture : l'accroche tient sur trois lignes, une légende sur deux. */
+  /* Reading measures: the hero line holds on three lines, a caption on two. */
   --container-hero: 13ch;
   --container-blurb: 28ch;
   --container-form: 24rem;
   --container-aside: 34rem;
   --container-bar: 42rem;
-  /* Largeur du contenu : identique jusqu'à 1680 px, centrée au-delà. */
+  /* The content's width: the same up to 1680 px, centred beyond. */
   --container-page: 100rem;
 
   @keyframes breathe {
@@ -166,9 +158,9 @@
     }
   }
 
-  /* Entrée : l'aube monte de l'horizon, la ligne se trace, le point « maintenant »
-     s'allume, les blocs se posent. Décor et mouvement seuls : le texte n'est
-     jamais masqué (opacité), pour ne pas retarder l'affichage mesuré (LCP). */
+  /* Entrance: the dawn rises from the horizon, the line draws itself, the blocks settle.
+     Decoration and motion only: text is never hidden (opacity), so the measured paint (LCP)
+     is not delayed. */
   @keyframes dawn-up {
     from {
       opacity: 0;
@@ -381,7 +373,7 @@
   }
 }
 
-/* La même aube, vue depuis le bas d'un panneau (connexion, bibliothèque). */
+/* The same dawn, seen from the foot of a panel (sign-in, kept tracks). */
 @utility dawn-rise {
   background:
     radial-gradient(
@@ -397,8 +389,8 @@
     var(--surface);
 }
 
-/* L'aube d'un artiste sans image : la même lumière, placée par son identifiant
-   (--sun, --rose, --lilac : positions ; --rise : hauteur), toujours la même pour lui. */
+/* The dawn of an artist without an image: the same light, placed by its id (--sun, --rose,
+   --lilac: positions; --rise: height), always the same for that artist. */
 @utility artist-dawn {
   background:
     radial-gradient(
@@ -419,15 +411,15 @@
     var(--surface-raised);
 }
 
-/* L'écran d'ouverture remplit toute la fenêtre : la page suivante commence sous le pli, jamais
-   coupée en bas du premier écran. Sur tablette en portrait, il suit son contenu. */
+/* The opening screen fills the window: what follows starts below the fold, never cut at the
+   foot of the first screen. On a tablet in portrait, it follows its content. */
 @utility hero-height {
   @media (width >= 64rem) {
     min-height: 100svh;
   }
 }
 
-/* Barre du lecteur : au-dessus de la zone gestuelle des téléphones (iPhone). */
+/* The player bar: above the phone's gesture area (iPhone). */
 @utility bottom-safe {
   bottom: calc(1rem + env(safe-area-inset-bottom));
 }
@@ -697,15 +689,6 @@
   }
 }
 
-@utility dawn-glow {
-  background-image: linear-gradient(
-    to bottom,
-    color-mix(in oklab, var(--dawn) 30%, var(--surface)),
-    var(--surface) 14rem
-  );
-}
-
-/* Mobile: the full width, unless Écouter would fall below the fold of a small phone. */
 /* The cover fills its column, the same 4 parts of 12 as a section's title column, as long as
    the first screen still holds the title and the horizon. */
 /* svh, not dvh: the dynamic height follows the address bar as it folds on scroll, so the cover
@@ -716,14 +699,6 @@
   @media (width >= 64rem) {
     width: min(100%, 60svh);
   }
-}
-
-@utility title-clamp {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  overflow: hidden;
 }
 
 @utility skip-link {

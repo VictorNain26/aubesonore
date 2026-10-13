@@ -8,9 +8,8 @@ import { artistPath, resolveArtistPage } from '../../lib/artistProfile';
 import { keepRequest, savePendingKeep } from '../../lib/pendingKeep';
 import * as m from '@/paraglide/messages.js';
 
-// Encapsulates the like / unlike flow used by both TrackArtwork (current
-// track) and RecentTracks (previously played). Guards against:
-// - unauthenticated users (opens the shared auth modal)
+// The keep / unkeep flow of every track the site shows. Guards against:
+// - a listener not signed in (keeps the track for after sign-in, opens the sign-in page)
 // - double-click on the same track (likingTrackId lock — lives in the
 //   store so concurrent instances of this hook share the same lock)
 // - duplicate row in the liked list (lookup by case-insensitive title+artist)
