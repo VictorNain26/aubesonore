@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
-import MusilogyPage from './MusilogyPage';
+import { MusilogyPage } from './MusilogyPage';
 
 const DAFT_PUNK = {
   mbid: '056e4f3e-d505-4dad-8ec1-d04f521cbb56',

@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { useNowPlayingStore } from '../../lib/azuracast';
-import { useLikedTracksStore, isTrackLiked } from '../../stores/likedTracksStore';
+import { useNowPlayingStore } from '../lib/azuracast';
+import { useLikedTracksStore, isTrackLiked } from '../stores/likedTracksStore';
 import { useLikeAction } from './useLikeAction';
-import { shareTrackWithToast, getRadioShareUrl } from '../../lib/shareTrack';
+import { shareTrackWithToast, getRadioShareUrl } from '../lib/shareTrack';
 
 interface UseTrackActions {
   title: string | undefined;

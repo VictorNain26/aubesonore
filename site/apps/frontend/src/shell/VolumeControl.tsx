@@ -1,6 +1,6 @@
 import { Volume1, Volume2, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Slider } from '../design/atoms/Slider';
+import { Slider } from '../design/Slider';
 import * as m from '@/paraglide/messages.js';
 
 export interface VolumeControlProps {

@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
-import { KeepHeart } from './KeepHeart';
+import { KeepHeart } from '../design/KeepHeart';
 import { useNowPlayingStore, type SongEntry } from '../lib/azuracast';
 import type { Loaded } from '../lib/homeData';
 import { useTodayHistory } from '../hooks/useTodayHistory';
-import { useLikeAction } from '../hooks/player/useLikeAction';
+import { useLikeAction } from '../hooks/useLikeAction';
 import { useLikedTracksStore, isTrackLiked } from '../stores/likedTracksStore';
 import { useArtistPages } from '../hooks/useArtistPages';
 import { artistPath } from '../lib/artistProfile';
-import { CoverOpenLarge } from './CoverOpenLarge';
-import { formatClock } from './time';
-import { ARTIST_LINK, TEXT_ACTION } from './styles';
+import { CoverOpenLarge } from '../design/CoverOpenLarge';
+import { formatClock } from '../lib/time';
+import { ARTIST_LINK, TEXT_ACTION } from '../design/classes';
 import * as m from '@/paraglide/messages.js';
 
 const PAGE = 10;

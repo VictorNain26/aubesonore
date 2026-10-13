@@ -3,8 +3,8 @@ import { useLocation, useSearchParams } from 'react-router';
 import { getLocale } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
 import { useHeroListenVisible } from '../home/listen';
-import { SiteFooter } from '../home/SiteFooter';
-import { SiteHeader } from '../home/SiteHeader';
+import { SiteFooter } from '../shell/SiteFooter';
+import { SiteHeader } from '../shell/SiteHeader';
 import {
   DEFAULT_SORT,
   filterKept,

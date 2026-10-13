@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import Layout from './Layout';
+import { Layout } from './Layout';
 
 const mockMatchMedia = () => {
   window.matchMedia = vi.fn().mockReturnValue({

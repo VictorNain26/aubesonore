@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 import { Outlet, ScrollRestoration, useLocation, type Location } from 'react-router';
-import { PageError } from './artist/PageMessage';
-import { AuthInit } from './components/AuthInit';
-import { NowPlayingPoller } from './components/NowPlayingPoller';
-import { PlayerSideEffects } from './components/Player/PlayerSideEffects';
-import { PlayerBar } from './home/PlayerBar';
-import { SiteFooter } from './home/SiteFooter';
-import Layout from './layout/Layout';
+import { PageError } from './shell/PageMessage';
+import { AuthInit } from './shell/AuthInit';
+import { NowPlayingPoller } from './shell/NowPlayingPoller';
+import { PlayerSideEffects } from './shell/PlayerSideEffects';
+import { PlayerBar } from './shell/PlayerBar';
+import { SiteFooter } from './shell/SiteFooter';
+import { Layout } from './shell/Layout';
 import { useLocale, useLocaleStore } from './stores/localeStore';
 
 /**
@@ -38,7 +38,7 @@ export function PageErrorScreen() {
  * ScrollRestoration; in data mode without the framework it renders no script, so the CSP's
  * script-src 'self' holds).
  */
-export default function App() {
+export function App() {
   // Subscribing to the locale at the root re-renders the tree on language
   // change (no remount, no page reload — the stream keeps playing).
   useLocale();

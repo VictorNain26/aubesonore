@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
-import { useLikedTracksStore } from '../../stores/likedTracksStore';
-import { useAuthStore } from '../../stores/authStore';
-import { useOpenSignIn } from '../../lib/signIn';
-import { artistPath, resolveArtistPage } from '../../lib/artistProfile';
-import { keepRequest, savePendingKeep } from '../../lib/pendingKeep';
+import { useLikedTracksStore } from '../stores/likedTracksStore';
+import { useAuthStore } from '../stores/authStore';
+import { useOpenSignIn } from '../lib/signIn';
+import { artistPath, resolveArtistPage } from '../lib/artistProfile';
+import { keepRequest, savePendingKeep } from '../lib/pendingKeep';
 import * as m from '@/paraglide/messages.js';
 
 // The keep / unkeep flow of every track the site shows. Guards against:

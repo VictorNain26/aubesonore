@@ -4,16 +4,16 @@ import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
 import { Share2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { KeepHeart } from './KeepHeart';
+import { KeepHeart } from '../design/KeepHeart';
 import { useNowPlayingStore } from '../lib/azuracast';
 import { usePlayer } from '../lib/player';
-import { useTrackActions } from '../hooks/player/useTrackActions';
+import { useTrackActions } from '../hooks/useTrackActions';
 import { useArtistPage } from '../hooks/useArtistPage';
 import { artistPath } from '../lib/artistProfile';
-import { CoverOpenLarge } from './CoverOpenLarge';
-import { VolumeControl, type VolumeControlProps } from './VolumeControl';
-import { ARTIST_LINK, TEXT_ACTION } from './styles';
-import { CastControl } from './CastControl';
+import { CoverOpenLarge } from '../design/CoverOpenLarge';
+import { VolumeControl, type VolumeControlProps } from '../shell/VolumeControl';
+import { ARTIST_LINK, TEXT_ACTION } from '../design/classes';
+import { CastControl } from '../shell/CastControl';
 import { useDiffusion, type Diffusion } from '../hooks/useDiffusion';
 import {
   LISTEN_PILL,

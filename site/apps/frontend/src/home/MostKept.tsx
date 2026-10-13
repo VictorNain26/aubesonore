@@ -3,8 +3,8 @@ import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
 import type { Loaded, TrendEntry, TrendsResult } from '../lib/homeData';
 import { artistPath } from '../lib/artistProfile';
-import { CoverOpenLarge } from './CoverOpenLarge';
-import { ARTIST_LINK } from './styles';
+import { CoverOpenLarge } from '../design/CoverOpenLarge';
+import { ARTIST_LINK } from '../design/classes';
 import * as m from '@/paraglide/messages.js';
 
 type Period = 'week' | 'allTime';

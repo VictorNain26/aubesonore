@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { isDefaultArtwork } from '../lib/azuracast';
 import { artworkAt } from '../lib/artwork';
-import { OpenLarge } from '../design/organisms/OpenLarge';
+import { OpenLarge } from './OpenLarge';
 import { Cover, type CoverProps } from './Cover';
 
 const COVER_ART_ARCHIVE_SIZE = /\/front-(250|500)$/;

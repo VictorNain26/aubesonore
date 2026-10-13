@@ -5,13 +5,13 @@ import { usePlayer } from '../lib/player';
 import { useHeroListenVisible } from '../home/listen';
 import type { SignInState } from '../lib/signIn';
 import { takePendingKeep } from '../lib/pendingKeep';
-import { SiteHeader } from '../home/SiteHeader';
-import { SiteFooter } from '../home/SiteFooter';
+import { SiteHeader } from '../shell/SiteHeader';
+import { SiteFooter } from '../shell/SiteFooter';
 import { useAuthStore } from '../stores/authStore';
 import { authApi } from '../lib/api';
 import { toast } from 'sonner';
 import { toastError } from '../lib/appToast';
-import { AuthView, type AuthMode } from '../design/organisms/AuthView';
+import { AuthView, type AuthMode } from '../auth/AuthView';
 import * as m from '@/paraglide/messages.js';
 
 function validateEmailFormat(value: string): string | undefined {
@@ -43,7 +43,7 @@ const TITLES: Record<AuthMode, () => string> = {
  * /en/sign-in, and Better Auth's /reset-password?token= link). Opened with a SignInState: its first
  * form, the track the listener wanted to keep, the page to go back to once signed in.
  */
-export default function AuthPage() {
+export function AuthPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [params] = useSearchParams();

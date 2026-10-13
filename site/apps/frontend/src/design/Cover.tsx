@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { isDefaultArtwork } from '../lib/azuracast';
-import { CoverGlyph } from '../design/atoms/CoverGlyph';
+import { CoverGlyph } from './CoverGlyph';
 import { artworkSrc, artworkSrcSet } from '../lib/artwork';
 
 export interface CoverProps {

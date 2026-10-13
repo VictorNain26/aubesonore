@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useNowPlayingStore, type SongEntry } from '../lib/azuracast';
 import type { Loaded } from '../lib/homeData';
-import { isToday } from '../home/time';
+import { isToday } from '../lib/time';
 
 /**
  * Every track played today, newest first, with the track on air at the top: the day as the home

@@ -1,16 +1,18 @@
 import type { RouteObject } from 'react-router';
-import App, { PageErrorScreen } from './App';
+import { App, PageErrorScreen } from './App';
 import { artistLoader } from './lib/artistPageData';
 import { homeLoader } from './lib/homeData';
-import HomePage from './pages/HomePage';
+import { HomePage } from './pages/HomePage';
 import { LegalPage } from './pages/LegalPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 // Loaded when opened: the sign-in code, Musilogy and the listener's tracks are not needed to
 // listen. Each page's data loader is declared here, apart from its code, so the two load together.
-const artistPage = async () => ({ Component: (await import('./pages/ArtistPage')).default });
-const musilogyPage = async () => ({ Component: (await import('./pages/MusilogyPage')).default });
-const authPage = async () => ({ Component: (await import('./pages/AuthPage')).default });
+const artistPage = async () => ({ Component: (await import('./pages/ArtistPage')).ArtistPage });
+const musilogyPage = async () => ({
+  Component: (await import('./pages/MusilogyPage')).MusilogyPage,
+});
+const authPage = async () => ({ Component: (await import('./pages/AuthPage')).AuthPage });
 const myTracksPage = async () => ({
   Component: (await import('./pages/MyTracksPage')).MyTracksPage,
 });

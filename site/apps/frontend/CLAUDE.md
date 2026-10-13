@@ -1,5 +1,14 @@
 # Frontend — agent conventions (design system)
 
+## Where code lives (`src/`)
+
+- `pages/`: one file per route, named exports, loaded when opened (`routes.tsx`).
+- One folder per feature, its views, stores and helpers together: `home/`, `artist/`, `musilogy/` (the artist page's sections, `ArtistSections`; the search, `SearchView`), `library/`, `auth/`.
+- `shell/`: what every page shares, the header, the footer, the menu, the player bar, the layout, the page message, and the invisible hosts App mounts once (session, now playing, the player's side effects).
+- `design/`: the shared visual primitives, one level (buttons, covers, sections, `classes.ts` for the class strings several components share), and the tokens.
+- `stores/`: the stores several features read (auth, kept tracks, locale, casting); a store one feature alone reads stays in it.
+- `hooks/`: hooks several features use; `lib/`: logic without UI (API, data loaders, config, time); `cast/`: the Cast receiver.
+
 ## Tailwind v4 — this project uses v4 syntax ONLY
 
 - No `tailwind.config.js`, no `@tailwind base/components/utilities`, no `theme.extend`.

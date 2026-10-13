@@ -3,7 +3,7 @@ import type {
   MusilogyArtistRef,
   MusilogySearchHit,
 } from '@aubesonore/shared-types/client';
-import { API_BASE_URL } from '../utils/config';
+import { API_BASE_URL } from './config';
 import { artistPath } from './artistProfile';
 
 /** Musilogy is not loaded on the server. */

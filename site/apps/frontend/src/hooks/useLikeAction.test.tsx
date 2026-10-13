@@ -3,8 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
 import { useLikeAction } from './useLikeAction';
-import { useLikedTracksStore } from '../../stores/likedTracksStore';
-import { useAuthStore } from '../../stores/authStore';
+import { useLikedTracksStore } from '../stores/likedTracksStore';
+import { useAuthStore } from '../stores/authStore';
 import { MemoryRouter, useLocation } from 'react-router';
 
 vi.mock('sonner', () => ({

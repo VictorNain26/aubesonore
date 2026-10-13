@@ -3,8 +3,8 @@ import { Dialog } from '@base-ui/react/dialog';
 import { X } from 'lucide-react';
 import * as m from '@/paraglide/messages.js';
 import { cn } from '@/lib/utils';
-import { CLOSE_BUTTON } from '../../home/styles';
-import { artworkSrc } from '../../lib/artwork';
+import { CLOSE_BUTTON } from './classes';
+import { artworkSrc } from '../lib/artwork';
 
 export interface LargeImage {
   src: string;

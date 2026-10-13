@@ -5,9 +5,9 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import { MemoryRouter, Route, Routes } from 'react-router';
-import { AuthInit } from '../components/AuthInit';
+import { AuthInit } from '../shell/AuthInit';
 import { useAuthStore } from '../stores/authStore';
-import AuthPage from './AuthPage';
+import { AuthPage } from './AuthPage';
 
 function open(entry: string | { pathname: string; search?: string; state?: unknown }) {
   useAuthStore.setState({ user: null, isLoading: true, isAuthenticated: false, authError: null });

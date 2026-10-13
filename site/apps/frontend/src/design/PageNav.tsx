@@ -1,5 +1,5 @@
 import * as m from '@/paraglide/messages.js';
-import { TEXT_ACTION } from '../../home/styles';
+import { TEXT_ACTION } from './classes';
 
 export interface PageNavItem {
   /** The id of a Section on the page. */

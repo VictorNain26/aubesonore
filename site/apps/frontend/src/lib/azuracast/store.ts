@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { safeParse } from 'valibot';
-import { STATIC_NOWPLAYING_URL } from '../../utils/config';
+import { STATIC_NOWPLAYING_URL } from '../config';
 import { NowPlayingSchema } from './validators';
 import type { NowPlaying } from '@aubesonore/shared-types/azuracast';
 

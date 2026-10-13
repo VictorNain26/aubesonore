@@ -5,7 +5,7 @@ import { toastError } from '../lib/appToast';
 import { castTrack } from '../lib/cast/castMetadata';
 import { loadCastSdk, RECEIVER_APP_ID } from '../lib/cast/chromecast';
 import { setRemotePlayback, usePlayer } from '../lib/player';
-import { STREAM_URL } from '../utils/config';
+import { STREAM_URL } from '../lib/config';
 import * as m from '@/paraglide/messages.js';
 
 // The Web Sender's lifecycle as developers.google.com/cast/docs/web_sender/integrate and the

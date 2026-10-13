@@ -1,4 +1,4 @@
-import { SiteHeader } from './SiteHeader';
+import { SiteHeader } from '../shell/SiteHeader';
 import { ErrorBoundary } from 'react-error-boundary';
 import { NowPlaying, NowPlayingFallback } from './NowPlaying';
 import { Horizon } from './Horizon';
