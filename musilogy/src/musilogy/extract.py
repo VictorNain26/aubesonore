@@ -1,5 +1,7 @@
 """Streaming projection of the MusicBrainz JSON dumps, the Discogs releases dump and the
-ListenBrainz listens. No business rule here."""
+ListenBrainz listens. Its one business rule decides what exists at all: the special-purpose
+artists left out (SPECIAL_PURPOSE) and the release types kept (KEPT_RELEASE_TYPES); every other
+rule lives in the SQL."""
 
 from __future__ import annotations
 

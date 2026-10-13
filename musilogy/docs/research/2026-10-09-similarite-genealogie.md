@@ -5,7 +5,9 @@
 (`docs/vision.md` §2) : qui sonne comme un artiste, et d'où vient son son, où il est allé, pour
 tous les artistes, anciens comme récents, connus comme confidentiels.
 **Statut :** dossier d'étude. Il nourrit la vision ; il n'est pas une règle en ligne. Les
-fichiers de mesure sont sur le serveur, `~/musilogy-data/study/lineage/`.
+fichiers de mesure sont sur le serveur, `~/musilogy-data/study/lineage/`. Ses questions ouvertes ont été tranchées depuis : les décisions
+et leurs mesures (2026-10-10, 2026-10-11) sont dans `docs/vision.md` §2.2 et `docs/conception.md` ;
+la couleur par décennie du §1 a été abandonnée.
 
 Musilogy est une référence factuelle : ce qui y fait foi est ce que les sources (critiques,
 encyclopédies, ouvrages, classements des styles) établissent, jamais le goût d'une personne. La

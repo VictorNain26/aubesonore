@@ -1,8 +1,8 @@
-"""Our co-listening (docs/conception.md §1, `colisten`): for each artist that at
+"""Our co-listening (docs/conception.md §2, `colisten`): for each artist that at
 least MIN_LISTENERS ListenBrainz users listen to, its K closest artists by
 listeners in common, corrected for popularity.
 
-The rule, measured on the evaluation set (docs/vision.md §2.2, 2026-10-07):
+The rule, measured on the evaluation set (2026-10-07, commit 57bcd8d3 of docs/vision.md):
 cosine with an asymmetric exponent, score(j, i) = c / (pop_j^ALPHA * pop_i^(1 - ALPHA)),
 shrunk by c / (c + SHRINK), c being the users who listen to both and pop the
 users who listen to each. Only pairs with at least MIN_COMMON users in common

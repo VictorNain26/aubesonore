@@ -24,8 +24,14 @@ uv run pytest -m slow    # ligne de base sur le dump réel, exige data/work/
 ```
 
 La suite rapide tourne à chaque changement et garde la CI verte. La ligne de
-base rejoue le pipeline complet : elle ne tourne qu'à la demande, prend une
-dizaine de minutes et réclame les extractions de `data/work/`.
+base rejoue le pipeline complet : elle ne tourne qu'à la demande, prend environ
+5 minutes une fois les extractions de `data/work/` produites (une dizaine de
+minutes de plus pour les produire).
+
+Un nouveau fichier `tests/test_x.py` s'ajoute à la liste des modules de tests de
+`pyproject.toml` (`[[tool.mypy.overrides]]`), sinon `mypy` strict le refuse : un
+motif `test_*` n'y est pas possible, mypy ne connaît que les jokers par
+composant (`paquet.*`) et les tests sont des modules de premier niveau.
 
 `tests/test_baseline.py` est le contrat exécutable des chiffres : c'est le seul
 point d'autorité. Un écart à la ligne de base se comprend avant d'être
