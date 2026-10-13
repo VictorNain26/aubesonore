@@ -4,7 +4,7 @@
 // Pre-rendering pattern: https://vite.dev/guide/ssr#pre-rendering-ssg
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { replaceOrFail, rewriteHead } from './head.mjs';
+import { replaceOrFail, rewriteHead, SITE } from './head.mjs';
 
 const { pageHtml, meta } = await import('../dist-ssr/entry-server.js');
 const template = await readFile('dist/index.html', 'utf8');
@@ -85,4 +85,16 @@ for (const page of notFound) {
 // then the client renders the page.
 await writeFile('dist/app.html', inlineStyles(template));
 console.log('wrote dist/app.html');
+
+// The pages kept out of search (sign-in, kept tracks, Musilogy's search; nginx.conf): the same
+// shell without the home's canonical, which would declare each of them a copy of the home page.
+await writeFile(
+  'dist/noindex.html',
+  replaceOrFail(
+    inlineStyles(template),
+    `<link rel="canonical" href="${SITE}/" />`,
+    '<meta name="robots" content="noindex" />'
+  )
+);
+console.log('wrote dist/noindex.html');
 
