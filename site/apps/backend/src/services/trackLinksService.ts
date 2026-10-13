@@ -1,4 +1,4 @@
-import type { PlatformLinks } from '../db/schema';
+import type { PlatformLinks } from '@aubesonore/shared-types/client';
 import { TtlCache } from '../lib/cache/ttlCache';
 import { logger } from '../lib/logger';
 import { similarity, artistMatch, songMatch } from '../lib/text/matchScore';
