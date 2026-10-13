@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import type { ArtistProfile } from '@aubesonore/shared-types/client';
-import { artistPageHtml, meta, pageHtml } from './entry-server';
+import { artistPageHtml, meta, pageHtml, warmUp } from './entry-server';
 
 const PROFILE: ArtistProfile = {
   id: 'a1',
@@ -77,6 +77,10 @@ describe('entry-server', () => {
       '/en/artist/%D0%BA%D0%B8%D0%BD%D0%BE'
     );
     expect(en).toContain('href="/en/legal/"');
+  });
+
+  it("draws the renderer's warm-up page whole, its code loaded", async () => {
+    expect(await warmUp()).toMatch(/<h1[^>]*>AubeSonore<\/h1>/);
   });
 
   it('writes a large artist page in one piece, with no inline script the CSP would block', async () => {
