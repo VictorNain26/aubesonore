@@ -44,7 +44,7 @@ const MUSILOGY = {
     neighbour(n, i + 1)
   ),
   releases: [{ mbid: 'r1', title: 'Autobahn', primaryType: 'Album', year: 1974 }],
-  bands: { members: [], groups: [], jointProjects: [] },
+  bands: { members: [{ mbid: 'b1', name: 'Ralf Hütter' }], groups: [] },
   memberProjects: null,
   otherNames: null,
 } as unknown as MusilogyArtist;
@@ -78,6 +78,16 @@ describe('artistDescription', () => {
     expect(artistDescription(KRAFTWERK, MUSILOGY, 'en')).toBe(
       'Band · Düsseldorf, Germany · since 1970. Similar artists: Neu!, Can, Depeche Mode, New Order. Their albums and EPs, their bands and projects.'
     );
+  });
+
+  it('promises no bands to an artist without any, as the page shows none', () => {
+    const solo = {
+      ...MUSILOGY,
+      bands: { members: [], groups: [] },
+      memberProjects: [],
+      otherNames: [],
+    } as unknown as MusilogyArtist;
+    expect(artistDescription(KRAFTWERK, solo, 'fr')).toEndWith('. Ses albums et EP.');
   });
 
   it('uses the Wikipedia opening when Musilogy has nothing to add', () => {

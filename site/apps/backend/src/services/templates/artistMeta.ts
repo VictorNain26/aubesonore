@@ -37,6 +37,15 @@ const WORDS = {
   },
 } as const;
 
+/** What the page's « Groupes et projets » section counts (bandCount, MusilogyView.tsx). */
+function bandCount({ bands, memberProjects, otherNames }: MusilogyArtist): number {
+  return (
+    (bands ? bands.members.length + bands.groups.length : 0) +
+    (memberProjects?.length ?? 0) +
+    (otherNames?.length ?? 0)
+  );
+}
+
 /** How many similar artists the description names: enough to answer, short enough to show. */
 const NAMED_NEIGHBOURS = 4;
 const DESCRIPTION_MAX = 200;
@@ -106,7 +115,7 @@ export function artistDescription(
   const neighbours = musilogy?.neighbours ?? [];
   const holds = [
     musilogy?.releases?.length ? words.records : null,
-    musilogy?.bands ? words.bands : null,
+    musilogy && bandCount(musilogy) > 0 ? words.bands : null,
   ].filter((part) => part !== null);
   const sentences = [
     profile.facts ? factsLine(profile.facts, locale) : null,
