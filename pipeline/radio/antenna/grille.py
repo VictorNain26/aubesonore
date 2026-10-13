@@ -28,7 +28,6 @@ from collections import Counter
 from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta, tzinfo
-from itertools import islice
 from typing import Protocol
 
 import numpy as np
@@ -172,10 +171,6 @@ def round_robin(weights: dict[Categorie, float]) -> Iterator[Categorie]:
         best = max(current, key=lambda c: current[c])
         current[best] -= total
         yield best
-
-
-def slot_sequence(weights: dict[Categorie, float], n: int) -> list[Categorie]:
-    return list(islice(round_robin(weights), n))
 
 
 def hour_spans(day: date, hours: Iterable[int], tz: tzinfo) -> dict[int, Span]:

@@ -162,6 +162,17 @@ def test_editorial_loads_and_validates(tmp_path: Path) -> None:
         load_editorial(p)
 
 
+def test_shipped_editorial_is_valid() -> None:
+    load_editorial(REPO_ROOT / "config" / "editorial.toml")
+
+
+def test_env_example_copied_as_is_gives_the_defaults() -> None:
+    s = Settings(_env_file=REPO_ROOT / ".env.example")
+    assert s.plex_token is None and s.lastfm_api_key is None
+    assert s.cf_access_team_domain is None
+    assert s.azuracast_media_dir == Settings.model_fields["azuracast_media_dir"].default
+
+
 def test_settings_reads_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("PLEX_TOKEN", "tok")
     monkeypatch.setenv("PLEX_MUSIC_SECTION", "Musique")

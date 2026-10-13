@@ -70,6 +70,7 @@ def test_library_sync_end_to_end(env: Path, monkeypatch: pytest.MonkeyPatch) -> 
         "0 en erreur" in res.stdout
     )
     assert "Couverture : 1 / 2 titres rapprochés (50,0 %)" in res.stdout
+    assert "Bibliothèque inscrite : 1 titres, 1 artistes (0 retirés)" in res.stdout
     assert (env / "data" / "radio.db").exists()
 
 

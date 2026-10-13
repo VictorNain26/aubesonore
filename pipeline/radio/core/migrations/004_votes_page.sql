@@ -1,4 +1,4 @@
--- Sélections hebdomadaires de votes (spec §6.1) : le modèle en service qui les a tirées.
+-- Sélections hebdomadaires de votes (docs/vision.md §4) : le modèle en service qui les a tirées.
 CREATE TABLE selections (
     selection_id INTEGER PRIMARY KEY,
     selected_at  TEXT NOT NULL,

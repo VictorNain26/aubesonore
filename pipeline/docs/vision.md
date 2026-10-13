@@ -173,7 +173,8 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
    écrits en CSV (Artist, Title, Length).
    Un titre voté « non » (examen ou leçon) n'est jamais acquis.
 2. **Sockseek 3.0.5** (binaire figé dans `~/.local/bin`, extrait de l'archive de release
-   `sockseek_3.0.5_linux-x64.tar.gz`, dont la sha256 `d0a1e909…1b66` a été vérifiée) sur un
+   `sockseek_3.0.5_linux-x64.tar.gz` ; sha256 du binaire extrait :
+   `ebbf1781b96a712d23c4a61393d474ebe4507b069c21260ba72c8182c747e053`) sur un
    **compte Soulseek dédié à la radio** (`SOULSEEK_USER`, `SOULSEEK_PASSWORD`). Le compte de slskd est interdit : il éjecterait slskd et les deux Lidarr.
    - Options : `--format mp3,flac --pref-format mp3 --length-tol 3 --name-format {uri}`, avec
      l'id Deezer en colonne URI du CSV : chaque fichier porte l'id du titre demandé.
@@ -226,8 +227,10 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
   `ffmpeg -af aresample=resampler=soxr:osr=44100 -c:a libmp3lame -q:a 0`. Un MP3 n'est jamais
   réencodé.
 - **ReplayGain.** `rsgain custom -s i -c p`, avec rsgain 3.8 en binaire figé, extrait de
-  l'archive de release `rsgain-3.8-Linux.tar.xz`, dont la sha256 `4939de3b…65a0` a été
-  vérifiée ; la CI installe la même. Sans ces balises,
+  l'archive de release `rsgain-3.8-Linux.tar.xz` (sha256
+  `4939de3b2022a50edc0751343b10a791ea8c1c9ca6505012f21413bf8de365a0`, vérifiée par la CI qui
+  installe la même ; binaire extrait :
+  `7b73e7aa2a607af0e8c23bff647aa3b01f8219f02a6307bcbc41f2ae3f70bb4e`). Sans ces balises,
   Liquidsoap recalcule le gain à chaque titre, ce qui coûte beaucoup de CPU (doc AzuraCast,
   « optimizing »).
 - **Points de coupe.** Mesuré le 2026-10-04 : 15 titres sur 40 finissaient sur plus de 3 s de
@@ -483,8 +486,9 @@ page de vote et en lien dans le rappel du dimanche :
 Seuils, par étape : taux d'acquisition au-dessus de `min_success_rate` dès
 `min_attempts_for_rate` tentatives (`editorial.toml`) ; aucune erreur à l'antenne.
 
-`acquire` est préfixée de `-` dans l'unité : son échec n'empêche pas `antenne` de publier ce qui
-est prêt. La dernière étape, `radio check`, juge la passe entière : une étape en échec, ou aucune
+`nouveautes`, `favoris`, `acquire`, `mesures` et `grille` sont préfixées de `-` dans l'unité :
+une source en panne n'arrête pas la passe, et un échec d'`acquire` n'empêche pas `antenne` de
+publier ce qui est prêt. La dernière étape, `radio check`, juge la passe entière : une étape en échec, ou aucune
 découverte publiée, ou une étape sans ligne de rapport (processus tué), la fait échouer, et Gatus
 alerte (§8.2).
 
@@ -564,6 +568,20 @@ Les liens pointent vers le dépôt : il faut les re-lier si le dépôt change de
 est indispensable : il lance le gestionnaire systemd de l'utilisateur au démarrage et le garde
 après la déconnexion, ce qui fait tourner les unités sans session ouverte (`man loginctl`,
 `enable-linger`). Il est actif sur la machine (`loginctl show-user victormoi -p Linger`).
+
+**Partir d'une base vide**, quand il n'y a pas de copie à restaurer. `negatives-sync` n'est pas
+dans la passe hebdomadaire : il se lance une fois, avant le premier `train`, qui exige des
+négatifs mesurés.
+
+```bash
+.venv/bin/radio library-sync
+.venv/bin/radio negatives-sync
+.venv/bin/radio discover
+nice .venv/bin/radio signals   # environ 3 s par titre : des heures
+.venv/bin/radio train
+```
+
+La passe hebdomadaire prend ensuite le relais.
 
 **Publier la page de vote** (tableau de bord Cloudflare Zero Trust, dans cet ordre) :
 

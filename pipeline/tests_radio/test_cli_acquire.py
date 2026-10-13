@@ -4,11 +4,13 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from pydantic import SecretStr
 from typer.testing import CliRunner
 
 import radio.cli as cli
 from radio.acquire.run import AcquireReport
 from radio.acquire.sockseek import SockseekError
+from radio.antenna.sync import AntenneReport
 from radio.core.config import Settings
 
 runner = CliRunner()
@@ -145,6 +147,23 @@ def test_check_judges_only_the_current_pass(
     result = runner.invoke(cli.app, ["check"])
     assert result.exit_code == code
     assert message in result.output
+
+
+def test_check_reads_what_antenne_published(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    db = _env(tmp_path, monkeypatch)
+    settings = cli._settings().model_copy(update={"azuracast_api_key": SecretStr("k")})
+    monkeypatch.setattr(cli, "_settings", lambda: settings)
+    monkeypatch.setattr(cli, "antenne_pass", lambda *a, **k: AntenneReport(n_published=2))
+    monkeypatch.setenv("INVOCATION_ID", "p")
+    result = runner.invoke(cli.app, ["antenne"])
+    assert result.exit_code == 0, result.output
+    assert "Antenne : 0 titres (2 publiés" in result.output
+    _stages(db, [r for r in _pass() if r[1] != "antenne"])
+    result = runner.invoke(cli.app, ["check"])
+    assert result.exit_code == 0, result.output
+    assert "11 étapes, 0 en échec, 2 publiés" in result.output
 
 
 def test_check_needs_systemd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

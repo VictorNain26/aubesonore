@@ -1,4 +1,4 @@
-"""Contrôle et préparation d'un fichier téléchargé (docs/vision.md §5.3, §6).
+"""Contrôle et préparation d'un fichier téléchargé (docs/vision.md §5, §6).
 
 Identité : empreintes Chromaprint brutes (`fpcalc -raw`) du fichier et de l'extrait Deezer, part
 de bits identiques au meilleur décalage. Méthode et seuil mesurés :

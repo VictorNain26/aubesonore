@@ -36,16 +36,12 @@ from radio.acquire.audio import (
 from radio.acquire.run import tags_for
 from radio.core.config import AntenneConfig, GrilleConfig
 from radio.library.weights import play_weight
+from radio.model.model import FAMILY
 from radio.sources.azuracast import AzuracastError, Media
 from radio.sources.deezer import DeezerClient, DeezerError
 
 FOLDER = "antenne"
 REST = "repos"
-CATEGORIE_OF_SOURCE = {
-    "voisin": "decouvertes",
-    "hypem": "nouveautes",
-    "deezer_editorial": "nouveautes",
-}
 
 
 class Station(Protocol):
@@ -89,10 +85,11 @@ def _insert(conn: sqlite3.Connection, tid: int, origin: str, m: Media, now: str)
     if origin == "repere":
         categorie = "reperes"
     else:
-        source = conn.execute(
+        # Toute acquisition vient d'un candidat (radio/acquire/run.py) : pas de ligne, c'est un bug.
+        (source,) = conn.execute(
             "SELECT source FROM candidates WHERE deezer_track_id = ?", (tid,)
         ).fetchone()
-        categorie = CATEGORIE_OF_SOURCE[str(source[0])] if source else "decouvertes"
+        categorie = FAMILY[str(source)]
     with conn:
         conn.execute(
             "INSERT INTO antenne VALUES (?, ?, ?, ?, ?, ?, ?, ?)",

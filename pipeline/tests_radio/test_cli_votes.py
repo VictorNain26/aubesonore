@@ -59,40 +59,31 @@ def _st(**kw: Any) -> Status:
 
 
 def test_status_lines() -> None:
-    lines = cli._status_lines(_st(), 7, True)
+    lines = cli._status_lines(_st(), 7)
     assert "Modèle n°3 : AUC d'examen 0,800 sur 60" in lines
     assert "Taux de oui des retenus : 83,3 % [70,0 % - 91,0 %] sur 48 votes d'examen" in lines
     assert "Dernière fournée (passe n°7) : 133 retenus sur 400 candidats" in lines
-    none = cli._status_lines(_st(model_id=None, exam_auc=None, n_exam=0, yes=None), 7, True)
+    none = cli._status_lines(_st(model_id=None, exam_auc=None, n_exam=0, yes=None), 7)
     assert none[:2] == [
         "Aucun modèle en service",
         "Taux de oui des retenus : aucun vote d'examen sur la page",
     ]
 
 
-def test_no_selection_alert_while_the_vote_page_is_not_published() -> None:
-    idle = cli._status_lines(
-        _st(pending=0, last_selection=None, stale_selection_days=None), 7, False
-    )
-    assert not any("ALERTE" in line for line in idle)
-
-
 def test_status_lines_alert_when_the_weekly_pass_seems_to_have_failed() -> None:
-    stale = cli._status_lines(_st(pending=0, stale_selection_days=8), 7, True)
+    stale = cli._status_lines(_st(pending=0, stale_selection_days=8), 7)
     assert any(
         "ALERTE : aucune sélection depuis 8 jours (passe hebdomadaire en échec ?)" in line
         for line in stale
     )
 
-    fresh = cli._status_lines(_st(pending=0, stale_selection_days=2), 7, True)
+    fresh = cli._status_lines(_st(pending=0, stale_selection_days=2), 7)
     assert not any("ALERTE : aucune sélection" in line for line in fresh)
 
-    never = cli._status_lines(
-        _st(pending=0, last_selection=None, stale_selection_days=None), 7, True
-    )
+    never = cli._status_lines(_st(pending=0, last_selection=None, stale_selection_days=None), 7)
     assert "ALERTE : aucune sélection encore tirée (passe hebdomadaire en échec ?)" in never
 
-    waiting = cli._status_lines(_st(pending=20, stale_selection_days=8), 7, True)
+    waiting = cli._status_lines(_st(pending=20, stale_selection_days=8), 7)
     assert not any("ALERTE : aucune sélection" in line for line in waiting)
 
 

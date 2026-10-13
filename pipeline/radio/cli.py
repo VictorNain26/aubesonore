@@ -215,6 +215,7 @@ def library_sync() -> None:
             _fail("Plex n'a renvoyé aucun titre : rien n'a été modifié", 1)
         except DeezerUnavailable as e:
             _fail(_unavailable(e), 1)
+        reg = register_library(conn, now)
         done, total = coverage(conn)
         _record(
             conn,
@@ -241,6 +242,8 @@ def library_sync() -> None:
             + f", {_n(len(rep.errors))} en erreur",
             *(f"  erreur : {err}" for err in rep.errors),
             f"Couverture : {_n(done)} / {_n(total)} titres rapprochés ({_pct(done, total)})",
+            f"Bibliothèque inscrite : {_n(reg.n_tracks)} titres, {_n(reg.n_artists)} artistes "
+            f"({_n(reg.n_removed)} retirés)",
         ]
     )
 
@@ -431,7 +434,6 @@ def signals() -> None:
         _fail(f"Modèle EffNet refusé : {e}", 2)
     now = _now()
     with _db(settings) as conn:
-        reg = register_library(conn, now)
         try:
             meas = measure_tracks(conn, DeezerClient(), embedder, now)
         except DeezerUnavailable as e:
@@ -452,8 +454,6 @@ def signals() -> None:
         )
     _echo(
         [
-            f"Bibliothèque inscrite : {_n(reg.n_tracks)} titres, {_n(reg.n_artists)} artistes "
-            f"({_n(reg.n_removed)} retirés)",
             f"Titres : {_n(meas.n_todo)} à mesurer → {_n(meas.n_ok)} mesurés, "
             f"{_n(meas.n_no_preview)} sans extrait, {_n(meas.n_audio_failed)} empreinte ratée, "
             f"{_n(meas.n_gone)} disparus de Deezer, {_n(len(meas.errors))} en erreur",
@@ -869,7 +869,7 @@ def _status(settings: Settings, editorial: Editorial) -> Status:
         )
 
 
-def _status_lines(st: Status, quiet_days: int, votes_active: bool) -> list[str]:
+def _status_lines(st: Status, quiet_days: int) -> list[str]:
     if st.model_id is None:
         lines = ["Aucun modèle en service"]
     else:
@@ -888,8 +888,7 @@ def _status_lines(st: Status, quiet_days: int, votes_active: bool) -> list[str]:
         f"Titres en attente de vote : {_n(st.pending)} "
         f"(dernière sélection : {st.last_selection or 'aucune'})",
     ]
-    # Sans page de vote publiée, la sélection est volontairement hors de la passe : rien à signaler.
-    if votes_active and st.pending == 0:
+    if st.pending == 0:
         if st.last_selection is None:
             lines.append("ALERTE : aucune sélection encore tirée (passe hebdomadaire en échec ?)")
         elif st.stale_selection_days is not None and st.stale_selection_days > quiet_days:
@@ -976,16 +975,14 @@ def report() -> None:
     with _db(settings) as conn:
         stages = last_stages(conn)
         suivi = load_suivi(conn, editorial.nouveautes)
-    status = _status_lines(
-        _status(settings, editorial), editorial.votes.quiet_days, bool(settings.votes_url)
-    )
+    status = _status_lines(_status(settings, editorial), editorial.votes.quiet_days)
     _echo(["Dernières étapes :", *_stage_lines(stages), *status, *suivi_lines(suivi)])
 
 
 @app.command("votes-select")
 @_stage("votes-select")
 def votes_select() -> None:
-    """Tire la sélection de la semaine : examen au hasard sur toute la fournée, leçon par
+    """Tire la sélection de la semaine : examen à parts égales par famille, leçon par
     incertitude."""
     settings = _settings()
     v = _editorial(settings).votes
@@ -1068,7 +1065,7 @@ def votes_remind() -> None:
         f" ({_n(len(to_adjust))} points à ajuster)" if to_adjust else ""
     )
     lines = [head, suivi] + ([] if _page_ok(settings) else ["Page de vote injoignable"])
-    text = "\n".join(lines + _status_lines(st, editorial.votes.quiet_days, True))
+    text = "\n".join(lines + _status_lines(st, editorial.votes.quiet_days))
     typer.echo(text)
     try:
         send_whatsapp(

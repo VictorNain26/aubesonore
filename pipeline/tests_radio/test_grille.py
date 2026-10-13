@@ -3,6 +3,7 @@ import sqlite3
 from collections.abc import Iterable
 from dataclasses import replace
 from datetime import date, datetime, tzinfo
+from itertools import islice
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -22,8 +23,8 @@ from radio.antenna.grille import (
     playlist_name,
     publish,
     record,
+    round_robin,
     shares,
-    slot_sequence,
     with_published,
 )
 from radio.core.config import Categorie, Creneau, GrilleConfig, Settings
@@ -105,9 +106,13 @@ def test_blocks_of_the_day_and_the_weekend_party() -> None:
 
 
 def test_slots_follow_the_shares_evenly() -> None:
-    seq = slot_sequence(
-        {"nouveautes": 1 / 3, "decouvertes": 1 / 3, "fond": 1 / 6, "reperes": 1 / 6}, 12
-    )
+    weights: dict[Categorie, float] = {
+        "nouveautes": 1 / 3,
+        "decouvertes": 1 / 3,
+        "fond": 1 / 6,
+        "reperes": 1 / 6,
+    }
+    seq = list(islice(round_robin(weights), 12))
     assert seq.count("nouveautes") == seq.count("decouvertes") == 4
     assert seq.count("fond") == seq.count("reperes") == 2
     assert "fond" in seq[:6] and "reperes" in seq[:6]  # réparties, pas regroupées en fin

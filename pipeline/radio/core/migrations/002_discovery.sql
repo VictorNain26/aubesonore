@@ -18,7 +18,7 @@ CREATE TABLE artists (
 ) STRICT;
 
 -- Tous les titres mesurés, quelle que soit leur origine. La bibliothèque peut contenir deux
--- versions d'un même titre ; candidats et négatifs sont dédoublonnés dès l'entrée (spec §5.2).
+-- versions d'un même titre ; candidats et négatifs sont dédoublonnés dès l'entrée (radio/library/dedupe.py).
 CREATE TABLE tracks (
     deezer_track_id  INTEGER PRIMARY KEY,
     deezer_artist_id INTEGER NOT NULL REFERENCES artists (deezer_artist_id),
