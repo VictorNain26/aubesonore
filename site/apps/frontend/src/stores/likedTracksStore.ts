@@ -30,15 +30,27 @@ interface LikedTracksActions {
 // vs "Hello"+"World").
 const LIKED_KEY_SEP = String.fromCharCode(0);
 
+/** One key per track whatever its case: the lock on a keep in flight, the lookup of a kept one. */
+export function trackKey(title: string, artist: string): string {
+  return `${title.toLowerCase()}${LIKED_KEY_SEP}${artist.toLowerCase()}`;
+}
+
+/** The kept row of this track, its case aside. */
+export function findKept(
+  tracks: readonly LikedTrack[],
+  title: string,
+  artist: string
+): LikedTrack | undefined {
+  const needle = trackKey(title, artist);
+  return tracks.find((t) => trackKey(t.title, t.artist) === needle);
+}
+
 export function isTrackLiked(
   tracks: readonly LikedTrack[],
   title: string,
   artist: string
 ): boolean {
-  const needle = `${title.toLowerCase()}${LIKED_KEY_SEP}${artist.toLowerCase()}`;
-  return tracks.some(
-    (t) => `${t.title.toLowerCase()}${LIKED_KEY_SEP}${t.artist.toLowerCase()}` === needle
-  );
+  return findKept(tracks, title, artist) !== undefined;
 }
 
 type LikedTracksStore = LikedTracksState & LikedTracksActions;

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { localizeHref } from '@/paraglide/runtime.js';
 import { usePlayer } from '../lib/player';
@@ -64,9 +65,7 @@ export function AuthPage() {
     if (resetLinkInvalid) toastError(m.toast_reset_link_invalid());
   }, [resetLinkInvalid]);
 
-  useEffect(() => {
-    document.title = `${TITLES[mode]()} · AubeSonore`;
-  }, [mode]);
+  usePageTitle(TITLES[mode]());
 
   // Already signed in (back from Google, or the page reopened): nothing to do here.
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);

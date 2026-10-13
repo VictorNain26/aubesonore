@@ -39,7 +39,7 @@ export function SiteHeader() {
   const { pathname } = useLocation();
   const isHome = ['/', '/en', '/en/'].includes(pathname);
   // The sign-in page is where Se connecter leads: the header does not offer it twice.
-  const isSignInPage = [m.signin_href(), '/reset-password'].includes(pathname);
+  const isSignInPage = [localizeHref('/connexion'), '/reset-password'].includes(pathname);
   const libraryHref = localizeHref('/mes-titres');
   const musilogyHref = localizeHref('/musilogy');
   const onMusilogy = pathname === musilogyHref || pathname.startsWith(`${musilogyHref}/`);
@@ -121,7 +121,11 @@ export function SiteHeader() {
               />
             </span>
           ) : isSignInPage ? null : (
-            <Link to={m.signin_href()} state={{ from: pathname }} className={OUTLINE_PILL}>
+            <Link
+              to={localizeHref('/connexion')}
+              state={{ from: pathname }}
+              className={OUTLINE_PILL}
+            >
               {m.nav_sign_in()}
             </Link>
           )}

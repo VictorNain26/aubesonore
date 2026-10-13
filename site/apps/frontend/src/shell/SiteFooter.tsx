@@ -50,7 +50,7 @@ export function SiteFooterView({
         <Link to={localizeHref('/musilogy')} className={LINK}>
           {m.musilogy_title()}
         </Link>
-        <Link to={m.legal_href()} className={LINK}>
+        <Link to={localizeHref('/mentions-legales/')} className={LINK}>
           {m.footer_legal()}
         </Link>
         {onInstall ? (

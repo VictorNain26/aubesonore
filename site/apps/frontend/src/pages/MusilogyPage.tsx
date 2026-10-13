@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import * as m from '@/paraglide/messages.js';
 import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../shell/SiteFooter';
@@ -13,9 +14,7 @@ function MusilogyHome() {
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState<SearchState>({ status: 'idle' });
 
-  useEffect(() => {
-    document.title = `${m.musilogy_title()} · AubeSonore`;
-  }, []);
+  usePageTitle(m.musilogy_title());
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -58,13 +57,6 @@ export function MusilogyPage() {
 
   // No hero here: the player bar is the only way to listen.
   useEffect(() => setListenVisible(false), [setListenVisible]);
-
-  useEffect(() => {
-    const previous = document.title;
-    return () => {
-      document.title = previous;
-    };
-  }, []);
 
   return (
     <div className="min-h-page flex flex-col">

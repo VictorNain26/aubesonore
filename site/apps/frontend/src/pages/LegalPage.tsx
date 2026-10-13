@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import * as m from '@/paraglide/messages.js';
 import { SiteHeader } from '../shell/SiteHeader';
 import { SiteFooter } from '../shell/SiteFooter';
@@ -24,9 +25,7 @@ export function LegalPage() {
   useEffect(() => setListenVisible(false), [setListenVisible]);
 
   // Reached inside the app, the tab says where the listener is; pre-rendered, the head already does.
-  useEffect(() => {
-    document.title = `${m.legal_title()} · AubeSonore`;
-  }, []);
+  usePageTitle(m.legal_title());
   const mail = (
     <a href={`mailto:${CONTACT}`} className={LINK}>
       {CONTACT}

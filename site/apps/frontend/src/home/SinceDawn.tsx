@@ -6,7 +6,7 @@ import { useNowPlayingStore, type SongEntry } from '../lib/azuracast';
 import type { Loaded } from '../lib/homeData';
 import { useTodayHistory } from '../hooks/useTodayHistory';
 import { useLikeAction } from '../hooks/useLikeAction';
-import { useLikedTracksStore, isTrackLiked } from '../stores/likedTracksStore';
+import { useLikedTracksStore, isTrackLiked, trackKey } from '../stores/likedTracksStore';
 import { useArtistPages } from '../hooks/useArtistPages';
 import { artistPath } from '../lib/artistProfile';
 import { CoverOpenLarge } from '../design/CoverOpenLarge';
@@ -170,7 +170,7 @@ export function SinceDawn({ history }: { history: Loaded<SongEntry[]> | null }) 
       art: e.song.art,
       isNow: e.sh_id === nowId,
       isKept: isTrackLiked(tracks, e.song.title, e.song.artist),
-      isKeeping: likingTrackId === `${e.song.title}-${e.song.artist}`,
+      isKeeping: likingTrackId === trackKey(e.song.title, e.song.artist),
     };
   });
 

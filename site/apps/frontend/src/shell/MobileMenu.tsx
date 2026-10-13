@@ -35,7 +35,7 @@ export function MobileMenu() {
     { href: localizeHref('/musilogy'), label: m.musilogy_title() },
     user
       ? { href: localizeHref('/mes-titres'), label: m.nav_my_tracks() }
-      : { href: m.signin_href(), label: m.nav_sign_in() },
+      : { href: localizeHref('/connexion'), label: m.nav_sign_in() },
   ];
 
   return (
@@ -61,7 +61,9 @@ export function MobileMenu() {
                     to={page.href}
                     onClick={close}
                     aria-current={pathname === page.href ? 'page' : undefined}
-                    {...(page.href === m.signin_href() ? { state: { from: pathname } } : {})}
+                    {...(page.href === localizeHref('/connexion')
+                      ? { state: { from: pathname } }
+                      : {})}
                     className={PAGE_LINK}
                   >
                     {page.label}
