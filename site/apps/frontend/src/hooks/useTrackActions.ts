@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useNowPlayingStore } from '../lib/azuracast';
-import { useLikedTracksStore, isTrackLiked } from '../stores/likedTracksStore';
+import { useLikedTracksStore, isTrackLiked, trackKey } from '../stores/likedTracksStore';
 import { useLikeAction } from './useLikeAction';
 import { shareTrackWithToast, getRadioShareUrl } from '../lib/shareTrack';
 
@@ -26,7 +26,7 @@ export function useTrackActions(): UseTrackActions {
   const { likingTrackId, toggleLike } = useLikeAction();
 
   const isLiked = title && artist ? isTrackLiked(tracks, title, artist) : false;
-  const isLiking = likingTrackId === `${title}-${artist}`;
+  const isLiking = title && artist ? likingTrackId === trackKey(title, artist) : false;
 
   const handleToggleLike = useCallback(() => {
     if (title && artist) {

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { useLocation, useSearchParams } from 'react-router';
-import { getLocale } from '@/paraglide/runtime.js';
+import { getLocale, localizeHref } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
 import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../shell/SiteFooter';
@@ -60,13 +61,7 @@ export function MyTracksPage() {
   // No hero here: the player bar is the only way to listen.
   useEffect(() => setListenVisible(false), [setListenVisible]);
 
-  useEffect(() => {
-    const previous = document.title;
-    document.title = `${m.library_title()} · AubeSonore`;
-    return () => {
-      document.title = previous;
-    };
-  }, []);
+  usePageTitle(m.library_title());
 
   const kept = useMemo(
     () =>
@@ -79,7 +74,7 @@ export function MyTracksPage() {
 
   const state: MyTracksState =
     !authLoading && !signedIn
-      ? { status: 'signed-out', signInHref: m.signin_href(), from: pathname }
+      ? { status: 'signed-out', signInHref: localizeHref('/connexion'), from: pathname }
       : tracks.length > 0
         ? { status: 'ready', tracks: shown, total: kept.length }
         : authLoading || !settled

@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router';
-import * as m from '@/paraglide/messages.js';
+import { localizeHref } from '@/paraglide/runtime.js';
 
 /** What the sign-in page is opened with: its first form, the track to keep, where to go back. */
 export interface SignInState {
@@ -12,5 +12,6 @@ export interface SignInState {
 export function useOpenSignIn(): (state?: Omit<SignInState, 'from'>) => void {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  return (state = {}) => void navigate(m.signin_href(), { state: { ...state, from: pathname } });
+  return (state = {}) =>
+    void navigate(localizeHref('/connexion'), { state: { ...state, from: pathname } });
 }

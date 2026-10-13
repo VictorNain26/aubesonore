@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import * as m from '@/paraglide/messages.js';
 import { SiteHeader } from '../shell/SiteHeader';
 import { SiteFooter } from '../shell/SiteFooter';
@@ -39,9 +40,7 @@ export function NotFoundPage() {
   useEffect(() => setListenVisible(false), [setListenVisible]);
 
   // Reached inside the app, the tab says where the listener is; pre-rendered, the head already does.
-  useEffect(() => {
-    document.title = `${m.notfound_meta_title()} · AubeSonore`;
-  }, []);
+  usePageTitle(m.notfound_meta_title());
   return (
     <div className="min-h-page flex flex-col">
       <main id="main" className="relative flex flex-1 flex-col overflow-hidden">

@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { usePageTitle } from '../hooks/usePageTitle';
 import { Navigate, useLoaderData, useLocation, useParams } from 'react-router';
 import { ArtistPageView } from '../artist/ArtistPageView';
 import { useHeroListenVisible } from '../home/listen';
@@ -48,13 +49,6 @@ export function ArtistPage() {
       : null
   );
 
-  useEffect(() => {
-    const previous = document.title;
-    return () => {
-      document.title = previous;
-    };
-  }, []);
-
   // An unknown artist's tab says so, like the 404's.
   const name =
     state.status === 'ready'
@@ -62,9 +56,7 @@ export function ArtistPage() {
       : state.status === 'missing'
         ? m.notfound_meta_title()
         : null;
-  useEffect(() => {
-    if (name) document.title = `${name} · AubeSonore`;
-  }, [name]);
+  usePageTitle(name);
 
   if (elsewhere) {
     return (

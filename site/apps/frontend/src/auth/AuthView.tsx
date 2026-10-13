@@ -1,4 +1,5 @@
 import type { RefObject } from 'react';
+import { localizeHref } from '@/paraglide/runtime.js';
 import { ArrowLeft, Eye, EyeOff, Heart, ListOrdered } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '../design/Button';
@@ -377,7 +378,7 @@ export function AuthView({
                     <p className="text-caption text-text-muted m-0">
                       {m.auth_privacy_notice()}{' '}
                       <a
-                        href={m.legal_href()}
+                        href={localizeHref('/mentions-legales/')}
                         className={cn(TEXT_LINK_CLASSES, 'text-text min-h-0')}
                       >
                         {m.auth_privacy_link()}

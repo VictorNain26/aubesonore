@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
-import { useLikedTracksStore } from '../stores/likedTracksStore';
+import { findKept, trackKey, useLikedTracksStore } from '../stores/likedTracksStore';
 import { useAuthStore } from '../stores/authStore';
 import { useOpenSignIn } from '../lib/signIn';
 import { artistPath, resolveArtistPage } from '../lib/artistProfile';
@@ -37,18 +37,14 @@ export function useLikeAction(): UseLikeAction {
         return;
       }
 
-      const trackKey = `${title}-${artist}`;
+      const key = trackKey(title, artist);
       // Read the latest value from the store (not the subscribed selector)
       // so back-to-back synchronous calls see the lock set by the first.
-      if (useLikedTracksStore.getState().likingTrackId === trackKey) return;
+      if (useLikedTracksStore.getState().likingTrackId === key) return;
 
-      setLikingTrackId(trackKey);
+      setLikingTrackId(key);
       try {
-        const existingTrack = tracks.find(
-          (t) =>
-            t.title.toLowerCase() === title.toLowerCase() &&
-            t.artist.toLowerCase() === artist.toLowerCase()
-        );
+        const existingTrack = findKept(tracks, title, artist);
 
         if (existingTrack) {
           const success = await unlikeTrack(existingTrack.id);
