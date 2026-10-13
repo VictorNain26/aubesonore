@@ -38,11 +38,11 @@ function inlineStyles(html) {
 
 async function write(page, body, { siblings, noindex = false }) {
   const { title, description } = meta(page.locale, page.kind);
-  const station = meta(page.locale).description;
+  const site = meta(page.locale).description;
   let html = rewriteHead(
     template,
     base,
-    { ...page, title, description, station },
+    { ...page, title, description, site },
     { siblings, noindex }
   );
   html = inlineStyles(html);

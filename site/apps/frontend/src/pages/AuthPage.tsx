@@ -29,6 +29,15 @@ function validatePasswordMatch(password: string, confirm: string): string | unde
   return confirm === password ? undefined : m.auth_error_password_mismatch();
 }
 
+const TITLES: Record<AuthMode, () => string> = {
+  signin: m.auth_signin_title,
+  signup: m.auth_signup_title,
+  forgot: m.auth_forgot_title,
+  'reset-sent': m.auth_forgot_title,
+  'reset-password': m.auth_new_password,
+  'verification-sent': m.auth_verification_title,
+};
+
 /**
  * Sign in, sign up, a forgotten password and a new one, on a page of the site (/connexion,
  * /en/sign-in, and Better Auth's /reset-password?token= link). Opened with a SignInState: its first
@@ -52,9 +61,12 @@ export default function AuthPage() {
   useEffect(() => setListenVisible(false), [setListenVisible]);
 
   useEffect(() => {
-    document.title = `${m.auth_signin_title()} · AubeSonore`;
     if (resetLinkInvalid) toastError(m.toast_reset_link_invalid());
   }, [resetLinkInvalid]);
+
+  useEffect(() => {
+    document.title = `${TITLES[mode]()} · AubeSonore`;
+  }, [mode]);
 
   // Already signed in (back from Google, or the page reopened): nothing to do here.
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);

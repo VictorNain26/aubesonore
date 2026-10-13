@@ -108,7 +108,7 @@ describe('ArtistPageView', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(screen.getByRole('heading', { name: 'Artistes proches' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Artistes similaires' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Explorer dans Musilogy' })).not.toBeInTheDocument();
   });
@@ -145,14 +145,14 @@ describe('ArtistPageView', () => {
       'Écouter ailleurs',
       'Vos titres gardés',
       'Albums et EP',
-      'Artistes proches',
+      'Artistes similaires',
     ]);
     expect(
       screen
         .getAllByRole('link')
         .filter((link) => link.getAttribute('href')?.startsWith('#'))
         .map((link) => link.textContent)
-    ).toEqual(['Vos titres gardés', 'Albums et EP', 'Artistes proches']);
+    ).toEqual(['Vos titres gardés', 'Albums et EP', 'Artistes similaires']);
     expect(screen.getByRole('list', { name: 'Écouter ailleurs' })).toContainElement(
       screen.getByRole('link', { name: 'Bandcamp' })
     );
