@@ -8,10 +8,9 @@ import sys
 from collections import Counter
 from collections.abc import Callable
 from contextlib import closing
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, datetime
 from pathlib import PurePosixPath
 from typing import NoReturn, ParamSpec, TypeVar
-from zoneinfo import ZoneInfo
 
 import numpy as np
 import requests
@@ -665,49 +664,31 @@ def grille(
         settings.azuracast_api_key.get_secret_value(),
         settings.azuracast_station_id,
     )
-    try:
-        tz = ZoneInfo(station.timezone())
-        start_next = station.start_next_s()
-        now = datetime.now(tz)
-        day = now.date() if aujourdhui else now.date() + timedelta(days=1)
-        hours = list(range(now.hour + 1, 24)) if aujourdhui else list(range(24))
-        history = station.last_played((now - timedelta(days=14)).isoformat(), now.isoformat())
-        # Un titre en file passe même si son heure est réécrite, une fois remis à Liquidsoap :
-        # il compte comme joué à son heure prévue.
-        for song, at in station.queued().items():
-            history[song] = max(history.get(song, at), at)
-        with _db(settings) as conn:
-            spans = grille_mod.hour_spans(day, hours, tz)
-            rewritten = [begin for begin, _ in spans.values()]
-            played = grille_mod.with_published(conn, history, now.timestamp(), rewritten)
-            midnight = datetime.combine(day, time(0), tzinfo=tz).timestamp()
-            plan = grille_mod.plan_day(
-                grille_mod.load_titres(conn), played, cfg, day, spans, midnight, start_next
-            )
-            errors = grille_mod.publish(plan, station, [h for h in hours if h not in spans])
-            grille_mod.record(conn, plan)
-            _record(
-                conn,
-                "grille",
-                not errors and not plan.short_hours,
-                {
-                    "jour": day.isoformat(),
-                    "heures": len(plan.hours),
-                    "créneaux": plan.slots,
-                    "heures courtes": plan.short_hours,
-                    "créneaux cédés": plan.empty_slots,
-                    "titres non mesurés": plan.unmeasured,
-                    "titres en retard": plan.late,
-                    "tour en jours": {c: round(d, 2) for c, d in plan.turnover_days.items()},
-                    "titres par artiste au plus": plan.max_per_artist,
-                    "erreurs": len(errors),
-                },
-            )
-    except AzuracastUnavailable as e:
-        _fail(f"AzuraCast indisponible ({e})", 1)
+    with _db(settings) as conn:
+        try:
+            plan, errors = grille_mod.grille_pass(conn, station, cfg, aujourdhui, datetime.now(UTC))
+        except AzuracastUnavailable as e:
+            _fail(f"AzuraCast indisponible ({e})", 1)
+        _record(
+            conn,
+            "grille",
+            not errors and not plan.short_hours,
+            {
+                "jour": plan.day.isoformat(),
+                "heures": len(plan.hours),
+                "créneaux": plan.slots,
+                "heures courtes": plan.short_hours,
+                "créneaux cédés": plan.empty_slots,
+                "titres non mesurés": plan.unmeasured,
+                "titres en retard": plan.late,
+                "tour en jours": {c: round(d, 2) for c, d in plan.turnover_days.items()},
+                "titres par artiste au plus": plan.max_per_artist,
+                "erreurs": len(errors),
+            },
+        )
     _echo(
         [
-            f"Grille du {day.isoformat()} : {_n(len(plan.hours))} heures, créneaux "
+            f"Grille du {plan.day.isoformat()} : {_n(len(plan.hours))} heures, créneaux "
             + ", ".join(f"{c} {_n(n)}" for c, n in plan.slots.items()),
             f"  heures courtes : {_n(plan.short_hours)}, créneaux cédés à une autre catégorie : "
             f"{_n(plan.empty_slots)}, titres pas encore mesurés : "
