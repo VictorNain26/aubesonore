@@ -54,7 +54,7 @@ services:
       retries: 3
       start_period: 180s
     volumes:
-      - /home/victormoi/aubesonore/azuracast/stations:/var/azuracast/stations
+      - ./stations:/var/azuracast/stations
       - /media/plex/azuracast/backups:/var/azuracast/backups
       - db_data:/var/lib/mysql
       - www_uploads:/var/azuracast/storage/uploads
