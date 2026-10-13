@@ -6,8 +6,7 @@ paths:
 
 # Tester musilogy
 
-Complète les règles générales de `~/.claude/rules/tests.md` ; ce qui suit est
-propre à ce dépôt.
+Ce qui suit est propre à ce dépôt.
 
 ## Les témoins viennent du dump
 

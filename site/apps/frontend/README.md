@@ -4,10 +4,11 @@ Application React/Vite de la webradio **AubeSonore** : écoute du flux AzuraCast
 
 ## Fonctionnalités
 
-- Lecture du flux AzuraCast avec « en train de jouer » en temps réel
+- Le direct d'AzuraCast, le titre en cours, ce qui est passé depuis l'aube et les plus gardés
+- Les pages artistes et Musilogy, dessinées par le serveur puis hydratées (data mode de React Router)
+- Mes titres : les titres gardés, à écouter sur YouTube
 - Authentification (inscription, connexion, réinitialisation) via `better-auth`
-- Morceaux aimés avec liens multi-plateformes et pochettes durables
-- Application installable (PWA)
+- Diffusion vers AirPlay et Chromecast ; application installable (PWA)
 
 ## Design system
 
@@ -25,7 +26,6 @@ Variables (`.env.example`) :
 - `VITE_API_URL` — URL de l'API backend
 - `VITE_AZURACAST_BASE_URL` — serveur AzuraCast
 - `VITE_STATION_SHORTCODE` — shortcode de la station
-- `VITE_SITE_BASE_URL` — URL publique du site
 
 ## Développement
 
@@ -40,7 +40,7 @@ pnpm check:contrast   # contraste des tokens (wired en CI)
 
 ## Déploiement
 
-Auto-hébergé : le `Dockerfile` construit la SPA et la sert via nginx, dans le `compose.yaml` de la racine. Merger sur `master` suffit — un timer systemd sur le serveur déploie dans les deux minutes (voir la section _Deployment_ du `CLAUDE.md` racine).
+Auto-hébergé : le `Dockerfile` construit la SPA et la sert via nginx, dans le `compose.yaml` de la racine. Merger sur `master` suffit — un timer systemd sur le serveur déploie dans les deux minutes (voir la section _Deployment_ de `site/CLAUDE.md`).
 
 ## Licence
 

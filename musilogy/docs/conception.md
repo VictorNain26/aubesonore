@@ -1,8 +1,7 @@
 # musilogy — conception
 
-Conception du 2026-10-04, qui remplace celle de la frise et de la filiation
-(dans l'historique git). La feuille de route est `docs/vision.md` §7, à la
-racine. Les chiffres cités ici sont descriptifs ; le contrat exécutable reste
+La conception en vigueur de musilogy. La feuille de route est `docs/vision.md`
+§7, à la racine. Les chiffres cités ici sont descriptifs ; le contrat exécutable reste
 `tests/test_baseline.py`.
 
 ## Rôle
@@ -78,13 +77,13 @@ manifeste (`parameters`).
 
 ## 2. Tables
 
-**Gardées** : `artists` (identité, type, dates et leur provenance, lieu,
+**Le socle** : `artists` (identité, type, dates et leur provenance, lieu,
 genres ; tout artiste du dump, de tout type ou sans type, hors artistes à usage
 spécial, et seule une formation donne un début déclaré : README, `10_bands`), `albums` (non chargée : elle sert les dates, et ne compte que les
 albums), `genres` (vocabulaire, publié, non chargé), `links` (appartenances, pseudonymes et changements de nom),
-`popularity`. Les tables de la frise et de la filiation sont retirées (historique git).
+`popularity`.
 
-**Ajoutées** :
+**L'œuvre, les styles, les pages et la proximité** :
 
 - `releases(artist_mbid, rg_mbid, title, primary_type, soundtrack, remix, y,
   filed_original, official)` : chaque album et EP du dump dont les types secondaires se
@@ -95,7 +94,7 @@ albums), `genres` (vocabulaire, publié, non chargé), `links` (appartenances, p
   de l'artiste (relevé `official`, en parties épinglées) : vrai si un artiste
   crédité relevé le liste, faux si les artistes crédités relevés ne le
   listent pas, NULL si aucun n'a été relevé ; `artist_releases` écarte les
-  faux. L'extraction garde désormais les EP à côté des albums ; `albums` reste
+  faux. L'extraction garde les EP à côté des albums ; `albums` reste
   limitée aux albums.
 - `styles(artist_mbid, decade, style, records)`, tirée du dump Discogs
   (`84_discogs`, README) : les styles des disques de l'artiste par décennie.
@@ -163,23 +162,9 @@ après) et à mesurer avant d'être changé.
 ## 4. Contrat avec le site
 
 Le site n'appelle que ces fonctions. Toutes sont `STABLE`, en SQL, et rendent
-zéro ligne pour un MBID inconnu. Une fonction **livrée** existe dans
-`src/musilogy/pg/90_*.sql` et est testée ici contre Postgres ; elle est en
-production après le premier `musilogy load` qui suit sa fusion. Une fonction
-**à livrer** n'existe encore nulle part : le site doit la traiter comme
-absente (code `42883`).
-
-| Fonction | État |
-|---|---|
-| `artist_card` | livrée ; `proximity_surveyed` retirée avec le relevé de proximité |
-| `artist_bands` | livrée par #342 |
-| `artist_member_projects` | livrée par #342 |
-| `artist_other_names` | livrée par #342 |
-| `search_artists` | livrée par #286 |
-| `artist_releases` | livrée par #337, règle de la page par #338 |
-| `artist_urls` | livrée par #337 |
-| `artist_same_sound` | livrée avec la table `same_sound` |
-| `artist_homonym_rank` | livrée pour l'adresse de chaque page (docs/vision.md §5), à la place d'`artist_index` |
+zéro ligne pour un MBID inconnu. Chacune vit dans `src/musilogy/pg/90_*.sql`, testée ici
+contre Postgres, et passe en production au premier `musilogy load` qui suit sa fusion ; d'ici
+là, le site la traite comme absente (code `42883`).
 
 ```sql
 -- Le rang de chaque artiste parmi ceux de son nom exact (name_key) : les plus

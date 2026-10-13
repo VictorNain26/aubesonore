@@ -17,8 +17,8 @@ uv sync                                  # dépendances (.venv)
 .venv/bin/radio --help                   # library-sync, discover, nouveautes, favoris, negatives-sync,
                                          # signals, train, votes-select, acquire, antenne,
                                          # antenne-isrc, antenne-cues (rattrapages ponctuels),
-                                         # mesures, check, report, backup, votes-serve,
-                                         # votes-remind
+                                         # mesures, grille, check, report, backup,
+                                         # votes-serve, votes-remind
 ```
 
 ## Invariants

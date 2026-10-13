@@ -63,9 +63,9 @@ AzuraCast is the hub. The other two never talk to each other.
 - The pipeline **owns the library**. Since the 2026-09 rewrite (v3) it reads Plex, finds
   candidates (neighbours of Victor's artists, plus fresh picks from Hype Machine and Deezer
   editors), learns from Victor's votes, downloads the retained tracks and publishes them to the
-  `antenne/` folder of AzuraCast. Since the cutover of 2026-10-01 the station plays only the
-  "AubeSonore" playlist bound to that folder. Sequencing is not built yet.
-- The web app **owns the listener experience**: likes, multi-platform links, auth, push. It is a
+  `antenne/` folder of AzuraCast. Each night `radio grille` sequences the next day into 24 of
+  the 168 hourly "Grille" playlists; the "AubeSonore" playlist bound to the folder is the fallback.
+- The web app **owns the listener experience**: likes, multi-platform links, auth. It is a
   read-only consumer of the station and must stay that way.
 - Any change that seems to need pipeline↔app coupling is a design smell — route it through
   AzuraCast, or reconsider.

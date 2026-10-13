@@ -64,7 +64,7 @@ Env vars are read only in `apps/backend/src/config/env.ts`; never read `process.
 
 - Schema = `apps/backend/src/db/schema.ts`; all indexes are declared inline there.
 - `apps/backend/src/db/migrate.ts` runs at backend boot and applies every `apps/backend/drizzle/*.sql` not yet recorded in `__app_migrations`, in name order. `0000`–`0003` are baseline, recorded without running. **Every new migration must be idempotent SQL** (`IF NOT EXISTS` / `IF EXISTS`), since the runner may meet a schema that already has it.
-- `bun db:push` syncs `schema.ts` straight to the connected DB and can drop columns. Don't use `bun db:generate`: the repo keeps no drizzle snapshot meta (no `apps/backend/drizzle/meta/`); new migrations are hand-written.
+- `bun db:push` syncs `schema.ts` straight to the connected DB and can drop columns. The repo keeps no drizzle snapshot meta (no `apps/backend/drizzle/meta/`), so `drizzle-kit generate` cannot work: new migrations are hand-written.
 
 ## Working with artist enrichment
 
