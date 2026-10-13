@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { STREAM_URL } from '../utils/config';
+import { STREAM_URL } from './config';
 
 const STORAGE_KEY = 'aubesonore_volume';
 

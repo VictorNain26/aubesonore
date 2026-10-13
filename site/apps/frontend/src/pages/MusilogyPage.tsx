@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import * as m from '@/paraglide/messages.js';
 import { useHeroListenVisible } from '../home/listen';
-import { SiteFooter } from '../home/SiteFooter';
-import { SiteHeader } from '../home/SiteHeader';
+import { SiteFooter } from '../shell/SiteFooter';
+import { SiteHeader } from '../shell/SiteHeader';
 import { MusilogyUnavailableError, searchMusilogy } from '../lib/musilogy';
-import { MusilogyHomeView, type SearchState } from '../musilogy/MusilogyView';
+import { MusilogyHomeView, type SearchState } from '../musilogy/SearchView';
 
 // A search waits for a pause in typing: one request per pause, not per key.
 const SEARCH_PAUSE_MS = 300;
@@ -53,7 +53,7 @@ function MusilogyHome() {
   );
 }
 
-export default function MusilogyPage() {
+export function MusilogyPage() {
   const setListenVisible = useHeroListenVisible((s) => s.setVisible);
 
   // No hero here: the player bar is the only way to listen.

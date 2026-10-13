@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { coverArtUrl, type MusilogyRelease } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
-import { Section } from '../design/molecules/Section';
-import { CoverOpenLarge } from '../home/CoverOpenLarge';
-import { TEXT_ACTION } from '../home/styles';
+import { Section } from '../design/Section';
+import { CoverOpenLarge } from '../design/CoverOpenLarge';
+import { TEXT_ACTION } from '../design/classes';
 
 // The first records show, the rest a step at a time: 99 % of the dump's artists file fewer
 // than 25, but a prolific one files dozens of EPs (the Rolling Stones about 150 regional ones)

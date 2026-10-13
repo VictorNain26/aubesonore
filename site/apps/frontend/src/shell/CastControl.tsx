@@ -3,7 +3,7 @@ import { Popover } from '@base-ui/react/popover';
 import { Cast } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Diffusion } from '../hooks/useDiffusion';
-import { TEXT_ACTION } from './styles';
+import { TEXT_ACTION } from '../design/classes';
 import * as m from '@/paraglide/messages.js';
 
 const BAR =

@@ -3,12 +3,11 @@ import { Link } from 'react-router';
 import type { MusilogyArtist, MusilogyNeighbour } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
 import { cn } from '@/lib/utils';
-import { ARTIST_LINK } from '../home/styles';
+import { ARTIST_LINK, STRETCHED } from '../design/classes';
 import { DISCOVERY } from '../lib/discoveryTrail';
 import { pagePathOf } from '../lib/musilogy';
 
 // The link covers its whole row: the target is the row, never the name alone.
-const STRETCHED = "after:absolute after:inset-0 after:content-['']";
 
 /** The close artists, the closest first: musilogy's rank, ties already settled. */
 export function closeArtistsOf({ neighbours }: MusilogyArtist): readonly MusilogyNeighbour[] {

@@ -1,11 +1,9 @@
 import { useEffect } from 'react';
-import { Link } from 'react-router';
-import { localizeHref } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
-import { SiteHeader } from '../home/SiteHeader';
-import { SiteFooter } from '../home/SiteFooter';
+import { SiteHeader } from '../shell/SiteHeader';
+import { SiteFooter } from '../shell/SiteFooter';
 import { useHeroListenVisible } from '../home/listen';
-import { BACK_TO_LIVE } from '../home/styles';
+import { PageMessage } from '../shell/PageMessage';
 
 const SILENCE_FROM = 0.54;
 const SILENCE_TO = 0.8;
@@ -49,15 +47,11 @@ export function NotFoundPage() {
       <main id="main" className="relative flex flex-1 flex-col overflow-hidden">
         <div aria-hidden="true" className="dawn-band dawn-arrive" />
         <SiteHeader />
-        <div className="lift-in px-page relative z-10 flex flex-1 flex-col justify-center gap-3 py-16">
-          <h1 className="text-hero m-0">{m.notfound_title()}</h1>
-          <p className="text-intro text-text-muted max-w-blurb m-0">{m.notfound_body()}</p>
-          <p className="m-0 mt-6">
-            <Link to={localizeHref('/')} className={BACK_TO_LIVE}>
-              {m.artist_back()}
-            </Link>
-          </p>
-        </div>
+        <PageMessage
+          className="relative z-10"
+          title={m.notfound_title()}
+          body={m.notfound_body()}
+        />
         <div className="relative z-10 h-36 md:h-48">
           <svg
             aria-hidden="true"

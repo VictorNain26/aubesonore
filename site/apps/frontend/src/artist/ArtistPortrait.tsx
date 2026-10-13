@@ -3,8 +3,8 @@ import type { ArtistImage } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
 import { cn } from '@/lib/utils';
 import { artworkSrc, artworkSrcSet } from '../lib/artwork';
-import { ARTIST_LINK } from '../home/styles';
-import { OpenLarge } from '../design/organisms/OpenLarge';
+import { ARTIST_LINK } from '../design/classes';
+import { OpenLarge } from '../design/OpenLarge';
 
 const OUTSIDE_LINK = { rel: 'noopener noreferrer', target: '_blank' } as const;
 

@@ -8,7 +8,7 @@
     CHROME=/path/to/chrome uv run brand/build.py
 
 Writes brand/svg/*.svg, public/favicon.svg, public/favicon.ico, public/icon-*.png, public/og-*.png
-and src/design/atoms/logoArt.ts. Run it again after changing a rule, never edit the outputs.
+and src/design/logoArt.ts. Run it again after changing a rule, never edit the outputs.
 """
 
 import bisect
@@ -36,7 +36,7 @@ FRONTEND = Path(__file__).resolve().parent.parent
 FONTS = FRONTEND.parent.parent / "node_modules/@fontsource-variable"
 FONT = FONTS / "bricolage-grotesque/files/bricolage-grotesque-latin-wdth-normal.woff2"
 PUBLIC, SVG_OUT = FRONTEND / "public", FRONTEND / "brand/svg"
-ART_TS = FRONTEND / "src/design/atoms/logoArt.ts"
+ART_TS = FRONTEND / "src/design/logoArt.ts"
 
 # The palette's hex values (tokens.css is oklch; icons and older Cast devices want hex).
 PAPER, INK, DAWN, MUTED = "#E8E0D7", "#211F26", "#F2AC81", "#4A4650"

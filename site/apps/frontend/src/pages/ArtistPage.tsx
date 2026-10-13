@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { Navigate, useLoaderData, useLocation, useParams } from 'react-router';
 import { ArtistPageView } from '../artist/ArtistPageView';
 import { useHeroListenVisible } from '../home/listen';
-import { SiteFooter } from '../home/SiteFooter';
+import { SiteFooter } from '../shell/SiteFooter';
 import { artistPath } from '../lib/artistProfile';
 import type { artistLoader } from '../lib/artistPageData';
 import { useDiscoveryTrail } from '../lib/discoveryTrail';
@@ -11,7 +11,7 @@ import * as m from '@/paraglide/messages.js';
 import { useLikedTracksStore } from '../stores/likedTracksStore';
 
 /** An artist page, drawn from what its loader brought (lib/artistPageData.ts, routes.tsx). */
-export default function ArtistPage() {
+export function ArtistPage() {
   const { slug } = useParams<{ slug: string }>();
   const { state, musilogy } = useLoaderData<typeof artistLoader>();
   const setListenVisible = useHeroListenVisible((s) => s.setVisible);

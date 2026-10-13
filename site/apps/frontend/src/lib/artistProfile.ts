@@ -1,7 +1,7 @@
 import type { ArtistPageRef, ArtistProfile } from '@aubesonore/shared-types/client';
 import { object, record, safeParse, string } from 'valibot';
 import { getLocale, localizeHref, type Locale } from '@/paraglide/runtime.js';
-import { API_BASE_URL } from '../utils/config';
+import { API_BASE_URL } from './config';
 
 const SLUG = '__slug__';
 const pathTemplates = new Map<string, string>();

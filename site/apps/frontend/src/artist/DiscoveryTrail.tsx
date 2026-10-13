@@ -1,8 +1,8 @@
 import { Link } from 'react-router';
 import * as m from '@/paraglide/messages.js';
 import { cn } from '@/lib/utils';
-import { ARTIST_LINK } from '../../home/styles';
-import { DISCOVERY, type TrailStep } from '../../lib/discoveryTrail';
+import { ARTIST_LINK } from '../design/classes';
+import { DISCOVERY, type TrailStep } from '../lib/discoveryTrail';
 
 /**
  * The artists walked through to reach this one, each a way back: « Stereolab › McCarthy ›

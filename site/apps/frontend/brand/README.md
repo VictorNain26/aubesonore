@@ -58,7 +58,7 @@ line turns to paper on a dark tab strip.
 | `public/icon-192.png`, `icon-512.png` | manifest, Android splash, Cast metadata                                                                                              |
 | `public/icon-maskable-512.png`        | Android adaptive icon: the symbol inside the 40 % radius circle every mask keeps ([web.dev](https://web.dev/articles/maskable-icon)) |
 | `public/og-fr.png`, `og-en.png`       | sharing cards, 1200 × 630                                                                                                            |
-| `src/design/atoms/logoArt.ts`         | the lockup's parts for `Logo.tsx`                                                                                                    |
+| `src/design/logoArt.ts`               | the lockup's parts for `Logo.tsx`                                                                                                    |
 
 The favicon set follows Evil Martians' [How to Favicon](https://evilmartians.com/chronicles/how-to-favicon-in-2021-six-files-that-fit-most-needs).
 

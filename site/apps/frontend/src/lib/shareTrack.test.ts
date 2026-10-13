@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { shareTrack, getRadioShareUrl } from './shareTrack';
-import { API_BASE_URL } from '../utils/config';
+import { API_BASE_URL } from './config';
 
 const input = {
   title: 'Balance Act',

@@ -5,7 +5,7 @@ import { safeParse } from 'valibot';
 import type { NowPlaying } from '@aubesonore/shared-types/azuracast';
 import { castTrack } from '../lib/cast/castMetadata';
 import { NowPlayingSchema } from '../lib/azuracast/validators';
-import { STATIC_NOWPLAYING_URL, STREAM_URL } from '../utils/config';
+import { STATIC_NOWPLAYING_URL, STREAM_URL } from '../lib/config';
 
 // AubeSonore's Cast receiver (Custom Web Receiver, CAF v3): the page a TV or a speaker opens when
 // the site casts to it. It plays the station's live MP3 and follows the track on air itself, so the

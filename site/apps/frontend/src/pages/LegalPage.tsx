@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import * as m from '@/paraglide/messages.js';
-import { SiteHeader } from '../home/SiteHeader';
-import { SiteFooter } from '../home/SiteFooter';
+import { SiteHeader } from '../shell/SiteHeader';
+import { SiteFooter } from '../shell/SiteFooter';
 import { useHeroListenVisible } from '../home/listen';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {

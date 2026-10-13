@@ -1,7 +1,7 @@
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from '../stores/authStore';
-import { Menu } from '../design/molecules/Menu';
-import { Logo } from '../design/atoms/Logo';
+import { Menu } from '../design/Menu';
+import { Logo } from '../design/Logo';
 import { MobileMenu } from './MobileMenu';
 import { Link, useLocation } from 'react-router';
 import { localizeHref } from '@/paraglide/runtime.js';

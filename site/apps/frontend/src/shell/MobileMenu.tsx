@@ -3,11 +3,11 @@ import { Dialog } from '@base-ui/react/dialog';
 import { Link, useLocation } from 'react-router';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Logo } from '../design/atoms/Logo';
+import { Logo } from '../design/Logo';
 import { localizeHref } from '@/paraglide/runtime.js';
 import { useAuthStore } from '../stores/authStore';
 import { useLocale, useSwitchLocale } from '../stores/localeStore';
-import { CLOSE_BUTTON, TEXT_ACTION } from './styles';
+import { CLOSE_BUTTON, TEXT_ACTION } from '../design/classes';
 import * as m from '@/paraglide/messages.js';
 
 const TRIGGER =

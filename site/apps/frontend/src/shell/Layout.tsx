@@ -6,7 +6,7 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-export default function Layout({ children }: LayoutProps) {
+export function Layout({ children }: LayoutProps) {
   return (
     <div className="text-text pb-bar min-h-dvh">
       <a href="#main" className="skip-link">

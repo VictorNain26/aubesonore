@@ -2,17 +2,17 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
 import { cn } from '@/lib/utils';
-import { KeepHeart } from './KeepHeart';
+import { KeepHeart } from '../design/KeepHeart';
 import { useNowPlayingStore } from '../lib/azuracast';
 import { usePlayer } from '../lib/player';
 import { useAirPlayStore } from '../stores/airplayStore';
 import { useCastStore } from '../stores/castStore';
 import { useDiffusion, type Diffusion } from '../hooks/useDiffusion';
 import { CastControl } from './CastControl';
-import { useTrackActions } from '../hooks/player/useTrackActions';
+import { useTrackActions } from '../hooks/useTrackActions';
 import { useArtistPage } from '../hooks/useArtistPage';
 import { artistPath } from '../lib/artistProfile';
-import { Cover } from './Cover';
+import { Cover } from '../design/Cover';
 import { VolumeControl } from './VolumeControl';
 import { NowPlayingSheet } from './NowPlayingSheet';
 import {
@@ -22,7 +22,7 @@ import {
   listenState,
   useHeroListenVisible,
   type ListenState,
-} from './listen';
+} from '../home/listen';
 import * as m from '@/paraglide/messages.js';
 
 const ICON_BUTTON =

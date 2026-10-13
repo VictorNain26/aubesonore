@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { usePlayer } from '../../lib/player';
+import { usePlayer } from '../lib/player';
 
 // Wires the Media Session API so the OS can display the current track in
 // lock-screen / hardware-key controls (Android, macOS Now Playing, Chrome

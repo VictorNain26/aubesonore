@@ -11,7 +11,7 @@ import {
   readArtistPageData,
   seedArtistPage,
 } from '../lib/artistPageData';
-import ArtistPage from './ArtistPage';
+import { ArtistPage } from './ArtistPage';
 
 /** The page at `path`, through its route and its loader, as the site serves it (routes.tsx). */
 function open(path: string) {

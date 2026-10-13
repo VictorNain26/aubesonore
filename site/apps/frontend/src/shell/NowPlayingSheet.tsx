@@ -4,10 +4,10 @@ import { Share2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Diffusion } from '../hooks/useDiffusion';
 import { CastControl } from './CastControl';
-import { Cover } from './Cover';
-import { KeepHeart } from './KeepHeart';
-import { ARTIST_LINK, CLOSE_BUTTON, TEXT_ACTION } from './styles';
-import { LISTEN_PILL, ListenDisc, listenAria, listenLabel, type ListenState } from './listen';
+import { Cover } from '../design/Cover';
+import { KeepHeart } from '../design/KeepHeart';
+import { ARTIST_LINK, CLOSE_BUTTON, TEXT_ACTION } from '../design/classes';
+import { LISTEN_PILL, ListenDisc, listenAria, listenLabel, type ListenState } from '../home/listen';
 import * as m from '@/paraglide/messages.js';
 
 export interface NowPlayingSheetProps {

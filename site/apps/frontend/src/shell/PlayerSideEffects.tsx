@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { toast } from 'sonner';
-import { useNowPlayingStore } from '../../lib/azuracast';
-import { usePlayer } from '../../lib/player';
-import { useMediaSession } from '../../hooks/player/useMediaSession';
+import { useNowPlayingStore } from '../lib/azuracast';
+import { usePlayer } from '../lib/player';
+import { useMediaSession } from '../hooks/useMediaSession';
 import * as m from '@/paraglide/messages.js';
 
 // Invisible component that hosts the player's side effects driven by outside state (the track on

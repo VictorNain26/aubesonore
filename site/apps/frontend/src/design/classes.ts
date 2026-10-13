@@ -13,3 +13,6 @@ export const BACK_TO_LIVE =
 /** A round 44px close button, for a full-screen menu or a sheet. */
 export const CLOSE_BUTTON =
   'ease-out-quart hover:bg-surface-raised focus-visible:outline-accent inline-flex size-11 shrink-0 items-center justify-center rounded-full transition-[background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90';
+
+/** A link stretched over its whole row (its ::after covers the row, which is `relative`). */
+export const STRETCHED = "after:absolute after:inset-0 after:content-['']";

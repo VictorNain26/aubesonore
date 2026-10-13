@@ -1,5 +1,5 @@
 import { toast } from 'sonner';
-import { API_BASE_URL } from '../utils/config';
+import { API_BASE_URL } from './config';
 import * as m from '@/paraglide/messages.js';
 
 interface ShareTrackInput {

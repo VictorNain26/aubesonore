@@ -1,13 +1,24 @@
 import { Link } from 'react-router';
 import { localizeHref } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
-import { SiteHeader } from '../home/SiteHeader';
-import { BACK_TO_LIVE } from '../home/styles';
+import { SiteHeader } from './SiteHeader';
+import { BACK_TO_LIVE } from '../design/classes';
+import { cn } from '../lib/utils';
 
 /** A page's whole answer when it has nothing else to show: a title, a sentence, the way back. */
-export function PageMessage({ title, body }: { title: string; body: string }) {
+export function PageMessage({
+  title,
+  body,
+  className,
+}: {
+  title: string;
+  body: string;
+  className?: string;
+}) {
   return (
-    <div className="lift-in px-page flex flex-1 flex-col justify-center gap-3 py-16">
+    <div
+      className={cn('lift-in px-page flex flex-1 flex-col justify-center gap-3 py-16', className)}
+    >
       <h1 className="text-hero m-0">{title}</h1>
       <p className="text-intro text-text-muted max-w-blurb m-0">{body}</p>
       <p className="m-0 mt-6">

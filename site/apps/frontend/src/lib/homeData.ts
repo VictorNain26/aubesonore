@@ -1,7 +1,7 @@
 import { array, safeParse } from 'valibot';
 import type { KeptArtistPage } from '@aubesonore/shared-types/client';
 import { SongEntrySchema, type SongEntry } from './azuracast';
-import { API_BASE_URL } from '../utils/config';
+import { API_BASE_URL } from './config';
 
 export interface TrendEntry {
   title: string;

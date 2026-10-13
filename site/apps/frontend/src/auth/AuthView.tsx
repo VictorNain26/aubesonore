@@ -1,8 +1,8 @@
 import type { RefObject } from 'react';
 import { ArrowLeft, Eye, EyeOff, Heart, ListOrdered } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '../atoms/Button';
-import { TextField } from '../atoms/TextField';
+import { Button } from '../design/Button';
+import { TextField } from '../design/TextField';
 import * as m from '@/paraglide/messages.js';
 
 export type AuthMode =
