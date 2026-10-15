@@ -29,7 +29,7 @@ radio = "radio.cli:app"
 dev = [
     "pytest>=9.1",
     "responses>=0.25",
-    "mypy>=2.3",
+    "mypy>=2.4.0",
     "ruff>=0.16",
     "types-requests",
     "httpx2>=2.13.1",
