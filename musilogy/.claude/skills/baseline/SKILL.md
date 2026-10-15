@@ -1,6 +1,6 @@
 ---
 name: baseline
-description: À charger dès que `uv run pytest -m slow` échoue ou qu'un chiffre de tests/test_baseline.py doit bouger. Rejouer la ligne de base sur le dump réel et instruire un écart avant de l'entériner. Prend une dizaine de minutes et exige les extractions de data/work/.
+description: À charger dès que `uv run pytest -m slow` échoue ou qu'un chiffre de tests/test_baseline.py doit bouger. Rejouer la ligne de base sur le dump réel et instruire un écart avant de l'entériner. Prend environ 5 minutes et exige les extractions de data/work/.
 ---
 
 # Ligne de base
@@ -28,7 +28,7 @@ Si le répertoire est absent ou vide, la ligne de base ne peut pas tourner.
 uv run pytest -m slow
 ```
 
-Compter une dizaine de minutes. Ne pas lancer la suite rapide à la place en
+Compter environ 5 minutes. Ne pas lancer la suite rapide à la place en
 espérant le même signal : elle tourne sur les témoins, pas sur la population.
 
 ## 3. Si tout passe

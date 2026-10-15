@@ -14,8 +14,8 @@ The README has setup details; this file is for Claude.
 
 ## Conventions
 
-- **Commits** — enforced by `.husky/commit-msg` + `commitlint.config.js`. Scope = app or module touched.
-- **Branches** — short kebab-case (`feat/like-track-batch`, `fix/cors-prod`). The default branch is `master`; changes land through a PR.
+- **Commits** — enforced by `.husky/commit-msg` + `commitlint.config.js`; the scope is the piece (root `CLAUDE.md`).
+- **Branches** — short kebab-case (`feat/like-track-batch`, `fix/cors-prod`). The default branch is `master`.
 - **Code style** — Prettier (`.prettierrc.json`). Named exports preferred over default. TypeScript strict everywhere (see `tsconfig.base.json`).
 - **File naming** — backend routes are dotted (`track.routes.ts`), its services and lib camelCase (`trackService.ts`), frontend uses PascalCase for components (`MyTracksView.tsx`) and camelCase for lib/hooks. Each layer is consistent internally.
 
@@ -32,7 +32,7 @@ The README has setup details; this file is for Claude.
 The stack runs on the maintainer's own box. Merging to `master` is the whole deploy action — `scripts/deploy.sh`, driven by a **systemd user timer**, polls `git ls-remote` every 2 minutes and promotes `origin/master` when it moves (`uv sync --locked` of `pipeline/.venv` → `git merge --ff-only` → the same sync again when `pipeline/` changed → `docker compose up -d --build` → wait for every healthcheck → prune images older than 72h and the build cache past 10 GB).
 
 - **Pull-based on purpose.** The repo is public, and GitHub warns that "forks of your public repository can potentially run dangerous code on your self-hosted runner machine" ([docs.github.com](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/manage-access)) — so no self-hosted runner, and no inbound webhook to expose. Polling needs no credential and no open port.
-- **Schema changes ship with a migration.** The backend applies new `apps/backend/drizzle/*.sql` files at boot (`src/db/migrate.ts`, idempotent SQL only), so a change to `schema.ts` that adds one deploys on its own. A change (one squash or merge commit on `master`) that touches `schema.ts` without adding its own migration stops the deploy; whether the migration matches the schema is the PR review's job. To unblock: apply it by hand, acknowledge with `git -C ~/aubesonore config aubesonore.appliedSchema <blob>` (the script prints the exact command), then `systemctl --user start aubesonore-deploy`. A comment alone counts: the script compares the file, not the schema (#496 stopped the deploy on 2026-10-12 for a reworded comment). Leave `schema.ts` alone in a PR that changes no schema; when its comment must follow the code, acknowledge right after the merge.
+- **Schema changes ship with a migration.** The backend applies new `apps/backend/drizzle/*.sql` files at boot (`src/db/migrate.ts`, idempotent SQL only), so a change to `schema.ts` that adds one deploys on its own. A change (one squash or merge commit on `master`) that touches `schema.ts` without adding its own migration stops the deploy; whether the migration matches the schema is the PR review's job. To unblock: apply it by hand, acknowledge with `git -C ~/aubesonore config aubesonore.appliedSchema <blob>` (the script prints the exact command), then `systemctl --user start aubesonore-deploy`. A comment alone counts: the script compares the file, not the schema. Leave `schema.ts` alone in a PR that changes no schema; when its comment must follow the code, acknowledge right after the merge.
 - **One `compose.yaml` for the box and a workstation.** Production runs its services as before; `pnpm stack` adds the `dev` profile (dev-init: schema and a test listener; frontend-dev: Vite) and `develop.watch` (the backend restarts on save). Neither is ever active on the box, so a dev-only change there cannot reach production; check a change with `docker compose config` against a production-like `.env` before merging. Postgres needs `certs/` (`scripts/make-certs.sh`); AzuraCast keeps its own compose, never merged into this one: its updater manages it, and a site deploy must never restart the radio.
 - **A failed deploy rolls back.** When `uv sync`, the build or the healthchecks (300 s) fail, `deploy.sh` resets the checkout to the commit that ran before (`git reset --keep`), rebuilds it, records the failed commit in `git config aubesonore.failedTarget` and exits 1: the next runs wait for a newer `master` rather than retry it every two minutes, and the unit keeps failing, so Gatus keeps alerting. Pushing a fix to `master` deploys it and clears the record. `scripts/deploy.test.sh` (run in CI) replays it against throwaway repositories.
 - **Only a clean `master` deploys.** `~/aubesonore` is the production checkout: on another branch, or with a modified or untracked file, the script refuses (exit 1, the unit shows failed) instead of fast-forwarding someone's branch. Work happens in a worktree.
@@ -57,7 +57,7 @@ Env vars are read only in `apps/backend/src/config/env.ts`; never read `process.
 
 - Config lives in `apps/backend/src/lib/auth/index.ts`. Cookies are `secure` + `httpOnly` + `sameSite: 'lax'` (the site and the API share one registrable domain).
 - Rate limits are tuned: 5/min sign-in, 3/min sign-up & forget-password.
-- Email verification is **required** for new accounts (`requireEmailVerification: true`). That makes SMTP load-bearing for registration, so `config/env.ts` **refuses to boot in production** when `SMTP_HOST` is unset and `DISABLE_EMAILS` is not explicitly `true`. Without that guard the app answers 200 everywhere while no one can create an account — which is exactly what happened until July 2026. Setting `DISABLE_EMAILS=true` in production is legal but logs `email.disabled_in_production` at every start.
+- Email verification is **required** for new accounts (`requireEmailVerification: true`). That makes SMTP load-bearing for registration, so `config/env.ts` **refuses to boot in production** when `SMTP_HOST` is unset and `DISABLE_EMAILS` is not explicitly `true`. Without that guard the app answers 200 everywhere while no one can create an account. Setting `DISABLE_EMAILS=true` in production is legal but logs `email.disabled_in_production` at every start.
 - Google OAuth provider configured.
 
 ## Working with Drizzle
@@ -115,7 +115,7 @@ Musilogy is the artist page's part that leads elsewhere (its close artists, band
 
 ## SSRF, headers, and other security baselines
 
-- Never `fetch()` a user-supplied URL. The `assertSafeUrl` guard was removed unused (see git history): a route that must fetch one needs a guard first, blocking private IPv4/IPv6 and link-local (`169.254.0.0/16` = cloud metadata) and enforcing `https` in prod.
+- Never `fetch()` a user-supplied URL. The app has no URL guard: a route that must fetch one needs one first, blocking private IPv4/IPv6 and link-local (`169.254.0.0/16` = cloud metadata) and enforcing `https` in prod.
 - `securityHeaders` Elysia plugin must stay mounted on the app (`X-Content-Type-Options`, `X-Frame-Options`, CSP, HSTS in prod). Don't remove from `index.ts`.
 
 ## Performance landmarks
@@ -127,7 +127,7 @@ Musilogy is the artist page's part that leads elsewhere (its close artists, band
 
 ## What NOT to do
 
-- Don't re-introduce unused deps (`axios`, `cheerio`, `@tanstack/react-query`, `react-router-dom`, `@elysiajs/cron`, `class-variance-authority`, `dayjs`, `react-intersection-observer`) — they were removed in the May 2026 audit. Use existing alternatives.
+- Don't re-introduce unused deps (`axios`, `cheerio`, `@tanstack/react-query`, `react-router-dom`, `@elysiajs/cron`, `class-variance-authority`, `dayjs`, `react-intersection-observer`) — the app already covers each; use what is there.
 - Don't write per-package `pnpm-lock.yaml` or `bun.lock` — the root pnpm-lock is authoritative.
 - Don't disable `requireEmailVerification` unless a temporary migration window is needed (and roll back immediately).
 - Don't bypass `securityHeaders` plugin or the rate limits in Better Auth.

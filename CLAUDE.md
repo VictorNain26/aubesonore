@@ -12,9 +12,7 @@ One self-hosted webradio, AubeSonore, in a single repository cloned at `~/aubeso
 | `azuracast/` | Broadcast server runtime                    | Docker — **config only** here  |
 | `musilogy/`  | Musilogy's data, offline, from MusicBrainz  | Python 3.12, uv, DuckDB        |
 
-Until 2026-10-01 they were separate repositories; the standalone `radio-pipeline` and `musilogy`
-repositories were deleted on 2026-10-03, their history kept under `pipeline/` and `musilogy/`
-(git subtree).
+`pipeline/` and `musilogy/` carry their earlier history (git subtree).
 
 **`docs/vision.md` is the product vision and the architecture across the pieces** (French):
 who owns which data, the contracts between pieces, the identity of an artist, the roadmap. Read
@@ -26,7 +24,7 @@ them all. `azuracast/RUNBOOK.md` covers rebuilding the whole system from nothing
 
 ## Working in the repository
 
-- One branch, one PR per change; a PR stays inside one piece unless the change truly spans them.
+- A PR stays inside one piece unless the change truly spans them.
 - **CI**: `.github/workflows/site.yml`, `pipeline.yml` and `musilogy.yml` run on every PR, with
   no path filter: their jobs are required checks on `master`. `codeql.yml` also runs, only on PRs
   that target `master`, and is not required.
@@ -54,7 +52,7 @@ them all. `azuracast/RUNBOOK.md` covers rebuilding the whole system from nothing
 
 ## How the pieces fit together
 
-AzuraCast is the hub. The other two never talk to each other.
+AzuraCast is the hub. The pipeline and the site never talk to each other.
 
 ```
    pipeline/ ──── uploads tracks into antenne/ (API) ────────► ┌───────────┐
@@ -64,7 +62,7 @@ AzuraCast is the hub. The other two never talk to each other.
                          site/ ──reads now-playing, history (never writes)
 ```
 
-- The pipeline **owns the library**. Since the 2026-09 rewrite (v3) it reads Plex, finds
+- The pipeline **owns the library**. It reads Plex, finds
   candidates (neighbours of Victor's artists, plus fresh picks from Hype Machine and Deezer
   editors), learns from Victor's votes, downloads the retained tracks and publishes them to the
   `antenne/` folder of AzuraCast. Each night `radio grille` sequences the next day into 24 of
@@ -87,7 +85,6 @@ pieces were separate repositories, and the checkout was `~/radio` until 2026-10-
 
 ```bash
 docker ps                      # what actually runs, and where
-grep -E '^AZURACAST|^VITE_|^DATABASE' */.env */*/.env 2>/dev/null
 systemctl --user list-timers   # what is actually scheduled
 ```
 
@@ -102,7 +99,7 @@ When this file disagrees with the running system, the system is right — correc
   Deploying AubeSonore is merging to `master`: `aubesonore-deploy.timer` promotes it.
 - **Secrets are untracked `.env` files in `site/`, `pipeline/` and `azuracast/`** (plus `azuracast/azuracast.env` and `azuracast/gatus.env`, mode 600), and the broadcast runtime also
   holds listener access logs. Keep all of it out of diffs, pastes, and issue reports.
-- **Language**: commits are English Conventional Commits everywhere (commitlint). Documentation
-  follows the piece: the pipeline, azuracast and musilogy document in French, the site in English.
+- **Language**: documentation follows the piece: the pipeline, azuracast and musilogy document in
+  French, the site in English.
   At the root, `README.md` and `docs/` are in French, like the product; `CLAUDE.md`,
   `SECURITY.md` and the workflow comments are in English.

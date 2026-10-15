@@ -9,7 +9,7 @@ partie reproductible :
   `.env.example`, `azuracast.sample.env` (le modèle d'`azuracast.env`), ce guide, `RUNBOOK.md` et
   `scripts/`.
 - **ignoré** — `stations/` (le catalogue et la config réécrite par l'UI), `.env`,
-  `azuracast.env` (mot de passe MariaDB), les journaux.
+  `azuracast.env` (mot de passe MariaDB), `gatus.env`, les journaux.
 
 Corollaire : `git status` propre **ne veut pas dire** que la station est
 sauvegardée. Les médias et les secrets sont dans le dépôt restic, la base dans la
