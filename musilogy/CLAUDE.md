@@ -44,10 +44,10 @@ en ouvrant `tests/`, et `/baseline` pour instruire un écart à la ligne de base
 - **Les règles vivent dans le SQL** ; le Python enchaîne et vérifie, il
   n'arbitre pas.
 - **Une donnée de référence n'a qu'un seul point d'autorité.** Le contrat
-  exécutable des chiffres est `tests/test_baseline.py`. Un chiffre repris
-  ailleurs — README, commentaire — est descriptif et doit se donner comme tel :
-  c'est la duplication silencieuse qui finit par diverger, et c'est la source
-  la plus courante de documentation qui se contredit.
+  exécutable des chiffres est `tests/test_baseline.py`. Exception déclarée à la
+  règle générale (un fait ne se recopie pas) : le README cite ces chiffres pour
+  justifier ses règles. Ils y sont descriptifs, se donnent comme tels et se
+  mettent à jour dans le même commit que le contrat (`/baseline`).
 
 ## Mesurer plutôt que raisonner
 
