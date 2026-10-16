@@ -1,4 +1,4 @@
-from conftest import loaded, pg_query, synthetic_artist
+from tests.conftest import loaded, pg_query, synthetic_artist
 
 
 def mbid(i):

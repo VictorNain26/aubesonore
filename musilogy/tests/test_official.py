@@ -1,4 +1,5 @@
-from conftest import (
+from musilogy.build import check_invariants
+from tests.conftest import (
     SQL,
     build_synthetic,
     loaded,
@@ -7,9 +8,7 @@ from conftest import (
     synthetic_artist,
     synthetic_release_group,
 )
-from test_invariants import restored
-
-from musilogy.build import check_invariants
+from tests.test_invariants import restored
 
 A = "00000000-0000-4000-8000-0000000000d1"
 B = "00000000-0000-4000-8000-0000000000d2"

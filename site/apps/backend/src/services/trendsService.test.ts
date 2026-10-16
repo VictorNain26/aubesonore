@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, mock } from 'bun:test';
 
 import * as realSchema from '../db/schema';
-import type { TrendEntry } from './trendsService';
+import type { TrendEntry } from '@aubesonore/shared-types/client';
 
 // What the aggregate answers: the page's slug and name, null when the track is not tied to an
 // artist with a page.

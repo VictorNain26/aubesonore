@@ -5,9 +5,11 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import tempfile
 from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import duckdb
 
@@ -20,11 +22,12 @@ from musilogy import (
 )
 from musilogy import REFERENCE_DUMP as DUMP
 from musilogy.build import (
-    RAW_ARTIST_COLUMNS,
+    RAW_ARTIST_FIELDS,
     RAW_DISCOGS_FIELDS,
     build,
     check_invariants,
     connect,
+    ndjson,
 )
 from musilogy.extract import (
     extract,
@@ -51,15 +54,18 @@ from musilogy.load import load
 from musilogy.paths import (
     DATA_DIR,
     FIXTURES_DIR,
+    QUERIES_DIR,
     RAW_DIR,
-    REFERENCE_DIR,
     SQL_DIR,
+    aside_of,
     discography_snapshot,
     discography_sums,
     discogs_dump,
     discogs_extraction,
     discogs_releases,
     discogs_sums,
+    dump_sums,
+    extraction_sidecar,
     listening_snapshot,
     listening_sums,
     official_snapshot,
@@ -68,10 +74,27 @@ from musilogy.paths import (
     popularity_snapshot,
     popularity_sums,
     work_dir,
+    written_aside,
 )
-from musilogy.publish import extraction_matches_rows_loaded, publish, read_extraction
+from musilogy.publish import (
+    COUNTER_TABLES,
+    MAX_DRIFT,
+    TABLES,
+    Trace,
+    accepts,
+    compare,
+    compared,
+    delivered,
+    extraction_matches_rows_loaded,
+    group_of,
+    is_counter,
+    previous_manifest,
+    publish,
+    read_extraction,
+)
+from musilogy.sample import publish_sample
 
-SUMS_PATH = REFERENCE_DIR / f"{DUMP}.SHA256SUMS"
+SUMS_PATH = dump_sums(DUMP)
 WORK_DIR = work_dir(DUMP)
 ARTISTS_JSONL = WORK_DIR / "artists.jsonl"
 RELEASE_GROUPS_JSONL = WORK_DIR / "release_groups.jsonl"
@@ -136,7 +159,7 @@ def fetch_and_extract() -> None:
     rg_archive = fetch_dump(DUMP, "release-group.tar.xz", RAW_DIR, SUMS_PATH)
     artists_kept, artists_dropped = extract(artist_archive, reduce_artist, ARTISTS_JSONL)
     rgs_kept, rgs_dropped = extract(rg_archive, reduce_release_group, RELEASE_GROUPS_JSONL)
-    (WORK_DIR / "extraction.json").write_text(
+    extraction_sidecar(WORK_DIR).write_text(
         json.dumps(
             {
                 "artists_kept": artists_kept,
@@ -157,81 +180,82 @@ def snapshot_popularity() -> None:
     one REFERENCE_POPULARITY pins, never a fresh one."""
     if not ARTISTS_JSONL.exists():
         fetch_and_extract()
-    date = datetime.now(UTC).date().isoformat()
-    dest = popularity_snapshot(date)
-    if dest.exists():
-        raise SystemExit(
-            f"ListenBrainz snapshot {date} already taken at {dest}: it is never taken again"
+
+    def fetch(dest: Path) -> int:
+        cur = connect().execute(
+            "SELECT mbid FROM read_ndjson(?, columns={mbid:'VARCHAR'}) ORDER BY mbid",
+            [ARTISTS_JSONL.as_posix()],
         )
-    cur = connect().execute(
-        f"SELECT mbid FROM read_ndjson('{ARTISTS_JSONL.as_posix()}', columns={{mbid:'VARCHAR'}}) "
-        "ORDER BY mbid"
+        batches = iter(lambda: [r[0] for r in cur.fetchmany(POPULARITY_BATCH)], [])
+        return fetch_popularity(batches, dest)
+
+    _take_once(
+        "ListenBrainz snapshot",
+        _today(),
+        popularity_snapshot,
+        popularity_sums,
+        fetch,
+        "artists asked; pin it: REFERENCE_POPULARITY = {date!r}",
     )
-    batches = iter(lambda: [r[0] for r in cur.fetchmany(POPULARITY_BATCH)], [])
-    n = fetch_popularity(batches, dest)
-    popularity_sums(date).write_text(f"{sha256_file(dest)}  {dest.name}\n", encoding="utf-8")
-    print(f"{n} artists asked; pin it: REFERENCE_POPULARITY = {date!r}")
 
 
-def _part_date(partial: str) -> str:
+def _part_date(snapshot: Callable[[str], Path]) -> str:
     """The day of the part a stopped run left partial, which the next run
     resumes, else today's: a new part."""
-    partials = sorted(RAW_DIR.glob(partial))
-    return partials[-1].parent.name if partials else datetime.now(UTC).date().isoformat()
+    aside = aside_of(snapshot("*"))
+    partials = sorted(Path(aside.anchor).glob(aside.relative_to(aside.anchor).as_posix()))
+    return partials[-1].parent.name if partials else _today()
 
 
-# The artists whose records a page filters by MusicBrainz's official status:
-# those with at least this many listeners and at least one album or EP in the
-# extraction. Below it, bootlegs are rare: the 31 played artists under 500 listeners show 112
-# records, one of them a promotional EP (Cignol, The Cosmic Garden EP).
-OFFICIAL_MIN_USERS = 500
+def _today() -> str:
+    return datetime.now(UTC).date().isoformat()
 
 
 def snapshot_official() -> None:
     """Asks MusicBrainz which album and EP release groups it shows for every
-    artist with at least OFFICIAL_MIN_USERS listeners and an album or EP in
-    the extraction that no pinned part asked yet. MusicBrainz moves every
-    day: a part is taken once and pinned; a run stopped before the end resumes
-    the part it left partial, whatever day it started."""
+    artist queries/official_asked.sql selects. MusicBrainz moves every day: a
+    part is taken once and pinned; a run stopped before the end resumes the
+    part it left partial, whatever day it started."""
     if not RELEASE_GROUPS_JSONL.exists():
         fetch_and_extract()
-    date = _part_date("musicbrainz/*/official-release-groups.jsonl.partial")
-    dest = official_snapshot(date)
-    if dest.exists():
-        raise SystemExit(
-            f"MusicBrainz official status {date} already taken at {dest}: it is never taken again"
+
+    def fetch(dest: Path) -> int:
+        cur = connect().execute(
+            (QUERIES_DIR / "official_asked.sql").read_text(encoding="utf-8"),
+            {
+                "popularity": verified_popularity().as_posix(),
+                "release_groups": RELEASE_GROUPS_JSONL.as_posix(),
+                "asked": [part.as_posix() for part in verified_official()],
+            },
         )
-    asked = [part.as_posix() for part in verified_official()]
-    cur = connect().execute(
-        f"SELECT p.artist_mbid FROM read_ndjson('{verified_popularity().as_posix()}', "
-        "columns={artist_mbid:'VARCHAR', total_user_count:'BIGINT'}) p "
-        f"WHERE p.total_user_count >= {OFFICIAL_MIN_USERS} AND p.artist_mbid IN ("
-        f"SELECT UNNEST(artists) FROM read_ndjson('{RELEASE_GROUPS_JSONL.as_posix()}', "
-        "columns={artists:'VARCHAR[]'})) AND p.artist_mbid NOT IN ("
-        f"SELECT artist_mbid FROM read_ndjson({asked}, columns={{artist_mbid:'VARCHAR'}})) "
-        "ORDER BY p.artist_mbid"
+        return fetch_official((r[0] for r in iter(cur.fetchone, None)), dest)
+
+    _take_once(
+        "MusicBrainz official status",
+        _part_date(official_snapshot),
+        official_snapshot,
+        official_sums,
+        fetch,
+        "artists asked; pin it: add {date!r} to REFERENCE_OFFICIAL",
     )
-    n = fetch_official((r[0] for r in iter(cur.fetchone, None)), dest)
-    official_sums(date).write_text(f"{sha256_file(dest)}  {dest.name}\n", encoding="utf-8")
-    print(f"{n} artists asked; pin it: add {date!r} to REFERENCE_OFFICIAL")
 
 
 def _take_once(
     survey: str,
+    date: str,
     snapshot: Callable[[str], Path],
     sums: Callable[[str], Path],
     fetch: Callable[[Path], int],
-    constant: str,
+    pin: str,
 ) -> None:
-    """Takes today's snapshot of a source that moves every day, once: its
-    digest is written to pin it."""
-    date = datetime.now(UTC).date().isoformat()
+    """Takes the snapshot of `date` of a source that moves every day, once,
+    and writes its digest to pin it; `pin` says how, formatted with the date."""
     dest = snapshot(date)
     if dest.exists():
         raise SystemExit(f"{survey} {date} already taken at {dest}: it is never taken again")
     n = fetch(dest)
     sums(date).write_text(f"{sha256_file(dest)}  {dest.name}\n", encoding="utf-8")
-    print(f"{n} rows; pin it: {constant} = {date!r}")
+    print(f"{n} {pin.format(date=date)}")
 
 
 def _verified_one(path: Path, date: str, sums: Path, survey: str, command: str) -> Path:
@@ -254,16 +278,15 @@ def snapshot_listens(ref: str) -> None:
     if dest.exists():
         raise SystemExit(f"listens {ref} already reduced at {dest}")
     expected = spark_digest(ref)
-    partial = dest.with_name(dest.name + ".partial")
-    shutil.rmtree(partial, ignore_errors=True)
-    partial.mkdir(parents=True)
-    rows = reduce_listens(connect(), spark_listens(ref, expected, DATA_DIR / "tmp"), partial)
-    # Pinned before the folder takes its name: a stop in between leaves a
-    # partial folder to start again, never slices without their digests.
-    lines = [f"{expected}  {spark_name(ref)}"]
-    lines += [f"{sha256_file(p)}  {p.name}" for p in sorted(partial.glob("*.parquet"))]
-    listening_sums(ref).write_text("\n".join(lines) + "\n", encoding="utf-8")
-    partial.replace(dest)
+    with written_aside(dest) as aside:
+        shutil.rmtree(aside, ignore_errors=True)
+        aside.mkdir()
+        rows = reduce_listens(connect(), spark_listens(ref, expected, DATA_DIR / "tmp"), aside)
+        # Pinned before the folder takes its name: a stop in between leaves a
+        # partial folder to start again, never slices without their digests.
+        lines = [f"{expected}  {spark_name(ref)}"]
+        lines += [f"{sha256_file(p)}  {p.name}" for p in sorted(aside.glob("*.parquet"))]
+        listening_sums(ref).write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"{rows} user-artist rows; pin it: REFERENCE_LISTENING = {ref!r}")
 
 
@@ -294,10 +317,11 @@ def snapshot_discography() -> None:
     or a soundtrack. Taken once and pinned, like the ListenBrainz snapshots."""
     _take_once(
         "Wikidata discography",
+        _today(),
         discography_snapshot,
         discography_sums,
         fetch_discography,
-        "REFERENCE_DISCOGRAPHY",
+        "rows; pin it: REFERENCE_DISCOGRAPHY = {date!r}",
     )
 
 
@@ -319,17 +343,7 @@ def verified_parts(
     command: str,
 ) -> list[Path]:
     """The pinned parts of a long survey, each checked against its digest."""
-    parts = []
-    for date in dates:
-        part = snapshot(date)
-        if not part.exists():
-            raise SystemExit(
-                f"{survey} {date} missing at {part}; it cannot be taken again: "
-                f"`musilogy {command}`, then pin the new part"
-            )
-        verify(part, expected_sums(sums(date))[part.name])
-        parts.append(part)
-    return parts
+    return [_verified_one(snapshot(date), date, sums(date), survey, command) for date in dates]
 
 
 def verified_official() -> list[Path]:
@@ -399,8 +413,62 @@ def _stop_on_extraction_mismatch(con: duckdb.DuckDBPyConnection, extraction: Pat
         )
 
 
-def run() -> None:
-    """Full execution: fetch → extract (when needed) → transform → validate → publish."""
+def _stop_on_drift(con: duckdb.DuckDBPyConnection, out: Path, accepted: Sequence[str]) -> Trace:
+    """The data diff, before publish() like the other guards: publishing at
+    `out` overwrites the manifest the comparison reads. Each table count or
+    counter that moved past MAX_DRIFT since the previous delivery stops the
+    run, unless `accepted` names it, or names its counter group: a rule meant
+    to move one says so when it runs. Returns the comparison as the delivery
+    records it: the drifts it let through, each under its own name, and the
+    counters new and gone.
+
+    A name `accepted` holds that this build does not count stops the run too —
+    a typo, or a counter gone since, whose new name would otherwise go
+    uncompared: main() only checks its table or counter group, since which
+    counters exist is the SQL's to say."""
+    got = delivered(con)
+    previous = previous_manifest(out)
+    path, expected = (previous[0], compared(previous[1])) if previous else (None, {})
+    unknown = sorted(a for a in set(accepted) if not any(accepts((a,), n) for n in got))
+    if unknown:
+        raise SystemExit(
+            f"--accept-drift names nothing this build counts, nothing published: "
+            f"{', '.join(unknown)}"
+        )
+    if previous is None:
+        print(f"no previous delivery beside {out}: publishing without comparison")
+        return Trace([], {}, {})
+    comparison = compare(expected, got)
+    for name, n in comparison.new.items():
+        print(f"new counter {name}: {n}, nothing to compare it with")
+    for name, n in comparison.gone.items():
+        print(f"counter gone {name}, was {n}")
+    let_through = [d for d in comparison.drifts if accepts(accepted, d.name)]
+    for d in let_through:
+        print(f"drift accepted, {d}")
+    moved = {d.name for d in comparison.drifts}
+    groups_moved = {group_of(name) for name in moved}
+    for name in sorted(set(accepted) - moved):
+        if name in COUNTER_TABLES:
+            if name not in groups_moved:
+                print(f"drift accepted on {name}, but no counter of {name} moved")
+        elif name in comparison.new:
+            print(f"drift accepted on {name}, but {name} is new, nothing to accept")
+        else:
+            print(f"drift accepted on {name}, but {name} did not move")
+    refused = [str(d) for d in comparison.drifts if d not in let_through]
+    if refused:
+        raise SystemExit(
+            f"counts moved more than {MAX_DRIFT:.1%} from {path}, nothing published:\n"
+            + "\n".join(refused)
+            + "\na rule meant to move them: musilogy run --accept-drift NAME"
+        )
+    return Trace(let_through, comparison.new, comparison.gone)
+
+
+def run(accepted_drift: Sequence[str] = ()) -> None:
+    """Full execution: fetch → extract (when needed) → transform → validate →
+    compare with the previous delivery → publish."""
     if not ARTISTS_JSONL.exists() or not RELEASE_GROUPS_JSONL.exists():
         fetch_and_extract()
 
@@ -432,12 +500,29 @@ def run() -> None:
     if violations:
         raise SystemExit(f"invariants violated: {violations}")
 
-    extraction = WORK_DIR / "extraction.json"
+    extraction = extraction_sidecar(WORK_DIR)
     _stop_on_extraction_mismatch(con, extraction)
     _stop_on_discogs_mismatch(con)
 
-    manifest = publish(con, out_dir(DUMP), DUMP, extraction)
+    out = out_dir(DUMP)
+    trace = _stop_on_drift(con, out, accepted_drift)
+    manifest = publish(con, out, DUMP, extraction, trace)
     print(manifest["counts"])
+
+
+def _filter_jsonl(
+    src: Path, dst: Path, keep: Callable[[dict[str, Any]], bool]
+) -> list[dict[str, Any]]:
+    """Writes to `dst` the lines of `src` whose record `keep` accepts, byte for
+    byte and in order, and returns those records."""
+    kept = []
+    with dst.open("w", encoding="utf-8") as fh, src.open(encoding="utf-8") as lines:
+        for line in lines:
+            rec = json.loads(line)
+            if keep(rec):
+                fh.write(line)
+                kept.append(rec)
+    return kept
 
 
 def _lines_about(parts: Sequence[Path], artists: set[str]) -> Iterator[str]:
@@ -455,15 +540,13 @@ def _discogs_fixture(artists: Path, out: Path) -> None:
     discogs_ids = {
         i
         for (i,) in con.execute(
-            "SELECT DISTINCT discogs_artist_id(t.u.url) FROM read_ndjson("
-            f"'{artists.as_posix()}', columns={RAW_ARTIST_COLUMNS}, format='newline_delimited') r, "
+            f"SELECT DISTINCT discogs_artist_id(t.u.url) FROM {ndjson(RAW_ARTIST_FIELDS)} r, "
             "UNNEST(r.urls) t(u) WHERE t.u.type = 'discogs' AND list_contains(?, r.mbid)",
-            [DISCOGS_WITNESSES],
+            [artists.as_posix(), DISCOGS_WITNESSES],
         ).fetchall()
         if i is not None
     }
-    with out.open("w", encoding="utf-8") as fh, verified_discogs().open(encoding="utf-8") as src:
-        fh.writelines(line for line in src if discogs_ids & set(json.loads(line)["artists"]))
+    _filter_jsonl(verified_discogs(), out, lambda r: bool(discogs_ids & set(r["artists"])))
 
 
 def fixtures_attribution() -> str:
@@ -488,90 +571,105 @@ def make_fixtures() -> None:
     are artists, so without them the witnesses would carry none. The linked
     artists come without their release-groups, which keeps the fixtures small
     and leaves their dates unrepresentative — tests read their links only."""
-    work = WORK_DIR
     out = FIXTURES_DIR
     out.mkdir(parents=True, exist_ok=True)
     wanted = set(WITNESSES)
 
     linked: set[str] = set()
-    with (work / "artists.jsonl").open(encoding="utf-8") as src:
+    with ARTISTS_JSONL.open(encoding="utf-8") as src:
         for line in src:
             rec = json.loads(line)
             if rec["mbid"] in wanted:
                 linked |= {r["mbid"] for r in rec["relations"] if r["mbid"]}
 
-    kept = []
-    with (
-        (out / "artists.jsonl").open("w", encoding="utf-8") as fh,
-        (work / "artists.jsonl").open(encoding="utf-8") as src,
-    ):
-        for line in src:
-            rec = json.loads(line)
-            if rec["mbid"] in wanted or rec["mbid"] in linked:
-                fh.write(line)
-                kept.append(rec["mbid"])
-
-    fixture_rgs: set[str] = set()
-    with (
-        (out / "release_groups.jsonl").open("w", encoding="utf-8") as fh,
-        (work / "release_groups.jsonl").open(encoding="utf-8") as src,
-    ):
-        for line in src:
-            rec = json.loads(line)
-            if wanted & set(rec["artists"]):
-                fh.write(line)
-                fixture_rgs.add(rec["mbid"])
-
+    selected = wanted | linked
+    kept = {
+        rec["mbid"]
+        for rec in _filter_jsonl(
+            ARTISTS_JSONL, out / "artists.jsonl", lambda r: r["mbid"] in selected
+        )
+    }
+    fixture_rgs = {
+        rec["mbid"]
+        for rec in _filter_jsonl(
+            RELEASE_GROUPS_JSONL,
+            out / "release_groups.jsonl",
+            lambda r: bool(wanted & set(r["artists"])),
+        )
+    }
     # Every fixture artist, as the snapshot asked about every artist: a
     # witness with no row would fail popularity_unrequested.
-    kept_set = set(kept)
-    with (
-        (out / "popularity.jsonl").open("w", encoding="utf-8") as fh,
-        verified_popularity().open(encoding="utf-8") as src,
-    ):
-        for line in src:
-            if json.loads(line)["artist_mbid"] in kept_set:
-                fh.write(line)
-
+    _filter_jsonl(
+        verified_popularity(), out / "popularity.jsonl", lambda r: r["artist_mbid"] in kept
+    )
     # What Wikidata files about the fixture release groups.
-    with (
-        (out / "discography.jsonl").open("w", encoding="utf-8") as fh,
-        verified_discography().open(encoding="utf-8") as src,
-    ):
-        for line in src:
-            if json.loads(line)["rg_mbid"] in fixture_rgs:
-                fh.write(line)
+    _filter_jsonl(
+        verified_discography(), out / "discography.jsonl", lambda r: r["rg_mbid"] in fixture_rgs
+    )
     # What MusicBrainz shows of the fixture artists it was asked about.
     with (out / "official.jsonl").open("w", encoding="utf-8") as fh:
-        fh.writelines(_lines_about(verified_official(), kept_set))
-    _discogs_fixture(work / "artists.jsonl", out / "discogs.jsonl")
+        fh.writelines(_lines_about(verified_official(), kept))
+    _discogs_fixture(ARTISTS_JSONL, out / "discogs.jsonl")
 
     (out / "ATTRIBUTION.md").write_text(fixtures_attribution(), encoding="utf-8")
-    print("witnesses found:", len(wanted & set(kept)), "linked artists:", len(set(kept) - wanted))
-    missing = wanted - set(kept)
+    print("witnesses found:", len(wanted & kept), "linked artists:", len(kept - wanted))
+    missing = wanted - kept
     print("missing:", missing or "none")
 
 
-def load_site() -> None:
-    """Loads the published delivery into the site's database."""
-    print(load(out_dir(DUMP)))
+def load_site(sample: bool = False) -> None:
+    """Loads the published delivery into the site's database, or, with
+    `sample`, the pipeline run on the fixtures: a workstation's small Musilogy."""
+    if not sample:
+        print(load(out_dir(DUMP)))
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        print(load(publish_sample(Path(tmp))))
+
+
+def _drift_name(name: str) -> str:
+    """What --accept-drift can name before the build runs: a table, a counter
+    group, or a counter of one. Whether the counter exists, only the build
+    knows (_stop_on_drift)."""
+    if name in TABLES or name in COUNTER_TABLES or is_counter(name):
+        return name
+    raise argparse.ArgumentTypeError(
+        f"{name!r} is no table ({', '.join(TABLES)}), "
+        f"no counter group ({', '.join(COUNTER_TABLES)}) nor GROUP.COUNTER of one"
+    )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="musilogy")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    subparsers.add_parser("run", help="fetch → extract → transform → validate → publish")
+    # Each command carries its handler (set_defaults(handler=...), as the
+    # argparse documentation does for sub-commands): naming a command and
+    # running it cannot fall out of step.
+    run_parser = subparsers.add_parser(
+        "run", help="fetch → extract → transform → validate → compare → publish"
+    )
+    run_parser.add_argument(
+        "--accept-drift",
+        action="append",
+        default=[],
+        type=_drift_name,
+        metavar="NAME",
+        help="publish although NAME moved past the limit since the previous delivery: "
+        "a table, a counter as GROUP.COUNTER (link_exclusions.not_on_page), "
+        "or a counter group, for every counter of it that moved (link_exclusions)",
+    )
+    run_parser.set_defaults(handler=lambda args: run(args.accept_drift))
     subparsers.add_parser(
         "snapshot-popularity", help="take a dated ListenBrainz snapshot of every artist"
-    )
+    ).set_defaults(handler=lambda _: snapshot_popularity())
     subparsers.add_parser(
         "snapshot-official",
         help="take a dated MusicBrainz snapshot of the release groups each popular artist shows",
-    )
+    ).set_defaults(handler=lambda _: snapshot_official())
     subparsers.add_parser(
         "snapshot-discography",
         help="take a dated Wikidata snapshot of the release groups filed as main records",
-    )
+    ).set_defaults(handler=lambda _: snapshot_discography())
     listens = subparsers.add_parser(
         "snapshot-listens",
         help="reduce a ListenBrainz Spark dump's listens to one row per user and artist",
@@ -579,26 +677,20 @@ def main() -> None:
     listens.add_argument(
         "ref", help="the dump's number, date and sequence, e.g. 2692-20261001-000003"
     )
-    subparsers.add_parser("make-fixtures", help="extract witness records for the test fixtures")
+    listens.set_defaults(handler=lambda args: snapshot_listens(args.ref))
     subparsers.add_parser(
+        "make-fixtures", help="extract witness records for the test fixtures"
+    ).set_defaults(handler=lambda _: make_fixtures())
+    load_parser = subparsers.add_parser(
         "load", help="load the published tables into the site's Postgres (libpq environment)"
     )
+    load_parser.add_argument(
+        "--sample", action="store_true", help="load the pipeline run on the test fixtures instead"
+    )
+    load_parser.set_defaults(handler=lambda args: load_site(args.sample))
 
     args = parser.parse_args()
-    if args.command == "run":
-        run()
-    elif args.command == "snapshot-popularity":
-        snapshot_popularity()
-    elif args.command == "snapshot-official":
-        snapshot_official()
-    elif args.command == "snapshot-discography":
-        snapshot_discography()
-    elif args.command == "snapshot-listens":
-        snapshot_listens(args.ref)
-    elif args.command == "make-fixtures":
-        make_fixtures()
-    elif args.command == "load":
-        load_site()
+    args.handler(args)
 
 
 if __name__ == "__main__":

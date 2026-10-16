@@ -1,13 +1,15 @@
+import ast
 import logging
 import sqlite3
 from pathlib import Path
 
 import pytest
+import requests
 from pydantic import ValidationError
 
 from radio.core.config import REPO_ROOT, Settings, load_editorial
 from radio.core.db import MIGRATIONS, connect
-from radio.core.http import log_retry
+from radio.core.http import check_status, log_retry
 
 N_MIGRATIONS = len(list(MIGRATIONS.glob("*.sql")))
 
@@ -234,3 +236,52 @@ def test_migration_13_gives_each_title_on_air_its_category(
         (2, "nouveautes", "2026-10-01"),
         (3, "reperes", "2026-10-01"),
     ]
+
+
+def test_paths_derive_from_the_two_directories(tmp_path: Path) -> None:
+    # Les modèles entraînés vivent sous data_dir, à part des poids MTG de models_dir : une
+    # sauvegarde de data_dir les emporte, un retéléchargement des poids ne les touche pas.
+    s = Settings(_env_file=None, RADIO_DATA_DIR=tmp_path / "data", RADIO_MODELS_DIR=tmp_path / "w")
+    assert s.db_path == tmp_path / "data" / "radio.db"
+    assert s.trained_models_dir == tmp_path / "data" / "models"
+    assert s.effnet_model == tmp_path / "w" / "discogs-effnet-bs64-1.pb"
+
+
+class _Down(Exception):
+    pass
+
+
+class _Refused(Exception):
+    pass
+
+
+@pytest.mark.parametrize(
+    ("status", "raised"),
+    [(200, None), (204, None), (404, _Refused), (413, _Refused), (429, _Down), (500, _Down)],
+)
+def test_check_status_sorts_outages_from_refusals(
+    status: int, raised: type[Exception] | None
+) -> None:
+    r = requests.Response()
+    r.status_code = status
+    if raised is None:
+        check_status(r, _Down, _Refused)
+        return
+    with pytest.raises(raised, match=f"^HTTP {status}$"):
+        check_status(r, _Down, _Refused)
+
+
+def test_core_imports_no_other_layer() -> None:
+    # core est la couche du bas : les sources, l'acquisition, l'antenne et le modèle s'appuient
+    # sur elle, jamais l'inverse.
+    upward = {
+        f"{path.name}: {name}"
+        for path in (REPO_ROOT / "radio" / "core").glob("*.py")
+        for node in ast.walk(ast.parse(path.read_text()))
+        if isinstance(node, ast.Import | ast.ImportFrom)
+        for name in (
+            [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module or ""]
+        )
+        if name.startswith("radio.") and not name.startswith("radio.core")
+    }
+    assert upward == set()

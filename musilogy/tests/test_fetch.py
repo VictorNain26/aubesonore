@@ -9,9 +9,9 @@ import pytest
 
 from musilogy import REFERENCE_DUMP, fetch
 from musilogy.fetch import ChecksumError, expected_sums, sha256_file, verify
-from musilogy.paths import REFERENCE_DIR
+from musilogy.paths import dump_sums
 
-REF = REFERENCE_DIR / f"{REFERENCE_DUMP}.SHA256SUMS"
+REF = dump_sums(REFERENCE_DUMP)
 
 
 def test_sha256_of_known_content(tmp_path):
@@ -447,3 +447,39 @@ def test_a_part_the_caller_fails_on_leaves_no_file_behind(tmp_path, monkeypatch)
     next(parts)
     parts.close()  # what a failing caller's loop does to the generator
     assert list((tmp_path / "tmp").iterdir()) == []
+
+
+def test_every_request_names_the_client_and_keeps_its_own_headers():
+    # MusicBrainz, ListenBrainz and Wikidata all ask for a User-Agent with a
+    # contact; a request built without it is throttled or refused.
+    req = fetch._request("https://example.org/x", b"{}", {"Content-Type": "application/json"})
+    assert req.get_header("User-agent") == fetch.UA
+    assert req.get_header("Content-type") == "application/json"
+    assert req.get_method() == "POST"
+    assert fetch._request("https://example.org/x").get_method() == "GET"
+
+
+def test_an_archive_already_there_is_verified_not_downloaded_again(tmp_path, monkeypatch):
+    dest = tmp_path / "2026-10-01" / "artist.tar.xz"
+    dest.parent.mkdir()
+    dest.write_bytes(b"archive")
+    sums = tmp_path / "SUMS"
+    sums.write_text(f"{sha256_file(dest)}  artist.tar.xz\n", encoding="utf-8")
+    monkeypatch.setattr(fetch, "download", lambda *_: pytest.fail("downloaded again"))
+    assert fetch.fetch_dump("2026-10-01", "artist.tar.xz", tmp_path, sums) == dest
+
+
+def test_an_archive_that_disagrees_with_its_pin_is_refused(tmp_path, monkeypatch):
+    dest = tmp_path / "discogs_20261001_releases.xml.gz"
+    sums = tmp_path / "SUMS"
+    sums.write_text(f"{'0' * 64}  {dest.name}\n", encoding="utf-8")
+    fetched = []
+
+    def download(url, to):
+        fetched.append(url)
+        to.write_bytes(b"other")
+
+    monkeypatch.setattr(fetch, "download", download)
+    with pytest.raises(ChecksumError):
+        fetch.fetch_discogs("2026-10-01", dest, sums)
+    assert fetched == [fetch.DISCOGS_URL.format(year="2026", name=dest.name)]

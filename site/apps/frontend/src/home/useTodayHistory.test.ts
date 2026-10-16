@@ -2,7 +2,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { makeNowPlaying } from '../mocks/handlers';
-import { useNowPlayingStore, __resetNowPlayingStore } from '../lib/azuracast';
+import { useNowPlayingStore } from '../lib/azuracast';
+import { __resetNowPlayingStore } from '../lib/azuracast/store';
 import type { NowPlaying, SongEntry } from '../lib/azuracast';
 import { useTodayHistory } from './useTodayHistory';
 

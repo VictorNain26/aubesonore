@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, mock } from 'bun:test';
 
 import * as realSchema from '../db/schema';
 import { __resetRateLimits } from '../lib/rateLimit';
-import type { TrendEntry, TrendsResult } from '../services/trendsService';
+import type { TrendEntry, TrendsResult } from '@aubesonore/shared-types/client';
 
 const weekRows: TrendEntry[] = [
   { title: 'Week Hit', artist: 'Artist A', artworkUrl: null, likes: 3, artistPage: null },

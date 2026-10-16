@@ -17,7 +17,7 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     cfg.mkdir()
     (cfg / "editorial.toml").write_text("[model]\nkeep_decouvertes = 32\n")
     settings = Settings(_env_file=None, RADIO_DATA_DIR=tmp_path / "data", RADIO_CONFIG_DIR=cfg)
-    monkeypatch.setattr(cli, "_settings", lambda: settings)
+    monkeypatch.setattr(cli.common, "_settings", lambda: settings)
     return tmp_path
 
 

@@ -30,26 +30,21 @@ covers rebuilding the whole system from nothing.
 - **CI**: `.github/workflows/site.yml`, `pipeline.yml` and `musilogy.yml` run on every PR, with
   no path filter: their jobs are required checks on `master`. `codeql.yml` also runs, only on PRs
   that target `master`, and is not required.
-- **Hooks**: husky lives in `site/.husky` (`prepare` runs `cd .. && husky site/.husky`), so the
-  hooks exist only in a clone where `pnpm install` has run in `site/`; no CI job checks commit
-  messages. There, commitlint checks every commit message (Conventional Commits, English),
-  whatever the piece, and the site's pre-push gate runs only when `site/` changed. The scope is
-  the piece (`site`, `pipeline`, `musilogy`, `azuracast`), `repo` for what spans them, `deps`
-  for dependencies.
+- **Hooks**: the git hooks are in `site/.husky/`, wired by the `prepare` script of
+  `site/package.json`, so they exist only in a clone where `pnpm install` has run in `site/`; no
+  CI job checks commit messages. Messages are in English and follow Conventional Commits,
+  which commitlint checks (`site/commitlint.config.js`); the scope is the piece (`site`,
+  `pipeline`, `musilogy`, `azuracast`), `repo` for what spans them, `deps` for dependencies.
 - **Deploying is merging to `master`.** `aubesonore-deploy.timer` fast-forwards `~/aubesonore`; it
   rebuilds the site containers only when `site/` changed, and never moves the tree while the
   radio's weekly pass (`radio-weekly.service`) runs, since that pass loads `pipeline/` code.
   Each pass also runs `uv sync --locked` in `pipeline/`, so a dependency change reaches the
   `.venv` the radio-* units run.
-- **Where to develop.** `site/` runs on any workstation clone (`site/README.md`: local Postgres,
-  `pnpm dev`, the public station for now-playing), which reads the artist pages and Musilogy from
-  production: enough for a change of the interface alone. A change of the site's backend or of
-  the data it reads is tried on the **preview of its branch** on the server
-  (`site/scripts/preview.sh`, `site/README.md`): production's own `compose.yaml` under another
-  project, with its own database holding the real Musilogy, reached through an SSH tunnel.
-  `pipeline/` and `musilogy/` need the server's data (Plex, AzuraCast, MusicBrainz dumps), so
-  they are developed on the server, in a git worktree next to the checkout. Never in
-  `~/aubesonore` itself: it is the production checkout.
+- **Where to develop.** Every piece is developed on the workstation, in a git worktree of the
+  clone, one per branch; each piece's commands are in its `.claude/rules/<piece>.md`. The
+  server is used only for the runs on the real data: Musilogy's build and
+  its load into production, and the radio's passes. Never work in `~/aubesonore` itself: it
+  is the production checkout.
 
 ## How the pieces fit together
 

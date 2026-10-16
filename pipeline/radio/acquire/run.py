@@ -18,10 +18,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import NamedTuple
 
-from radio.acquire.audio import Tags, ToolError, check, fingerprint, prepare, probe, similarity
+from radio.acquire.audio import check, fingerprint, similarity
 from radio.acquire.sockseek import Runner, Wanted, download, run_command
 from radio.core.config import AcquisitionConfig
-from radio.sources.deezer import DeezerClient, DeezerError, TrackPage
+from radio.core.media import Tags, ToolError, prepare, probe
+from radio.sources.deezer import DeezerClient, DeezerError, tags_for
 
 logger = logging.getLogger(__name__)
 
@@ -98,19 +99,6 @@ def _save(
             """,
             (tid, "ready" if file else "failed", reason, str(file) if file else None, now),
         )
-
-
-def tags_for(deezer: DeezerClient, tid: int, artist: str, title: str, page: TrackPage) -> Tags:
-    """Balises d'antenne : l'album, sa pochette et l'ISRC viennent de `GET /track` par l'id exact
-    du titre. Une pochette refusée par Deezer laisse le fichier sans pochette."""
-    album = page.album
-    cover = None
-    if album is not None and album.cover_url:
-        try:
-            cover = deezer.download(album.cover_url)
-        except DeezerError as e:
-            logger.warning("pochette de %d refusée par Deezer : %s", tid, e)
-    return Tags(artist, title, tid, album.title if album else "", cover, page.isrc)
 
 
 def _verify_and_prepare(

@@ -1,4 +1,4 @@
-from conftest import build_synthetic, synthetic_artist
+from tests.conftest import build_synthetic, synthetic_artist
 
 GROUP = "00000000-0000-4000-8000-0000000000a1"
 PERSON = "00000000-0000-4000-8000-0000000000a2"

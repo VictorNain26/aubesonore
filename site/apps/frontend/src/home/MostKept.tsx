@@ -1,7 +1,8 @@
 import { Tabs } from '@base-ui/react/tabs';
 import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
-import type { Loaded, TrendEntry, TrendsResult } from '../lib/homeData';
+import type { TrendEntry, TrendsResult } from '@aubesonore/shared-types/client';
+import type { Loaded } from '../lib/homeData';
 import { artistPath } from '../lib/artistProfile';
 import { CoverOpenLarge } from '../design/CoverOpenLarge';
 import { ARTIST_LINK } from '../design/classes';

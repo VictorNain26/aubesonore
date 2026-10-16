@@ -1,7 +1,7 @@
 import type { ArtistPageRef, ArtistProfile } from '@aubesonore/shared-types/client';
 import { object, record, safeParse, string } from 'valibot';
 import { getLocale, localizeHref, type Locale } from '@/paraglide/runtime.js';
-import { API_BASE_URL } from './config';
+import { getJson, HttpError, readKnown } from './api';
 
 const SLUG = '__slug__';
 const pathTemplates = new Map<string, string>();
@@ -26,14 +26,10 @@ export async function fetchArtistProfile(
   locale: Locale,
   signal?: AbortSignal
 ): Promise<ArtistProfile | null> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/artist/page/${encodeURIComponent(slug)}?lang=${locale}`,
-    { signal: signal ?? null }
+  return readKnown<ArtistProfile>(
+    `/api/artist/page/${encodeURIComponent(slug)}?lang=${locale}`,
+    signal
   );
-  // 400: a malformed id, from a truncated link — as unknown as a 404.
-  if (response.status === 404 || response.status === 400) return null;
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return (await response.json()) as ArtistProfile;
 }
 
 // One request per name however many parts of the page ask for it (the hero and the player bar
@@ -53,9 +49,13 @@ export function resolveArtistPage(name: string): Promise<ArtistPageRef | null> {
   const known = resolving.get(trimmed);
   if (known) return known;
 
-  const request = fetch(
-    `${API_BASE_URL}/api/artist/resolve?name=${encodeURIComponent(trimmed)}`
-  ).then(async (response) => (response.ok ? ((await response.json()) as ArtistPageRef) : null));
+  // Any failed answer is no page; a request that never answers is asked again.
+  const request = getJson<ArtistPageRef>(
+    `/api/artist/resolve?name=${encodeURIComponent(trimmed)}`
+  ).catch((err: unknown) => {
+    if (err instanceof HttpError) return null;
+    throw err;
+  });
   resolving.set(trimmed, request);
   void request.then(
     (page) => {
@@ -76,14 +76,13 @@ export async function fetchArtistPages(
   names: readonly string[],
   signal?: AbortSignal
 ): Promise<Map<string, ArtistPageRef>> {
-  const response = await fetch(`${API_BASE_URL}/api/artist/pages`, {
+  const payload = await getJson<unknown>('/api/artist/pages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ names }),
     signal: signal ?? null,
   });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const parsed = safeParse(ArtistPagesSchema, await response.json());
+  const parsed = safeParse(ArtistPagesSchema, payload);
   if (!parsed.success) throw new Error('invalid payload');
   return new Map(Object.entries(parsed.output));
 }

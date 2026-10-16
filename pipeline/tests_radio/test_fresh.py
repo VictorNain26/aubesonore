@@ -160,6 +160,13 @@ def test_hypem_client_never_turns_a_change_into_an_empty_list() -> None:
     responses.replace(responses.GET, url, body=requests.ConnectionError("x"))
     with pytest.raises(HypemUnavailable):
         HypemClient().popular("lastweek", 1)
+    # Une page HTML à la place du JSON : un proxy ou une page d'erreur passagère, relancée comme
+    # chez Deezer et Last.fm, pas une réponse dont le format aurait changé.
+    responses.replace(responses.GET, url, body="<html>502</html>")
+    before = len(responses.calls)
+    with pytest.raises(HypemUnavailable):
+        HypemClient().popular("lastweek", 1)
+    assert len(responses.calls) - before == 3  # relancée : trois essais en test (conftest)
 
 
 def test_cli_reports_the_fresh_stage_and_fails_on_a_broken_source(
@@ -172,9 +179,9 @@ def test_cli_reports_the_fresh_stage_and_fails_on_a_broken_source(
         "[nouveautes]\nhypem_pages = 1\n[nouveautes.deezer_editorial]\nalternative = 85\n"
     )
     settings = Settings(_env_file=None, RADIO_DATA_DIR=tmp_path / "data", RADIO_CONFIG_DIR=cfg)
-    monkeypatch.setattr(cli, "_settings", lambda: settings)
-    monkeypatch.setattr(cli, "DeezerClient", FakeDeezer)
-    monkeypatch.setattr(cli, "HypemClient", lambda: FakeHypem(HypemUnavailable("HTTP 503")))
+    monkeypatch.setattr(cli.common, "_settings", lambda: settings)
+    monkeypatch.setattr(cli.gout, "DeezerClient", FakeDeezer)
+    monkeypatch.setattr(cli.gout, "HypemClient", lambda: FakeHypem(HypemUnavailable("HTTP 503")))
     result = CliRunner().invoke(cli.app, ["nouveautes"])
     assert result.exit_code == 1
     assert "source sautée : Hype Machine, page 1 (HypemUnavailable : HTTP 503)" in result.output

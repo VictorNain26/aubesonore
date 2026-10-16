@@ -1,8 +1,8 @@
 # musilogy — conception
 
 La conception en vigueur de musilogy. La feuille de route est `docs/vision.md`
-§7, à la racine. Les chiffres cités ici sont descriptifs ; le contrat exécutable reste
-`tests/test_baseline.py`.
+§7, à la racine. Les chiffres cités ici sont descriptifs ; ceux de chaque livraison sont
+dans son `manifest.json`.
 
 ## Rôle
 

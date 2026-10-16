@@ -8,7 +8,7 @@ from typing import Any
 
 import duckdb
 
-from musilogy.build import connect
+from musilogy.build import connect, scalar
 from musilogy.fetch import ChecksumError, sha256_file
 from musilogy.paths import PG_DIR
 
@@ -50,11 +50,7 @@ def _sql(name: str) -> str:
 
 
 def _count(con: duckdb.DuckDBPyConnection, table: str) -> int:
-    row = con.execute(
-        f"SELECT n FROM postgres_query('site', 'SELECT count(*) AS n FROM {table}')"
-    ).fetchone()
-    assert row is not None  # COUNT(*) always returns exactly one row
-    return int(row[0])
+    return scalar(con, f"SELECT n FROM postgres_query('site', 'SELECT count(*) AS n FROM {table}')")
 
 
 def load(published: Path, conninfo: str = "") -> dict[str, int]:

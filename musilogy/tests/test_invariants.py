@@ -3,10 +3,11 @@ from contextlib import contextmanager
 
 import duckdb
 import pytest
-from conftest import FIX, SQL
 
-from musilogy.build import INVARIANTS, build, check_invariants
+from musilogy import build as build_module
+from musilogy.build import INVARIANTS, build, check_invariants, scalar
 from musilogy.paths import SQL_DIR
+from tests.conftest import FIX, SQL
 
 
 @contextmanager
@@ -498,3 +499,67 @@ def test_begin_misread_is_reported(con):
         con.execute("UPDATE artists SET type = NULL WHERE mbid = ?", [mbid])
         violations = dict(check_invariants(con, SQL))
     assert violations.get("begin_misread") == 1
+
+
+def test_scalar_reads_the_one_integer_an_aggregate_returns():
+    con = duckdb.connect()
+    con.execute("CREATE TABLE t AS SELECT * FROM range(3) r(i)")
+    assert scalar(con, "SELECT count(*) FROM t") == 3
+    assert scalar(con, "SELECT count(*) FROM t WHERE i > 9") == 0
+
+
+def test_scalar_refuses_a_query_that_returns_no_row():
+    # Without the guard, a query that is not an aggregate would read as a
+    # TypeError far from its cause.
+    con = duckdb.connect()
+    con.execute("CREATE TABLE t (i INTEGER)")
+    with pytest.raises(AssertionError):
+        scalar(con, "SELECT i FROM t")
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        build_module.RAW_ARTIST_FIELDS,
+        build_module.RAW_RG_FIELDS,
+        build_module.RAW_POPULARITY_FIELDS,
+        build_module.RAW_DISCOGRAPHY_FIELDS,
+        build_module.RAW_OFFICIAL_FIELDS,
+        build_module.RAW_DISCOGS_FIELDS,
+    ],
+)
+def test_an_absent_input_materializes_the_table_a_read_one_would(tmp_path, fields):
+    # A build without a snapshot reads the empty table the SQL expects: if it
+    # drifted from what reading the snapshot gives, only real runs would see
+    # the other schema.
+    con = duckdb.connect()
+    path = tmp_path / "input.jsonl"
+    path.write_text("{}\n", encoding="utf-8")
+    build_module._load_ndjson(con, "read", path, fields)
+    build_module._create_empty(con, "empty", fields)
+    describe = "SELECT column_name, column_type FROM (DESCRIBE {})"
+    assert (
+        con.execute(describe.format("read")).fetchall()
+        == con.execute(describe.format("empty")).fetchall()
+    )
+
+
+def test_a_discogs_path_with_a_quote_still_reads(tmp_path):
+    # The view takes its path as a literal (a view takes no parameter).
+    folder = tmp_path / "it's"
+    folder.mkdir()
+    releases = folder / "releases.jsonl"
+    releases.write_text('{"id": 1, "artists": [2], "released": "1999"}\n', encoding="utf-8")
+    con = duckdb.connect()
+    build_module.load_discogs(con, releases, "20261001")
+    assert con.execute("SELECT id, artists FROM raw_discogs").fetchall() == [(1, [2])]
+    assert con.execute("SELECT getvariable('discogs_dump')").fetchone() == ("20261001",)
+
+
+def test_an_absent_snapshot_sets_its_variable_to_null():
+    con = duckdb.connect()
+    build_module.load_popularity(con, None, None)
+    assert con.execute("SELECT getvariable('popularity_snapshot')").fetchone() == (None,)
+    build_module.load_official(con, [], ["2026-10-04", "2026-10-06"])
+    (dates,) = con.execute("SELECT getvariable('official_snapshots')").fetchone() or (None,)
+    assert [d.isoformat() for d in dates] == ["2026-10-04", "2026-10-06"]

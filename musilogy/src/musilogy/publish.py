@@ -3,21 +3,23 @@
 from __future__ import annotations
 
 import json
+import math
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Collection, Mapping, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import duckdb
 
+from musilogy.build import scalar
 from musilogy.colisten import PARAMETERS as COLISTEN_PARAMETERS
 from musilogy.fetch import expected_sums, sha256_file
 from musilogy.paths import (
     PACKAGE_DIR,
-    REFERENCE_DIR,
     discography_sums,
     discogs_extraction,
     discogs_sums,
+    dump_sums,
     listening_sums,
     official_sums,
     popularity_sums,
@@ -78,12 +80,6 @@ def _counters(con: duckdb.DuckDBPyConnection, table: str) -> dict[str, int]:
     return {name: int(value) for name, value in zip(names, row, strict=True)}
 
 
-def _count(con: duckdb.DuckDBPyConnection, table: str) -> int:
-    row = con.execute(f"SELECT count(*) FROM {table}").fetchone()
-    assert row is not None  # COUNT(*) always returns exactly one row
-    return int(row[0])
-
-
 def read_extraction(path: Path | None) -> dict[str, Any] | None:
     """Three distinguishable states, because no record and a broken record are
     not the same thing. The sidecar is an external file read at a boundary, and
@@ -123,7 +119,7 @@ INPUT_TABLES = ("raw_artists", "raw_release_groups", "raw_popularity")
 
 
 def input_rows_loaded(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
-    return {table: _count(con, table) for table in INPUT_TABLES}
+    return {table: scalar(con, f"SELECT count(*) FROM {table}") for table in INPUT_TABLES}
 
 
 def extraction_matches_rows_loaded(
@@ -199,17 +195,20 @@ def publish(
     out_dir: Path,
     dump: str,
     extraction: Path | None = None,
+    trace: Trace | None = None,
 ) -> dict[str, Any]:
+    """`trace` is what the comparison with the previous delivery let through:
+    the drifts the run was told to accept, the counters new and gone. The
+    delivery records it, so the trace of a move stays with the counts it
+    moved."""
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    counts: dict[str, int] = {}
     for name in TABLES:
         con.execute(
             f"COPY (SELECT * FROM {name} ORDER BY {ORDER_BY[name]}) TO ?"
             " (FORMAT parquet, COMPRESSION zstd)",
             [(out_dir / f"{name}.parquet").as_posix()],
         )
-        counts[name] = _count(con, name)
 
     # A file this run did not write — a table dropped from the schema, an
     # export retired — would otherwise stay in the delivery and be digested
@@ -234,13 +233,13 @@ def publish(
 
     manifest = {
         "dump": dump,
-        "archive_sha256": expected_sums(REFERENCE_DIR / f"{dump}.SHA256SUMS"),
+        "archive_sha256": expected_sums(dump_sums(dump)),
         "popularity": _snapshot(con, "popularity_snapshot", popularity_sums),
         "discography": _snapshot(con, "discography_snapshot", discography_sums),
         "official": _parts(con, "official_snapshots", official_sums),
         "listening": _snapshot(con, "listening_snapshot", listening_sums),
         "discogs": _discogs(con),
-        "counts": counts,
+        "counts": table_counts(con),
         "output_sha256": output_sha256,
         "parameters": _parameters(con),
         "inputs": {
@@ -255,16 +254,200 @@ def publish(
                 extraction_record, rows_loaded
             ),
         },
-        "r2_anomalies": _counters(con, "r2_anomalies"),
-        "neutralised_inferences": _counters(con, "neutralised_inferences"),
-        "link_exclusions": _counters(con, "link_exclusions"),
-        "discography_exclusions": _counters(con, "discography_exclusions"),
-        "release_status": _counters(con, "release_status"),
-        "discogs_coverage": _counters(con, "discogs_coverage"),
-        "discogs_date_disagreements": _counters(con, "discogs_date_disagreements"),
+        **counters(con),
+        **_trace(trace),
         "git_sha": _git_sha(),
     }
     (out_dir / "manifest.json").write_text(
         json.dumps(manifest, indent=1, ensure_ascii=False), encoding="utf-8"
     )
     return manifest
+
+
+# The largest move of a table's row count, or of a counter, relative to the
+# previous delivery, that `musilogy run` publishes without being told. Every
+# move of a table count the history records, while the counts were frozen in a
+# test, came from a rule change; the smallest was +0.636 % (genres, every
+# artist type joining, a7361cf3). The limit sits below it, so none would go
+# through unannounced. Counters are held to the same limit: on one under 200,
+# any move is past it.
+MAX_DRIFT = 0.005
+
+
+class Drift(NamedTuple):
+    """A table's count or a counter (named as compared() names it) that moved
+    past the limit since the previous delivery."""
+
+    name: str
+    expected: int
+    got: int
+
+    @property
+    def absolute(self) -> int:
+        return self.got - self.expected
+
+    @property
+    def relative(self) -> float:
+        return self.absolute / self.expected if self.expected else math.inf
+
+    def __str__(self) -> str:
+        return (
+            f"{self.name}: expected {self.expected}, got {self.got}, "
+            f"{self.absolute:+d} ({self.relative:+.2%})"
+        )
+
+
+def table_counts(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
+    """The row count of every delivered table, as the manifest records it."""
+    return {name: scalar(con, f"SELECT count(*) FROM {name}") for name in TABLES}
+
+
+# Every counter table the manifest carries, each under its own name: _counters
+# reads it whole, so a counter added to the SQL is written and compared
+# without touching this list. --accept-drift takes a group under its bare
+# name, as it takes a table: no group may be named like a table.
+COUNTER_TABLES = (
+    "r2_anomalies",
+    "neutralised_inferences",
+    "link_exclusions",
+    "discography_exclusions",
+    "release_status",
+    "discogs_coverage",
+    "discogs_date_disagreements",
+)
+
+
+def counters(con: duckdb.DuckDBPyConnection) -> dict[str, dict[str, int]]:
+    """Every counter table, as the manifest records it."""
+    return {table: _counters(con, table) for table in COUNTER_TABLES}
+
+
+def group_of(name: str) -> str | None:
+    """The group of a counter as compared() names it, GROUP.COUNTER with GROUP
+    a counter table; None for anything else."""
+    group, _, counter = name.partition(".")
+    return group if group in COUNTER_TABLES and counter else None
+
+
+def is_counter(name: str) -> bool:
+    return group_of(name) is not None
+
+
+def accepts(accepted: Collection[str], name: str) -> bool:
+    """Whether `accepted`, names given to --accept-drift, lets the move of
+    `name`, as compared() names it, through: named itself, or a counter of a
+    group named."""
+    return name in accepted or group_of(name) in accepted
+
+
+def compared(manifest: Mapping[str, Any]) -> dict[str, int]:
+    """What a manifest says the drift guard compares: each table's count under
+    the table's name, each counter under GROUP.COUNTER — two groups may count
+    under the same name, and no table name holds a dot. A group the manifest
+    lacks, from a delivery predating it, contributes nothing."""
+    return {
+        **manifest["counts"],
+        **{
+            f"{group}.{name}": n
+            for group in COUNTER_TABLES
+            for name, n in manifest.get(group, {}).items()
+        },
+    }
+
+
+def delivered(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
+    """What this build would publish, as compared() reads it from a manifest."""
+    return compared({"counts": table_counts(con), **counters(con)})
+
+
+class Comparison(NamedTuple):
+    """compare()'s answer: what stops the run unless accepted, and what it
+    only says — each new counter with its count, each one gone with the count
+    it last had."""
+
+    drifts: Sequence[Drift]
+    new: Mapping[str, int]
+    gone: Mapping[str, int]
+
+
+class Trace(NamedTuple):
+    """What a comparison let through, as the delivery records it: the drifts
+    accepted, never one refused, and the counters new and gone. A type of its
+    own, so that compare()'s answer, every drift in it, cannot be recorded as
+    accepted."""
+
+    accepted: Sequence[Drift]
+    new: Mapping[str, int]
+    gone: Mapping[str, int]
+
+
+def _trace(trace: Trace | None) -> dict[str, Any]:
+    """The manifest's record of a trace, named as compared() names. A key is
+    absent rather than empty when it holds nothing, like in a delivery
+    predating it: both say the same thing."""
+    if trace is None:
+        return {}
+    entries = {
+        "accepted_drifts": [d._asdict() for d in trace.accepted],
+        "new_counters": [{"name": name, "got": n} for name, n in trace.new.items()],
+        "gone_counters": [{"name": name, "expected": n} for name, n in trace.gone.items()],
+    }
+    return {key: entry for key, entry in entries.items() if entry}
+
+
+def compare(
+    expected: Mapping[str, int], got: Mapping[str, int], limit: float = MAX_DRIFT
+) -> Comparison:
+    """What moved from `expected` to `got`, both read through compared(). A
+    table or counter that moved past `limit` of `expected` drifts. A table
+    `expected` lacks moves from zero; one only `expected` has is retired, and
+    publish() removes its file. A counter `expected` lacks is new: the SQL
+    added it since, there is nothing to hold it to. One only `expected` has is
+    gone: the SQL dropped or renamed it."""
+    new = {name: n for name, n in got.items() if name not in expected and is_counter(name)}
+    found = [Drift(name, expected.get(name, 0), n) for name, n in got.items() if name not in new]
+    return Comparison(
+        drifts=[d for d in found if abs(d.absolute) > limit * d.expected],
+        new=new,
+        gone={name: n for name, n in expected.items() if name not in got and is_counter(name)},
+    )
+
+
+def _numbers(entry: Any) -> bool:
+    """A table of counts, as the manifest writes them: bool is an int to
+    Python, never to the manifest."""
+    return isinstance(entry, dict) and all(
+        isinstance(n, int) and not isinstance(n, bool) for n in entry.values()
+    )
+
+
+# A MusicBrainz dump's name, its timestamp (REFERENCE_DUMP): what else sits
+# under data/out/ is no delivery of a dump.
+DUMP_NAME = "[0-9]" * 8 + "-" + "[0-9]" * 6
+
+
+def previous_manifest(out: Path) -> tuple[Path, dict[str, Any]] | None:
+    """The manifest of the delivery `out` follows: the one at `out`, which
+    publishing there overwrites, else that of the latest dump delivered beside
+    it (deliveries are named after their dump, a timestamp). A manifest
+    without readable counts, or with a counter group that is no table of
+    numbers, stops the run: nothing says what it delivered."""
+    path = out / "manifest.json"
+    if not path.exists():
+        beside = sorted(out.parent.glob(f"{DUMP_NAME}/manifest.json"))
+        if not beside:
+            return None
+        path = beside[-1]
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError:
+        manifest = None
+    if not (
+        isinstance(manifest, dict)
+        and _numbers(manifest.get("counts"))
+        and all(_numbers(manifest[group]) for group in COUNTER_TABLES if group in manifest)
+    ):
+        raise SystemExit(
+            f"{path} carries no readable counts: nothing to compare, nothing published"
+        )
+    return path, manifest

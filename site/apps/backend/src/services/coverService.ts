@@ -31,7 +31,8 @@ export async function keepCover(artworkUrl: string): Promise<string | null> {
 
   try {
     // AzuraCast answers a missing art with a redirect to its generic image:
-    // that one must not be kept as the track's cover.
+    // that one must not be kept as the track's cover. Not lib/azuracast.ts: the
+    // art lies outside the station's API, needs no key, and comes as bytes.
     const response = await fetch(`${env.AZURACAST_BASE_URL}${path}`, {
       redirect: 'manual',
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),

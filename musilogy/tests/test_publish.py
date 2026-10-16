@@ -1,22 +1,38 @@
 import json
+import re
 import subprocess
 
 import pytest
-from conftest import (
-    build_synthetic,
-    official_file,
-    synthetic_artist,
-    synthetic_release_group,
-)
 
 from musilogy import REFERENCE_DUMP as DUMP
 from musilogy import REFERENCE_POPULARITY
 from musilogy.colisten import PARAMETERS as COLISTEN_PARAMETERS
 from musilogy.fetch import expected_sums, sha256_file
-from musilogy.paths import PACKAGE_DIR, REFERENCE_DIR, popularity_sums
-from musilogy.publish import publish
+from musilogy.paths import PACKAGE_DIR, SQL_DIR, dump_sums, extraction_sidecar, popularity_sums
+from musilogy.publish import (
+    COUNTER_TABLES,
+    SAME_SOUND_PARAMETERS,
+    TABLES,
+    Comparison,
+    Drift,
+    Trace,
+    accepts,
+    compare,
+    compared,
+    delivered,
+    group_of,
+    previous_manifest,
+    publish,
+)
+from tests.conftest import (
+    build_synthetic,
+    delivery_manifest,
+    official_file,
+    synthetic_artist,
+    synthetic_release_group,
+)
 
-REF_SUMS = REFERENCE_DIR / f"{DUMP}.SHA256SUMS"
+REF_SUMS = dump_sums(DUMP)
 
 
 def test_publish_writes_every_table(con, tmp_path):
@@ -241,93 +257,51 @@ def test_manifest_replays_the_extraction_counts_beside_the_rows_loaded(con, tmp_
     assert manifest["inputs"]["extraction"]["release_groups_dropped"] == 11
 
 
-def test_manifest_says_so_when_no_extraction_record_exists(con, tmp_path):
-    # The synthetic builds have no extraction step at all. Null is the honest
-    # answer; an absent key would let a reader assume nothing was dropped.
-    manifest = publish(con, tmp_path, DUMP)
-    assert manifest["inputs"]["extraction"] is None
+AGREEING = {"artists_kept": 697, "release_groups_kept": 10617}
+SHORT = {"artists_kept": 28, "release_groups_kept": 3627}
+UNREADABLE = {"unreadable": True}
 
 
-def test_manifest_survives_a_truncated_extraction_record(con, tmp_path):
-    # A truncated sidecar is precisely the "full disk during extraction"
-    # scenario this task targets. A bare json.loads used to raise
-    # JSONDecodeError and take the whole manifest down with it: no counts, no
-    # parameters, even though those have nothing to do with the sidecar.
-    sidecar = tmp_path / "extraction.json"
-    sidecar.write_text('{"artists_kept": 7', encoding="utf-8")
-    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
+# What the manifest says of the extraction sidecar: its record, and whether it
+# agrees with the rows the build loaded. Three states, never two: "no record"
+# (None) is not "mismatch" (False), and a sidecar that is absent, unreadable or
+# missing a count says nothing about the extraction.
+@pytest.mark.parametrize(
+    ("sidecar", "extraction", "matches"),
+    [
+        # The synthetic builds have no extraction step at all. Null is the
+        # honest answer; an absent key would let a reader assume nothing was
+        # dropped.
+        pytest.param(None, None, None, id="no-sidecar"),
+        pytest.param("missing", None, None, id="path-missing"),
+        # The "full disk during extraction" case: a bare json.loads used to
+        # take the whole manifest down, counts and parameters with it.
+        pytest.param(b'{"artists_kept": 7', UNREADABLE, None, id="truncated"),
+        # Parses without error, then would flow into the manifest as a shape
+        # no reader expects.
+        pytest.param(b"[1, 2, 3]", UNREADABLE, None, id="not-an-object"),
+        # A cut inside a multi-byte character fails at decode, before
+        # json.loads runs: fails if the except clause is narrowed back to
+        # json.JSONDecodeError alone.
+        pytest.param('{"name": "Motörhead"}'.encode()[:14], UNREADABLE, None, id="mid-character"),
+        # What the fixtures load (test_manifest_counts_the_rows_that_fed_the_build):
+        # the case the discrepancy check must let through.
+        pytest.param(json.dumps(AGREEING).encode(), AGREEING, True, id="counts-agree"),
+        # Fewer release groups reached the disk than the extraction kept: the
+        # boolean goes False rather than leave a human to subtract by hand.
+        pytest.param(json.dumps(SHORT).encode(), SHORT, False, id="counts-disagree"),
+        pytest.param(b'{"artists_kept": 28}', {"artists_kept": 28}, None, id="count-missing"),
+    ],
+)
+def test_manifest_reports_the_extraction_sidecar(con, tmp_path, sidecar, extraction, matches):
+    path = None if sidecar is None else extraction_sidecar(tmp_path)
+    if isinstance(sidecar, bytes):
+        assert path is not None
+        path.write_bytes(sidecar)
+    manifest = publish(con, tmp_path / "out", DUMP, path)
     assert manifest["counts"]
-    assert manifest["inputs"]["extraction"] == {"unreadable": True}
-
-
-def test_manifest_survives_an_extraction_record_that_is_not_an_object(con, tmp_path):
-    # A JSON file whose top level is a list parses without error and would
-    # otherwise flow into the manifest as a shape no reader expects.
-    sidecar = tmp_path / "extraction.json"
-    sidecar.write_text("[1, 2, 3]", encoding="utf-8")
-    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
-    assert manifest["inputs"]["extraction"] == {"unreadable": True}
-
-
-def test_manifest_survives_a_sidecar_truncated_mid_character(con, tmp_path):
-    # MusicBrainz names are full of non-ASCII; a truncation landing inside a
-    # multi-byte character fails at decode, before json.loads ever runs,
-    # raising UnicodeDecodeError rather than JSONDecodeError. This fails if the
-    # except clause is narrowed back to json.JSONDecodeError alone.
-    sidecar = tmp_path / "extraction.json"
-    sidecar.write_bytes('{"name": "Motörhead"}'.encode()[:14])
-    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
-    assert manifest["counts"]
-    assert manifest["inputs"]["extraction"] == {"unreadable": True}
-
-
-def test_manifest_says_so_when_the_extraction_path_does_not_exist(con, tmp_path):
-    manifest = publish(con, tmp_path, DUMP, tmp_path / "missing-extraction.json")
-    assert manifest["inputs"]["extraction"] is None
-
-
-def test_manifest_says_extraction_matches_rows_loaded_when_counts_agree(con, tmp_path):
-    # 697 artists and 10617 release-groups are what the fixtures actually load
-    # (test_manifest_counts_the_rows_that_fed_the_build): a sidecar claiming
-    # exactly those counts is the case the discrepancy check must let through.
-    sidecar = tmp_path / "extraction.json"
-    sidecar.write_text(
-        json.dumps({"artists_kept": 697, "release_groups_kept": 10617}), encoding="utf-8"
-    )
-    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
-    assert manifest["inputs"]["extraction_matches_rows_loaded"] is True
-
-
-def test_manifest_says_extraction_does_not_match_rows_loaded_on_a_mismatch(con, tmp_path):
-    # A truncated extraction: fewer release-groups made it to disk than the
-    # extraction step reported keeping. The boolean must go False rather than
-    # leave a human to subtract the two numbers by hand.
-    sidecar = tmp_path / "extraction.json"
-    sidecar.write_text(
-        json.dumps({"artists_kept": 28, "release_groups_kept": 3627}), encoding="utf-8"
-    )
-    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
-    assert manifest["inputs"]["extraction_matches_rows_loaded"] is False
-
-
-def test_manifest_extraction_match_is_none_without_a_sidecar(con, tmp_path):
-    # "No record" is not "mismatch": three states, not two.
-    manifest = publish(con, tmp_path, DUMP)
-    assert manifest["inputs"]["extraction_matches_rows_loaded"] is None
-
-
-def test_manifest_extraction_match_is_none_when_the_sidecar_is_unreadable(con, tmp_path):
-    sidecar = tmp_path / "extraction.json"
-    sidecar.write_text('{"artists_kept": 7', encoding="utf-8")
-    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
-    assert manifest["inputs"]["extraction_matches_rows_loaded"] is None
-
-
-def test_manifest_extraction_match_is_none_when_a_count_key_is_missing(con, tmp_path):
-    sidecar = tmp_path / "extraction.json"
-    sidecar.write_text(json.dumps({"artists_kept": 28}), encoding="utf-8")
-    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
-    assert manifest["inputs"]["extraction_matches_rows_loaded"] is None
+    assert manifest["inputs"]["extraction"] == extraction
+    assert manifest["inputs"]["extraction_matches_rows_loaded"] is matches
 
 
 # A delivery is reproducible only if its rows come out in a fixed order: same
@@ -375,3 +349,241 @@ def test_manifest_carries_the_digest_of_every_delivered_file(con, tmp_path):
     assert set(manifest["output_sha256"]) == delivered
     for name, digest in manifest["output_sha256"].items():
         assert digest == sha256_file(tmp_path / name)
+
+
+def test_the_manifest_names_every_parameter_88_same_sound_sets():
+    # Case this must catch: a SET VARIABLE added to 88_same_sound.sql without
+    # its name in SAME_SOUND_PARAMETERS. The manifest reads back only the names
+    # listed, so the new bound would shape the delivery without being stated.
+    sql = (SQL_DIR / "88_same_sound.sql").read_text(encoding="utf-8")
+    sets = re.findall(r"^\s*SET\s+VARIABLE\s+(\w+)", sql, re.MULTILINE | re.IGNORECASE)
+    assert set(sets) == set(SAME_SOUND_PARAMETERS)
+
+
+# The data diff: a delivery's counts and counters against the previous
+# delivery's. The case each test below must catch is named in it.
+
+
+@pytest.mark.parametrize(
+    ("got", "moved"),
+    [
+        # At the limit, in either direction: a comparison written `>=` instead
+        # of `>` stops these.
+        pytest.param(1010, False, id="grown-to-the-limit"),
+        pytest.param(990, False, id="shrunk-to-the-limit"),
+        # One row past it, in either direction: a comparison of the signed
+        # delta rather than its size lets the shrink through.
+        pytest.param(1011, True, id="grown-past-the-limit"),
+        pytest.param(989, True, id="shrunk-past-the-limit"),
+    ],
+)
+@pytest.mark.parametrize("name", ["artists", "link_exclusions.not_on_page"])
+def test_a_count_drifts_once_it_moves_past_the_limit(name, got, moved):
+    # A counter is held to the same limit as a table.
+    found = compare({name: 1000}, {name: got}, limit=0.01)
+    assert found == Comparison([Drift(name, 1000, got)] if moved else [], {}, {})
+
+
+def test_every_count_that_moved_is_named_and_only_those():
+    expected = {"artists": 1000, "links": 500, "urls": 200, "release_status.unknown": 40}
+    got = {"artists": 2000, "links": 500, "urls": 100, "release_status.unknown": 80}
+    assert compare(expected, got, limit=0.01).drifts == [
+        Drift("artists", 1000, 2000),
+        Drift("urls", 200, 100),
+        Drift("release_status.unknown", 40, 80),
+    ]
+
+
+def test_a_drift_states_its_absolute_and_relative_move():
+    # The urls of 10bcad46: the Wikipedia and image pages leaving the table.
+    drift = Drift("urls", 2_036_294, 1_991_446)
+    assert drift.absolute == -44_848
+    assert drift.relative == pytest.approx(-0.022024, abs=1e-6)
+    assert str(drift) == "urls: expected 2036294, got 1991446, -44848 (-2.20%)"
+
+
+def test_a_table_the_previous_delivery_did_not_have_drifts():
+    # A table added to the delivery moves from nothing: its rows were never
+    # compared to anything, so it cannot pass as unchanged.
+    assert compare({}, {"styles": 3}, limit=0.5) == Comparison([Drift("styles", 0, 3)], {}, {})
+    assert Drift("styles", 0, 3).relative == float("inf")
+    assert compare({}, {"styles": 0}, limit=0.5) == Comparison([], {}, {})
+
+
+def test_a_table_the_delivery_no_longer_has_is_not_a_drift():
+    # publish() removes a retired table's file; its old count says nothing of
+    # the tables delivered now.
+    found = compare({"genres": 1740, "artists": 10}, {"artists": 10}, limit=0.01)
+    assert found == Comparison([], {}, {})
+
+
+def test_a_counter_the_previous_delivery_did_not_have_is_new_not_a_drift():
+    # A counter added to the SQL since has nothing to be compared with: it is
+    # said, and the run goes on. Case: it read as moving from zero, and every
+    # counter added stops the next run.
+    found = compare({"artists": 10}, {"artists": 10, "r2_anomalies.birth_future": 4}, limit=0.01)
+    assert found == Comparison([], {"r2_anomalies.birth_future": 4}, {})
+
+
+def test_a_counter_the_delivery_no_longer_has_is_gone_not_a_drift():
+    # Case: a counter dropped from the SQL, or renamed, passing unnoticed.
+    found = compare({"artists": 10, "r2_anomalies.birth_future": 4}, {"artists": 10}, limit=0.01)
+    assert found == Comparison([], {}, {"r2_anomalies.birth_future": 4})
+
+
+def test_the_counts_compared_are_those_publish_writes(con, tmp_path):
+    # Case: the comparison counting other tables or counters, or otherwise,
+    # than the manifest it is compared with — a delivery would then drift
+    # from itself.
+    manifest = publish(con, tmp_path, DUMP)
+    assert delivered(con) == compared(manifest)
+    assert compare(compared(manifest), delivered(con)) == Comparison([], {}, {})
+
+
+def test_every_counter_of_the_manifest_is_compared(con, tmp_path):
+    # Case: a counter group written to the manifest but left out of the
+    # comparison. Each group's counters are named after their group, so that
+    # two groups counting under the same name cannot be mistaken.
+    manifest = publish(con, tmp_path, DUMP)
+    names = set(compared(manifest))
+    assert names >= set(manifest["counts"])
+    for group in COUNTER_TABLES:
+        assert manifest[group], group
+        assert {f"{group}.{counter}" for counter in manifest[group]} <= names
+    assert len(names) == len(manifest["counts"]) + sum(len(manifest[g]) for g in COUNTER_TABLES)
+
+
+def test_a_manifest_older_than_a_counter_group_compares_its_counts_alone():
+    # Case: a delivery predating a group taken for a broken one.
+    assert compared({"counts": {"artists": 3}}) == {"artists": 3}
+
+
+@pytest.mark.parametrize("trace", [None, Trace([], {}, {})])
+def test_a_delivery_that_moved_nothing_carries_no_trace(con, tmp_path, trace):
+    manifest = publish(con, tmp_path, DUMP, None, trace)
+    assert not {"accepted_drifts", "new_counters", "gone_counters"} & set(manifest)
+
+
+def test_the_accepted_drifts_stay_with_the_delivery(con, tmp_path):
+    # Case: the run told to let a move through, and the delivery then holding
+    # no trace of it — the next reader takes the new counts for unchallenged.
+    accepted = [Drift("urls", 200, 100), Drift("link_exclusions.not_on_page", 10, 30)]
+    publish(con, tmp_path, DUMP, None, Trace(accepted, {}, {}))
+    written = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    assert written["accepted_drifts"] == [
+        {"name": "urls", "expected": 200, "got": 100},
+        {"name": "link_exclusions.not_on_page", "expected": 10, "got": 30},
+    ]
+    assert not {"new_counters", "gone_counters"} & set(written)
+
+
+def test_the_counters_new_and_gone_stay_with_the_delivery(con, tmp_path):
+    # Case: a counter added or dropped since said once, on the run's output,
+    # and the delivery then holding no trace of it — the next run compares
+    # the new counter as if it had always been there, the dropped one is
+    # forgotten.
+    trace = Trace(
+        [],
+        {"r2_anomalies.birth_future": 4, "release_status.withdrawn": 0},
+        {"r2_anomalies.begin_retired": 7},
+    )
+    publish(con, tmp_path, DUMP, None, trace)
+    written = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    assert written["new_counters"] == [
+        {"name": "r2_anomalies.birth_future", "got": 4},
+        {"name": "release_status.withdrawn", "got": 0},
+    ]
+    assert written["gone_counters"] == [{"name": "r2_anomalies.begin_retired", "expected": 7}]
+    assert "accepted_drifts" not in written
+
+
+def test_no_table_is_named_like_a_counter_group():
+    # --accept-drift takes a table or a counter group under the same bare
+    # name. Case: a table added under a group's name, or the reverse, and
+    # accepting one then accepting the other.
+    assert not set(TABLES) & set(COUNTER_TABLES)
+
+
+def test_the_previous_delivery_of_the_same_dump_is_the_one_it_replaces(tmp_path):
+    # Case: reading a sibling while the run is about to overwrite this one.
+    same = delivery_manifest(tmp_path / "20260909-001002", {"artists": 1})
+    delivery_manifest(tmp_path / "20261007-001001", {"artists": 2})
+    assert previous_manifest(tmp_path / "20260909-001002") == (same, {"counts": {"artists": 1}})
+
+
+def test_a_new_dump_is_compared_with_the_latest_dump_delivered(tmp_path):
+    # Dump names are their timestamps: sorted, the last is the latest. Case:
+    # taking the first, or any directory without a manifest.
+    delivery_manifest(tmp_path / "20260813-001001", {"artists": 1})
+    latest = delivery_manifest(tmp_path / "20260909-001002", {"artists": 2})
+    (tmp_path / "20260910-001001").mkdir()
+    assert previous_manifest(tmp_path / "20261007-001001") == (latest, {"counts": {"artists": 2}})
+
+
+def test_without_a_previous_delivery_there_is_nothing_to_compare(tmp_path):
+    assert previous_manifest(tmp_path / "out" / DUMP) is None
+
+
+def test_a_folder_not_named_after_a_dump_is_no_previous_delivery(tmp_path):
+    # Case: a sample or scratch delivery under data/out/, whose name sorts after
+    # every timestamp, taken for the latest dump.
+    latest = delivery_manifest(tmp_path / "20260909-001002", {"artists": 2})
+    delivery_manifest(tmp_path / "sample", {"artists": 1})
+    assert previous_manifest(tmp_path / "20261007-001001") == (latest, {"counts": {"artists": 2}})
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        pytest.param('{"counts": {"artists"', id="truncated"),
+        pytest.param('{"dump": "20260909-001002"}', id="without-counts"),
+        pytest.param('{"counts": {"artists": "12"}}', id="a-count-not-a-number"),
+        pytest.param('{"counts": {}, "link_exclusions": 3}', id="a-counter-group-not-a-table"),
+        pytest.param(
+            '{"counts": {}, "release_status": {"unknown": null}}', id="a-counter-not-a-number"
+        ),
+    ],
+)
+def test_a_previous_manifest_without_readable_counts_stops_with_its_path(tmp_path, content):
+    # Case: a manifest cut short by a killed run — written in place, not aside —
+    # failing every later run on a bare traceback instead of naming the file.
+    out = tmp_path / "20260909-001002"
+    out.mkdir()
+    (out / "manifest.json").write_text(content, encoding="utf-8")
+    with pytest.raises(SystemExit) as raised:
+        previous_manifest(out)
+    assert str(out / "manifest.json") in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    ("name", "group"),
+    [
+        ("link_exclusions.not_on_page", "link_exclusions"),
+        # Case: a table, a bare group, an empty counter or an unknown group
+        # read as a counter, and accepting a group then letting it through.
+        ("links", None),
+        ("link_exclusions", None),
+        ("link_exclusions.", None),
+        ("links.not_on_page", None),
+    ],
+)
+def test_the_group_of_a_counter_is_the_counter_table_before_its_dot(name, group):
+    assert group_of(name) == group
+
+
+@pytest.mark.parametrize(
+    ("accepted", "name", "let_through"),
+    [
+        (["urls"], "urls", True),
+        (["link_exclusions.not_on_page"], "link_exclusions.not_on_page", True),
+        (["link_exclusions"], "link_exclusions.not_on_page", True),
+        # Case: a counter accepting its sibling, a group accepting another
+        # group's counter, a table accepting what merely starts with its name.
+        (["link_exclusions.not_on_page"], "link_exclusions.to_unextracted_artist", False),
+        (["release_status"], "link_exclusions.not_on_page", False),
+        (["links"], "links.not_on_page", False),
+        ([], "urls", False),
+    ],
+)
+def test_a_move_is_accepted_under_its_own_name_or_its_group(accepted, name, let_through):
+    assert accepts(accepted, name) is let_through

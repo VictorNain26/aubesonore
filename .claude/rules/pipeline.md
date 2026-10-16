@@ -26,12 +26,14 @@ uv sync                                  # dépendances (.venv)
 sqlite3 data/radio.db .schema            # le schéma en vigueur, que les migrations reconstruisent
 ```
 
-`radio/cli.py` lit la configuration, appelle le module et met en forme le rapport ; le travail
+`radio/cli/` (une famille de commandes par module, ce qu'elles partagent dans `common.py`) lit
+la configuration, appelle le module et met en forme le rapport ; le travail
 est dans le module.
 
 Deux dossiers de modèles : `models/` à la racine porte les poids MTG téléchargés (EffNet et
 mesures), `data/models/` les modèles entraînés par `train`. `core/http.py` n'est pas un client :
-c'est le hook de relance de stamina, enregistré à l'import par les clients de `sources/`.
+c'est le hook de relance de stamina, enregistré à l'import par les clients de `sources/`, et le tri
+commun de leurs réponses (`check_status`, `json_or_none`).
 
 ## Invariants
 
@@ -56,8 +58,7 @@ c'est le hook de relance de stamina, enregistré à l'import par les clients de 
   texte simple, puis laisser `pick_match` juger.
 - Les migrations SQLite suivent la procédure officielle de reconstruction de table. Un script ne
   contient ni `BEGIN` ni `COMMIT`.
-- La passe hebdomadaire exécute le code de `~/aubesonore/pipeline` : développer dans un worktree
-  pendant qu'elle tourne, sinon elle importe du code en cours d'écriture.
+- Ne jamais éditer `~/aubesonore` : la passe hebdomadaire en importe le code de `pipeline/`.
 - Sockseek et rsgain sont des binaires figés dans `~/.local/bin` (versions et sha256 dans
   `docs/vision.md`) ; ffmpeg et fpcalc viennent d'apt.
 - Les unités systemd de `deploy/systemd/` sont liées par `systemctl --user link`. Il faut les

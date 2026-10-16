@@ -1,4 +1,4 @@
-import { env } from '../config/env';
+import { azuracastGet } from '../lib/azuracast';
 import { toIsrc } from '../lib/isrc';
 
 export interface NowPlayingTrack {
@@ -12,18 +12,9 @@ export interface NowPlayingTrack {
 const NOWPLAYING_TIMEOUT_MS = 10_000;
 
 export async function fetchNowPlaying(): Promise<NowPlayingTrack | null> {
-  const url = `${env.AZURACAST_BASE_URL}/api/station/${env.AZURACAST_STATION_ID}/nowplaying`;
-  const response = await fetch(url, {
-    headers: { 'X-API-Key': env.AZURACAST_API_KEY },
-    signal: AbortSignal.timeout(NOWPLAYING_TIMEOUT_MS),
-  });
-  if (!response.ok) {
-    throw new Error(`AzuraCast nowplaying error: ${response.status}`);
-  }
-
   // One station's endpoint answers a single object, not the array of
   // /api/nowplaying (measured 2026-10-02: { station, now_playing, ... }).
-  const payload: unknown = await response.json();
+  const payload = await azuracastGet('nowplaying', NOWPLAYING_TIMEOUT_MS);
   if (typeof payload !== 'object' || payload === null) return null;
   const { now_playing: nowPlaying } = payload as { now_playing?: unknown };
   if (typeof nowPlaying !== 'object' || nowPlaying === null) return null;

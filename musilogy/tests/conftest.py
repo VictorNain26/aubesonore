@@ -1,7 +1,6 @@
 import json
 import os
 from collections.abc import Sequence
-from pathlib import Path
 from typing import Any
 
 import duckdb
@@ -14,28 +13,18 @@ from musilogy import (
 )
 from musilogy.build import build
 from musilogy.load import load
-from musilogy.paths import SQL_DIR
+from musilogy.paths import FIXTURES_DIR, SQL_DIR
 from musilogy.publish import publish
+from musilogy.sample import build_sample
 
-FIX = Path(__file__).parent / "fixtures"
+FIX = FIXTURES_DIR
 SQL = SQL_DIR
 
 
 @pytest.fixture(scope="module")
 def con():
     c = duckdb.connect(":memory:")
-    build(
-        c,
-        SQL,
-        FIX / "artists.jsonl",
-        FIX / "release_groups.jsonl",
-        popularity=FIX / "popularity.jsonl",
-        popularity_snapshot=REFERENCE_POPULARITY,
-        discography=FIX / "discography.jsonl",
-        discography_snapshot=REFERENCE_DISCOGRAPHY,
-        official=[FIX / "official.jsonl"],
-        discogs=FIX / "discogs.jsonl",
-    )
+    build_sample(c)
     return c
 
 
@@ -113,6 +102,15 @@ def pg():
             pytest.fail("MUSILOGY_TEST_PG is unset in the CI")
         pytest.skip("MUSILOGY_TEST_PG unset: no disposable Postgres")
     return conninfo
+
+
+def delivery_manifest(folder, counts, **counters):
+    """A delivery's manifest, reduced to what the drift guard reads: the counts
+    and, by group, the counters."""
+    folder.mkdir(parents=True)
+    path = folder / "manifest.json"
+    path.write_text(json.dumps({"counts": counts, **counters}), encoding="utf-8")
+    return path
 
 
 def official_file(path, rows):

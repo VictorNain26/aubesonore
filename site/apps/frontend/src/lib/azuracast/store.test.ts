@@ -232,17 +232,25 @@ describe('nowPlaying store — cadence', () => {
 describe('nowPlaying store — adaptive cadence', () => {
   it('falls back to DEFAULT_POLL_MS (10s) before any data is loaded', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
+    let calls = 0;
+    // A 304 keeps the connection healthy without giving data: the store stays empty.
     server.use(
-      http.get(URL_NP, async () => {
-        await new Promise(() => {});
-        return HttpResponse.json(makeNowPlaying());
+      http.get(URL_NP, () => {
+        calls++;
+        return new HttpResponse(null, { status: 304 });
       })
     );
     start();
+    await vi.waitFor(() => expect(calls).toBe(1));
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(100);
+      await vi.advanceTimersByTimeAsync(9_500);
     });
-    expect(true).toBe(true);
+    expect(calls).toBe(1);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
+    });
+    expect(calls).toBe(2);
+    expect(useNowPlayingStore.getState().data).toBeNull();
   });
 
   it('switches to NEAR_END cadence (~5s) when remaining < 20s', async () => {

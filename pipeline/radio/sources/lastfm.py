@@ -9,7 +9,7 @@ import requests
 import stamina
 from pyrate_limiter import Duration, Limiter, Rate
 
-import radio.core.http  # noqa: F401  (enregistre le hook de relance)
+from radio.core.http import check_status, json_or_none
 
 API = "https://ws.audioscrobbler.com/2.0/"
 _NOT_FOUND = 6
@@ -69,11 +69,7 @@ class LastfmClient:
             r = self._session.get(API, params=query, timeout=15)
         except requests.RequestException as e:
             raise LastfmUnavailable(type(e).__name__) from None
-        body: Any
-        try:
-            body = r.json()
-        except ValueError:
-            body = None
+        body = json_or_none(r)
         if isinstance(body, dict) and "error" in body:
             code = body["error"]
             if code == _NOT_FOUND:
@@ -81,10 +77,7 @@ class LastfmClient:
             if code in _UNAVAILABLE:
                 raise LastfmUnavailable(f"code {code}")
             raise LastfmError(f"code {code}")
-        if r.status_code == 429 or r.status_code >= 500:
-            raise LastfmUnavailable(f"HTTP {r.status_code}")
-        if r.status_code >= 400:
-            raise LastfmError(f"HTTP {r.status_code}")
+        check_status(r, LastfmUnavailable, LastfmError)
         if not isinstance(body, dict):
             raise LastfmUnavailable("invalid JSON")
         return body

@@ -3,7 +3,9 @@ name: Pipeline
 on:
   push:
     branches: [master]
+  # ready_for_review too: the job skips drafts, like site.yml.
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 # Un nouveau push annule le run en cours sur la même PR ou branche (comme site.yml).
 concurrency:
@@ -22,6 +24,7 @@ defaults:
 jobs:
   checks:
     name: Pipeline (ruff, mypy, pytest)
+    if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -31,7 +34,6 @@ jobs:
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
           version: "0.11.19"
-          python-version: "3.12"
           working-directory: pipeline
       # Outils audio de l'acquisition : le test d'intégration les fait tourner pour de vrai.
       # Le miroir Ubuntu d'Azure sert parfois à ~180 Ko/s (jusqu'à 11 min pour ffmpeg) : les .deb
@@ -50,23 +52,16 @@ jobs:
           sudo apt-get install -y --no-install-recommends -o Dir::Cache::Archives="$RUNNER_TEMP/apt-archives" ffmpeg libchromaprint-tools
           sudo apt-get autoclean -o Dir::Cache::Archives="$RUNNER_TEMP/apt-archives"
           sudo chown -R "$USER" "$RUNNER_TEMP/apt-archives"
-      # rsgain 3.8, la version figée en production (docs/vision.md §6), et non la 3.4 d'apt.
-      - run: |
-          curl -fsSL -o "$RUNNER_TEMP/rsgain.tar.xz" https://github.com/complexlogic/rsgain/releases/download/v3.8/rsgain-3.8-Linux.tar.xz
-          echo "4939de3b2022a50edc0751343b10a791ea8c1c9ca6505012f21413bf8de365a0  $RUNNER_TEMP/rsgain.tar.xz" | sha256sum -c
-          tar -xJf "$RUNNER_TEMP/rsgain.tar.xz" -C "$RUNNER_TEMP"
-          echo "$RUNNER_TEMP/rsgain-3.8-Linux" >> "$GITHUB_PATH"
-      # Modèle EffNet officiel, somme de contrôle épinglée dans radio/signals/audio.py.
-      - id: effnet
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      # rsgain 3.8 et le modèle EffNet : la même recette qu'un poste (scripts/dev-setup.sh), sommes
+      # vérifiées. fpcalc vient d'apt ci-dessus, comme en production. La clé suit le fichier qui
+      # épingle la somme du modèle.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: pipeline/models/discogs-effnet-bs64-1.pb
-          key: effnet-3ed9af50d5367c0b9c795b294b00e7599e4943244f4cbd376869f3bfc87721b1
-      - if: steps.effnet.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p models
-          curl -fsSL -o models/discogs-effnet-bs64-1.pb https://essentia.upf.edu/models/feature-extractors/discogs-effnet/discogs-effnet-bs64-1.pb
-      - run: echo "3ed9af50d5367c0b9c795b294b00e7599e4943244f4cbd376869f3bfc87721b1  models/discogs-effnet-bs64-1.pb" | sha256sum -c
+          key: effnet-${{ hashFiles('pipeline/radio/signals/audio.py') }}
+      - run: |
+          scripts/dev-setup.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - run: rsgain --version
       - run: uv sync --locked
       - run: uv run ruff check radio tests_radio

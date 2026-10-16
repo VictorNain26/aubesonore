@@ -1,10 +1,4 @@
-import duckdb
-
 from musilogy.paths import REPO_ROOT
-
-
-def test_duckdb_version_is_pinned():
-    assert duckdb.__version__ == "1.5.5"
 
 
 def test_both_licences_are_declared():

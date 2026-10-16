@@ -5,11 +5,13 @@
   "type": "module",
   "packageManager": "pnpm@10.34.5",
   "engines": {
-    "node": ">=20",
+    "node": ">=22",
     "pnpm": ">=10.34.5"
   },
   "scripts": {
     "stack": "docker compose --profile dev up --watch backend frontend-dev",
+    "data:pull": "scripts/pull-public-data.sh",
+    "musilogy:sample": "scripts/musilogy-sample.sh",
     "dev": "turbo dev",
     "dev:backend": "turbo dev --filter=@aubesonore/backend",
     "dev:frontend": "turbo dev --filter=@aubesonore/frontend",

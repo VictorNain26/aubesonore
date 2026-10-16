@@ -1,5 +1,5 @@
 ---
-description: Les deux niveaux de test de musilogy et l'origine des témoins — chargé en ouvrant un fichier de musilogy/tests/
+description: Les niveaux de test de musilogy et l'origine des témoins — chargé en ouvrant un fichier de musilogy/tests/
 paths:
   - "musilogy/tests/**/*.py"
 ---
@@ -16,29 +16,15 @@ si un témoin manque, on le tire du dump, on n'invente pas la ligne.
 
 Les fixtures versionnées ne s'éditent pas à la main — elles se régénèrent.
 
-## Deux niveaux, deux rôles
+## Les niveaux de test
 
-```bash
-uv run pytest            # suite rapide sur les témoins (défaut, -m 'not slow')
-uv run pytest -m slow    # ligne de base sur le dump réel, exige data/work/
-```
+Les niveaux de test et ce que chacun exige : `README.md` (« Installation,
+tests, exécution »). La suite rapide tourne à chaque changement et garde la CI
+verte.
 
-La suite rapide tourne à chaque changement et garde la CI verte. La ligne de
-base rejoue le pipeline complet : elle ne tourne qu'à la demande, prend environ
-5 minutes une fois les extractions de `data/work/` produites (une dizaine de
-minutes de plus pour les produire).
-
-Un nouveau fichier `tests/test_x.py` s'ajoute à la liste des modules de tests de
-`pyproject.toml` (`[[tool.mypy.overrides]]`), sinon `mypy` strict le refuse : un
-motif `test_*` n'y est pas possible, mypy ne connaît que les jokers par
-composant (`paquet.*`) et les tests sont des modules de premier niveau.
-
-`tests/test_baseline.py` est le contrat exécutable des chiffres : c'est le seul
-point d'autorité. Un écart à la ligne de base se comprend avant d'être
-entériné — on identifie la règle qui l'a produit, on dit pourquoi le nouveau
-chiffre est le bon, puis on met le contrat à jour. Aligner le chiffre attendu
-sur le chiffre obtenu sans cette étape supprime le test au lieu de le faire
-passer.
+`tests/` est un paquet : un module de test s'importe par `tests.conftest` ou
+`tests.test_x`, et la surcharge mypy `tests.*` de `pyproject.toml` couvre tout
+nouveau fichier.
 
 ## Nommer la casse avant d'écrire le test
 

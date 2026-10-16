@@ -1,10 +1,12 @@
 import json
 
 import pytest
-from conftest import loaded, pg_query, published, synthetic_artist
 
+from musilogy import cli
 from musilogy.fetch import ChecksumError
 from musilogy.load import LoadError, load
+from musilogy.sample import publish_sample
+from tests.conftest import FIX, loaded, pg_query, published, synthetic_artist
 
 ME = "00000000-0000-4000-8000-0000000000c0"
 A = "00000000-0000-4000-8000-0000000000c1"
@@ -48,3 +50,33 @@ def test_a_delivery_that_disagrees_with_its_manifest_is_refused(tmp_path):
         fh.write(b"touched")
     with pytest.raises(ChecksumError):
         load(out, "host=unreachable.invalid")
+
+
+JOY_DIVISION = "9a58fda3-f4ed-4080-a3a5-f457aac9fcdd"
+
+
+def witness_count():
+    with (FIX / "artists.jsonl").open(encoding="utf-8") as fh:
+        return sum(1 for _ in fh)
+
+
+def test_the_sample_is_the_pipeline_run_on_the_fixtures(tmp_path):
+    # The small database a workstation develops against: the production code
+    # path (build, publish), only fed the versioned witnesses.
+    out = publish_sample(tmp_path)
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    witnesses = witness_count()
+    assert manifest["counts"]["artists"] == witnesses
+
+
+def test_load_sample_puts_every_witness_in_the_site_database(pg, monkeypatch):
+    # `musilogy load --sample` end to end, the target alone pinned to the
+    # disposable Postgres instead of the libpq environment.
+    monkeypatch.setattr(cli, "load", lambda out: load(out, pg))
+    monkeypatch.setattr("sys.argv", ["musilogy", "load", "--sample"])
+    cli.main()
+    rows = pg_query(pg, "SELECT mbid::VARCHAR, name FROM musilogy.artists")
+    loaded = dict(rows)
+    assert set(cli.WITNESSES) <= loaded.keys()
+    assert len(loaded) == witness_count()
+    assert loaded[JOY_DIVISION] == "Joy Division"

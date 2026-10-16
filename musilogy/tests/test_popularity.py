@@ -1,11 +1,10 @@
 import json
 
-from conftest import FIX
-from test_invariants import restored
-
 from musilogy import REFERENCE_POPULARITY
 from musilogy.build import check_invariants
 from musilogy.paths import SQL_DIR
+from tests.conftest import FIX, build_synthetic, synthetic_artist
+from tests.test_invariants import restored
 
 BEATLES = "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"
 
@@ -69,3 +68,11 @@ def test_a_duplicated_artist_is_reported(con):
         )
         violations = dict(check_invariants(con, SQL_DIR))
     assert violations.get("duplicate_popularity") == 1
+
+
+def test_a_build_without_a_snapshot_keeps_its_snapshot_column_a_date(tmp_path):
+    # The site's musilogy.popularity.snapshot is a date: an absent snapshot,
+    # read as an untyped NULL, would turn the published column into an INTEGER.
+    c = build_synthetic(tmp_path, [synthetic_artist(BEATLES, "1960", "1970")])
+    types = dict(c.execute("SELECT column_name, column_type FROM (DESCRIBE popularity)").fetchall())
+    assert types["snapshot"] == "DATE"

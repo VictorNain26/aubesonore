@@ -3,7 +3,7 @@ import type {
   MusilogyArtistRef,
   MusilogySearchHit,
 } from '@aubesonore/shared-types/client';
-import { API_BASE_URL } from './config';
+import { HttpError, readKnown } from './api';
 import { artistPath } from './artistProfile';
 
 /** Musilogy is not loaded on the server. */
@@ -18,12 +18,12 @@ export function pagePathOf(artist: Pick<MusilogyArtistRef, 'mbid' | 'slug'>): st
 }
 
 async function read<T>(path: string, signal?: AbortSignal): Promise<T | null> {
-  const response = await fetch(`${API_BASE_URL}/api/musilogy${path}`, { signal: signal ?? null });
-  // 400: a malformed MBID, from a truncated link — as unknown as a 404.
-  if (response.status === 404 || response.status === 400) return null;
-  if (response.status === 503) throw new MusilogyUnavailableError();
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return (await response.json()) as T;
+  try {
+    return await readKnown<T>(`/api/musilogy${path}`, signal);
+  } catch (error) {
+    if (error instanceof HttpError && error.status === 503) throw new MusilogyUnavailableError();
+    throw error;
+  }
 }
 
 export function fetchMusilogyArtist(

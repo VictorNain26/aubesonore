@@ -1,4 +1,4 @@
-from conftest import build_synthetic, synthetic_artist, synthetic_release_group
+from tests.conftest import build_synthetic, synthetic_artist, synthetic_release_group
 
 BJORK = "87c5dedd-371d-4a53-9f7f-80522fb7f3cb"
 BOWIE = "5441c29d-3602-4898-b1a1-b77fa23b8e50"

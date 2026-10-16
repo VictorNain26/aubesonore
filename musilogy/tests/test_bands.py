@@ -1,4 +1,4 @@
-from conftest import build_synthetic, synthetic_artist
+from tests.conftest import build_synthetic, synthetic_artist
 
 
 def rows(con, q):

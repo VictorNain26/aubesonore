@@ -22,7 +22,7 @@ from typing import Any, Protocol
 import numpy as np
 import numpy.typing as npt
 
-from radio.acquire.audio import Cue, ToolError, cue_of
+from radio.core.media import Cue, ToolError, cue_of
 
 logger = logging.getLogger(__name__)
 

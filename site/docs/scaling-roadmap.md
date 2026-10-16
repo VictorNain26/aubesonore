@@ -20,7 +20,7 @@ When **any** of these fires, migrate everything below in one PR:
 
 **State to migrate** (each implements `CacheStore<V>` from `lib/cache/ttlCache.ts` already):
 
-- Every `TtlCache` (`index.ts` sweeps them all): `linksCache`, `itunesCache`, `deezerCache`, `musicbrainzCache`, `wikipediaCache`, `titlesCache`, `commonsCache`, `radioHistoryCache`, `trendsCache`, `musilogyCache`, `identityCache`, `coreCache`
+- Every `TtlCache`: the `startSweep()` calls in `index.ts` list them
 - `circuitOpenUntil` (`services/deezerService.ts`) and the MusicBrainz throttle `nextSlotAt` (`services/musicbrainzService.ts`)
 - Rate limit buckets (`lib/rateLimit.ts`)
 

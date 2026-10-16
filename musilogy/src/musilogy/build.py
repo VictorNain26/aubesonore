@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import duckdb
@@ -30,37 +30,79 @@ def connect() -> duckdb.DuckDBPyConnection:
     )
 
 
-RAW_ARTIST_COLUMNS = (
-    "{mbid:'VARCHAR', name:'VARCHAR', disambiguation:'VARCHAR', type:'VARCHAR', begin:'VARCHAR', "
-    "\"end\":'VARCHAR', ended:'BOOLEAN', country:'VARCHAR', begin_area:'VARCHAR', "
-    "begin_area_mbid:'VARCHAR', "
-    "genres:'STRUCT(mbid VARCHAR, name VARCHAR, votes INTEGER)[]', "
-    "relations:'STRUCT(type VARCHAR, direction VARCHAR, mbid VARCHAR, begin VARCHAR, "
-    '"end" VARCHAR)[]\', '
-    "urls:'STRUCT(type VARCHAR, url VARCHAR, ended BOOLEAN)[]'}"
-)
-RAW_RG_COLUMNS = (
-    "{mbid:'VARCHAR', title:'VARCHAR', primary_type:'VARCHAR', date:'VARCHAR', "
-    "secondary:'VARCHAR[]', artists:'VARCHAR[]', "
-    "genres:'STRUCT(mbid VARCHAR, name VARCHAR, votes INTEGER)[]'}"
-)
+# The fields each input is read with: the columns read_ndjson parses and the
+# empty table a build without that input materializes come from one dict.
+RAW_ARTIST_FIELDS = {
+    "mbid": "VARCHAR",
+    "name": "VARCHAR",
+    "disambiguation": "VARCHAR",
+    "type": "VARCHAR",
+    "begin": "VARCHAR",
+    "end": "VARCHAR",
+    "ended": "BOOLEAN",
+    "country": "VARCHAR",
+    "begin_area": "VARCHAR",
+    "begin_area_mbid": "VARCHAR",
+    "genres": "STRUCT(mbid VARCHAR, name VARCHAR, votes INTEGER)[]",
+    "relations": (
+        'STRUCT(type VARCHAR, direction VARCHAR, mbid VARCHAR, begin VARCHAR, "end" VARCHAR)[]'
+    ),
+    "urls": "STRUCT(type VARCHAR, url VARCHAR, ended BOOLEAN)[]",
+}
+RAW_RG_FIELDS = {
+    "mbid": "VARCHAR",
+    "title": "VARCHAR",
+    "primary_type": "VARCHAR",
+    "date": "VARCHAR",
+    "secondary": "VARCHAR[]",
+    "artists": "VARCHAR[]",
+    "genres": "STRUCT(mbid VARCHAR, name VARCHAR, votes INTEGER)[]",
+}
+RAW_POPULARITY_FIELDS = {
+    "artist_mbid": "VARCHAR",
+    "total_listen_count": "BIGINT",
+    "total_user_count": "BIGINT",
+}
+RAW_DISCOGRAPHY_FIELDS = {"rg_mbid": "VARCHAR", "form": "VARCHAR"}
+RAW_OFFICIAL_FIELDS = {"artist_mbid": "VARCHAR", "release_groups": "VARCHAR[]"}
+# The fields extract.reduce_discogs_release writes, in its order.
+RAW_DISCOGS_FIELDS = {
+    "id": "BIGINT",
+    "master_id": "BIGINT",
+    "artists": "BIGINT[]",
+    "descriptions": "VARCHAR[]",
+    "styles": "VARCHAR[]",
+    "released": "VARCHAR",
+}
+
+
+def ndjson(fields: Mapping[str, str], path: str = "?") -> str:
+    """A read_ndjson of `fields`, every name quoted ("end" is a keyword), its
+    path a parameter unless given as a literal."""
+    columns = ", ".join(f"\"{name}\": '{kind}'" for name, kind in fields.items())
+    return f"read_ndjson({path}, columns={{{columns}}}, format='newline_delimited')"
+
+
+def _load_ndjson(
+    con: duckdb.DuckDBPyConnection, table: str, path: Path, fields: Mapping[str, str]
+) -> None:
+    con.execute(
+        f"CREATE OR REPLACE TABLE {table} AS SELECT * FROM {ndjson(fields)}", [path.as_posix()]
+    )
+
+
+def _create_empty(con: duckdb.DuckDBPyConnection, table: str, fields: Mapping[str, str]) -> None:
+    columns = ", ".join(f'"{name}" {kind}' for name, kind in fields.items())
+    con.execute(f"CREATE OR REPLACE TABLE {table} ({columns})")
+
+
+def _set_variable(con: duckdb.DuckDBPyConnection, name: str, value: object, kind: str) -> None:
+    con.execute(f"SET VARIABLE {name} = ?::{kind}", [value])
 
 
 def load_raw(con: duckdb.DuckDBPyConnection, artists: Path, rgs: Path) -> None:
-    con.execute(
-        f"CREATE OR REPLACE TABLE raw_artists AS SELECT * FROM read_ndjson("
-        f"'{artists.as_posix()}', columns={RAW_ARTIST_COLUMNS}, "
-        f"format='newline_delimited')"
-    )
-    con.execute(
-        f"CREATE OR REPLACE TABLE raw_release_groups AS SELECT * FROM read_ndjson("
-        f"'{rgs.as_posix()}', columns={RAW_RG_COLUMNS}, format='newline_delimited')"
-    )
-
-
-RAW_POPULARITY_COLUMNS = (
-    "{artist_mbid:'VARCHAR', total_listen_count:'BIGINT', total_user_count:'BIGINT'}"
-)
+    _load_ndjson(con, "raw_artists", artists, RAW_ARTIST_FIELDS)
+    _load_ndjson(con, "raw_release_groups", rgs, RAW_RG_FIELDS)
 
 
 def load_popularity(
@@ -69,23 +111,10 @@ def load_popularity(
     if popularity is None:
         # Always materialized, even empty: synthetic builds
         # carry no snapshot, and 87_popularity.sql reads this table anyway.
-        con.execute(
-            "CREATE OR REPLACE TABLE raw_popularity (artist_mbid VARCHAR, "
-            "total_listen_count BIGINT, total_user_count BIGINT)"
-        )
+        _create_empty(con, "raw_popularity", RAW_POPULARITY_FIELDS)
     else:
-        con.execute(
-            f"CREATE OR REPLACE TABLE raw_popularity AS SELECT * FROM read_ndjson("
-            f"'{popularity.as_posix()}', columns={RAW_POPULARITY_COLUMNS}, "
-            f"format='newline_delimited')"
-        )
-    con.execute(
-        "SET VARIABLE popularity_snapshot = "
-        + ("NULL" if snapshot is None else f"DATE '{snapshot}'")
-    )
-
-
-RAW_DISCOGRAPHY_COLUMNS = "{rg_mbid:'VARCHAR', form:'VARCHAR'}"
+        _load_ndjson(con, "raw_popularity", popularity, RAW_POPULARITY_FIELDS)
+    _set_variable(con, "popularity_snapshot", snapshot, "DATE")
 
 
 def load_discography(
@@ -94,17 +123,10 @@ def load_discography(
     if discography is None:
         # Always materialized, even empty, like popularity: synthetic builds
         # carry no snapshot, and 22_releases.sql reads this table anyway.
-        con.execute("CREATE OR REPLACE TABLE raw_discography (rg_mbid VARCHAR, form VARCHAR)")
+        _create_empty(con, "raw_discography", RAW_DISCOGRAPHY_FIELDS)
     else:
-        con.execute(
-            f"CREATE OR REPLACE TABLE raw_discography AS SELECT * FROM read_ndjson("
-            f"'{discography.as_posix()}', columns={RAW_DISCOGRAPHY_COLUMNS}, "
-            f"format='newline_delimited')"
-        )
-    con.execute(
-        "SET VARIABLE discography_snapshot = "
-        + ("NULL" if snapshot is None else f"DATE '{snapshot}'")
-    )
+        _load_ndjson(con, "raw_discography", discography, RAW_DISCOGRAPHY_FIELDS)
+    _set_variable(con, "discography_snapshot", snapshot, "DATE")
 
 
 def load_listening(
@@ -124,9 +146,7 @@ def load_listening(
             [(listens / "*.parquet").as_posix()],
         )
         con.execute("RESET preserve_insertion_order")
-    con.execute(
-        "SET VARIABLE listening_snapshot = " + ("NULL" if snapshot is None else f"'{snapshot}'")
-    )
+    _set_variable(con, "listening_snapshot", snapshot, "VARCHAR")
 
 
 def load_official(
@@ -137,31 +157,13 @@ def load_official(
     it no longer holds or answered as merged (fetch.official_release_groups)."""
     # Always materialized, even empty: 22_releases.sql reads it, and an empty
     # table leaves every record's status unknown.
-    con.execute(
-        "CREATE OR REPLACE TABLE raw_official (artist_mbid VARCHAR, release_groups VARCHAR[])"
-    )
+    _create_empty(con, "raw_official", RAW_OFFICIAL_FIELDS)
     for part in parts:
         con.execute(
-            f"INSERT INTO raw_official SELECT artist_mbid, release_groups FROM read_ndjson("
-            f"'{part.as_posix()}', columns={{artist_mbid:'VARCHAR', release_groups:'VARCHAR[]'}}, "
-            "format='newline_delimited')"
+            f"INSERT INTO raw_official SELECT * FROM {ndjson(RAW_OFFICIAL_FIELDS)}",
+            [part.as_posix()],
         )
-    con.execute(
-        "SET VARIABLE official_snapshots = "
-        + ("NULL" if snapshots is None else f"{[*snapshots]}::DATE[]")
-    )
-
-
-# The fields extract.reduce_discogs_release writes, in its order.
-RAW_DISCOGS_FIELDS = {
-    "id": "BIGINT",
-    "master_id": "BIGINT",
-    "artists": "BIGINT[]",
-    "descriptions": "VARCHAR[]",
-    "styles": "VARCHAR[]",
-    "released": "VARCHAR",
-}
-RAW_DISCOGS_COLUMNS = "{" + ", ".join(f"{k}:'{v}'" for k, v in RAW_DISCOGS_FIELDS.items()) + "}"
+    _set_variable(con, "official_snapshots", None if snapshots is None else [*snapshots], "DATE[]")
 
 
 def load_discogs(con: duckdb.DuckDBPyConnection, releases: Path | None, dump: str | None) -> None:
@@ -169,17 +171,13 @@ def load_discogs(con: duckdb.DuckDBPyConnection, releases: Path | None, dump: st
     as a stream, into the narrower discogs_work."""
     if releases is None:
         # Always materialized, even empty: 84_discogs.sql reads it.
-        con.execute(
-            "CREATE OR REPLACE TABLE raw_discogs (id BIGINT, master_id BIGINT, artists BIGINT[], "
-            "descriptions VARCHAR[], styles VARCHAR[], released VARCHAR)"
-        )
+        _create_empty(con, "raw_discogs", RAW_DISCOGS_FIELDS)
     else:
-        con.execute(
-            f"CREATE OR REPLACE VIEW raw_discogs AS SELECT * FROM read_ndjson("
-            f"'{releases.as_posix()}', columns={RAW_DISCOGS_COLUMNS}, "
-            f"format='newline_delimited')"
-        )
-    con.execute("SET VARIABLE discogs_dump = " + ("NULL" if dump is None else f"'{dump}'"))
+        # A view takes no prepared parameter: the path goes in as a literal.
+        literal = "'" + releases.as_posix().replace("'", "''") + "'"
+        reader = ndjson(RAW_DISCOGS_FIELDS, literal)
+        con.execute(f"CREATE OR REPLACE VIEW raw_discogs AS SELECT * FROM {reader}")
+    _set_variable(con, "discogs_dump", dump, "VARCHAR")
 
 
 def build(
@@ -207,8 +205,8 @@ def build(
     load_discogs(con, discogs, discogs_dump)
     load_listening(con, listening, listening_snapshot)
     build_colisten(con)
-    con.execute(f"SET VARIABLE dump_year = {dump_year}")
-    con.execute(f"SET VARIABLE min_year = {min_year}")
+    _set_variable(con, "dump_year", dump_year, "INTEGER")
+    _set_variable(con, "min_year", min_year, "INTEGER")
     for path in sorted(sql_dir.glob("*.sql")):
         if path.name.startswith("90_"):
             continue
@@ -276,13 +274,18 @@ INVARIANTS = (
 )
 
 
+def scalar(con: duckdb.DuckDBPyConnection, sql: str, params: Sequence[object] = ()) -> int:
+    """The one integer an aggregate query returns, such as a COUNT(*)."""
+    row = con.execute(sql, params).fetchone()
+    assert row is not None  # an aggregate without GROUP BY returns exactly one row
+    return int(row[0])
+
+
 def check_invariants(con: duckdb.DuckDBPyConnection, sql_dir: Path) -> list[tuple[str, int]]:
     con.execute((sql_dir / "90_invariants.sql").read_text(encoding="utf-8"))
     violations: list[tuple[str, int]] = []
     for name in INVARIANTS:
-        row = con.execute(f"SELECT count(*) FROM {name}").fetchone()
-        assert row is not None  # COUNT(*) always returns exactly one row
-        n = int(row[0])
+        n = scalar(con, f"SELECT count(*) FROM {name}")
         if n:
             violations.append((name, n))
     return violations

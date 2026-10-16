@@ -1,7 +1,9 @@
-// Public API of the AzuraCast client. Consumers import from '../lib/azuracast'
-// and never reach into individual modules — keeps the surface stable.
+// Public API of the AzuraCast client: the app imports from '../lib/azuracast', which keeps the
+// surface stable. Two exceptions reach a module: tests take the store's reset from './store', and
+// the Cast receiver (cast/receiver.ts) takes the schemas from './validators' alone, without the
+// store and its React dependency.
 
-export { useNowPlayingStore, startNowPlayingPolling, __resetNowPlayingStore } from './store';
+export { useNowPlayingStore, startNowPlayingPolling } from './store';
 export { isDefaultArtwork } from './artwork';
 export { SongEntrySchema } from './validators';
 
