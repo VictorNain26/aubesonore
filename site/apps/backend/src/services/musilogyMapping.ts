@@ -31,11 +31,13 @@ export interface CardRow extends Record<string, unknown> {
  * which Intl cannot name; XK, Kosovo, it can. On the loaded dump this leaves
  * out 4 343 artists' codes of 1 411 607, and no current country (2026-10-05).
  */
+const REGION_NAMES = new Intl.DisplayNames(['en'], { type: 'region' });
+
 function regionOf(code: string | null): string | null {
   if (!code) return null;
   try {
     const likely = new Intl.Locale(`und-${code}`).maximize().region;
-    const name = new Intl.DisplayNames(['en'], { type: 'region' }).of(code);
+    const name = REGION_NAMES.of(code);
     return likely === code && name !== code ? code : null;
   } catch {
     return null;
@@ -65,7 +67,7 @@ export function toFacts(card: CardRow): ArtistFacts {
   const kind = kindOf(card.type);
   const isGroup = kind !== null && kind !== 'person';
   const country = regionOf(card.country);
-  const countryName = country && new Intl.DisplayNames(['en'], { type: 'region' }).of(country);
+  const countryName = country && REGION_NAMES.of(country);
   return {
     kind,
     place: isGroup && card.begin_area !== countryName ? card.begin_area : null,
@@ -83,20 +85,13 @@ export interface UrlRow extends Record<string, unknown> {
 
 // Listening platforms first, the official site last. Deezer is left out: the
 // artist's own Deezer id is already known, exactly.
-const LINK_ORDER: ArtistPlatform[] = [
-  'spotify',
-  'appleMusic',
-  'bandcamp',
-  'soundcloud',
-  'official',
-];
-
 const LINK_HOSTS: Array<[string, ArtistPlatform]> = [
   ['open.spotify.com', 'spotify'],
   ['music.apple.com', 'appleMusic'],
   ['bandcamp.com', 'bandcamp'],
   ['soundcloud.com', 'soundcloud'],
 ];
+const LINK_ORDER: ArtistPlatform[] = [...LINK_HOSTS.map(([, platform]) => platform), 'official'];
 
 function platformOf(url: URL, relationType: string | null): ArtistPlatform | null {
   if (relationType === 'official homepage') return 'official';
@@ -136,8 +131,7 @@ export function wikidataIdOf(rows: UrlRow[]): string | null {
       return match?.[1] ? [match[1]] : [];
     })
   );
-  const [only] = ids;
-  return ids.size === 1 && only ? only : null;
+  return onlyOne(ids);
 }
 
 export interface ReleaseRow extends Record<string, unknown> {
@@ -171,7 +165,11 @@ export function firstCoverOf(releases: ReleaseRow[]): ArtistCover | null {
 const DEEZER_ARTIST = /^https:\/\/www\.deezer\.com\/artist\/(\d+)$/;
 
 export function deezerIdOf(rows: UrlRow[]): string | null {
-  const ids = new Set(rows.flatMap((row) => DEEZER_ARTIST.exec(row.url)?.[1] ?? []));
+  return onlyOne(new Set(rows.flatMap((row) => DEEZER_ARTIST.exec(row.url)?.[1] ?? [])));
+}
+
+/** The id when the rows name exactly one; several are a doubt, never a choice. */
+function onlyOne(ids: Set<string>): string | null {
   const [only] = ids;
   return ids.size === 1 && only ? only : null;
 }
