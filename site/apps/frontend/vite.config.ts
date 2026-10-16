@@ -23,8 +23,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const apiBaseUrl = env.VITE_API_URL;
   // In compose.yaml's frontend-dev the page calls /api on its own origin and the backend sits
-  // at API_PROXY_TARGET; PUBLIC_API_PROXY_TARGET answers the public reads a fresh database
-  // cannot (production's, read only).
+  // at API_PROXY_TARGET; PUBLIC_API_PROXY_TARGET, when set, relays the public reads to that API
+  // (production's, read only) instead of the local database.
   const apiTarget = env.API_PROXY_TARGET || apiBaseUrl;
   const publicApi = env.PUBLIC_API_PROXY_TARGET;
   const analyze = env.ANALYZE === 'true';

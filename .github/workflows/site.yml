@@ -88,6 +88,9 @@ jobs:
       - name: Deploy script guard
         run: bash scripts/deploy.test.sh
 
+      - name: Local data script guards
+        run: bash scripts/local-data.test.sh
+
       - name: Security audit (prod, critical blocks)
         run: pnpm audit --prod --audit-level=critical
 

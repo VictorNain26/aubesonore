@@ -49,17 +49,22 @@ Auth : Better Auth (email vérifié + OAuth Google). Liens d'écoute : API iTune
 ./scripts/make-certs.sh   # une fois : certificats TLS de Postgres (certs/, non versionné)
 cp .env.example .env      # une fois : valeurs de dev prêtes à l'emploi
 pnpm stack                # Postgres, backend, front, sur http://localhost:5173
+pnpm musilogy:sample      # la petite Musilogy (exige uv)
+pnpm data:pull            # les données publiques de la production (exige l'accès SSH à victorserv)
 ```
 
 `pnpm stack` lance le même `compose.yaml` que la production, avec le profil `dev` :
 
 - **dev-init** crée le schéma de la base vide (`db:push`) puis un auditeur de test vérifié avec quelques titres gardés (`apps/backend/src/scripts/seed-dev.ts`) : `dev@aubesonore.test`, mot de passe `dev-listener-password` (`.env.example`, valeurs de test, jamais un vrai compte) ;
 - **frontend-dev** sert la SPA avec Vite et son rechargement à chaud ; le backend redémarre à chaque sauvegarde de `apps/backend/src` (Compose Watch) ;
-- les lectures publiques qu'une base neuve ne peut pas fournir (Musilogy, pages artistes, titres du jour, tendances) viennent de l'API de production, en lecture seule (`PUBLIC_API_PROXY_TARGET`, vide pour tout garder en local) ; la session et les titres gardés restent locaux.
+- **`pnpm musilogy:sample`** (`scripts/musilogy-sample.sh`) charge dans le schéma `musilogy` le pipeline de musilogy passé sur ses fixtures versionnées (`musilogy load --sample`) : le même schéma et le même chemin de code que la production, quelques centaines d'artistes au lieu de millions ;
+- **`pnpm data:pull`** (`scripts/pull-public-data.sh`) copie de la production, en lecture seule, ses tables publiques (artistes joués, slugs, profils, passages de l'antenne) ; jamais une donnée d'auditeur, ni les données YouTube, à durée de vie limitée. L'auditeur de test garde ses titres, et leur lien aux artistes copiés.
+
+La base locale a donc le moteur, la version et le schéma de la production, et un échantillon cohérent de ses données : elle suffit pour un changement du backend ou des données. Les sections de Musilogy n'y existent que pour les artistes de l'échantillon (dont ceux de l'auditeur de test), et « même son » y est vide (l'échantillon ne porte aucune écoute). L'aperçu reste l'endroit d'un essai sur la vraie Musilogy.
+
+`PUBLIC_API_PROXY_TARGET` (vide par défaut) relaie au besoin les lectures publiques vers l'API de production, en lecture seule ; la session et les titres gardés restent locaux. Un `.env` copié d'un exemple plus ancien le fixe encore : le vider pour lire la base locale.
 
 `docker compose down` arrête la pile ; `docker compose down -v` efface aussi la base locale.
-
-La pile locale lit les pages artistes et Musilogy en production : elle sert aux changements de la seule interface. Un changement du backend ou des données s'essaie sur l'aperçu.
 
 ### Aperçu d'une branche (serveur)
 
