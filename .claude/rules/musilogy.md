@@ -58,11 +58,10 @@ d'acceptation se donne en nombre ou en code de sortie : « le chiffre `links` de
 
 ## Données sur victorserv
 
-- Les données réelles vivent hors de tout checkout, dans `~/musilogy-data`
-  (`data/` n'est pas versionné), et ne servent qu'aux traitements sur les vraies
-  données : la worktree qui les lance s'y relie par
-  `ln -s ~/musilogy-data musilogy/data`. Le reste se développe sur le poste,
-  sur les fixtures.
+- Les données vivent hors de tout checkout, dans `~/musilogy-data` (`data/`
+  n'est pas versionné) ; seule la worktree du serveur qui lance un traitement
+  sur ces données s'y relie, par `ln -s ~/musilogy-data musilogy/data`
+  (`CLAUDE.md` racine, « Where to develop »).
 - Le dump de référence (`REFERENCE_DUMP`, `src/musilogy/__init__.py`) n'est
   plus publié par MetaBrainz : cette copie est la seule, ne jamais la supprimer
   ni l'écraser.

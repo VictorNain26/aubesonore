@@ -16,7 +16,7 @@ si un témoin manque, on le tire du dump, on n'invente pas la ligne.
 
 Les fixtures versionnées ne s'éditent pas à la main — elles se régénèrent.
 
-## Deux niveaux, deux rôles
+## Les niveaux de test
 
 Les niveaux de test et ce que chacun exige : `README.md` (« Installation,
 tests, exécution »). La suite rapide tourne à chaque changement et garde la CI
