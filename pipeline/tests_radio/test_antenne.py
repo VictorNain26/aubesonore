@@ -11,7 +11,7 @@ import radio.antenna.sync as sync_mod
 from radio.antenna.sync import antenne_pass
 from radio.core.config import AntenneConfig, Creneau, GrilleConfig
 from radio.core.media import Probe, Tags, ToolError
-from radio.sources.azuracast import AzuracastClient, AzuracastError, Media
+from radio.sources.azuracast import AzuracastClient, AzuracastError, AzuracastUnavailable, Media
 from radio.sources.deezer import DeezerAlbum, DeezerError, DeezerTrack, TrackPage
 from tests_radio.model_factory import NOW, add_vote, make_model_db, serve_scores
 
@@ -541,3 +541,19 @@ def test_client_refusal_is_an_error() -> None:
     responses.post(API + "/files", status=413)
     with pytest.raises(AzuracastError):
         AzuracastClient("http://127.0.0.1:8080", "k").upload("antenne/1.mp3", b"")
+
+
+@responses.activate
+def test_a_throttled_station_is_retried_then_unavailable() -> None:
+    # 429 : AzuraCast limite le débit, comme une panne passagère (RFC 6585 §4).
+    responses.get(API + "/files", status=429)
+    with pytest.raises(AzuracastUnavailable):
+        AzuracastClient("http://127.0.0.1:8080", "k").files()
+    assert len(responses.calls) == 3
+
+
+@responses.activate
+def test_a_non_json_answer_is_unavailable_not_a_crash() -> None:
+    responses.get(API + "/files", body="<html>maintenance</html>")
+    with pytest.raises(AzuracastUnavailable):
+        AzuracastClient("http://127.0.0.1:8080", "k").files()

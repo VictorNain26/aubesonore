@@ -11,7 +11,7 @@ import requests
 import stamina
 from pyrate_limiter import Duration, Limiter, Rate
 
-import radio.core.http  # noqa: F401  (enregistre le hook de relance)
+from radio.core.http import check_status, json_or_none
 
 API = "https://api.deezer.com"
 _TRANSIENT_CODES = frozenset({4, 700})
@@ -161,11 +161,7 @@ class DeezerClient:
             r = self._session.get(API + path, params=params, timeout=15)
         except requests.RequestException as e:
             raise DeezerUnavailable(type(e).__name__) from None
-        body: Any
-        try:
-            body = r.json()
-        except ValueError:
-            body = None
+        body = json_or_none(r)
         if isinstance(body, dict) and body.get("error"):
             err = body["error"]
             code = err.get("code") if isinstance(err, dict) else None
@@ -174,10 +170,7 @@ class DeezerClient:
             if code == _NO_DATA:
                 return {"data": []}
             raise DeezerError(f"code {code}")
-        if r.status_code == 429 or r.status_code >= 500:
-            raise DeezerUnavailable(f"HTTP {r.status_code}")
-        if r.status_code >= 400:
-            raise DeezerError(f"HTTP {r.status_code}")
+        check_status(r, DeezerUnavailable, DeezerError)
         if not isinstance(body, dict):
             raise DeezerUnavailable("invalid JSON")
         return body

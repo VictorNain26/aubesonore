@@ -32,7 +32,8 @@ est dans le module.
 
 Deux dossiers de modèles : `models/` à la racine porte les poids MTG téléchargés (EffNet et
 mesures), `data/models/` les modèles entraînés par `train`. `core/http.py` n'est pas un client :
-c'est le hook de relance de stamina, enregistré à l'import par les clients de `sources/`.
+c'est le hook de relance de stamina, enregistré à l'import par les clients de `sources/`, et le tri
+commun de leurs réponses (`check_status`, `json_or_none`).
 
 ## Invariants
 
