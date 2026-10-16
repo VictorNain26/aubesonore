@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
-import { authApi, HttpError, readKnown } from './api';
+import { authApi, getJson, HttpError, readKnown } from './api';
 
 describe('authApi.getSession', () => {
   it('returns null when no session (401)', async () => {
@@ -145,6 +145,26 @@ describe('authApi errors', () => {
     await expect(authApi.signIn('a@b.fr', 'secret-pass')).rejects.toThrow(
       'Connexion impossible pour le moment. Réessayez dans un instant.'
     );
+  });
+});
+
+describe('getJson', () => {
+  const url = 'http://localhost:3000/api/thing';
+
+  it("gives the answer's body, with the request's own options", async () => {
+    server.use(
+      http.post(url, async ({ request }) => HttpResponse.json({ sent: await request.json() }))
+    );
+    expect(await getJson('/api/thing', { method: 'POST', body: JSON.stringify([1]) })).toEqual({
+      sent: [1],
+    });
+  });
+
+  it('throws an HttpError carrying the status on any failure, 404 included', async () => {
+    server.use(http.get(url, () => new HttpResponse(null, { status: 404 })));
+    const error = await getJson('/api/thing').catch((err: unknown) => err);
+    expect(error).toBeInstanceOf(HttpError);
+    expect((error as HttpError).status).toBe(404);
   });
 });
 

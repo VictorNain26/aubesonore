@@ -40,15 +40,24 @@ export class HttpError extends Error {
   }
 }
 
+/** A public request to the API: its body, or an HttpError for any failed answer. */
+export async function getJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, init);
+  if (!response.ok) throw new HttpError(response.status);
+  return (await response.json()) as T;
+}
+
 /**
  * A public read of the API: its body, or null for what the API does not know — 404, and 400
  * for a malformed id, which comes from a truncated link. Any other failure throws an HttpError.
  */
 export async function readKnown<T>(path: string, signal?: AbortSignal): Promise<T | null> {
-  const response = await fetch(`${API_BASE_URL}${path}`, { signal: signal ?? null });
-  if (response.status === 404 || response.status === 400) return null;
-  if (!response.ok) throw new HttpError(response.status);
-  return (await response.json()) as T;
+  try {
+    return await getJson<T>(path, { signal: signal ?? null });
+  } catch (err) {
+    if (err instanceof HttpError && (err.status === 404 || err.status === 400)) return null;
+    throw err;
+  }
 }
 
 // Better Auth's error codes (@better-auth/core, dist/error/codes.mjs). Its

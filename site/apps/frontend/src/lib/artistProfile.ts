@@ -2,7 +2,7 @@ import type { ArtistPageRef, ArtistProfile } from '@aubesonore/shared-types/clie
 import { object, record, safeParse, string } from 'valibot';
 import { getLocale, localizeHref, type Locale } from '@/paraglide/runtime.js';
 import { API_BASE_URL } from './config';
-import { readKnown } from './api';
+import { getJson, readKnown } from './api';
 
 const SLUG = '__slug__';
 const pathTemplates = new Map<string, string>();
@@ -73,14 +73,13 @@ export async function fetchArtistPages(
   names: readonly string[],
   signal?: AbortSignal
 ): Promise<Map<string, ArtistPageRef>> {
-  const response = await fetch(`${API_BASE_URL}/api/artist/pages`, {
+  const payload = await getJson<unknown>('/api/artist/pages', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ names }),
     signal: signal ?? null,
   });
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  const parsed = safeParse(ArtistPagesSchema, await response.json());
+  const parsed = safeParse(ArtistPagesSchema, payload);
   if (!parsed.success) throw new Error('invalid payload');
   return new Map(Object.entries(parsed.output));
 }
