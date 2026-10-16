@@ -22,7 +22,7 @@ aubesonore/
 - **Mes titres** (`/mes-titres`, `/en/my-tracks`) : les titres gardés, par date d'ajout ou par artiste (`?sort=artist`), le nom de l'artiste menant à sa page, chacun à écouter sur YouTube (son Art Track vérifiée quand l'API YouTube en trouve une, sinon une recherche) ; retirer un titre s'annule pendant 5 secondes.
 - **Page artiste** (tout artiste que l'antenne a joué ou que Musilogy connaît, à son slug ; son MBID y renvoie en 301) : portrait sous licence connue (photo Wikimedia Commons créditée, sinon pochette du premier disque, sinon l'aube de l'artiste), faits MusicBrainz, ouverture de l'article Wikipédia ou, sans article, les faits dits en une phrase ; vos titres gardés de l'artiste ; où l'écouter ; les sections de Musilogy qui ont du contenu. L'artiste est identifié par l'ISRC du titre joué, vérifié contre le titre et le nom.
 - **Musilogy** : sur chaque page artiste, les artistes du même son en frise, ses groupes et projets, ses albums et EP ; la recherche par nom (`/musilogy`).
-- **Pochettes** : celles de l'antenne, redimensionnées par nginx (`/covers/…`), et copiées par le backend pour un titre gardé (`/api/covers/:sha256`), qui garde ainsi la sienne après son départ de l'antenne ; celles des disques, du Cover Art Archive, gardées en cache par nginx (`/caa/…`) ; à défaut, un visuel « onde » déterministe dessiné côté client.
+- **Pochettes** : celles de l'antenne, redimensionnées par nginx (`/covers/…`), et, pour un titre gardé, la pochette iTunes vérifiée (artiste) quand elle existe, sinon celle de l'antenne copiée par le backend (`/api/covers/:sha256`), qui garde ainsi la sienne après son départ de l'antenne ; celles des disques, du Cover Art Archive, gardées en cache par nginx (`/caa/…`) ; à défaut, un visuel « onde » déterministe dessiné côté client.
 - **Diffusion** : AirPlay dans Safari ; Chromecast dans Chrome, vers le récepteur AubeSonore (`cast/receiver.html`), qui suit lui-même le titre en cours.
 - **PWA** installable.
 
@@ -34,7 +34,7 @@ aubesonore/
 | Frontend  | React 19, Vite 8, Tailwind CSS 4, Zustand                   |
 | Outillage | pnpm 10, Turbo, ESLint 9 (flat), Vitest + bun test          |
 
-Auth : Better Auth (email vérifié + OAuth Google). Liens d'écoute : API iTunes et Deezer (Songlink/Odesli a fermé son API le 2026-07-31). Pochettes : iTunes vérifiée (artiste) ou visuel « onde » généré côté client.
+Auth : Better Auth (email vérifié + OAuth Google). Liens d'écoute : API iTunes et Deezer (Songlink/Odesli a fermé son API le 2026-07-31).
 
 ## Démarrage
 

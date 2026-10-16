@@ -1,21 +1,7 @@
 import { array, safeParse } from 'valibot';
-import type { KeptArtistPage } from '@aubesonore/shared-types/client';
+import type { TrendsResult } from '@aubesonore/shared-types/client';
 import { SongEntrySchema, type SongEntry } from './azuracast';
-import { API_BASE_URL } from './config';
-
-export interface TrendEntry {
-  title: string;
-  artist: string;
-  artworkUrl: string | null;
-  likes: number;
-  /** The page of the artist the track is tied to, when that artist has one. */
-  artistPage: KeptArtistPage | null;
-}
-
-export interface TrendsResult {
-  week: TrendEntry[];
-  allTime: TrendEntry[];
-}
+import { getJson } from './api';
 
 const HistoryResponseSchema = array(SongEntrySchema);
 
@@ -37,20 +23,17 @@ const FRESH_MS = 5 * 60 * 1000;
 let last: { data: HomeData; at: number } | null = null;
 
 async function fetchHistory(signal: AbortSignal): Promise<SongEntry[]> {
-  const res = await fetch(`${API_BASE_URL}/api/radio/history?rows=${HISTORY_ROWS}`, {
+  const payload = await getJson<unknown>(`/api/radio/history?rows=${HISTORY_ROWS}`, {
     signal,
     headers: { Accept: 'application/json' },
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const parsed = safeParse(HistoryResponseSchema, await res.json());
+  const parsed = safeParse(HistoryResponseSchema, payload);
   if (!parsed.success) throw new Error('invalid payload');
   return parsed.output as SongEntry[];
 }
 
 async function fetchTrends(signal: AbortSignal): Promise<TrendsResult> {
-  const res = await fetch(`${API_BASE_URL}/api/trends`, { signal });
-  if (!res.ok) throw new Error(`trends ${res.status}`);
-  return (await res.json()) as TrendsResult;
+  return getJson<TrendsResult>('/api/trends', { signal });
 }
 
 /**

@@ -49,6 +49,21 @@ export interface KeptArtistPage {
   name: string;
 }
 
+/** A track of the « most kept » ranking (/api/trends). */
+export interface TrendEntry {
+  title: string;
+  artist: string;
+  artworkUrl: string | null;
+  likes: number;
+  /** The page of the artist the kept track is tied to, when that artist has one. */
+  artistPage: KeptArtistPage | null;
+}
+
+export interface TrendsResult {
+  week: TrendEntry[];
+  allTime: TrendEntry[];
+}
+
 export interface LikeTrackRequest {
   title: string;
   artist: string;
