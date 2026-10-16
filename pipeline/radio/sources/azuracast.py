@@ -20,7 +20,8 @@ class AzuracastError(Exception):
 
 
 class AzuracastUnavailable(Exception):
-    """Indisponibilité transitoire (réseau, 5xx)."""
+    """Indisponibilité transitoire : réseau, 429 et 5xx, relancés ; une réponse qui n'est pas du
+    JSON ne l'est pas, car l'écriture a pu avoir lieu (une playlist créée deux fois)."""
 
 
 @dataclass(frozen=True)

@@ -557,3 +557,13 @@ def test_a_non_json_answer_is_unavailable_not_a_crash() -> None:
     responses.get(API + "/files", body="<html>maintenance</html>")
     with pytest.raises(AzuracastUnavailable):
         AzuracastClient("http://127.0.0.1:8080", "k").files()
+
+
+@responses.activate
+def test_a_non_json_answer_to_a_write_is_not_sent_again() -> None:
+    # La station a pu exécuter l'écriture avant de répondre une page : la renvoyer créerait une
+    # seconde playlist ou importerait deux fois la même liste.
+    responses.post(API + "/files", body="<html>maintenance</html>")
+    with pytest.raises(AzuracastUnavailable):
+        AzuracastClient("http://127.0.0.1:8080", "k").upload("antenne/1.mp3", b"")
+    assert len(responses.calls) == 1
