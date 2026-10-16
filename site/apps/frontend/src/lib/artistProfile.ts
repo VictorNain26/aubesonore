@@ -1,8 +1,7 @@
 import type { ArtistPageRef, ArtistProfile } from '@aubesonore/shared-types/client';
 import { object, record, safeParse, string } from 'valibot';
 import { getLocale, localizeHref, type Locale } from '@/paraglide/runtime.js';
-import { API_BASE_URL } from './config';
-import { getJson, readKnown } from './api';
+import { getJson, HttpError, readKnown } from './api';
 
 const SLUG = '__slug__';
 const pathTemplates = new Map<string, string>();
@@ -50,9 +49,13 @@ export function resolveArtistPage(name: string): Promise<ArtistPageRef | null> {
   const known = resolving.get(trimmed);
   if (known) return known;
 
-  const request = fetch(
-    `${API_BASE_URL}/api/artist/resolve?name=${encodeURIComponent(trimmed)}`
-  ).then(async (response) => (response.ok ? ((await response.json()) as ArtistPageRef) : null));
+  // Any failed answer is no page; a request that never answers is asked again.
+  const request = getJson<ArtistPageRef>(
+    `/api/artist/resolve?name=${encodeURIComponent(trimmed)}`
+  ).catch((err: unknown) => {
+    if (err instanceof HttpError) return null;
+    throw err;
+  });
   resolving.set(trimmed, request);
   void request.then(
     (page) => {
