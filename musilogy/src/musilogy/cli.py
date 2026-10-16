@@ -22,11 +22,12 @@ from musilogy import (
 )
 from musilogy import REFERENCE_DUMP as DUMP
 from musilogy.build import (
-    RAW_ARTIST_COLUMNS,
+    RAW_ARTIST_FIELDS,
     RAW_DISCOGS_FIELDS,
     build,
     check_invariants,
     connect,
+    ndjson,
 )
 from musilogy.extract import (
     extract,
@@ -72,6 +73,7 @@ from musilogy.paths import (
     popularity_snapshot,
     popularity_sums,
     work_dir,
+    written_aside,
 )
 from musilogy.publish import extraction_matches_rows_loaded, publish, read_extraction
 from musilogy.sample import publish_sample
@@ -181,10 +183,10 @@ def snapshot_popularity() -> None:
     )
 
 
-def _part_date(partial: str) -> str:
+def _part_date(pattern: str) -> str:
     """The day of the part a stopped run left partial, which the next run
     resumes, else today's: a new part."""
-    partials = sorted(RAW_DIR.glob(partial))
+    partials = sorted(RAW_DIR.glob(pattern))
     return partials[-1].parent.name if partials else _today()
 
 
@@ -259,16 +261,15 @@ def snapshot_listens(ref: str) -> None:
     if dest.exists():
         raise SystemExit(f"listens {ref} already reduced at {dest}")
     expected = spark_digest(ref)
-    partial = dest.with_name(dest.name + ".partial")
-    shutil.rmtree(partial, ignore_errors=True)
-    partial.mkdir(parents=True)
-    rows = reduce_listens(connect(), spark_listens(ref, expected, DATA_DIR / "tmp"), partial)
-    # Pinned before the folder takes its name: a stop in between leaves a
-    # partial folder to start again, never slices without their digests.
-    lines = [f"{expected}  {spark_name(ref)}"]
-    lines += [f"{sha256_file(p)}  {p.name}" for p in sorted(partial.glob("*.parquet"))]
-    listening_sums(ref).write_text("\n".join(lines) + "\n", encoding="utf-8")
-    partial.replace(dest)
+    with written_aside(dest) as aside:
+        shutil.rmtree(aside, ignore_errors=True)
+        aside.mkdir()
+        rows = reduce_listens(connect(), spark_listens(ref, expected, DATA_DIR / "tmp"), aside)
+        # Pinned before the folder takes its name: a stop in between leaves a
+        # partial folder to start again, never slices without their digests.
+        lines = [f"{expected}  {spark_name(ref)}"]
+        lines += [f"{sha256_file(p)}  {p.name}" for p in sorted(aside.glob("*.parquet"))]
+        listening_sums(ref).write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"{rows} user-artist rows; pin it: REFERENCE_LISTENING = {ref!r}")
 
 
@@ -466,10 +467,9 @@ def _discogs_fixture(artists: Path, out: Path) -> None:
     discogs_ids = {
         i
         for (i,) in con.execute(
-            "SELECT DISTINCT discogs_artist_id(t.u.url) FROM read_ndjson("
-            f"'{artists.as_posix()}', columns={RAW_ARTIST_COLUMNS}, format='newline_delimited') r, "
+            f"SELECT DISTINCT discogs_artist_id(t.u.url) FROM {ndjson(RAW_ARTIST_FIELDS)} r, "
             "UNNEST(r.urls) t(u) WHERE t.u.type = 'discogs' AND list_contains(?, r.mbid)",
-            [DISCOGS_WITNESSES],
+            [artists.as_posix(), DISCOGS_WITNESSES],
         ).fetchall()
         if i is not None
     }

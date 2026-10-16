@@ -18,6 +18,8 @@ from typing import Any
 
 import duckdb
 
+from musilogy.paths import written_aside
+
 logger = logging.getLogger(__name__)
 
 # The special purpose artists MusicBrainz keeps for credits that name no artist
@@ -167,12 +169,14 @@ def extract_discogs(archive: Path, out: Path) -> int:
     """Returns the releases written. The 11 GB archive is read as a stream, and
     each release is dropped from the tree once written: iterparse otherwise
     keeps the whole document under its root."""
-    out.parent.mkdir(parents=True, exist_ok=True)
     # Written aside and renamed once whole: an interrupted extraction must not
     # leave a file the next run takes for the dump.
-    partial = out.with_name(out.name + ".partial")
     n = 0
-    with gzip.open(archive) as src, partial.open("w", encoding="utf-8") as fh:
+    with (
+        written_aside(out) as aside,
+        gzip.open(archive) as src,
+        aside.open("w", encoding="utf-8") as fh,
+    ):
         events = ET.iterparse(src, events=("start", "end"))
         _, root = next(events)
         for event, el in events:
@@ -180,7 +184,6 @@ def extract_discogs(archive: Path, out: Path) -> int:
                 fh.write(json.dumps(reduce_discogs_release(el), ensure_ascii=False) + "\n")
                 n += 1
                 root.clear()
-    partial.replace(out)
     return n
 
 

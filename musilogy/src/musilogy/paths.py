@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 PACKAGE_DIR = Path(__file__).resolve().parent
@@ -14,6 +16,22 @@ REPO_ROOT = PACKAGE_DIR.parents[1]
 DATA_DIR = REPO_ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"
 FIXTURES_DIR = REPO_ROOT / "tests" / "fixtures"
+
+
+def aside_of(dest: Path) -> Path:
+    """Where `dest` is written until whole."""
+    return dest.with_name(dest.name + ".partial")
+
+
+@contextmanager
+def written_aside(dest: Path) -> Iterator[Path]:
+    """Yields the path to write `dest` at, renamed to `dest` once the block
+    ends without an error: a write cut short leaves only its `.partial`, never
+    a `dest` the next run would take for a whole one."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    aside = aside_of(dest)
+    yield aside
+    aside.replace(dest)
 
 
 def dump_sums(dump: str) -> Path:
