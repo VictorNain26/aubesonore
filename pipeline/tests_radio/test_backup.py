@@ -9,6 +9,7 @@ import radio.cli as cli
 from radio.core.backup import backup
 from radio.core.config import Settings
 from radio.core.db import connect
+from radio.core.report import last_stages
 from tests_radio.model_factory import add_vote, make_model_db
 
 TODAY = date(2026, 10, 2)
@@ -55,3 +56,26 @@ def test_backup_needs_a_destination(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     result = CliRunner().invoke(cli.app, ["backup"])
     assert result.exit_code == 2
     assert "RADIO_BACKUP_DIR" in result.output
+
+
+def test_backup_reports_its_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    make_model_db(tmp_path / "data").close()
+    settings = Settings(
+        _env_file=None, RADIO_DATA_DIR=tmp_path / "data", RADIO_BACKUP_DIR=tmp_path / "copies"
+    )
+    monkeypatch.setattr(cli, "_settings", lambda: settings)
+    assert CliRunner().invoke(cli.app, ["backup"]).exit_code == 0
+    with cli._db(settings) as conn:
+        assert [(s, ok) for s, _, ok, _ in last_stages(conn)] == [("backup", True)]
+
+
+def test_a_failed_backup_reports_its_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    make_model_db(tmp_path / "data").close()
+    blocked = tmp_path / "copies"
+    blocked.write_text("un fichier là où la sauvegarde attend un dossier")
+    settings = Settings(_env_file=None, RADIO_DATA_DIR=tmp_path / "data", RADIO_BACKUP_DIR=blocked)
+    monkeypatch.setattr(cli, "_settings", lambda: settings)
+    result = CliRunner().invoke(cli.app, ["backup"])
+    assert result.exit_code == 1, result.output
+    with cli._db(settings) as conn:
+        assert [(s, ok) for s, _, ok, _ in last_stages(conn)] == [("backup", False)]
