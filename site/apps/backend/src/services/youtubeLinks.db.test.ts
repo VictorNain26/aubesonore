@@ -1,4 +1,14 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, spyOn } from 'bun:test';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  mock,
+  spyOn,
+} from 'bun:test';
 import { sql } from 'drizzle-orm';
 import { db, pool, schema } from '../db';
 import { assertTestDatabase } from '../test/pg';
@@ -32,7 +42,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  spyOn(youtube, 'existingVideos').mockRestore();
+  mock.restore();
 });
 
 afterAll(async () => {
@@ -64,20 +74,19 @@ describe('youtubeUrls', () => {
 
 describe('refreshStoredLinks', () => {
   it('asks again only for links older than 25 days', async () => {
-    const asked: string[][] = [];
-    spyOn(youtube, 'existingVideos').mockImplementation((ids) => {
-      asked.push([...ids]);
-      return Promise.resolve(new Set(ids));
-    });
-    await store('Recent', 'A', 'recent', daysAgo(24));
+    const existing = spyOn(youtube, 'existingVideos').mockImplementation((ids) =>
+      Promise.resolve(new Set(ids))
+    );
+    const recentAt = daysAgo(24);
+    await store('Recent', 'A', 'recent', recentAt);
     await store('Due', 'A', 'due', daysAgo(26));
 
     await refreshStoredLinks();
 
-    expect(asked).toEqual([['due']]);
+    expect(existing.mock.calls).toEqual([[['due']]]);
     const after = await stored();
     expect(after.get('due')!.getTime()).toBeGreaterThan(daysAgo(1).getTime());
-    expect(after.get('recent')!.getTime()).toBeLessThan(daysAgo(23).getTime());
+    expect(after.get('recent')!.getTime()).toBe(recentAt.getTime());
   });
 
   it('forgets a video YouTube no longer has, so the song is searched anew', async () => {
