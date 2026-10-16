@@ -17,7 +17,7 @@
     }
   },
   "scripts": {
-    "build": "rm -rf dist && tsc",
+    "build": "find dist -mindepth 1 -delete 2>/dev/null; tsc",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit"
   },
