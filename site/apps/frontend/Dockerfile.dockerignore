@@ -8,9 +8,7 @@ node_modules
 .git
 .turbo
 **/dist
-**/.next
 apps/backend
-apps/mobile
 *.log
 .env
 .env.*

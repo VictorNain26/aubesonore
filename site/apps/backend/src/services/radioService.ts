@@ -1,4 +1,4 @@
-import { env } from '../config/env';
+import { azuracastGet } from '../lib/azuracast';
 import { TtlCache } from '../lib/cache/ttlCache';
 import { createSingleFlight } from '../lib/singleFlight';
 
@@ -23,17 +23,9 @@ async function fetchHistory(rows: number, cacheKey: string): Promise<unknown[]> 
   // `per_page` alone: `rows` without pagination ignores the limit (returns
   // the full 5800+ entry history), and the paginated response is an
   // envelope `{page, per_page, total, rows: [...]}`, not a flat array.
-  const url = `${env.AZURACAST_BASE_URL}/api/station/${env.AZURACAST_STATION_ID}/history?per_page=${rows}`;
-  const response = await fetch(url, {
-    headers: { 'X-API-Key': env.AZURACAST_API_KEY },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-  });
-
-  if (!response.ok) {
-    throw new Error(`AzuraCast history error: ${response.status}`);
-  }
-
-  const payload = (await response.json()) as { rows?: unknown };
+  const payload = (await azuracastGet(`history?per_page=${rows}`, FETCH_TIMEOUT_MS)) as {
+    rows?: unknown;
+  };
   if (!Array.isArray(payload.rows)) {
     throw new Error('AzuraCast history error: unexpected payload shape');
   }

@@ -1,5 +1,5 @@
 import { count, eq, isNotNull, isNull } from 'drizzle-orm';
-import { env } from '../config/env';
+import { azuracastGet } from '../lib/azuracast';
 import { db, pool } from '../db/index';
 import { artist, likedTracks, radioPlay } from '../db/schema';
 import { toIsrc } from '../lib/isrc';
@@ -23,12 +23,7 @@ const key = (artistName: string, title: string): string =>
 
 shareRateWithBackend();
 
-const response = await fetch(
-  `${env.AZURACAST_BASE_URL}/api/station/${env.AZURACAST_STATION_ID}/files`,
-  { headers: { 'X-API-Key': env.AZURACAST_API_KEY }, signal: AbortSignal.timeout(60_000) }
-);
-if (!response.ok) throw new Error(`AzuraCast files error: ${response.status}`);
-const media = (await response.json()) as Array<{
+const media = (await azuracastGet('files', 60_000)) as Array<{
   artist?: unknown;
   title?: unknown;
   isrc?: unknown;
