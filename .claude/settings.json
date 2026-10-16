@@ -25,6 +25,7 @@
     ]
   },
   "sandbox": {
+    "excludedCommands": ["docker *"],
     "credentials": {
       "files": [
         { "path": "azuracast/azuracast.env", "mode": "deny" },
