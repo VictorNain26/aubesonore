@@ -82,7 +82,7 @@ export async function youtubeUrls(
  * one unit of the large bucket): one still there is dated again, one gone is forgotten, so the
  * song is searched anew.
  */
-async function refreshStoredLinks(): Promise<void> {
+export async function refreshStoredLinks(): Promise<void> {
   const rows = await db
     .select({ songKey: schema.youtubeLink.songKey, videoId: schema.youtubeLink.videoId })
     .from(schema.youtubeLink)
