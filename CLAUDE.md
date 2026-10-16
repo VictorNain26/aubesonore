@@ -32,19 +32,19 @@ covers rebuilding the whole system from nothing.
   that target `master`, and is not required.
 - **Hooks**: the git hooks are in `site/.husky/`, wired by the `prepare` script of
   `site/package.json`, so they exist only in a clone where `pnpm install` has run in `site/`; no
-  CI job checks commit messages. Messages are in English and follow Conventional
-  Commits (`site/commitlint.config.js`); the scope is the piece (`site`, `pipeline`, `musilogy`,
-  `azuracast`), `repo` for what spans them, `deps` for dependencies.
+  CI job checks commit messages. Messages are in English and follow Conventional Commits,
+  which commitlint checks (`site/commitlint.config.js`); the scope is the piece (`site`,
+  `pipeline`, `musilogy`, `azuracast`), `repo` for what spans them, `deps` for dependencies.
 - **Deploying is merging to `master`.** `aubesonore-deploy.timer` fast-forwards `~/aubesonore`; it
   rebuilds the site containers only when `site/` changed, and never moves the tree while the
   radio's weekly pass (`radio-weekly.service`) runs, since that pass loads `pipeline/` code.
   Each pass also runs `uv sync --locked` in `pipeline/`, so a dependency change reaches the
   `.venv` the radio-* units run.
 - **Where to develop.** Every piece is developed on the workstation, in a git worktree of the
-  clone, one per branch; each piece's `.claude/rules/<piece>.md` says where its local setup
-  is. The server is used only for the runs on the real data: Musilogy's build, its slow
-  baseline and its load into production, and the radio's passes. Never work in `~/aubesonore`
-  itself: it is the production checkout.
+  clone, one per branch; each piece's commands are in its `.claude/rules/<piece>.md`. The
+  server is used only for the runs on the real data: Musilogy's build, its slow baseline and
+  its load into production, and the radio's passes. Never work in `~/aubesonore` itself: it
+  is the production checkout.
 
 ## How the pieces fit together
 
