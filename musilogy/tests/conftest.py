@@ -1,7 +1,6 @@
 import json
 import os
 from collections.abc import Sequence
-from pathlib import Path
 from typing import Any
 
 import duckdb
@@ -14,11 +13,11 @@ from musilogy import (
 )
 from musilogy.build import build
 from musilogy.load import load
-from musilogy.paths import SQL_DIR
+from musilogy.paths import FIXTURES_DIR, SQL_DIR
 from musilogy.publish import publish
 from musilogy.sample import build_sample
 
-FIX = Path(__file__).parent / "fixtures"
+FIX = FIXTURES_DIR
 SQL = SQL_DIR
 
 
