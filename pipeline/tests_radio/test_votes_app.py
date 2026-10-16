@@ -1,4 +1,8 @@
 import logging
+import socket
+import threading
+from collections.abc import Iterator
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 import jwt
@@ -9,7 +13,7 @@ from fastapi.testclient import TestClient
 from radio.core.db import connect
 from radio.sources.deezer import DeezerError, DeezerTrack, DeezerUnavailable
 from radio.votes.access import HEADER
-from radio.votes.app import create_app
+from radio.votes.app import create_app, page_ok
 from radio.votes.select import Ballot, pending_ballots, select_batch
 from tests_radio.model_factory import NOW, make_model_db, serve_scores
 
@@ -250,3 +254,42 @@ def test_the_follow_up_page_is_guarded_and_shows_each_source(db: Path) -> None:
     assert page.status_code == 200
     assert "Suivi des sources" in page.text and "<td>voisin</td>" in page.text
     assert "hypem : rien de neuf" in page.text  # source attendue, absente de la fournée
+
+
+@pytest.fixture
+def probe_server() -> Iterator[tuple[int, list[int]]]:
+    """Serveur local qui répond à /sante le statut en tête de la liste partagée."""
+    status = [200]
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            self.send_response(status[0] if self.path == "/sante" else 404)
+            self.end_headers()
+
+        def log_message(self, *args: object) -> None:
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield server.server_address[1], status
+    server.shutdown()
+    server.server_close()
+
+
+def test_page_ok_when_sante_answers_200(probe_server: tuple[int, list[int]]) -> None:
+    port, _ = probe_server
+    assert page_ok("127.0.0.1", port)
+
+
+def test_page_ok_is_false_on_another_status(probe_server: tuple[int, list[int]]) -> None:
+    port, status = probe_server
+    status[0] = 503
+    assert not page_ok("127.0.0.1", port)
+
+
+def test_page_ok_is_false_when_nothing_listens() -> None:
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    assert not page_ok("127.0.0.1", port)

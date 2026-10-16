@@ -20,7 +20,7 @@ FPCALC_URL="https://github.com/acoustid/chromaprint/releases/download/v$FPCALC_V
 FPCALC_SHA256=4d7433a7f778e5946d7225230681cbcd634e153316ecac87c538c33ac32387a5
 # L'URL et la somme du modèle n'existent qu'à un endroit : le code qui le vérifie.
 AUDIO_PY="$PIPELINE_DIR/radio/signals/audio.py"
-MODEL_URL=$(grep -oE 'https://essentia\.upf\.edu/[^"]+\.pb' "$AUDIO_PY")
+MODEL_URL=$(grep -m1 -oE 'https://essentia\.upf\.edu/[^"]+\.pb' "$AUDIO_PY" || true)
 MODEL_SHA256=$(sed -nE 's/^MODEL_SHA256 = "([0-9a-f]{64})"$/\1/p' "$AUDIO_PY")
 MODEL="$PIPELINE_DIR/models/${MODEL_URL##*/}"
 [[ -n "$MODEL_URL" && -n "$MODEL_SHA256" ]] || { echo "URL ou somme du modèle introuvable dans $AUDIO_PY" >&2; exit 1; }
@@ -28,12 +28,13 @@ MODEL="$PIPELINE_DIR/models/${MODEL_URL##*/}"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-# fetch URL SHA256 DEST : télécharge à côté, vérifie, puis remplace DEST d'un coup.
+# fetch URL SHA256 DEST : télécharge à côté de DEST (même disque, donc mv atomique), vérifie,
+# puis remplace DEST d'un coup.
 fetch() {
-  curl -fsSL --retry 3 -o "$work/download" "$1"
-  echo "$2  $work/download" | sha256sum -c --quiet
   mkdir -p "$(dirname "$3")"
-  mv "$work/download" "$3"
+  curl -fsSL --retry 3 -o "$3.partial" "$1"
+  echo "$2  $3.partial" | sha256sum -c --quiet || { rm -f "$3.partial"; return 1; }
+  mv "$3.partial" "$3"
 }
 
 mkdir -p "$BIN_DIR"
