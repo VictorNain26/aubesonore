@@ -1,3 +1,4 @@
+import ast
 import logging
 import sqlite3
 from pathlib import Path
@@ -268,3 +269,19 @@ def test_check_status_sorts_outages_from_refusals(
         return
     with pytest.raises(raised, match=f"^HTTP {status}$"):
         check_status(r, _Down, _Refused)
+
+
+def test_core_imports_no_other_layer() -> None:
+    # core est la couche du bas : les sources, l'acquisition, l'antenne et le modèle s'appuient
+    # sur elle, jamais l'inverse.
+    upward = {
+        f"{path.name}: {name}"
+        for path in (REPO_ROOT / "radio" / "core").glob("*.py")
+        for node in ast.walk(ast.parse(path.read_text()))
+        if isinstance(node, ast.Import | ast.ImportFrom)
+        for name in (
+            [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module or ""]
+        )
+        if name.startswith("radio.") and not name.startswith("radio.core")
+    }
+    assert upward == set()

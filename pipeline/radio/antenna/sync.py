@@ -25,10 +25,10 @@ import numpy as np
 
 from radio.core.config import AntenneConfig, GrilleConfig
 from radio.core.family import FAMILY
-from radio.core.media import ToolError, prepare, probe, tags_for
+from radio.core.media import ToolError, prepare, probe
 from radio.library.weights import play_weight
 from radio.sources.azuracast import AzuracastError, Media
-from radio.sources.deezer import DeezerClient, DeezerError
+from radio.sources.deezer import DeezerClient, DeezerError, tags_for
 
 FOLDER = "antenne"
 REST = "repos"

@@ -227,9 +227,8 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
   `ffmpeg -af aresample=resampler=soxr:osr=44100 -c:a libmp3lame -q:a 0`. Un MP3 n'est jamais
   réencodé.
 - **ReplayGain.** `rsgain custom -s i -c p`, avec rsgain 3.8 en binaire figé, extrait de
-  l'archive de release `rsgain-3.8-Linux.tar.xz` (sha256
-  `4939de3b2022a50edc0751343b10a791ea8c1c9ca6505012f21413bf8de365a0`, vérifiée par la CI qui
-  installe la même ; binaire extrait :
+  l'archive de release `rsgain-3.8-Linux.tar.xz`, dont `scripts/dev-setup.sh` porte la somme et
+  qu'il installe sur un poste comme dans la CI (binaire extrait :
   `7b73e7aa2a607af0e8c23bff647aa3b01f8219f02a6307bcbc41f2ae3f70bb4e`). Sans ces balises,
   Liquidsoap recalcule le gain à chaque titre, ce qui coûte beaucoup de CPU (doc AzuraCast,
   « optimizing »).
@@ -512,6 +511,7 @@ toutes les 24 h et un message de retour à la normale, sur deux canaux :
 | `flux-public` : `radio.aubesonore.fr/listen/aubesonore/radio.mp3`, toutes les 5 min | HTTP 200 : vérifie aussi le tunnel Cloudflare |
 | `passe-hebdo` (endpoint externe) | Poussée par `ExecStopPost=` avec `$SERVICE_RESULT` ; alerte au premier échec ou après 8 jours de silence |
 | `sauvegarde` (endpoint externe) | Même mécanisme pour `radio-backup` ; alerte au premier échec ou après 2 jours de silence |
+| `rappel` (endpoint externe) | Même mécanisme pour `radio-remind` ; alerte au premier échec ou après 8 jours de silence |
 | `grille-a-l-antenne` : `nowplaying`, toutes les 10 min | la playlist en cours s'appelle « Grille … » ; alerte après 7 échecs (plus d'une heure de secours). Une heure à moitié vide ne la fait pas alerter : ses sondes alternent ; c'est l'échec de `radio grille` sur une heure trop courte qui la signale |
 | `grille` (endpoint externe) | `radio-grille` ; alerte au premier échec (heure mal écrite, heure trop courte) ou après 2 jours de silence. Dans la passe du dimanche, `radio check` fait échouer la passe |
 | `page-de-vote` : `127.0.0.1:8040`, toutes les 5 min | HTTP 403 sans jeton Access : la page tourne |
@@ -543,7 +543,7 @@ toutes les 24 h et un message de retour à la normale, sur deux canaux :
 | dimanche 03:00 | `radio-weekly` | `library-sync`, `discover`, `nouveautes`, `favoris`, `signals`, `train`, `votes-select`, `acquire`, `antenne`, `mesures`, `grille --aujourdhui`, `check` ; bornée à 12 h, battement de cœur Gatus |
 | chaque jour 23:00 | `radio-grille` | grille du lendemain dans les 24 playlists horaires du jour ; battement de cœur Gatus |
 | chaque jour 04:30 | `radio-backup` | copie de `data/radio.db` (API de sauvegarde SQLite, `integrity_check` vérifié) et de `data/models/` dans `RADIO_BACKUP_DIR` (`/media/plex/.backups/radio`, autre disque physique), 14 jours gardés ; battement de cœur Gatus |
-| dimanche 10:00 | `radio-remind` | rappel WhatsApp de vote |
+| dimanche 10:00 | `radio-remind` | rappel WhatsApp de vote ; battement de cœur Gatus |
 | en continu | `radio-votes` | page de vote, `127.0.0.1:8040`, publiée sur `votes.aubesonore.fr` |
 
 - État : `.venv/bin/radio report`.
