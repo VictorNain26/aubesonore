@@ -17,7 +17,7 @@ A webradio: backend Bun + Elysia, frontend Vite + React, pnpm monorepo orchestra
 
 ## Workflow rules
 
-- **A site PR is tried in Chrome before its merge**, at 1280 and 390 px wide: on the workstation (`pnpm stack`) for the interface alone, on the preview of its branch (`scripts/preview.sh up <branch>`, README « Aperçu d'une branche ») as soon as it changes the backend or the data a page reads.
+- **A site PR is tried in Chrome before its merge**, at 1280 and 390 px wide, on the local stack (`pnpm stack`, README « La pile locale, en une commande »).
 - Checks: `pnpm typecheck && pnpm lint`; frontend tests `pnpm --filter=@aubesonore/frontend test --run` (without `--run`, Vitest watches); backend tests `pnpm --filter=@aubesonore/backend test` (mocks).
 - Tests against a real Postgres (`*.db.test.ts`): `pnpm --filter=@aubesonore/backend test:db` with `DATABASE_URL` naming a disposable database whose name ends in `_test`, its schema from `db:push` (`src/test/pg.ts` refuses any other). `db:push` reads `DATABASE_URL`, else `.env`: export the test database's first, or it syncs `schema.ts` onto the database `.env` names.
 - `.husky/pre-push` mirrors most of the CI (see the file); the Postgres tests, `scripts/*.test.sh`, `format:check` and the audit run only in CI.
@@ -27,16 +27,11 @@ A webradio: backend Bun + Elysia, frontend Vite + React, pnpm monorepo orchestra
 
 ## Deployment (self-hosted, pull-based)
 
-`scripts/deploy.sh`, driven by a systemd user timer, polls `origin/master` and promotes it (see the script for the steps).
+How the box deploys, rolls back and is installed: README « Déploiement » and `scripts/deploy.sh`. What stays a rule when changing the site:
 
-- **Pull-based on purpose.** The repo is public, and forks could run code on a self-hosted runner ([GitHub docs](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/manage-access)): no self-hosted runner, no inbound webhook.
-- **Schema changes ship with a migration.** The backend applies new `apps/backend/drizzle/*.sql` at boot. A merge that touches `schema.ts` without adding its own migration stops the deploy, even for a comment-only change (the script compares the file). To unblock: apply it by hand, acknowledge with `git -C ~/aubesonore config aubesonore.appliedSchema <blob>` (the script prints the exact command), then `systemctl --user start aubesonore-deploy`. Leave `schema.ts` alone in a PR that changes no schema; when a comment there must follow the code, acknowledge right after the merge.
-- **One `compose.yaml` for the box and a workstation.** `pnpm stack` adds the `dev` profile and `develop.watch`; neither is ever active on the box. Check a compose change with `docker compose config` against a production-like `.env` before merging. Postgres needs `certs/` (`scripts/make-certs.sh`). AzuraCast keeps its own compose, never merged into this one: its updater manages it, and a site deploy must never restart the radio.
-- **A failed deploy rolls back** to the previous commit and records the failed one in `git config aubesonore.failedTarget`; later runs wait for a newer `master` rather than retry it. Pushing a fix to `master` deploys it and clears the record.
-- **Only a clean `master` deploys.** `~/aubesonore` is the production checkout: on another branch or with a modified or untracked file, the script refuses (exit 1).
-- Install once: symlink `scripts/systemd/*` into `~/.config/systemd/user/`, then `systemctl --user enable --now aubesonore-deploy.timer`. Logs: `journalctl --user -u aubesonore-deploy`.
-- **Container logs live in the journal** (Docker's `journald` driver, so they survive a redeploy): `journalctl CONTAINER_TAG=aubesonore-backend`. The per-request `http` line (`lib/requestLog.ts`) never logs the query string.
-- Gatus watches the site (`../pipeline/deploy/gatus/config/config.yaml`, group `site`), with a heartbeat after each deploy and backup run (`scripts/heartbeat.sh`).
+- **Leave `schema.ts` alone in a PR that changes no schema.** The deploy compares the file and stops on any change without its own migration, a comment included; when a comment there must follow the code, acknowledge right after the merge (README « Déploiement »).
+- **Check a compose change** with `docker compose config` against a production-like `.env` before merging. AzuraCast keeps its own compose, never merged into this one: its updater manages it, and a site deploy must never restart the radio.
+- The per-request `http` line (`lib/requestLog.ts`) never logs the query string.
 
 ### Database backups
 
