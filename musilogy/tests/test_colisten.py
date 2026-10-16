@@ -4,11 +4,11 @@ artists make every rule of colisten.py visible."""
 import duckdb
 import numpy as np
 import pytest
-from conftest import listening_file
 
 from musilogy import colisten
 from musilogy.build import load_listening
 from musilogy.colisten import build_colisten, scores
+from tests.conftest import listening_file
 
 A = "a0000000-0000-0000-0000-000000000000"
 B = "b0000000-0000-0000-0000-000000000000"

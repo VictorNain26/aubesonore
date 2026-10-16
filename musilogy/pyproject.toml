@@ -64,14 +64,7 @@ ignore_missing_imports = true
 # and never return a value: requiring "-> None" and fixture types on every
 # one-line test adds annotation noise without catching real bugs. Bodies are
 # still checked (check_untyped_defs, part of strict, stays on).
-module = [
-    "conftest", "test_albums", "test_artist", "test_bands", "test_baseline",
-    "test_cli", "test_colisten", "test_discogs", "test_env", "test_extract", "test_fetch",
-    "test_fixtures", "test_invariants", "test_lifespan",
-    "test_links", "test_load", "test_official", "test_paths", "test_persons", "test_popularity",
-    "test_publish", "test_releases", "test_same_sound", "test_search", "test_types",
-    "test_urls",
-]
+module = ["tests.*"]
 disallow_untyped_defs = false
 disallow_incomplete_defs = false
 disallow_untyped_calls = false

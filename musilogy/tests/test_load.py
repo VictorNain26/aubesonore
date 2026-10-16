@@ -1,11 +1,11 @@
 import json
 
 import pytest
-from conftest import FIX, loaded, pg_query, published, synthetic_artist
 
 from musilogy.fetch import ChecksumError
 from musilogy.load import LoadError, load
 from musilogy.sample import publish_sample
+from tests.conftest import FIX, loaded, pg_query, published, synthetic_artist
 
 ME = "00000000-0000-4000-8000-0000000000c0"
 A = "00000000-0000-4000-8000-0000000000c1"

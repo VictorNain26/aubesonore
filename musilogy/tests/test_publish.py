@@ -1,20 +1,21 @@
 import json
+import re
 import subprocess
 
 import pytest
-from conftest import (
-    build_synthetic,
-    official_file,
-    synthetic_artist,
-    synthetic_release_group,
-)
 
 from musilogy import REFERENCE_DUMP as DUMP
 from musilogy import REFERENCE_POPULARITY
 from musilogy.colisten import PARAMETERS as COLISTEN_PARAMETERS
 from musilogy.fetch import expected_sums, sha256_file
-from musilogy.paths import PACKAGE_DIR, REFERENCE_DIR, popularity_sums
-from musilogy.publish import publish
+from musilogy.paths import PACKAGE_DIR, REFERENCE_DIR, SQL_DIR, popularity_sums
+from musilogy.publish import SAME_SOUND_PARAMETERS, publish
+from tests.conftest import (
+    build_synthetic,
+    official_file,
+    synthetic_artist,
+    synthetic_release_group,
+)
 
 REF_SUMS = REFERENCE_DIR / f"{DUMP}.SHA256SUMS"
 
@@ -241,93 +242,51 @@ def test_manifest_replays_the_extraction_counts_beside_the_rows_loaded(con, tmp_
     assert manifest["inputs"]["extraction"]["release_groups_dropped"] == 11
 
 
-def test_manifest_says_so_when_no_extraction_record_exists(con, tmp_path):
-    # The synthetic builds have no extraction step at all. Null is the honest
-    # answer; an absent key would let a reader assume nothing was dropped.
-    manifest = publish(con, tmp_path, DUMP)
-    assert manifest["inputs"]["extraction"] is None
+AGREEING = {"artists_kept": 697, "release_groups_kept": 10617}
+SHORT = {"artists_kept": 28, "release_groups_kept": 3627}
+UNREADABLE = {"unreadable": True}
 
 
-def test_manifest_survives_a_truncated_extraction_record(con, tmp_path):
-    # A truncated sidecar is precisely the "full disk during extraction"
-    # scenario this task targets. A bare json.loads used to raise
-    # JSONDecodeError and take the whole manifest down with it: no counts, no
-    # parameters, even though those have nothing to do with the sidecar.
-    sidecar = tmp_path / "extraction.json"
-    sidecar.write_text('{"artists_kept": 7', encoding="utf-8")
-    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
+# What the manifest says of the extraction sidecar: its record, and whether it
+# agrees with the rows the build loaded. Three states, never two: "no record"
+# (None) is not "mismatch" (False), and a sidecar that is absent, unreadable or
+# missing a count says nothing about the extraction.
+@pytest.mark.parametrize(
+    ("sidecar", "extraction", "matches"),
+    [
+        # The synthetic builds have no extraction step at all. Null is the
+        # honest answer; an absent key would let a reader assume nothing was
+        # dropped.
+        pytest.param(None, None, None, id="no-sidecar"),
+        pytest.param("missing", None, None, id="path-missing"),
+        # The "full disk during extraction" case: a bare json.loads used to
+        # take the whole manifest down, counts and parameters with it.
+        pytest.param(b'{"artists_kept": 7', UNREADABLE, None, id="truncated"),
+        # Parses without error, then would flow into the manifest as a shape
+        # no reader expects.
+        pytest.param(b"[1, 2, 3]", UNREADABLE, None, id="not-an-object"),
+        # A cut inside a multi-byte character fails at decode, before
+        # json.loads runs: fails if the except clause is narrowed back to
+        # json.JSONDecodeError alone.
+        pytest.param('{"name": "Motörhead"}'.encode()[:14], UNREADABLE, None, id="mid-character"),
+        # What the fixtures load (test_manifest_counts_the_rows_that_fed_the_build):
+        # the case the discrepancy check must let through.
+        pytest.param(json.dumps(AGREEING).encode(), AGREEING, True, id="counts-agree"),
+        # Fewer release groups reached the disk than the extraction kept: the
+        # boolean goes False rather than leave a human to subtract by hand.
+        pytest.param(json.dumps(SHORT).encode(), SHORT, False, id="counts-disagree"),
+        pytest.param(b'{"artists_kept": 28}', {"artists_kept": 28}, None, id="count-missing"),
+    ],
+)
+def test_manifest_reports_the_extraction_sidecar(con, tmp_path, sidecar, extraction, matches):
+    path = None if sidecar is None else tmp_path / "extraction.json"
+    if isinstance(sidecar, bytes):
+        assert path is not None
+        path.write_bytes(sidecar)
+    manifest = publish(con, tmp_path / "out", DUMP, path)
     assert manifest["counts"]
-    assert manifest["inputs"]["extraction"] == {"unreadable": True}
-
-
-def test_manifest_survives_an_extraction_record_that_is_not_an_object(con, tmp_path):
-    # A JSON file whose top level is a list parses without error and would
-    # otherwise flow into the manifest as a shape no reader expects.
-    sidecar = tmp_path / "extraction.json"
-    sidecar.write_text("[1, 2, 3]", encoding="utf-8")
-    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
-    assert manifest["inputs"]["extraction"] == {"unreadable": True}
-
-
-def test_manifest_survives_a_sidecar_truncated_mid_character(con, tmp_path):
-    # MusicBrainz names are full of non-ASCII; a truncation landing inside a
-    # multi-byte character fails at decode, before json.loads ever runs,
-    # raising UnicodeDecodeError rather than JSONDecodeError. This fails if the
-    # except clause is narrowed back to json.JSONDecodeError alone.
-    sidecar = tmp_path / "extraction.json"
-    sidecar.write_bytes('{"name": "Motörhead"}'.encode()[:14])
-    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
-    assert manifest["counts"]
-    assert manifest["inputs"]["extraction"] == {"unreadable": True}
-
-
-def test_manifest_says_so_when_the_extraction_path_does_not_exist(con, tmp_path):
-    manifest = publish(con, tmp_path, DUMP, tmp_path / "missing-extraction.json")
-    assert manifest["inputs"]["extraction"] is None
-
-
-def test_manifest_says_extraction_matches_rows_loaded_when_counts_agree(con, tmp_path):
-    # 697 artists and 10617 release-groups are what the fixtures actually load
-    # (test_manifest_counts_the_rows_that_fed_the_build): a sidecar claiming
-    # exactly those counts is the case the discrepancy check must let through.
-    sidecar = tmp_path / "extraction.json"
-    sidecar.write_text(
-        json.dumps({"artists_kept": 697, "release_groups_kept": 10617}), encoding="utf-8"
-    )
-    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
-    assert manifest["inputs"]["extraction_matches_rows_loaded"] is True
-
-
-def test_manifest_says_extraction_does_not_match_rows_loaded_on_a_mismatch(con, tmp_path):
-    # A truncated extraction: fewer release-groups made it to disk than the
-    # extraction step reported keeping. The boolean must go False rather than
-    # leave a human to subtract the two numbers by hand.
-    sidecar = tmp_path / "extraction.json"
-    sidecar.write_text(
-        json.dumps({"artists_kept": 28, "release_groups_kept": 3627}), encoding="utf-8"
-    )
-    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
-    assert manifest["inputs"]["extraction_matches_rows_loaded"] is False
-
-
-def test_manifest_extraction_match_is_none_without_a_sidecar(con, tmp_path):
-    # "No record" is not "mismatch": three states, not two.
-    manifest = publish(con, tmp_path, DUMP)
-    assert manifest["inputs"]["extraction_matches_rows_loaded"] is None
-
-
-def test_manifest_extraction_match_is_none_when_the_sidecar_is_unreadable(con, tmp_path):
-    sidecar = tmp_path / "extraction.json"
-    sidecar.write_text('{"artists_kept": 7', encoding="utf-8")
-    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
-    assert manifest["inputs"]["extraction_matches_rows_loaded"] is None
-
-
-def test_manifest_extraction_match_is_none_when_a_count_key_is_missing(con, tmp_path):
-    sidecar = tmp_path / "extraction.json"
-    sidecar.write_text(json.dumps({"artists_kept": 28}), encoding="utf-8")
-    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
-    assert manifest["inputs"]["extraction_matches_rows_loaded"] is None
+    assert manifest["inputs"]["extraction"] == extraction
+    assert manifest["inputs"]["extraction_matches_rows_loaded"] is matches
 
 
 # A delivery is reproducible only if its rows come out in a fixed order: same
@@ -375,3 +334,11 @@ def test_manifest_carries_the_digest_of_every_delivered_file(con, tmp_path):
     assert set(manifest["output_sha256"]) == delivered
     for name, digest in manifest["output_sha256"].items():
         assert digest == sha256_file(tmp_path / name)
+
+
+def test_the_manifest_names_every_parameter_88_same_sound_sets():
+    # Case this must catch: a SET VARIABLE added to 88_same_sound.sql without
+    # its name in SAME_SOUND_PARAMETERS. The manifest reads back only the names
+    # listed, so the new bound would shape the delivery without being stated.
+    sql = (SQL_DIR / "88_same_sound.sql").read_text(encoding="utf-8")
+    assert set(re.findall(r"^SET VARIABLE (\w+)", sql, re.MULTILINE)) == set(SAME_SOUND_PARAMETERS)

@@ -1,7 +1,9 @@
 import json
 from collections import defaultdict
 
-from conftest import (
+from musilogy.build import check_invariants
+from musilogy.paths import SQL_DIR
+from tests.conftest import (
     FIX,
     build_synthetic,
     discogs_file,
@@ -9,10 +11,7 @@ from conftest import (
     discogs_url,
     synthetic_artist,
 )
-from test_invariants import restored
-
-from musilogy.build import check_invariants
-from musilogy.paths import SQL_DIR
+from tests.test_invariants import restored
 
 A = "00000000-0000-4000-8000-0000000000d1"
 B = "00000000-0000-4000-8000-0000000000d2"

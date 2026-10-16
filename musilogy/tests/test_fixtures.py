@@ -1,11 +1,10 @@
 import json
 import subprocess
 
-from conftest import FIX
-
 from musilogy import cli
 from musilogy.cli import WITNESSES, fixtures_attribution
 from musilogy.paths import REPO_ROOT
+from tests.conftest import FIX
 
 
 def test_every_witness_is_present():
@@ -23,14 +22,6 @@ def test_beatles_genres_carry_mbid_and_votes():
                 assert all(g["mbid"] and "votes" in g for g in rec["genres"])
                 return
     raise AssertionError("The Beatles missing from fixtures")
-
-
-def test_release_groups_file_is_well_formed_and_complete():
-    with (FIX / "release_groups.jsonl").open(encoding="utf-8") as fh:
-        lines = fh.readlines()
-    records = [json.loads(line) for line in lines]
-    # Number frozen at extraction time: any truncation or dropped line changes it.
-    assert len(records) == 10617
 
 
 def test_every_release_group_credits_a_witness():
