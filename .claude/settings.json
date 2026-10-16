@@ -25,7 +25,7 @@
     ]
   },
   "sandbox": {
-    "excludedCommands": ["docker *"],
+    "excludedCommands": ["pnpm stack", "pnpm data:pull", "pnpm musilogy:sample"],
     "credentials": {
       "files": [
         { "path": "azuracast/azuracast.env", "mode": "deny" },
