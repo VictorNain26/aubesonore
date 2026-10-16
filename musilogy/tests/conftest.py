@@ -104,11 +104,12 @@ def pg():
     return conninfo
 
 
-def delivery_manifest(folder, counts):
-    """A delivery's manifest, reduced to the counts the drift guard reads."""
+def delivery_manifest(folder, counts, **counters):
+    """A delivery's manifest, reduced to what the drift guard reads: the counts
+    and, by group, the counters."""
     folder.mkdir(parents=True)
     path = folder / "manifest.json"
-    path.write_text(json.dumps({"counts": counts}), encoding="utf-8")
+    path.write_text(json.dumps({"counts": counts, **counters}), encoding="utf-8")
     return path
 
 

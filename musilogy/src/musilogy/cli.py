@@ -77,14 +77,18 @@ from musilogy.paths import (
     written_aside,
 )
 from musilogy.publish import (
+    COUNTER_TABLES,
     MAX_DRIFT,
     TABLES,
-    drifts,
+    Drift,
+    compare,
+    compared,
+    delivered,
     extraction_matches_rows_loaded,
+    is_counter,
     previous_manifest,
     publish,
     read_extraction,
-    table_counts,
 )
 from musilogy.sample import publish_sample
 
@@ -407,29 +411,52 @@ def _stop_on_extraction_mismatch(con: duckdb.DuckDBPyConnection, extraction: Pat
         )
 
 
-def _stop_on_drift(con: duckdb.DuckDBPyConnection, out: Path, accepted: Sequence[str]) -> None:
+def _stop_on_drift(
+    con: duckdb.DuckDBPyConnection, out: Path, accepted: Sequence[str]
+) -> list[Drift]:
     """The data diff, before publish() like the other guards: publishing at
-    `out` overwrites the manifest the comparison reads. Each table whose count
-    moved past MAX_DRIFT since the previous delivery stops the run, unless
-    `accepted` names it: a rule meant to move a table says so when it runs."""
+    `out` overwrites the manifest the comparison reads. Each table count or
+    counter that moved past MAX_DRIFT since the previous delivery stops the
+    run, unless `accepted` names it: a rule meant to move one says so when it
+    runs. Returns the drifts it let through, for the delivery to record.
+
+    A name `accepted` holds that this build does not count stops the run too —
+    a typo, or a counter gone since, whose new name would otherwise go
+    uncompared: main() only checks its table or counter group, since which
+    counters exist is the SQL's to say."""
+    got = delivered(con)
     previous = previous_manifest(out)
+    path, expected = (previous[0], compared(previous[1])) if previous else (None, {})
+    unknown = sorted(set(accepted) - set(got))
+    if unknown:
+        raise SystemExit(
+            f"--accept-drift names nothing this build counts, nothing published: "
+            f"{', '.join(unknown)}"
+        )
     if previous is None:
         print(f"no previous delivery beside {out}: publishing without comparison")
-        return
-    path, manifest = previous
-    moved = drifts(manifest["counts"], table_counts(con))
-    for d in moved:
-        if d.table in accepted:
-            print(f"drift accepted, {d}")
-    for table in sorted(set(accepted) - {d.table for d in moved}):
-        print(f"drift accepted on {table}, but {table} did not move")
-    refused = [str(d) for d in moved if d.table not in accepted]
+        return []
+    comparison = compare(expected, got)
+    for name in comparison.new:
+        print(f"new counter {name}: {got[name]}, nothing to compare it with")
+    for name in comparison.gone:
+        print(f"counter gone {name}, was {expected[name]}")
+    let_through = [d for d in comparison.drifts if d.name in accepted]
+    for d in let_through:
+        print(f"drift accepted, {d}")
+    for name in sorted(set(accepted) - {d.name for d in comparison.drifts}):
+        if name in comparison.new:
+            print(f"drift accepted on {name}, but {name} is new, nothing to accept")
+        else:
+            print(f"drift accepted on {name}, but {name} did not move")
+    refused = [str(d) for d in comparison.drifts if d.name not in accepted]
     if refused:
         raise SystemExit(
             f"counts moved more than {MAX_DRIFT:.1%} from {path}, nothing published:\n"
             + "\n".join(refused)
-            + "\na rule meant to move them: musilogy run --accept-drift TABLE"
+            + "\na rule meant to move them: musilogy run --accept-drift NAME"
         )
+    return let_through
 
 
 def run(accepted_drift: Sequence[str] = ()) -> None:
@@ -471,8 +498,8 @@ def run(accepted_drift: Sequence[str] = ()) -> None:
     _stop_on_discogs_mismatch(con)
 
     out = out_dir(DUMP)
-    _stop_on_drift(con, out, accepted_drift)
-    manifest = publish(con, out, DUMP, extraction)
+    accepted = _stop_on_drift(con, out, accepted_drift)
+    manifest = publish(con, out, DUMP, extraction, accepted)
     print(manifest["counts"])
 
 
@@ -593,6 +620,18 @@ def load_site(sample: bool = False) -> None:
         print(load(publish_sample(Path(tmp))))
 
 
+def _drift_name(name: str) -> str:
+    """What --accept-drift can name before the build runs: a table, or a
+    counter of a counter group. Whether the counter exists, only the build
+    knows (_stop_on_drift)."""
+    if name in TABLES or is_counter(name):
+        return name
+    raise argparse.ArgumentTypeError(
+        f"{name!r} is no table ({', '.join(TABLES)}) "
+        f"nor GROUP.COUNTER of a counter group ({', '.join(COUNTER_TABLES)})"
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="musilogy")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -606,9 +645,10 @@ def main() -> None:
         "--accept-drift",
         action="append",
         default=[],
-        choices=TABLES,
-        metavar="TABLE",
-        help="publish although TABLE's count moved past the limit since the previous delivery",
+        type=_drift_name,
+        metavar="NAME",
+        help="publish although NAME moved past the limit since the previous delivery: "
+        "a table, or a counter as GROUP.COUNTER (link_exclusions.not_on_page)",
     )
     run_parser.set_defaults(handler=lambda args: run(args.accept_drift))
     subparsers.add_parser(
