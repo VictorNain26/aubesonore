@@ -173,6 +173,7 @@ uv run musilogy snapshot-discography # relevé Wikidata daté des disques class�
 uv run musilogy snapshot-listens <ref>  # toutes les écoutes ListenBrainz, réduites par utilisateur et artiste, à épingler
 uv run musilogy make-fixtures       # régénère les témoins depuis les extractions et les relevés épinglés
 uv run musilogy load                # charge data/out/ dans la base du site (environnement libpq)
+uv run musilogy load --sample       # charge le pipeline passé sur les fixtures : la petite Musilogy d'un poste
 ```
 
 Aucune sortie du pipeline n'est versionnée ; seules les empreintes et les fixtures le sont.
