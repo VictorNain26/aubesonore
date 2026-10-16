@@ -8,7 +8,7 @@ from musilogy import REFERENCE_DUMP as DUMP
 from musilogy import REFERENCE_POPULARITY
 from musilogy.colisten import PARAMETERS as COLISTEN_PARAMETERS
 from musilogy.fetch import expected_sums, sha256_file
-from musilogy.paths import PACKAGE_DIR, SQL_DIR, dump_sums, popularity_sums
+from musilogy.paths import PACKAGE_DIR, SQL_DIR, dump_sums, extraction_sidecar, popularity_sums
 from musilogy.publish import SAME_SOUND_PARAMETERS, publish
 from tests.conftest import (
     build_synthetic,
@@ -279,7 +279,7 @@ UNREADABLE = {"unreadable": True}
     ],
 )
 def test_manifest_reports_the_extraction_sidecar(con, tmp_path, sidecar, extraction, matches):
-    path = None if sidecar is None else tmp_path / "extraction.json"
+    path = None if sidecar is None else extraction_sidecar(tmp_path)
     if isinstance(sidecar, bytes):
         assert path is not None
         path.write_bytes(sidecar)
@@ -341,4 +341,5 @@ def test_the_manifest_names_every_parameter_88_same_sound_sets():
     # its name in SAME_SOUND_PARAMETERS. The manifest reads back only the names
     # listed, so the new bound would shape the delivery without being stated.
     sql = (SQL_DIR / "88_same_sound.sql").read_text(encoding="utf-8")
-    assert set(re.findall(r"^SET VARIABLE (\w+)", sql, re.MULTILINE)) == set(SAME_SOUND_PARAMETERS)
+    sets = re.findall(r"^\s*SET\s+VARIABLE\s+(\w+)", sql, re.MULTILINE | re.IGNORECASE)
+    assert set(sets) == set(SAME_SOUND_PARAMETERS)
