@@ -227,9 +227,8 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
   `ffmpeg -af aresample=resampler=soxr:osr=44100 -c:a libmp3lame -q:a 0`. Un MP3 n'est jamais
   réencodé.
 - **ReplayGain.** `rsgain custom -s i -c p`, avec rsgain 3.8 en binaire figé, extrait de
-  l'archive de release `rsgain-3.8-Linux.tar.xz` (sha256
-  `4939de3b2022a50edc0751343b10a791ea8c1c9ca6505012f21413bf8de365a0`, vérifiée par la CI qui
-  installe la même ; binaire extrait :
+  l'archive de release `rsgain-3.8-Linux.tar.xz`, dont `scripts/dev-setup.sh` porte la somme et
+  qu'il installe sur un poste comme dans la CI (binaire extrait :
   `7b73e7aa2a607af0e8c23bff647aa3b01f8219f02a6307bcbc41f2ae3f70bb4e`). Sans ces balises,
   Liquidsoap recalcule le gain à chaque titre, ce qui coûte beaucoup de CPU (doc AzuraCast,
   « optimizing »).
