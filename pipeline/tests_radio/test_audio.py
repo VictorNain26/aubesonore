@@ -5,10 +5,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from radio.core.config import REPO_ROOT
+from radio.core.config import Settings
 from radio.signals.audio import DIM, EffnetEmbedder, ModelError, check_model, from_blob, to_blob
 
-MODEL = REPO_ROOT / "models" / "discogs-effnet-bs64-1.pb"
+MODEL = Settings(_env_file=None).effnet_model
 needs_model = pytest.mark.skipif(not MODEL.exists(), reason="modèle EffNet absent")
 
 

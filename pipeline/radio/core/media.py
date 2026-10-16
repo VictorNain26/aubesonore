@@ -7,15 +7,10 @@ et retire de la durée du titre (`StationMedia::getCalculatedLength`, 0.23.8).
 """
 
 import json
-import logging
 import math
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-
-from radio.sources.deezer import DeezerClient, DeezerError, TrackPage
-
-logger = logging.getLogger(__name__)
 
 # Seuils de l'AutoCue de Liquidsoap 2.4.5 (`settings.autocue.internal.cue_in_threshold` et
 # `cue_out_threshold`), relatifs à la sonie intégrée du titre, en dB.
@@ -162,19 +157,6 @@ class Tags:
     # Écrit en trame TSRC : AzuraCast la lit (getID3) dans le champ `isrc` du média, que le
     # site lit dans le titre en cours (docs/vision.md racine, §4.4).
     isrc: str | None = None
-
-
-def tags_for(deezer: DeezerClient, tid: int, artist: str, title: str, page: TrackPage) -> Tags:
-    """Balises d'antenne : l'album, sa pochette et l'ISRC viennent de `GET /track` par l'id exact
-    du titre. Une pochette refusée par Deezer laisse le fichier sans pochette."""
-    album = page.album
-    cover = None
-    if album is not None and album.cover_url:
-        try:
-            cover = deezer.download(album.cover_url)
-        except DeezerError as e:
-            logger.warning("pochette de %d refusée par Deezer : %s", tid, e)
-    return Tags(artist, title, tid, album.title if album else "", cover, page.isrc)
 
 
 def prepare(src: Path, dest: Path, codec: str, tags: Tags, rsgain: Path) -> None:

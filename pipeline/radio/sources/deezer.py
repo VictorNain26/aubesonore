@@ -3,6 +3,7 @@
 Quota documenté : 50 requêtes / 5 s par IP ; on vise 40 / 5 s.
 """
 
+import logging
 import re
 from dataclasses import dataclass, field
 from typing import Any
@@ -12,12 +13,15 @@ import stamina
 from pyrate_limiter import Duration, Limiter, Rate
 
 import radio.core.http  # noqa: F401  (enregistre le hook de relance)
+from radio.core.media import Tags
 
 API = "https://api.deezer.com"
 _TRANSIENT_CODES = frozenset({4, 700})
 _NO_DATA = 800
 # ISO 3901 : pays (2 lettres), déclarant (3), année (2), numéro (5).
 _ISRC = re.compile(r"[A-Z]{2}[A-Z0-9]{3}[0-9]{7}")
+
+logger = logging.getLogger(__name__)
 
 
 class DeezerError(Exception):
@@ -181,3 +185,16 @@ class DeezerClient:
         if not isinstance(body, dict):
             raise DeezerUnavailable("invalid JSON")
         return body
+
+
+def tags_for(deezer: DeezerClient, tid: int, artist: str, title: str, page: TrackPage) -> Tags:
+    """Balises d'antenne : l'album, sa pochette et l'ISRC viennent de `GET /track` par l'id exact
+    du titre. Une pochette refusée par Deezer laisse le fichier sans pochette."""
+    album = page.album
+    cover = None
+    if album is not None and album.cover_url:
+        try:
+            cover = deezer.download(album.cover_url)
+        except DeezerError as e:
+            logger.warning("pochette de %d refusée par Deezer : %s", tid, e)
+    return Tags(artist, title, tid, album.title if album else "", cover, page.isrc)

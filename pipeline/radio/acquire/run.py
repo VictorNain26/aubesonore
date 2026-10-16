@@ -21,8 +21,8 @@ from typing import NamedTuple
 from radio.acquire.audio import check, fingerprint, similarity
 from radio.acquire.sockseek import Runner, Wanted, download, run_command
 from radio.core.config import AcquisitionConfig
-from radio.core.media import Tags, ToolError, prepare, probe, tags_for
-from radio.sources.deezer import DeezerClient, DeezerError
+from radio.core.media import Tags, ToolError, prepare, probe
+from radio.sources.deezer import DeezerClient, DeezerError, tags_for
 
 logger = logging.getLogger(__name__)
 
