@@ -1,5 +1,5 @@
 ---
-description: Les deux niveaux de test de musilogy et l'origine des témoins — chargé en ouvrant un fichier de musilogy/tests/
+description: Les niveaux de test de musilogy et l'origine des témoins — chargé en ouvrant un fichier de musilogy/tests/
 paths:
   - "musilogy/tests/**/*.py"
 ---
@@ -16,17 +16,11 @@ si un témoin manque, on le tire du dump, on n'invente pas la ligne.
 
 Les fixtures versionnées ne s'éditent pas à la main — elles se régénèrent.
 
-## Deux niveaux, deux rôles
+## Les niveaux de test
 
-```bash
-uv run pytest            # suite rapide sur les témoins (défaut, -m 'not slow')
-uv run pytest -m slow    # ligne de base sur le dump réel, exige data/work/
-```
-
-La suite rapide tourne à chaque changement et garde la CI verte. La ligne de
-base rejoue le pipeline complet : elle ne tourne qu'à la demande, prend environ
-5 minutes une fois les extractions de `data/work/` produites (une dizaine de
-minutes de plus pour les produire).
+Les niveaux de test et ce que chacun exige : `README.md` (« Installation,
+tests, exécution »). La suite rapide tourne à chaque changement et garde la CI
+verte ; la ligne de base ne tourne qu'à la demande.
 
 `tests/` est un paquet : un module de test s'importe par `tests.conftest` ou
 `tests.test_x`, et la surcharge mypy `tests.*` de `pyproject.toml` couvre tout
