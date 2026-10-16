@@ -1,5 +1,5 @@
 ---
-description: Les deux niveaux de test de musilogy et l'origine des témoins — chargé en ouvrant un fichier de musilogy/tests/
+description: Les niveaux de test de musilogy et l'origine des témoins — chargé en ouvrant un fichier de musilogy/tests/
 paths:
   - "musilogy/tests/**/*.py"
 ---
