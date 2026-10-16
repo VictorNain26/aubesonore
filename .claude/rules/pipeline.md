@@ -1,4 +1,12 @@
-# CLAUDE.md — pipeline AubeSonore
+---
+description: Pipeline de la radio — chargé en ouvrant un fichier de pipeline/
+paths:
+  - "pipeline/**"
+---
+
+# pipeline
+
+Les chemins ci-dessous sont relatifs à `pipeline/`.
 
 ## Ce que fait ce dépôt
 
@@ -20,25 +28,6 @@ sqlite3 data/radio.db .schema            # le schéma en vigueur, que les migrat
 
 `radio/cli.py` lit la configuration, appelle le module et met en forme le rapport ; le travail
 est dans le module.
-
-| Commande | Module, sous `radio/` |
-|---|---|
-| `library-sync` | `library/sync.py` (lecture Plex), `library/match.py` (rapprochement Deezer), `library/artists.py` (inscription) |
-| `discover` | `discover/run.py` (voisins des artistes de la bibliothèque) |
-| `nouveautes` | `discover/fresh.py` (Hype Machine, éditeurs Deezer) |
-| `favoris` | `discover/favorites.py` |
-| `negatives-sync` | `discover/negatives.py` (`config/negatives.toml`) |
-| `signals` | `signals/measure.py` (empreinte EffNet des extraits Deezer, `signals/audio.py`) |
-| `train` | `model/model.py`, `model/dataset.py` |
-| `votes-select` | `votes/select.py` |
-| `acquire` | `acquire/run.py`, `acquire/sockseek.py`, `acquire/audio.py` (contrôle, conversion, points de coupe) |
-| `antenne` | `antenna/sync.py` |
-| `mesures` | `signals/features.py` (mesures MTG des fichiers de l'antenne) |
-| `grille` | `antenna/grille.py` |
-| `backup` | `core/backup.py` |
-| `report`, `check` | `cli.py`, `core/report.py`, `votes/status.py` |
-| `votes-serve` | `votes/app.py` |
-| `votes-remind` | `cli.py`, `notify/whatsapp.py` |
 
 Deux dossiers de modèles : `models/` à la racine porte les poids MTG téléchargés (EffNet et
 mesures), `data/models/` les modèles entraînés par `train`. `core/http.py` n'est pas un client :

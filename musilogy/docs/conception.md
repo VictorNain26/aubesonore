@@ -259,4 +259,4 @@ dans `search`, une projection étroite créée au chargement (README,
   la commande écrit l'empreinte de la partie dans `reference/` : versionner ce
   fichier et ajouter sa date à `REFERENCE_OFFICIAL` épingle la partie, et
   `run` les lit toutes.
-- La construction reste plafonnée comme avant (`musilogy/CLAUDE.md`).
+- La construction reste plafonnée comme avant (`.claude/rules/musilogy.md`).

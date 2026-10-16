@@ -120,7 +120,7 @@ musilogy() {
   cd "$ROOT/musilogy"
   [ -e data ] || ln -s "$HOME/musilogy-data" data
   uv sync --locked -q
-  # The scope and its ceiling are production's load (musilogy/CLAUDE.md).
+  # The scope and its ceiling are production's load (.claude/rules/musilogy.md).
   PGPASSWORD="$password" PGHOST=localhost PGPORT="$DB_PORT" PGUSER=aubesonore \
     PGDATABASE=aubesonore PGSSLMODE=verify-full PGSSLROOTCERT="$SITE/certs/ca.crt" \
     systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=0 \

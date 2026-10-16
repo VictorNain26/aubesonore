@@ -1,7 +1,7 @@
 ---
-description: Conventions des règles SQL de musilogy — chargé en ouvrant un fichier de src/musilogy/sql/
+description: Conventions des règles SQL de musilogy — chargé en ouvrant un fichier de musilogy/src/musilogy/sql/
 paths:
-  - "src/musilogy/sql/**/*.sql"
+  - "musilogy/src/musilogy/sql/**/*.sql"
 ---
 
 # Les règles SQL

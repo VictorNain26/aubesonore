@@ -1,4 +1,12 @@
-# CLAUDE.md — azuracast
+---
+description: Runtime AzuraCast — chargé en ouvrant un fichier de azuracast/
+paths:
+  - "azuracast/**"
+---
+
+# azuracast
+
+Les chemins ci-dessous sont relatifs à `azuracast/`.
 
 ## Ce que ce dépôt versionne — et ce qu'il ne versionne pas
 

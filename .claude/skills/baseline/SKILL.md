@@ -1,9 +1,13 @@
 ---
 name: baseline
+paths:
+  - "musilogy/**"
 description: À charger dès que `uv run pytest -m slow` échoue ou qu'un chiffre de tests/test_baseline.py doit bouger. Rejouer la ligne de base sur le dump réel et instruire un écart avant de l'entériner. Prend environ 5 minutes et exige les extractions de data/work/.
 ---
 
 # Ligne de base
+
+Toutes les commandes se lancent depuis `musilogy/`.
 
 Rejoue `tests/test_baseline.py` sur le dump réel et, s'il y a un écart, dit
 d'où il vient avant de toucher au chiffre attendu.

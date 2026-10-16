@@ -108,7 +108,7 @@ jamais joués répondent qu'elles ne sont pas disponibles.
 cd ~/aubesonore
 ln -s ~/musilogy-data musilogy/data   # perdu avec le NVMe : `musilogy run` sur un dump récent le refait (une journée)
 cd musilogy && uv sync
-# puis `uv run musilogy load` avec l'environnement libpq de musilogy/CLAUDE.md (« Charger la base du site »)
+# puis `uv run musilogy load` avec l'environnement libpq de .claude/rules/musilogy.md (« Charger la base du site »)
 ```
 
 ## Vérifier que tout est remonté
