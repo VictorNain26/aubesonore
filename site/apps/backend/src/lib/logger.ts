@@ -2,7 +2,7 @@ import { env } from '../config/env';
 
 /**
  * Minimal structured logger. One JSON object per line in production
- * (parseable by any log shipper; the journal keeps them, site/CLAUDE.md), human-readable lines
+ * (parseable by any log shipper; the journal keeps them, .claude/rules/site.md), human-readable lines
  * in development.
  *
  * Keep it dependency-free on purpose: log shape stability matters more

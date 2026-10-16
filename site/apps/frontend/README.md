@@ -12,7 +12,7 @@ Application React/Vite de la webradio **AubeSonore** : écoute du flux AzuraCast
 
 ## Design system
 
-Un seul style, sans thème sombre : papier clair, encre, une lumière abricot. Tokens Tailwind v4 dans `src/design/tokens.css`, seule source des couleurs, tailles et polices (Bricolage Grotesque via Fontsource, auto-hébergée). Contraste AA vérifié en CI (`scripts/check-contrast.mjs`). Conventions dans [`CLAUDE.md`](CLAUDE.md).
+Un seul style, sans thème sombre : papier clair, encre, une lumière abricot. Tokens Tailwind v4 dans `src/design/tokens.css`, seule source des couleurs, tailles et polices (Bricolage Grotesque via Fontsource, auto-hébergée). Contraste AA vérifié en CI (`scripts/check-contrast.mjs`). Conventions dans [`.claude/rules/site-frontend.md`](../../../.claude/rules/site-frontend.md).
 
 ## Installation
 
@@ -40,7 +40,7 @@ pnpm check:contrast   # contraste des tokens (wired en CI)
 
 ## Déploiement
 
-Auto-hébergé : le `Dockerfile` construit la SPA et la sert via nginx, dans le `compose.yaml` de la racine. Merger sur `master` suffit — un timer systemd sur le serveur déploie dans les deux minutes (voir la section _Deployment_ de `site/CLAUDE.md`).
+Auto-hébergé : le `Dockerfile` construit la SPA et la sert via nginx, dans le `compose.yaml` de la racine. Merger sur `master` suffit — un timer systemd sur le serveur déploie dans les deux minutes (voir la section _Deployment_ de `.claude/rules/site.md`).
 
 ## Licence
 

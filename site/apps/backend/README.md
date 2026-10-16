@@ -1,6 +1,6 @@
 # Backend AubeSonore
 
-API de la webradio, construite avec [Elysia](https://elysiajs.com/) sur [Bun](https://bun.sh/) : le direct et l'historique d'AzuraCast, les comptes ([Better Auth](https://www.better-auth.com/) : e-mail vérifié, Google), les titres gardés et leurs liens d'écoute (iTunes, Deezer, YouTube), les pages artistes (identité par ISRC et MusicBrainz, photo Wikimedia Commons, ouverture Wikipédia) et Musilogy, lue dans le schéma `musilogy` de la base. Les règles et leurs raisons sont dans [`site/CLAUDE.md`](../../CLAUDE.md) ; l'installation et la pile locale dans le [README du site](../../README.md).
+API de la webradio, construite avec [Elysia](https://elysiajs.com/) sur [Bun](https://bun.sh/) : le direct et l'historique d'AzuraCast, les comptes ([Better Auth](https://www.better-auth.com/) : e-mail vérifié, Google), les titres gardés et leurs liens d'écoute (iTunes, Deezer, YouTube), les pages artistes (identité par ISRC et MusicBrainz, photo Wikimedia Commons, ouverture Wikipédia) et Musilogy, lue dans le schéma `musilogy` de la base. Les règles et leurs raisons sont dans [`.claude/rules/site.md`](../../../.claude/rules/site.md) ; l'installation et la pile locale dans le [README du site](../../README.md).
 
 ## Variables
 
@@ -26,7 +26,7 @@ Santé : `/health`.
 
 ## Base de données
 
-Le schéma est `src/db/schema.ts`. Un changement de schéma part avec une migration écrite à la main, idempotente, dans `drizzle/`, que le backend applique au démarrage ; `db:push` ne sert qu'à une base de développement ou de test (`site/CLAUDE.md`, « Working with Drizzle »).
+Le schéma est `src/db/schema.ts`. Un changement de schéma part avec une migration écrite à la main, idempotente, dans `drizzle/`, que le backend applique au démarrage ; `db:push` ne sert qu'à une base de développement ou de test (`.claude/rules/site.md`, « Working with Drizzle »).
 
 ## Licence
 

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(uv run pytest*)",
+      "Bash(uv run ruff *)",
+      "Bash(uv run mypy*)",
+      "Bash(uv run musilogy *)",
+      "Bash(uv sync*)",
+      "Bash(uv lock*)"
+    ],
+    "deny": [
+      "Read(azuracast/azuracast.env)",
+      "Read(azuracast/gatus.env)",
+      "Edit(/musilogy/tests/fixtures/**)"
+    ],
+    "ask": [
+      "Bash(uv run musilogy run*)",
+      "Edit(~/aubesonore/**)",
+      "Bash(*docker compose down*)",
+      "Bash(*docker compose stop*)",
+      "Bash(*systemctl --user stop*)",
+      "Bash(*systemctl --user disable*)",
+      "Bash(*uv publish*)"
+    ]
+  },
+  "sandbox": {
+    "credentials": {
+      "files": [
+        { "path": "azuracast/azuracast.env", "mode": "deny" },
+        { "path": "azuracast/gatus.env", "mode": "deny" }
+      ]
+    }
+  }
+}

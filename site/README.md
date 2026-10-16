@@ -112,7 +112,7 @@ Toute la stack est auto-hébergée sur le même serveur et exposée via Cloudfla
 - **Rendu serveur** : `renderer`, qui dessine les pages artistes pour le backend.
 - **Base de données** : PostgreSQL.
 
-Le déploiement est automatique et _pull-based_ : merger sur `master` suffit. Sur le serveur, le timer systemd utilisateur `aubesonore-deploy.timer` lance toutes les 2 minutes [`scripts/deploy.sh`](scripts/deploy.sh), qui compare le checkout à `origin/master` (`git ls-remote`) et, quand `master` a bougé, sur un checkout propre et hors de la passe hebdomadaire de la radio : aligne `pipeline/.venv` sur `uv.lock`, avance le checkout (`git merge --ff-only`), reconstruit les conteneurs seulement si `site/` a changé, attend leurs healthchecks (300 s), redémarre la page de vote quand `pipeline/` a changé, puis nettoie les vieilles images. Un échec revient au commit précédent (`site/CLAUDE.md`, « Deployment »).
+Le déploiement est automatique et _pull-based_ : merger sur `master` suffit. Sur le serveur, le timer systemd utilisateur `aubesonore-deploy.timer` lance toutes les 2 minutes [`scripts/deploy.sh`](scripts/deploy.sh), qui compare le checkout à `origin/master` (`git ls-remote`) et, quand `master` a bougé, sur un checkout propre et hors de la passe hebdomadaire de la radio : aligne `pipeline/.venv` sur `uv.lock`, avance le checkout (`git merge --ff-only`), reconstruit les conteneurs seulement si `site/` a changé, attend leurs healthchecks (300 s), redémarre la page de vote quand `pipeline/` a changé, puis nettoie les vieilles images. Un échec revient au commit précédent (voir `scripts/deploy.sh`).
 
 Aucun runner self-hosted ni webhook entrant : le dépôt est public, et le polling ne demande ni credential ni port ouvert. Le backend applique au démarrage les nouvelles migrations `apps/backend/drizzle/*.sql` (`src/db/migrate.ts`, SQL idempotent) : un changement de `site/apps/backend/src/db/schema.ts` livré avec sa migration (dans le même commit de `master`) se déploie seul ; que la migration corresponde au schéma relève de la revue de PR. Sans migration, il bloque le déploiement : l'appliquer à la main, l'acquitter avec `git -C ~/aubesonore config aubesonore.appliedSchema <blob>` (le script affiche la commande exacte), puis relancer `systemctl --user start aubesonore-deploy`.
 
@@ -133,7 +133,7 @@ journalctl --user -u aubesonore-deploy # logs
 
 Les variables `VITE_*` sont inlinées **au build** (ce ne sont pas des secrets) : changer l'URL de l'API impose un `--build`, pas un simple restart.
 
-`master` est protégée : une PR ne merge que si les 5 checks CI requis passent (Quality, Backend tests et Build all pour le site, plus les checks de `pipeline/` et `musilogy/`, lancés sur toute PR). Voir [`CLAUDE.md`](CLAUDE.md) pour les conventions et le workflow.
+`master` est protégée : une PR ne merge que si les 5 checks CI requis passent (Quality, Backend tests et Build all pour le site, plus les checks de `pipeline/` et `musilogy/`, lancés sur toute PR). Voir [`.claude/rules/site.md`](../.claude/rules/site.md) pour les conventions et le workflow.
 
 ## Licence
 

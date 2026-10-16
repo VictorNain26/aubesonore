@@ -1,4 +1,12 @@
-# CLAUDE.md — azuracast
+---
+description: Runtime AzuraCast — chargé en ouvrant un fichier de azuracast/
+paths:
+  - "azuracast/**"
+---
+
+# azuracast
+
+Les chemins ci-dessous sont relatifs à `azuracast/`.
 
 ## Ce que ce dépôt versionne — et ce qu'il ne versionne pas
 
@@ -6,10 +14,10 @@ Ce dossier est d'abord un **runtime**, pas un projet. Le dépôt ne capture que 
 partie reproductible :
 
 - **versionné** — `docker-compose.yml` (son en-tête liste ce qui diffère de l'exemple amont),
-  `.env.example`, `azuracast.sample.env` (le modèle d'`azuracast.env`), ce guide, `RUNBOOK.md` et
+  `.env.example`, `azuracast.sample.env` (le modèle d'`azuracast.env`), `RUNBOOK.md` et
   `scripts/`.
 - **ignoré** — `stations/` (le catalogue et la config réécrite par l'UI), `.env`,
-  `azuracast.env` (mot de passe MariaDB), les journaux.
+  `azuracast.env` (mot de passe MariaDB), `gatus.env`, les journaux.
 
 Corollaire : `git status` propre **ne veut pas dire** que la station est
 sauvegardée. Les médias et les secrets sont dans le dépôt restic, la base dans la

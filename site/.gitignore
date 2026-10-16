@@ -28,13 +28,6 @@ build/
 *.swo
 *~
 
-# Claude Code — keep settings.json versioned (team-wide), exclude personal overrides
-.claude/settings.local.json
-.claude/.session*
-.claude/projects/
-.claude/worktrees/
-apps/*/.claude/
-
 # OS
 .DS_Store
 Thumbs.db
