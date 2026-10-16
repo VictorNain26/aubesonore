@@ -6,10 +6,10 @@ import numpy as np
 import pytest
 
 import radio.acquire.run as run_mod
-from radio.acquire.audio import Probe, Tags
 from radio.acquire.run import acquire_pass, pending
 from radio.acquire.sockseek import SockseekError
 from radio.core.config import AcquisitionConfig
+from radio.core.media import Probe, Tags
 from radio.sources.deezer import DeezerAlbum, DeezerError, DeezerTrack, DeezerUnavailable, TrackPage
 from tests_radio.model_factory import NOW, add_vote, make_model_db, serve_scores
 

@@ -111,7 +111,7 @@ def _editorial(settings: Settings) -> Editorial:
 
 
 def _db(settings: Settings) -> closing[sqlite3.Connection]:
-    return closing(connect(settings.data_dir / "radio.db"))
+    return closing(connect(settings.db_path))
 
 
 def _lastfm(settings: Settings) -> LastfmClient:

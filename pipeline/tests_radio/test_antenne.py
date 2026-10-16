@@ -8,9 +8,9 @@ import pytest
 import responses
 
 import radio.antenna.sync as sync_mod
-from radio.acquire.audio import Probe, Tags, ToolError
 from radio.antenna.sync import antenne_pass
 from radio.core.config import AntenneConfig, Creneau, GrilleConfig
+from radio.core.media import Probe, Tags, ToolError
 from radio.sources.azuracast import AzuracastClient, AzuracastError, Media
 from radio.sources.deezer import DeezerAlbum, DeezerError, DeezerTrack, TrackPage
 from tests_radio.model_factory import NOW, add_vote, make_model_db, serve_scores

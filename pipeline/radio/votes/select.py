@@ -23,7 +23,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from radio.model.model import FAMILY, serving_id
+from radio.core.family import FAMILY
+from radio.model.model import serving_id
 
 
 class NoServingModelError(Exception):

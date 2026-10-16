@@ -69,8 +69,8 @@ def backup_command() -> None:
         _fail("RADIO_BACKUP_DIR doit être défini dans .env", 2)
     try:
         target = backup(
-            settings.data_dir / "radio.db",
-            settings.data_dir / "models",
+            settings.db_path,
+            settings.trained_models_dir,
             settings.backup_dir,
             datetime.now(UTC).date(),
             _editorial(settings).backup.keep_days,

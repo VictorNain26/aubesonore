@@ -25,6 +25,7 @@ from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from radio.core.config import ModelConfig
+from radio.core.family import FAMILY
 from radio.model.dataset import Dataset, build_labels, weights
 from radio.signals.audio import MODEL_TAG
 from radio.signals.table import SignalTable, load_signals
@@ -92,9 +93,6 @@ def serving(conn: sqlite3.Connection, models_dir: Path) -> tuple[int, Pipeline] 
     if row is None:
         return None
     return int(row["model_id"]), joblib.load(models_dir / row["file"])
-
-
-FAMILY = {"voisin": "decouvertes", "hypem": "nouveautes", "deezer_editorial": "nouveautes"}
 
 
 @dataclass(frozen=True)
