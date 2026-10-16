@@ -43,12 +43,13 @@ Ce qui vaut pour tout le dépôt AubeSonore est dans le `CLAUDE.md` racine.
   assumée et testée (`test_search.py`) : `name_key`, calculée par DuckDB pour
   les tables et refaite en Postgres pour comparer la recherche de l'auditeur.
 - Les chiffres d'une livraison sont dans son `manifest.json`, la référence est
-  la livraison précédente : `musilogy run` compare les comptes table par table
-  avant de publier et refuse au-delà de `MAX_DRIFT` (`publish.py`). Un écart
-  refusé se comprend avant d'être accepté : on identifie la règle qui l'a
-  produit, on dit dans la PR pourquoi le nouveau compte est le bon, puis on
-  relance avec `--accept-drift TABLE`. Accepter sans cette étape retire le
-  contrôle au lieu de le passer.
+  la livraison précédente : `musilogy run` compare les comptes des tables et
+  les compteurs du manifeste avant de publier et refuse au-delà de `MAX_DRIFT`
+  (`publish.py`). Un écart refusé se comprend avant d'être accepté : on
+  identifie la règle qui l'a produit, on dit dans la PR pourquoi le nouveau
+  compte est le bon, puis on relance avec `--accept-drift NOM` (une table, ou
+  `GROUPE.COMPTEUR`), que le manifeste de la livraison garde. Accepter sans
+  cette étape retire le contrôle au lieu de le passer.
 
 ## Mesurer plutôt que raisonner
 
