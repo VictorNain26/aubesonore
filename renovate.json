@@ -27,19 +27,25 @@
       "enabled": false
     },
     {
+      "description": "pipeline/ : Python reste en 3.12 tant qu'essentia-tensorflow n'a de roue que cp312 (règle ci-dessus)",
+      "matchFileNames": ["pipeline/**"],
+      "matchPackageNames": ["python"],
+      "enabled": false
+    },
+    {
       "description": "Auto-merge pinning and digest re-pins (no functional change)",
       "matchUpdateTypes": ["pin", "pinDigest", "digest"],
       "automerge": true
     },
     {
-      "description": "Auto-merge devDependencies (minor + patch) once CI is green",
-      "matchDepTypes": ["devDependencies"],
+      "description": "Auto-merge dev dependencies (minor + patch) once CI is green: npm devDependencies, uv dependency groups",
+      "matchDepTypes": ["devDependencies", "dependency-groups"],
       "matchUpdateTypes": ["minor", "patch"],
       "automerge": true
     },
     {
-      "description": "Auto-merge patch bumps of stable (>=1.0.0) runtime deps",
-      "matchDepTypes": ["dependencies"],
+      "description": "Auto-merge patch bumps of stable (>=1.0.0) runtime deps: npm dependencies, pyproject project.dependencies",
+      "matchDepTypes": ["dependencies", "project.dependencies"],
       "matchUpdateTypes": ["patch"],
       "matchCurrentVersion": "!/^0/",
       "automerge": true
@@ -60,6 +66,28 @@
       "matchManagers": ["dockerfile", "docker-compose"],
       "matchUpdateTypes": ["major", "minor", "patch"],
       "automerge": false
+    },
+    {
+      "description": "Postgres: one image for production (site/compose.yaml) and the CI services, so one PR moves them together, reviewed by hand",
+      "matchPackageNames": ["postgres"],
+      "groupName": "postgres",
+      "automerge": false
+    },
+    {
+      "description": "Tools pipeline/scripts/dev-setup.sh downloads: their pinned SHA-256 is replaced by hand in the same PR",
+      "matchFileNames": ["pipeline/scripts/dev-setup.sh"],
+      "automerge": false
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "complexlogic/rsgain, downloaded by pipeline/scripts/dev-setup.sh",
+      "managerFilePatterns": ["/^pipeline/scripts/dev-setup\\.sh$/"],
+      "matchStrings": ["RSGAIN_VERSION=(?<currentValue>\\S+)"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "complexlogic/rsgain",
+      "extractVersionTemplate": "^v(?<version>.+)$"
     }
   ]
 }

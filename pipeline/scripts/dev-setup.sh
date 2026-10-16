@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Les outils du pipeline hors Python, sans sudo, pour un poste comme pour la CI : rsgain 3.8 (la
+# Les outils du pipeline hors Python, sans sudo, pour un poste comme pour la CI : rsgain (la
 # version de production, et non la 3.4 d'apt), le modèle EffNet officiel, et fpcalc s'il manque.
 # Chaque téléchargement est vérifié par sa somme épinglée ; un outil déjà en place n'est pas
 # retéléchargé. ffmpeg et ffprobe viennent du gestionnaire de paquets (apt install ffmpeg).
@@ -9,11 +9,14 @@ set -euo pipefail
 
 PIPELINE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
-RSGAIN_URL=https://github.com/complexlogic/rsgain/releases/download/v3.8/rsgain-3.8-Linux.tar.xz
+# Renovate signale une nouvelle version (renovate.json) ; la somme se remplace à la main.
+RSGAIN_VERSION=3.8
+RSGAIN_URL="https://github.com/complexlogic/rsgain/releases/download/v$RSGAIN_VERSION/rsgain-$RSGAIN_VERSION-Linux.tar.xz"
 RSGAIN_SHA256=4939de3b2022a50edc0751343b10a791ea8c1c9ca6505012f21413bf8de365a0
 # La release 1.5.1 de chromaprint ne publie pas de somme : celle-ci est celle de l'archive
 # téléchargée le 2026-10-16. Même version que le fpcalc d'Ubuntu en production.
-FPCALC_URL=https://github.com/acoustid/chromaprint/releases/download/v1.5.1/chromaprint-fpcalc-1.5.1-linux-x86_64.tar.gz
+FPCALC_VERSION=1.5.1
+FPCALC_URL="https://github.com/acoustid/chromaprint/releases/download/v$FPCALC_VERSION/chromaprint-fpcalc-$FPCALC_VERSION-linux-x86_64.tar.gz"
 FPCALC_SHA256=4d7433a7f778e5946d7225230681cbcd634e153316ecac87c538c33ac32387a5
 # L'URL et la somme du modèle n'existent qu'à un endroit : le code qui le vérifie.
 AUDIO_PY="$PIPELINE_DIR/radio/signals/audio.py"
@@ -36,13 +39,13 @@ fetch() {
 
 mkdir -p "$BIN_DIR"
 
-if "$BIN_DIR/rsgain" --version 2>/dev/null | grep -q ' 3\.8 '; then
-  echo "rsgain 3.8 : déjà dans $BIN_DIR"
+if "$BIN_DIR/rsgain" --version 2>/dev/null | grep -qF " $RSGAIN_VERSION "; then
+  echo "rsgain $RSGAIN_VERSION : déjà dans $BIN_DIR"
 else
   fetch "$RSGAIN_URL" "$RSGAIN_SHA256" "$work/rsgain.tar.xz"
   tar -xJf "$work/rsgain.tar.xz" -C "$work"
-  install -m 755 "$work/rsgain-3.8-Linux/rsgain" "$BIN_DIR/rsgain"
-  echo "rsgain 3.8 : installé dans $BIN_DIR"
+  install -m 755 "$work/rsgain-$RSGAIN_VERSION-Linux/rsgain" "$BIN_DIR/rsgain"
+  echo "rsgain $RSGAIN_VERSION : installé dans $BIN_DIR"
 fi
 
 if command -v fpcalc >/dev/null; then
@@ -51,7 +54,7 @@ else
   fetch "$FPCALC_URL" "$FPCALC_SHA256" "$work/fpcalc.tar.gz"
   tar -xzf "$work/fpcalc.tar.gz" -C "$work"
   install -m 755 "$work"/chromaprint-fpcalc-*/fpcalc "$BIN_DIR/fpcalc"
-  echo "fpcalc 1.5.1 : installé dans $BIN_DIR"
+  echo "fpcalc $FPCALC_VERSION : installé dans $BIN_DIR"
 fi
 
 if [[ -f "$MODEL" ]] && echo "$MODEL_SHA256  $MODEL" | sha256sum -c --quiet 2>/dev/null; then
