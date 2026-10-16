@@ -421,6 +421,8 @@ def _stop_on_drift(con: duckdb.DuckDBPyConnection, out: Path, accepted: Sequence
     for d in moved:
         if d.table in accepted:
             print(f"drift accepted, {d}")
+    for table in sorted(set(accepted) - {d.table for d in moved}):
+        print(f"drift accepted on {table}, but {table} did not move")
     refused = [str(d) for d in moved if d.table not in accepted]
     if refused:
         raise SystemExit(

@@ -8,7 +8,8 @@
 -- of early activity. Live stays excluded on purpose: MusicBrainz dates a live
 -- release by its publication, not by the performance (titles such as "Live in
 -- Paris (1966)" published in 2024). DJ-mix, Compilation and Remix stay
--- excluded too. The measurements: README.md, 20_albums.
+-- excluded too. The measurements behind both choices are in this file's
+-- git history.
 CREATE OR REPLACE TABLE albums AS
 SELECT
   b.mbid AS artist_mbid,

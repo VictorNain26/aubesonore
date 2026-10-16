@@ -309,14 +309,28 @@ def drifts(
     return [d for d in found if abs(d.absolute) > limit * d.expected]
 
 
+# A MusicBrainz dump's name, its timestamp (REFERENCE_DUMP): what else sits
+# under data/out/ is no delivery of a dump.
+DUMP_NAME = "[0-9]" * 8 + "-" + "[0-9]" * 6
+
+
 def previous_manifest(out: Path) -> tuple[Path, dict[str, Any]] | None:
     """The manifest of the delivery `out` follows: the one at `out`, which
     publishing there overwrites, else that of the latest dump delivered beside
-    it (deliveries are named after their dump, a timestamp)."""
+    it (deliveries are named after their dump, a timestamp). A manifest
+    without readable counts stops the run: nothing says what it delivered."""
     path = out / "manifest.json"
     if not path.exists():
-        beside = sorted(out.parent.glob("*/manifest.json"))
+        beside = sorted(out.parent.glob(f"{DUMP_NAME}/manifest.json"))
         if not beside:
             return None
         path = beside[-1]
-    return path, json.loads(path.read_text(encoding="utf-8"))
+    try:
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+    except ValueError:
+        manifest = None
+    if not isinstance(manifest, dict) or not isinstance(manifest.get("counts"), dict):
+        raise SystemExit(
+            f"{path} carries no readable counts: nothing to compare, nothing published"
+        )
+    return path, manifest

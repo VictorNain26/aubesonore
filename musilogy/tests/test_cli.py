@@ -506,6 +506,13 @@ def test_an_accepted_drift_goes_through_and_is_said(con, tmp_path, capsys):
     assert "urls: expected" in capsys.readouterr().out
 
 
+def test_accepting_a_table_that_did_not_move_is_said(con, tmp_path, capsys):
+    # Case: the rule meant to move links never took effect, and the run
+    # publishes as if the move had been accepted.
+    cli._stop_on_drift(con, previous_delivery(tmp_path / DUMP, moved(con)), ["links"])
+    assert "links did not move" in capsys.readouterr().out
+
+
 def test_accepting_one_drift_does_not_accept_the_others(con, tmp_path):
     # Case: --accept-drift read as "accept every drift".
     out = previous_delivery(tmp_path / DUMP, moved(con, urls=-50, links=-50))

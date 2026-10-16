@@ -429,3 +429,29 @@ def test_a_new_dump_is_compared_with_the_latest_dump_delivered(tmp_path):
 
 def test_without_a_previous_delivery_there_is_nothing_to_compare(tmp_path):
     assert previous_manifest(tmp_path / "out" / DUMP) is None
+
+
+def test_a_folder_not_named_after_a_dump_is_no_previous_delivery(tmp_path):
+    # Case: a sample or scratch delivery under data/out/, whose name sorts after
+    # every timestamp, taken for the latest dump.
+    latest = delivery_manifest(tmp_path / "20260909-001002", {"artists": 2})
+    delivery_manifest(tmp_path / "sample", {"artists": 1})
+    assert previous_manifest(tmp_path / "20261007-001001") == (latest, {"counts": {"artists": 2}})
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        pytest.param('{"counts": {"artists"', id="truncated"),
+        pytest.param('{"dump": "20260909-001002"}', id="without-counts"),
+    ],
+)
+def test_a_previous_manifest_without_readable_counts_stops_with_its_path(tmp_path, content):
+    # Case: a manifest cut short by a killed run — written in place, not aside —
+    # failing every later run on a bare traceback instead of naming the file.
+    out = tmp_path / "20260909-001002"
+    out.mkdir()
+    (out / "manifest.json").write_text(content, encoding="utf-8")
+    with pytest.raises(SystemExit) as raised:
+        previous_manifest(out)
+    assert str(out / "manifest.json") in str(raised.value)
