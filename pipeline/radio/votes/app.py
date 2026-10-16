@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Annotated, Literal, Protocol
 
 import jwt
+import requests
 from fastapi import Depends, FastAPI, Form, Header, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from starlette.background import BackgroundTask
@@ -278,3 +279,12 @@ def create_app(
         )
 
     return app
+
+
+def page_ok(host: str, port: int) -> bool:
+    """Sonde le serveur local seulement : tunnel ou règle Access en panne non détectés."""
+    try:
+        r = requests.get(f"http://{host}:{port}/sante", timeout=5)
+    except requests.RequestException:
+        return False
+    return r.status_code == 200
