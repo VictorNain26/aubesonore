@@ -30,7 +30,7 @@ Paths below are relative to `site/apps/frontend/`.
 
 - Every interactive element: hover, focus-visible, active, disabled states; touch target ≥ 44px.
 - Decorative motion only under `prefers-reduced-motion: no-preference` (`motion-safe:` or the `reveal` utility), never a shift that opens gaps between rows. CSS only, no animation library.
-- Never ship UI blind: a UI PR is tried in Chrome at 1280 and 390 px wide before its merge (`.claude/rules/site.md`, Workflow rules).
+- Never ship UI blind: a UI PR is tried in Chrome at 1280 and 390 px wide before its merge (root `.claude/rules/site.md`, Workflow rules).
 - The home page is pre-rendered in French (`/`) and English (`/en/`) and hydrated: no browser API (`window`, `document`, `navigator`, `localStorage`, `Audio`) at module import or during render, only in effects and handlers. `src/entry-server.test.tsx` renders the app without a window and fails otherwise.
 - Locale comes from the URL (Paraglide `url` strategy); `useLocaleStore.setLocale` swaps the URL without reloading so the stream keeps playing. A language switch is a navigation (`useSwitchLocale`), so the page's data loads again.
 - Store-coupled components ship a presentational unit (props in) + a thin store container, so the unit is testable without stores.
