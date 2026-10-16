@@ -24,6 +24,8 @@ export interface CardRow extends Record<string, unknown> {
   genres: Array<{ name: string }> | null;
 }
 
+const REGION_NAMES = new Intl.DisplayNames(['en'], { type: 'region' });
+
 /**
  * A country the page can name. MusicBrainz also files dissolved countries,
  * which Intl names as today's (SU as Russia, YU as Serbia: their likely
@@ -31,8 +33,6 @@ export interface CardRow extends Record<string, unknown> {
  * which Intl cannot name; XK, Kosovo, it can. On the loaded dump this leaves
  * out 4 343 artists' codes of 1 411 607, and no current country (2026-10-05).
  */
-const REGION_NAMES = new Intl.DisplayNames(['en'], { type: 'region' });
-
 function regionOf(code: string | null): string | null {
   if (!code) return null;
   try {
@@ -85,13 +85,20 @@ export interface UrlRow extends Record<string, unknown> {
 
 // Listening platforms first, the official site last. Deezer is left out: the
 // artist's own Deezer id is already known, exactly.
+const LINK_ORDER: ArtistPlatform[] = [
+  'spotify',
+  'appleMusic',
+  'bandcamp',
+  'soundcloud',
+  'official',
+];
+
 const LINK_HOSTS: Array<[string, ArtistPlatform]> = [
   ['open.spotify.com', 'spotify'],
   ['music.apple.com', 'appleMusic'],
   ['bandcamp.com', 'bandcamp'],
   ['soundcloud.com', 'soundcloud'],
 ];
-const LINK_ORDER: ArtistPlatform[] = [...LINK_HOSTS.map(([, platform]) => platform), 'official'];
 
 function platformOf(url: URL, relationType: string | null): ArtistPlatform | null {
   if (relationType === 'official homepage') return 'official';
