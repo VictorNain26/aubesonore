@@ -488,8 +488,8 @@ def moved(con, **changes):
     a counter as GROUP.COUNTER."""
     manifest = {"counts": table_counts(con), **counters(con)}
     for name, change in changes.items():
-        group, _, counter = name.rpartition(".")
-        manifest[group or "counts"][counter] -= change
+        group, _, counter = name.partition(".")
+        manifest[group if counter else "counts"][counter or group] -= change
     return manifest
 
 
@@ -593,13 +593,26 @@ def test_a_counter_the_delivery_no_longer_has_is_said_gone(con, tmp_path, capsys
     assert "counter gone r2_anomalies.begin_retired, was 7" in capsys.readouterr().out
 
 
-def test_a_counter_gone_since_can_still_be_named(con, tmp_path, capsys):
-    # The previous delivery knows it: accepting it is no typo.
+def test_accepting_a_counter_gone_since_stops_the_run(con, tmp_path):
+    # Case: a stale name, renamed in the SQL since, accepted and doing nothing
+    # while the counter it became goes uncompared.
     previous = moved(con)
     previous["r2_anomalies"]["begin_retired"] = 7
     out = previous_delivery(tmp_path / DUMP, previous)
-    assert cli._stop_on_drift(con, out, ["r2_anomalies.begin_retired"]) == []
-    assert "r2_anomalies.begin_retired did not move" in capsys.readouterr().out
+    with pytest.raises(SystemExit) as raised:
+        cli._stop_on_drift(con, out, ["r2_anomalies.begin_retired"])
+    assert "r2_anomalies.begin_retired" in str(raised.value)
+
+
+def test_accepting_a_new_counter_says_it_is_new(con, tmp_path, capsys):
+    # Case: told it "did not move", when it was never compared at all.
+    previous = moved(con)
+    del previous["r2_anomalies"]["birth_future"]
+    out = previous_delivery(tmp_path / DUMP, previous)
+    assert cli._stop_on_drift(con, out, ["r2_anomalies.birth_future"]) == []
+    output = capsys.readouterr().out
+    assert "r2_anomalies.birth_future is new, nothing to accept" in output
+    assert "did not move" not in output
 
 
 def test_run_compares_with_the_previous_delivery_before_overwriting_it(

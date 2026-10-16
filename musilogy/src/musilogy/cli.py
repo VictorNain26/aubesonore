@@ -420,18 +420,18 @@ def _stop_on_drift(
     run, unless `accepted` names it: a rule meant to move one says so when it
     runs. Returns the drifts it let through, for the delivery to record.
 
-    A name `accepted` holds that neither this build nor the previous delivery
-    knows stops the run too: main() only checks its table or counter group,
-    since which counters exist is the SQL's to say, and a typo would otherwise
-    publish nothing it was meant to and wait, silent, for the next run."""
+    A name `accepted` holds that this build does not count stops the run too —
+    a typo, or a counter gone since, whose new name would otherwise go
+    uncompared: main() only checks its table or counter group, since which
+    counters exist is the SQL's to say."""
     got = delivered(con)
     previous = previous_manifest(out)
     path, expected = (previous[0], compared(previous[1])) if previous else (None, {})
-    unknown = sorted(set(accepted) - set(got) - set(expected))
+    unknown = sorted(set(accepted) - set(got))
     if unknown:
         raise SystemExit(
-            f"--accept-drift names nothing this build or the previous delivery counts, "
-            f"nothing published: {', '.join(unknown)}"
+            f"--accept-drift names nothing this build counts, nothing published: "
+            f"{', '.join(unknown)}"
         )
     if previous is None:
         print(f"no previous delivery beside {out}: publishing without comparison")
@@ -445,7 +445,10 @@ def _stop_on_drift(
     for d in let_through:
         print(f"drift accepted, {d}")
     for name in sorted(set(accepted) - {d.name for d in comparison.drifts}):
-        print(f"drift accepted on {name}, but {name} did not move")
+        if name in comparison.new:
+            print(f"drift accepted on {name}, but {name} is new, nothing to accept")
+        else:
+            print(f"drift accepted on {name}, but {name} did not move")
     refused = [str(d) for d in comparison.drifts if d.name not in accepted]
     if refused:
         raise SystemExit(
