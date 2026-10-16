@@ -22,7 +22,7 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Any
 
-from musilogy.paths import aside_of, written_aside
+from musilogy.paths import written_aside
 
 UA = "musilogy/0.1 ( victor.lenain26@gmail.com )"
 BASE = "https://data.metabrainz.org/pub/musicbrainz/data/json-dumps"
@@ -296,13 +296,10 @@ def _skip_written(aside: Path, batches: Iterator[list[str]]) -> tuple[int, Itera
     return kept_rows, itertools.chain([pending] if pending else [], batches)
 
 
-def _resume(dest: Path, batches: Iterable[list[str]]) -> tuple[Path, int, Iterator[list[str]]]:
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    aside = aside_of(dest)
+def _resume(aside: Path, batches: Iterable[list[str]]) -> tuple[int, Iterator[list[str]]]:
     if aside.exists():
-        n, rest = _skip_written(aside, iter(batches))
-        return aside, n, rest
-    return aside, 0, iter(batches)
+        return _skip_written(aside, iter(batches))
+    return 0, iter(batches)
 
 
 RELEASE_GROUPS_URL = "https://musicbrainz.org/ws/2/release-group"
@@ -388,13 +385,13 @@ def fetch_official(mbids: Iterable[str], dest: Path) -> int:
     the popularity snapshot: about 100 000 requests for the artists with 500
     listeners or more, more than a day, so a stopped run resumes where it
     was."""
-    aside, n, rest = _resume(dest, ([m] for m in mbids))
-    with aside.open("a", encoding="utf-8") as out:
-        for (mbid,) in rest:
-            out.write(json.dumps(official_release_groups(mbid)) + "\n")
-            out.flush()
-            n += 1
-    aside.replace(dest)
+    with written_aside(dest) as aside:
+        n, rest = _resume(aside, ([m] for m in mbids))
+        with aside.open("a", encoding="utf-8") as out:
+            for (mbid,) in rest:
+                out.write(json.dumps(official_release_groups(mbid)) + "\n")
+                out.flush()
+                n += 1
     return n
 
 
@@ -402,15 +399,15 @@ def fetch_popularity(batches: Iterable[list[str]], dest: Path) -> int:
     """Writes the answers as received, one row per line. Written aside and
     renamed at the end: an interrupted snapshot leaves no file that looks like
     a complete one, and the next run of the day resumes it."""
-    aside, n, rest = _resume(dest, batches)
     wait = 0.0
-    with aside.open("a", encoding="utf-8") as out:
-        for batch in rest:
-            time.sleep(wait)
-            rows, wait = popularity_batch(batch)
-            out.writelines(json.dumps(r) + "\n" for r in rows)
-            n += len(rows)
-    aside.replace(dest)
+    with written_aside(dest) as aside:
+        n, rest = _resume(aside, batches)
+        with aside.open("a", encoding="utf-8") as out:
+            for batch in rest:
+                time.sleep(wait)
+                rows, wait = popularity_batch(batch)
+                out.writelines(json.dumps(r) + "\n" for r in rows)
+                n += len(rows)
     return n
 
 

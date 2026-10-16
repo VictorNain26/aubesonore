@@ -57,6 +57,7 @@ from musilogy.paths import (
     QUERIES_DIR,
     RAW_DIR,
     SQL_DIR,
+    aside_of,
     discography_snapshot,
     discography_sums,
     discogs_dump,
@@ -183,10 +184,11 @@ def snapshot_popularity() -> None:
     )
 
 
-def _part_date(pattern: str) -> str:
+def _part_date(snapshot: Callable[[str], Path]) -> str:
     """The day of the part a stopped run left partial, which the next run
     resumes, else today's: a new part."""
-    partials = sorted(RAW_DIR.glob(pattern))
+    aside = aside_of(snapshot("*"))
+    partials = sorted(Path(aside.anchor).glob(aside.relative_to(aside.anchor).as_posix()))
     return partials[-1].parent.name if partials else _today()
 
 
@@ -215,7 +217,7 @@ def snapshot_official() -> None:
 
     _take_once(
         "MusicBrainz official status",
-        _part_date("musicbrainz/*/official-release-groups.jsonl.partial"),
+        _part_date(official_snapshot),
         official_snapshot,
         official_sums,
         fetch,
@@ -473,8 +475,7 @@ def _discogs_fixture(artists: Path, out: Path) -> None:
         ).fetchall()
         if i is not None
     }
-    with out.open("w", encoding="utf-8") as fh, verified_discogs().open(encoding="utf-8") as src:
-        fh.writelines(line for line in src if discogs_ids & set(json.loads(line)["artists"]))
+    _filter_jsonl(verified_discogs(), out, lambda r: bool(discogs_ids & set(r["artists"])))
 
 
 def fixtures_attribution() -> str:

@@ -8,7 +8,7 @@ from musilogy import REFERENCE_DUMP as DUMP
 from musilogy import REFERENCE_POPULARITY
 from musilogy.colisten import PARAMETERS as COLISTEN_PARAMETERS
 from musilogy.fetch import expected_sums, sha256_file
-from musilogy.paths import PACKAGE_DIR, REFERENCE_DIR, SQL_DIR, popularity_sums
+from musilogy.paths import PACKAGE_DIR, SQL_DIR, dump_sums, popularity_sums
 from musilogy.publish import SAME_SOUND_PARAMETERS, publish
 from tests.conftest import (
     build_synthetic,
@@ -17,7 +17,7 @@ from tests.conftest import (
     synthetic_release_group,
 )
 
-REF_SUMS = REFERENCE_DIR / f"{DUMP}.SHA256SUMS"
+REF_SUMS = dump_sums(DUMP)
 
 
 def test_publish_writes_every_table(con, tmp_path):

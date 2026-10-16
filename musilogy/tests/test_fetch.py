@@ -9,9 +9,9 @@ import pytest
 
 from musilogy import REFERENCE_DUMP, fetch
 from musilogy.fetch import ChecksumError, expected_sums, sha256_file, verify
-from musilogy.paths import REFERENCE_DIR
+from musilogy.paths import dump_sums
 
-REF = REFERENCE_DIR / f"{REFERENCE_DUMP}.SHA256SUMS"
+REF = dump_sums(REFERENCE_DUMP)
 
 
 def test_sha256_of_known_content(tmp_path):
