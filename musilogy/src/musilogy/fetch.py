@@ -22,6 +22,8 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import Any
 
+from musilogy.paths import written_aside
+
 UA = "musilogy/0.1 ( victor.lenain26@gmail.com )"
 BASE = "https://data.metabrainz.org/pub/musicbrainz/data/json-dumps"
 DOWNLOAD_TIMEOUT = 30.0  # seconds, per connection (connect + each read)
@@ -56,29 +58,42 @@ def verify(path: Path, expected: str) -> None:
         raise ChecksumError(f"{path.name}: expected {expected}, got {actual}")
 
 
+def _request(
+    url: str, data: bytes | None = None, headers: dict[str, str] | None = None
+) -> urllib.request.Request:
+    """Every request names musilogy and a contact, which MusicBrainz,
+    ListenBrainz and Wikidata ask of a client."""
+    return urllib.request.Request(url, data=data, headers={"User-Agent": UA, **(headers or {})})
+
+
 def download(url: str, dest: Path, timeout: float = DOWNLOAD_TIMEOUT) -> Path:
     """The file at `dest` once whole: a download cut short leaves only its
     `.partial`, which the next attempt starts over, never a truncated `dest`
     that the callers would take as already fetched."""
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    partial = dest.with_name(dest.name + ".partial")
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as r, partial.open("wb") as out:
+        with (
+            written_aside(dest) as aside,
+            urllib.request.urlopen(_request(url), timeout=timeout) as r,
+            aside.open("wb") as out,
+        ):
             while chunk := r.read(1 << 20):
                 out.write(chunk)
     except (urllib.error.HTTPError, urllib.error.URLError) as e:
         raise DownloadError(f"failed to download {url}: {e}") from e
-    partial.replace(dest)
+    return dest
+
+
+def _fetch_verified(url: str, dest: Path, sums_path: Path) -> Path:
+    """`dest`, downloaded from `url` unless already there, checked against
+    its pinned digest."""
+    if not dest.exists():
+        download(url, dest)
+    verify(dest, expected_sums(sums_path)[dest.name])
     return dest
 
 
 def fetch_dump(date: str, name: str, raw_dir: Path, sums_path: Path) -> Path:
-    dest = raw_dir / date / name
-    if not dest.exists():
-        download(f"{BASE}/{date}/{name}", dest)
-    verify(dest, expected_sums(sums_path)[name])
-    return dest
+    return _fetch_verified(f"{BASE}/{date}/{name}", raw_dir / date / name, sums_path)
 
 
 # data.discogs.com serves each monthly dump under data/<year>/ (read 2026-10-07;
@@ -87,10 +102,7 @@ DISCOGS_URL = "https://data.discogs.com/?download=data%2F{year}%2F{name}"
 
 
 def fetch_discogs(date: str, dest: Path, sums_path: Path) -> Path:
-    if not dest.exists():
-        download(DISCOGS_URL.format(year=date[:4], name=dest.name), dest)
-    verify(dest, expected_sums(sums_path)[dest.name])
-    return dest
+    return _fetch_verified(DISCOGS_URL.format(year=date[:4], name=dest.name), dest, sums_path)
 
 
 # The Spark dump sits in the full export's folder (read 2026-10-10): one plain
@@ -108,9 +120,10 @@ def spark_name(ref: str) -> str:
 
 def spark_digest(ref: str) -> str:
     """The digest ListenBrainz publishes for the archive."""
-    req = urllib.request.Request(SPARK_URL.format(ref=ref) + ".sha256", headers={"User-Agent": UA})
     try:
-        with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as r:
+        with urllib.request.urlopen(
+            _request(SPARK_URL.format(ref=ref) + ".sha256"), timeout=DOWNLOAD_TIMEOUT
+        ) as r:
             body = r.read().decode(errors="replace")
     except (urllib.error.HTTPError, urllib.error.URLError) as e:
         raise DownloadError(f"failed to download the Spark dump's digest: {e}") from e
@@ -144,9 +157,10 @@ def spark_listens(ref: str, expected: str, tmp: Path) -> Generator[Path]:
     derives aside until the iteration ends without a ChecksumError."""
     tmp.mkdir(parents=True, exist_ok=True)
     part = tmp / "spark-member.parquet"
-    req = urllib.request.Request(SPARK_URL.format(ref=ref), headers={"User-Agent": UA})
     try:
-        with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as r:
+        with urllib.request.urlopen(
+            _request(SPARK_URL.format(ref=ref)), timeout=DOWNLOAD_TIMEOUT
+        ) as r:
             stream = _Digested(r)
             with tarfile.open(fileobj=stream, mode="r|") as tar:
                 for member in tar:
@@ -185,12 +199,7 @@ MAX_BACKOFF = 60.0
 
 
 def _post(url: str, payload: dict[str, Any]) -> tuple[Any, Message]:
-    req = urllib.request.Request(
-        url,
-        data=json.dumps(payload).encode(),
-        headers={"User-Agent": UA, "Content-Type": "application/json"},
-        method="POST",
-    )
+    req = _request(url, json.dumps(payload).encode(), {"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as r:
         return json.load(r), r.headers
 
@@ -252,20 +261,18 @@ def popularity_batch(mbids: list[str]) -> tuple[list[dict[str, Any]], float]:
 
 
 def _get(url: str, params: dict[str, str]) -> tuple[Any, Message]:
-    req = urllib.request.Request(
-        f"{url}?{urllib.parse.urlencode(params)}", headers={"User-Agent": UA}
-    )
+    req = _request(f"{url}?{urllib.parse.urlencode(params)}")
     with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as r:
         return json.load(r), r.headers
 
 
-def _skip_written(partial: Path, batches: Iterator[list[str]]) -> tuple[int, Iterator[list[str]]]:
+def _skip_written(aside: Path, batches: Iterator[list[str]]) -> tuple[int, Iterator[list[str]]]:
     """A run cut short resumes where it stopped. The batches whose answers the
     partial file holds whole, artist by artist and in order, are not asked
     again; the file is cut after the last of them."""
     kept_bytes, kept_rows = 0, 0
     pending: list[str] | None = None
-    with partial.open("rb") as fh:
+    with aside.open("rb") as fh:
         lines = iter(fh)
         for batch in batches:
             size = 0
@@ -284,18 +291,15 @@ def _skip_written(partial: Path, batches: Iterator[list[str]]) -> tuple[int, Ite
                 break
             kept_bytes += size
             kept_rows += len(batch)
-    with partial.open("r+b") as fh:
+    with aside.open("r+b") as fh:
         fh.truncate(kept_bytes)
     return kept_rows, itertools.chain([pending] if pending else [], batches)
 
 
-def _resume(dest: Path, batches: Iterable[list[str]]) -> tuple[Path, int, Iterator[list[str]]]:
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    partial = dest.with_name(dest.name + ".partial")
-    if partial.exists():
-        n, rest = _skip_written(partial, iter(batches))
-        return partial, n, rest
-    return partial, 0, iter(batches)
+def _resume(aside: Path, batches: Iterable[list[str]]) -> tuple[int, Iterator[list[str]]]:
+    if aside.exists():
+        return _skip_written(aside, iter(batches))
+    return 0, iter(batches)
 
 
 RELEASE_GROUPS_URL = "https://musicbrainz.org/ws/2/release-group"
@@ -381,13 +385,13 @@ def fetch_official(mbids: Iterable[str], dest: Path) -> int:
     the popularity snapshot: about 100 000 requests for the artists with 500
     listeners or more, more than a day, so a stopped run resumes where it
     was."""
-    partial_file, n, rest = _resume(dest, ([m] for m in mbids))
-    with partial_file.open("a", encoding="utf-8") as out:
-        for (mbid,) in rest:
-            out.write(json.dumps(official_release_groups(mbid)) + "\n")
-            out.flush()
-            n += 1
-    partial_file.replace(dest)
+    with written_aside(dest) as aside:
+        n, rest = _resume(aside, ([m] for m in mbids))
+        with aside.open("a", encoding="utf-8") as out:
+            for (mbid,) in rest:
+                out.write(json.dumps(official_release_groups(mbid)) + "\n")
+                out.flush()
+                n += 1
     return n
 
 
@@ -395,15 +399,15 @@ def fetch_popularity(batches: Iterable[list[str]], dest: Path) -> int:
     """Writes the answers as received, one row per line. Written aside and
     renamed at the end: an interrupted snapshot leaves no file that looks like
     a complete one, and the next run of the day resumes it."""
-    partial, n, rest = _resume(dest, batches)
     wait = 0.0
-    with partial.open("a", encoding="utf-8") as out:
-        for batch in rest:
-            time.sleep(wait)
-            rows, wait = popularity_batch(batch)
-            out.writelines(json.dumps(r) + "\n" for r in rows)
-            n += len(rows)
-    partial.replace(dest)
+    with written_aside(dest) as aside:
+        n, rest = _resume(aside, batches)
+        with aside.open("a", encoding="utf-8") as out:
+            for batch in rest:
+                time.sleep(wait)
+                rows, wait = popularity_batch(batch)
+                out.writelines(json.dumps(r) + "\n" for r in rows)
+                n += len(rows)
     return n
 
 
@@ -445,8 +449,6 @@ def fetch_discography(dest: Path) -> int:
     """Written aside and renamed, like the ListenBrainz snapshots: a run that
     fails leaves no file that looks like a complete one."""
     rows = discography()
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    partial = dest.with_name(dest.name + ".partial")
-    partial.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
-    partial.replace(dest)
+    with written_aside(dest) as aside:
+        aside.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     return len(rows)

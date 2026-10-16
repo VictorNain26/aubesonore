@@ -418,3 +418,20 @@ def test_an_unknown_command_is_refused(monkeypatch):
     with pytest.raises(SystemExit) as raised:
         cli.main()
     assert raised.value.code == 2
+
+
+def test_a_stopped_official_part_resumes_under_the_day_it_started(tmp_path, monkeypatch):
+    # A part takes more than a day: the one a stopped run left aside is
+    # resumed under its own date, not restarted as today's.
+    def snapshot(date):
+        return tmp_path / "musicbrainz" / date / "official-release-groups.jsonl"
+
+    left = snapshot("2026-10-03")
+    left.parent.mkdir(parents=True)
+    left.with_name(left.name + ".partial").write_text("", encoding="utf-8")
+    monkeypatch.setattr(cli, "official_snapshot", snapshot)
+    monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
+    taken = []
+    monkeypatch.setattr(cli, "_take_once", lambda _survey, date, *_: taken.append(date))
+    cli.snapshot_official()
+    assert taken == ["2026-10-03"]
