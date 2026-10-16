@@ -48,15 +48,3 @@ nommer ce qui le ferait échouer.
   `90_invariants.sql`.
 - Une valeur dérivée voyage avec sa provenance : publier `y0` à côté de
   `y0_source` laisse le consommateur distinguer le déclaré de l'inféré.
-
-## Vérifier un changement
-
-Le pipeline est déterministe : le coût d'une règle se mesure au lieu de se
-discuter. DuckDB lit les extractions de `data/work/` en quelques secondes, donc
-« combien de groupes perd cette règle ? » se tranche par une requête avant
-d'écrire la règle, et le contrefactuel — rejouer la chaîne modifiée et comparer
-les tables — donne le coût exact d'une décision.
-
-Les chiffres qui font foi sont dans `tests/test_baseline.py`, seul point
-d'autorité. Un chiffre repris ailleurs est descriptif et doit se donner comme
-tel.

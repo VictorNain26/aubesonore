@@ -15,11 +15,6 @@ du site. La conception en vigueur, dont le contrat des fonctions SQL que le site
 appelle, est `docs/conception.md` ; les règles métier sont dans le `README.md`.
 Ce qui vaut pour tout le dépôt AubeSonore est dans le `CLAUDE.md` racine.
 
-Les conventions qui ne servent qu'à un endroit sont chargées à la demande
-(fichiers de règles à la racine du dépôt) :
-`.claude/rules/musilogy-sql.md` en ouvrant `src/musilogy/sql/`,
-`.claude/rules/musilogy-tests.md` en ouvrant `tests/`, et `/baseline` pour instruire un écart à la ligne de base.
-
 ## Python
 
 - Dépendances épinglées au patch près : la reproductibilité du pipeline en
@@ -63,9 +58,11 @@ d'acceptation se donne en nombre ou en code de sortie : « le chiffre `links` de
 
 ## Données sur victorserv
 
-- Les données vivent hors de tout checkout, dans `~/musilogy-data` (`data/`
-  n'est pas versionné) : une worktree s'y relie par
-  `ln -s ~/musilogy-data musilogy/data`.
+- Les données réelles vivent hors de tout checkout, dans `~/musilogy-data`
+  (`data/` n'est pas versionné), et ne servent qu'aux traitements sur les vraies
+  données : la worktree qui les lance s'y relie par
+  `ln -s ~/musilogy-data musilogy/data`. Le reste se développe sur le poste,
+  sur les fixtures.
 - Le dump de référence (`REFERENCE_DUMP`, `src/musilogy/__init__.py`) n'est
   plus publié par MetaBrainz : cette copie est la seule, ne jamais la supprimer
   ni l'écraser.
