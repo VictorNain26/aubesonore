@@ -25,13 +25,10 @@ sauvegarde AzuraCast — voir `RUNBOOK.md`.
 
 ## Position dans le système
 
-AzuraCast est le hub. Le pipeline y écrit (upload, playlists, rotation),
-l'application web y lit (titre en cours, historique). Les deux autres briques ne
-se connaissent pas ; elles partagent cette station.
-
-Une conséquence pratique : **couper ce conteneur casse les deux autres.** Un
-`docker compose down` ici met la radio hors antenne, fait échouer le run du
-pipeline, et vide le lecteur du site.
+Le rôle de hub et ce que chaque pièce y lit ou écrit : `CLAUDE.md` (« How the pieces fit
+together »). Une conséquence pratique : **couper ce conteneur casse les deux autres.** Un
+`docker compose down` ici met la radio hors antenne, fait échouer le run du pipeline, et vide le
+lecteur du site.
 
 ## Règles de travail
 
