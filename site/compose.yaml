@@ -39,6 +39,13 @@ x-backend-environment: &backend-environment
   AZURACAST_STATION_ID: ${AZURACAST_STATION_ID:-1}
   YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
 
+# The frontend's build, shared with the renderer: the server render's markup must be the one the
+# client hydrates.
+x-frontend-build-args: &frontend-build-args
+  VITE_API_URL: ${VITE_API_URL:-https://api.aubesonore.fr}
+  VITE_AZURACAST_BASE_URL: ${VITE_AZURACAST_BASE_URL:-https://radio.aubesonore.fr}
+  VITE_STATION_SHORTCODE: ${VITE_STATION_SHORTCODE:-aubesonore}
+
 services:
   # Stages TLS material into a volume with postgres-owned perms (PG rejects a key
   # that is group/world readable). Runs as root, sets uid 70 (postgres in alpine).
@@ -171,10 +178,7 @@ services:
       context: .
       dockerfile: apps/frontend/Dockerfile
       target: runner
-      args:
-        VITE_API_URL: ${VITE_API_URL:-https://api.aubesonore.fr}
-        VITE_AZURACAST_BASE_URL: ${VITE_AZURACAST_BASE_URL:-https://radio.aubesonore.fr}
-        VITE_STATION_SHORTCODE: ${VITE_STATION_SHORTCODE:-aubesonore}
+      args: *frontend-build-args
     container_name: aubesonore-frontend
     restart: unless-stopped
     ports:
@@ -205,10 +209,7 @@ services:
       context: .
       dockerfile: apps/frontend/Dockerfile
       target: renderer
-      args:
-        VITE_API_URL: ${VITE_API_URL:-https://api.aubesonore.fr}
-        VITE_AZURACAST_BASE_URL: ${VITE_AZURACAST_BASE_URL:-https://radio.aubesonore.fr}
-        VITE_STATION_SHORTCODE: ${VITE_STATION_SHORTCODE:-aubesonore}
+      args: *frontend-build-args
     container_name: aubesonore-renderer
     restart: unless-stopped
     # A render is ~100 ms of CPU: at 0.5 the quota throttles it to 285–485 ms,
@@ -258,9 +259,9 @@ services:
         condition: service_healthy
     environment:
       CI: 'true'
+      <<: *frontend-build-args
+      # The page calls /api on its own origin (vite.config.ts).
       VITE_API_URL: ''
-      VITE_AZURACAST_BASE_URL: ${VITE_AZURACAST_BASE_URL:-https://radio.aubesonore.fr}
-      VITE_STATION_SHORTCODE: ${VITE_STATION_SHORTCODE:-aubesonore}
       API_PROXY_TARGET: http://backend:3000
       PUBLIC_API_PROXY_TARGET: ${PUBLIC_API_PROXY_TARGET:-}
     command:
