@@ -473,8 +473,7 @@ def _discogs_fixture(artists: Path, out: Path) -> None:
         ).fetchall()
         if i is not None
     }
-    with out.open("w", encoding="utf-8") as fh, verified_discogs().open(encoding="utf-8") as src:
-        fh.writelines(line for line in src if discogs_ids & set(json.loads(line)["artists"]))
+    _filter_jsonl(verified_discogs(), out, lambda r: bool(discogs_ids & set(r["artists"])))
 
 
 def fixtures_attribution() -> str:

@@ -343,17 +343,19 @@ def test_a_stop_before_the_pin_leaves_no_folder_that_looks_reduced(spark, monkey
     assert not dest.exists()
 
 
-def test_load_sample_hands_the_sample_delivery_to_load(monkeypatch):
+def test_load_sample_hands_the_sample_delivery_to_load_then_removes_it(monkeypatch):
     handed = []
 
     def load(out):
-        handed.append((out / "manifest.json").exists())
+        handed.append((out, (out / "manifest.json").exists()))
         return {}
 
     monkeypatch.setattr(cli, "load", load)
     monkeypatch.setattr("sys.argv", ["musilogy", "load", "--sample"])
     cli.main()
-    assert handed == [True]
+    [(out, published)] = handed
+    assert published
+    assert not out.exists()
 
 
 def test_filter_jsonl_copies_the_kept_lines_byte_for_byte_and_in_order(tmp_path):

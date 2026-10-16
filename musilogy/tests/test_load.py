@@ -3,6 +3,7 @@ import json
 import pytest
 from conftest import FIX, loaded, pg_query, published, synthetic_artist
 
+from musilogy import cli
 from musilogy.fetch import ChecksumError
 from musilogy.load import LoadError, load
 from musilogy.sample import publish_sample
@@ -63,8 +64,14 @@ def test_the_sample_is_the_pipeline_run_on_the_fixtures(tmp_path):
     assert manifest["counts"]["artists"] == witnesses
 
 
-def test_the_sample_loads_like_a_delivery(tmp_path, pg):
-    load(publish_sample(tmp_path), pg)
-    assert pg_query(pg, f"SELECT name FROM musilogy.artists WHERE mbid = '{JOY_DIVISION}'") == [
-        ("Joy Division",)
-    ]
+def test_load_sample_puts_every_witness_in_the_site_database(pg, monkeypatch):
+    # `musilogy load --sample` end to end, the target alone pinned to the
+    # disposable Postgres instead of the libpq environment.
+    monkeypatch.setattr(cli, "load", lambda out: load(out, pg))
+    monkeypatch.setattr("sys.argv", ["musilogy", "load", "--sample"])
+    cli.main()
+    rows = pg_query(pg, "SELECT mbid::VARCHAR, name FROM musilogy.artists")
+    loaded = dict(rows)
+    assert set(cli.WITNESSES) <= loaded.keys()
+    assert len(loaded) == sum(1 for _ in (FIX / "artists.jsonl").open(encoding="utf-8"))
+    assert loaded[JOY_DIVISION] == "Joy Division"
