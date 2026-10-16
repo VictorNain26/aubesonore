@@ -1,23 +1,9 @@
 import { count, desc, eq, gt, max, sql } from 'drizzle-orm';
-import type { KeptArtistPage } from '@aubesonore/shared-types/client';
+import type { TrendEntry, TrendsResult } from '@aubesonore/shared-types/client';
 import { db, schema } from '../db/index';
 import { TtlCache } from '../lib/cache/ttlCache';
 import { createSingleFlight } from '../lib/singleFlight';
 import { mbidSlug, ownSlug, pageSlug } from './artistSlugs';
-
-export interface TrendEntry {
-  title: string;
-  artist: string;
-  artworkUrl: string | null;
-  likes: number;
-  /** The page of the artist the kept track is tied to, when that artist has one. */
-  artistPage: KeptArtistPage | null;
-}
-
-export interface TrendsResult {
-  week: TrendEntry[];
-  allTime: TrendEntry[];
-}
 
 const FIVE_MINUTES_MS = 5 * 60_000;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;

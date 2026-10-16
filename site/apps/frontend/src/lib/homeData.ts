@@ -1,21 +1,7 @@
 import { array, safeParse } from 'valibot';
-import type { KeptArtistPage } from '@aubesonore/shared-types/client';
+import type { TrendsResult } from '@aubesonore/shared-types/client';
 import { SongEntrySchema, type SongEntry } from './azuracast';
 import { API_BASE_URL } from './config';
-
-export interface TrendEntry {
-  title: string;
-  artist: string;
-  artworkUrl: string | null;
-  likes: number;
-  /** The page of the artist the track is tied to, when that artist has one. */
-  artistPage: KeptArtistPage | null;
-}
-
-export interface TrendsResult {
-  week: TrendEntry[];
-  allTime: TrendEntry[];
-}
 
 const HistoryResponseSchema = array(SongEntrySchema);
 

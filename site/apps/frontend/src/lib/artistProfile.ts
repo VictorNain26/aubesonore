@@ -2,6 +2,7 @@ import type { ArtistPageRef, ArtistProfile } from '@aubesonore/shared-types/clie
 import { object, record, safeParse, string } from 'valibot';
 import { getLocale, localizeHref, type Locale } from '@/paraglide/runtime.js';
 import { API_BASE_URL } from './config';
+import { readKnown } from './api';
 
 const SLUG = '__slug__';
 const pathTemplates = new Map<string, string>();
@@ -26,14 +27,10 @@ export async function fetchArtistProfile(
   locale: Locale,
   signal?: AbortSignal
 ): Promise<ArtistProfile | null> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/artist/page/${encodeURIComponent(slug)}?lang=${locale}`,
-    { signal: signal ?? null }
+  return readKnown<ArtistProfile>(
+    `/api/artist/page/${encodeURIComponent(slug)}?lang=${locale}`,
+    signal
   );
-  // 400: a malformed id, from a truncated link — as unknown as a 404.
-  if (response.status === 404 || response.status === 400) return null;
-  if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  return (await response.json()) as ArtistProfile;
 }
 
 // One request per name however many parts of the page ask for it (the hero and the player bar

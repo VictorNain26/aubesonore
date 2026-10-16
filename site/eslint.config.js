@@ -21,8 +21,6 @@ export default tseslint.config(
       '**/coverage/**',
       '**/.claude/**',
       '**/*.config.js',
-      '**/*.config.ts',
-      '**/scripts/**',
       '**/drizzle/**',
       '**/src/paraglide/**',
     ],
@@ -31,7 +29,7 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
 
-  // Typed linting only on app source (not test/setup helpers)
+  // Typed linting on the apps' and packages' source, their tests included
   {
     files: ['apps/*/src/**/*.{ts,tsx}', 'packages/*/src/**/*.{ts,tsx}'],
     extends: [tseslint.configs.recommendedTypeChecked],
@@ -69,7 +67,7 @@ export default tseslint.config(
   },
 
   {
-    files: ['apps/frontend/**/*.{ts,tsx}', 'apps/mobile/**/*.{ts,tsx}'],
+    files: ['apps/frontend/**/*.{ts,tsx}'],
     plugins: {
       react: reactPlugin,
       'react-hooks': reactHooksPlugin,
@@ -85,9 +83,9 @@ export default tseslint.config(
     },
   },
 
-  // JSX accessibility — frontend + mobile
+  // JSX accessibility — frontend
   {
-    files: ['apps/frontend/**/*.{ts,tsx}', 'apps/mobile/**/*.{ts,tsx}'],
+    files: ['apps/frontend/**/*.{ts,tsx}'],
     ...jsxA11y.flatConfigs.recommended,
     rules: {
       ...jsxA11y.flatConfigs.recommended.rules,
@@ -138,16 +136,17 @@ export default tseslint.config(
   },
 
   {
-    files: ['apps/mobile/**/*.{ts,tsx}'],
-    rules: {
-      '@typescript-eslint/no-require-imports': 'off',
-    },
-  },
-
-  {
     files: ['apps/backend/**/*.ts'],
     rules: {
       'no-console': 'off',
+    },
+  },
+
+  // The frontend's build scripts run on Node.
+  {
+    files: ['apps/frontend/scripts/**/*.mjs'],
+    languageOptions: {
+      globals: { console: 'readonly', process: 'readonly', Buffer: 'readonly', URL: 'readonly' },
     },
   },
 

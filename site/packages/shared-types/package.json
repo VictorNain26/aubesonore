@@ -17,7 +17,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf dist && tsc",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit"
   },

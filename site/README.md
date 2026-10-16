@@ -34,7 +34,7 @@ aubesonore/
 | Frontend  | React 19, Vite 8, Tailwind CSS 4, Zustand                   |
 | Outillage | pnpm 10, Turbo, ESLint 9 (flat), Vitest + bun test          |
 
-Auth : Better Auth (email vérifié + OAuth Google). Liens d'écoute : API iTunes et Deezer (Songlink/Odesli a fermé son API le 2026-07-31). Pochettes : iTunes vérifiée (artiste) ou visuel « onde » généré côté client.
+Auth : Better Auth (email vérifié + OAuth Google). Liens d'écoute : API iTunes et Deezer (Songlink/Odesli a fermé son API le 2026-07-31).
 
 ## Démarrage
 

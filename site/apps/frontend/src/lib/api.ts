@@ -33,6 +33,24 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
   return response.json() as Promise<T>;
 }
 
+/** A failed answer of the API, its status kept for a caller that tells one apart. */
+export class HttpError extends Error {
+  constructor(readonly status: number) {
+    super(`HTTP ${status}`);
+  }
+}
+
+/**
+ * A public read of the API: its body, or null for what the API does not know — 404, and 400
+ * for a malformed id, which comes from a truncated link. Any other failure throws an HttpError.
+ */
+export async function readKnown<T>(path: string, signal?: AbortSignal): Promise<T | null> {
+  const response = await fetch(`${API_BASE_URL}${path}`, { signal: signal ?? null });
+  if (response.status === 404 || response.status === 400) return null;
+  if (!response.ok) throw new HttpError(response.status);
+  return (await response.json()) as T;
+}
+
 // Better Auth's error codes (@better-auth/core, dist/error/codes.mjs). Its
 // messages are English ("Invalid email or password"): they never reach the
 // page, a known code gets its own words and any other the caller's fallback.
