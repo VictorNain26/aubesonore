@@ -11,7 +11,7 @@ import radio.cli as cli
 from radio.acquire.run import AcquireReport
 from radio.acquire.sockseek import SockseekError
 from radio.antenna.sync import AntenneReport
-from radio.core.config import Settings
+from radio.core.config import REPO_ROOT, Settings
 
 runner = CliRunner()
 
@@ -28,7 +28,7 @@ def _env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, editorial: str = "") -
         RADIO_DATA_DIR=tmp_path / "data",
         RADIO_CONFIG_DIR=cfg,
     )
-    monkeypatch.setattr(cli, "_settings", lambda: settings)
+    monkeypatch.setattr(cli.common, "_settings", lambda: settings)
     return tmp_path / "data" / "radio.db"
 
 
@@ -50,7 +50,7 @@ def test_sockseek_failure_exits_1_and_reports_the_failed_stage(
     def boom(*a: Any, **k: Any) -> AcquireReport:
         raise SockseekError("aucun index écrit")
 
-    monkeypatch.setattr(cli, "acquire_pass", boom)
+    monkeypatch.setattr(cli.antenne, "acquire_pass", boom)
     result = runner.invoke(cli.app, ["acquire"])
     assert result.exit_code == 1
     assert "Sockseek en échec (aucun index écrit) : aucune tentative comptée" in result.output
@@ -63,7 +63,7 @@ def test_interrupted_sockseek_fails_the_stage(
 ) -> None:
     db = _env(tmp_path, monkeypatch)
     rep = AcquireReport(n_wanted=4, n_ready=1, n_unindexed=3)
-    monkeypatch.setattr(cli, "acquire_pass", _report(rep))
+    monkeypatch.setattr(cli.antenne, "acquire_pass", _report(rep))
     result = runner.invoke(cli.app, ["acquire"])
     assert result.exit_code == 1
     assert "arrêté avant 3 titres" in result.output
@@ -76,7 +76,7 @@ def test_success_rate_floor_comes_from_editorial(
 ) -> None:
     _env(tmp_path, monkeypatch, "[acquisition]\nmin_attempts_for_rate = 3\n")
     rep = AcquireReport(n_wanted=3, failures=Counter({"aucun résultat": 3}))
-    monkeypatch.setattr(cli, "acquire_pass", _report(rep))
+    monkeypatch.setattr(cli.antenne, "acquire_pass", _report(rep))
     assert runner.invoke(cli.app, ["acquire"]).exit_code == 1
 
 
@@ -85,7 +85,7 @@ def test_missing_cover_is_reported_not_failed(
 ) -> None:
     db = _env(tmp_path, monkeypatch)
     rep = AcquireReport(n_wanted=2, n_ready=2, n_no_cover=1)
-    monkeypatch.setattr(cli, "acquire_pass", _report(rep))
+    monkeypatch.setattr(cli.antenne, "acquire_pass", _report(rep))
     result = runner.invoke(cli.app, ["acquire"])
     assert result.exit_code == 0
     assert "prêts sans pochette : 1" in result.output
@@ -101,7 +101,7 @@ def test_an_unexpected_error_is_reported_without_its_message(
     def boom(*a: Any, **k: Any) -> AcquireReport:
         raise RuntimeError("https://cdn.example/preview?hdnea=SECRET")
 
-    monkeypatch.setattr(cli, "acquire_pass", boom)
+    monkeypatch.setattr(cli.antenne, "acquire_pass", boom)
     result = runner.invoke(cli.app, ["acquire"])
     assert result.exit_code == 1
     assert _stage(db) == (0, '{"erreur": "RuntimeError"}')
@@ -118,7 +118,7 @@ def _stages(db: Path, rows: list[tuple[str, str, int, str]]) -> None:
 
 
 def _pass(**over: tuple[int, str]) -> list[tuple[str, str, int, str]]:
-    stages = {name: (1, "{}") for name in cli.PASS_STAGES} | {"antenne": (1, '{"publiés": 3}')}
+    stages = {name: (1, "{}") for name in cli.ops.PASS_STAGES} | {"antenne": (1, '{"publiés": 3}')}
     stages |= {k.replace("_", "-"): v for k, v in over.items()}
     return [("p", name, ok, counts) for name, (ok, counts) in stages.items()]
 
@@ -153,9 +153,9 @@ def test_check_reads_what_antenne_published(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     db = _env(tmp_path, monkeypatch)
-    settings = cli._settings().model_copy(update={"azuracast_api_key": SecretStr("k")})
-    monkeypatch.setattr(cli, "_settings", lambda: settings)
-    monkeypatch.setattr(cli, "antenne_pass", lambda *a, **k: AntenneReport(n_published=2))
+    settings = cli.common._settings().model_copy(update={"azuracast_api_key": SecretStr("k")})
+    monkeypatch.setattr(cli.common, "_settings", lambda: settings)
+    monkeypatch.setattr(cli.antenne, "antenne_pass", lambda *a, **k: AntenneReport(n_published=2))
     monkeypatch.setenv("INVOCATION_ID", "p")
     result = runner.invoke(cli.app, ["antenne"])
     assert result.exit_code == 0, result.output
@@ -170,3 +170,15 @@ def test_check_needs_systemd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
     _env(tmp_path, monkeypatch)
     monkeypatch.delenv("INVOCATION_ID", raising=False)
     assert runner.invoke(cli.app, ["check"]).exit_code == 2
+
+
+def test_pass_stages_are_the_weekly_units_commands() -> None:
+    # check juge la passe sur PASS_STAGES : une étape ajoutée à l'unité sans y figurer ne
+    # serait jamais vérifiée, une étape retirée de l'unité la ferait échouer chaque semaine.
+    unit = (REPO_ROOT / "deploy" / "systemd" / "radio-weekly.service").read_text()
+    commands = tuple(
+        line.split("/bin/radio ", 1)[1].split()[0]
+        for line in unit.splitlines()
+        if line.startswith("ExecStart=")
+    )
+    assert commands == (*cli.ops.PASS_STAGES, "check")

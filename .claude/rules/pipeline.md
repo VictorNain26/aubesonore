@@ -26,7 +26,8 @@ uv sync                                  # dépendances (.venv)
 sqlite3 data/radio.db .schema            # le schéma en vigueur, que les migrations reconstruisent
 ```
 
-`radio/cli.py` lit la configuration, appelle le module et met en forme le rapport ; le travail
+`radio/cli/` (une famille de commandes par module, ce qu'elles partagent dans `common.py`) lit
+la configuration, appelle le module et met en forme le rapport ; le travail
 est dans le module.
 
 Deux dossiers de modèles : `models/` à la racine porte les poids MTG téléchargés (EffNet et

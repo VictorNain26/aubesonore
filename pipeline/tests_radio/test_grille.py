@@ -647,9 +647,9 @@ def grille_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeAzuracast
         RADIO_DATA_DIR=tmp_path / "data",
         RADIO_CONFIG_DIR=cfg,
     )
-    monkeypatch.setattr(cli, "_settings", lambda: settings)
+    monkeypatch.setattr(cli.common, "_settings", lambda: settings)
     station = FakeAzuracast()
-    monkeypatch.setattr(cli, "AzuracastClient", lambda *a: station)
+    monkeypatch.setattr(cli.antenne, "AzuracastClient", lambda *a: station)
     return station
 
 
@@ -693,12 +693,12 @@ def test_the_grid_empties_the_hour_missing_from_the_day(
     # The command passes the hours the day lacks to `publish`: here, 2 h, as on 2027-03-28.
     _on_air(tmp_path, 400)
     grille_env.existing = {playlist_name(d, 2): 200 + d for d in range(1, 8)}
-    real = cli.grille_mod.hour_spans
+    real = cli.antenne.grille_mod.hour_spans
 
     def spring(day: date, hours: Iterable[int], tz: tzinfo) -> dict[int, tuple[float, float]]:
         return {h: span for h, span in real(day, hours, tz).items() if h != 2}
 
-    monkeypatch.setattr(cli.grille_mod, "hour_spans", spring)
+    monkeypatch.setattr(cli.antenne.grille_mod, "hour_spans", spring)
     res = CliRunner().invoke(cli.app, ["grille"])
     assert res.exit_code == 0, res.output
     assert len(grille_env.emptied) == 1 and grille_env.emptied[0] not in grille_env.filled
@@ -712,7 +712,7 @@ def test_the_grid_counts_what_azuracast_has_already_queued(
     _on_air(tmp_path, 400)
     grille_env.queue = {"s1": 1_791_130_000.0}
     seen: list[dict[str, float]] = []
-    real = cli.grille_mod.with_published
+    real = cli.antenne.grille_mod.with_published
 
     def spy(
         conn: sqlite3.Connection,
@@ -723,7 +723,7 @@ def test_the_grid_counts_what_azuracast_has_already_queued(
         seen.append(played)
         return real(conn, played, now, rewritten)
 
-    monkeypatch.setattr(cli.grille_mod, "with_published", spy)
+    monkeypatch.setattr(cli.antenne.grille_mod, "with_published", spy)
     res = CliRunner().invoke(cli.app, ["grille"])
     assert res.exit_code == 0, res.output
     assert seen == [{"s2": 50.0, "s1": 1_791_130_000.0}]
