@@ -276,9 +276,9 @@ INVARIANTS = (
 )
 
 
-def scalar(con: duckdb.DuckDBPyConnection, sql: str) -> int:
+def scalar(con: duckdb.DuckDBPyConnection, sql: str, params: Sequence[object] = ()) -> int:
     """The one integer an aggregate query returns, such as a COUNT(*)."""
-    row = con.execute(sql).fetchone()
+    row = con.execute(sql, params).fetchone()
     assert row is not None  # an aggregate without GROUP BY returns exactly one row
     return int(row[0])
 

@@ -18,6 +18,8 @@ from typing import Any
 
 import duckdb
 
+from musilogy.build import scalar
+
 logger = logging.getLogger(__name__)
 
 # The special purpose artists MusicBrainz keeps for credits that name no artist
@@ -224,8 +226,6 @@ def reduce_listens(con: duckdb.DuckDBPyConnection, parts: Iterable[Path], out: P
             f"FROM read_parquet('{slice_parts}') GROUP BY 1, 2 ORDER BY 1, 2) "
             f"TO '{target.as_posix()}' (FORMAT parquet, COMPRESSION zstd)"
         )
-        row = con.execute("SELECT count(*) FROM read_parquet(?)", [target.as_posix()]).fetchone()
-        assert row is not None  # an aggregate always returns one row
-        rows += row[0]
+        rows += scalar(con, "SELECT count(*) FROM read_parquet(?)", [target.as_posix()])
     shutil.rmtree(split, ignore_errors=True)
     return rows
