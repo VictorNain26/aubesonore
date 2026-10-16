@@ -4,5 +4,7 @@
 .claude/.session*
 .claude/projects/
 .claude/worktrees/
+# État local du harnais Claude Code, créé dans tout dossier où une session écrit.
+**/.claude/.cc-writes/
 # Cache de Turborepo créé à la racine du checkout.
 .turbo/

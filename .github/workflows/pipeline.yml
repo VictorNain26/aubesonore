@@ -7,7 +7,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
-# Un nouveau push annule le run en cours sur la même PR ou branche (comme site.yml).
+# A new push cancels the run in progress on the same PR or branch (like site.yml).
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -15,8 +15,8 @@ concurrency:
 permissions:
   contents: read
 
-# Le pipeline vit dans pipeline/. Pas de filtre de chemin : ce job est un contrôle requis sur
-# master, et un workflow sauté par un filtre ne le rapporte jamais.
+# The pipeline lives in pipeline/. No path filter: this job is a required check on master, and a
+# workflow skipped by a filter never reports it.
 defaults:
   run:
     working-directory: pipeline
@@ -35,10 +35,10 @@ jobs:
         with:
           version: "0.11.19"
           working-directory: pipeline
-      # Outils audio de l'acquisition : le test d'intégration les fait tourner pour de vrai.
-      # Le miroir Ubuntu d'Azure sert parfois à ~180 Ko/s (jusqu'à 11 min pour ffmpeg) : les .deb
-      # restent en cache (Dir::Cache::archives, apt.conf(5)) et apt ne télécharge que les nouveaux.
-      # ImageOS/ImageVersion viennent de /etc/environment (actions/runner-images).
+      # Audio tools for acquisition: the integration test really runs them.
+      # Azure's Ubuntu mirror sometimes serves at ~180 KB/s (up to 11 min for ffmpeg): the .debs
+      # stay cached (Dir::Cache::archives, apt.conf(5)) and apt downloads only the new ones.
+      # ImageOS/ImageVersion come from /etc/environment (actions/runner-images).
       - id: image
         run: echo "version=$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -52,9 +52,9 @@ jobs:
           sudo apt-get install -y --no-install-recommends -o Dir::Cache::Archives="$RUNNER_TEMP/apt-archives" ffmpeg libchromaprint-tools
           sudo apt-get autoclean -o Dir::Cache::Archives="$RUNNER_TEMP/apt-archives"
           sudo chown -R "$USER" "$RUNNER_TEMP/apt-archives"
-      # rsgain 3.8 et le modèle EffNet : la même recette qu'un poste (scripts/dev-setup.sh), sommes
-      # vérifiées. fpcalc vient d'apt ci-dessus, comme en production. La clé suit le fichier qui
-      # épingle la somme du modèle.
+      # rsgain 3.8 and the EffNet model: the same recipe as a workstation (scripts/dev-setup.sh),
+      # checksums verified. fpcalc comes from apt above, as in production. The key follows the file
+      # that pins the model's checksum.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: pipeline/models/discogs-effnet-bs64-1.pb
