@@ -1,10 +1,11 @@
 import json
 
 import pytest
-from conftest import loaded, pg_query, published, synthetic_artist
+from conftest import FIX, loaded, pg_query, published, synthetic_artist
 
 from musilogy.fetch import ChecksumError
 from musilogy.load import LoadError, load
+from musilogy.sample import publish_sample
 
 ME = "00000000-0000-4000-8000-0000000000c0"
 A = "00000000-0000-4000-8000-0000000000c1"
@@ -48,3 +49,22 @@ def test_a_delivery_that_disagrees_with_its_manifest_is_refused(tmp_path):
         fh.write(b"touched")
     with pytest.raises(ChecksumError):
         load(out, "host=unreachable.invalid")
+
+
+JOY_DIVISION = "9a58fda3-f4ed-4080-a3a5-f457aac9fcdd"
+
+
+def test_the_sample_is_the_pipeline_run_on_the_fixtures(tmp_path):
+    # The small database a workstation develops against: the production code
+    # path (build, publish), only fed the versioned witnesses.
+    out = publish_sample(tmp_path)
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    witnesses = sum(1 for _ in (FIX / "artists.jsonl").open(encoding="utf-8"))
+    assert manifest["counts"]["artists"] == witnesses
+
+
+def test_the_sample_loads_like_a_delivery(tmp_path, pg):
+    load(publish_sample(tmp_path), pg)
+    assert pg_query(pg, f"SELECT name FROM musilogy.artists WHERE mbid = '{JOY_DIVISION}'") == [
+        ("Joy Division",)
+    ]

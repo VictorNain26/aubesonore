@@ -16,6 +16,7 @@ from musilogy.build import build
 from musilogy.load import load
 from musilogy.paths import SQL_DIR
 from musilogy.publish import publish
+from musilogy.sample import build_sample
 
 FIX = Path(__file__).parent / "fixtures"
 SQL = SQL_DIR
@@ -24,18 +25,7 @@ SQL = SQL_DIR
 @pytest.fixture(scope="module")
 def con():
     c = duckdb.connect(":memory:")
-    build(
-        c,
-        SQL,
-        FIX / "artists.jsonl",
-        FIX / "release_groups.jsonl",
-        popularity=FIX / "popularity.jsonl",
-        popularity_snapshot=REFERENCE_POPULARITY,
-        discography=FIX / "discography.jsonl",
-        discography_snapshot=REFERENCE_DISCOGRAPHY,
-        official=[FIX / "official.jsonl"],
-        discogs=FIX / "discogs.jsonl",
-    )
+    build_sample(c)
     return c
 
 

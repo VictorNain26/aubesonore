@@ -85,6 +85,7 @@ uv run musilogy snapshot-discography # disques classés par Wikidata, à épingl
 uv run musilogy snapshot-listens <ref>  # toutes les écoutes ListenBrainz (archive lue en flux), à épingler
 uv run musilogy make-fixtures # depuis les extractions et les relevés épinglés
 uv run musilogy load          # charge data/out/ dans la base du site (environnement libpq)
+uv run musilogy load --sample # charge le pipeline passé sur les fixtures : la petite Musilogy d'un poste
 MUSILOGY_TEST_PG='host=… dbname=…' uv run pytest  # tests Postgres compris : un Postgres jetable, jamais celui du site
 ```
 

@@ -341,3 +341,16 @@ def test_a_stop_before_the_pin_leaves_no_folder_that_looks_reduced(spark, monkey
     with pytest.raises(FileNotFoundError):
         cli.snapshot_listens("2692-20261001-000003")
     assert not dest.exists()
+
+
+def test_load_sample_hands_the_sample_delivery_to_load(monkeypatch):
+    handed = []
+
+    def load(out):
+        handed.append((out / "manifest.json").exists())
+        return {}
+
+    monkeypatch.setattr(cli, "load", load)
+    monkeypatch.setattr("sys.argv", ["musilogy", "load", "--sample"])
+    cli.main()
+    assert handed == [True]

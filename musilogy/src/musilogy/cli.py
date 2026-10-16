@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import tempfile
 from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -70,6 +71,7 @@ from musilogy.paths import (
     work_dir,
 )
 from musilogy.publish import extraction_matches_rows_loaded, publish, read_extraction
+from musilogy.sample import publish_sample
 
 SUMS_PATH = REFERENCE_DIR / f"{DUMP}.SHA256SUMS"
 WORK_DIR = work_dir(DUMP)
@@ -552,9 +554,14 @@ def make_fixtures() -> None:
     print("missing:", missing or "none")
 
 
-def load_site() -> None:
-    """Loads the published delivery into the site's database."""
-    print(load(out_dir(DUMP)))
+def load_site(sample: bool = False) -> None:
+    """Loads the published delivery into the site's database, or, with
+    `sample`, the pipeline run on the fixtures: a workstation's small Musilogy."""
+    if not sample:
+        print(load(out_dir(DUMP)))
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        print(load(publish_sample(Path(tmp))))
 
 
 def main() -> None:
@@ -580,8 +587,11 @@ def main() -> None:
         "ref", help="the dump's number, date and sequence, e.g. 2692-20261001-000003"
     )
     subparsers.add_parser("make-fixtures", help="extract witness records for the test fixtures")
-    subparsers.add_parser(
+    load_parser = subparsers.add_parser(
         "load", help="load the published tables into the site's Postgres (libpq environment)"
+    )
+    load_parser.add_argument(
+        "--sample", action="store_true", help="load the pipeline run on the test fixtures instead"
     )
 
     args = parser.parse_args()
@@ -598,7 +608,7 @@ def main() -> None:
     elif args.command == "make-fixtures":
         make_fixtures()
     elif args.command == "load":
-        load_site()
+        load_site(args.sample)
 
 
 if __name__ == "__main__":
