@@ -93,7 +93,7 @@ When this file disagrees with the running system, the system is right — correc
 ## Cross-cutting
 
 - **Shared machine.** Many unrelated services run here. Before binding a port, scheduling heavy
-  work (a full `musilogy run` reads ~3 GB of dumps), or moving data, check what else is running — the broadcast container is CPU-weighted to
+  work (a full `musilogy run` reads several large dumps, see `.claude/rules/musilogy.md`), or moving data, check what else is running — the broadcast container is CPU-weighted to
   win against batch workloads for a reason.
 - **Scheduling is systemd *user* timers**, not cron, and depends on lingering being enabled.
 - **Secrets are untracked `.env` files in `site/`, `pipeline/` and `azuracast/`** (plus `azuracast/azuracast.env` and `azuracast/gatus.env`, mode 600), and the broadcast runtime also

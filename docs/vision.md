@@ -2,7 +2,7 @@
 
 Ce document fixe la direction de ce qui traverse les pièces : les produits, qui possède quoi,
 comment les pièces se parlent. Chaque pièce garde sa conception propre
-(`pipeline/docs/vision.md`, `.claude/rules/site.md`, `azuracast/RUNBOOK.md`, `musilogy/docs/conception.md`)
+(`pipeline/docs/vision.md`, `site/README.md`, `azuracast/RUNBOOK.md`, `musilogy/docs/conception.md`)
 et ne doit pas le contredire. C'est une direction, pas un règlement : une règle se rediscute quand
 l'usage ou une mesure la contredit, et quand le système réel contredit ce document, le système a
 raison et le document se corrige.
@@ -331,9 +331,9 @@ ligne.
 | Entre | Contrat | Où il est écrit |
 |---|---|---|
 | pipeline → AzuraCast | API AzuraCast, dossier `antenne/` ; l'ISRC de chaque titre écrit dans le fichier (trame ID3 `TSRC`), qu'AzuraCast range dans le champ `isrc` du média ; jamais de `PUT /file/{id}`, qui réécrit et supprime les balises | `pipeline/docs/vision.md` §6 et §7.2 |
-| site ← AzuraCast | now-playing et historique en lecture, dont `song.isrc` | `.claude/rules/site.md` |
+| site ← AzuraCast | now-playing et historique en lecture, dont `song.isrc` | `site/apps/backend/src/services/nowPlaying.ts`, `site/apps/backend/src/services/radioService.ts` |
 | site ← musilogy | les fonctions SQL de `musilogy/src/musilogy/pg/90_*.sql` : le site n'appelle qu'elles, jamais les tables | `musilogy/docs/conception.md` §4 |
-| site ← Deezer, Wikipédia, Wikimedia Commons | chacun isolé, autorisé à tomber seul, son dernier résultat gardé en base (§4.6) ; MusicBrainz n'est appelé en direct que pour identifier un titre joué (§4.4) | `.claude/rules/site.md` |
+| site ← Deezer, Wikipédia, Wikimedia Commons | chacun isolé, autorisé à tomber seul, son dernier résultat gardé en base (§4.6) ; MusicBrainz n'est appelé en direct que pour identifier un titre joué (§4.4) | `site/apps/backend/src/services/deezerService.ts`, `wikipediaService.ts`, `commonsService.ts`, `artistResolver.ts` |
 
 **Couplages interdits** :
 
@@ -421,7 +421,7 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 | Surface | Route | Indexée | Geste |
 |---|---|---|---|
 | Accueil | `/`, `/en` | oui, pré-rendue | Écouter |
-| Page artiste | `/artiste/:slug` (`/en/artist/:slug`), `/artiste/:mbid` en 301 vers le slug. Un slug par page, le même processus pour tout artiste, joué ou non : il naît la première fois que le site publie l'adresse, ne change plus et n'est jamais réattribué (« Cool URIs don't change », W3C) ; parmi des homonymes, le plus écouté prend le nom seul (`.claude/rules/site.md`) | au-delà d'un seuil de contenu (§2.4) | Savoir, Découvrir |
+| Page artiste | `/artiste/:slug` (`/en/artist/:slug`), `/artiste/:mbid` en 301 vers le slug. Un slug par page, le même processus pour tout artiste, joué ou non : il naît la première fois que le site publie l'adresse, ne change plus et n'est jamais réattribué (« Cool URIs don't change », W3C) ; parmi des homonymes, le plus écouté prend le nom seul (`site/apps/backend/src/services/artistSlugs.ts`) | au-delà d'un seuil de contenu (§2.4) | Savoir, Découvrir |
 | Page de courant | à créer (§2.3) | quand elle est riche | Comprendre, Découvrir |
 | Musilogy | `/musilogy` (recherche) ; `/musilogy/:mbid/…` mène à la page artiste | non | Découvrir |
 | Connexion | `/connexion`, `/en/sign-in` | non | Garder |

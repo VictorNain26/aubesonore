@@ -128,7 +128,7 @@ Typed rules (`no-floating-promises`, `no-misused-promises`, …) are errors on `
 
 ## Dependencies
 
-Renovate owns dependency PRs and auto-merges the safe ones (`../renovate.json`). Dependabot is kept for security alerts only: don't re-add `.github/dependabot.yml`. A major bump goes in its own PR.
+Renovate owns dependency PRs and auto-merges the safe ones (`../renovate.json`). Dependabot is kept for security alerts only: don't re-add the root `.github/dependabot.yml`. A major bump goes in its own PR.
 
 ## Scaling
 

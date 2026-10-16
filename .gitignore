@@ -1,5 +1,8 @@
 # Racine du dépôt : chaque dossier (site/, pipeline/, azuracast/, musilogy/) a son propre .gitignore.
-# Outillage local, comme dans site/.gitignore : worktrees d'agents Claude Code
-# et cache de Turborepo créés à la racine du checkout.
+# Claude Code : settings.json est versionné, les réglages personnels et l'état local non.
+.claude/settings.local.json
+.claude/.session*
+.claude/projects/
 .claude/worktrees/
+# Cache de Turborepo créé à la racine du checkout.
 .turbo/

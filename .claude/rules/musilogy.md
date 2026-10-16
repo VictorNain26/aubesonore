@@ -15,7 +15,8 @@ du site. La conception en vigueur, dont le contrat des fonctions SQL que le site
 appelle, est `docs/conception.md` ; les règles métier sont dans le `README.md`.
 Ce qui vaut pour tout le dépôt AubeSonore est dans le `CLAUDE.md` racine.
 
-Les conventions qui ne servent qu'à un endroit sont chargées à la demande :
+Les conventions qui ne servent qu'à un endroit sont chargées à la demande
+(fichiers de règles à la racine du dépôt) :
 `.claude/rules/musilogy-sql.md` en ouvrant `src/musilogy/sql/`,
 `.claude/rules/musilogy-tests.md` en ouvrant `tests/`, et `/baseline` pour instruire un écart à la ligne de base.
 
