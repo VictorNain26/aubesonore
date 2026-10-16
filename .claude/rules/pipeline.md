@@ -58,8 +58,7 @@ commun de leurs réponses (`check_status`, `json_or_none`).
   texte simple, puis laisser `pick_match` juger.
 - Les migrations SQLite suivent la procédure officielle de reconstruction de table. Un script ne
   contient ni `BEGIN` ni `COMMIT`.
-- La passe hebdomadaire exécute le code de `~/aubesonore/pipeline` : développer dans un worktree
-  pendant qu'elle tourne, sinon elle importe du code en cours d'écriture.
+- Ne jamais éditer `~/aubesonore` : la passe hebdomadaire en importe le code de `pipeline/`.
 - Sockseek et rsgain sont des binaires figés dans `~/.local/bin` (versions et sha256 dans
   `docs/vision.md`) ; ffmpeg et fpcalc viennent d'apt.
 - Les unités systemd de `deploy/systemd/` sont liées par `systemctl --user link`. Il faut les
