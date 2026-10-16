@@ -160,6 +160,13 @@ def test_hypem_client_never_turns_a_change_into_an_empty_list() -> None:
     responses.replace(responses.GET, url, body=requests.ConnectionError("x"))
     with pytest.raises(HypemUnavailable):
         HypemClient().popular("lastweek", 1)
+    # Une page HTML à la place du JSON : un proxy ou une page d'erreur passagère, relancée comme
+    # chez Deezer et Last.fm, pas une réponse dont le format aurait changé.
+    responses.replace(responses.GET, url, body="<html>502</html>")
+    before = len(responses.calls)
+    with pytest.raises(HypemUnavailable):
+        HypemClient().popular("lastweek", 1)
+    assert len(responses.calls) - before == 3  # relancée : trois essais en test (conftest)
 
 
 def test_cli_reports_the_fresh_stage_and_fails_on_a_broken_source(

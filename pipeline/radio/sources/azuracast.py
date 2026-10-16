@@ -12,7 +12,7 @@ from typing import Any
 import requests
 import stamina
 
-import radio.core.http  # noqa: F401  (enregistre le hook de relance)
+from radio.core.http import check_status, json_or_none
 
 
 class AzuracastError(Exception):
@@ -20,7 +20,8 @@ class AzuracastError(Exception):
 
 
 class AzuracastUnavailable(Exception):
-    """Indisponibilité transitoire (réseau, 5xx)."""
+    """Indisponibilité transitoire : réseau, 429 et 5xx, relancés ; une réponse qui n'est pas du
+    JSON ne l'est pas, car l'écriture a pu avoir lieu (une playlist créée deux fois)."""
 
 
 @dataclass(frozen=True)
@@ -158,7 +159,10 @@ class AzuracastClient:
         return f"/station/{self._station}{path}"
 
     def _call(self, method: str, path: str, **kw: Any) -> Any:
-        return self._request(method, path, **kw).json()
+        body = json_or_none(self._request(method, path, **kw))
+        if body is None:
+            raise AzuracastUnavailable("invalid JSON")
+        return body
 
     @stamina.retry(on=AzuracastUnavailable, attempts=5, wait_initial=1.0, wait_max=30.0)
     def _request(self, method: str, path: str, **kw: Any) -> requests.Response:
@@ -168,8 +172,5 @@ class AzuracastClient:
             )
         except requests.RequestException as e:
             raise AzuracastUnavailable(type(e).__name__) from None
-        if r.status_code >= 500:
-            raise AzuracastUnavailable(f"HTTP {r.status_code}")
-        if r.status_code >= 400:
-            raise AzuracastError(f"HTTP {r.status_code}")
+        check_status(r, AzuracastUnavailable, AzuracastError)
         return r

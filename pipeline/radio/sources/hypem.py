@@ -12,7 +12,7 @@ from typing import Any
 import requests
 import stamina
 
-import radio.core.http  # noqa: F401  (enregistre le hook de relance)
+from radio.core.http import check_status, json_or_none
 
 API = "https://api.hypem.com/v2"
 USER_AGENT = "AubeSonore/3 (+https://radio.aubesonore.fr)"
@@ -87,16 +87,12 @@ class HypemClient:
             )
         except requests.RequestException as e:
             raise HypemUnavailable(type(e).__name__) from None
-        if r.status_code == 429 or r.status_code >= 500:
-            raise HypemUnavailable(f"HTTP {r.status_code}")
         if r.status_code == 404:
             raise HypemNotFound("HTTP 404")
-        if r.status_code >= 400:
-            raise HypemError(f"HTTP {r.status_code}")
-        try:
-            body = r.json()
-        except ValueError:
-            raise HypemError("invalid JSON") from None
+        check_status(r, HypemUnavailable, HypemError)
+        body = json_or_none(r)
+        if body is None:
+            raise HypemUnavailable("invalid JSON")
         if not isinstance(body, list):
             raise HypemError("not a list")
         return body

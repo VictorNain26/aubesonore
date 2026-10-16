@@ -4,11 +4,12 @@ import sqlite3
 from pathlib import Path
 
 import pytest
+import requests
 from pydantic import ValidationError
 
 from radio.core.config import REPO_ROOT, Settings, load_editorial
 from radio.core.db import MIGRATIONS, connect
-from radio.core.http import log_retry
+from radio.core.http import check_status, log_retry
 
 N_MIGRATIONS = len(list(MIGRATIONS.glob("*.sql")))
 
@@ -244,6 +245,30 @@ def test_paths_derive_from_the_two_directories(tmp_path: Path) -> None:
     assert s.db_path == tmp_path / "data" / "radio.db"
     assert s.trained_models_dir == tmp_path / "data" / "models"
     assert s.effnet_model == tmp_path / "w" / "discogs-effnet-bs64-1.pb"
+
+
+class _Down(Exception):
+    pass
+
+
+class _Refused(Exception):
+    pass
+
+
+@pytest.mark.parametrize(
+    ("status", "raised"),
+    [(200, None), (204, None), (404, _Refused), (413, _Refused), (429, _Down), (500, _Down)],
+)
+def test_check_status_sorts_outages_from_refusals(
+    status: int, raised: type[Exception] | None
+) -> None:
+    r = requests.Response()
+    r.status_code = status
+    if raised is None:
+        check_status(r, _Down, _Refused)
+        return
+    with pytest.raises(raised, match=f"^HTTP {status}$"):
+        check_status(r, _Down, _Refused)
 
 
 def test_core_imports_no_other_layer() -> None:
