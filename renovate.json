@@ -27,6 +27,12 @@
       "enabled": false
     },
     {
+      "description": "pipeline/ : Python reste en 3.12 tant qu'essentia-tensorflow n'a de roue que cp312 (règle ci-dessus)",
+      "matchFileNames": ["pipeline/**"],
+      "matchPackageNames": ["python"],
+      "enabled": false
+    },
+    {
       "description": "Auto-merge pinning and digest re-pins (no functional change)",
       "matchUpdateTypes": ["pin", "pinDigest", "digest"],
       "automerge": true
@@ -81,15 +87,6 @@
       "matchStrings": ["RSGAIN_VERSION=(?<currentValue>\\S+)"],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "complexlogic/rsgain",
-      "extractVersionTemplate": "^v(?<version>.+)$"
-    },
-    {
-      "customType": "regex",
-      "description": "acoustid/chromaprint, downloaded by pipeline/scripts/dev-setup.sh",
-      "managerFilePatterns": ["/^pipeline/scripts/dev-setup\\.sh$/"],
-      "matchStrings": ["FPCALC_VERSION=(?<currentValue>\\S+)"],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "acoustid/chromaprint",
       "extractVersionTemplate": "^v(?<version>.+)$"
     }
   ]
