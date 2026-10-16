@@ -9,7 +9,14 @@ from musilogy import REFERENCE_POPULARITY
 from musilogy.colisten import PARAMETERS as COLISTEN_PARAMETERS
 from musilogy.fetch import expected_sums, sha256_file
 from musilogy.paths import PACKAGE_DIR, SQL_DIR, dump_sums, extraction_sidecar, popularity_sums
-from musilogy.publish import SAME_SOUND_PARAMETERS, publish
+from musilogy.publish import (
+    SAME_SOUND_PARAMETERS,
+    Drift,
+    drifts,
+    previous_manifest,
+    publish,
+    table_counts,
+)
 from tests.conftest import (
     build_synthetic,
     official_file,
@@ -343,3 +350,87 @@ def test_the_manifest_names_every_parameter_88_same_sound_sets():
     sql = (SQL_DIR / "88_same_sound.sql").read_text(encoding="utf-8")
     sets = re.findall(r"^\s*SET\s+VARIABLE\s+(\w+)", sql, re.MULTILINE | re.IGNORECASE)
     assert set(sets) == set(SAME_SOUND_PARAMETERS)
+
+
+# The data diff: a delivery's counts against the previous delivery's. The case
+# each test below must catch is named in it.
+
+
+@pytest.mark.parametrize(
+    ("got", "moved"),
+    [
+        # At the limit, in either direction: a comparison written `>=` instead
+        # of `>` stops these.
+        pytest.param(1010, False, id="grown-to-the-limit"),
+        pytest.param(990, False, id="shrunk-to-the-limit"),
+        # One row past it, in either direction: a comparison of the signed
+        # delta rather than its size lets the shrink through.
+        pytest.param(1011, True, id="grown-past-the-limit"),
+        pytest.param(989, True, id="shrunk-past-the-limit"),
+    ],
+)
+def test_a_table_drifts_once_its_count_moves_past_the_limit(got, moved):
+    found = drifts({"artists": 1000}, {"artists": got}, limit=0.01)
+    assert found == ([Drift("artists", 1000, got)] if moved else [])
+
+
+def test_every_table_that_moved_is_named_and_only_those():
+    expected = {"artists": 1000, "links": 500, "urls": 200}
+    got = {"artists": 2000, "links": 500, "urls": 100}
+    assert drifts(expected, got, limit=0.01) == [
+        Drift("artists", 1000, 2000),
+        Drift("urls", 200, 100),
+    ]
+
+
+def test_a_drift_states_its_absolute_and_relative_move():
+    # The urls of 10bcad46: the Wikipedia and image pages leaving the table.
+    drift = Drift("urls", 2_036_294, 1_991_446)
+    assert drift.absolute == -44_848
+    assert drift.relative == pytest.approx(-0.022024, abs=1e-6)
+
+
+def test_a_table_the_previous_delivery_did_not_have_drifts():
+    # A table added to the delivery moves from nothing: its rows were never
+    # compared to anything, so it cannot pass as unchanged.
+    assert drifts({}, {"styles": 3}, limit=0.5) == [Drift("styles", 0, 3)]
+    assert Drift("styles", 0, 3).relative == float("inf")
+    assert drifts({}, {"styles": 0}, limit=0.5) == []
+
+
+def test_a_table_the_delivery_no_longer_has_is_not_a_drift():
+    # publish() removes a retired table's file; its old count says nothing of
+    # the tables delivered now.
+    assert drifts({"genres": 1740, "artists": 10}, {"artists": 10}, limit=0.01) == []
+
+
+def test_the_counts_compared_are_those_publish_writes(con, tmp_path):
+    # Case: the comparison counting other tables, or otherwise, than the
+    # manifest it is compared with — a delivery would then drift from itself.
+    assert table_counts(con) == publish(con, tmp_path, DUMP)["counts"]
+
+
+def manifest_at(folder, counts):
+    folder.mkdir(parents=True)
+    (folder / "manifest.json").write_text(json.dumps({"counts": counts}), encoding="utf-8")
+    return folder / "manifest.json"
+
+
+def test_the_previous_delivery_of_the_same_dump_is_the_one_it_replaces(tmp_path):
+    # Case: reading a sibling while the run is about to overwrite this one.
+    same = manifest_at(tmp_path / "20260909-001002", {"artists": 1})
+    manifest_at(tmp_path / "20261007-001001", {"artists": 2})
+    assert previous_manifest(tmp_path / "20260909-001002") == (same, {"counts": {"artists": 1}})
+
+
+def test_a_new_dump_is_compared_with_the_latest_dump_delivered(tmp_path):
+    # Dump names are their timestamps: sorted, the last is the latest. Case:
+    # taking the first, or any directory without a manifest.
+    manifest_at(tmp_path / "20260813-001001", {"artists": 1})
+    latest = manifest_at(tmp_path / "20260909-001002", {"artists": 2})
+    (tmp_path / "20260910-001001").mkdir()
+    assert previous_manifest(tmp_path / "20261007-001001") == (latest, {"counts": {"artists": 2}})
+
+
+def test_without_a_previous_delivery_there_is_nothing_to_compare(tmp_path):
+    assert previous_manifest(tmp_path / "out" / DUMP) is None

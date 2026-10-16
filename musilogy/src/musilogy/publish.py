@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import json
+import math
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
 import duckdb
 
@@ -197,14 +198,12 @@ def publish(
 ) -> dict[str, Any]:
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    counts: dict[str, int] = {}
     for name in TABLES:
         con.execute(
             f"COPY (SELECT * FROM {name} ORDER BY {ORDER_BY[name]}) TO ?"
             " (FORMAT parquet, COMPRESSION zstd)",
             [(out_dir / f"{name}.parquet").as_posix()],
         )
-        counts[name] = scalar(con, f"SELECT count(*) FROM {name}")
 
     # A file this run did not write — a table dropped from the schema, an
     # export retired — would otherwise stay in the delivery and be digested
@@ -235,7 +234,7 @@ def publish(
         "official": _parts(con, "official_snapshots", official_sums),
         "listening": _snapshot(con, "listening_snapshot", listening_sums),
         "discogs": _discogs(con),
-        "counts": counts,
+        "counts": table_counts(con),
         "output_sha256": output_sha256,
         "parameters": _parameters(con),
         "inputs": {
@@ -263,3 +262,60 @@ def publish(
         json.dumps(manifest, indent=1, ensure_ascii=False), encoding="utf-8"
     )
     return manifest
+
+
+# The largest move of a table's row count, relative to the previous delivery,
+# that `musilogy run` publishes without being told. Every move of a table count
+# the history records, while the counts were frozen in a test, came from a rule
+# change; the smallest was +0.636 % (genres, every artist type joining,
+# a7361cf3). The limit sits below it, so none would go through unannounced.
+MAX_DRIFT = 0.005
+
+
+class Drift(NamedTuple):
+    """A table whose count moved past the limit since the previous delivery."""
+
+    table: str
+    expected: int
+    got: int
+
+    @property
+    def absolute(self) -> int:
+        return self.got - self.expected
+
+    @property
+    def relative(self) -> float:
+        return self.absolute / self.expected if self.expected else math.inf
+
+    def __str__(self) -> str:
+        return (
+            f"{self.table}: expected {self.expected}, got {self.got}, "
+            f"{self.absolute:+d} ({self.relative:+.2%})"
+        )
+
+
+def table_counts(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
+    """The row count of every delivered table, as the manifest records it."""
+    return {name: scalar(con, f"SELECT count(*) FROM {name}") for name in TABLES}
+
+
+def drifts(
+    expected: Mapping[str, int], got: Mapping[str, int], limit: float = MAX_DRIFT
+) -> list[Drift]:
+    """The tables of `got` whose count moved past `limit` of `expected`. A table
+    `expected` lacks moves from zero; one only `expected` has is retired, and
+    publish() removes its file."""
+    found = [Drift(table, expected.get(table, 0), n) for table, n in got.items()]
+    return [d for d in found if abs(d.absolute) > limit * d.expected]
+
+
+def previous_manifest(out: Path) -> tuple[Path, dict[str, Any]] | None:
+    """The manifest of the delivery `out` follows: the one at `out`, which
+    publishing there overwrites, else that of the latest dump delivered beside
+    it (deliveries are named after their dump, a timestamp)."""
+    here = out / "manifest.json"
+    beside = sorted(out.parent.glob("*/manifest.json"))
+    path = here if here.exists() else (beside[-1] if beside else None)
+    if path is None:
+        return None
+    return path, json.loads(path.read_text(encoding="utf-8"))

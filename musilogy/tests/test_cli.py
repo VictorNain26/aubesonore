@@ -2,9 +2,11 @@ import json
 
 import pytest
 
+from musilogy import REFERENCE_DUMP as DUMP
 from musilogy import cli
 from musilogy.build import RAW_DISCOGS_FIELDS
 from musilogy.fetch import ChecksumError, sha256_file
+from musilogy.publish import table_counts
 from tests.conftest import FIX
 
 
@@ -383,7 +385,12 @@ def test_filter_jsonl_keeping_nothing_still_writes_the_file(tmp_path):
 @pytest.mark.parametrize(
     ("argv", "called"),
     [
-        (["run"], ("run",)),
+        (["run"], ("run", [])),
+        (["run", "--accept-drift", "urls"], ("run", ["urls"])),
+        (
+            ["run", "--accept-drift", "urls", "--accept-drift", "releases"],
+            ("run", ["urls", "releases"]),
+        ),
         (["snapshot-popularity"], ("snapshot_popularity",)),
         (["snapshot-official"], ("snapshot_official",)),
         (["snapshot-discography"], ("snapshot_discography",)),
@@ -413,6 +420,16 @@ def test_each_command_runs_its_own_handler(monkeypatch, argv, called):
     assert calls == [called]
 
 
+def test_a_drift_can_only_be_accepted_on_a_delivered_table(monkeypatch):
+    # Case: a typo in the table name accepted, then matching nothing, so the
+    # run stops on the drift it was meant to let through — or a retired table.
+    monkeypatch.setattr(cli, "run", lambda *_: pytest.fail("ran with an unknown table"))
+    monkeypatch.setattr("sys.argv", ["musilogy", "run", "--accept-drift", "genres"])
+    with pytest.raises(SystemExit) as raised:
+        cli.main()
+    assert raised.value.code == 2
+
+
 def test_an_unknown_command_is_refused(monkeypatch):
     monkeypatch.setattr("sys.argv", ["musilogy", "publish"])
     with pytest.raises(SystemExit) as raised:
@@ -435,3 +452,91 @@ def test_a_stopped_official_part_resumes_under_the_day_it_started(tmp_path, monk
     monkeypatch.setattr(cli, "_take_once", lambda _survey, date, *_: taken.append(date))
     cli.snapshot_official()
     assert taken == ["2026-10-03"]
+
+
+def previous_delivery(folder, counts):
+    folder.mkdir(parents=True)
+    (folder / "manifest.json").write_text(json.dumps({"counts": counts}), encoding="utf-8")
+    return folder
+
+
+def moved(con, **changes):
+    """The sample's counts, with `changes` added to them: a previous delivery
+    that differs from this build by exactly these rows."""
+    counts = table_counts(con)
+    return {table: n - changes.get(table, 0) for table, n in counts.items()}
+
+
+def test_without_a_previous_delivery_the_run_says_it_publishes_uncompared(con, tmp_path, capsys):
+    cli._stop_on_drift(con, tmp_path / "out" / DUMP, [])
+    assert "no previous delivery" in capsys.readouterr().out
+
+
+def test_a_delivery_equal_to_the_previous_goes_through(con, tmp_path):
+    cli._stop_on_drift(con, previous_delivery(tmp_path / DUMP, moved(con)), [])
+
+
+def test_a_drift_stops_the_run_naming_each_table_that_moved(con, tmp_path):
+    # Expected, got, absolute and relative move: what the reader needs to
+    # tell the rule that moved them. The table that did not move is not named.
+    artists = table_counts(con)["artists"]
+    out = previous_delivery(tmp_path / DUMP, moved(con, artists=artists // 2, urls=-50))
+    with pytest.raises(SystemExit) as raised:
+        cli._stop_on_drift(con, out, [])
+    message = str(raised.value)
+    expected = artists - artists // 2
+    assert f"artists: expected {expected}, got {artists}, {artists // 2:+d}" in message
+    urls = table_counts(con)["urls"]
+    assert f"urls: expected {urls + 50}, got {urls}, -50" in message
+    assert "links:" not in message
+    assert "nothing published" in message
+    assert str(out / "manifest.json") in message
+
+
+def test_an_accepted_drift_goes_through_and_is_said(con, tmp_path, capsys):
+    out = previous_delivery(tmp_path / DUMP, moved(con, urls=-50))
+    cli._stop_on_drift(con, out, ["urls"])
+    assert "urls: expected" in capsys.readouterr().out
+
+
+def test_accepting_one_drift_does_not_accept_the_others(con, tmp_path):
+    # Case: --accept-drift read as "accept every drift".
+    out = previous_delivery(tmp_path / DUMP, moved(con, urls=-50, links=-50))
+    with pytest.raises(SystemExit) as raised:
+        cli._stop_on_drift(con, out, ["urls"])
+    assert "links: expected" in str(raised.value)
+    assert "urls: expected" not in str(raised.value)
+
+
+def test_run_compares_with_the_previous_delivery_before_overwriting_it(con, tmp_path, monkeypatch):
+    # The wiring: build() and check_invariants() run for real on the fixtures,
+    # publish() is replaced. Case: the guard dropped from run(), moved after
+    # publish() — which overwrites the very manifest it compares with —, or
+    # handed another directory than the one publish() writes.
+    published = []
+    monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
+    monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
+    monkeypatch.setattr(cli, "WORK_DIR", tmp_path)
+    monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
+    monkeypatch.setattr(cli, "verified_discography", lambda: FIX / "discography.jsonl")
+    monkeypatch.setattr(cli, "verified_official", lambda: [FIX / "official.jsonl"])
+    monkeypatch.setattr(cli, "verified_discogs", lambda: FIX / "discogs.jsonl")
+    monkeypatch.setattr(cli, "verified_listening", lambda: None)
+    monkeypatch.setattr(cli, "out_dir", lambda dump: tmp_path / "out" / dump)
+
+    def record_publish(*args):
+        published.append(args)
+        return {"counts": {}}
+
+    monkeypatch.setattr(cli, "publish", record_publish)
+    previous_delivery(tmp_path / "out" / DUMP, {**table_counts(con), "artists": 1})
+
+    with pytest.raises(SystemExit) as raised:
+        cli.run([])
+    assert "artists: expected 1," in str(raised.value)
+    assert "links:" not in str(raised.value)
+    assert published == [], "publish() ran before the comparison could stop the run"
+
+    # The same run, the drift accepted: it publishes, where it compared.
+    cli.run(["artists"])
+    assert [args[1] for args in published] == [tmp_path / "out" / DUMP]

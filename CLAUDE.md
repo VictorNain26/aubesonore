@@ -42,7 +42,7 @@ covers rebuilding the whole system from nothing.
   `.venv` the radio-* units run.
 - **Where to develop.** Every piece is developed on the workstation, in a git worktree of the
   clone, one per branch; each piece's commands are in its `.claude/rules/<piece>.md`. The
-  server is used only for the runs on the real data: Musilogy's build, its slow baseline and
+  server is used only for the runs on the real data: Musilogy's build and
   its load into production, and the radio's passes. Never work in `~/aubesonore` itself: it
   is the production checkout.
 

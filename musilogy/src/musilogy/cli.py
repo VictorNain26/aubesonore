@@ -76,7 +76,16 @@ from musilogy.paths import (
     work_dir,
     written_aside,
 )
-from musilogy.publish import extraction_matches_rows_loaded, publish, read_extraction
+from musilogy.publish import (
+    MAX_DRIFT,
+    TABLES,
+    drifts,
+    extraction_matches_rows_loaded,
+    previous_manifest,
+    publish,
+    read_extraction,
+    table_counts,
+)
 from musilogy.sample import publish_sample
 
 SUMS_PATH = dump_sums(DUMP)
@@ -398,8 +407,32 @@ def _stop_on_extraction_mismatch(con: duckdb.DuckDBPyConnection, extraction: Pat
         )
 
 
-def run() -> None:
-    """Full execution: fetch → extract (when needed) → transform → validate → publish."""
+def _stop_on_drift(con: duckdb.DuckDBPyConnection, out: Path, accepted: Sequence[str]) -> None:
+    """The data diff, before publish() like the other guards: publishing at
+    `out` overwrites the manifest the comparison reads. Each table whose count
+    moved past MAX_DRIFT since the previous delivery stops the run, unless
+    `accepted` names it: a rule meant to move a table says so when it runs."""
+    previous = previous_manifest(out)
+    if previous is None:
+        print(f"no previous delivery beside {out}: publishing without comparison")
+        return
+    path, manifest = previous
+    moved = drifts(manifest["counts"], table_counts(con))
+    lines = {d.table: str(d) for d in moved}
+    for table in accepted:
+        if table in lines:
+            print(f"drift accepted, {lines.pop(table)}")
+    if lines:
+        raise SystemExit(
+            f"counts moved more than {MAX_DRIFT:.1%} from {path}, nothing published:\n"
+            + "\n".join(lines.values())
+            + "\na rule meant to move them: musilogy run --accept-drift TABLE"
+        )
+
+
+def run(accepted_drift: Sequence[str] = ()) -> None:
+    """Full execution: fetch → extract (when needed) → transform → validate →
+    compare with the previous delivery → publish."""
     if not ARTISTS_JSONL.exists() or not RELEASE_GROUPS_JSONL.exists():
         fetch_and_extract()
 
@@ -435,7 +468,9 @@ def run() -> None:
     _stop_on_extraction_mismatch(con, extraction)
     _stop_on_discogs_mismatch(con)
 
-    manifest = publish(con, out_dir(DUMP), DUMP, extraction)
+    out = out_dir(DUMP)
+    _stop_on_drift(con, out, accepted_drift)
+    manifest = publish(con, out, DUMP, extraction)
     print(manifest["counts"])
 
 
@@ -562,9 +597,18 @@ def main() -> None:
     # Each command carries its handler (set_defaults(handler=...), as the
     # argparse documentation does for sub-commands): naming a command and
     # running it cannot fall out of step.
-    subparsers.add_parser(
-        "run", help="fetch → extract → transform → validate → publish"
-    ).set_defaults(handler=lambda _: run())
+    run_parser = subparsers.add_parser(
+        "run", help="fetch → extract → transform → validate → compare → publish"
+    )
+    run_parser.add_argument(
+        "--accept-drift",
+        action="append",
+        default=[],
+        choices=TABLES,
+        metavar="TABLE",
+        help="publish although TABLE's count moved past the limit since the previous delivery",
+    )
+    run_parser.set_defaults(handler=lambda args: run(args.accept_drift))
     subparsers.add_parser(
         "snapshot-popularity", help="take a dated ListenBrainz snapshot of every artist"
     ).set_defaults(handler=lambda _: snapshot_popularity())
