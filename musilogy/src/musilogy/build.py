@@ -276,13 +276,18 @@ INVARIANTS = (
 )
 
 
+def scalar(con: duckdb.DuckDBPyConnection, sql: str) -> int:
+    """The one integer an aggregate query returns, such as a COUNT(*)."""
+    row = con.execute(sql).fetchone()
+    assert row is not None  # an aggregate without GROUP BY returns exactly one row
+    return int(row[0])
+
+
 def check_invariants(con: duckdb.DuckDBPyConnection, sql_dir: Path) -> list[tuple[str, int]]:
     con.execute((sql_dir / "90_invariants.sql").read_text(encoding="utf-8"))
     violations: list[tuple[str, int]] = []
     for name in INVARIANTS:
-        row = con.execute(f"SELECT count(*) FROM {name}").fetchone()
-        assert row is not None  # COUNT(*) always returns exactly one row
-        n = int(row[0])
+        n = scalar(con, f"SELECT count(*) FROM {name}")
         if n:
             violations.append((name, n))
     return violations

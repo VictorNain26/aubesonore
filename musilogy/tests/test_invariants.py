@@ -5,7 +5,7 @@ import duckdb
 import pytest
 from conftest import FIX, SQL
 
-from musilogy.build import INVARIANTS, build, check_invariants
+from musilogy.build import INVARIANTS, build, check_invariants, scalar
 from musilogy.paths import SQL_DIR
 
 
@@ -498,3 +498,19 @@ def test_begin_misread_is_reported(con):
         con.execute("UPDATE artists SET type = NULL WHERE mbid = ?", [mbid])
         violations = dict(check_invariants(con, SQL))
     assert violations.get("begin_misread") == 1
+
+
+def test_scalar_reads_the_one_integer_an_aggregate_returns():
+    con = duckdb.connect()
+    con.execute("CREATE TABLE t AS SELECT * FROM range(3) r(i)")
+    assert scalar(con, "SELECT count(*) FROM t") == 3
+    assert scalar(con, "SELECT count(*) FROM t WHERE i > 9") == 0
+
+
+def test_scalar_refuses_a_query_that_returns_no_row():
+    # Without the guard, a query that is not an aggregate would read as a
+    # TypeError far from its cause.
+    con = duckdb.connect()
+    con.execute("CREATE TABLE t (i INTEGER)")
+    with pytest.raises(AssertionError):
+        scalar(con, "SELECT i FROM t")

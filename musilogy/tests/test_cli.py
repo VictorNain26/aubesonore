@@ -354,3 +354,65 @@ def test_load_sample_hands_the_sample_delivery_to_load(monkeypatch):
     monkeypatch.setattr("sys.argv", ["musilogy", "load", "--sample"])
     cli.main()
     assert handed == [True]
+
+
+def test_filter_jsonl_copies_the_kept_lines_byte_for_byte_and_in_order(tmp_path):
+    # Fixtures are diffed line by line: a re-serialised record (key order,
+    # escaped accents, spacing) would show every line as changed.
+    src = tmp_path / "src.jsonl"
+    lines = ['{"b": 1, "a": "Björk"}\n', '{"b": 2,"a":"x"}\n', '{"b": 3, "a": "Lethal Shöck"}\n']
+    src.write_text("".join(lines), encoding="utf-8")
+    dst = tmp_path / "dst.jsonl"
+    kept = cli._filter_jsonl(src, dst, lambda r: r["b"] != 2)
+    assert dst.read_text(encoding="utf-8") == lines[0] + lines[2]
+    assert [r["b"] for r in kept] == [1, 3]
+
+
+def test_filter_jsonl_keeping_nothing_still_writes_the_file(tmp_path):
+    # An empty selection is a result, not an absence: a missing fixture file
+    # would make the next build fail on a path, not on its content.
+    src = tmp_path / "src.jsonl"
+    src.write_text('{"b": 1}\n', encoding="utf-8")
+    dst = tmp_path / "dst.jsonl"
+    assert cli._filter_jsonl(src, dst, lambda _: False) == []
+    assert dst.read_text(encoding="utf-8") == ""
+
+
+@pytest.mark.parametrize(
+    ("argv", "called"),
+    [
+        (["run"], ("run",)),
+        (["snapshot-popularity"], ("snapshot_popularity",)),
+        (["snapshot-official"], ("snapshot_official",)),
+        (["snapshot-discography"], ("snapshot_discography",)),
+        (
+            ["snapshot-listens", "2692-20261001-000003"],
+            ("snapshot_listens", "2692-20261001-000003"),
+        ),
+        (["make-fixtures"], ("make_fixtures",)),
+        (["load"], ("load_site", False)),
+        (["load", "--sample"], ("load_site", True)),
+    ],
+)
+def test_each_command_runs_its_own_handler(monkeypatch, argv, called):
+    calls = []
+    for name in (
+        "run",
+        "snapshot_popularity",
+        "snapshot_official",
+        "snapshot_discography",
+        "snapshot_listens",
+        "make_fixtures",
+        "load_site",
+    ):
+        monkeypatch.setattr(cli, name, lambda *args, name=name: calls.append((name, *args)))
+    monkeypatch.setattr("sys.argv", ["musilogy", *argv])
+    cli.main()
+    assert calls == [called]
+
+
+def test_an_unknown_command_is_refused(monkeypatch):
+    monkeypatch.setattr("sys.argv", ["musilogy", "publish"])
+    with pytest.raises(SystemExit) as raised:
+        cli.main()
+    assert raised.value.code == 2
