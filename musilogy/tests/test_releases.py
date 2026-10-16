@@ -1,6 +1,6 @@
 import json
 
-from conftest import build_synthetic, synthetic_artist, synthetic_release_group
+from tests.conftest import build_synthetic, synthetic_artist, synthetic_release_group
 
 A = "00000000-0000-4000-8000-0000000000a1"
 B = "00000000-0000-4000-8000-0000000000a2"

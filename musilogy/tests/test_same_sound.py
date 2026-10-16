@@ -4,7 +4,11 @@ MBID, and the Discogs records and MusicBrainz genres below make each rule of
 the colour visible."""
 
 import pytest
-from conftest import (
+
+from musilogy import colisten
+from musilogy.build import check_invariants
+from musilogy.paths import SQL_DIR
+from tests.conftest import (
     build_synthetic,
     discogs_file,
     discogs_release,
@@ -15,10 +19,6 @@ from conftest import (
     synthetic_artist,
     synthetic_release_group,
 )
-
-from musilogy import colisten
-from musilogy.build import check_invariants
-from musilogy.paths import SQL_DIR
 
 A = "00000000-0000-4000-8000-0000000005a1"
 B = "00000000-0000-4000-8000-0000000005a2"

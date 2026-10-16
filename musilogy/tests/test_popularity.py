@@ -1,11 +1,10 @@
 import json
 
-from conftest import FIX, build_synthetic, synthetic_artist
-from test_invariants import restored
-
 from musilogy import REFERENCE_POPULARITY
 from musilogy.build import check_invariants
 from musilogy.paths import SQL_DIR
+from tests.conftest import FIX, build_synthetic, synthetic_artist
+from tests.test_invariants import restored
 
 BEATLES = "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"
 

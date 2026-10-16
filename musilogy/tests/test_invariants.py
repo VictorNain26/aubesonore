@@ -3,11 +3,11 @@ from contextlib import contextmanager
 
 import duckdb
 import pytest
-from conftest import FIX, SQL
 
 from musilogy import build as build_module
 from musilogy.build import INVARIANTS, build, check_invariants, scalar
 from musilogy.paths import SQL_DIR
+from tests.conftest import FIX, SQL
 
 
 @contextmanager

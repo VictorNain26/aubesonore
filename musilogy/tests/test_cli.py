@@ -1,11 +1,11 @@
 import json
 
 import pytest
-from conftest import FIX
 
 from musilogy import cli
 from musilogy.build import RAW_DISCOGS_FIELDS
 from musilogy.fetch import ChecksumError, sha256_file
+from tests.conftest import FIX
 
 
 def sidecar(tmp_path, artists_kept, release_groups_kept):

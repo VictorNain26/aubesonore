@@ -1,5 +1,6 @@
 import pytest
-from conftest import build_synthetic, synthetic_artist, synthetic_release_group
+
+from tests.conftest import build_synthetic, synthetic_artist, synthetic_release_group
 
 
 def counter(con, name):
