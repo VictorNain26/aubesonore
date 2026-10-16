@@ -47,8 +47,10 @@ Ce qui vaut pour tout le dépôt AubeSonore est dans le `CLAUDE.md` racine.
   les compteurs du manifeste avant de publier et refuse au-delà de `MAX_DRIFT`
   (`publish.py`). Un écart refusé se comprend avant d'être accepté : on
   identifie la règle qui l'a produit, on dit dans la PR pourquoi le nouveau
-  compte est le bon, puis on relance avec `--accept-drift NOM` (une table, ou
-  `GROUPE.COMPTEUR`), que le manifeste de la livraison garde. Accepter sans
+  compte est le bon, puis on relance avec `--accept-drift NOM` (une table,
+  `GROUPE.COMPTEUR`, ou un groupe pour chacun de ses compteurs qui a bougé),
+  que le manifeste de la livraison garde, avec les compteurs nouveaux et
+  disparus. Accepter sans
   cette étape retire le contrôle au lieu de le passer.
 
 ## Mesurer plutôt que raisonner

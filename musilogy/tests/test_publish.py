@@ -12,11 +12,15 @@ from musilogy.paths import PACKAGE_DIR, SQL_DIR, dump_sums, extraction_sidecar, 
 from musilogy.publish import (
     COUNTER_TABLES,
     SAME_SOUND_PARAMETERS,
+    TABLES,
     Comparison,
     Drift,
+    Trace,
+    accepts,
     compare,
     compared,
     delivered,
+    group_of,
     previous_manifest,
     publish,
 )
@@ -377,7 +381,7 @@ def test_the_manifest_names_every_parameter_88_same_sound_sets():
 def test_a_count_drifts_once_it_moves_past_the_limit(name, got, moved):
     # A counter is held to the same limit as a table.
     found = compare({name: 1000}, {name: got}, limit=0.01)
-    assert found == Comparison([Drift(name, 1000, got)] if moved else [], [], [])
+    assert found == Comparison([Drift(name, 1000, got)] if moved else [], {}, {})
 
 
 def test_every_count_that_moved_is_named_and_only_those():
@@ -401,16 +405,16 @@ def test_a_drift_states_its_absolute_and_relative_move():
 def test_a_table_the_previous_delivery_did_not_have_drifts():
     # A table added to the delivery moves from nothing: its rows were never
     # compared to anything, so it cannot pass as unchanged.
-    assert compare({}, {"styles": 3}, limit=0.5) == Comparison([Drift("styles", 0, 3)], [], [])
+    assert compare({}, {"styles": 3}, limit=0.5) == Comparison([Drift("styles", 0, 3)], {}, {})
     assert Drift("styles", 0, 3).relative == float("inf")
-    assert compare({}, {"styles": 0}, limit=0.5) == Comparison([], [], [])
+    assert compare({}, {"styles": 0}, limit=0.5) == Comparison([], {}, {})
 
 
 def test_a_table_the_delivery_no_longer_has_is_not_a_drift():
     # publish() removes a retired table's file; its old count says nothing of
     # the tables delivered now.
     found = compare({"genres": 1740, "artists": 10}, {"artists": 10}, limit=0.01)
-    assert found == Comparison([], [], [])
+    assert found == Comparison([], {}, {})
 
 
 def test_a_counter_the_previous_delivery_did_not_have_is_new_not_a_drift():
@@ -418,13 +422,13 @@ def test_a_counter_the_previous_delivery_did_not_have_is_new_not_a_drift():
     # said, and the run goes on. Case: it read as moving from zero, and every
     # counter added stops the next run.
     found = compare({"artists": 10}, {"artists": 10, "r2_anomalies.birth_future": 4}, limit=0.01)
-    assert found == Comparison([], ["r2_anomalies.birth_future"], [])
+    assert found == Comparison([], {"r2_anomalies.birth_future": 4}, {})
 
 
 def test_a_counter_the_delivery_no_longer_has_is_gone_not_a_drift():
     # Case: a counter dropped from the SQL, or renamed, passing unnoticed.
     found = compare({"artists": 10, "r2_anomalies.birth_future": 4}, {"artists": 10}, limit=0.01)
-    assert found == Comparison([], [], ["r2_anomalies.birth_future"])
+    assert found == Comparison([], {}, {"r2_anomalies.birth_future": 4})
 
 
 def test_the_counts_compared_are_those_publish_writes(con, tmp_path):
@@ -433,7 +437,7 @@ def test_the_counts_compared_are_those_publish_writes(con, tmp_path):
     # from itself.
     manifest = publish(con, tmp_path, DUMP)
     assert delivered(con) == compared(manifest)
-    assert compare(compared(manifest), delivered(con)) == Comparison([], [], [])
+    assert compare(compared(manifest), delivered(con)) == Comparison([], {}, {})
 
 
 def test_every_counter_of_the_manifest_is_compared(con, tmp_path):
@@ -454,20 +458,50 @@ def test_a_manifest_older_than_a_counter_group_compares_its_counts_alone():
     assert compared({"counts": {"artists": 3}}) == {"artists": 3}
 
 
-def test_a_delivery_without_accepted_drift_carries_no_trace(con, tmp_path):
-    assert "accepted_drifts" not in publish(con, tmp_path, DUMP)
+@pytest.mark.parametrize("trace", [None, Trace([], {}, {})])
+def test_a_delivery_that_moved_nothing_carries_no_trace(con, tmp_path, trace):
+    manifest = publish(con, tmp_path, DUMP, None, trace)
+    assert not {"accepted_drifts", "new_counters", "gone_counters"} & set(manifest)
 
 
 def test_the_accepted_drifts_stay_with_the_delivery(con, tmp_path):
     # Case: the run told to let a move through, and the delivery then holding
     # no trace of it — the next reader takes the new counts for unchallenged.
     accepted = [Drift("urls", 200, 100), Drift("link_exclusions.not_on_page", 10, 30)]
-    publish(con, tmp_path, DUMP, None, accepted)
+    publish(con, tmp_path, DUMP, None, Trace(accepted, {}, {}))
     written = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
     assert written["accepted_drifts"] == [
         {"name": "urls", "expected": 200, "got": 100},
         {"name": "link_exclusions.not_on_page", "expected": 10, "got": 30},
     ]
+    assert not {"new_counters", "gone_counters"} & set(written)
+
+
+def test_the_counters_new_and_gone_stay_with_the_delivery(con, tmp_path):
+    # Case: a counter added or dropped since said once, on the run's output,
+    # and the delivery then holding no trace of it — the next run compares
+    # the new counter as if it had always been there, the dropped one is
+    # forgotten.
+    trace = Trace(
+        [],
+        {"r2_anomalies.birth_future": 4, "release_status.withdrawn": 0},
+        {"r2_anomalies.begin_retired": 7},
+    )
+    publish(con, tmp_path, DUMP, None, trace)
+    written = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    assert written["new_counters"] == [
+        {"name": "r2_anomalies.birth_future", "got": 4},
+        {"name": "release_status.withdrawn", "got": 0},
+    ]
+    assert written["gone_counters"] == [{"name": "r2_anomalies.begin_retired", "expected": 7}]
+    assert "accepted_drifts" not in written
+
+
+def test_no_table_is_named_like_a_counter_group():
+    # --accept-drift takes a table or a counter group under the same bare
+    # name. Case: a table added under a group's name, or the reverse, and
+    # accepting one then accepting the other.
+    assert not set(TABLES) & set(COUNTER_TABLES)
 
 
 def test_the_previous_delivery_of_the_same_dump_is_the_one_it_replaces(tmp_path):
@@ -519,3 +553,37 @@ def test_a_previous_manifest_without_readable_counts_stops_with_its_path(tmp_pat
     with pytest.raises(SystemExit) as raised:
         previous_manifest(out)
     assert str(out / "manifest.json") in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    ("name", "group"),
+    [
+        ("link_exclusions.not_on_page", "link_exclusions"),
+        # Case: a table, a bare group, an empty counter or an unknown group
+        # read as a counter, and accepting a group then letting it through.
+        ("links", None),
+        ("link_exclusions", None),
+        ("link_exclusions.", None),
+        ("links.not_on_page", None),
+    ],
+)
+def test_the_group_of_a_counter_is_the_counter_table_before_its_dot(name, group):
+    assert group_of(name) == group
+
+
+@pytest.mark.parametrize(
+    ("accepted", "name", "let_through"),
+    [
+        (["urls"], "urls", True),
+        (["link_exclusions.not_on_page"], "link_exclusions.not_on_page", True),
+        (["link_exclusions"], "link_exclusions.not_on_page", True),
+        # Case: a counter accepting its sibling, a group accepting another
+        # group's counter, a table accepting what merely starts with its name.
+        (["link_exclusions.not_on_page"], "link_exclusions.to_unextracted_artist", False),
+        (["release_status"], "link_exclusions.not_on_page", False),
+        (["links"], "links.not_on_page", False),
+        ([], "urls", False),
+    ],
+)
+def test_a_move_is_accepted_under_its_own_name_or_its_group(accepted, name, let_through):
+    assert accepts(accepted, name) is let_through

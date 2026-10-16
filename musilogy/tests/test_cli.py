@@ -6,7 +6,7 @@ from musilogy import REFERENCE_DUMP as DUMP
 from musilogy import cli
 from musilogy.build import RAW_DISCOGS_FIELDS
 from musilogy.fetch import ChecksumError, sha256_file
-from musilogy.publish import Drift, counters, delivered, table_counts
+from musilogy.publish import Drift, Trace, counters, delivered, table_counts
 from tests.conftest import FIX, delivery_manifest
 
 
@@ -403,6 +403,7 @@ def test_filter_jsonl_keeping_nothing_still_writes_the_file(tmp_path):
             ["run", "--accept-drift", "link_exclusions.not_on_page"],
             ("run", ["link_exclusions.not_on_page"]),
         ),
+        (["run", "--accept-drift", "link_exclusions"], ("run", ["link_exclusions"])),
         (["snapshot-popularity"], ("snapshot_popularity",)),
         (["snapshot-official"], ("snapshot_official",)),
         (["snapshot-discography"], ("snapshot_discography",)),
@@ -438,11 +439,11 @@ def test_each_command_runs_its_own_handler(monkeypatch, argv, called):
         "genres",
         "links.not_on_page",
         "link_exclusion.not_on_page",
-        "link_exclusions",
+        "link_exclusion",
         "link_exclusions.",
     ],
 )
-def test_a_drift_can_only_be_accepted_on_a_table_or_a_counter_of_a_group(monkeypatch, name):
+def test_a_drift_can_only_be_accepted_on_a_table_a_group_or_a_counter_of_a_group(monkeypatch, name):
     # Case: a typo in the table or group name accepted, then matching nothing,
     # so the run stops on the drift it was meant to let through, after hours of
     # build — or a retired table. A counter's own name is checked against the
@@ -494,12 +495,13 @@ def moved(con, **changes):
 
 
 def test_without_a_previous_delivery_the_run_says_it_publishes_uncompared(con, tmp_path, capsys):
-    assert cli._stop_on_drift(con, tmp_path / "out" / DUMP, []) == []
+    assert cli._stop_on_drift(con, tmp_path / "out" / DUMP, []) == Trace([], {}, {})
     assert "no previous delivery" in capsys.readouterr().out
 
 
 def test_a_delivery_equal_to_the_previous_goes_through(con, tmp_path, capsys):
-    assert cli._stop_on_drift(con, previous_delivery(tmp_path / DUMP, moved(con)), []) == []
+    unchanged = previous_delivery(tmp_path / DUMP, moved(con))
+    assert cli._stop_on_drift(con, unchanged, []) == Trace([], {}, {})
     assert capsys.readouterr().out == ""
 
 
@@ -535,7 +537,7 @@ def test_an_accepted_drift_goes_through_is_said_and_returned(con, tmp_path, caps
     # Returned, because the delivery records it (publish). Case: a counter
     # accepted under its name and still refused.
     out = previous_delivery(tmp_path / DUMP, moved(con, **{name: -50}))
-    accepted = cli._stop_on_drift(con, out, [name])
+    accepted = cli._stop_on_drift(con, out, [name]).accepted
     assert [d.name for d in accepted] == [name]
     assert accepted[0].absolute == -50
     assert f"drift accepted, {name}: expected" in capsys.readouterr().out
@@ -545,8 +547,60 @@ def test_accepting_a_table_that_did_not_move_is_said(con, tmp_path, capsys):
     # Case: the rule meant to move links never took effect, and the run
     # publishes as if the move had been accepted — and records it.
     out = previous_delivery(tmp_path / DUMP, moved(con))
-    assert cli._stop_on_drift(con, out, ["links"]) == []
+    assert cli._stop_on_drift(con, out, ["links"]).accepted == []
     assert "links did not move" in capsys.readouterr().out
+
+
+def test_accepting_a_group_lets_through_each_of_its_counters_that_moved(con, tmp_path, capsys):
+    # Each is returned under its own name, for the delivery to record it as
+    # if it had been named. Case: the group accepted as a whole, its counters
+    # then missing from the trace, or the counters of another group let
+    # through with it.
+    got = delivered(con)
+    out = previous_delivery(
+        tmp_path / DUMP,
+        moved(
+            con,
+            **{
+                "link_exclusions.not_on_page": -50,
+                "link_exclusions.to_unextracted_artist": 50,
+                "release_status.official": -50,
+            },
+        ),
+    )
+    with pytest.raises(SystemExit) as raised:
+        cli._stop_on_drift(con, out, ["link_exclusions"])
+    assert "release_status.official: expected" in str(raised.value)
+    assert "link_exclusions" not in str(raised.value)
+
+    trace = cli._stop_on_drift(con, out, ["link_exclusions", "release_status.official"])
+    not_on_page, to_unextracted = (
+        got[f"link_exclusions.{name}"] for name in ("not_on_page", "to_unextracted_artist")
+    )
+    assert trace.accepted == [
+        Drift("link_exclusions.not_on_page", not_on_page + 50, not_on_page),
+        Drift("link_exclusions.to_unextracted_artist", to_unextracted - 50, to_unextracted),
+        Drift(
+            "release_status.official",
+            got["release_status.official"] + 50,
+            got["release_status.official"],
+        ),
+    ]
+    output = capsys.readouterr().out
+    assert "drift accepted, link_exclusions.not_on_page: expected" in output
+    assert "drift accepted, link_exclusions.to_unextracted_artist: expected" in output
+
+
+def test_accepting_a_group_none_of_whose_counters_moved_is_said(con, tmp_path, capsys):
+    # Case: the rule meant to move the group never took effect, and the run
+    # publishes in silence, as for a table accepted that did not move.
+    out = previous_delivery(tmp_path / DUMP, moved(con, **{"release_status.official": -50}))
+    assert [
+        d.name for d in cli._stop_on_drift(con, out, ["link_exclusions", "release_status"]).accepted
+    ] == ["release_status.official"]
+    output = capsys.readouterr().out
+    assert "drift accepted on link_exclusions, but no counter of link_exclusions moved" in output
+    assert "release_status, but" not in output
 
 
 def test_accepting_one_drift_does_not_accept_the_others(con, tmp_path):
@@ -576,20 +630,23 @@ def test_accepting_a_counter_the_build_does_not_have_stops_the_run(con, tmp_path
 
 
 def test_a_counter_the_previous_delivery_did_not_have_is_said_new(con, tmp_path, capsys):
-    # Case: a counter added since stopping the run, or passing in silence.
+    # Case: a counter added since stopping the run, or passing in silence —
+    # or said, and then missing from what the delivery records.
     previous = moved(con)
     birth_future = previous["r2_anomalies"].pop("birth_future")
     out = previous_delivery(tmp_path / DUMP, previous)
-    assert cli._stop_on_drift(con, out, []) == []
+    trace = cli._stop_on_drift(con, out, [])
+    assert trace == Trace([], {"r2_anomalies.birth_future": birth_future}, {})
     assert f"new counter r2_anomalies.birth_future: {birth_future}" in capsys.readouterr().out
 
 
 def test_a_counter_the_delivery_no_longer_has_is_said_gone(con, tmp_path, capsys):
-    # Case: a counter dropped or renamed in the SQL passing in silence.
+    # Case: a counter dropped or renamed in the SQL passing in silence — or
+    # said, and then missing from what the delivery records.
     previous = moved(con)
     previous["r2_anomalies"]["begin_retired"] = 7
     out = previous_delivery(tmp_path / DUMP, previous)
-    assert cli._stop_on_drift(con, out, []) == []
+    assert cli._stop_on_drift(con, out, []) == Trace([], {}, {"r2_anomalies.begin_retired": 7})
     assert "counter gone r2_anomalies.begin_retired, was 7" in capsys.readouterr().out
 
 
@@ -609,7 +666,7 @@ def test_accepting_a_new_counter_says_it_is_new(con, tmp_path, capsys):
     previous = moved(con)
     del previous["r2_anomalies"]["birth_future"]
     out = previous_delivery(tmp_path / DUMP, previous)
-    assert cli._stop_on_drift(con, out, ["r2_anomalies.birth_future"]) == []
+    assert cli._stop_on_drift(con, out, ["r2_anomalies.birth_future"]).accepted == []
     output = capsys.readouterr().out
     assert "r2_anomalies.birth_future is new, nothing to accept" in output
     assert "did not move" not in output
@@ -632,7 +689,7 @@ def test_run_compares_with_the_previous_delivery_before_overwriting_it(
     assert published == [], "publish() ran before the comparison could stop the run"
 
     # The same run, the drift accepted: it publishes, where it compared, and
-    # hands publish() the drift it let through, for the manifest to record.
+    # hands publish() what it compared, for the manifest to record.
     cli.run(["artists"])
     assert [args[1] for args in published] == [tmp_path / "out" / DUMP]
-    assert [args[4] for args in published] == [[Drift("artists", 1, artists)]]
+    assert [args[4] for args in published] == [Trace([Drift("artists", 1, artists)], {}, {})]
