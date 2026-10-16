@@ -8,7 +8,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # The credentials stay in .env; only the three keys libpq needs are read, never printed.
-env_value() { grep "^$1=" .env | cut -d= -f2-; }
+env_value() { sed -n "s/^$1=//p" .env; }
 
 # Postgres is published on 127.0.0.1:5433 and pg_hba.conf requires TLS; the certificate
 # covers localhost (scripts/make-certs.sh).

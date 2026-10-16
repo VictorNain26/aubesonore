@@ -13,10 +13,13 @@
 set -euo pipefail
 
 SERVER="${AUBESONORE_SERVER:-victormoi@victorserv}"
+# In dependency order: each table's references come before it.
 TABLES=(artist artist_slug artist_profile radio_play discovered_artist)
 
-table_args=""
-for t in "${TABLES[@]}"; do table_args+=" --table=public.$t"; done
+table_args="$(printf ' --table=public.%s' "${TABLES[@]}")"
+# Emptied in reverse, so no row outlives what it references.
+deletes=""
+for ((i = ${#TABLES[@]} - 1; i >= 0; i--)); do deletes+="DELETE FROM ${TABLES[i]}; "; done
 
 dump="$(mktemp)"
 trap 'rm -f "$dump"' EXIT
@@ -32,7 +35,7 @@ ssh "$SERVER" "docker exec aubesonore-db sh -c 'pg_dump -U \"\$POSTGRES_USER\" -
 {
   echo 'BEGIN;'
   echo 'CREATE TEMP TABLE kept_tie ON COMMIT DROP AS SELECT id, artist_id FROM liked_tracks WHERE artist_id IS NOT NULL;'
-  echo 'DELETE FROM radio_play; DELETE FROM discovered_artist; DELETE FROM artist_slug; DELETE FROM artist;'
+  echo "$deletes"
   cat "$dump"
   # pg_dump empties search_path for its own statements.
   echo 'SET search_path = public;'
