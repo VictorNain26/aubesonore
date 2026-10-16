@@ -23,7 +23,7 @@ fonctions SQL (`docs/vision.md` §4).
 
 - Une branche et une PR par changement ; la CI de chaque pièce tourne sur toutes les PR.
 - **Merger sur `master`, c'est déployer** : le serveur avance son checkout `~/aubesonore` tout seul.
-- `site/` se développe sur n'importe quel poste (`site/README.md`). `pipeline/` et `musilogy/`
-  ont besoin des données du serveur : on y travaille dans une worktree, jamais dans
-  `~/aubesonore`, qui est le checkout de production.
+- Tout se développe sur le poste, dans une worktree par branche (`CLAUDE.md`) ; le serveur ne
+  sert qu'aux traitements sur les vraies données. Jamais dans `~/aubesonore`, qui est le checkout
+  de production.
 - Reconstruire la machine de zéro : [`azuracast/RUNBOOK.md`](azuracast/RUNBOOK.md).
