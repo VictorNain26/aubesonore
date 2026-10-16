@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import math
 import subprocess
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -195,10 +195,12 @@ def publish(
     out_dir: Path,
     dump: str,
     extraction: Path | None = None,
-    accepted: Sequence[Drift] = (),
+    trace: Comparison | None = None,
 ) -> dict[str, Any]:
-    """`accepted` are the drifts the run was told to let through: the delivery
-    records them, so the trace of a move stays with the counts it moved."""
+    """`trace` is what the comparison with the previous delivery let through:
+    the drifts the run was told to accept, the counters new and gone. The
+    delivery records it, so the trace of a move stays with the counts it
+    moved."""
     out_dir.mkdir(parents=True, exist_ok=True)
 
     for name in TABLES:
@@ -253,9 +255,7 @@ def publish(
             ),
         },
         **counters(con),
-        # Absent rather than empty when nothing was accepted, like a delivery
-        # predating the key: both say the same thing.
-        **({"accepted_drifts": [d._asdict() for d in accepted]} if accepted else {}),
+        **_trace(trace),
         "git_sha": _git_sha(),
     }
     (out_dir / "manifest.json").write_text(
@@ -304,7 +304,8 @@ def table_counts(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
 
 # Every counter table the manifest carries, each under its own name: _counters
 # reads it whole, so a counter added to the SQL is written and compared
-# without touching this list.
+# without touching this list. --accept-drift takes a group under its bare
+# name, as it takes a table: no group may be named like a table.
 COUNTER_TABLES = (
     "r2_anomalies",
     "neutralised_inferences",
@@ -325,6 +326,13 @@ def is_counter(name: str) -> bool:
     """A counter as compared() names it: GROUP.COUNTER, GROUP a counter table."""
     group, _, counter = name.partition(".")
     return group in COUNTER_TABLES and bool(counter)
+
+
+def accepts(accepted: Collection[str], name: str) -> bool:
+    """Whether `accepted`, names given to --accept-drift, lets the move of
+    `name`, as compared() names it, through: named itself, or a counter of a
+    group named."""
+    return name in accepted or (is_counter(name) and name.partition(".")[0] in accepted)
 
 
 def compared(manifest: Mapping[str, Any]) -> dict[str, int]:
@@ -349,11 +357,26 @@ def delivered(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
 
 class Comparison(NamedTuple):
     """compare()'s answer: what stops the run unless accepted, and what it
-    only says."""
+    only says — each new counter with its count, each one gone with the count
+    it last had."""
 
-    drifts: list[Drift]
-    new: list[str]
-    gone: list[str]
+    drifts: Sequence[Drift]
+    new: Mapping[str, int]
+    gone: Mapping[str, int]
+
+
+def _trace(trace: Comparison | None) -> dict[str, Any]:
+    """The manifest's record of a comparison, named as compared() names. A key
+    is absent rather than empty when it holds nothing, like in a delivery
+    predating it: both say the same thing."""
+    if trace is None:
+        return {}
+    entries = {
+        "accepted_drifts": [d._asdict() for d in trace.drifts],
+        "new_counters": [{"name": name, "got": n} for name, n in trace.new.items()],
+        "gone_counters": [{"name": name, "expected": n} for name, n in trace.gone.items()],
+    }
+    return {key: entry for key, entry in entries.items() if entry}
 
 
 def compare(
@@ -365,12 +388,12 @@ def compare(
     publish() removes its file. A counter `expected` lacks is new: the SQL
     added it since, there is nothing to hold it to. One only `expected` has is
     gone: the SQL dropped or renamed it."""
-    new = [name for name in got if name not in expected and is_counter(name)]
+    new = {name: n for name, n in got.items() if name not in expected and is_counter(name)}
     found = [Drift(name, expected.get(name, 0), n) for name, n in got.items() if name not in new]
     return Comparison(
         drifts=[d for d in found if abs(d.absolute) > limit * d.expected],
         new=new,
-        gone=[name for name in expected if name not in got and is_counter(name)],
+        gone={name: n for name, n in expected.items() if name not in got and is_counter(name)},
     )
 
 
