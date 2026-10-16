@@ -18,7 +18,9 @@ import * as youtube from './youtubeService';
 // YouTube API data is refreshed or deleted within 30 days (Developer Policies III.E.4.d): the
 // limits these tests hold are the policy's, not a tuning.
 const DAY_MS = 24 * 60 * 60 * 1000;
-const daysAgo = (days: number) => new Date(Date.now() - days * DAY_MS);
+const MINUTE_MS = 60 * 1000;
+const daysAgo = (days: number, minutes = 0) =>
+  new Date(Date.now() - days * DAY_MS - minutes * MINUTE_MS);
 
 async function store(title: string, artist: string, videoId: string | null, checkedAt: Date) {
   await db
@@ -51,8 +53,8 @@ afterAll(async () => {
 
 describe('youtubeUrls', () => {
   it('serves a link checked within 30 days, never an older one', async () => {
-    await store('Fresh', 'A', 'fresh', daysAgo(29));
-    await store('Stale', 'A', 'stale', daysAgo(31));
+    await store('Fresh', 'A', 'fresh', daysAgo(30, -1));
+    await store('Stale', 'A', 'stale', daysAgo(30, 1));
 
     const urls = await youtubeUrls([
       { title: 'Fresh', artist: 'A' },
@@ -68,7 +70,9 @@ describe('youtubeUrls', () => {
   });
 
   it('asks the database nothing for no song', async () => {
+    const select = spyOn(db, 'select');
     expect((await youtubeUrls([])).size).toBe(0);
+    expect(select).not.toHaveBeenCalled();
   });
 });
 
@@ -77,9 +81,9 @@ describe('refreshStoredLinks', () => {
     const existing = spyOn(youtube, 'existingVideos').mockImplementation((ids) =>
       Promise.resolve(new Set(ids))
     );
-    const recentAt = daysAgo(24);
+    const recentAt = daysAgo(25, -1);
     await store('Recent', 'A', 'recent', recentAt);
-    await store('Due', 'A', 'due', daysAgo(26));
+    await store('Due', 'A', 'due', daysAgo(25, 1));
 
     await refreshStoredLinks();
 
@@ -97,6 +101,17 @@ describe('refreshStoredLinks', () => {
     await refreshStoredLinks();
 
     expect([...(await stored()).keys()]).toEqual(['kept']);
+  });
+
+  it('leaves a song whose last search found nothing to be searched again', async () => {
+    const existing = spyOn(youtube, 'existingVideos');
+    const checkedAt = daysAgo(26);
+    await store('None', 'A', null, checkedAt);
+
+    await refreshStoredLinks();
+
+    expect(existing).not.toHaveBeenCalled();
+    expect((await stored()).get(null)!.getTime()).toBe(checkedAt.getTime());
   });
 
   it('changes nothing when YouTube cannot answer', async () => {
