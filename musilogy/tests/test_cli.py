@@ -6,7 +6,7 @@ from musilogy import REFERENCE_DUMP as DUMP
 from musilogy import cli
 from musilogy.build import RAW_DISCOGS_FIELDS
 from musilogy.fetch import ChecksumError, sha256_file
-from musilogy.publish import Comparison, Drift, counters, delivered, table_counts
+from musilogy.publish import Drift, Trace, counters, delivered, table_counts
 from tests.conftest import FIX, delivery_manifest
 
 
@@ -495,13 +495,13 @@ def moved(con, **changes):
 
 
 def test_without_a_previous_delivery_the_run_says_it_publishes_uncompared(con, tmp_path, capsys):
-    assert cli._stop_on_drift(con, tmp_path / "out" / DUMP, []) == Comparison([], {}, {})
+    assert cli._stop_on_drift(con, tmp_path / "out" / DUMP, []) == Trace([], {}, {})
     assert "no previous delivery" in capsys.readouterr().out
 
 
 def test_a_delivery_equal_to_the_previous_goes_through(con, tmp_path, capsys):
     unchanged = previous_delivery(tmp_path / DUMP, moved(con))
-    assert cli._stop_on_drift(con, unchanged, []) == Comparison([], {}, {})
+    assert cli._stop_on_drift(con, unchanged, []) == Trace([], {}, {})
     assert capsys.readouterr().out == ""
 
 
@@ -537,7 +537,7 @@ def test_an_accepted_drift_goes_through_is_said_and_returned(con, tmp_path, caps
     # Returned, because the delivery records it (publish). Case: a counter
     # accepted under its name and still refused.
     out = previous_delivery(tmp_path / DUMP, moved(con, **{name: -50}))
-    accepted = cli._stop_on_drift(con, out, [name]).drifts
+    accepted = cli._stop_on_drift(con, out, [name]).accepted
     assert [d.name for d in accepted] == [name]
     assert accepted[0].absolute == -50
     assert f"drift accepted, {name}: expected" in capsys.readouterr().out
@@ -547,7 +547,7 @@ def test_accepting_a_table_that_did_not_move_is_said(con, tmp_path, capsys):
     # Case: the rule meant to move links never took effect, and the run
     # publishes as if the move had been accepted — and records it.
     out = previous_delivery(tmp_path / DUMP, moved(con))
-    assert cli._stop_on_drift(con, out, ["links"]).drifts == []
+    assert cli._stop_on_drift(con, out, ["links"]).accepted == []
     assert "links did not move" in capsys.readouterr().out
 
 
@@ -577,7 +577,7 @@ def test_accepting_a_group_lets_through_each_of_its_counters_that_moved(con, tmp
     not_on_page, to_unextracted = (
         got[f"link_exclusions.{name}"] for name in ("not_on_page", "to_unextracted_artist")
     )
-    assert trace.drifts == [
+    assert trace.accepted == [
         Drift("link_exclusions.not_on_page", not_on_page + 50, not_on_page),
         Drift("link_exclusions.to_unextracted_artist", to_unextracted - 50, to_unextracted),
         Drift(
@@ -596,7 +596,7 @@ def test_accepting_a_group_none_of_whose_counters_moved_is_said(con, tmp_path, c
     # publishes in silence, as for a table accepted that did not move.
     out = previous_delivery(tmp_path / DUMP, moved(con, **{"release_status.official": -50}))
     assert [
-        d.name for d in cli._stop_on_drift(con, out, ["link_exclusions", "release_status"]).drifts
+        d.name for d in cli._stop_on_drift(con, out, ["link_exclusions", "release_status"]).accepted
     ] == ["release_status.official"]
     output = capsys.readouterr().out
     assert "drift accepted on link_exclusions, but no counter of link_exclusions moved" in output
@@ -636,7 +636,7 @@ def test_a_counter_the_previous_delivery_did_not_have_is_said_new(con, tmp_path,
     birth_future = previous["r2_anomalies"].pop("birth_future")
     out = previous_delivery(tmp_path / DUMP, previous)
     trace = cli._stop_on_drift(con, out, [])
-    assert trace == Comparison([], {"r2_anomalies.birth_future": birth_future}, {})
+    assert trace == Trace([], {"r2_anomalies.birth_future": birth_future}, {})
     assert f"new counter r2_anomalies.birth_future: {birth_future}" in capsys.readouterr().out
 
 
@@ -646,7 +646,7 @@ def test_a_counter_the_delivery_no_longer_has_is_said_gone(con, tmp_path, capsys
     previous = moved(con)
     previous["r2_anomalies"]["begin_retired"] = 7
     out = previous_delivery(tmp_path / DUMP, previous)
-    assert cli._stop_on_drift(con, out, []) == Comparison([], {}, {"r2_anomalies.begin_retired": 7})
+    assert cli._stop_on_drift(con, out, []) == Trace([], {}, {"r2_anomalies.begin_retired": 7})
     assert "counter gone r2_anomalies.begin_retired, was 7" in capsys.readouterr().out
 
 
@@ -666,7 +666,7 @@ def test_accepting_a_new_counter_says_it_is_new(con, tmp_path, capsys):
     previous = moved(con)
     del previous["r2_anomalies"]["birth_future"]
     out = previous_delivery(tmp_path / DUMP, previous)
-    assert cli._stop_on_drift(con, out, ["r2_anomalies.birth_future"]).drifts == []
+    assert cli._stop_on_drift(con, out, ["r2_anomalies.birth_future"]).accepted == []
     output = capsys.readouterr().out
     assert "r2_anomalies.birth_future is new, nothing to accept" in output
     assert "did not move" not in output
@@ -692,4 +692,4 @@ def test_run_compares_with_the_previous_delivery_before_overwriting_it(
     # hands publish() what it compared, for the manifest to record.
     cli.run(["artists"])
     assert [args[1] for args in published] == [tmp_path / "out" / DUMP]
-    assert [args[4] for args in published] == [Comparison([Drift("artists", 1, artists)], {}, {})]
+    assert [args[4] for args in published] == [Trace([Drift("artists", 1, artists)], {}, {})]

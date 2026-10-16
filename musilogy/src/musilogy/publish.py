@@ -195,7 +195,7 @@ def publish(
     out_dir: Path,
     dump: str,
     extraction: Path | None = None,
-    trace: Comparison | None = None,
+    trace: Trace | None = None,
 ) -> dict[str, Any]:
     """`trace` is what the comparison with the previous delivery let through:
     the drifts the run was told to accept, the counters new and gone. The
@@ -322,17 +322,22 @@ def counters(con: duckdb.DuckDBPyConnection) -> dict[str, dict[str, int]]:
     return {table: _counters(con, table) for table in COUNTER_TABLES}
 
 
-def is_counter(name: str) -> bool:
-    """A counter as compared() names it: GROUP.COUNTER, GROUP a counter table."""
+def group_of(name: str) -> str | None:
+    """The group of a counter as compared() names it, GROUP.COUNTER with GROUP
+    a counter table; None for anything else."""
     group, _, counter = name.partition(".")
-    return group in COUNTER_TABLES and bool(counter)
+    return group if group in COUNTER_TABLES and counter else None
+
+
+def is_counter(name: str) -> bool:
+    return group_of(name) is not None
 
 
 def accepts(accepted: Collection[str], name: str) -> bool:
     """Whether `accepted`, names given to --accept-drift, lets the move of
     `name`, as compared() names it, through: named itself, or a counter of a
     group named."""
-    return name in accepted or (is_counter(name) and name.partition(".")[0] in accepted)
+    return name in accepted or group_of(name) in accepted
 
 
 def compared(manifest: Mapping[str, Any]) -> dict[str, int]:
@@ -365,14 +370,25 @@ class Comparison(NamedTuple):
     gone: Mapping[str, int]
 
 
-def _trace(trace: Comparison | None) -> dict[str, Any]:
-    """The manifest's record of a comparison, named as compared() names. A key
-    is absent rather than empty when it holds nothing, like in a delivery
+class Trace(NamedTuple):
+    """What a comparison let through, as the delivery records it: the drifts
+    accepted, never one refused, and the counters new and gone. A type of its
+    own, so that compare()'s answer, every drift in it, cannot be recorded as
+    accepted."""
+
+    accepted: Sequence[Drift]
+    new: Mapping[str, int]
+    gone: Mapping[str, int]
+
+
+def _trace(trace: Trace | None) -> dict[str, Any]:
+    """The manifest's record of a trace, named as compared() names. A key is
+    absent rather than empty when it holds nothing, like in a delivery
     predating it: both say the same thing."""
     if trace is None:
         return {}
     entries = {
-        "accepted_drifts": [d._asdict() for d in trace.drifts],
+        "accepted_drifts": [d._asdict() for d in trace.accepted],
         "new_counters": [{"name": name, "got": n} for name, n in trace.new.items()],
         "gone_counters": [{"name": name, "expected": n} for name, n in trace.gone.items()],
     }

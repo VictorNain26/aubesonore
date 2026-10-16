@@ -15,6 +15,7 @@ from musilogy.publish import (
     TABLES,
     Comparison,
     Drift,
+    Trace,
     compare,
     compared,
     delivered,
@@ -455,7 +456,7 @@ def test_a_manifest_older_than_a_counter_group_compares_its_counts_alone():
     assert compared({"counts": {"artists": 3}}) == {"artists": 3}
 
 
-@pytest.mark.parametrize("trace", [None, Comparison([], {}, {})])
+@pytest.mark.parametrize("trace", [None, Trace([], {}, {})])
 def test_a_delivery_that_moved_nothing_carries_no_trace(con, tmp_path, trace):
     manifest = publish(con, tmp_path, DUMP, None, trace)
     assert not {"accepted_drifts", "new_counters", "gone_counters"} & set(manifest)
@@ -465,7 +466,7 @@ def test_the_accepted_drifts_stay_with_the_delivery(con, tmp_path):
     # Case: the run told to let a move through, and the delivery then holding
     # no trace of it — the next reader takes the new counts for unchallenged.
     accepted = [Drift("urls", 200, 100), Drift("link_exclusions.not_on_page", 10, 30)]
-    publish(con, tmp_path, DUMP, None, Comparison(accepted, {}, {}))
+    publish(con, tmp_path, DUMP, None, Trace(accepted, {}, {}))
     written = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
     assert written["accepted_drifts"] == [
         {"name": "urls", "expected": 200, "got": 100},
@@ -479,7 +480,7 @@ def test_the_counters_new_and_gone_stay_with_the_delivery(con, tmp_path):
     # and the delivery then holding no trace of it — the next run compares
     # the new counter as if it had always been there, the dropped one is
     # forgotten.
-    trace = Comparison(
+    trace = Trace(
         [],
         {"r2_anomalies.birth_future": 4, "release_status.withdrawn": 0},
         {"r2_anomalies.begin_retired": 7},

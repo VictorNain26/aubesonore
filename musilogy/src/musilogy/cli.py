@@ -80,12 +80,13 @@ from musilogy.publish import (
     COUNTER_TABLES,
     MAX_DRIFT,
     TABLES,
-    Comparison,
+    Trace,
     accepts,
     compare,
     compared,
     delivered,
     extraction_matches_rows_loaded,
+    group_of,
     is_counter,
     previous_manifest,
     publish,
@@ -412,9 +413,7 @@ def _stop_on_extraction_mismatch(con: duckdb.DuckDBPyConnection, extraction: Pat
         )
 
 
-def _stop_on_drift(
-    con: duckdb.DuckDBPyConnection, out: Path, accepted: Sequence[str]
-) -> Comparison:
+def _stop_on_drift(con: duckdb.DuckDBPyConnection, out: Path, accepted: Sequence[str]) -> Trace:
     """The data diff, before publish() like the other guards: publishing at
     `out` overwrites the manifest the comparison reads. Each table count or
     counter that moved past MAX_DRIFT since the previous delivery stops the
@@ -430,7 +429,7 @@ def _stop_on_drift(
     got = delivered(con)
     previous = previous_manifest(out)
     path, expected = (previous[0], compared(previous[1])) if previous else (None, {})
-    unknown = sorted(set(accepted) - set(got) - set(COUNTER_TABLES))
+    unknown = sorted(a for a in set(accepted) if not any(accepts((a,), n) for n in got))
     if unknown:
         raise SystemExit(
             f"--accept-drift names nothing this build counts, nothing published: "
@@ -438,7 +437,7 @@ def _stop_on_drift(
         )
     if previous is None:
         print(f"no previous delivery beside {out}: publishing without comparison")
-        return Comparison([], {}, {})
+        return Trace([], {}, {})
     comparison = compare(expected, got)
     for name, n in comparison.new.items():
         print(f"new counter {name}: {n}, nothing to compare it with")
@@ -450,20 +449,20 @@ def _stop_on_drift(
     moved = {d.name for d in comparison.drifts}
     for name in sorted(set(accepted) - moved):
         if name in COUNTER_TABLES:
-            if not any(accepts((name,), counter) for counter in moved):
+            if name not in {group_of(counter) for counter in moved}:
                 print(f"drift accepted on {name}, but no counter of {name} moved")
         elif name in comparison.new:
             print(f"drift accepted on {name}, but {name} is new, nothing to accept")
         else:
             print(f"drift accepted on {name}, but {name} did not move")
-    refused = [str(d) for d in comparison.drifts if not accepts(accepted, d.name)]
+    refused = [str(d) for d in comparison.drifts if d not in let_through]
     if refused:
         raise SystemExit(
             f"counts moved more than {MAX_DRIFT:.1%} from {path}, nothing published:\n"
             + "\n".join(refused)
             + "\na rule meant to move them: musilogy run --accept-drift NAME"
         )
-    return comparison._replace(drifts=let_through)
+    return Trace(let_through, comparison.new, comparison.gone)
 
 
 def run(accepted_drift: Sequence[str] = ()) -> None:
