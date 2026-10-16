@@ -59,8 +59,9 @@ interface EnvConfig {
 
   /**
    * Whether this backend records what the antenna plays and resolves its artists
-   * (antennaWatcher): production's job only. A workstation turns it off (`.env.example`), or it would
-   * record the same plays and ask MusicBrainz again from the same address.
+   * (antennaWatcher): production's job only: anywhere else, set it to false
+   * (`.env.example`), or it would record the same plays and ask MusicBrainz again
+   * from the same address.
    */
   RECORD_ANTENNA: boolean;
 }

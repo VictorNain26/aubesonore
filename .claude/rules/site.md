@@ -31,7 +31,7 @@ How the box deploys, rolls back and is installed: README « Déploiement » and 
 
 - **Leave `schema.ts` alone in a PR that changes no schema.** The deploy compares the file and stops on any change without its own migration, a comment included; when a comment there must follow the code, acknowledge right after the merge (README « Déploiement »).
 - **Check a compose change** with `docker compose config` against a production-like `.env` before merging. AzuraCast keeps its own compose, never merged into this one: its updater manages it, and a site deploy must never restart the radio.
-- The per-request `http` line (`lib/requestLog.ts`) never logs the query string.
+- Container logs go to the journal (`compose.yaml`, `logging`); the per-request `http` line (`lib/requestLog.ts`) never logs the query string. Gatus watches the site: group `site` of `../pipeline/deploy/gatus/config/config.yaml`, heartbeats from `scripts/heartbeat.sh`.
 
 ### Database backups
 
