@@ -4,7 +4,7 @@
 // production ids, slugs and MBIDs, so the public data scripts/pull-public-data.sh copies (their
 // plays, their stored profile) and the sample's sections land on the same pages. Run by
 // compose.yaml's dev-init; safe to run again.
-import { and, eq, like, notInArray } from 'drizzle-orm';
+import { eq, like } from 'drizzle-orm';
 import { auth } from '../lib/auth/index';
 import { db } from '../db/index';
 import { artist, artistSlug, likedTracks, user as userTable } from '../db/schema';
@@ -76,26 +76,23 @@ for (const one of ARTISTS) {
   await db.insert(artistSlug).values({ slug: one.slug, mbid: one.mbid }).onConflictDoNothing();
 }
 
-// A database seeded by an earlier version of this list converges on this one; what the
-// listener kept by hand stays.
-const keptIds = KEPT.map((_, i) => `dev-kept-${i + 1}`);
+// The seeded tracks are written anew at each run, so a database an earlier list seeded converges
+// on this one; a track the listener kept by hand stays, and the seed's copy of it is skipped.
+await db.delete(likedTracks).where(like(likedTracks.id, 'dev-kept-%'));
 await db
-  .delete(likedTracks)
-  .where(and(like(likedTracks.id, 'dev-kept-%'), notInArray(likedTracks.id, keptIds)));
-for (const [i, track] of KEPT.entries()) {
-  const kept = {
-    title: track.title,
-    artist: track.artist.name,
-    album: track.album,
-    youtubeUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${track.artist.name} ${track.title}`)}`,
-    userId: listener.id,
-    artistId: track.artist.id,
-  };
-  await db
-    .insert(likedTracks)
-    .values({ id: `dev-kept-${i + 1}`, ...kept })
-    .onConflictDoUpdate({ target: likedTracks.id, set: kept });
-}
+  .insert(likedTracks)
+  .values(
+    KEPT.map((track, i) => ({
+      id: `dev-kept-${i + 1}`,
+      title: track.title,
+      artist: track.artist.name,
+      album: track.album,
+      youtubeUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${track.artist.name} ${track.title}`)}`,
+      userId: listener.id,
+      artistId: track.artist.id,
+    }))
+  )
+  .onConflictDoNothing();
 
 console.log(
   `dev listener ${DEV_USER_EMAIL}: ${ARTISTS.length} artists, ${KEPT.length} kept tracks`

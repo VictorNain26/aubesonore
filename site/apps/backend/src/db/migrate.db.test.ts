@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, expect, it, spyOn } from 'bun:test';
+import { afterAll, afterEach, beforeAll, expect, it, mock, spyOn } from 'bun:test';
 import { readdirSync } from 'fs';
 import { join } from 'path';
 import { sql } from 'drizzle-orm';
@@ -27,18 +27,27 @@ beforeAll(async () => {
   await db.execute(sql`DROP TABLE IF EXISTS __app_migrations`);
 });
 
+afterEach(() => {
+  mock.restore();
+});
+
 afterAll(async () => {
   await pool.end();
 });
 
-it('records every migration once, and a second run applies nothing', async () => {
+it('runs and records every migration once, and a second run applies nothing', async () => {
+  const info = spyOn(logger, 'info');
   await runMigrations(pool);
   const first = await recorded();
   expect(first.map((row) => row.name)).toEqual(migrationFiles);
+  // Recorded is not run: all but the baseline ran their SQL over the pushed schema.
+  const said = (message: string) => info.mock.calls.filter(([logged]) => logged === message);
+  const baselined = said('migration baselined').length;
+  expect(said('migration applied').length).toBe(migrationFiles.length - baselined);
+  expect(baselined).toBeLessThan(migrationFiles.length);
 
-  const info = spyOn(logger, 'info');
+  info.mockClear();
   await runMigrations(pool);
   expect(await recorded()).toEqual(first);
   expect(info.mock.calls.map(([message]) => message)).toEqual(['migrations: nothing to do']);
-  info.mockRestore();
 });

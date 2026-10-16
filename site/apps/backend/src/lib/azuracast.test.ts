@@ -1,8 +1,8 @@
-import { afterEach, describe, expect, it, spyOn } from 'bun:test';
+import { afterEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import { azuracastGet } from './azuracast';
 
 afterEach(() => {
-  spyOn(globalThis, 'fetch').mockRestore();
+  mock.restore();
 });
 
 describe('azuracastGet', () => {

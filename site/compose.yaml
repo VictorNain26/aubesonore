@@ -248,8 +248,8 @@ services:
 
   # The SPA from source, with hot reload. The workspace is mounted; what the container installs
   # and generates stays in volumes, so nothing it writes lands in the checkout. /api goes to the
-  # backend; with PUBLIC_API_PROXY_TARGET set, the public reads a fresh database cannot answer
-  # (Musilogy, the artist pages, today's plays, the trends) come from that API (vite.config.ts).
+  # backend; with PUBLIC_API_PROXY_TARGET set, the public reads (Musilogy, the artist pages,
+  # today's plays, the trends) come from that API instead of the local database (vite.config.ts).
   frontend-dev:
     profiles: [dev]
     image: node:22-slim
@@ -259,9 +259,9 @@ services:
         condition: service_healthy
     environment:
       CI: 'true'
+      <<: *frontend-build-args
+      # The page calls /api on its own origin (vite.config.ts).
       VITE_API_URL: ''
-      VITE_AZURACAST_BASE_URL: ${VITE_AZURACAST_BASE_URL:-https://radio.aubesonore.fr}
-      VITE_STATION_SHORTCODE: ${VITE_STATION_SHORTCODE:-aubesonore}
       API_PROXY_TARGET: http://backend:3000
       PUBLIC_API_PROXY_TARGET: ${PUBLIC_API_PROXY_TARGET:-}
     command:

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import {
   deezerIdOf,
+  kindOf,
   firstCoverOf,
   toFacts,
   toLinks,
@@ -75,6 +76,18 @@ describe('toFacts', () => {
   });
 });
 
+describe('kindOf', () => {
+  it('words the four types the site names, and nothing for any other', () => {
+    expect(['Person', 'Group', 'Orchestra', 'Choir'].map(kindOf)).toEqual([
+      'person',
+      'group',
+      'orchestra',
+      'choir',
+    ]);
+    expect(['Character', 'Other', null].map(kindOf)).toEqual([null, null, null]);
+  });
+});
+
 describe('toLinks', () => {
   it('keeps one https link per platform, in listening order, the official site last', () => {
     expect(
@@ -90,6 +103,15 @@ describe('toLinks', () => {
       { platform: 'bandcamp', url: 'https://band.bandcamp.com' },
       { platform: 'official', url: 'https://band.example' },
     ]);
+  });
+
+  it('never takes a host that only looks like a platform for it', () => {
+    expect(
+      toLinks([
+        { type: 'streaming', url: 'https://evil-bandcamp.com/band' },
+        { type: 'streaming', url: 'https://bandcamp.com.evil/band' },
+      ])
+    ).toEqual([]);
   });
 
   it('lists an official site that is the Bandcamp page once, as Bandcamp', () => {
