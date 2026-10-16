@@ -19,6 +19,7 @@ from musilogy.publish import (
 )
 from tests.conftest import (
     build_synthetic,
+    delivery_manifest,
     official_file,
     synthetic_artist,
     synthetic_release_group,
@@ -410,24 +411,18 @@ def test_the_counts_compared_are_those_publish_writes(con, tmp_path):
     assert table_counts(con) == publish(con, tmp_path, DUMP)["counts"]
 
 
-def manifest_at(folder, counts):
-    folder.mkdir(parents=True)
-    (folder / "manifest.json").write_text(json.dumps({"counts": counts}), encoding="utf-8")
-    return folder / "manifest.json"
-
-
 def test_the_previous_delivery_of_the_same_dump_is_the_one_it_replaces(tmp_path):
     # Case: reading a sibling while the run is about to overwrite this one.
-    same = manifest_at(tmp_path / "20260909-001002", {"artists": 1})
-    manifest_at(tmp_path / "20261007-001001", {"artists": 2})
+    same = delivery_manifest(tmp_path / "20260909-001002", {"artists": 1})
+    delivery_manifest(tmp_path / "20261007-001001", {"artists": 2})
     assert previous_manifest(tmp_path / "20260909-001002") == (same, {"counts": {"artists": 1}})
 
 
 def test_a_new_dump_is_compared_with_the_latest_dump_delivered(tmp_path):
     # Dump names are their timestamps: sorted, the last is the latest. Case:
     # taking the first, or any directory without a manifest.
-    manifest_at(tmp_path / "20260813-001001", {"artists": 1})
-    latest = manifest_at(tmp_path / "20260909-001002", {"artists": 2})
+    delivery_manifest(tmp_path / "20260813-001001", {"artists": 1})
+    latest = delivery_manifest(tmp_path / "20260909-001002", {"artists": 2})
     (tmp_path / "20260910-001001").mkdir()
     assert previous_manifest(tmp_path / "20261007-001001") == (latest, {"counts": {"artists": 2}})
 

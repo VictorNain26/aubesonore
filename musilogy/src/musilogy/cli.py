@@ -418,14 +418,14 @@ def _stop_on_drift(con: duckdb.DuckDBPyConnection, out: Path, accepted: Sequence
         return
     path, manifest = previous
     moved = drifts(manifest["counts"], table_counts(con))
-    lines = {d.table: str(d) for d in moved}
-    for table in accepted:
-        if table in lines:
-            print(f"drift accepted, {lines.pop(table)}")
-    if lines:
+    for d in moved:
+        if d.table in accepted:
+            print(f"drift accepted, {d}")
+    refused = [str(d) for d in moved if d.table not in accepted]
+    if refused:
         raise SystemExit(
             f"counts moved more than {MAX_DRIFT:.1%} from {path}, nothing published:\n"
-            + "\n".join(lines.values())
+            + "\n".join(refused)
             + "\na rule meant to move them: musilogy run --accept-drift TABLE"
         )
 

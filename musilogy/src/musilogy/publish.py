@@ -313,9 +313,10 @@ def previous_manifest(out: Path) -> tuple[Path, dict[str, Any]] | None:
     """The manifest of the delivery `out` follows: the one at `out`, which
     publishing there overwrites, else that of the latest dump delivered beside
     it (deliveries are named after their dump, a timestamp)."""
-    here = out / "manifest.json"
-    beside = sorted(out.parent.glob("*/manifest.json"))
-    path = here if here.exists() else (beside[-1] if beside else None)
-    if path is None:
-        return None
+    path = out / "manifest.json"
+    if not path.exists():
+        beside = sorted(out.parent.glob("*/manifest.json"))
+        if not beside:
+            return None
+        path = beside[-1]
     return path, json.loads(path.read_text(encoding="utf-8"))
