@@ -6,7 +6,7 @@ from musilogy import REFERENCE_DUMP as DUMP
 from musilogy import cli
 from musilogy.build import RAW_DISCOGS_FIELDS
 from musilogy.fetch import ChecksumError, sha256_file
-from musilogy.publish import Drift, counters, table_counts
+from musilogy.publish import Drift, counters, delivered, table_counts
 from tests.conftest import FIX, delivery_manifest
 
 
@@ -493,11 +493,6 @@ def moved(con, **changes):
     return manifest
 
 
-def counter(con, name):
-    group, counter = name.split(".")
-    return counters(con)[group][counter]
-
-
 def test_without_a_previous_delivery_the_run_says_it_publishes_uncompared(con, tmp_path, capsys):
     assert cli._stop_on_drift(con, tmp_path / "out" / DUMP, []) == []
     assert "no previous delivery" in capsys.readouterr().out
@@ -513,7 +508,7 @@ def test_a_drift_stops_the_run_naming_each_table_and_counter_that_moved(con, tmp
     # tell the rule that moved them. What did not move is not named.
     counts = table_counts(con)
     half = counts["artists"] // 2
-    not_on_page = counter(con, "link_exclusions.not_on_page")
+    not_on_page = delivered(con)["link_exclusions.not_on_page"]
     out = previous_delivery(
         tmp_path / DUMP,
         moved(con, artists=half, urls=-50, **{"link_exclusions.not_on_page": 100}),

@@ -321,8 +321,10 @@ def counters(con: duckdb.DuckDBPyConnection) -> dict[str, dict[str, int]]:
     return {table: _counters(con, table) for table in COUNTER_TABLES}
 
 
-def _is_counter(name: str) -> bool:
-    return name.partition(".")[0] in COUNTER_TABLES
+def is_counter(name: str) -> bool:
+    """A counter as compared() names it: GROUP.COUNTER, GROUP a counter table."""
+    group, _, counter = name.partition(".")
+    return group in COUNTER_TABLES and bool(counter)
 
 
 def compared(manifest: Mapping[str, Any]) -> dict[str, int]:
@@ -363,15 +365,12 @@ def compare(
     publish() removes its file. A counter `expected` lacks is new: the SQL
     added it since, there is nothing to hold it to. One only `expected` has is
     gone: the SQL dropped or renamed it."""
-    found = [
-        Drift(name, expected.get(name, 0), n)
-        for name, n in got.items()
-        if name in expected or not _is_counter(name)
-    ]
+    new = [name for name in got if name not in expected and is_counter(name)]
+    found = [Drift(name, expected.get(name, 0), n) for name, n in got.items() if name not in new]
     return Comparison(
         drifts=[d for d in found if abs(d.absolute) > limit * d.expected],
-        new=[name for name in got if name not in expected and _is_counter(name)],
-        gone=[name for name in expected if name not in got and _is_counter(name)],
+        new=new,
+        gone=[name for name in expected if name not in got and is_counter(name)],
     )
 
 

@@ -85,6 +85,7 @@ from musilogy.publish import (
     compared,
     delivered,
     extraction_matches_rows_loaded,
+    is_counter,
     previous_manifest,
     publish,
     read_extraction,
@@ -425,7 +426,7 @@ def _stop_on_drift(
     publish nothing it was meant to and wait, silent, for the next run."""
     got = delivered(con)
     previous = previous_manifest(out)
-    expected = compared(previous[1]) if previous else {}
+    path, expected = (previous[0], compared(previous[1])) if previous else (None, {})
     unknown = sorted(set(accepted) - set(got) - set(expected))
     if unknown:
         raise SystemExit(
@@ -435,7 +436,6 @@ def _stop_on_drift(
     if previous is None:
         print(f"no previous delivery beside {out}: publishing without comparison")
         return []
-    path = previous[0]
     comparison = compare(expected, got)
     for name in comparison.new:
         print(f"new counter {name}: {got[name]}, nothing to compare it with")
@@ -621,8 +621,7 @@ def _drift_name(name: str) -> str:
     """What --accept-drift can name before the build runs: a table, or a
     counter of a counter group. Whether the counter exists, only the build
     knows (_stop_on_drift)."""
-    group, dot, counter = name.partition(".")
-    if name in TABLES or (dot and counter and group in COUNTER_TABLES):
+    if name in TABLES or is_counter(name):
         return name
     raise argparse.ArgumentTypeError(
         f"{name!r} is no table ({', '.join(TABLES)}) "
