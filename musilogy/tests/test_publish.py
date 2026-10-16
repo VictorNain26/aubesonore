@@ -16,9 +16,11 @@ from musilogy.publish import (
     Comparison,
     Drift,
     Trace,
+    accepts,
     compare,
     compared,
     delivered,
+    group_of,
     previous_manifest,
     publish,
 )
@@ -551,3 +553,37 @@ def test_a_previous_manifest_without_readable_counts_stops_with_its_path(tmp_pat
     with pytest.raises(SystemExit) as raised:
         previous_manifest(out)
     assert str(out / "manifest.json") in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    ("name", "group"),
+    [
+        ("link_exclusions.not_on_page", "link_exclusions"),
+        # Case: a table, a bare group, an empty counter or an unknown group
+        # read as a counter, and accepting a group then letting it through.
+        ("links", None),
+        ("link_exclusions", None),
+        ("link_exclusions.", None),
+        ("links.not_on_page", None),
+    ],
+)
+def test_the_group_of_a_counter_is_the_counter_table_before_its_dot(name, group):
+    assert group_of(name) == group
+
+
+@pytest.mark.parametrize(
+    ("accepted", "name", "let_through"),
+    [
+        (["urls"], "urls", True),
+        (["link_exclusions.not_on_page"], "link_exclusions.not_on_page", True),
+        (["link_exclusions"], "link_exclusions.not_on_page", True),
+        # Case: a counter accepting its sibling, a group accepting another
+        # group's counter, a table accepting what merely starts with its name.
+        (["link_exclusions.not_on_page"], "link_exclusions.to_unextracted_artist", False),
+        (["release_status"], "link_exclusions.not_on_page", False),
+        (["links"], "links.not_on_page", False),
+        ([], "urls", False),
+    ],
+)
+def test_a_move_is_accepted_under_its_own_name_or_its_group(accepted, name, let_through):
+    assert accepts(accepted, name) is let_through

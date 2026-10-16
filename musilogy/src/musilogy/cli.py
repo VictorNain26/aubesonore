@@ -447,9 +447,10 @@ def _stop_on_drift(con: duckdb.DuckDBPyConnection, out: Path, accepted: Sequence
     for d in let_through:
         print(f"drift accepted, {d}")
     moved = {d.name for d in comparison.drifts}
+    groups_moved = {group_of(name) for name in moved}
     for name in sorted(set(accepted) - moved):
         if name in COUNTER_TABLES:
-            if name not in {group_of(counter) for counter in moved}:
+            if name not in groups_moved:
                 print(f"drift accepted on {name}, but no counter of {name} moved")
         elif name in comparison.new:
             print(f"drift accepted on {name}, but {name} is new, nothing to accept")
