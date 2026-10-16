@@ -54,8 +54,6 @@ jobs:
       - run: uv run ruff check
       - run: uv run ruff format --check
       - run: uv run mypy
-      # La suite lente (pytest -m slow) rejoue le pipeline sur le dump MusicBrainz réel : elle exige
-      # les extractions de data/work/, non versionnées, et ne tourne donc pas ici. addopts l'exclut.
       - run: uv run pytest -q -W error -rs
         env:
           MUSILOGY_TEST_PG: host=localhost port=5432 user=postgres password=postgres dbname=postgres

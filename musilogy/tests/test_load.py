@@ -55,12 +55,17 @@ def test_a_delivery_that_disagrees_with_its_manifest_is_refused(tmp_path):
 JOY_DIVISION = "9a58fda3-f4ed-4080-a3a5-f457aac9fcdd"
 
 
+def witness_count():
+    with (FIX / "artists.jsonl").open(encoding="utf-8") as fh:
+        return sum(1 for _ in fh)
+
+
 def test_the_sample_is_the_pipeline_run_on_the_fixtures(tmp_path):
     # The small database a workstation develops against: the production code
     # path (build, publish), only fed the versioned witnesses.
     out = publish_sample(tmp_path)
     manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
-    witnesses = sum(1 for _ in (FIX / "artists.jsonl").open(encoding="utf-8"))
+    witnesses = witness_count()
     assert manifest["counts"]["artists"] == witnesses
 
 
@@ -73,5 +78,5 @@ def test_load_sample_puts_every_witness_in_the_site_database(pg, monkeypatch):
     rows = pg_query(pg, "SELECT mbid::VARCHAR, name FROM musilogy.artists")
     loaded = dict(rows)
     assert set(cli.WITNESSES) <= loaded.keys()
-    assert len(loaded) == sum(1 for _ in (FIX / "artists.jsonl").open(encoding="utf-8"))
+    assert len(loaded) == witness_count()
     assert loaded[JOY_DIVISION] == "Joy Division"

@@ -42,10 +42,13 @@ Ce qui vaut pour tout le dépôt AubeSonore est dans le `CLAUDE.md` racine.
   Ce qu'une fonction Postgres calcule n'a pas de double DuckDB. Seule exception,
   assumée et testée (`test_search.py`) : `name_key`, calculée par DuckDB pour
   les tables et refaite en Postgres pour comparer la recherche de l'auditeur.
-- Le contrat exécutable des chiffres est `tests/test_baseline.py`. Exception
-  déclarée à la règle générale (un fait ne se recopie pas) : le README cite ces
-  chiffres pour justifier ses règles. Ils y sont descriptifs, se donnent comme
-  tels et se mettent à jour dans le même commit que le contrat (`/baseline`).
+- Les chiffres d'une livraison sont dans son `manifest.json`, la référence est
+  la livraison précédente : `musilogy run` compare les comptes table par table
+  avant de publier et refuse au-delà de `MAX_DRIFT` (`publish.py`). Un écart
+  refusé se comprend avant d'être accepté : on identifie la règle qui l'a
+  produit, on dit dans la PR pourquoi le nouveau compte est le bon, puis on
+  relance avec `--accept-drift TABLE`. Accepter sans cette étape retire le
+  contrôle au lieu de le passer.
 
 ## Mesurer plutôt que raisonner
 
@@ -53,8 +56,8 @@ Les extractions complètes vivent dans `data/work/` et DuckDB les lit en
 quelques secondes. Une question chiffrée — « combien de liens perd cette
 règle ? » — se tranche par une requête, pas par un raisonnement plausible ; le
 pipeline étant déterministe, un contrefactuel est toujours possible. Un critère
-d'acceptation se donne en nombre ou en code de sortie : « le chiffre `links` de
-`tests/test_baseline.py` ne bouge pas » plutôt que « corriger les liens ».
+d'acceptation se donne en nombre ou en code de sortie : « `musilogy run` publie
+sans `--accept-drift links` » plutôt que « corriger les liens ».
 
 ## Données sur victorserv
 
@@ -73,8 +76,7 @@ cd musilogy                   # toutes les commandes partent d'ici
 uv sync
 uv run pytest                 # suite rapide, sur les témoins
 uv run ruff check && uv run ruff format --check && uv run mypy  # les contrôles de la CI ; `mypy src` seul saute les tests
-uv run pytest -m slow         # ligne de base sur le dump réel, exige data/work/ ; ne tourne pas en CI
-uv run musilogy run           # fetch → extract → transform → validate → publish (relevés épinglés exigés)
+uv run musilogy run           # fetch → extract → transform → validate → compare → publish (relevés épinglés exigés)
 uv run musilogy snapshot-popularity  # relevé ListenBrainz daté, à épingler
 uv run musilogy snapshot-official    # disques officiels MusicBrainz, des dizaines d'heures, reprenable
 uv run musilogy snapshot-discography # disques classés par Wikidata, à épingler
@@ -99,14 +101,14 @@ systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=
 
 ## Travaux lourds sur victorserv
 
-`pytest -m slow` et `musilogy run` partent dans un scope plafonné :
+`musilogy run` part dans un scope plafonné :
 `build.connect()` borne DuckDB, mais pas le cache disque ni Python, et les
 services de la machine en occupent déjà une bonne part. Une requête sans borne
 l'a déjà gelée.
 
 ```bash
 systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=0 \
-  nice -n 10 uv run pytest -m slow
+  nice -n 10 uv run musilogy run
 ```
 
 - La co-écoute sur toutes les écoutes demande plus : `musilogy run` part alors

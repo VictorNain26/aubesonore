@@ -104,6 +104,14 @@ def pg():
     return conninfo
 
 
+def delivery_manifest(folder, counts):
+    """A delivery's manifest, reduced to the counts the drift guard reads."""
+    folder.mkdir(parents=True)
+    path = folder / "manifest.json"
+    path.write_text(json.dumps({"counts": counts}), encoding="utf-8")
+    return path
+
+
 def official_file(path, rows):
     """A synthetic official status snapshot: `rows` maps each artist asked to
     the release groups MusicBrainz shows for it, None when it no longer
