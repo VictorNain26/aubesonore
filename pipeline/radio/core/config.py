@@ -31,11 +31,8 @@ class Settings(BaseSettings):
     # Copie quotidienne de la base, sur un autre disque physique que data_dir.
     backup_dir: Path | None = Field(default=None, validation_alias="RADIO_BACKUP_DIR")
     config_dir: Path = Field(default=REPO_ROOT / "config", validation_alias="RADIO_CONFIG_DIR")
-    effnet_model: Path = Field(
-        default=REPO_ROOT / "models" / "discogs-effnet-bs64-1.pb",
-        validation_alias="RADIO_EFFNET_MODEL",
-    )
-    # Modèles MTG des mesures d'antenne (radio/signals/features.py), à côté de l'EffNet.
+    # Poids MTG téléchargés (scripts/dev-setup.sh) : l'EffNet et les modèles des mesures
+    # d'antenne (radio/signals/features.py). Les modèles entraînés sont dans trained_models_dir.
     models_dir: Path = Field(default=REPO_ROOT / "models", validation_alias="RADIO_MODELS_DIR")
     # Dossier média de la station AzuraCast, lu par `radio mesures`, jamais écrit.
     azuracast_media_dir: Path = Field(
@@ -65,6 +62,19 @@ class Settings(BaseSettings):
     # Le numéro est une donnée personnelle : masqué comme un secret.
     whatsapp_phone: SecretStr | None = Field(default=None, repr=False)
     callmebot_apikey: SecretStr | None = Field(default=None, repr=False)
+
+    @property
+    def db_path(self) -> Path:
+        return self.data_dir / "radio.db"
+
+    @property
+    def trained_models_dir(self) -> Path:
+        """Les modèles que `train` entraîne, à part des poids MTG de models_dir."""
+        return self.data_dir / "models"
+
+    @property
+    def effnet_model(self) -> Path:
+        return self.models_dir / "discogs-effnet-bs64-1.pb"
 
 
 class LibraryConfig(BaseModel):

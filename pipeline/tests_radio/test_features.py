@@ -5,8 +5,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from radio.acquire.audio import Cue
 from radio.core.db import connect
+from radio.core.media import Cue
 from radio.signals.features import (
     FEATURES_TAG,
     MODELS,

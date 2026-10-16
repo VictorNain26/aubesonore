@@ -433,7 +433,7 @@ class Programmer(Protocol):
     def empty_playlist(self, playlist_id: int) -> None: ...
 
 
-class Station(Programmer, Protocol):
+class Scheduler(Programmer, Protocol):
     def timezone(self) -> str: ...
 
     def start_next_s(self) -> float: ...
@@ -444,7 +444,7 @@ class Station(Programmer, Protocol):
 
 
 def grille_pass(
-    conn: sqlite3.Connection, station: Station, cfg: GrilleConfig, today: bool, now: datetime
+    conn: sqlite3.Connection, station: Scheduler, cfg: GrilleConfig, today: bool, now: datetime
 ) -> tuple[Plan, list[str]]:
     """Planifie, publie et garde la grille de demain, ou des heures qui restent aujourd'hui ;
     renvoie le plan et les heures mal écrites."""

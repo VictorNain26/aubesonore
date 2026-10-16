@@ -34,7 +34,7 @@ def _status(settings: Settings, editorial: Editorial) -> Status:
     with _db(settings) as conn:
         return load_status(
             conn,
-            settings.data_dir / "models",
+            settings.trained_models_dir,
             editorial.model.exam_window,
             editorial.votes.quiet_days,
             datetime.now(UTC),
@@ -121,7 +121,7 @@ def votes_serve() -> None:
     if not team or not aud:
         _fail("CF_ACCESS_TEAM_DOMAIN et CF_ACCESS_AUD doivent être définis dans .env", 2)
     web = create_app(
-        settings.data_dir / "radio.db",
+        settings.db_path,
         DeezerClient(),
         AccessVerifier(team, aud),
         _editorial(settings).nouveautes,

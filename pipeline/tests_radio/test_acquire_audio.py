@@ -6,22 +6,20 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from radio.acquire import audio
-from radio.acquire.audio import (
+from radio.acquire.audio import check, fingerprint, similarity
+from radio.core import media
+from radio.core.config import AcquisitionConfig
+from radio.core.media import (
     Cue,
     Probe,
     Tags,
     ToolError,
-    check,
     cue_from_frames,
     cue_of,
     cue_points,
-    fingerprint,
     prepare,
     probe,
-    similarity,
 )
-from radio.core.config import AcquisitionConfig
 
 CFG = AcquisitionConfig()
 TOOLS = all(shutil.which(t) for t in ("ffmpeg", "ffprobe", "fpcalc", "rsgain"))
@@ -302,6 +300,6 @@ def test_the_start_takes_liquidsoap_margin_and_ignores_a_tiny_cut() -> None:
 
 
 def test_a_stuck_tool_is_a_named_tool_error(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(audio, "TOOL_TIMEOUT_S", 1.0)
+    monkeypatch.setattr(media, "TOOL_TIMEOUT_S", 1.0)
     with pytest.raises(ToolError, match="sleep : délai de 1 s dépassé"):
-        audio._run(["sleep", "5"])
+        media.run_tool(["sleep", "5"])

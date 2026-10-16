@@ -10,8 +10,10 @@ from typer.testing import CliRunner
 import radio.cli as cli
 from radio.core.config import Settings
 from radio.core.report import last_stages
+from radio.signals import features
 from radio.signals.audio import ModelError
 from radio.sources.deezer import DeezerArtist, DeezerTrack, DeezerUnavailable
+from radio.sources.hypem import HypemUnavailable
 from radio.sources.lastfm import LastfmUnavailable
 from radio.sources.plex import LibraryGuardError, PlexTrack
 from tests_radio.factories import make_library
@@ -258,3 +260,59 @@ def test_signals_refuses_a_bad_model(env: Path, monkeypatch: pytest.MonkeyPatch)
     res = runner.invoke(cli.app, ["signals"])
     assert res.exit_code == 2
     assert "Modèle EffNet refusé : somme de contrôle inattendue" in res.output
+
+
+def _stages(env: Path) -> list[tuple[str, bool, dict[str, object]]]:
+    with cli.common._db(cli.common._settings()) as conn:
+        return [(s, ok, counts) for s, _, ok, counts in last_stages(conn)]
+
+
+def test_favoris_without_an_account_says_so(env: Path) -> None:
+    res = runner.invoke(cli.app, ["favoris"])
+    assert res.exit_code == 0, res.output
+    assert "aucun compte configuré (nouveautes.hypem_favorites_user)" in res.output
+    assert _stages(env) == [("favoris", True, {"compte": "aucun"})]
+
+
+def test_favoris_unreadable_fails_and_reports(env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (env / "config" / "editorial.toml").write_text('[nouveautes]\nhypem_favorites_user = "u"\n')
+
+    def down(*a: object) -> None:
+        raise HypemUnavailable("HTTP 503")
+
+    monkeypatch.setattr(cli.gout, "favorites_pass", down)
+    res = runner.invoke(cli.app, ["favoris"])
+    assert res.exit_code == 1
+    assert "Favoris Hype Machine illisibles (HypemUnavailable : HTTP 503)" in res.output
+    assert [(s, ok) for s, ok, _ in _stages(env)] == [("favoris", False)]
+
+
+def test_mesures_refuses_missing_models(env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def refuse(models_dir: Path) -> None:
+        raise features.ModelError("modèle absent : msd-musicnn-1.pb")
+
+    monkeypatch.setattr(features, "FeatureExtractor", refuse)
+    res = runner.invoke(cli.app, ["mesures"])
+    assert res.exit_code == 2
+    assert "Modèles de mesure refusés : modèle absent" in res.output
+    assert [(s, ok) for s, ok, _ in _stages(env)] == [("mesures", False)]
+
+
+def test_mesures_names_missing_files_and_fails(env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(features, "FeatureExtractor", lambda models_dir: object())
+    monkeypatch.setattr(
+        features,
+        "measure_antenna",
+        lambda *a: features.FeaturesReport(n_todo=2, n_ok=1, missing=["antenne/a.mp3"]),
+    )
+    res = runner.invoke(cli.app, ["mesures"])
+    assert res.exit_code == 1
+    assert "2 à mesurer → 1 mesurés, 0 illisibles, 1 fichiers absents" in res.output
+    assert "  absent : antenne/a.mp3" in res.output
+    assert _stages(env) == [
+        (
+            "mesures",
+            False,
+            {"à mesurer": 2, "mesurés": 1, "audio illisible": 0, "fichiers absents": 1},
+        )
+    ]

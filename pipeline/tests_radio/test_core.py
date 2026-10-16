@@ -234,3 +234,12 @@ def test_migration_13_gives_each_title_on_air_its_category(
         (2, "nouveautes", "2026-10-01"),
         (3, "reperes", "2026-10-01"),
     ]
+
+
+def test_paths_derive_from_the_two_directories(tmp_path: Path) -> None:
+    # Les modèles entraînés vivent sous data_dir, à part des poids MTG de models_dir : une
+    # sauvegarde de data_dir les emporte, un retéléchargement des poids ne les touche pas.
+    s = Settings(_env_file=None, RADIO_DATA_DIR=tmp_path / "data", RADIO_MODELS_DIR=tmp_path / "w")
+    assert s.db_path == tmp_path / "data" / "radio.db"
+    assert s.trained_models_dir == tmp_path / "data" / "models"
+    assert s.effnet_model == tmp_path / "w" / "discogs-effnet-bs64-1.pb"

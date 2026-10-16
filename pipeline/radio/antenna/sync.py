@@ -23,11 +23,10 @@ from typing import Protocol
 
 import numpy as np
 
-from radio.acquire.audio import ToolError, prepare, probe
-from radio.acquire.run import tags_for
 from radio.core.config import AntenneConfig, GrilleConfig
+from radio.core.family import FAMILY
+from radio.core.media import ToolError, prepare, probe, tags_for
 from radio.library.weights import play_weight
-from radio.model.model import FAMILY
 from radio.sources.azuracast import AzuracastError, Media
 from radio.sources.deezer import DeezerClient, DeezerError
 
@@ -35,7 +34,7 @@ FOLDER = "antenne"
 REST = "repos"
 
 
-class Station(Protocol):
+class MediaStore(Protocol):
     def files(self) -> list[Media]: ...
 
     def upload(self, path: str, data: bytes) -> Media: ...
@@ -104,7 +103,7 @@ def reconcile(conn: sqlite3.Connection, media: list[Media], rep: AntenneReport) 
 
 def _upload(
     conn: sqlite3.Connection,
-    station: Station,
+    station: MediaStore,
     tid: int,
     origin: str,
     file: Path,
@@ -121,7 +120,7 @@ def _upload(
 
 
 def _remove(
-    conn: sqlite3.Connection, station: Station, paths: list[str], rep: AntenneReport
+    conn: sqlite3.Connection, station: MediaStore, paths: list[str], rep: AntenneReport
 ) -> int:
     """Supprime de l'antenne ; renvoie le nombre de retraits réussis."""
     if not paths:
@@ -134,7 +133,7 @@ def _remove(
     return len(done)
 
 
-def withdraw_rejected(conn: sqlite3.Connection, station: Station, rep: AntenneReport) -> None:
+def withdraw_rejected(conn: sqlite3.Connection, station: MediaStore, rep: AntenneReport) -> None:
     """Un titre voté « non » sort de l'antenne (repères compris), sauf s'il est en cours ou en
     file : il sortira à la passe suivante. Un fichier prêt voté « non » n'est jamais publié."""
     rows = conn.execute(
@@ -163,7 +162,9 @@ def withdraw_rejected(conn: sqlite3.Connection, station: Station, rep: AntenneRe
         rep.n_voted_out += 1
 
 
-def publish_ready(conn: sqlite3.Connection, station: Station, now: str, rep: AntenneReport) -> None:
+def publish_ready(
+    conn: sqlite3.Connection, station: MediaStore, now: str, rep: AntenneReport
+) -> None:
     rows = conn.execute(
         """
         SELECT a.deezer_track_id, a.file FROM acquisitions a
@@ -188,7 +189,7 @@ def _under(root: PurePosixPath, file: str) -> bool:
 
 def _move(
     conn: sqlite3.Connection,
-    station: Station,
+    station: MediaStore,
     paths: list[str],
     directory: str,
     categorie: str,
@@ -211,7 +212,7 @@ def _move(
 
 
 def one_per_artist(
-    conn: sqlite3.Connection, station: Station, busy: set[str], now: datetime, rep: AntenneReport
+    conn: sqlite3.Connection, station: MediaStore, busy: set[str], now: datetime, rep: AntenneReport
 ) -> None:
     """Un artiste à plusieurs titres n'en garde qu'un : un « oui » d'abord, puis un titre en
     rotation, puis la note du modèle, puis le plus récent. Les autres sortent ; un repère sorti
@@ -250,7 +251,7 @@ def _weeks_ago(now: datetime, weeks: int) -> str:
 
 def end_first_stay(
     conn: sqlite3.Connection,
-    station: Station,
+    station: MediaStore,
     cfg: AntenneConfig,
     busy: set[str],
     now: datetime,
@@ -296,7 +297,7 @@ def end_first_stay(
 
 def expire(
     conn: sqlite3.Connection,
-    station: Station,
+    station: MediaStore,
     cfg: AntenneConfig,
     busy: set[str],
     now: datetime,
@@ -313,7 +314,7 @@ def expire(
 
 def platoon(
     conn: sqlite3.Connection,
-    station: Station,
+    station: MediaStore,
     cfg: AntenneConfig,
     stock: int,
     busy: set[str],
@@ -343,7 +344,7 @@ def platoon(
 
 def rotate_references(
     conn: sqlite3.Connection,
-    station: Station,
+    station: MediaStore,
     deezer: DeezerClient,
     cfg: AntenneConfig,
     stock: int,
@@ -441,7 +442,7 @@ def rotate_references(
 
 def antenne_pass(
     conn: sqlite3.Connection,
-    station: Station,
+    station: MediaStore,
     deezer: DeezerClient,
     cfg: AntenneConfig,
     grille: GrilleConfig,

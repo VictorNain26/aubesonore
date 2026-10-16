@@ -355,7 +355,7 @@ def train_command() -> None:
     """Entraîne le modèle s'il y a de nouveaux votes, puis note les candidats."""
     settings = common._settings()
     cfg = _editorial(settings).model
-    models_dir = settings.data_dir / "models"
+    models_dir = settings.trained_models_dir
     lines = []
     with _db(settings) as conn:
         n = votes_count(conn)
