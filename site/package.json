@@ -10,6 +10,8 @@
   },
   "scripts": {
     "stack": "docker compose --profile dev up --watch backend frontend-dev",
+    "data:pull": "scripts/pull-public-data.sh",
+    "musilogy:sample": "scripts/musilogy-sample.sh",
     "dev": "turbo dev",
     "dev:backend": "turbo dev --filter=@aubesonore/backend",
     "dev:frontend": "turbo dev --filter=@aubesonore/frontend",

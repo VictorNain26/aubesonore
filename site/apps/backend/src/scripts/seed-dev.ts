@@ -1,8 +1,10 @@
 // A local stack's listener, for working on the pages a signed-in listener sees: a verified
-// account, three artists the antenna played (under their production ids, so the artist pages
-// relayed from production find what this listener kept of them) and a few kept tracks, with
-// and without an album. Run by compose.yaml's dev-init; safe to run again.
-import { eq } from 'drizzle-orm';
+// account and a few kept tracks, with and without an album, of three artists the antenna
+// played that Musilogy's sample also holds (scripts/musilogy-sample.sh). They keep their
+// production ids, slugs and MBIDs, so the public data scripts/pull-public-data.sh copies (their
+// plays, their stored profile) and the sample's sections land on the same pages. Run by
+// compose.yaml's dev-init; safe to run again.
+import { and, eq, like, notInArray } from 'drizzle-orm';
 import { auth } from '../lib/auth/index';
 import { db } from '../db/index';
 import { artist, artistSlug, likedTracks, user as userTable } from '../db/schema';
@@ -16,31 +18,30 @@ if (!DEV_USER_EMAIL || !DEV_USER_PASSWORD) {
 
 const ARTISTS = [
   {
-    id: 'b26e14d2-745e-4309-a847-f8a916d91d16',
-    slug: 'mgmt',
-    name: 'MGMT',
-    mbid: 'c485632c-b784-4ee9-8ea1-c5fb365681fc',
+    id: '6adbf995-4368-4e61-b49a-121ce7f7439f',
+    slug: 'david-bowie',
+    name: 'David Bowie',
+    mbid: '5441c29d-3602-4898-b1a1-b77fa23b8e50',
   },
   {
-    id: '3d7f31e3-2872-4999-81f5-fe5a09d33bca',
-    slug: 'pixies',
-    name: 'Pixies',
-    mbid: 'b6b2bb8d-54a9-491f-9607-7b546023b433',
+    id: 'd477fd70-89cb-49c2-8515-df6806022d1b',
+    slug: 'buzz-kull',
+    name: 'Buzz Kull',
+    mbid: 'f38ed14d-07db-4a4b-9270-53435358898a',
   },
   {
-    id: '461ab030-519d-44ee-a4f1-d52ff23b2543',
-    slug: 'boogie-beasts',
-    name: 'Boogie Beasts',
-    mbid: 'd129a408-d747-4f31-9f8b-1da73d84375d',
+    id: '0db30429-8bf5-4b5e-818b-d6ac5dcc71f3',
+    slug: 'orange-juice',
+    name: 'Orange Juice',
+    mbid: 'e598d30e-4ce1-402e-94a7-6f44779da6b7',
   },
 ] as const;
 
 const KEPT: Array<{ title: string; artist: (typeof ARTISTS)[number]; album: string | null }> = [
-  { title: 'Kids', artist: ARTISTS[0], album: 'Oracular Spectacular' },
-  { title: 'Time to Pretend', artist: ARTISTS[0], album: 'Oracular Spectacular' },
-  { title: 'Where Is My Mind?', artist: ARTISTS[1], album: 'Surfer Rosa' },
-  { title: 'Here Comes Your Man', artist: ARTISTS[1], album: 'Doolittle' },
-  { title: 'Jumper On The Line', artist: ARTISTS[2], album: null },
+  { title: '"Heroes"', artist: ARTISTS[0], album: '“Heroes”' },
+  { title: 'Into the Void', artist: ARTISTS[1], album: null },
+  { title: 'Tender Object', artist: ARTISTS[2], album: null },
+  { title: 'Rip It Up', artist: ARTISTS[2], album: 'Rip It Up' },
 ];
 
 const email = DEV_USER_EMAIL.toLowerCase();
@@ -71,22 +72,29 @@ for (const one of ARTISTS) {
       mbid: one.mbid,
     })
     .onConflictDoNothing();
-  await db.insert(artistSlug).values({ slug: one.slug, artistId: one.id }).onConflictDoNothing();
+  // An artist with an MBID has its page named by the MBID (services/artistSlugs.ts).
+  await db.insert(artistSlug).values({ slug: one.slug, mbid: one.mbid }).onConflictDoNothing();
 }
 
+// A database seeded by an earlier version of this list converges on this one; what the
+// listener kept by hand stays.
+const keptIds = KEPT.map((_, i) => `dev-kept-${i + 1}`);
+await db
+  .delete(likedTracks)
+  .where(and(like(likedTracks.id, 'dev-kept-%'), notInArray(likedTracks.id, keptIds)));
 for (const [i, track] of KEPT.entries()) {
+  const kept = {
+    title: track.title,
+    artist: track.artist.name,
+    album: track.album,
+    youtubeUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${track.artist.name} ${track.title}`)}`,
+    userId: listener.id,
+    artistId: track.artist.id,
+  };
   await db
     .insert(likedTracks)
-    .values({
-      id: `dev-kept-${i + 1}`,
-      title: track.title,
-      artist: track.artist.name,
-      album: track.album,
-      youtubeUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${track.artist.name} ${track.title}`)}`,
-      userId: listener.id,
-      artistId: track.artist.id,
-    })
-    .onConflictDoNothing();
+    .values({ id: `dev-kept-${i + 1}`, ...kept })
+    .onConflictDoUpdate({ target: likedTracks.id, set: kept });
 }
 
 console.log(
