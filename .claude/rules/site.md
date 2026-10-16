@@ -117,7 +117,6 @@ Musilogy's data is loaded into the `musilogy` schema: `musilogyService` calls on
 
 ## What not to do
 
-- Don't re-introduce unused deps (`axios`, `cheerio`, `@tanstack/react-query`, `react-router-dom`, `@elysiajs/cron`, `class-variance-authority`, `dayjs`, `react-intersection-observer`): the app already covers each.
 - Don't write per-package `pnpm-lock.yaml` or `bun.lock`: the site's root `pnpm-lock.yaml` is authoritative.
 - Don't disable `requireEmailVerification` unless a temporary migration window needs it, and roll back immediately.
 - Don't bypass the `securityHeaders` plugin or Better Auth's rate limits.
