@@ -84,3 +84,32 @@ def test_the_discogs_fixture_is_what_the_witnesses_discogs_pages_select(tmp_path
     out = tmp_path / "discogs.jsonl"
     cli._discogs_fixture(FIX / "artists.jsonl", out)
     assert out.read_text(encoding="utf-8") == (FIX / "discogs.jsonl").read_text(encoding="utf-8")
+
+
+FIXTURE_FILES = (
+    "artists.jsonl",
+    "release_groups.jsonl",
+    "popularity.jsonl",
+    "discography.jsonl",
+    "official.jsonl",
+    "discogs.jsonl",
+    "ATTRIBUTION.md",
+)
+
+
+def test_make_fixtures_replayed_on_the_fixtures_gives_them_back(tmp_path, monkeypatch):
+    # The fixtures are make-fixtures' own output: run again on them as if they
+    # were the full extractions, every selection (witnesses, linked artists,
+    # their release groups, popularity, discography, official status, Discogs)
+    # must give back every committed line, and only those. A selection that
+    # widens, narrows or reorders breaks it.
+    monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
+    monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
+    monkeypatch.setattr(cli, "FIXTURES_DIR", tmp_path)
+    monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
+    monkeypatch.setattr(cli, "verified_discography", lambda: FIX / "discography.jsonl")
+    monkeypatch.setattr(cli, "verified_official", lambda: [FIX / "official.jsonl"])
+    monkeypatch.setattr(cli, "verified_discogs", lambda: FIX / "discogs.jsonl")
+    cli.make_fixtures()
+    for name in FIXTURE_FILES:
+        assert (tmp_path / name).read_bytes() == (FIX / name).read_bytes(), name

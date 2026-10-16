@@ -1,4 +1,15 @@
-from musilogy.paths import DATA_DIR, FIXTURES_DIR, PACKAGE_DIR, RAW_DIR, out_dir, work_dir
+from musilogy.paths import (
+    DATA_DIR,
+    FIXTURES_DIR,
+    PACKAGE_DIR,
+    RAW_DIR,
+    discogs_extraction,
+    discogs_releases,
+    dump_sums,
+    extraction_sidecar,
+    out_dir,
+    work_dir,
+)
 
 
 def test_the_extraction_directory_carries_the_dump_it_came_from():
@@ -20,3 +31,16 @@ def test_the_data_directory_sits_beside_the_package_not_under_it():
     # rooted on PACKAGE_DIR would write outputs into the source tree.
     assert PACKAGE_DIR not in DATA_DIR.parents
     assert DATA_DIR.name == "data"
+
+
+def test_the_dump_digests_are_named_after_the_dump():
+    assert dump_sums("20260909-001002").name == "20260909-001002.SHA256SUMS"
+    assert dump_sums("20260909-001002") != dump_sums("20270101-000000")
+
+
+def test_an_extraction_sidecar_sits_beside_its_extraction():
+    # The MusicBrainz and the Discogs extractions share the sidecar's name: a
+    # build reads each beside its own extraction, never one for the other.
+    assert extraction_sidecar(work_dir("d")).parent == work_dir("d")
+    assert discogs_extraction("2026-10-01").parent == discogs_releases("2026-10-01").parent
+    assert discogs_extraction("2026-10-01") != extraction_sidecar(work_dir("2026-10-01"))

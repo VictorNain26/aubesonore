@@ -10,14 +10,15 @@ from typing import Any
 
 import duckdb
 
+from musilogy.build import scalar
 from musilogy.colisten import PARAMETERS as COLISTEN_PARAMETERS
 from musilogy.fetch import expected_sums, sha256_file
 from musilogy.paths import (
     PACKAGE_DIR,
-    REFERENCE_DIR,
     discography_sums,
     discogs_extraction,
     discogs_sums,
+    dump_sums,
     listening_sums,
     official_sums,
     popularity_sums,
@@ -78,12 +79,6 @@ def _counters(con: duckdb.DuckDBPyConnection, table: str) -> dict[str, int]:
     return {name: int(value) for name, value in zip(names, row, strict=True)}
 
 
-def _count(con: duckdb.DuckDBPyConnection, table: str) -> int:
-    row = con.execute(f"SELECT count(*) FROM {table}").fetchone()
-    assert row is not None  # COUNT(*) always returns exactly one row
-    return int(row[0])
-
-
 def read_extraction(path: Path | None) -> dict[str, Any] | None:
     """Three distinguishable states, because no record and a broken record are
     not the same thing. The sidecar is an external file read at a boundary, and
@@ -123,7 +118,7 @@ INPUT_TABLES = ("raw_artists", "raw_release_groups", "raw_popularity")
 
 
 def input_rows_loaded(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
-    return {table: _count(con, table) for table in INPUT_TABLES}
+    return {table: scalar(con, f"SELECT count(*) FROM {table}") for table in INPUT_TABLES}
 
 
 def extraction_matches_rows_loaded(
@@ -209,7 +204,7 @@ def publish(
             " (FORMAT parquet, COMPRESSION zstd)",
             [(out_dir / f"{name}.parquet").as_posix()],
         )
-        counts[name] = _count(con, name)
+        counts[name] = scalar(con, f"SELECT count(*) FROM {name}")
 
     # A file this run did not write — a table dropped from the schema, an
     # export retired — would otherwise stay in the delivery and be digested
@@ -234,7 +229,7 @@ def publish(
 
     manifest = {
         "dump": dump,
-        "archive_sha256": expected_sums(REFERENCE_DIR / f"{dump}.SHA256SUMS"),
+        "archive_sha256": expected_sums(dump_sums(dump)),
         "popularity": _snapshot(con, "popularity_snapshot", popularity_sums),
         "discography": _snapshot(con, "discography_snapshot", discography_sums),
         "official": _parts(con, "official_snapshots", official_sums),
