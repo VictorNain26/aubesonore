@@ -9,7 +9,7 @@ from typer.testing import CliRunner
 
 import radio.cli as cli
 from radio.core.config import Settings
-from radio.core.report import record_stage
+from radio.core.report import last_stages, record_stage
 from radio.model.model import Batch, YesRate
 from radio.notify.whatsapp import WhatsAppError
 from radio.votes.status import Status
@@ -165,6 +165,8 @@ def test_votes_remind_sends_the_status(full: Path, monkeypatch: pytest.MonkeyPat
     assert "Aucun modèle en service" in text
     assert "Rappel WhatsApp envoyé" in res.output
     assert KEY not in res.output and PHONE not in res.output
+    with cli._db(cli._settings()) as conn:
+        assert [(s, ok) for s, _, ok, _ in last_stages(conn)] == [("votes-remind", True)]
 
 
 def test_votes_remind_failure_is_visible(full: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -179,6 +181,9 @@ def test_votes_remind_failure_is_visible(full: Path, monkeypatch: pytest.MonkeyP
     assert res.exit_code == 1
     assert "Rappel WhatsApp non envoyé : HTTP 210" in res.output
     assert KEY not in res.output
+    # Le rappel en échec laisse sa ligne de rapport, comme une étape de la passe (§8.1).
+    with cli._db(cli._settings()) as conn:
+        assert [(s, ok) for s, _, ok, _ in last_stages(conn)] == [("votes-remind", False)]
 
 
 def test_votes_remind_requires_its_settings(

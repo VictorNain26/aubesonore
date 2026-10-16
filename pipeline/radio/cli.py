@@ -868,6 +868,7 @@ def check() -> None:
 
 
 @app.command("backup")
+@_stage("backup")
 def backup_command() -> None:
     """Copie la base (API de sauvegarde SQLite, vérifiée) et les modèles dans RADIO_BACKUP_DIR."""
     settings = _settings()
@@ -883,6 +884,8 @@ def backup_command() -> None:
         )
     except (BackupError, sqlite3.Error, OSError) as e:
         _fail(f"Sauvegarde ratée : {e}", 1)
+    with _db(settings) as conn:
+        _record(conn, "backup", True, {"copie": target.name})
     _echo([f"Sauvegarde : {target}"])
 
 
@@ -964,6 +967,7 @@ def _page_ok(settings: Settings) -> bool:
 
 
 @app.command("votes-remind")
+@_stage("votes-remind")
 def votes_remind() -> None:
     """Envoie le rappel WhatsApp : titres en attente, taux de oui, alertes."""
     settings = _settings()
@@ -994,4 +998,6 @@ def votes_remind() -> None:
         )
     except WhatsAppError as e:
         _fail(f"Rappel WhatsApp non envoyé : {e}", 1)
+    with _db(settings) as conn:
+        _record(conn, "votes-remind", True, {"en attente": st.pending})
     typer.echo("Rappel WhatsApp envoyé")
