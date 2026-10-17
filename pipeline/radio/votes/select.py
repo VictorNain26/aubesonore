@@ -136,10 +136,10 @@ def _draw_exam(families: dict[str, list[int]], n_exam: int, rng: np.random.Gener
 
 
 def _pick_lessons(
-    rows: list[Any], cuts: dict[str, float], exam: list[int], examined: set[int], n_lesson: int
+    rows: list[Any], cuts: dict[str, float], examined: set[int], n_lesson: int
 ) -> list[int]:
-    """Les titres les plus proches de la coupure de leur famille, un par artiste, hors examen et
-    hors artistes examinés."""
+    """Les titres les plus proches de la coupure de leur famille, un par artiste, hors artistes
+    examinés (ce qui écarte aussi les titres de l'examen)."""
     lesson: list[int] = []
     artists = set(examined)
     uncertain = [r for r in rows if FAMILY[str(r[5])] in cuts]
@@ -149,7 +149,7 @@ def _pick_lessons(
         if len(lesson) == n_lesson:
             break
         tid, artist = int(r[0]), int(r[4])
-        if tid in exam or artist in artists:
+        if artist in artists:
             continue
         lesson.append(tid)
         artists.add(artist)
@@ -209,7 +209,7 @@ def select_batch(
             "WHERE b.kind = 'exam'"
         )
     }
-    lesson = _pick_lessons(rows, cuts, exam, examined, n_lesson)
+    lesson = _pick_lessons(rows, cuts, examined, n_lesson)
     chosen = [(t, "exam") for t in exam] + [(t, "lesson") for t in lesson]
     if not chosen:
         return Selection(None, model_id, run_id, sum(map(len, families.values())), [], [])

@@ -360,11 +360,12 @@ def _retire_references(
     out = [(int(t), str(p)) for t, p, s in tired if s not in busy]
     removed = _remove(conn, station, [p for _, p in out], rep)
     still = {int(r[0]) for r in conn.execute("SELECT deezer_track_id FROM antenne")}
+    stamp = now.isoformat()
     with conn:
         conn.executemany(
             "INSERT INTO repere_sorties VALUES (?, ?) "
             "ON CONFLICT (deezer_track_id) DO UPDATE SET left_at = excluded.left_at",
-            [(t, now.isoformat()) for t, _ in out if t not in still],
+            [(t, stamp) for t, _ in out if t not in still],
         )
     rep.n_references_out = removed
 
@@ -414,7 +415,6 @@ def rotate_references(
     renouvelle. Un tirage dont l'artiste a déjà un titre à l'antenne, ou dont l'artiste est
     inconnu, est écarté et compté. Le fichier Plex n'est que lu ; la copie préparée est déposée
     puis effacée."""
-    stamp = now.isoformat()
     _retire_references(conn, station, cfg, busy, now, rep)
     on_air = conn.execute("SELECT COUNT(*) FROM antenne WHERE categorie = 'reperes'").fetchone()[0]
     need = min(stock - on_air, math.ceil(stock / cfg.stay_weeks))
@@ -455,7 +455,7 @@ def rotate_references(
             except (ToolError, DeezerError) as e:
                 rep.skipped_references.append(f"repère {tid} : {e}")
                 continue
-            if _upload(conn, station, tid, "repere", dest, stamp, rep):
+            if _upload(conn, station, tid, "repere", dest, now.isoformat(), rep):
                 rep.n_references += 1
                 if tags.cover is None:
                     rep.n_references_no_cover += 1
