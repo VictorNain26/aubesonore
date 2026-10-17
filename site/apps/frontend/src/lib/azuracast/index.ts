@@ -5,8 +5,4 @@
 
 export { useNowPlayingStore, startNowPlayingPolling } from './store';
 export { isDefaultArtwork } from './artwork';
-export { SongEntrySchema } from './validators';
-
-// Re-export the shared-types domain shapes so a consumer never needs two
-// imports for "AzuraCast types".
-export type { SongEntry, NowPlaying } from '@aubesonore/shared-types/azuracast';
+export { SongEntrySchema, type SongEntry, type NowPlaying } from './validators';

@@ -1,5 +1,4 @@
-import { isDefaultArtwork } from '../azuracast';
-import type { NowPlaying } from '@aubesonore/shared-types/azuracast';
+import { isDefaultArtwork, type NowPlaying } from '../azuracast';
 
 export interface CastTrack {
   title: string;

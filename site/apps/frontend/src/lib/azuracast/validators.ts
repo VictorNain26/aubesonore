@@ -1,4 +1,14 @@
-import { string, number, boolean, nullable, array, optional, unknown, looseObject } from 'valibot';
+import {
+  string,
+  number,
+  boolean,
+  nullable,
+  array,
+  optional,
+  unknown,
+  looseObject,
+  type InferOutput,
+} from 'valibot';
 
 // Use looseObject everywhere so AzuraCast can add new fields without breaking
 // the client. The shapes here describe what we READ, not what the API promises.
@@ -61,3 +71,7 @@ export const NowPlayingSchema = looseObject({
   song_history: array(SongEntrySchema),
   is_online: boolean(),
 });
+
+// The schemas are the one description of AzuraCast's answer: the types are what they let through.
+export type SongEntry = InferOutput<typeof SongEntrySchema>;
+export type NowPlaying = InferOutput<typeof NowPlayingSchema>;
