@@ -29,7 +29,7 @@ async function fetchHistory(signal: AbortSignal): Promise<SongEntry[]> {
   });
   const parsed = safeParse(HistoryResponseSchema, payload);
   if (!parsed.success) throw new Error('invalid payload');
-  return parsed.output as SongEntry[];
+  return parsed.output;
 }
 
 async function fetchTrends(signal: AbortSignal): Promise<TrendsResult> {

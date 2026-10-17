@@ -2,9 +2,8 @@ import '@fontsource-variable/bricolage-grotesque';
 import type * as Caf from 'chromecast-caf-receiver/cast.framework';
 import type * as CafDebug from 'chromecast-caf-receiver/cast.debug';
 import { safeParse } from 'valibot';
-import type { NowPlaying } from '@aubesonore/shared-types/azuracast';
 import { castTrack } from '../lib/cast/castMetadata';
-import { NowPlayingSchema } from '../lib/azuracast/validators';
+import { NowPlayingSchema, type NowPlaying } from '../lib/azuracast/validators';
 import { STATIC_NOWPLAYING_URL, STREAM_URL } from '../lib/config';
 
 // AubeSonore's Cast receiver (Custom Web Receiver, CAF v3): the page a TV or a speaker opens when
@@ -43,7 +42,7 @@ function metadata(): Caf.messages.MusicTrackMediaMetadata {
 async function readOnAir(): Promise<NowPlaying | null> {
   const response = await fetch(STATIC_NOWPLAYING_URL, { cache: 'no-store' });
   const parsed = safeParse(NowPlayingSchema, await response.json());
-  return parsed.success ? (parsed.output as NowPlaying) : null;
+  return parsed.success ? parsed.output : null;
 }
 
 /** The Cast Debug Logger's overlay (debugging/cast_debug_logger), on demand only: never by default. */

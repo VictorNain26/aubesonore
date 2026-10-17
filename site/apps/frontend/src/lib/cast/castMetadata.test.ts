@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { NowPlaying } from '@aubesonore/shared-types/azuracast';
+import type { NowPlaying } from '../azuracast';
 import { castTrack } from './castMetadata';
 
 const LOGO = 'https://aubesonore.fr/icon-512.png';

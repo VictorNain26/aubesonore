@@ -1,8 +1,7 @@
 import { create } from 'zustand';
 import { safeParse } from 'valibot';
 import { STATIC_NOWPLAYING_URL } from '../config';
-import { NowPlayingSchema } from './validators';
-import type { NowPlaying } from '@aubesonore/shared-types/azuracast';
+import { NowPlayingSchema, type NowPlaying } from './validators';
 
 // ─────────────────────────────────────────────
 // Now-playing store (Zustand). Polling lifecycle lives outside the store
@@ -118,7 +117,7 @@ async function pollOnce(): Promise<void> {
 
     consecutiveErrors = 0;
     useNowPlayingStore.setState({
-      data: parsed.output as NowPlaying,
+      data: parsed.output,
       isConnected: true,
       error: null,
     });
