@@ -31,10 +31,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
-        with:
-          version: "0.11.19"
-          working-directory: pipeline
       # Audio tools for acquisition: the integration test really runs them.
       # Azure's Ubuntu mirror sometimes serves at ~180 KB/s (up to 11 min for ffmpeg): the .debs
       # stay cached (Dir::Cache::archives, apt.conf(5)) and apt downloads only the new ones.
@@ -63,8 +59,6 @@ jobs:
           scripts/dev-setup.sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - run: rsgain --version
-      - run: uv sync --locked
-      - run: uv run ruff check radio tests_radio
-      - run: uv run ruff format --check radio tests_radio
-      - run: uv run mypy
-      - run: uv run pytest -q -W error -rs
+      - uses: $/.github/actions/check-python
+        with:
+          directory: pipeline

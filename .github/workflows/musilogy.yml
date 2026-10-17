@@ -15,18 +15,16 @@ concurrency:
 permissions:
   contents: read
 
-# musilogy lives in musilogy/. No path filter: this job is a required check on master, and a
-# workflow skipped by a filter never reports it.
-defaults:
-  run:
-    working-directory: musilogy
-
+# No path filter: this job is a required check on master, and a workflow skipped by a filter
+# never reports it.
 jobs:
   checks:
     name: musilogy (ruff, mypy, pytest)
     if: github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      MUSILOGY_TEST_PG: host=localhost port=5432 user=postgres password=postgres dbname=postgres
     # The load tests (tests/test_load.py) run against a real Postgres, of the same major version
     # as the site's database. Syntax: docs.github.com, « Creating PostgreSQL service containers ».
     services:
@@ -45,14 +43,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - uses: $/.github/actions/check-python
         with:
-          version: "0.11.19"
-          working-directory: musilogy
-      - run: uv sync --locked
-      - run: uv run ruff check
-      - run: uv run ruff format --check
-      - run: uv run mypy
-      - run: uv run pytest -q -W error -rs
-        env:
-          MUSILOGY_TEST_PG: host=localhost port=5432 user=postgres password=postgres dbname=postgres
+          directory: musilogy
