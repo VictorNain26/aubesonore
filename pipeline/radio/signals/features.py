@@ -12,7 +12,6 @@ fichier en porte, et sa durée en découle. Le fichier d'antenne est lu, jamais 
 import hashlib
 import json
 import logging
-import os
 import sqlite3
 from collections import Counter
 from dataclasses import astuple, dataclass, field
@@ -23,6 +22,7 @@ import numpy as np
 import numpy.typing as npt
 
 from radio.core.media import Cue, ToolError, cue_of
+from radio.signals.audio import single_thread_tensorflow
 
 logger = logging.getLogger(__name__)
 
@@ -137,10 +137,7 @@ def summarize(
 class FeatureExtractor:
     def __init__(self, models_dir: Path) -> None:
         check_models(models_dir)
-        # Avant l'import : un fil TensorFlow, comme l'empreinte (radio/signals/audio.py).
-        os.environ.setdefault("TF_NUM_INTRAOP_THREADS", "1")
-        os.environ.setdefault("TF_NUM_INTEROP_THREADS", "1")
-        os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
+        single_thread_tensorflow()
         import essentia
         from essentia.standard import (
             MonoLoader,

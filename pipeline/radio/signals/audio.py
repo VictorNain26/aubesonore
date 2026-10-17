@@ -29,6 +29,15 @@ class ModelError(Exception):
     """Modèle absent, ou différent du modèle officiel épinglé."""
 
 
+def single_thread_tensorflow() -> None:
+    """À appeler avant d'importer essentia : TensorFlow lit ces variables à la création de sa
+    session. Un fil chacun : sur cette machine partagée, le moins de CPU pour presque le même
+    temps (§5.3)."""
+    os.environ.setdefault("TF_NUM_INTRAOP_THREADS", "1")
+    os.environ.setdefault("TF_NUM_INTEROP_THREADS", "1")
+    os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
+
+
 def check_model(path: Path) -> None:
     if not path.is_file():
         raise ModelError(f"modèle absent : {path} (à télécharger depuis {MODEL_URL})")
@@ -47,11 +56,7 @@ def from_blob(b: bytes) -> npt.NDArray[np.float32]:
 class EffnetEmbedder:
     def __init__(self, model: Path) -> None:
         check_model(model)
-        # Avant l'import : TensorFlow lit ces variables à la création de sa session. Un fil
-        # chacun : sur cette machine partagée, le moins de CPU pour presque le même temps (§5.3).
-        os.environ.setdefault("TF_NUM_INTRAOP_THREADS", "1")
-        os.environ.setdefault("TF_NUM_INTEROP_THREADS", "1")
-        os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
+        single_thread_tensorflow()
         import essentia
         from essentia.standard import MonoLoader, TensorflowPredictEffnetDiscogs
 

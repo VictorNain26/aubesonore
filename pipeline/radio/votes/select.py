@@ -20,6 +20,7 @@
 
 import sqlite3
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 
@@ -122,6 +123,39 @@ def record_vote(conn: sqlite3.Connection, track_id: int, vote: str, now: str) ->
     return True
 
 
+def _draw_exam(families: dict[str, list[int]], n_exam: int, rng: np.random.Generator) -> list[int]:
+    """Parts égales entre familles ; une famille trop petite laisse sa part aux autres."""
+    exam: list[int] = []
+    left = n_exam
+    pools = sorted(families.items(), key=lambda kv: (len(kv[1]), kv[0]))
+    for i, (_, pool) in enumerate(pools):
+        k = min(len(pool), left // (len(pools) - i))
+        exam += [int(t) for t in rng.choice(pool, size=k, replace=False)] if k else []
+        left -= k
+    return sorted(exam)
+
+
+def _pick_lessons(
+    rows: list[Any], cuts: dict[str, float], examined: set[int], n_lesson: int
+) -> list[int]:
+    """Les titres les plus proches de la coupure de leur famille, un par artiste, hors artistes
+    examinés (ce qui écarte aussi les titres de l'examen)."""
+    lesson: list[int] = []
+    artists = set(examined)
+    uncertain = [r for r in rows if FAMILY[str(r[5])] in cuts]
+    for r in sorted(
+        uncertain, key=lambda r: (abs(float(r[1]) - cuts[FAMILY[str(r[5])]]), int(r[0]))
+    ):
+        if len(lesson) == n_lesson:
+            break
+        tid, artist = int(r[0]), int(r[4])
+        if artist in artists:
+            continue
+        lesson.append(tid)
+        artists.add(artist)
+    return lesson
+
+
 def select_batch(
     conn: sqlite3.Connection, rng: np.random.Generator, n_exam: int, n_lesson: int, now: str
 ) -> Selection:
@@ -165,36 +199,17 @@ def select_batch(
     ):
         family = FAMILY[str(source)]
         cuts[family] = min(cuts.get(family, 1.0), float(score))
-    # Parts égales ; une famille trop petite laisse sa part à l'autre.
-    exam: list[int] = []
-    left = n_exam
-    pools = sorted(families.items(), key=lambda kv: (len(kv[1]), kv[0]))
-    for i, (_, pool) in enumerate(pools):
-        k = min(len(pool), left // (len(pools) - i))
-        exam += [int(t) for t in rng.choice(pool, size=k, replace=False)] if k else []
-        left -= k
-    exam.sort()
-    lesson: list[int] = []
+    exam = _draw_exam(families, n_exam, rng)
     # Un artiste d'examen, de cette sélection ou d'une précédente, ne reçoit jamais de vote de
     # leçon : le modèle candidat l'aurait vu, pas celui en service, et l'examen le favoriserait.
-    artists = {int(r[4]) for r in rows if int(r[0]) in exam} | {
+    examined = {int(r[4]) for r in rows if int(r[0]) in exam} | {
         int(r[0])
         for r in conn.execute(
             "SELECT t.deezer_artist_id FROM ballots b JOIN tracks t USING (deezer_track_id) "
             "WHERE b.kind = 'exam'"
         )
     }
-    uncertain = [r for r in rows if FAMILY[str(r[5])] in cuts]
-    for r in sorted(
-        uncertain, key=lambda r: (abs(float(r[1]) - cuts[FAMILY[str(r[5])]]), int(r[0]))
-    ):
-        if len(lesson) == n_lesson:
-            break
-        tid, artist = int(r[0]), int(r[4])
-        if tid in exam or artist in artists:
-            continue
-        lesson.append(tid)
-        artists.add(artist)
+    lesson = _pick_lessons(rows, cuts, examined, n_lesson)
     chosen = [(t, "exam") for t in exam] + [(t, "lesson") for t in lesson]
     if not chosen:
         return Selection(None, model_id, run_id, sum(map(len, families.values())), [], [])

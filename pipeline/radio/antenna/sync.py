@@ -19,7 +19,7 @@ import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path, PurePosixPath
-from typing import Protocol
+from typing import Any, Protocol
 
 import numpy as np
 
@@ -342,6 +342,60 @@ def platoon(
     rep.n_returned = _move(conn, station, [str(r[0]) for r in rested], FOLDER, "fond", stamp, rep)
 
 
+def _retire_references(
+    conn: sqlite3.Connection,
+    station: MediaStore,
+    cfg: AntenneConfig,
+    busy: set[str],
+    now: datetime,
+    rep: AntenneReport,
+) -> None:
+    """Les repères restés `stay_weeks` semaines sortent, sauf ceux en cours ou en file d'attente ;
+    leur sortie est datée pour le repos."""
+    tired = conn.execute(
+        "SELECT deezer_track_id, path, song_id FROM antenne WHERE categorie = 'reperes' "
+        "AND since <= ? ORDER BY deezer_track_id",
+        (_weeks_ago(now, cfg.stay_weeks),),
+    ).fetchall()
+    out = [(int(t), str(p)) for t, p, s in tired if s not in busy]
+    removed = _remove(conn, station, [p for _, p in out], rep)
+    still = {int(r[0]) for r in conn.execute("SELECT deezer_track_id FROM antenne")}
+    stamp = now.isoformat()
+    with conn:
+        conn.executemany(
+            "INSERT INTO repere_sorties VALUES (?, ?) "
+            "ON CONFLICT (deezer_track_id) DO UPDATE SET left_at = excluded.left_at",
+            [(t, stamp) for t, _ in out if t not in still],
+        )
+    rep.n_references_out = removed
+
+
+def _reference_pool(
+    conn: sqlite3.Connection, cfg: AntenneConfig, now: datetime, root: PurePosixPath
+) -> list[Any]:
+    """Les titres Plex appariés qui peuvent devenir repères : lisibles sous `root`, pas à
+    l'antenne, reposés depuis `rest_weeks` semaines, jamais votés « non »."""
+    return [
+        r
+        for r in conn.execute(
+            """
+            SELECT m.deezer_track_id, t.artist, t.title, t.file, SUM(t.plays),
+                   tr.deezer_artist_id
+            FROM deezer_matches m JOIN library_tracks t USING (plex_key)
+            LEFT JOIN tracks tr ON tr.deezer_track_id = m.deezer_track_id
+            LEFT JOIN antenne n ON n.deezer_track_id = m.deezer_track_id
+            LEFT JOIN repere_sorties o ON o.deezer_track_id = m.deezer_track_id
+            WHERE m.status = 'matched' AND t.file IS NOT NULL AND n.deezer_track_id IS NULL
+              AND (o.left_at IS NULL OR o.left_at <= ?)
+              AND m.deezer_track_id NOT IN (SELECT deezer_track_id FROM votes WHERE vote = 'non')
+            GROUP BY m.deezer_track_id ORDER BY m.deezer_track_id
+            """,
+            (_weeks_ago(now, cfg.rest_weeks),),
+        )
+        if _under(root, str(r[3]))
+    ]
+
+
 def rotate_references(
     conn: sqlite3.Connection,
     station: MediaStore,
@@ -361,45 +415,12 @@ def rotate_references(
     renouvelle. Un tirage dont l'artiste a déjà un titre à l'antenne, ou dont l'artiste est
     inconnu, est écarté et compté. Le fichier Plex n'est que lu ; la copie préparée est déposée
     puis effacée."""
-    stamp = now.isoformat()
-    tired = conn.execute(
-        "SELECT deezer_track_id, path, song_id FROM antenne WHERE categorie = 'reperes' "
-        "AND since <= ? ORDER BY deezer_track_id",
-        (_weeks_ago(now, cfg.stay_weeks),),
-    ).fetchall()
-    out = [(int(t), str(p)) for t, p, s in tired if s not in busy]
-    removed = _remove(conn, station, [p for _, p in out], rep)
-    still = {int(r[0]) for r in conn.execute("SELECT deezer_track_id FROM antenne")}
-    with conn:
-        conn.executemany(
-            "INSERT INTO repere_sorties VALUES (?, ?) "
-            "ON CONFLICT (deezer_track_id) DO UPDATE SET left_at = excluded.left_at",
-            [(t, stamp) for t, _ in out if t not in still],
-        )
-    rep.n_references_out = removed
+    _retire_references(conn, station, cfg, busy, now, rep)
     on_air = conn.execute("SELECT COUNT(*) FROM antenne WHERE categorie = 'reperes'").fetchone()[0]
     need = min(stock - on_air, math.ceil(stock / cfg.stay_weeks))
     if need <= 0:
         return
-    pool = [
-        r
-        for r in conn.execute(
-            """
-            SELECT m.deezer_track_id, t.artist, t.title, t.file, SUM(t.plays),
-                   tr.deezer_artist_id
-            FROM deezer_matches m JOIN library_tracks t USING (plex_key)
-            LEFT JOIN tracks tr ON tr.deezer_track_id = m.deezer_track_id
-            LEFT JOIN antenne n ON n.deezer_track_id = m.deezer_track_id
-            LEFT JOIN repere_sorties o ON o.deezer_track_id = m.deezer_track_id
-            WHERE m.status = 'matched' AND t.file IS NOT NULL AND n.deezer_track_id IS NULL
-              AND (o.left_at IS NULL OR o.left_at <= ?)
-              AND m.deezer_track_id NOT IN (SELECT deezer_track_id FROM votes WHERE vote = 'non')
-            GROUP BY m.deezer_track_id ORDER BY m.deezer_track_id
-            """,
-            (_weeks_ago(now, cfg.rest_weeks),),
-        )
-        if _under(root, str(r[3]))
-    ]
+    pool = _reference_pool(conn, cfg, now, root)
     if not pool:
         return
     w = np.array([play_weight(int(r[4])) for r in pool])
@@ -434,7 +455,7 @@ def rotate_references(
             except (ToolError, DeezerError) as e:
                 rep.skipped_references.append(f"repère {tid} : {e}")
                 continue
-            if _upload(conn, station, tid, "repere", dest, stamp, rep):
+            if _upload(conn, station, tid, "repere", dest, now.isoformat(), rep):
                 rep.n_references += 1
                 if tags.cover is None:
                     rep.n_references_no_cover += 1
