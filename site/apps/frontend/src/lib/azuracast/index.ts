@@ -5,6 +5,4 @@
 
 export { useNowPlayingStore, startNowPlayingPolling } from './store';
 export { isDefaultArtwork } from './artwork';
-export { SongEntrySchema } from './validators';
-
-export type { SongEntry, NowPlaying } from './validators';
+export { SongEntrySchema, type SongEntry, type NowPlaying } from './validators';
