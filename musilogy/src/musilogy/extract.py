@@ -62,10 +62,6 @@ def reduce_artist(rec: dict[str, Any]) -> dict[str, Any] | None:
         "country": rec.get("country"),
         "begin_area": (rec.get("begin-area") or {}).get("name"),
         "begin_area_mbid": (rec.get("begin-area") or {}).get("id"),
-        "genres": [
-            {"mbid": g.get("id"), "name": g.get("name"), "votes": g["count"]}
-            for g in (rec.get("genres") or [])
-        ],
         "relations": [
             {
                 "type": r.get("type"),
@@ -99,10 +95,6 @@ def reduce_release_group(rec: dict[str, Any]) -> dict[str, Any] | None:
         "date": rec.get("first-release-date"),
         "secondary": rec.get("secondary-types") or [],
         "artists": [(c.get("artist") or {}).get("id") for c in (rec.get("artist-credit") or [])],
-        "genres": [
-            {"mbid": g.get("id"), "name": g.get("name"), "votes": g["count"]}
-            for g in (rec.get("genres") or [])
-        ],
     }
 
 

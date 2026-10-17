@@ -220,7 +220,6 @@ def test_manifest_carries_the_parameters_the_build_actually_used(tmp_path):
         **COLISTEN_PARAMETERS,
         "same_sound_min_colour": 0.35,
         "same_sound_styles_shrink": 10,
-        "same_sound_genres_shrink": 3,
         "same_sound_min_style_records": 3,
     }
 
@@ -257,7 +256,7 @@ def test_manifest_replays_the_extraction_counts_beside_the_rows_loaded(con, tmp_
     assert manifest["inputs"]["extraction"]["release_groups_dropped"] == 11
 
 
-AGREEING = {"artists_kept": 697, "release_groups_kept": 10617}
+AGREEING = {"artists_kept": 694, "release_groups_kept": 10613}
 SHORT = {"artists_kept": 28, "release_groups_kept": 3627}
 UNREADABLE = {"unreadable": True}
 

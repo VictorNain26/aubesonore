@@ -1,6 +1,13 @@
 import json
 
-from tests.conftest import loaded, pg_query, synthetic_artist, synthetic_release_group
+from tests.conftest import (
+    discogs_release,
+    discogs_url,
+    loaded,
+    pg_query,
+    synthetic_artist,
+    synthetic_release_group,
+)
 
 A = "00000000-0000-4000-8000-0000000000f1"
 B = "00000000-0000-4000-8000-0000000000f2"
@@ -16,29 +23,52 @@ RG9 = "10000000-0000-4000-8000-0000000000f9"
 RG10 = "10000000-0000-4000-8000-0000000000fa"
 
 
-def genre(name):
-    return {"mbid": f"g-{name}", "name": name, "votes": 1}
-
-
-def group(mbid, begin="1978", end="1985", genres=("post-punk",), relations=None):
+def group(mbid, begin="1978", end="1985", relations=None, discogs_id=None):
     return synthetic_artist(
-        mbid, begin, end, genres=[genre(g) for g in genres], relations=relations
+        mbid,
+        begin,
+        end,
+        relations=relations,
+        urls=[discogs_url(discogs_id)] if discogs_id else None,
     )
 
 
 def test_an_artist_unknown_to_listenbrainz_has_no_count_rather_than_zero(tmp_path, pg):
     loaded(tmp_path, pg, [group(A), group(B)], popularity={A: 42})
-    cards = {
-        r[0]: r
-        for r in pg_query(
+    cards = dict(
+        pg_query(
             pg,
-            "SELECT mbid, listen_count, genres FROM musilogy.artist_card"
-            f"('{A}') UNION ALL SELECT mbid, listen_count, genres FROM musilogy.artist_card('{B}')",
+            f"SELECT mbid, listen_count FROM musilogy.artist_card('{A}') "
+            f"UNION ALL SELECT mbid, listen_count FROM musilogy.artist_card('{B}')",
         )
-    }
-    assert cards[A][1] == 42
-    assert cards[B][1] is None
-    assert [g["name"] for g in json.loads(cards[A][2])] == ["post-punk"]
+    )
+    assert cards == {A: 42, B: None}
+
+
+def test_the_card_carries_the_discogs_styles_most_records_first(tmp_path, pg):
+    # A: Post-Punk on three records over two decades and one undated, tied with
+    # New Wave's three of one decade and placed after it by name; Synth-pop on
+    # one record. B relates no Discogs page: an empty list, never NULL.
+    releases = [
+        discogs_release(1, [1], released="1979", styles=["Post-Punk"]),
+        discogs_release(2, [1], released="1981", styles=["Post-Punk", "Synth-pop"]),
+        discogs_release(3, [1], released=None, styles=["Post-Punk"]),
+        *(discogs_release(10 + i, [1], released="1983", styles=["New Wave"]) for i in range(3)),
+    ]
+    loaded(tmp_path, pg, [group(A, discogs_id=1), group(B)], discogs=releases)
+    cards = dict(
+        pg_query(
+            pg,
+            f"SELECT mbid, styles FROM musilogy.artist_card('{A}') "
+            f"UNION ALL SELECT mbid, styles FROM musilogy.artist_card('{B}')",
+        )
+    )
+    assert json.loads(cards[A]) == [
+        {"style": "New Wave", "records": 3},
+        {"style": "Post-Punk", "records": 3},
+        {"style": "Synth-pop", "records": 1},
+    ]
+    assert json.loads(cards[B]) == []
 
 
 def test_the_card_keeps_the_signature_the_site_reads(tmp_path, pg):
@@ -50,7 +80,7 @@ def test_the_card_keeps_the_signature_the_site_reads(tmp_path, pg):
         (
             "TABLE(mbid text, name text, disambiguation text, type text, country text, "
             "begin_area text, y_birth integer, y0 integer, y0_source text, y_end integer, "
-            "y_end_source text, ended boolean, genres jsonb, genre_source text, "
+            "y_end_source text, ended boolean, styles jsonb, "
             "listen_count bigint, user_count bigint)",
         )
     ]

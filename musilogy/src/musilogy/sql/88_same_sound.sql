@@ -5,19 +5,22 @@
 -- or a kinship [83, 91], none foreign (2026-10-11), where the co-listening
 -- alone gave 54 % (2026-10-08). Neither signal is shown alone: the styles
 -- alone stay below 40 % where the co-listening has nothing to say.
+-- The colour is Discogs' alone (2026-10-17): an artist Discogs does not reach
+-- has none, and no « Même son ». The measure above let MusicBrainz's genres
+-- stand in for such an artist; their licence is not CC0 (LICENSE-DATA), and
+-- they are no longer read.
 -- A derived table: it reads the sources' tables and rewrites none
 -- (docs/conception.md §1).
 
 SET VARIABLE same_sound_min_colour = 0.35::DOUBLE;
 -- A profile of a few records matches anything: the similarity of a neighbour
--- whose profile counts n records (or votes) is shrunk by n / (n + shrink).
--- For styles n counts the dated records only: the rule the measure of
+-- whose profile counts n records is shrunk by n / (n + shrink).
+-- n counts the dated records only: the rule the measure of
 -- 2026-10-11 judged. It leaves without a colour the 2 834 of 503 892 Discogs
 -- profiles whose records are all undated (2026-10-11); counting them is a
 -- change to measure, not to assume.
 SET VARIABLE same_sound_styles_shrink = 10::INTEGER;
-SET VARIABLE same_sound_genres_shrink = 3::INTEGER;
--- Under three style-records an artist has no Discogs colour, only genres.
+-- Under three style-records an artist has no colour.
 SET VARIABLE same_sound_min_style_records = 3::INTEGER;
 
 -- One term of a dot product, exact from here on: doubles summed by parallel
@@ -48,31 +51,10 @@ FROM styles s JOIN total t USING (artist_mbid) JOIN rarity r USING (style)
 WHERE t.n >= getvariable('same_sound_min_style_records')
 GROUP BY s.artist_mbid, s.style;
 
--- Else from MusicBrainz: the share of each genre's votes, a genre voted once
--- or not at all counting one, weighted the same way; genres have no decade.
-CREATE OR REPLACE TABLE colour_genres AS
-WITH voted AS (
-  SELECT a.mbid AS artist_mbid, t.g.name AS term, greatest(t.g.votes, 1) AS v
-  FROM artists a, UNNEST(a.genres) AS t(g)
-),
-rarity AS (
-  SELECT term, ln((SELECT count(DISTINCT artist_mbid) FROM voted) / count(DISTINCT artist_mbid))
-    AS idf
-  FROM voted GROUP BY 1
-)
-SELECT v.artist_mbid, v.term,
-  v.v / sum(v.v) OVER (PARTITION BY v.artist_mbid) * r.idf AS w,
-  sum(v.v) OVER (PARTITION BY v.artist_mbid) AS n
-FROM voted v JOIN rarity r USING (term);
-
 -- Each profile's length, for the cosine.
 CREATE OR REPLACE TABLE colour_norms AS
-SELECT 'styles' AS source, artist_mbid, sqrt(sum(dot_term(w * w))::DOUBLE) AS norm,
-  any_value(n) AS n
-FROM colour_styles GROUP BY artist_mbid
-UNION ALL
-SELECT 'genres', artist_mbid, sqrt(sum(dot_term(w * w))::DOUBLE), any_value(n)
-FROM colour_genres GROUP BY artist_mbid;
+SELECT artist_mbid, sqrt(sum(dot_term(w * w))::DOUBLE) AS norm, any_value(n) AS n
+FROM colour_styles GROUP BY artist_mbid;
 
 -- The candidates: an artist's neighbours of the co-listening, and the artists
 -- whose neighbours it is. The second direction finds the heirs of an old,
@@ -87,64 +69,40 @@ SELECT artist_mbid, neighbour_mbid, max(score) AS colisten_score FROM (
   SELECT neighbour_mbid, artist_mbid, score FROM colisten
 ) GROUP BY ALL;
 
--- The colour two candidates share: their Discogs styles when both have a
--- profile and share a style; else, when one of the two has no Discogs
--- profile, their genres when they share one; else none. Two Discogs profiles
--- without a style in common are a sign of two sounds that a broad shared genre
--- does not overturn: on the pairs judged, 1 of the 3 such neighbours was good
--- (2026-10-09).
+-- The colour two candidates share: their Discogs styles, when both have a
+-- profile and share a style; else none.
 CREATE OR REPLACE TABLE same_sound_shared AS
-SELECT 'styles' AS source, p.artist_mbid, p.neighbour_mbid, sum(dot_term(a.w * b.w))::DOUBLE AS x
+SELECT p.artist_mbid, p.neighbour_mbid, sum(dot_term(a.w * b.w))::DOUBLE AS x
 FROM same_sound_candidates p
 JOIN colour_styles a ON a.artist_mbid = p.artist_mbid
 JOIN colour_styles b ON b.artist_mbid = p.neighbour_mbid AND b.term = a.term
 GROUP BY ALL;
 
-INSERT INTO same_sound_shared
-SELECT 'genres', p.artist_mbid, p.neighbour_mbid, sum(dot_term(a.w * b.w))::DOUBLE
-FROM same_sound_candidates p
-JOIN colour_genres a ON a.artist_mbid = p.artist_mbid
-JOIN colour_genres b ON b.artist_mbid = p.neighbour_mbid AND b.term = a.term
-WHERE NOT (
-  EXISTS (SELECT 1 FROM colour_norms n WHERE n.source = 'styles' AND n.artist_mbid = p.artist_mbid)
-  AND EXISTS (
-    SELECT 1 FROM colour_norms n WHERE n.source = 'styles' AND n.artist_mbid = p.neighbour_mbid))
-GROUP BY ALL;
-
 -- The candidates whose colour agrees.
 CREATE OR REPLACE TABLE same_sound_pairs AS
-SELECT c.artist_mbid, c.neighbour_mbid, c.colisten_score, s.source, s.colour
+SELECT c.artist_mbid, c.neighbour_mbid, c.colisten_score, s.colour
 FROM same_sound_candidates c
 JOIN (
-  SELECT s.source, s.artist_mbid, s.neighbour_mbid,
-    s.x / (na.norm * nb.norm) * nb.n / (nb.n + CASE s.source
-      WHEN 'styles' THEN getvariable('same_sound_styles_shrink')
-      ELSE getvariable('same_sound_genres_shrink') END) AS colour
+  SELECT s.artist_mbid, s.neighbour_mbid,
+    s.x / (na.norm * nb.norm) * nb.n / (nb.n + getvariable('same_sound_styles_shrink'))
+      AS colour
   FROM same_sound_shared s
-  JOIN colour_norms na ON na.source = s.source AND na.artist_mbid = s.artist_mbid
-  JOIN colour_norms nb ON nb.source = s.source AND nb.artist_mbid = s.neighbour_mbid
+  JOIN colour_norms na ON na.artist_mbid = s.artist_mbid
+  JOIN colour_norms nb ON nb.artist_mbid = s.neighbour_mbid
 ) s USING (artist_mbid, neighbour_mbid)
 WHERE s.colour >= getvariable('same_sound_min_colour');
 
 -- Ranked from 1 by the co-listening's score, a tie falling to the neighbour's
--- MBID, each with its reason: the style or the genre that weighs most in what
--- the two share; for a style, the artist's decade with the most of its records
--- in it, NULL when none is dated.
+-- MBID, each with its reason: the style that weighs most in what the two
+-- share, with the artist's decade with the most of its records in it, NULL
+-- when none is dated. `source` names the colour, always 'styles': the column
+-- stays, the site reads it (docs/conception.md §4).
 CREATE OR REPLACE TABLE same_sound AS
 WITH reasons AS (
   SELECT p.artist_mbid, p.neighbour_mbid, a.term
   FROM same_sound_pairs p
   JOIN colour_styles a ON a.artist_mbid = p.artist_mbid
   JOIN colour_styles b ON b.artist_mbid = p.neighbour_mbid AND b.term = a.term
-  WHERE p.source = 'styles'
-  QUALIFY row_number() OVER (
-    PARTITION BY p.artist_mbid, p.neighbour_mbid ORDER BY dot_term(a.w * b.w) DESC, a.term) = 1
-  UNION ALL
-  SELECT p.artist_mbid, p.neighbour_mbid, a.term
-  FROM same_sound_pairs p
-  JOIN colour_genres a ON a.artist_mbid = p.artist_mbid
-  JOIN colour_genres b ON b.artist_mbid = p.neighbour_mbid AND b.term = a.term
-  WHERE p.source = 'genres'
   QUALIFY row_number() OVER (
     PARTITION BY p.artist_mbid, p.neighbour_mbid ORDER BY dot_term(a.w * b.w) DESC, a.term) = 1
 ),
@@ -156,8 +114,7 @@ decades AS (
 SELECT p.artist_mbid, p.neighbour_mbid,
   row_number() OVER (
     PARTITION BY p.artist_mbid ORDER BY p.colisten_score DESC, p.neighbour_mbid)::INTEGER AS rank,
-  p.colisten_score, p.source, p.colour, r.term,
-  CASE WHEN p.source = 'styles' THEN d.decade END AS decade
+  p.colisten_score, 'styles' AS source, p.colour, r.term, d.decade
 FROM same_sound_pairs p
 JOIN reasons r USING (artist_mbid, neighbour_mbid)
 LEFT JOIN decades d ON d.artist_mbid = p.artist_mbid AND d.term = r.term;
@@ -168,6 +125,5 @@ DROP TABLE same_sound_pairs;
 DROP TABLE same_sound_shared;
 DROP TABLE same_sound_candidates;
 DROP TABLE colour_norms;
-DROP TABLE colour_genres;
 DROP TABLE colour_styles;
 RESET preserve_insertion_order;

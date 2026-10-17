@@ -15,14 +15,9 @@ from musilogy.paths import PG_DIR
 SCHEMA = "musilogy"
 STAGING = "musilogy_next"
 TABLES = ("artists", "links", "popularity", "releases", "urls", "same_sound")
-# Postgres has no anonymous composite type: a list of genre structs travels as
+# Postgres has no anonymous composite type: a list of style structs travels as
 # JSON.
-PROJECTIONS = {
-    "artists": "* REPLACE ("
-    "to_json(genres_declared) AS genres_declared, "
-    "to_json(genres_from_albums) AS genres_from_albums, "
-    "to_json(genres) AS genres)",
-}
+PROJECTIONS = {"artists": "* REPLACE (to_json(styles) AS styles)"}
 
 
 def _verified_manifest(published: Path) -> dict[str, Any]:

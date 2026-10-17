@@ -31,8 +31,8 @@ CREATE OR REPLACE MACRO link_on_page(t) AS
   t IN ('member of band', 'founder', 'collaboration', 'is person', 'artist rename');
 
 -- Both ends must be artists of this pipeline: a link is a way from one
--- artist to another, and an end outside `artists` has no name, no dates and
--- no genre to land on. The links cut, either way, are counted, not hidden.
+-- artist to another, and an end outside `artists` has no name and no dates
+-- to land on. The links cut, either way, are counted, not hidden.
 CREATE OR REPLACE TABLE links AS
 SELECT l.* FROM link_candidates l
 WHERE link_on_page(l.type)
