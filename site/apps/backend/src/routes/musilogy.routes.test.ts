@@ -68,8 +68,12 @@ const card = {
   y_end: 1977,
   y_end_source: 'declared',
   ended: true,
-  genres: [{ mbid: 'g-1', name: 'glam rock', votes: 9 }],
-  genre_source: 'declared',
+  // As musilogy gives them: most records first, a tie by name.
+  styles: [
+    { style: 'Glam', records: 12 },
+    { style: 'Rock & Roll', records: 4 },
+    { style: 'Pop Rock', records: 1 },
+  ],
   listen_count: '1234567',
   user_count: '31415',
 };
@@ -120,14 +124,14 @@ describe('GET /api/musilogy/artist/:mbid', () => {
 
     const res = await get(`/artist/${T_REX.toUpperCase()}`);
     const body = (await res.json()) as {
-      card: { name: string; genres: string[]; played: unknown };
+      card: { name: string; styles: string[]; played: unknown };
       neighbours: Array<{ name: string; played: unknown; term: string; ended: boolean }>;
     };
 
     expect(res.status).toBe(200);
     expect(body.card).toMatchObject({
       name: 'T. Rex',
-      genres: ['glam rock'],
+      styles: ['Glam', 'Rock & Roll', 'Pop Rock'],
     });
     expect(body.neighbours.map((n) => n.name)).toEqual([
       'The Kinks',
@@ -142,6 +146,19 @@ describe('GET /api/musilogy/artist/:mbid', () => {
       term: 'Glam',
       ended: false,
     });
+  });
+
+  it('gives no style for an artist Discogs does not reach, nor from a load without styles', async () => {
+    // A load from before the styles has a card without them: an empty line, not an error.
+    const { styles: _styles, ...withoutStyles } = card;
+    for (const row of [{ ...card, styles: [] }, withoutStyles]) {
+      answers = { artist_card: [row] };
+      musilogyCache.dispose();
+      coreCache.dispose();
+      const res = await get(`/artist/${T_REX}`);
+      expect(res.status).toBe(200);
+      expect(((await res.json()) as { card: { styles: string[] } }).card.styles).toEqual([]);
+    }
   });
 
   it("gives the work, the band, the members' projects and other names, as musilogy reads them", async () => {

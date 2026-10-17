@@ -30,7 +30,7 @@ const MUSILOGY: MusilogyArtist = {
     yEnd: null,
     yEndSource: null,
     ended: false,
-    genres: [],
+    styles: [],
   },
   neighbours: [
     {
@@ -133,7 +133,7 @@ describe('ArtistPageView', () => {
         kept={[{ id: 'k-1', title: 'Glass', createdAt: '2026-09-12T08:00:00.000Z' }]}
         musilogy={{
           ...MUSILOGY,
-          card: { ...MUSILOGY.card, genres: ['glam rock', 'rock', 'boogie', 'pop rock'] },
+          card: { ...MUSILOGY.card, styles: ['Glam', 'Rock & Roll', 'Boogie', 'Pop Rock'] },
           releases: [record(1, 'album'), record(2, 'ep')],
         }}
         thisYear={2026}
@@ -156,7 +156,8 @@ describe('ArtistPageView', () => {
     expect(screen.getByRole('list', { name: 'Écouter ailleurs' })).toContainElement(
       screen.getByRole('link', { name: 'Bandcamp' })
     );
-    expect(screen.getByText('glam rock · rock · boogie')).toBeInTheDocument();
+    // The first three styles, in lower case as the close artists' terms read.
+    expect(screen.getByText('glam · rock & roll · boogie')).toBeInTheDocument();
     expect(screen.getByText('Record 1')).toBeInTheDocument();
   });
 

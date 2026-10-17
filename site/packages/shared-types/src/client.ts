@@ -185,9 +185,9 @@ export function coverArtUrl(releaseGroup: string, size: 250 | 500): string {
 }
 
 /**
- * Musilogy (docs/vision.md §2) reads musilogy's SQL functions over a
- * MusicBrainz dump (genres CC BY-NC-SA 3.0), ListenBrainz snapshots (CC0) and
- * Wikidata (CC0). Artists are keyed by MBID; `played` leads to the artist page
+ * Musilogy (docs/vision.md §2) reads musilogy's SQL functions over CC0
+ * sources only: a MusicBrainz dump, ListenBrainz snapshots, Wikidata and the
+ * Discogs dump. Artists are keyed by MBID; `played` leads to the artist page
  * when the antenna played them. An absence stays null.
  */
 export interface MusilogyArtistRef {
@@ -210,7 +210,8 @@ export interface MusilogyCard extends MusilogyArtistRef {
   yEnd: number | null;
   yEndSource: string | null;
   ended: boolean | null;
-  genres: string[];
+  /** The Discogs styles of its records, most records first; empty without Discogs. */
+  styles: string[];
 }
 
 /** A neighbour of « Même son »: listened to by the same public, of the same colour. */
@@ -220,7 +221,7 @@ export interface MusilogyNeighbour extends MusilogyArtistRef {
   ended: boolean;
   /** Its place among the artist's neighbours, from 1: the order that counts, ties settled. */
   rank: number;
-  /** The style or genre the two share most: why it is close. */
+  /** The Discogs style the two share most: why it is close. */
   term: string;
 }
 
