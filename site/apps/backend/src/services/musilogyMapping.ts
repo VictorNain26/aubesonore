@@ -21,7 +21,8 @@ export interface CardRow extends Record<string, unknown> {
   y_end: number | null;
   y_end_source: string | null;
   ended: boolean | null;
-  genres: Array<{ name: string }> | null;
+  /** Discogs styles, most records first; absent from a load that predates them. */
+  styles?: Array<{ style: string; records: number }> | null;
 }
 
 const REGION_NAMES = new Intl.DisplayNames(['en'], { type: 'region' });

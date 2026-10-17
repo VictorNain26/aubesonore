@@ -225,7 +225,7 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
       yEnd: card.y_end,
       yEndSource: card.y_end_source,
       ended: card.ended,
-      genres: (card.genres ?? []).map((genre) => genre.name),
+      styles: (card.styles ?? []).map((style) => style.style),
     },
     // By rank, not score: musilogy settles equal scores, common among artists with few listeners.
     neighbours: neighbourRows && neighbourRows.map(neighbour).sort((a, b) => a.rank - b.rank),

@@ -37,7 +37,6 @@ def synthetic_artist(
     begin: str | None,
     end: str | None,
     relations: list[dict[str, Any]] | None = None,
-    genres: list[dict[str, Any]] | None = None,
     name: str | None = None,
     kind: str | None = "Group",
     country: str | None = None,
@@ -54,7 +53,6 @@ def synthetic_artist(
         "country": country,
         "begin_area": begin_area[1] if begin_area else None,
         "begin_area_mbid": begin_area[0] if begin_area else None,
-        "genres": genres or [],
         "relations": relations or [],
         "urls": urls or [],
     }
@@ -66,7 +64,6 @@ def synthetic_release_group(
     date: str,
     secondary: list[str] | None = None,
     co_artists: list[str] | None = None,
-    genres: list[dict[str, Any]] | None = None,
     primary_type: str = "Album",
 ) -> dict[str, Any]:
     return {
@@ -76,7 +73,6 @@ def synthetic_release_group(
         "date": date,
         "secondary": secondary or [],
         "artists": [artist, *(co_artists or [])],
-        "genres": genres or [],
     }
 
 

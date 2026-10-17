@@ -49,7 +49,9 @@ GROUP = {
 }
 
 
-def test_reduce_artist_keeps_genre_mbid_and_votes():
+def test_reduce_artist_keeps_the_identity_and_dates_and_drops_the_genres():
+    # MusicBrainz's genre associations are CC BY-NC-SA, outside the CC0 core
+    # the produced data rests on (LICENSE-DATA): the projection never keeps them.
     out = reduce_artist(GROUP)
     assert out is not None
     assert out["mbid"] == GROUP["id"]
@@ -57,9 +59,7 @@ def test_reduce_artist_keeps_genre_mbid_and_votes():
     assert out["ended"] is False
     assert out["begin_area"] == "Tampa"
     assert out["begin_area_mbid"] == "ff21865c-ce46-4417-967c-a3d2d02d29bf"
-    assert out["genres"] == [
-        {"mbid": "eacfa027-2fad-413f-a2f1-80fa43674f0b", "name": "death metal", "votes": 1}
-    ]
+    assert "genres" not in out
 
 
 def test_reduce_artist_keeps_the_disambiguation_comment_as_written():
@@ -143,17 +143,6 @@ def test_reduce_artist_drops_the_special_purpose_artists():
     assert reduce_artist({"id": "x", "name": "Two Steps From Hell", "type": "Other"}) is not None
 
 
-def test_reduce_artist_refuses_a_genre_without_a_vote_count():
-    # An absent count used to become 0 votes — a measurement asserted where the
-    # source is silent, and the sort of 10_bands.sql would rank it last as if
-    # it had been measured. The dump always emits count; a record without one
-    # is malformed input, and the boundary is where it must fail.
-    with pytest.raises(KeyError):
-        reduce_artist(
-            {"id": "x", "name": "y", "type": "Group", "genres": [{"id": "g", "name": "n"}]}
-        )
-
-
 def test_reduce_release_group_keeps_duplicate_credits():
     rec = {
         "id": "rg",
@@ -168,7 +157,8 @@ def test_reduce_release_group_keeps_duplicate_credits():
     assert reduced["artists"] == ["a", "a"]
 
 
-def test_reduce_release_group_keeps_genre_mbid_and_votes():
+def test_reduce_release_group_drops_the_genres():
+    # Same licence as the artist's genres: never kept.
     rec = {
         "id": "rg",
         "primary-type": "Album",
@@ -178,14 +168,7 @@ def test_reduce_release_group_keeps_genre_mbid_and_votes():
     }
     reduced = reduce_release_group(rec)
     assert reduced is not None
-    assert reduced["genres"] == [
-        {"mbid": "eacfa027-2fad-413f-a2f1-80fa43674f0b", "name": "death metal", "votes": 2}
-    ]
-
-
-def test_reduce_release_group_refuses_a_genre_without_a_vote_count():
-    with pytest.raises(KeyError):
-        reduce_release_group({"id": "r", "primary-type": "Album", "genres": [{"id": "g"}]})
+    assert "genres" not in reduced
 
 
 def test_reduce_release_group_keeps_eps_and_names_the_type():

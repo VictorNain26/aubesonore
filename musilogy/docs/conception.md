@@ -25,9 +25,9 @@ reconnues, sans couche maison :
    c / (c + h) de Bell et Koren (2007), qui se méfie d'un lien porté par peu d'auditeurs.
 3. **Le même son** (`same_sound`) : un recommandeur hybride « en cascade » (Burke, *User Modeling
    and User-Adapted Interaction*, 2002) : la co-écoute propose, la couleur filtre. La couleur est
-   un profil de styles Discogs pondérés par leur rareté et leur part dans l'œuvre, sinon de genres
-   MusicBrainz pour un artiste qui a moins de trois disques stylés, comparé par cosinus (TF-IDF,
-   la base du filtrage par contenu).
+   un profil de styles Discogs pondérés par leur rareté et leur part dans l'œuvre, comparé par
+   cosinus (TF-IDF, la base du filtrage par contenu) ; un artiste qui a moins de trois disques
+   stylés n'a pas de couleur.
 4. **Le classement** : le score de la co-écoute, parmi les voisins que la couleur confirme.
 5. **La mesure** : des paires jugées à partir de sources sur un ensemble de candidats regroupés
    (le *pooling* de TREC ; Ellis et al., ISMIR 2002 pour la vérité terrain de la similarité
@@ -45,7 +45,7 @@ entre genres, faits écrits) ; elle ne passe pas par la co-écoute.
 
 | Source | Relevé | Licence |
 |---|---|---|
-| dump JSON MusicBrainz (artistes, release groups) | `REFERENCE_DUMP` | CC0 (cœur) ; genres CC BY-NC-SA 3.0 |
+| dump JSON MusicBrainz (artistes, release groups ; les genres et tags, non CC0, ne sont pas lus) | `REFERENCE_DUMP` | CC0 (cœur) |
 | popularité ListenBrainz (`/1/popularity/artist`) | `REFERENCE_POPULARITY` | CC0 |
 | discographie Wikidata (release groups, P436, classés album studio, EP ou bande originale par P31 ou P7937) | `REFERENCE_DISCOGRAPHY` | CC0 |
 | dump mensuel des sorties Discogs (artistes crédités, styles, date, descriptions de format) | `REFERENCE_DISCOGS` | CC0 (data.discogs.com) |
@@ -55,7 +55,7 @@ Chaque relevé est pris une fois, son empreinte versionnée sous `reference/`,
 et `run` lit celui que la constante épingle.
 
 **Une source, ses tables.** Les sources ne se mélangent jamais dans une même
-colonne : `genres` reste MusicBrainz, `styles` reste Discogs,
+colonne : `styles` reste Discogs,
 `colisten` reste ListenBrainz. L'identité d'un artiste est son MBID ; le pont
 vers une autre base est une table à part (`discogs_links`), et un pont ambigu
 — un artiste Discogs relié à deux MBID — est écarté et compté, jamais deviné.
@@ -78,7 +78,7 @@ manifeste (`parameters`).
 ## 2. Tables
 
 **Le socle** : `artists` (identité, type, dates et leur provenance, lieu,
-genres ; tout artiste du dump, de tout type ou sans type, hors artistes à usage
+styles Discogs ; tout artiste du dump, de tout type ou sans type, hors artistes à usage
 spécial, et seule une formation donne un début déclaré : README, `10_bands`), `albums` (non chargée : elle sert les dates, et ne compte que les
 albums), `links` (appartenances, pseudonymes et changements de nom),
 `popularity`.
@@ -98,6 +98,9 @@ albums), `links` (appartenances, pseudonymes et changements de nom),
   limitée aux albums.
 - `styles(artist_mbid, decade, style, records)`, tirée du dump Discogs
   (`84_discogs`, README) : les styles des disques de l'artiste par décennie.
+  `artists.styles` en somme les disques de chaque style sur toutes les
+  décennies, du plus de disques au moins, à égalité par nom : la ligne sous le
+  nom de l'artiste (`docs/vision.md` §2.4), vide sans Discogs.
   Publiée, non chargée dans le site tant qu'aucune fonction ne la lit.
 - `urls(artist_mbid, type, url, ended)` : parmi les pages que MusicBrainz relie
   à un artiste, celles qu'une page artiste utilise (Deezer, Spotify, Apple
@@ -126,24 +129,26 @@ albums), `links` (appartenances, pseudonymes et changements de nom),
   couche dérivée (§1). Un voisin de `colisten`, dans un sens ou dans l'autre, y
   entre quand sa couleur s'accorde à celle de l'artiste : leurs profils de
   styles Discogs (toutes décennies confondues, pondérés par la rareté du style),
-  ou, quand l'un des deux n'a pas de profil Discogs, de genres MusicBrainz,
   comparés par cosinus et rabattus pour un profil mince (ses disques datés),
-  valent au moins 0,35. C'est la règle mesurée une fois sur 75 artistes, 87 %
-  de bons voisins parmi les 8 premiers (`docs/vision.md` §2.2, 2026-10-11) ;
+  valent au moins 0,35 ; un artiste sans profil Discogs n'a pas de voisin. C'est
+  la règle mesurée une fois sur 75 artistes, 87 % de bons voisins parmi les 8
+  premiers (`docs/vision.md` §2.2, 2026-10-11), quand les genres MusicBrainz
+  tenaient encore lieu de couleur à un artiste sans Discogs (retirés le
+  2026-10-17, leur licence n'étant pas CC0) ;
   ses seuils sont posés dans le fichier SQL et relus par le manifeste
   (`parameters`). `rank` de 1 à n par `colisten_score`, le plus haut score de
   co-écoute des deux sens, à égalité par MBID du voisin ; la raison est le style
   (`term`, avec la `decade` où l'artiste en a le plus de disques, NULL s'il n'a
-  aucun disque daté de ce style) ou le genre qui pèse le plus dans ce que les
-  deux partagent,
-  `source` dit lequel. Tout voisin est un artiste du dump : sa couleur vient de
-  ses styles ou de ses genres, que seul un artiste du dump porte. La couleur se
+  aucun disque daté de ce style) qui pèse le plus dans ce que les deux
+  partagent ; `source` nomme la couleur, toujours `styles`. Tout voisin est un
+  artiste du dump : sa couleur vient de ses styles, que seul un artiste du dump
+  porte. La couleur se
   somme en décimal exact, pour qu'une livraison reste la même octet pour
   octet. Sept invariants : une paire en
   double, un artiste voisin de lui-même, des rangs troués, un ordre qui
   contredit le score de co-écoute, une paire absente de la co-écoute dans les
   deux sens ou à un autre score,
-  une couleur sous 0,35 ou une source inconnue, une raison que les deux
+  une couleur sous 0,35 ou une source autre que `styles`, une raison que les deux
   artistes ne portent pas.
 
 ## 3. Proximité × temps
@@ -177,15 +182,18 @@ musilogy.artist_homonym_rank(artists text[]) RETURNS TABLE (mbid text, homonym_r
 musilogy.artist_card(artist text) RETURNS TABLE (
   mbid text, name text, disambiguation text, type text, country text,
   begin_area text, y_birth integer, y0 integer, y0_source text, y_end integer,
-  y_end_source text, ended boolean, genres jsonb, genre_source text,
+  y_end_source text, ended boolean, styles jsonb,
   listen_count bigint, user_count bigint)
+-- styles : [{style, records}], les styles Discogs de l'artiste, disques sommés
+-- sur toutes les décennies, du plus de disques au moins, à égalité par nom ;
+-- [] pour un artiste que Discogs n'atteint pas.
 
 -- « Même son » : les 8 premiers voisins de la co-écoute, dans un sens ou dans
 -- l'autre, dont la couleur s'accorde, la profondeur à laquelle la règle a été
 -- mesurée (la table les garde tous), dans leur rang, chacun avec sa raison
--- (source 'styles' : term est un style Discogs, decade la décennie où l'artiste
--- en a le plus de disques, NULL s'il n'en a aucun daté ; 'genres' : term est un
--- genre MusicBrainz, decade NULL) et son côté dans le temps (§3, musilogy.side) ;
+-- (source 'styles', la seule : term est un style Discogs, decade la décennie où
+-- l'artiste en a le plus de disques, NULL s'il n'en a aucun daté) et son côté
+-- dans le temps (§3, musilogy.side) ;
 -- y_end seulement déclaré, jamais l'année d'un dernier album.
 musilogy.artist_same_sound(artist text) RETURNS TABLE (
   mbid text, name text, disambiguation text, type text, y0 integer,

@@ -14,16 +14,13 @@ CREATE TABLE artists (
   country text,
   begin_area text,
   begin_area_mbid text COLLATE "C",
-  genres_declared jsonb NOT NULL,
   y_first_album integer,
   y_last_album integer,
-  genres_from_albums jsonb NOT NULL,
-  genres jsonb NOT NULL,
-  genre_source text,
   y0 integer,
   y0_source text,
   y_end integer,
-  y_end_source text
+  y_end_source text,
+  styles jsonb NOT NULL
 );
 
 CREATE TABLE links (

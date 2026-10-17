@@ -20,7 +20,7 @@ SELECT
 FROM raw_release_groups r
 JOIN artists b ON b.mbid = list_distinct(r.artists)[1]
 -- The extraction keeps EPs too, for the discography (22_releases.sql); an EP
--- does not date an artist nor give it genres.
+-- does not date an artist.
 WHERE r.primary_type = 'Album'
   AND len(list_distinct(r.artists)) = 1
   AND yr(r.date) IS NOT NULL

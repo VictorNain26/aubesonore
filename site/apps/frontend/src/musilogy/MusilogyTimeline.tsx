@@ -14,13 +14,13 @@ export function closeArtistsOf({ neighbours }: MusilogyArtist): readonly Musilog
   return neighbours ?? [];
 }
 
-/** A style or genre as the page says it: Discogs' « Krautrock » and MusicBrainz' « krautrock » are one. */
+/** A Discogs style as the page says it, in lower case: « krautrock », like the line under the name. */
 export function termOf(artist: MusilogyNeighbour): string {
   return artist.term.toLowerCase();
 }
 
 /**
- * The style or genre at least half of the close artists share, said once above them rather than
+ * The style at least half of the close artists share, said once above them rather than
  * on every row; a tie goes to the closer one. Null when none is shared that widely.
  */
 export function sharedTerm(close: readonly MusilogyNeighbour[]): string | null {

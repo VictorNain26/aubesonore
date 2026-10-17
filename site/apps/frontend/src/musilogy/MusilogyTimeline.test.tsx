@@ -26,10 +26,6 @@ describe('sharedTerm', () => {
     ).toBe('krautrock');
     expect(sharedTerm(['Krautrock', 'Ambient'].map((t) => neighbour(t)))).toBe('krautrock');
     expect(sharedTerm(['Krautrock', 'Ambient', 'Post Rock'].map((t) => neighbour(t)))).toBeNull();
-    // A Discogs style and a MusicBrainz genre of one name are one.
-    expect(
-      sharedTerm(['Krautrock', 'krautrock', 'Ambient', 'Post Rock'].map((t) => neighbour(t)))
-    ).toBe('krautrock');
   });
 });
 
@@ -131,7 +127,7 @@ describe('timelineNote', () => {
         yEnd: 1991,
         yEndSource: 'declared',
         ended: true,
-        genres: [],
+        styles: [],
         ...overrides,
       },
       neighbours: terms.map((t) => neighbour(t)),

@@ -1,6 +1,8 @@
 import json
 from collections import defaultdict
 
+import pytest
+
 from musilogy.build import check_invariants
 from musilogy.paths import SQL_DIR
 from tests.conftest import (
@@ -134,9 +136,33 @@ def test_styles_count_records_by_decade_of_first_edition(tmp_path):
     ]
 
 
+def artist_styles(c, mbid):
+    (got,) = c.execute("SELECT styles FROM artists WHERE mbid = ?", [mbid]).fetchone()
+    return [(s["style"], s["records"]) for s in got]
+
+
+def test_an_artists_styles_sum_its_decades_most_records_first(tmp_path):
+    # Techno: two records of the 2000s and one undated, three in all, tied with
+    # House's three of one decade, so after it by name. B relates no Discogs
+    # page: its styles are an empty list.
+    c = built(
+        tmp_path,
+        [linked(A, 1), synthetic_artist(B, "1990", None)],
+        [
+            discogs_release(1, [1], released="2003", styles=["Techno"]),
+            discogs_release(2, [1], released="2008", styles=["Techno", "IDM"]),
+            discogs_release(3, [1], released=None, styles=["Techno"]),
+            *(discogs_release(10 + i, [1], released="1995", styles=["House"]) for i in range(3)),
+        ],
+    )
+    assert artist_styles(c, A) == [("House", 3), ("Techno", 3), ("IDM", 1)]
+    assert artist_styles(c, B) == []
+
+
 def test_a_build_without_discogs_has_no_style(tmp_path):
     c = build_synthetic(tmp_path, [linked(A, 1)])
     assert c.execute("SELECT count(*) FROM styles").fetchone() == (0,)
+    assert artist_styles(c, A) == []
 
 
 def test_a_first_record_before_the_declared_formation_is_counted_not_corrected(tmp_path):
@@ -218,7 +244,41 @@ def test_the_witnesses_styles_match_a_recount_of_the_fixture(con):
             ).fetchall()
         }
         assert got, mbid
-        assert got == recount_styles(discogs_ids_of(con, mbid)), mbid
+        recount = recount_styles(discogs_ids_of(con, mbid))
+        assert got == recount, mbid
+        # The artist's own line: the same records, summed over the decades.
+        summed: dict[str, int] = defaultdict(int)
+        for (_, style), records in recount.items():
+            summed[style] += records
+        expected = sorted(summed.items(), key=lambda s: (-s[1], s[0]))
+        assert artist_styles(con, mbid) == expected, mbid
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        # Two styles of different counts swapped: the order is broken.
+        "list_reverse(styles)",
+        # One record more on the first style: the count no longer adds up.
+        "list_transform(styles, (s, i) -> CASE WHEN i = 1 "
+        "THEN {'style': s.style, 'records': s.records + 1} ELSE s END)",
+        # A style dropped.
+        "styles[2:]",
+    ],
+)
+def test_artist_styles_that_disagree_with_the_styles_table_are_reported(con, mutation):
+    con.execute(
+        "CREATE OR REPLACE TEMP TABLE saved_styles AS SELECT styles FROM artists WHERE mbid = ?",
+        [JOY_DIVISION],
+    )
+    (original,) = con.execute("SELECT styles FROM saved_styles").fetchone()
+    # Two counts at least, or neither the order nor the drop would show.
+    assert original[0]["records"] > original[-1]["records"]
+    undo = "UPDATE artists SET styles = (SELECT styles FROM saved_styles) WHERE mbid = ?"
+    with restored(con, (undo, [JOY_DIVISION])):
+        con.execute(f"UPDATE artists SET styles = {mutation} WHERE mbid = ?", [JOY_DIVISION])
+        violations = dict(check_invariants(con, SQL_DIR))
+    assert violations.get("artist_styles_mismatch") == 1
 
 
 def test_a_style_reached_through_no_discogs_page_of_its_own_is_reported(con):

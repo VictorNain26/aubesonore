@@ -297,60 +297,6 @@ def test_y_end_source_mismatch_catches_a_last_album_label_naming_another_value(c
     assert violations.get("y_end_source_mismatch") == 1
 
 
-def test_artist_genres_out_of_order_is_reported(con):
-    mbid = con.execute(
-        "SELECT mbid FROM artists WHERE len(genres) > 1 AND genre_source = 'declared' LIMIT 1"
-    ).fetchone()[0]
-    original = con.execute("SELECT genres FROM artists WHERE mbid = ?", [mbid]).fetchone()[0]
-    restore = "UPDATE artists SET genres = ?, genres_declared = ? WHERE mbid = ?"
-    with restored(con, (restore, [original, original, mbid])):
-        # Both lists together: reversing `genres` alone is a genre_source_mismatch.
-        con.execute(
-            "UPDATE artists SET genres = list_reverse(genres), "
-            "genres_declared = list_reverse(genres_declared) WHERE mbid = ?",
-            [mbid],
-        )
-        reversed_genres = con.execute(
-            "SELECT genres FROM artists WHERE mbid = ?", [mbid]
-        ).fetchone()[0]
-        violations = dict(check_invariants(con, SQL))
-    assume_effective = reversed_genres != original
-    assert assume_effective
-    assert violations.get("artist_genres_out_of_order") == 1
-
-
-def test_a_source_that_does_not_name_the_list_genres_came_from_is_reported(con):
-    # Joy Division declares genres, so `genres` is its declared list; calling
-    # that list `albums` is the mislabel genre_source exists to prevent.
-    joy_division = "9a58fda3-f4ed-4080-a3a5-f457aac9fcdd"
-    with restored(
-        con, ("UPDATE artists SET genre_source = 'declared' WHERE mbid = ?", [joy_division])
-    ):
-        con.execute("UPDATE artists SET genre_source = 'albums' WHERE mbid = ?", [joy_division])
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("genre_source_mismatch") == 1
-
-
-def test_album_genres_that_disagree_with_the_albums_are_reported(con):
-    # The Belle Stars' genres come from its albums; one vote more on the first
-    # of them is a sum the release-groups do not add up to.
-    belle_stars = "62f7a211-0056-45fe-934a-37a388a7356f"
-    original = con.execute(
-        "SELECT genres_from_albums FROM artists WHERE mbid = ?", [belle_stars]
-    ).fetchone()[0]
-    restore = "UPDATE artists SET genres_from_albums = ?, genres = ? WHERE mbid = ?"
-    with restored(con, (restore, [original, original, belle_stars])):
-        con.execute(
-            "UPDATE artists SET genres_from_albums = list_transform(genres_from_albums, "
-            "(g, i) -> CASE WHEN i = 1 THEN {'mbid': g.mbid, 'name': g.name, 'votes': g.votes + 1} "
-            "ELSE g END) WHERE mbid = ?",
-            [belle_stars],
-        )
-        con.execute("UPDATE artists SET genres = genres_from_albums WHERE mbid = ?", [belle_stars])
-        violations = dict(check_invariants(con, SQL))
-    assert violations.get("genres_from_albums_mismatch") == 1
-
-
 def test_link_endpoint_missing_is_reported(con):
     artist = con.execute("SELECT mbid FROM artists LIMIT 1").fetchone()[0]
     with restored(con, ("DELETE FROM links WHERE dst_mbid = 'inconnu'", [])):

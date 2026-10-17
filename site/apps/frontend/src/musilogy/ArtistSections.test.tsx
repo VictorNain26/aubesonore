@@ -39,7 +39,7 @@ function artist(overrides: Partial<MusilogyArtist> = {}): MusilogyArtist {
       yEnd: 1977,
       yEndSource: 'declared',
       ended: true,
-      genres: ['glam rock', 'rock'],
+      styles: ['Glam', 'Rock & Roll'],
     },
     neighbours: [
       neighbour(3, { name: 'The Kinks' }),
