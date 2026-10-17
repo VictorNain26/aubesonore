@@ -1,0 +1,31 @@
+# The checks every Python piece runs, after its checkout and its own system setup: uv (pinned),
+# the locked environment, then ruff, ruff format, mypy and pytest. Each piece's pyproject.toml
+# scopes ruff and mypy, so the commands carry no paths.
+name: Check a Python piece
+description: uv sync --locked, then ruff, ruff format --check, mypy and pytest in one piece's directory
+inputs:
+  directory:
+    description: The piece's directory, which holds its pyproject.toml and uv.lock
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      with:
+        version: "0.11.19"
+        working-directory: ${{ inputs.directory }}
+    - shell: bash
+      working-directory: ${{ inputs.directory }}
+      run: uv sync --locked
+    - shell: bash
+      working-directory: ${{ inputs.directory }}
+      run: uv run ruff check
+    - shell: bash
+      working-directory: ${{ inputs.directory }}
+      run: uv run ruff format --check
+    - shell: bash
+      working-directory: ${{ inputs.directory }}
+      run: uv run mypy
+    - shell: bash
+      working-directory: ${{ inputs.directory }}
+      run: uv run pytest -q -W error -rs
