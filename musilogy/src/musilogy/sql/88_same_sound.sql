@@ -96,7 +96,8 @@ WHERE s.colour >= getvariable('same_sound_min_colour');
 -- MBID, each with its reason: the style that weighs most in what the two
 -- share, with the artist's decade with the most of its records in it, NULL
 -- when none is dated. `source` names the colour, always 'styles': the column
--- stays, the site reads it (docs/conception.md §4).
+-- stays, artist_same_sound returns it and its signature is a contract
+-- (docs/conception.md §4).
 CREATE OR REPLACE TABLE same_sound AS
 WITH reasons AS (
   SELECT p.artist_mbid, p.neighbour_mbid, a.term

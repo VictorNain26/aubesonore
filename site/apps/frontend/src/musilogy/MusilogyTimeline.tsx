@@ -15,8 +15,8 @@ export function closeArtistsOf({ neighbours }: MusilogyArtist): readonly Musilog
 }
 
 /** A Discogs style as the page says it, in lower case: « krautrock », like the line under the name. */
-export function termOf(artist: MusilogyNeighbour): string {
-  return artist.term.toLowerCase();
+export function termOf(style: string): string {
+  return style.toLowerCase();
 }
 
 /**
@@ -25,7 +25,8 @@ export function termOf(artist: MusilogyNeighbour): string {
  */
 export function sharedTerm(close: readonly MusilogyNeighbour[]): string | null {
   const counts = new Map<string, number>();
-  for (const artist of close) counts.set(termOf(artist), (counts.get(termOf(artist)) ?? 0) + 1);
+  for (const artist of close)
+    counts.set(termOf(artist.term), (counts.get(termOf(artist.term)) ?? 0) + 1);
   let best: string | null = null;
   let most = 0;
   for (const [term, count] of counts) {
@@ -332,10 +333,10 @@ export function MusilogyTimeline({
         ) : null}
         <ol className="relative m-0 list-none p-0">
           {close.map((neighbour) => {
-            const differs = shared !== null && termOf(neighbour) !== shared;
+            const differs = shared !== null && termOf(neighbour.term) !== shared;
             const note = [
               neighbour.y0 === null ? m.musilogy_start_unknown() : null,
-              shared === null || differs ? termOf(neighbour) : null,
+              shared === null || differs ? termOf(neighbour.term) : null,
             ].filter(Boolean);
             return (
               <li

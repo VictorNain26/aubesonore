@@ -21,6 +21,7 @@ import { DiscoveryTrail } from './DiscoveryTrail';
 import { PageMessage } from '../shell/PageMessage';
 import type { TrailStep } from '../lib/discoveryTrail';
 import { ReleasesSection } from '../musilogy/Releases';
+import { termOf } from '../musilogy/MusilogyTimeline';
 
 export type ArtistPageState =
   | { status: 'loading' }
@@ -176,9 +177,7 @@ function Profile({
   // Without a Wikipedia article, the facts are said in a sentence rather than listed.
   const portrait = !profile.summary && profile.facts ? portraitSentence(profile.facts) : null;
   const facts = profile.facts && !portrait ? factsLine(profile.facts) : null;
-  // In lower case, as the close artists' terms read (termOf).
-  const styles =
-    musilogy?.card.styles.slice(0, STYLES_SHOWN).map((style) => style.toLowerCase()) ?? [];
+  const styles = musilogy?.card.styles.slice(0, STYLES_SHOWN).map(termOf) ?? [];
   const sections = [
     ...(kept.length > 0 ? [{ id: 'kept', label: m.artist_kept_title() }] : []),
     ...(musilogy?.releases && musilogy.releases.length > 0

@@ -177,7 +177,7 @@ une ressemblance s'accordent (Burkholder, 2018).
 
 Un ordre de départ, chaque section seulement quand elle a quelque chose à montrer :
 
-1. **Qui** : le portrait, une ligne de faits au-dessus du nom, le nom, une ligne de genres dessous
+1. **Qui** : le portrait, une ligne de faits au-dessus du nom, le nom, une ligne de styles dessous
    (les styles Discogs de ses disques, les plus portés d'abord), chacun menant à sa page de
    courant (§2.3), l'ouverture de Wikipédia ou, sans
    article, les faits dits en une phrase ; puis où l'écouter ailleurs (Deezer, Spotify, Bandcamp,
