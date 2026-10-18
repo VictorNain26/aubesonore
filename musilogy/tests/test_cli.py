@@ -4,7 +4,7 @@ import pytest
 
 from musilogy import REFERENCE_DUMP as DUMP
 from musilogy import cli
-from musilogy.build import RAW_DISCOGS_FIELDS
+from musilogy.build import RAW_ARTIST_FIELDS, RAW_DISCOGS_FIELDS, RAW_RG_FIELDS
 from musilogy.fetch import ChecksumError, sha256_file
 from musilogy.publish import Drift, Trace, counters, delivered, table_counts
 from tests.conftest import FIX, delivery_manifest
@@ -66,6 +66,7 @@ def published_by_run(tmp_path, monkeypatch):
     published = []
     monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
     monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
+    monkeypatch.setattr(cli, "verified_extraction", lambda: None)
     monkeypatch.setattr(cli, "WORK_DIR", tmp_path)
     monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
     monkeypatch.setattr(cli, "verified_discography", lambda: FIX / "discography.jsonl")
@@ -108,6 +109,7 @@ def test_run_stops_when_the_pinned_snapshot_is_missing(tmp_path, monkeypatch):
     # without one, which would publish an empty popularity table.
     monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
     monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
+    monkeypatch.setattr(cli, "verified_extraction", lambda: None)
     monkeypatch.setattr(cli, "POPULARITY_JSONL", tmp_path / "artist-popularity.jsonl")
     with pytest.raises(SystemExit) as raised:
         cli.run()
@@ -131,6 +133,7 @@ def test_run_stops_when_the_pinned_discography_is_missing(tmp_path, monkeypatch)
     # a run neither asks it again nor builds without it.
     monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
     monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
+    monkeypatch.setattr(cli, "verified_extraction", lambda: None)
     monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
     monkeypatch.setattr(cli, "DISCOGRAPHY_JSONL", tmp_path / "discography.jsonl")
     with pytest.raises(SystemExit) as raised:
@@ -153,6 +156,7 @@ def test_run_stops_when_a_pinned_part_of_a_survey_is_missing(monkeypatch):
     # without every part it pins.
     monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
     monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
+    monkeypatch.setattr(cli, "verified_extraction", lambda: None)
     monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
     monkeypatch.setattr(cli, "verified_discography", lambda: FIX / "discography.jsonl")
     monkeypatch.setattr(cli, "REFERENCE_OFFICIAL", ("1999-01-01",))
@@ -201,6 +205,69 @@ def test_a_new_part_of_the_official_survey_asks_only_the_artists_no_part_asked(
     monkeypatch.setattr(cli, "fetch_official", fetch)
     cli.snapshot_official()
     assert asked == ["eps-only"]
+
+
+@pytest.fixture
+def mb_extractions(tmp_path, monkeypatch):
+    """The MusicBrainz extraction run() asks for, its archives faked: each
+    extract call writes one record and keeps it."""
+    done: list[str] = []
+    monkeypatch.setattr(cli, "WORK_DIR", tmp_path)
+    monkeypatch.setattr(cli, "ARTISTS_JSONL", tmp_path / "artists.jsonl")
+    monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", tmp_path / "release_groups.jsonl")
+    monkeypatch.setattr(cli, "fetch_dump", lambda _dump, name, *_: tmp_path / name)
+
+    def extract(_archive, _reducer, out):
+        out.write_text("{}\n", encoding="utf-8")
+        done.append(out.name)
+        return 1, 0
+
+    monkeypatch.setattr(cli, "extract", extract)
+    for name in ("artists.jsonl", "release_groups.jsonl"):
+        (tmp_path / name).write_text("{}\n", encoding="utf-8")
+    return done
+
+
+MB_FIELDS = {"artist_fields": list(RAW_ARTIST_FIELDS), "release_group_fields": list(RAW_RG_FIELDS)}
+
+
+@pytest.mark.parametrize(
+    "recorded",
+    [
+        pytest.param(None, id="no-sidecar"),
+        # An extraction made before the genres were dropped records no fields.
+        pytest.param({"artists_kept": 1, "release_groups_kept": 1}, id="no-fields"),
+        pytest.param(
+            {**MB_FIELDS, "artist_fields": [*RAW_ARTIST_FIELDS, "genres"]}, id="other-fields"
+        ),
+    ],
+)
+def test_a_musicbrainz_extraction_of_other_fields_is_extracted_again(
+    tmp_path, mb_extractions, recorded
+):
+    # Breaks if the run reuses any artists.jsonl that exists: one written
+    # before the genres were dropped (CC BY-NC-SA, LICENSE-DATA) would carry
+    # them into the fixtures make-fixtures copies from it.
+    if recorded is not None:
+        (tmp_path / "extraction.json").write_text(json.dumps(recorded), encoding="utf-8")
+    cli.verified_extraction()
+    assert mb_extractions == ["artists.jsonl", "release_groups.jsonl"]
+    recorded = json.loads((tmp_path / "extraction.json").read_text(encoding="utf-8"))
+    assert {k: recorded[k] for k in MB_FIELDS} == MB_FIELDS
+    assert recorded["artists_kept"] == 1
+
+
+def test_a_musicbrainz_extraction_of_the_fields_read_is_kept(tmp_path, mb_extractions):
+    (tmp_path / "extraction.json").write_text(json.dumps(MB_FIELDS), encoding="utf-8")
+    cli.verified_extraction()
+    assert mb_extractions == []
+
+
+def test_a_musicbrainz_extraction_missing_a_file_is_extracted_again(tmp_path, mb_extractions):
+    (tmp_path / "extraction.json").write_text(json.dumps(MB_FIELDS), encoding="utf-8")
+    (tmp_path / "release_groups.jsonl").unlink()
+    cli.verified_extraction()
+    assert mb_extractions == ["artists.jsonl", "release_groups.jsonl"]
 
 
 def discogs_sidecar(tmp_path, monkeypatch, recorded):

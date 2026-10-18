@@ -155,7 +155,7 @@ milliers de groupes post-punk : recopiée sur chacune de leurs pages, elle ne di
 l'auditeur, et Google traite comme abus les « pages substantiellement similaires » et le contenu
 « assemblé d'autres pages sans valeur ajoutée », quand il recommande « une hiérarchie clairement
 définie et navigable » (règles anti-spam de Google Search, lues le 2026-10-10). La page artiste
-mène à ses courants par sa ligne de genres ; un artiste sans un seul auditeur y est relié par ses
+mène à ses courants par sa ligne de styles ; un artiste sans un seul auditeur y est relié par ses
 styles.
 
 **Les sources.** Les liens entre genres de Wikidata et de MusicBrainz (CC0) et les infobox de
@@ -450,7 +450,7 @@ l'historique git.
 
 1. **Les pages de courant** (écart 1) : un relevé daté des liens entre genres (Wikidata,
    MusicBrainz, Wikipédia), épinglé, mesuré source par source ; les artistes de chaque courant par
-   époque ; la page, reliée depuis la ligne de genres.
+   époque ; la page, reliée depuis la ligne de styles.
 2. **Naviguer et chercher** (§2.6) : la recherche par artiste et par courant, le chemin
    parcouru, essayés sur ordinateur et sur téléphone.
 3. **Les données à jour** : un dump MusicBrainz plus récent, le dump Discogs mensuel, les écoutes

@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 import duckdb
 import pytest
 
-from musilogy.build import RAW_DISCOGS_FIELDS
+from musilogy.build import RAW_ARTIST_FIELDS, RAW_DISCOGS_FIELDS, RAW_RG_FIELDS
 from musilogy.extract import (
     extract,
     extract_discogs,
@@ -288,6 +288,14 @@ def test_the_discogs_projection_writes_the_fields_the_build_reads(tmp_path):
     extract_discogs(archive, out)
     first = json.loads(out.read_text(encoding="utf-8").splitlines()[0])
     assert list(first) == list(RAW_DISCOGS_FIELDS)
+
+
+def test_the_musicbrainz_projection_writes_the_fields_the_build_reads():
+    # Breaks if a field is added to one side only: fetch_and_extract records
+    # RAW_ARTIST_FIELDS and RAW_RG_FIELDS as what the extraction wrote.
+    assert list(reduce_artist(GROUP) or {}) == list(RAW_ARTIST_FIELDS)
+    album = {"id": "r", "primary-type": "Album"}
+    assert list(reduce_release_group(album) or {}) == list(RAW_RG_FIELDS)
 
 
 def test_an_interrupted_discogs_extraction_leaves_no_extraction(tmp_path):

@@ -96,6 +96,7 @@ def test_make_fixtures_replayed_on_the_fixtures_gives_them_back(tmp_path, monkey
     monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
     monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
     monkeypatch.setattr(cli, "FIXTURES_DIR", tmp_path)
+    monkeypatch.setattr(cli, "verified_extraction", lambda: None)
     monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
     monkeypatch.setattr(cli, "verified_discography", lambda: FIX / "discography.jsonl")
     monkeypatch.setattr(cli, "verified_official", lambda: [FIX / "official.jsonl"])

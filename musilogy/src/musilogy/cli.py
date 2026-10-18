@@ -24,6 +24,7 @@ from musilogy import REFERENCE_DUMP as DUMP
 from musilogy.build import (
     RAW_ARTIST_FIELDS,
     RAW_DISCOGS_FIELDS,
+    RAW_RG_FIELDS,
     build,
     check_invariants,
     connect,
@@ -150,6 +151,22 @@ DISCOGS_WITNESSES = [
 ]
 
 
+# The fields the MusicBrainz extraction writes, as its sidecar records them.
+MB_EXTRACTION_FIELDS = {
+    "artist_fields": list(RAW_ARTIST_FIELDS),
+    "release_group_fields": list(RAW_RG_FIELDS),
+}
+
+
+def _written_with(outputs: Sequence[Path], sidecar: Path, fields: dict[str, list[str]]) -> bool:
+    """Every output exists and its sidecar records the fields the build reads.
+    An extraction written with others is redone: a field it lacks would read
+    as nulls, and one the build dropped, like MusicBrainz's genres, would stay
+    in the files make-fixtures copies."""
+    recorded = read_extraction(sidecar) or {}
+    return all(p.exists() for p in outputs) and all(recorded.get(k) == v for k, v in fields.items())
+
+
 def fetch_and_extract() -> None:
     """fetch → extract. Replayable: fetch_dump does not re-download an
     archive it has already verified, and extract rewrites its output on every
@@ -165,6 +182,7 @@ def fetch_and_extract() -> None:
                 "artists_dropped": artists_dropped,
                 "release_groups_kept": rgs_kept,
                 "release_groups_dropped": rgs_dropped,
+                **MB_EXTRACTION_FIELDS,
             },
             indent=1,
         ),
@@ -365,13 +383,20 @@ def verified_popularity() -> Path:
     )
 
 
+def verified_extraction() -> None:
+    """The MusicBrainz extraction, made again when missing or written with
+    other fields than the build reads."""
+    outputs = (ARTISTS_JSONL, RELEASE_GROUPS_JSONL)
+    if not _written_with(outputs, extraction_sidecar(WORK_DIR), MB_EXTRACTION_FIELDS):
+        fetch_and_extract()
+
+
 def verified_discogs() -> Path:
     """The projection of the pinned Discogs dump, extracted from the verified
     archive (about two hours) when missing or written with other fields than
     the build reads: a field the projection lacks would read as nulls."""
     sidecar = discogs_extraction(REFERENCE_DISCOGS)
-    recorded = read_extraction(sidecar) or {}
-    if not DISCOGS_JSONL.exists() or recorded.get("fields") != list(RAW_DISCOGS_FIELDS):
+    if not _written_with((DISCOGS_JSONL,), sidecar, {"fields": list(RAW_DISCOGS_FIELDS)}):
         archive = fetch_discogs(
             REFERENCE_DISCOGS, discogs_dump(REFERENCE_DISCOGS), discogs_sums(REFERENCE_DISCOGS)
         )
@@ -468,8 +493,7 @@ def _stop_on_drift(con: duckdb.DuckDBPyConnection, out: Path, accepted: Sequence
 def run(accepted_drift: Sequence[str] = ()) -> None:
     """Full execution: fetch → extract (when needed) → transform → validate →
     compare with the previous delivery → publish."""
-    if not ARTISTS_JSONL.exists() or not RELEASE_GROUPS_JSONL.exists():
-        fetch_and_extract()
+    verified_extraction()
 
     popularity = verified_popularity()
     discography = verified_discography()
@@ -569,6 +593,7 @@ def make_fixtures() -> None:
     are artists, so without them the witnesses would carry none. The linked
     artists come without their release-groups, which keeps the fixtures small
     and leaves their dates unrepresentative — tests read their links only."""
+    verified_extraction()
     out = FIXTURES_DIR
     out.mkdir(parents=True, exist_ok=True)
     wanted = set(WITNESSES)

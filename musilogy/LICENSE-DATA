@@ -8,7 +8,10 @@ The data produced by this pipeline rests on CC0 sources only:
 
 MusicBrainz's supplementary data — genres and tags, which MusicBrainz
 publishes under a non-commercial licence — is not read: the extraction drops
-it, and no table, delivery or versioned test fixture carries it.
+it, and no table, versioned test fixture or delivery built from this version
+carries it. Deliveries built before it, under data/out/, and the schema loaded
+from one of them still carry MusicBrainz genres until the next run and load
+replace them.
 
 The licence of the produced dataset, versioned test fixtures and published
 deliveries included, is still to be decided by the owner of this repository.

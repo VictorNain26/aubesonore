@@ -190,6 +190,6 @@ docs/research/           notes de recherche datées
 
 ## Licence et attribution
 
-Toutes les sources lues sont sous **CC0** : les données de base MusicBrainz (artistes, dates, albums, relations, pages web) et son statut officiel, les écoutes et la popularité de ListenBrainz, les relevés Wikidata, le dump des sorties Discogs. Les genres et tags de MusicBrainz, des données supplémentaires sous une licence non commerciale (musicbrainz.org/doc/MusicBrainz_Database), ne sont pas lus : l'extraction les écarte (2026-10-17).
+Toutes les sources lues sont sous **CC0** : les données de base MusicBrainz (artistes, dates, albums, relations, pages web) et son statut officiel, les écoutes et la popularité de ListenBrainz, les relevés Wikidata, le dump des sorties Discogs. Les genres et tags de MusicBrainz, des données supplémentaires sous une licence non commerciale (musicbrainz.org/doc/MusicBrainz_Database), ne sont pas lus : l'extraction les écarte (2026-10-17). Son compagnon (`extraction.json`) garde les champs qu'elle a écrits : une extraction faite avec d'autres, celles d'avant cette date comprises, est refaite par `run` et `make-fixtures`.
 
 La licence du jeu de données produit, fixtures versionnées comprises, reste à fixer par le propriétaire du dépôt (`LICENSE-DATA`). Les fixtures de `tests/fixtures/` sont des extraits réels des sources épinglées (voir `tests/fixtures/ATTRIBUTION.md`) ; `tests/fixtures/discography.jsonl` est un extrait du relevé Wikidata du 2026-10-05, pour les release groups des témoins.
