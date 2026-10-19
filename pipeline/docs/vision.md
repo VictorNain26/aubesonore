@@ -56,7 +56,7 @@ suivante reprend.
 | 2b Nouveautés | Titres récents choisis par des humains, ajoutés à la fournée (§3.1) | API Hype Machine v2, API Deezer |
 | 2c Favoris | Les favoris Hype Machine de Victor : plus des découvertes, et mesure du goût (§3.2) | API Hype Machine v2, API Deezer |
 | 3 Empreinte | Empreinte Discogs-EffNet de l'extrait Deezer de 30 s | essentia-tensorflow, modèle MTG épinglé |
-| 4 Goût | Régression logistique sur l'empreinte ; chaque fournée est classée par famille (découvertes, nouveautés) et les mieux notés de chacune sont retenus | scikit-learn |
+| 4 Goût | Régression logistique sur l'empreinte ; chaque fournée est classée par famille (découvertes, nouveautés) et les mieux notés de chacune sont retenus, au-dessus d'un plancher pour les nouveautés | scikit-learn |
 | 5 Acquisition | Télécharger les retenus en MP3 et prouver l'identité de chaque fichier | Sockseek, ffprobe, fpcalc |
 | 6 Préparation | FLAC → V0, ReplayGain, balises | ffmpeg, rsgain |
 | 7 Antenne | Tenir la bibliothèque d'antenne et la publier sur AzuraCast | API AzuraCast |
@@ -128,6 +128,15 @@ priorité.
   découlent de la grille d'antenne : ~70 entrées par semaine et par famille, plus les échecs
   d'acquisition (`recherches/2026-10-02-cycle-de-vie.md` §3 à §5). Un candidat entré depuis dans
   la bibliothèque n'est plus noté : ce n'est plus une découverte.
+- **Plancher des nouveautés.** Au plus `keep_nouveautes`, et jamais une nouveauté notée sous
+  `min_score_nouveautes` (`config/editorial.toml`) : décision du 2026-10-19
+  (`recherches/2026-10-19-plancher-nouveautes.md`) ; les nouveautés, peu nombreuses, passaient
+  presque toutes. Une nouveauté sous le plancher ne prend pas la place de son artiste ; celles
+  qu'il écarte sont comptées (`scores.floored`) une par artiste et dans la limite des places
+  restantes, ce que la fournée aurait retenu sans lui, dans le rapport de `train` et de
+  `radio votes`. Tant qu'il écarte des titres, le plancher est la coupure de leçon de la famille.
+  Les découvertes n'ont pas de plancher. Quand le stock de nouveautés
+  baisse, la grille réduit leur part d'antenne en proportion et la rend aux autres (§7.3).
 - **Un titre par artiste.** Une fournée retient au plus un titre par artiste, toutes familles
   confondues : son mieux noté (règle de Spotify Release Radar, « one song per artist per week »).
   **Un artiste n'a qu'un titre à l'antenne**, repos compris (un titre au repos revient au fond),
@@ -169,8 +178,9 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
 §2.
 
 1. **Entrée.** Les titres retenus pas encore acquis, la dernière fournée d'abord (une nouveauté
-   vieillit), puis par note, au plus `max_per_pass` (160 : les deux familles d'une fournée),
-   écrits en CSV (Artist, Title, Length).
+   vieillit), puis par note, au plus `max_per_pass` (160 : les deux familles d'une fournée ;
+   un plafond, que le plancher des nouveautés laisse souvent sous-employé, §4), écrits en CSV
+   (Artist, Title, Length).
    Un titre voté « non » (examen ou leçon) n'est jamais acquis.
 2. **Sockseek 3.0.5** (binaire figé dans `~/.local/bin`, extrait de l'archive de release
    `sockseek_3.0.5_linux-x64.tar.gz` ; sha256 du binaire extrait :

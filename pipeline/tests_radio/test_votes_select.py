@@ -12,7 +12,7 @@ from radio.votes.select import (
     select_batch,
     week_votes,
 )
-from tests_radio.model_factory import NOW, make_model_db, serve_scores
+from tests_radio.model_factory import NO_FLOOR, NOW, as_news, make_model_db, serve_scores
 
 
 def _rng(seed: int = 0) -> np.random.Generator:
@@ -22,7 +22,7 @@ def _rng(seed: int = 0) -> np.random.Generator:
 def test_exam_from_latest_batch_lesson_most_uncertain(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    sel = select_batch(conn, _rng(), 10, 10, NOW)
+    sel = select_batch(conn, _rng(), 10, 10, NOW, floor=NO_FLOOR)
     assert sel.selection_id == 1 and sel.model_id == 1
     assert sel.run_id == 2 and sel.n_batch == 48
     assert len(sel.exam) == 10
@@ -40,7 +40,7 @@ def test_exam_from_latest_batch_lesson_most_uncertain(tmp_path: Path) -> None:
 def test_lesson_is_the_closest_to_the_cut_outside_exam_artists(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    sel = select_batch(conn, _rng(), 0, 10, NOW)
+    sel = select_batch(conn, _rng(), 0, 10, NOW, floor=NO_FLOOR)
     # Coupure 0,5625 (aimé k = 0) : les plus proches sont les aimés k = 0, un par artiste.
     assert sorted(sel.lesson) == [(2000 + a) * 100 for a in range(10)]
 
@@ -50,27 +50,68 @@ def test_lesson_measures_each_family_against_its_own_cut(tmp_path: Path) -> None
     serve_scores(conn)
     # Les rejetés de la dernière fournée deviennent des nouveautés ; leur meilleur titre (k = 0,
     # note 0,4375) est retenu : c'est la coupure des nouveautés, loin de celle des découvertes.
-    conn.execute(
-        "UPDATE candidates SET source = 'hypem', seed_artist_id = NULL, "
-        "neighbour_artist_id = NULL, detail = 'Blog' WHERE deezer_track_id >= 300600"
-    )
+    as_news(conn, 300600)
     conn.execute("UPDATE scores SET accepted = 1 WHERE deezer_track_id >= 300600 AND score > 0.43")
     conn.commit()
-    sel = select_batch(conn, _rng(), 0, 18, NOW)
+    sel = select_batch(conn, _rng(), 0, 18, NOW, floor=NO_FLOOR)
     news = [(3000 + a) * 100 for a in range(6, 12)]
     assert sorted(sel.lesson) == [(2000 + a) * 100 for a in range(12)] + news
+
+
+def test_a_family_without_retained_title_takes_its_floor_as_cut(tmp_path: Path) -> None:
+    conn = make_model_db(tmp_path)
+    serve_scores(conn)
+    # Nouveautés de la dernière fournée toutes sous le plancher de 0,4 : aucune retenue. Sans
+    # coupure, elles n'auraient aucune leçon ; le plancher en tient lieu, et les plus proches
+    # sont les k = 1 (0,375), pas les k = 0 (0,4375).
+    as_news(conn, 300600)
+    conn.execute("UPDATE scores SET floored = 1 WHERE deezer_track_id >= 300600 AND score > 0.43")
+    conn.commit()
+    sel = select_batch(conn, _rng(), 0, 18, NOW, floor={"decouvertes": 0.0, "nouveautes": 0.4})
+    news = [(3000 + a) * 100 + 1 for a in range(6, 12)]
+    assert sorted(sel.lesson) == [(2000 + a) * 100 for a in range(12)] + news
+
+
+def test_the_floor_is_the_cut_while_it_keeps_news_off_air(tmp_path: Path) -> None:
+    conn = make_model_db(tmp_path)
+    serve_scores(conn)
+    # Dernière fournée : les aimés 2006 à 2008 et les rejetés 3006 à 3011 sont des nouveautés.
+    # Les aimés passent le plancher de 0,45 ; les rejetés, sous lui, ont été écartés alors que le
+    # quota restait : la limite réelle est le plancher, pas la plus basse note retenue (0,5625).
+    as_news(conn, 200600, 200899)
+    as_news(conn, 300600)
+    conn.execute(
+        "UPDATE scores SET accepted = 0, floored = 1 "
+        "WHERE deezer_track_id >= 300600 AND score > 0.43"
+    )
+    conn.commit()
+    sel = select_batch(conn, _rng(), 0, 15, NOW, floor={"decouvertes": 0.0, "nouveautes": 0.45})
+    discoveries = [(2000 + a) * 100 for a in (*range(6), 9, 10, 11)]
+    news = [(3000 + a) * 100 for a in range(6, 12)]
+    assert sorted(sel.lesson) == discoveries + news
+
+
+def test_a_family_without_floor_nor_retained_title_gets_no_lesson(tmp_path: Path) -> None:
+    conn = make_model_db(tmp_path)
+    serve_scores(conn)
+    # Aucune découverte retenue dans la dernière fournée, et pas de plancher : la famille n'a pas
+    # de coupure ; une coupure à 0 enverrait en leçon ses rejets les plus nets.
+    conn.execute(
+        "UPDATE scores SET accepted = 0 WHERE deezer_track_id IN "
+        "(SELECT deezer_track_id FROM candidates WHERE run_id = 2)"
+    )
+    conn.commit()
+    sel = select_batch(conn, _rng(), 0, 10, NOW, floor=NO_FLOOR)
+    assert sel.lesson == []
 
 
 def test_exam_splits_evenly_between_discoveries_and_fresh_picks(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
     # Dernière fournée : 24 voisins aimés et 24 nouveautés ; puis 2 nouveautés seulement.
-    conn.execute(
-        "UPDATE candidates SET source = 'hypem', seed_artist_id = NULL, "
-        "neighbour_artist_id = NULL, detail = 'Blog' WHERE deezer_track_id >= 300600"
-    )
+    as_news(conn, 300600)
     conn.commit()
-    sel = select_batch(conn, _rng(), 10, 0, NOW)
+    sel = select_batch(conn, _rng(), 10, 0, NOW, floor=NO_FLOOR)
     assert sum(t >= 300600 for t in sel.exam) == 5 and len(sel.exam) == 10
 
     conn.execute("DELETE FROM ballots")
@@ -79,17 +120,17 @@ def test_exam_splits_evenly_between_discoveries_and_fresh_picks(tmp_path: Path) 
         "neighbour_artist_id = deezer_track_id / 100 WHERE deezer_track_id >= 300602"
     )
     conn.commit()
-    sel = select_batch(conn, _rng(), 10, 0, NOW)
+    sel = select_batch(conn, _rng(), 10, 0, NOW, floor=NO_FLOOR)
     assert sum(t in (300600, 300601) for t in sel.exam) == 2 and len(sel.exam) == 10
 
 
 def test_an_artist_once_examined_never_gets_a_lesson(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    first = select_batch(conn, _rng(), 10, 0, NOW)
+    first = select_batch(conn, _rng(), 10, 0, NOW, floor=NO_FLOOR)
     for b in pending_ballots(conn):
         assert record_vote(conn, b.deezer_track_id, "oui", NOW)
-    second = select_batch(conn, _rng(1), 0, 10, NOW)
+    second = select_batch(conn, _rng(1), 0, 10, NOW, floor=NO_FLOOR)
     assert second.lesson
     assert not {t // 100 for t in first.exam} & {t // 100 for t in second.lesson}
 
@@ -97,16 +138,16 @@ def test_an_artist_once_examined_never_gets_a_lesson(tmp_path: Path) -> None:
 def test_no_new_selection_while_ballots_wait(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    select_batch(conn, _rng(), 10, 10, NOW)
+    select_batch(conn, _rng(), 10, 10, NOW, floor=NO_FLOOR)
     with pytest.raises(PendingBallotsError) as e:
-        select_batch(conn, _rng(), 10, 10, NOW)
+        select_batch(conn, _rng(), 10, 10, NOW, floor=NO_FLOOR)
     assert e.value.n == 20
 
 
 def test_votes_empty_the_queue_and_titles_never_return(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    first = select_batch(conn, _rng(), 10, 10, NOW)
+    first = select_batch(conn, _rng(), 10, 10, NOW, floor=NO_FLOOR)
     for b in pending_ballots(conn):
         assert record_vote(conn, b.deezer_track_id, "oui", NOW)
     assert pending_ballots(conn) == []
@@ -116,7 +157,7 @@ def test_votes_empty_the_queue_and_titles_never_return(tmp_path: Path) -> None:
     )
     assert all(kinds[t] == "exam" for t in first.exam)
     assert all(kinds[t] == "lesson" for t in first.lesson)
-    second = select_batch(conn, _rng(1), 10, 10, NOW)
+    second = select_batch(conn, _rng(1), 10, 10, NOW, floor=NO_FLOOR)
     shown = set(first.exam) | set(first.lesson)
     assert not (set(second.exam) | set(second.lesson)) & shown
     batch_shown = {t for t in shown if t // 100 % 100 >= 6}
@@ -126,7 +167,7 @@ def test_votes_empty_the_queue_and_titles_never_return(tmp_path: Path) -> None:
 def test_small_pool_gives_what_there_is(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    sel = select_batch(conn, _rng(), 60, 0, NOW)
+    sel = select_batch(conn, _rng(), 60, 0, NOW, floor=NO_FLOOR)
     assert len(sel.exam) == 48 and sel.lesson == []
 
 
@@ -135,7 +176,7 @@ def test_exam_covers_the_whole_batch_and_remembers_the_verdict(tmp_path: Path) -
     # favorisait tout challenger à la promotion.
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    sel = select_batch(conn, _rng(), 48, 0, NOW)
+    sel = select_batch(conn, _rng(), 48, 0, NOW, floor=NO_FLOOR)
     flags = dict(conn.execute("SELECT deezer_track_id, retained FROM ballots").fetchall())
     assert {t: flags[t] for t in sel.exam} == {t: int(t < 300000) for t in sel.exam}
     assert set(flags.values()) == {0, 1}
@@ -149,7 +190,7 @@ def test_lesson_takes_at_most_one_title_per_artist(tmp_path: Path) -> None:
     conn.execute("UPDATE scores SET score = 0.9 WHERE deezer_track_id = 200000")
     conn.execute("UPDATE scores SET score = 0.5625 WHERE deezer_track_id IN (200001, 200002)")
     conn.commit()
-    sel = select_batch(conn, _rng(), 0, 10, NOW)
+    sel = select_batch(conn, _rng(), 0, 10, NOW, floor=NO_FLOOR)
     assert 200001 in sel.lesson
     assert sum(1 for t in sel.lesson if t // 100 == 2000) == 1
 
@@ -157,17 +198,17 @@ def test_lesson_takes_at_most_one_title_per_artist(tmp_path: Path) -> None:
 def test_needs_a_serving_model_and_its_scores(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     with pytest.raises(NoServingModelError):
-        select_batch(conn, _rng(), 10, 10, NOW)
+        select_batch(conn, _rng(), 10, 10, NOW, floor=NO_FLOOR)
     conn.execute("INSERT INTO models VALUES (1, 'd', 'f', 1, 'v', '{}', '{}')")
     conn.commit()
     with pytest.raises(NoScoresError):
-        select_batch(conn, _rng(), 10, 10, NOW)
+        select_batch(conn, _rng(), 10, 10, NOW, floor=NO_FLOOR)
 
 
 def test_a_vote_is_corrected_until_the_next_selection_freezes_it(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    first = select_batch(conn, _rng(), 10, 10, NOW)
+    first = select_batch(conn, _rng(), 10, 10, NOW, floor=NO_FLOOR)
     for b in pending_ballots(conn):
         assert record_vote(conn, b.deezer_track_id, "oui", NOW)
     tid = first.lesson[0]
@@ -180,7 +221,7 @@ def test_a_vote_is_corrected_until_the_next_selection_freezes_it(tmp_path: Path)
     assert [c.ballot.position for c in week] == list(range(20))
     assert {c.ballot.deezer_track_id: c.vote for c in week}[tid] == "non"
 
-    select_batch(conn, _rng(1), 10, 10, NOW)
+    select_batch(conn, _rng(1), 10, 10, NOW, floor=NO_FLOOR)
     assert not record_vote(conn, tid, "oui", NOW)  # figé par la nouvelle sélection
     assert (
         conn.execute("SELECT vote FROM votes WHERE deezer_track_id = ?", (tid,)).fetchone()[0]

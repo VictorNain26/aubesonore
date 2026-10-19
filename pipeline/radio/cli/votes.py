@@ -79,7 +79,8 @@ def votes_select() -> None:
     """Tire la sélection de la semaine : examen à parts égales par famille, leçon par
     incertitude."""
     settings = common._settings()
-    v = _editorial(settings).votes
+    editorial = _editorial(settings)
+    v = editorial.votes
     with _db(settings) as conn:
         try:
             sel = select_batch(
@@ -88,6 +89,7 @@ def votes_select() -> None:
                 v.exam_per_selection,
                 v.lesson_per_selection,
                 _now(),
+                floor=editorial.model.floor,
             )
         except PendingBallotsError as e:
             _record(conn, "votes-select", True, {"en attente de vote": e.n})

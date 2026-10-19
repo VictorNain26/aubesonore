@@ -55,6 +55,10 @@ weak_weight = 0.1
 # ~12 % d'échecs d'acquisition.
 keep_decouvertes = 80
 keep_nouveautes = 80
+# Plancher de note des nouveautés : au plus keep_nouveautes, jamais en dessous
+# (docs/recherches/2026-10-19-plancher-nouveautes.md).
+# 0 retient sans plancher.
+min_score_nouveautes = 0.6
 # Nombre de derniers votes d'examen qui jugent le modèle.
 exam_window = 60
 

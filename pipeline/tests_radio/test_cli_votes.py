@@ -52,7 +52,7 @@ def _st(**kw: Any) -> Status:
         "last_selection": "2026-09-27T03:40:00+00:00",
         "stale_selection_days": 0,
         "recent_votes": 12,
-        "batch": Batch(7, 400, 133),
+        "batch": Batch(7, 400, 133, 0),
     }
     base.update(kw)
     return Status(**base)
@@ -63,6 +63,11 @@ def test_status_lines() -> None:
     assert "Modèle n°3 : AUC d'examen 0,800 sur 60" in lines
     assert "Taux de oui des retenus : 83,3 % [70,0 % - 91,0 %] sur 48 votes d'examen" in lines
     assert "Dernière fournée (passe n°7) : 133 retenus sur 400 candidats" in lines
+    floored = cli.votes._status_lines(_st(batch=Batch(7, 400, 133, 5)), 7)
+    assert (
+        "Dernière fournée (passe n°7) : 133 retenus sur 400 candidats, "
+        "5 nouveautés écartées sous le plancher de score"
+    ) in floored
     none = cli.votes._status_lines(_st(model_id=None, exam_auc=None, n_exam=0, yes=None), 7)
     assert none[:2] == [
         "Aucun modèle en service",

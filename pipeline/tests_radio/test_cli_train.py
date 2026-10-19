@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -6,7 +7,7 @@ from typer.testing import CliRunner
 import radio.cli as cli
 from radio.core.config import Settings
 from radio.core.db import connect
-from tests_radio.model_factory import add_vote, make_model_db, seed_run
+from tests_radio.model_factory import add_vote, as_news, make_model_db, seed_run
 
 runner = CliRunner()
 
@@ -47,6 +48,28 @@ def test_train_promotes_scores_then_skips_without_new_votes(env: Path) -> None:
     assert res.exit_code == 0, res.output
     assert "Aucun nouveau vote (2 votes) : pas de réentraînement" in res.output
     assert "Candidats notés par le modèle n°1" in res.output
+
+
+def test_train_reports_the_news_kept_off_air_by_the_floor(env: Path) -> None:
+    (env / "config" / "editorial.toml").write_text("[model]\nmin_score_nouveautes = 0.5\n")
+    conn = make_model_db(env / "data")
+    seed_run(conn)
+    # Les 12 artistes rejetés (3000 à 3011) deviennent des nouveautés : toutes sous le plancher.
+    as_news(conn, 300000)
+    conn.close()
+
+    res = runner.invoke(cli.app, ["train"])
+    assert res.exit_code == 0, res.output
+    assert (
+        "Dernière fournée (passe n°1) : 12 retenus sur 96 candidats, "
+        "12 nouveautés écartées sous le plancher de score"
+    ) in res.output
+    conn = connect(env / "data" / "radio.db")
+    counts = json.loads(
+        conn.execute("SELECT counts FROM stage_reports WHERE stage = 'train'").fetchone()[0]
+    )
+    conn.close()
+    assert counts["retenus"] == 12 and counts["nouveautés sous le plancher"] == 12
 
 
 def test_first_training_without_exam_votes_is_promoted(env: Path) -> None:

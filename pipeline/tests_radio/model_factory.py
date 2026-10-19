@@ -12,6 +12,7 @@ from pathlib import Path
 
 import numpy as np
 
+from radio.core.config import ModelConfig
 from radio.core.db import connect
 from radio.discover.candidates import add_tracks
 from radio.library.artists import register_library
@@ -19,6 +20,7 @@ from radio.signals.audio import DIM, MODEL_TAG, to_blob
 from radio.sources.deezer import DeezerTrack
 
 NOW = "2026-09-25T00:00:00+00:00"
+NO_FLOOR = ModelConfig().floor
 LIKED = np.eye(DIM, dtype=np.float32)[0]
 DISLIKED = np.eye(DIM, dtype=np.float32)[1]
 
@@ -97,7 +99,29 @@ def serve_scores(conn: sqlite3.Connection) -> None:
             "neighbour_artist_id) VALUES (?, ?, 'voisin', 1000, ?)",
             (tid, 2 if aid % 100 >= 6 else 1, aid),
         )
-        conn.execute("INSERT INTO scores VALUES (?, 1, ?, ?)", (tid, score, int(score >= 0.5)))
+        conn.execute(
+            "INSERT INTO scores (deezer_track_id, model_id, score, accepted) VALUES (?, 1, ?, ?)",
+            (tid, score, int(score >= 0.5)),
+        )
+    conn.commit()
+
+
+def as_news(
+    conn: sqlite3.Connection,
+    low: int,
+    high: int = 10**9,
+    *,
+    source: str = "hypem",
+    detail: str = "Blog",
+    run_id: int | None = None,
+) -> None:
+    """Les candidats `low` à `high` deviennent des nouveautés `source` (dans la fournée
+    `run_id` si elle est donnée)."""
+    conn.execute(
+        "UPDATE candidates SET source = ?, seed_artist_id = NULL, neighbour_artist_id = NULL, "
+        "detail = ?, run_id = COALESCE(?, run_id) WHERE deezer_track_id BETWEEN ? AND ?",
+        (source, detail, run_id, low, high),
+    )
     conn.commit()
 
 

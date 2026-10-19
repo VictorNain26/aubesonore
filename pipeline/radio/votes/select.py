@@ -8,7 +8,9 @@
   d'entraînement (radio/model/dataset.py).
 - Leçon : les titres les plus incertains (note la plus proche de la coupure de leur famille,
   découvertes ou nouveautés, dans la dernière fournée), au plus un par artiste : échantillonnage
-  par incertitude (Settles, Active Learning Literature Survey, 2009).
+  par incertitude (Settles, Active Learning Literature Survey, 2009). La coupure est la limite
+  qui a tranché : le plancher de la famille s'il a écarté des titres, sinon sa plus basse note
+  retenue.
 - À l'aveugle : l'ordre de présentation est tiré au hasard, la page ne montre que l'artiste et
   le titre.
 - Un titre voté ou déjà présenté ne revient jamais. Tant qu'un bulletin attend, aucune nouvelle
@@ -19,6 +21,7 @@
 """
 
 import sqlite3
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -157,7 +160,13 @@ def _pick_lessons(
 
 
 def select_batch(
-    conn: sqlite3.Connection, rng: np.random.Generator, n_exam: int, n_lesson: int, now: str
+    conn: sqlite3.Connection,
+    rng: np.random.Generator,
+    n_exam: int,
+    n_lesson: int,
+    now: str,
+    *,
+    floor: Mapping[str, float],
 ) -> Selection:
     waiting = pending_ballots(conn)
     if waiting:
@@ -191,14 +200,21 @@ def select_batch(
         if int(r[3]) == run_id:
             families.setdefault(FAMILY[str(r[5])], []).append(int(r[0]))
     retained = {int(r[0]) for r in rows if int(r[2]) == 1}
+    # La coupure d'une famille est la limite qui a vraiment tranché : son plancher s'il a écarté
+    # des titres alors que le quota restait, sinon la plus basse note retenue. Une famille sans
+    # l'un ni l'autre n'a pas de coupure, donc pas de leçon.
     cuts: dict[str, float] = {}
-    for source, score in conn.execute(
-        "SELECT c.source, MIN(s.score) FROM scores s JOIN candidates c USING (deezer_track_id) "
-        "WHERE c.run_id = ? AND s.accepted = 1 GROUP BY c.source",
+    for source, lowest, any_floored in conn.execute(
+        "SELECT c.source, MIN(CASE WHEN s.accepted = 1 THEN s.score END), MAX(s.floored) "
+        "FROM scores s JOIN candidates c USING (deezer_track_id) WHERE c.run_id = ? "
+        "GROUP BY c.source",
         (run_id,),
     ):
         family = FAMILY[str(source)]
-        cuts[family] = min(cuts.get(family, 1.0), float(score))
+        if any_floored:
+            cuts[family] = min(cuts.get(family, 1.0), floor[family])
+        elif lowest is not None:
+            cuts[family] = min(cuts.get(family, 1.0), float(lowest))
     exam = _draw_exam(families, n_exam, rng)
     # Un artiste d'examen, de cette sélection ou d'une précédente, ne reçoit jamais de vote de
     # leçon : le modèle candidat l'aurait vu, pas celui en service, et l'examen le favoriserait.

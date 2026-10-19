@@ -3,7 +3,8 @@ docs/recherches/2026-09-30-modele-audio-seul.md).
 
 Chaque fournée de candidats est classée famille par famille (découvertes, nouveautés) ; les
 mieux notés de chaque famille sont retenus, en nombre fixé par la grille d'antenne
-(docs/recherches/2026-10-02-cycle-de-vie.md).
+(docs/recherches/2026-10-02-cycle-de-vie.md), et jamais sous le plancher de score de leur famille
+(décision du 2026-10-19 pour les nouveautés : `min_score_nouveautes`).
 Seuls les votes d'examen jugent : un nouveau modèle n'est mis en service que si son AUC d'examen
 n'est pas inférieure à celle du modèle en service.
 """
@@ -100,6 +101,7 @@ class Batch:
     run_id: int
     n: int
     retained: int
+    floored: int
 
 
 def write_scores(
@@ -108,12 +110,16 @@ def write_scores(
     model: Pipeline,
     table: SignalTable,
     keep: Mapping[str, int],
+    floor: Mapping[str, float],
 ) -> None:
     """Note les candidats de chaque passe de découverte et retient, passe par passe et famille
     par famille, les `keep[famille]` mieux notés : découvertes et nouveautés ne se disputent pas
-    la même coupure. Un artiste n'entre qu'un titre par fournée, toutes familles confondues : son
-    mieux noté (Release Radar, docs/recherches/2026-10-02-programmation.md §1). Un candidat entré
-    depuis dans la bibliothèque n'est plus une découverte."""
+    la même coupure. Un titre noté sous `floor[famille]` n'est jamais retenu, même quota restant :
+    il ne réserve pas son artiste, et le premier de chaque artiste ainsi écarté alors que le quota
+    restait est marqué `floored`, pour le rapport. Un artiste n'entre qu'un titre par fournée,
+    toutes familles confondues : son mieux noté (Release Radar,
+    docs/recherches/2026-10-02-programmation.md §1). Un candidat entré depuis dans la
+    bibliothèque n'est plus une découverte."""
     group_of = {
         int(t): (int(run), FAMILY[str(source)])
         for t, run, source in conn.execute("SELECT deezer_track_id, run_id, source FROM candidates")
@@ -138,23 +144,35 @@ def write_scores(
     scores = predict(model, table, rows)
     groups = [group_of[int(table.track_ids[i])] for i in rows]
     accepted = np.zeros(len(rows), dtype=bool)
+    floored = np.zeros(len(rows), dtype=bool)
     for run in {g[0] for g in groups}:
         idx = np.flatnonzero([g[0] == run for g in groups])
         left = dict(keep)
         taken: set[int] = set()
+        below: set[int] = set()
+        marked = dict.fromkeys(left, 0)
         for i in idx[np.argsort(-scores[idx], kind="stable")]:
             family, artist = groups[i][1], artist_of[int(table.track_ids[rows[i]])]
-            if left[family] > 0 and artist not in taken:
-                accepted[i] = True
-                left[family] -= 1
-                taken.add(artist)
+            if left[family] == 0 or artist in taken:
+                continue
+            if scores[i] < floor[family]:
+                # Compté une fois par artiste, et tant qu'une place restait : ce que la fournée
+                # aurait retenu sans plancher.
+                if artist not in below and marked[family] < left[family]:
+                    floored[i] = True
+                    marked[family] += 1
+                below.add(artist)
+                continue
+            accepted[i] = True
+            left[family] -= 1
+            taken.add(artist)
     with conn:
         conn.execute("DELETE FROM scores")
         conn.executemany(
-            "INSERT INTO scores VALUES (?, ?, ?, ?)",
+            "INSERT INTO scores VALUES (?, ?, ?, ?, ?)",
             [
-                (int(table.track_ids[i]), model_id, float(s), int(a))
-                for i, s, a in zip(rows, scores, accepted, strict=True)
+                (int(table.track_ids[i]), model_id, float(s), int(a), int(f))
+                for i, s, a, f in zip(rows, scores, accepted, floored, strict=True)
             ],
         )
 
@@ -162,12 +180,12 @@ def write_scores(
 def last_batch(conn: sqlite3.Connection) -> Batch | None:
     row = conn.execute(
         """
-        SELECT c.run_id, COUNT(*), SUM(s.accepted)
+        SELECT c.run_id, COUNT(*), SUM(s.accepted), SUM(s.floored)
         FROM scores s JOIN candidates c USING (deezer_track_id)
         GROUP BY c.run_id ORDER BY c.run_id DESC LIMIT 1
         """
     ).fetchone()
-    return None if row is None else Batch(int(row[0]), int(row[1]), int(row[2]))
+    return None if row is None else Batch(int(row[0]), int(row[1]), int(row[2]), int(row[3]))
 
 
 def votes_count(conn: sqlite3.Connection) -> int:
@@ -258,7 +276,7 @@ def rescore(conn: sqlite3.Connection, models_dir: Path, cfg: ModelConfig) -> int
     if current is None:
         return None
     model_id, model = current
-    write_scores(conn, model_id, model, load_signals(conn), cfg.keep)
+    write_scores(conn, model_id, model, load_signals(conn), cfg.keep, cfg.floor)
     return model_id
 
 

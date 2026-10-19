@@ -381,6 +381,7 @@ def train_command() -> None:
                 "modèle en service": model_id,
                 "candidats": batch.n if batch else 0,
                 "retenus": batch.retained if batch else 0,
+                "nouveautés sous le plancher": batch.floored if batch else 0,
                 "favoris retenus": None if favorites is None else round(favorites.share, 3),
             },
         )
