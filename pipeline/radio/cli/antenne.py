@@ -267,7 +267,7 @@ def grille(
         ]
     )
     # Une heure que ses titres ne couvrent pas s'épuise, et le secours joue à la place de la
-    # grille (vision §1). La grille publiée est gardée, et l'échec fait alerter Gatus.
+    # grille (vision §1). La grille publiée est gardée, et la commande échoue.
     problems = [f"{_n(len(errors))} heures mal écrites"] if errors else []
     if plan.short_hours:
         problems.append(f"{_n(plan.short_hours)} heures trop courtes : le secours jouera")

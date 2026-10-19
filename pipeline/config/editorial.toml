@@ -75,7 +75,7 @@ identity_threshold = 0.70
 # Rythme des recherches Soulseek : le serveur bannit 30 min en cas de rafale.
 searches_per_time = 10
 searches_renew_s = 220
-# Sous ce taux de fichiers prêts, la passe échoue et Gatus alerte ; le taux n'est jugé qu'à partir
+# Sous ce taux de fichiers prêts, la passe échoue ; le taux n'est jugé qu'à partir
 # de min_attempts_for_rate tentatives.
 min_success_rate = 0.2
 min_attempts_for_rate = 20
@@ -173,7 +173,7 @@ exam_per_selection = 10
 # Titres de leçon par sélection : les plus proches de la coupure, un par artiste.
 lesson_per_selection = 10
 # Fenêtre des votes récents du rapport. Page de vote publiée et aucun titre en attente : une
-# sélection plus ancienne déclenche une alerte (passe hebdomadaire en échec ?).
+# sélection plus ancienne met une ligne ALERTE dans le rapport (passe hebdomadaire en échec ?).
 quiet_days = 7
 
 [backup]

@@ -17,7 +17,7 @@ partie reproductible :
   `.env.example`, `azuracast.sample.env` (le modèle d'`azuracast.env`), `RUNBOOK.md` et
   `scripts/`.
 - **ignoré** — `stations/` (le catalogue et la config réécrite par l'UI), `.env`,
-  `azuracast.env` (mot de passe MariaDB), `gatus.env`, les journaux.
+  `azuracast.env` (mot de passe MariaDB), les journaux.
 
 Corollaire : `git status` propre **ne veut pas dire** que la station est
 sauvegardée. Les médias et les secrets sont dans le dépôt restic, la base dans la
@@ -45,7 +45,7 @@ lecteur du site.
   que `docker-compose.yml` publie réellement.
 - **Les ports ne sont publiés que sur la boucle locale** (127.0.0.1, plus 8080 sur
   172.17.0.1, l'adresse `host.docker.internal` du backend du site) : Docker contourne ufw et
-  la machine a une IPv6 publique. Tout client est sur la machine (tunnel Cloudflare, Gatus,
+  la machine a une IPv6 publique. Tout client est sur la machine (tunnel Cloudflare,
   pipeline) ; l'interface s'ouvre par `radio.aubesonore.fr`. Un nouveau port suit la même règle.
 - **Le conteneur écrit dans `stations/` en tant que `AZURACAST_PUID:PGID`.** Si
   ces valeurs ne correspondent plus au propriétaire du dossier sur l'hôte, le

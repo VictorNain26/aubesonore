@@ -6,7 +6,7 @@ sont dans `docs/recherches/`. Quand le système réel contredit ce document, le 
 ce document se corrige.
 
 État au 2026-10-13 : les étapes 1 à 7 tournent chaque semaine, la grille (étape 8) chaque soir ;
-la CI et Gatus surveillent, la page de vote est en service. L'antenne ne diffuse que `antenne/`.
+la CI veille, la page de vote est en service. L'antenne ne diffuse que `antenne/`.
 
 ## 1. But
 
@@ -34,7 +34,7 @@ pas, qu'il aurait pu choisir, enchaînés selon le moment de la journée.
   le rapport de passe.
 - **Tout se mesure.** Un signal ou un mécanisme qui ne prouve pas son utilité est retiré.
 - **Aucun secret** dans les journaux, les exceptions, les tests ou les commits : jeton Plex, clés
-  Last.fm, CallMeBot et Soulseek, URL d'extraits Deezer signées.
+  Last.fm et Soulseek, URL d'extraits Deezer signées.
 
 ## 3. La chaîne
 
@@ -165,7 +165,7 @@ priorité.
 - **Promotion.** Un nouveau modèle n'est mis en service que si son AUC d'examen égale au moins
   celle du modèle en service.
 
-La page de vote (FastAPI derrière Cloudflare Access, rappel WhatsApp) est en service depuis le
+La page de vote (FastAPI derrière Cloudflare Access) est en service depuis le
 2026-10-01 sur `votes.aubesonore.fr`. Chaque passe tire une nouvelle sélection après `train`.
 La page `/semaine` relit les votes de la sélection en cours, avec leur extrait, et permet de
 corriger un geste malheureux jusqu'à la passe suivante : `train` apprend alors le vote corrigé,
@@ -412,7 +412,7 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
     lieu de laisser un trou, et le rapport compte les créneaux cédés.
   - **Une heure trop courte fait échouer la commande**, après la publication : ses titres ne la
     couvrent pas, elle s'épuise et le secours joue à la place de la grille (§1). La grille
-    publiée est gardée, et Gatus alerte (§8.2).
+    publiée est gardée, et l'unité `radio-grille` est en échec (§8.2).
   - **Vérifié par simulation** (14 jours sur l'antenne du 2026-10-04, 532 titres, durées
     réelles, lecture selon `Queue::addDurationToTime`) : 0 min de secours contre 33 avec 16
     titres par heure, titres en retard de plus de deux tours de 8-19 par jour à 0 dès le
@@ -481,7 +481,7 @@ message de la commande, ou seulement le type d'une exception imprévue, dont le 
 contenir une URL signée). `radio report` affiche le dernier rapport de chaque étape.
 
 **Suivi des sources** (`radio/votes/suivi.py`), dans `radio report`, sur la page `/suivi` de la
-page de vote et en lien dans le rappel du dimanche :
+page de vote :
 
 - le parcours de chaque source, et de chaque genre Deezer, dans la dernière fournée : candidats,
   retenus, prêts, échecs d'acquisition, à l'antenne ;
@@ -498,39 +498,20 @@ Seuils, par étape : taux d'acquisition au-dessus de `min_success_rate` dès
 `nouveautes`, `favoris`, `acquire`, `mesures` et `grille` sont préfixées de `-` dans l'unité :
 une source en panne n'arrête pas la passe, et un échec d'`acquire` n'empêche pas `antenne` de
 publier ce qui est prêt. La dernière étape, `radio check`, juge la passe entière : une étape en échec, ou aucune
-découverte publiée, ou une étape sans ligne de rapport (processus tué), la fait échouer, et Gatus
-alerte (§8.2).
+découverte publiée, ou une étape sans ligne de rapport (processus tué), la fait échouer, et
+l'unité `radio-weekly` est en échec (§8.2).
 
-### 8.2 Gatus
+### 8.2 Pannes
 
-Gatus 5.37.0 est un conteneur dont la configuration YAML est versionnée dans
-`deploy/gatus/config/`. Le dossier est monté, pas le fichier : Gatus recharge alors seul chaque
-version que le déploiement amène. Il est le seul outil de surveillance. Tableau de bord sur `127.0.0.1:8050` (tunnel SSH). Chaîne
-d'alerte testée de bout en bout le 2026-09-30. Il alerte après 3 échecs, avec un rappel au plus
-toutes les 24 h et un message de retour à la normale, sur deux canaux :
+Aucune surveillance externe, aucune notification : AubeSonore n'envoie aucun message. Une panne se
+lit sur la machine :
 
-- WhatsApp (CallMeBot) ;
-- ntfy.sh, sujet aléatoire `NTFY_TOPIC` (le nom du sujet fait office de secret), abonné dans
-  l'application ntfy du téléphone. CallMeBot répond 210 quand son quota est épuisé, et Gatus ne
-  compte comme échec d'envoi qu'un statut supérieur à 399 (`custom.go:94`, v5.37.0) : sans ce
-  second canal, une alerte pouvait se perdre en silence.
-
-| Sonde | Condition |
-|---|---|
-| `antenne` : `nowplaying` AzuraCast, chaque minute | HTTP 200 et `is_online == true` |
-| `flux-public` : `radio.aubesonore.fr/listen/aubesonore/radio.mp3`, toutes les 5 min | HTTP 200 : vérifie aussi le tunnel Cloudflare |
-| `passe-hebdo` (endpoint externe) | Poussée par `ExecStopPost=` avec `$SERVICE_RESULT` ; alerte au premier échec ou après 8 jours de silence |
-| `sauvegarde` (endpoint externe) | Même mécanisme pour `radio-backup` ; alerte au premier échec ou après 2 jours de silence |
-| `rappel` (endpoint externe) | Même mécanisme pour `radio-remind` ; alerte au premier échec ou après 8 jours de silence |
-| `grille-a-l-antenne` : `nowplaying`, toutes les 10 min | la playlist en cours s'appelle « Grille … » ; alerte après 7 échecs (plus d'une heure de secours). Une heure à moitié vide ne la fait pas alerter : ses sondes alternent ; c'est l'échec de `radio grille` sur une heure trop courte qui la signale |
-| `grille` (endpoint externe) | `radio-grille` ; alerte au premier échec (heure mal écrite, heure trop courte) ou après 2 jours de silence. Dans la passe du dimanche, `radio check` fait échouer la passe |
-| `page-de-vote` : `127.0.0.1:8040`, toutes les 5 min | HTTP 403 sans jeton Access : la page tourne |
-| `page-de-vote-publique` : `votes.aubesonore.fr`, toutes les 5 min, redirection non suivie | HTTP 302 vers la connexion Access : la règle Access et la route du tunnel tiennent |
-| `site` : `aubesonore.fr`, toutes les 5 min (groupe `site`) | HTTP 200 : le frontend et le tunnel |
-| `api` : `api.aubesonore.fr/health`, toutes les 5 min (groupe `site`) | HTTP 200 et `status == ok` : le backend |
-| `deploiement` (endpoint externe, groupe `site`) | `aubesonore-deploy` par `site/scripts/heartbeat.sh`, jeton `GATUS_SITE_TOKEN` ; alerte après 3 échecs de suite (6 min) ou une heure de silence |
-| `sauvegarde-medias` (endpoint externe) | la sauvegarde restic des médias de l'antenne (`azuracast/scripts/backup-media.sh`) ; alerte au premier échec ou après 2 jours de silence |
-| `sauvegarde-site` (endpoint externe, groupe `site`) | `aubesonore-backup` ; alerte au premier échec ou après 2 jours de silence |
+- `systemctl --user list-units --failed` : une unité `radio-*`, `aubesonore-*` ou
+  `azuracast-backup` en échec (passe hebdomadaire jugée par `radio check`, grille du lendemain,
+  sauvegardes, déploiement du site) ;
+- `.venv/bin/radio report` : le dernier rapport de chaque étape et ses lignes `ALERTE` (aucune
+  sélection depuis plus de `quiet_days` jours : passe hebdomadaire en échec ?) ;
+- les journaux : `journalctl --user -u <unité>`.
 
 ### 8.3 Non-régression
 
@@ -538,8 +519,8 @@ toutes les 24 h et un message de retour à la normale, sur deux canaux :
   réunit depuis le 2026-10-01 le site, le pipeline et la config AzuraCast) : ruff, mypy strict
   et pytest à chaque push et à chaque PR, avec astral-sh/setup-uv. `master` est protégée : rien
   n'y entre sans CI verte, celle du site comprise.
-- **Renovate** (configuration à la racine) pour `uv.lock`, les actions GitHub et l'image de
-  Gatus. `essentia-tensorflow` en est exclu : ses versions récentes ne publient que des roues
+- **Renovate** (configuration à la racine) pour `uv.lock` et les actions GitHub.
+  `essentia-tensorflow` en est exclu : ses versions récentes ne publient que des roues
   cp314, et le projet est en Python 3.12.
 - **Déploiement** : merger sur `master` suffit. `aubesonore-deploy.timer` avance le checkout
   `~/aubesonore`, jamais pendant une passe hebdomadaire, et redémarre `radio-votes` quand `pipeline/`
@@ -550,10 +531,9 @@ toutes les 24 h et un message de retour à la normale, sur deux canaux :
 
 | Quand | Unité systemd utilisateur | Ce qui se passe |
 |---|---|---|
-| dimanche 03:00 | `radio-weekly` | `library-sync`, `discover`, `nouveautes`, `favoris`, `signals`, `train`, `votes-select`, `acquire`, `antenne`, `mesures`, `grille --aujourdhui`, `check` ; bornée à 12 h, battement de cœur Gatus |
-| chaque jour 23:00 | `radio-grille` | grille du lendemain dans les 24 playlists horaires du jour ; battement de cœur Gatus |
-| chaque jour 04:30 | `radio-backup` | copie de `data/radio.db` (API de sauvegarde SQLite, `integrity_check` vérifié) et de `data/models/` dans `RADIO_BACKUP_DIR` (`/media/plex/.backups/radio`, autre disque physique), 14 jours gardés ; battement de cœur Gatus |
-| dimanche 10:00 | `radio-remind` | rappel WhatsApp de vote ; battement de cœur Gatus |
+| dimanche 03:00 | `radio-weekly` | `library-sync`, `discover`, `nouveautes`, `favoris`, `signals`, `train`, `votes-select`, `acquire`, `antenne`, `mesures`, `grille --aujourdhui`, `check` ; bornée à 12 h |
+| chaque jour 23:00 | `radio-grille` | grille du lendemain dans les 24 playlists horaires du jour |
+| chaque jour 04:30 | `radio-backup` | copie de `data/radio.db` (API de sauvegarde SQLite, `integrity_check` vérifié) et de `data/models/` dans `RADIO_BACKUP_DIR` (`/media/plex/.backups/radio`, autre disque physique), 14 jours gardés |
 | en continu | `radio-votes` | page de vote, `127.0.0.1:8040`, publiée sur `votes.aubesonore.fr` |
 
 - État : `.venv/bin/radio report`.
@@ -561,16 +541,15 @@ toutes les 24 h et un message de retour à la normale, sur deux canaux :
 - Un gros rattrapage de `signals` (environ 3 s par titre) ou de `mesures` (environ 17 s par
   titre) se lance à la main, en `nice`, jamais pendant `radio-weekly`.
 
-**Réglages.** Les secrets et les URL sont dans `.env` (modèle : `.env.example`, jamais commité),
-y compris `GATUS_TOKEN` pour le battement de cœur. Le reste est dans `config/editorial.toml`.
-Gatus : `cd deploy/gatus && docker compose up -d` (son `.env` est un lien vers celui du dépôt).
+**Réglages.** Les secrets et les URL sont dans `.env` (modèle : `.env.example`, jamais commité).
+Le reste est dans `config/editorial.toml`.
 
 **Installer les unités.**
 
 ```bash
 for u in deploy/systemd/*; do systemctl --user link "$PWD/$u"; done
 systemctl --user daemon-reload
-systemctl --user enable --now radio-weekly.timer radio-remind.timer radio-backup.timer radio-grille.timer radio-votes.service
+systemctl --user enable --now radio-weekly.timer radio-backup.timer radio-grille.timer radio-votes.service
 loginctl enable-linger
 ```
 

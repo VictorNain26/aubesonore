@@ -40,7 +40,7 @@ PASS_STAGES = (
 @app.command()
 def check() -> None:
     """Juge la passe systemd en cours : une étape en échec, ou aucune découverte publiée, la fait
-    échouer (et Gatus alerte)."""
+    échouer (l'unité radio-weekly est alors en échec)."""
     invocation = os.environ.get("INVOCATION_ID")
     if not invocation:
         _fail("INVOCATION_ID absent : radio check juge une passe lancée par systemd", 2)

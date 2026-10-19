@@ -21,14 +21,14 @@ reconstruire seule depuis un dépôt public.
 | Base MariaDB d'AzuraCast | volume Docker | sauvegarde AzuraCast quotidienne | métadonnées, comptes, playlists |
 | Base PostgreSQL du site | volume Docker | `aubesonore-backup` (`site/scripts/backup-db.sh`) | comptes, titres gardés |
 | `pipeline/data/radio.db`, `data/models/` | NVMe | `radio-backup` | les votes, qui n'existent nulle part ailleurs |
-| `site/.env`, `pipeline/.env`, `azuracast/gatus.env` | hors git | **aucune** : une copie à garder soi-même (gestionnaire de mots de passe) | secrets à recréer : Plex, AzuraCast, YouTube, Google, SMTP, Gatus |
+| `site/.env`, `pipeline/.env` | hors git | **aucune** : une copie à garder soi-même (gestionnaire de mots de passe) | secrets à recréer : Plex, AzuraCast, YouTube, Google, SMTP |
 | `~/musilogy-data` | NVMe | **aucune** (choix du 2026-10-13 : 16 Go) | Musilogy se refait sur un dump MusicBrainz plus récent, une journée de calcul, des chiffres un peu différents |
 | Mot de passe du dépôt restic | `~/.config/restic/password` | une copie hors de la machine | le dépôt restic est illisible |
 
 `azuracast-backup.timer` (04:45, `scripts/backup-media.sh`, unités dans `scripts/systemd/`)
 sauvegarde depuis le 2026-10-03 `stations/`, `docker-compose.yml`, `.env` et `azuracast.env`
 dans un dépôt restic chiffré, `/media/plex/.backups/restic`, disque distinct du NVMe ;
-rétention 7 jours, 4 semaines, 6 mois ; battement de cœur Gatus `radio_sauvegarde-medias`.
+rétention 7 jours, 4 semaines, 6 mois.
 Les bases ont leurs propres sauvegardes, sur le même disque distinct.
 
 ## 1. AzuraCast
@@ -47,8 +47,6 @@ docker compose up -d
 # la copie du mot de passe reprend sa place, puis la sauvegarde quotidienne :
 install -m 600 <copie du mot de passe> ~/.config/restic/password
 ln -s ~/aubesonore/azuracast/scripts/systemd/* ~/.config/systemd/user/
-# jeton du battement : GATUS_AZURACAST_TOKEN de ta copie de pipeline/.env
-install -m 600 /dev/null gatus.env && echo 'GATUS_TOKEN=<jeton>' > gatus.env
 chmod 600 .env azuracast.env
 systemctl --user enable --now azuracast-backup.timer
 ```
@@ -76,8 +74,7 @@ uv sync
 # .env : ta copie (sinon .env.example, secrets à recréer), avec la clé d'API AzuraCast régénérée
 for u in deploy/systemd/*; do systemctl --user link "$PWD/$u"; done
 systemctl --user daemon-reload
-systemctl --user enable --now radio-weekly.timer radio-remind.timer radio-backup.timer radio-grille.timer radio-votes.service
-cd deploy/gatus && ln -s ../../.env .env && docker compose up -d
+systemctl --user enable --now radio-weekly.timer radio-backup.timer radio-grille.timer radio-votes.service
 ```
 
 Restaurer `data/radio.db` et `data/models/` depuis la copie la plus récente de
@@ -114,8 +111,8 @@ cd musilogy && uv sync
 ## Vérifier que tout est remonté
 
 ```bash
-docker ps                                   # azuracast, gatus, aubesonore-{db,backend,frontend,renderer}
-systemctl --user list-timers                # 7 timers : aubesonore-{backup,deploy}, azuracast-backup, radio-{backup,grille,remind,weekly}
+docker ps                                   # azuracast, aubesonore-{db,backend,frontend,renderer}
+systemctl --user list-timers                # 6 timers : aubesonore-{backup,deploy}, azuracast-backup, radio-{backup,grille,weekly}
 systemctl --user is-active radio-votes      # page de vote ; 127.0.0.1:8040 répond 403 sans Cloudflare Access
 cd ~/aubesonore/pipeline && .venv/bin/pytest -q -W error && .venv/bin/radio report
 ```
