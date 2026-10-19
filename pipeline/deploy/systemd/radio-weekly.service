@@ -43,5 +43,3 @@ ExecStart=-%h/aubesonore/pipeline/.venv/bin/radio mesures
 # pour les heures qui restent.
 ExecStart=-%h/aubesonore/pipeline/.venv/bin/radio grille --aujourdhui
 ExecStart=%h/aubesonore/pipeline/.venv/bin/radio check
-# Battement de cœur vers Gatus, même en échec (deploy/heartbeat.sh).
-ExecStopPost=-%h/aubesonore/pipeline/deploy/heartbeat.sh radio_passe-hebdo

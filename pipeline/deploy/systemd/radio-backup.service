@@ -7,5 +7,3 @@ WorkingDirectory=%h/aubesonore/pipeline
 EnvironmentFile=%h/aubesonore/pipeline/.env
 Nice=19
 ExecStart=%h/aubesonore/pipeline/.venv/bin/radio backup
-# Battement de cœur vers Gatus, même en échec (deploy/heartbeat.sh).
-ExecStopPost=-%h/aubesonore/pipeline/deploy/heartbeat.sh radio_sauvegarde

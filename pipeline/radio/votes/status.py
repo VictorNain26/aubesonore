@@ -1,4 +1,4 @@
-"""État du goût, pour le rapport et le rappel hebdomadaire.
+"""État du goût, pour le rapport.
 
 Le taux de oui des retenus se mesure sur les votes d'examen de la page dont le titre était retenu
 au tirage. L'AUC du modèle en service se mesure sur toute la fenêtre d'examen.

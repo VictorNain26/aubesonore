@@ -1,4 +1,4 @@
-"""Les votes : sélection de la semaine, page de vote, rappel et état du modèle."""
+"""Les votes : sélection de la semaine, page de vote et état du modèle."""
 
 from datetime import UTC, datetime
 
@@ -21,13 +21,11 @@ from radio.cli.common import (
     app,
 )
 from radio.core.config import Editorial, Settings
-from radio.notify.whatsapp import WhatsAppError, send_whatsapp
 from radio.sources.deezer import DeezerClient
 from radio.votes.access import AccessVerifier
-from radio.votes.app import create_app, page_ok
+from radio.votes.app import create_app
 from radio.votes.select import NoScoresError, NoServingModelError, PendingBallotsError, select_batch
 from radio.votes.status import Status, load_status
-from radio.votes.suivi import load_suivi
 
 
 def _status(settings: Settings, editorial: Editorial) -> Status:
@@ -129,42 +127,3 @@ def votes_serve() -> None:
         _editorial(settings).nouveautes,
     )
     uvicorn.run(web, host=settings.votes_host, port=settings.votes_port)
-
-
-@app.command("votes-remind")
-@_stage("votes-remind")
-def votes_remind() -> None:
-    """Envoie le rappel WhatsApp : titres en attente, taux de oui, alertes."""
-    settings = common._settings()
-    editorial = _editorial(settings)
-    if settings.whatsapp_phone is None or settings.callmebot_apikey is None:
-        _fail("WHATSAPP_PHONE et CALLMEBOT_APIKEY doivent être définis dans .env", 2)
-    if not settings.votes_url:
-        _fail("RADIO_VOTES_URL doit être défini dans .env", 2)
-    st = _status(settings, editorial)
-    head = (
-        f"AubeSonore : {_n(st.pending)} titres à écouter — {settings.votes_url}"
-        if st.pending
-        else "AubeSonore : aucun titre en attente de vote"
-    )
-    with _db(settings) as conn:
-        to_adjust = load_suivi(conn, editorial.nouveautes).to_adjust
-    suivi = f"Suivi : {settings.votes_url.rstrip('/')}/suivi" + (
-        f" ({_n(len(to_adjust))} points à ajuster)" if to_adjust else ""
-    )
-    lines = [head, suivi] + (
-        [] if page_ok(settings.votes_host, settings.votes_port) else ["Page de vote injoignable"]
-    )
-    text = "\n".join(lines + _status_lines(st, editorial.votes.quiet_days))
-    typer.echo(text)
-    try:
-        send_whatsapp(
-            settings.whatsapp_phone.get_secret_value(),
-            settings.callmebot_apikey.get_secret_value(),
-            text,
-        )
-    except WhatsAppError as e:
-        _fail(f"Rappel WhatsApp non envoyé : {e}", 1)
-    with _db(settings) as conn:
-        _record(conn, "votes-remind", True, {"en attente": st.pending})
-    typer.echo("Rappel WhatsApp envoyé")

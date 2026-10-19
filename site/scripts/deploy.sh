@@ -69,7 +69,7 @@ if git merge-base --is-ancestor "$target" HEAD; then
 fi
 
 # A commit whose deploy failed was rolled back (rollback below): it is not tried again every
-# two minutes, only a newer master is. The unit keeps failing meanwhile, so Gatus keeps alerting.
+# two minutes, only a newer master is. The unit keeps failing meanwhile.
 if [ "$target" = "$(git config --get aubesonore.failedTarget || true)" ]; then
   echo "${target:0:8} failed to deploy and was rolled back; waiting for a newer master"
   exit 1

@@ -673,7 +673,7 @@ def test_a_short_hour_is_published_then_fails_the_grid(
     tmp_path: Path, grille_env: FakeAzuracast
 ) -> None:
     # Breaks if a short hour passes in silence: it runs out and the fallback plays (vision §1),
-    # and only a failed command makes Gatus alert.
+    # and only a failed command shows it.
     _on_air(tmp_path, 10)
     res = CliRunner().invoke(cli.app, ["grille"])
     assert res.exit_code == 1

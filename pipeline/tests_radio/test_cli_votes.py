@@ -9,15 +9,12 @@ from typer.testing import CliRunner
 
 import radio.cli as cli
 from radio.core.config import Settings
-from radio.core.report import last_stages, record_stage
+from radio.core.report import record_stage
 from radio.model.model import Batch, YesRate
-from radio.notify.whatsapp import WhatsAppError
 from radio.votes.status import Status
 from tests_radio.model_factory import make_model_db, serve_scores
 
 runner = CliRunner()
-KEY = "cle-secrete-123"
-PHONE = "+33600000000"
 
 
 def _settings(tmp_path: Path, **extra: Any) -> Settings:
@@ -33,9 +30,6 @@ def full(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         tmp_path,
         cf_access_team_domain="aube.cloudflareaccess.com",
         cf_access_aud="aud-tag",
-        whatsapp_phone=PHONE,
-        callmebot_apikey=KEY,
-        RADIO_VOTES_URL="https://votes.example.org",
     )
     monkeypatch.setattr(cli.common, "_settings", lambda: s)
     return tmp_path
@@ -155,51 +149,6 @@ def test_votes_serve_runs_uvicorn_on_loopback(full: Path, monkeypatch: pytest.Mo
     assert res.exit_code == 0, res.output
     assert (seen["host"], seen["port"]) == ("127.0.0.1", 8040)
     assert seen["app"].title == "FastAPI"
-
-
-def test_votes_remind_sends_the_status(full: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    make_model_db(full / "data").close()
-    sent: list[tuple[str, str, str]] = []
-    monkeypatch.setattr(cli.votes, "send_whatsapp", lambda p, k, t: sent.append((p, k, t)))
-    monkeypatch.setattr(cli.votes, "page_ok", lambda host, port: True)
-    res = runner.invoke(cli.app, ["votes-remind"])
-    assert res.exit_code == 0, res.output
-    assert len(sent) == 1
-    phone, key, text = sent[0]
-    assert (phone, key) == (PHONE, KEY)
-    assert text.startswith("AubeSonore : aucun titre en attente de vote")
-    assert "/suivi (" in text  # lien du suivi et nombre de points à ajuster
-    assert "Aucun modèle en service" in text
-    assert "Rappel WhatsApp envoyé" in res.output
-    assert KEY not in res.output and PHONE not in res.output
-    with cli.common._db(cli.common._settings()) as conn:
-        assert [(s, ok) for s, _, ok, _ in last_stages(conn)] == [("votes-remind", True)]
-
-
-def test_votes_remind_failure_is_visible(full: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    make_model_db(full / "data").close()
-
-    def refuse(p: str, k: str, t: str) -> None:
-        raise WhatsAppError("HTTP 210 : quota CallMeBot épuisé (16 messages / 4 h)")
-
-    monkeypatch.setattr(cli.votes, "send_whatsapp", refuse)
-    monkeypatch.setattr(cli.votes, "page_ok", lambda host, port: True)
-    res = runner.invoke(cli.app, ["votes-remind"])
-    assert res.exit_code == 1
-    assert "Rappel WhatsApp non envoyé : HTTP 210" in res.output
-    assert KEY not in res.output
-    # Le rappel en échec laisse sa ligne de rapport, comme une étape de la passe (§8.1).
-    with cli.common._db(cli.common._settings()) as conn:
-        assert [(s, ok) for s, _, ok, _ in last_stages(conn)] == [("votes-remind", False)]
-
-
-def test_votes_remind_requires_its_settings(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(cli.common, "_settings", lambda: _settings(tmp_path))
-    res = runner.invoke(cli.app, ["votes-remind"])
-    assert res.exit_code == 2
-    assert "WHATSAPP_PHONE et CALLMEBOT_APIKEY" in res.output
 
 
 def test_report_prints_the_status(full: Path) -> None:

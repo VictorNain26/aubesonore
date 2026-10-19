@@ -18,7 +18,7 @@ services:
       - "com.centurylinklabs.watchtower.scope=azuracast"
     # Loopback only: Docker's published ports bypass ufw
     # (docs.docker.com/engine/network/packet-filtering-firewalls/), and the box has a public IPv6.
-    # Every client is on this host: the Cloudflare tunnel (localhost:8080), Gatus, the pipeline;
+    # Every client is on this host: the Cloudflare tunnel (localhost:8080), the pipeline;
     # listeners come through the tunnel and nginx, never to Icecast directly. The site backend
     # reaches the API at host.docker.internal, docker0's 172.17.0.1, hence that second address.
     ports:

@@ -42,7 +42,7 @@ commun de leurs réponses (`check_status`, `json_or_none`).
   disque de Maël (`/media/musique`), pas même par un `find`.
 - **Aucun secret dans les journaux, exceptions, tests ou commits.** Cela vaut pour le jeton Plex,
   la clé Last.fm (passée en paramètre de requête : `urllib3` reste à ERROR), les URL d'extraits
-  Deezer (signées : jamais stockées) et la clé CallMeBot. Le `.env` est illisible par l'agent.
+  Deezer (signées : jamais stockées). Le `.env` est illisible par l'agent.
 - **Un repli silencieux est pire qu'une panne.** Tout ce qui est sauté est compté et nommé dans le
   rapport de la commande.
 - **Seuls les votes d'examen jugent un modèle.** Un vote d'examen n'est jamais un exemple

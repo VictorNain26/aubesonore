@@ -41,7 +41,6 @@ class Settings(BaseSettings):
     )
     votes_host: str = Field(default="127.0.0.1", validation_alias="RADIO_VOTES_HOST")
     votes_port: int = Field(default=8040, validation_alias="RADIO_VOTES_PORT")
-    votes_url: str | None = Field(default=None, validation_alias="RADIO_VOTES_URL")
     cf_access_team_domain: str | None = Field(
         default=None, pattern=r"^[a-z0-9-]+\.cloudflareaccess\.com$"
     )
@@ -59,9 +58,6 @@ class Settings(BaseSettings):
     azuracast_station_id: int = 1
     sockseek_bin: Path = Path("~/.local/bin/sockseek").expanduser()
     rsgain_bin: Path = Path("~/.local/bin/rsgain").expanduser()
-    # Le numéro est une donnée personnelle : masqué comme un secret.
-    whatsapp_phone: SecretStr | None = Field(default=None, repr=False)
-    callmebot_apikey: SecretStr | None = Field(default=None, repr=False)
 
     @property
     def db_path(self) -> Path:

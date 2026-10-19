@@ -1,6 +1,6 @@
 """Page de vote : une page pour le téléphone, un geste par titre.
 
-- Chaque requête, sauf /sante, doit porter un jeton Cloudflare Access valide.
+- Chaque requête doit porter un jeton Cloudflare Access valide.
 - L'extrait est servi par la page elle-même. Le serveur demande à Deezer une URL fraîche
   (signée, elle expire) et relaie l'audio : l'URL ne quitte jamais le serveur et n'est jamais
   journalisée.
@@ -22,7 +22,6 @@ from pathlib import Path
 from typing import Annotated, Literal, Protocol
 
 import jwt
-import requests
 from fastapi import Depends, FastAPI, Form, Header, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from starlette.background import BackgroundTask
@@ -100,7 +99,7 @@ def _page(ballots: list[Ballot], n_voted: int) -> str:
     if not ballots:
         return _shell(
             "<h1>Rien à écouter</h1>"
-            '<p class="reste">La prochaine sélection arrivera avec le rappel WhatsApp.</p>'
+            '<p class="reste">La prochaine sélection arrivera avec la passe du dimanche.</p>'
             + _week_link(n_voted)
         )
     b = ballots[0]
@@ -209,10 +208,6 @@ def create_app(
     app.state.extraits = tempfile.TemporaryDirectory(prefix="radio-extraits-")
     guarded = [Depends(access)]
 
-    @app.get("/sante")
-    def sante() -> dict[str, str]:
-        return {"etat": "ok"}
-
     @app.get("/", response_class=HTMLResponse, dependencies=guarded)
     def page() -> str:
         return _page(waiting(), len(week()))
@@ -282,12 +277,3 @@ def create_app(
         )
 
     return app
-
-
-def page_ok(host: str, port: int) -> bool:
-    """Sonde le serveur local seulement : tunnel ou règle Access en panne non détectés."""
-    try:
-        r = requests.get(f"http://{host}:{port}/sante", timeout=5)
-    except requests.RequestException:
-        return False
-    return r.status_code == 200
