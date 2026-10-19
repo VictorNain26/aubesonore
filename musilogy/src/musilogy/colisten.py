@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from pathlib import Path
 
 import duckdb
 import numpy as np
@@ -36,6 +37,8 @@ CHUNK = 100
 # Scored rows handed to DuckDB at once: the whole result held in Python, then
 # copied once more to be joined, took the peak to 4.2 GB (2026-10-08).
 BATCH = 2_000_000
+# The computation itself, part of cache_key.
+SOURCE = Path(__file__).read_bytes()
 
 PARAMETERS = {
     "colisten_min_listeners": MIN_LISTENERS,
@@ -55,11 +58,12 @@ def scores(common: np.ndarray, pop_ref: float, pop_cand: np.ndarray) -> np.ndarr
 
 
 def cache_key() -> str:
-    """The rule's parameters, digested into the name of a kept co-listening
-    (paths.colisten_cache): one computed under other parameters is never read.
-    A change to the computation that leaves them unchanged is not seen: its
-    PR removes the kept files."""
-    return hashlib.sha256(json.dumps(PARAMETERS, sort_keys=True).encode()).hexdigest()[:12]
+    """The rule, digested into the name of a kept co-listening
+    (paths.colisten_cache): its parameters and this module's source, so that
+    one computed by other parameters or another computation is never read.
+    Any edit here, a comment included, computes it again."""
+    rule = json.dumps(PARAMETERS, sort_keys=True).encode() + SOURCE
+    return hashlib.sha256(rule).hexdigest()[:12]
 
 
 def set_parameters(con: duckdb.DuckDBPyConnection) -> None:

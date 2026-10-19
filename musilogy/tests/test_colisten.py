@@ -141,6 +141,24 @@ def test_the_cache_key_follows_the_parameters(monkeypatch):
     assert cache_key() != key
 
 
+def test_the_cache_key_follows_the_computation(monkeypatch):
+    # A change to the rule that keeps its parameters must not read a
+    # co-listening computed by the previous rule.
+    key = cache_key()
+    monkeypatch.setattr(colisten, "SOURCE", colisten.SOURCE + b"# another rule\n")
+    assert cache_key() != key
+
+
+def test_without_listens_a_kept_colisten_is_not_read(tmp_path):
+    # A build without listens publishes no listening source: it must not
+    # publish a co-listening either.
+    cache = tmp_path / "colisten.parquet"
+    from_cache(tmp_path, USERS, cache)
+    c = duckdb.connect(":memory:")
+    colisten_from(c, None, None, cache)
+    assert rows(c) == []
+
+
 def test_a_kept_colisten_is_read_from_its_file_not_held_in_memory(tmp_path):
     # 45 million rows held in the build's capped memory push every later step
     # to spill: once kept, the table is the file, computed or read back.

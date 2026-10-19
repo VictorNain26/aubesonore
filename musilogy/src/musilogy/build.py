@@ -156,8 +156,8 @@ def colisten_from(
     """The co-listening, read from `cache` when a run already computed it,
     else computed from the listens and kept at `cache`. The cache's path names
     the listens and the rule (paths.colisten_cache): what it holds is what the
-    computation would give. A build without listens keeps nothing."""
-    if cache is None or not cache.exists():
+    computation would give. A build without listens neither reads nor keeps one."""
+    if cache is None or listens is None or not cache.exists():
         load_listening(con, listens, snapshot)
         build_colisten(con)
         if cache is None or listens is None:
