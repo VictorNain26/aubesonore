@@ -509,9 +509,12 @@ lit sur la machine :
 - `systemctl --user list-units --failed` : une unité `radio-*`, `aubesonore-*` ou
   `azuracast-backup` en échec (passe hebdomadaire jugée par `radio check`, grille du lendemain,
   sauvegardes, déploiement du site) ;
-- `.venv/bin/radio report` : le dernier rapport de chaque étape et ses lignes `ALERTE` (aucune
-  sélection depuis plus de `quiet_days` jours : passe hebdomadaire en échec ?) ;
+- `.venv/bin/radio report` : le dernier rapport de chaque étape et ses lignes `ALERTE`
+  (`_status_lines`, `radio/cli/votes.py`) ;
 - les journaux : `journalctl --user -u <unité>`.
+
+Angle mort accepté : un flux coupé ou la playlist de secours à l'antenne ne font échouer aucune
+unité ; ils ne se voient qu'à l'écoute ou dans AzuraCast.
 
 ### 8.3 Non-régression
 
@@ -536,8 +539,7 @@ lit sur la machine :
 | chaque jour 04:30 | `radio-backup` | copie de `data/radio.db` (API de sauvegarde SQLite, `integrity_check` vérifié) et de `data/models/` dans `RADIO_BACKUP_DIR` (`/media/plex/.backups/radio`, autre disque physique), 14 jours gardés |
 | en continu | `radio-votes` | page de vote, `127.0.0.1:8040`, publiée sur `votes.aubesonore.fr` |
 
-- État : `.venv/bin/radio report`.
-- Journaux : `journalctl --user -u radio-weekly`.
+- Pannes : §8.2.
 - Un gros rattrapage de `signals` (environ 3 s par titre) ou de `mesures` (environ 17 s par
   titre) se lance à la main, en `nice`, jamais pendant `radio-weekly`.
 

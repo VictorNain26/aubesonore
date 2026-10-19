@@ -1,6 +1,6 @@
 """Page de vote : une page pour le téléphone, un geste par titre.
 
-- Chaque requête, sauf /sante, doit porter un jeton Cloudflare Access valide.
+- Chaque requête doit porter un jeton Cloudflare Access valide.
 - L'extrait est servi par la page elle-même. Le serveur demande à Deezer une URL fraîche
   (signée, elle expire) et relaie l'audio : l'URL ne quitte jamais le serveur et n'est jamais
   journalisée.
@@ -207,10 +207,6 @@ def create_app(
     # invalide : les extraits vivent dans un répertoire supprimé avec l'application.
     app.state.extraits = tempfile.TemporaryDirectory(prefix="radio-extraits-")
     guarded = [Depends(access)]
-
-    @app.get("/sante")
-    def sante() -> dict[str, str]:
-        return {"etat": "ok"}
 
     @app.get("/", response_class=HTMLResponse, dependencies=guarded)
     def page() -> str:

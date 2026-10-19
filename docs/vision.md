@@ -405,8 +405,8 @@ choix assumé, et il impose :
 - **le déploiement par fusion sur `master`**, tiré par un timer, jamais pendant la passe
   hebdomadaire ;
 - **des sauvegardes sur un disque distinct**, dont les médias de l'antenne (restic, quotidien) ;
-- **aucune surveillance externe ni notification** : une tâche planifiée en échec se lit dans
-  `systemctl --user list-units --failed` et ses journaux, l'état du goût dans `radio report`.
+- **aucune surveillance externe ni notification** : une panne se lit sur la machine
+  (`pipeline/docs/vision.md` §8.2).
 
 Risques acceptés tant que leur déclencheur ne s'est pas produit :
 

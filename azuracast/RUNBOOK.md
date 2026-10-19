@@ -112,7 +112,7 @@ cd musilogy && uv sync
 
 ```bash
 docker ps                                   # azuracast, aubesonore-{db,backend,frontend,renderer}
-systemctl --user list-timers                # 6 timers : aubesonore-{backup,deploy}, azuracast-backup, radio-{backup,grille,weekly}
+systemctl --user list-timers                # un par *.timer de pipeline/deploy/systemd, site/scripts/systemd et azuracast/scripts/systemd
 systemctl --user is-active radio-votes      # page de vote ; 127.0.0.1:8040 répond 403 sans Cloudflare Access
 cd ~/aubesonore/pipeline && .venv/bin/pytest -q -W error && .venv/bin/radio report
 ```

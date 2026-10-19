@@ -60,14 +60,14 @@ def _first(db: Path) -> Ballot:
         conn.close()
 
 
-def test_every_page_requires_access_except_health(db: Path) -> None:
+def test_every_page_requires_access(db: Path) -> None:
     c = _client(db)
-    assert c.get("/sante").status_code == 200
     assert c.get("/").status_code == 403
     assert c.get("/", headers={HEADER: "faux"}).status_code == 403
     assert c.post("/vote", data={"tid": "1", "choix": "oui"}).status_code == 403
     assert c.get("/extrait/1").status_code == 403
     assert c.get("/docs").status_code == 404
+    assert c.get("/sante").status_code == 404
 
 
 def test_page_shows_next_ballot_blind(db: Path) -> None:
