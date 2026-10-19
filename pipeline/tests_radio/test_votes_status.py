@@ -7,11 +7,9 @@ from radio.core.config import ModelConfig
 from radio.model.model import Batch, train
 from radio.votes.select import select_batch
 from radio.votes.status import load_status
-from tests_radio.model_factory import NOW, add_vote, make_model_db, serve_scores
+from tests_radio.model_factory import NO_FLOOR, NOW, add_vote, make_model_db, serve_scores
 
 LATER = datetime(2026, 9, 26, tzinfo=UTC)
-
-NO_FLOOR = ModelConfig().floor
 
 
 def test_status_measures_the_serving_model_and_the_page_yes_rate(tmp_path: Path) -> None:

@@ -56,7 +56,7 @@ suivante reprend.
 | 2b Nouveautés | Titres récents choisis par des humains, ajoutés à la fournée (§3.1) | API Hype Machine v2, API Deezer |
 | 2c Favoris | Les favoris Hype Machine de Victor : plus des découvertes, et mesure du goût (§3.2) | API Hype Machine v2, API Deezer |
 | 3 Empreinte | Empreinte Discogs-EffNet de l'extrait Deezer de 30 s | essentia-tensorflow, modèle MTG épinglé |
-| 4 Goût | Régression logistique sur l'empreinte ; chaque fournée est classée par famille (découvertes, nouveautés) et les mieux notés de chacune sont retenus, jamais une nouveauté notée sous 0,6 | scikit-learn |
+| 4 Goût | Régression logistique sur l'empreinte ; chaque fournée est classée par famille (découvertes, nouveautés) et les mieux notés de chacune sont retenus, au-dessus d'un plancher pour les nouveautés | scikit-learn |
 | 5 Acquisition | Télécharger les retenus en MP3 et prouver l'identité de chaque fichier | Sockseek, ffprobe, fpcalc |
 | 6 Préparation | FLAC → V0, ReplayGain, balises | ffmpeg, rsgain |
 | 7 Antenne | Tenir la bibliothèque d'antenne et la publier sur AzuraCast | API AzuraCast |
@@ -129,7 +129,7 @@ priorité.
   d'acquisition (`recherches/2026-10-02-cycle-de-vie.md` §3 à §5). Un candidat entré depuis dans
   la bibliothèque n'est plus noté : ce n'est plus une découverte.
 - **Plancher des nouveautés.** Au plus `keep_nouveautes`, et jamais une nouveauté notée sous
-  `min_score_nouveautes` (0,6) : décision du 2026-10-19. Avec ~110 nouveautés par semaine, en
+  `min_score_nouveautes` (`config/editorial.toml`) : décision du 2026-10-19. Avec ~110 nouveautés par semaine, en
   retenir 80 faisait tomber leur coupure vers 0,23-0,25, contre 0,75-0,79 pour les découvertes
   (Mastodon, « In the Ruins », métal noté 0,54, est passé à l'antenne sans vote). Sur les votes
   d'examen des nouveautés, une note d'au moins 0,6 donnait 12 oui et 0 non, une note plus basse

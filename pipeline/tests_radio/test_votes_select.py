@@ -3,7 +3,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from radio.core.config import ModelConfig
 from radio.votes.select import (
     NoScoresError,
     NoServingModelError,
@@ -13,9 +12,7 @@ from radio.votes.select import (
     select_batch,
     week_votes,
 )
-from tests_radio.model_factory import NOW, make_model_db, serve_scores
-
-NO_FLOOR = ModelConfig().floor
+from tests_radio.model_factory import NO_FLOOR, NOW, as_news, make_model_db, serve_scores
 
 
 def _rng(seed: int = 0) -> np.random.Generator:
@@ -53,10 +50,7 @@ def test_lesson_measures_each_family_against_its_own_cut(tmp_path: Path) -> None
     serve_scores(conn)
     # Les rejetés de la dernière fournée deviennent des nouveautés ; leur meilleur titre (k = 0,
     # note 0,4375) est retenu : c'est la coupure des nouveautés, loin de celle des découvertes.
-    conn.execute(
-        "UPDATE candidates SET source = 'hypem', seed_artist_id = NULL, "
-        "neighbour_artist_id = NULL, detail = 'Blog' WHERE deezer_track_id >= 300600"
-    )
+    as_news(conn, 300600)
     conn.execute("UPDATE scores SET accepted = 1 WHERE deezer_track_id >= 300600 AND score > 0.43")
     conn.commit()
     sel = select_batch(conn, _rng(), 0, 18, NOW, floor=NO_FLOOR)
@@ -70,10 +64,7 @@ def test_a_family_without_retained_title_takes_its_floor_as_cut(tmp_path: Path) 
     # Nouveautés de la dernière fournée toutes sous le plancher de 0,4 : aucune retenue. Sans
     # coupure, elles n'auraient aucune leçon ; le plancher en tient lieu, et les plus proches
     # sont les k = 1 (0,375), pas les k = 0 (0,4375).
-    conn.execute(
-        "UPDATE candidates SET source = 'hypem', seed_artist_id = NULL, "
-        "neighbour_artist_id = NULL, detail = 'Blog' WHERE deezer_track_id >= 300600"
-    )
+    as_news(conn, 300600)
     conn.commit()
     sel = select_batch(conn, _rng(), 0, 18, NOW, floor={"decouvertes": 0.0, "nouveautes": 0.4})
     news = [(3000 + a) * 100 + 1 for a in range(6, 12)]
@@ -84,10 +75,7 @@ def test_exam_splits_evenly_between_discoveries_and_fresh_picks(tmp_path: Path) 
     conn = make_model_db(tmp_path)
     serve_scores(conn)
     # Dernière fournée : 24 voisins aimés et 24 nouveautés ; puis 2 nouveautés seulement.
-    conn.execute(
-        "UPDATE candidates SET source = 'hypem', seed_artist_id = NULL, "
-        "neighbour_artist_id = NULL, detail = 'Blog' WHERE deezer_track_id >= 300600"
-    )
+    as_news(conn, 300600)
     conn.commit()
     sel = select_batch(conn, _rng(), 10, 0, NOW, floor=NO_FLOOR)
     assert sum(t >= 300600 for t in sel.exam) == 5 and len(sel.exam) == 10

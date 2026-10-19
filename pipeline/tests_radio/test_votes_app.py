@@ -10,18 +10,15 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from radio.core.config import ModelConfig
 from radio.core.db import connect
 from radio.sources.deezer import DeezerError, DeezerTrack, DeezerUnavailable
 from radio.votes.access import HEADER
 from radio.votes.app import create_app, page_ok
 from radio.votes.select import Ballot, pending_ballots, select_batch
-from tests_radio.model_factory import NOW, make_model_db, serve_scores
+from tests_radio.model_factory import NO_FLOOR, NOW, make_model_db, serve_scores
 
 SIGNED = "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/x.mp3?hdnea=exp=1~acl=*~hmac=SIGNE"
 OK = {HEADER: "bon-jeton"}
-
-NO_FLOOR = ModelConfig().floor
 
 
 class FakeDeezer:

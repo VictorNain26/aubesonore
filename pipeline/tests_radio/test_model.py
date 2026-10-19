@@ -8,7 +8,7 @@ import pytest
 import radio.model.model as model_mod
 from radio.core.config import ModelConfig
 from radio.model.model import Batch, _decide, last_batch, rescore, train
-from tests_radio.model_factory import NOW, add_vote, make_model_db
+from tests_radio.model_factory import NOW, add_vote, as_news, make_model_db
 
 
 def test_decide_keeps_the_serving_model_unless_the_new_one_is_as_good() -> None:
@@ -43,11 +43,7 @@ def test_each_batch_and_family_keeps_its_best_and_library_titles_are_not_discove
     _two_batches(conn)
     # Les nouveautés de la fournée 1 sont des titres rejetés : elles ne disputent pas la coupure
     # des découvertes, aimées, et gardent leur propre quota.
-    conn.execute(
-        "UPDATE candidates SET source = 'hypem', seed_artist_id = NULL, "
-        "neighbour_artist_id = NULL, detail = 'Blog', run_id = 1 "
-        "WHERE deezer_track_id BETWEEN 300000 AND 300599"
-    )
+    as_news(conn, 300000, 300599, run_id=1)
     conn.execute("UPDATE tracks SET origin = 'library' WHERE deezer_track_id = 200000")
     conn.commit()
     cfg = ModelConfig(keep_decouvertes=10, keep_nouveautes=5)
@@ -72,17 +68,6 @@ def test_each_batch_and_family_keeps_its_best_and_library_titles_are_not_discove
     )
 
 
-def _news(conn: Any, low: int, high: int) -> None:
-    """Les candidats `low` à `high` deviennent des nouveautés Hype Machine de la fournée 1."""
-    conn.execute(
-        "UPDATE candidates SET source = 'hypem', seed_artist_id = NULL, "
-        "neighbour_artist_id = NULL, detail = 'Blog', run_id = 1 "
-        "WHERE deezer_track_id BETWEEN ? AND ?",
-        (low, high),
-    )
-    conn.commit()
-
-
 def _kept_and_floored(conn: Any) -> tuple[Counter[tuple[int, str]], Counter[tuple[int, str]]]:
     kept: Counter[tuple[int, str]] = Counter()
     floored: Counter[tuple[int, str]] = Counter()
@@ -102,8 +87,8 @@ def test_the_floor_keeps_low_scored_news_off_air_and_counts_them_once_per_artist
     _two_batches(conn)
     # Fournée 1 : 3 artistes aimés (2000 à 2002) et 6 rejetés (3000 à 3005), 4 titres chacun,
     # deviennent des nouveautés ; le quota de 100 n'est jamais épuisé.
-    _news(conn, 200000, 200299)
-    _news(conn, 300000, 300599)
+    as_news(conn, 200000, 200299, run_id=1)
+    as_news(conn, 300000, 300599, run_id=1)
     cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=100, min_score_nouveautes=0.5)
     assert train(conn, tmp_path / "models", cfg, NOW).promoted
     rescore(conn, tmp_path / "models", cfg)
@@ -126,8 +111,8 @@ def test_the_floor_keeps_low_scored_news_off_air_and_counts_them_once_per_artist
 def test_a_zero_floor_keeps_every_news_artist(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     _two_batches(conn)
-    _news(conn, 200000, 200299)
-    _news(conn, 300000, 300599)
+    as_news(conn, 200000, 200299, run_id=1)
+    as_news(conn, 300000, 300599, run_id=1)
     cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=100)
     assert cfg.floor == {"decouvertes": 0.0, "nouveautes": 0.0}
     assert train(conn, tmp_path / "models", cfg, NOW).promoted
@@ -139,7 +124,7 @@ def test_a_zero_floor_keeps_every_news_artist(tmp_path: Path) -> None:
 def test_no_news_above_the_floor_retains_none_and_names_them_all(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     _two_batches(conn)
-    _news(conn, 300000, 300599)
+    as_news(conn, 300000, 300599, run_id=1)
     cfg = ModelConfig(keep_decouvertes=10, keep_nouveautes=100, min_score_nouveautes=0.5)
     assert train(conn, tmp_path / "models", cfg, NOW).promoted
     rescore(conn, tmp_path / "models", cfg)
@@ -151,8 +136,8 @@ def test_no_news_above_the_floor_retains_none_and_names_them_all(tmp_path: Path)
 def test_news_stopped_by_an_exhausted_quota_are_not_counted_as_floored(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     _two_batches(conn)
-    _news(conn, 200000, 200299)
-    _news(conn, 300000, 300599)
+    as_news(conn, 200000, 200299, run_id=1)
+    as_news(conn, 300000, 300599, run_id=1)
     cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=3, min_score_nouveautes=0.5)
     assert train(conn, tmp_path / "models", cfg, NOW).promoted
     rescore(conn, tmp_path / "models", cfg)
@@ -164,7 +149,7 @@ def test_news_stopped_by_an_exhausted_quota_are_not_counted_as_floored(tmp_path:
 def test_a_floored_news_does_not_take_its_artist_away_from_discoveries(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     _two_batches(conn)
-    _news(conn, 300000, 300599)
+    as_news(conn, 300000, 300599, run_id=1)
     cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=100, min_score_nouveautes=0.5)
     assert train(conn, tmp_path / "models", cfg, NOW).promoted
     rescore(conn, tmp_path / "models", cfg)
@@ -198,12 +183,7 @@ def test_a_floored_news_does_not_take_its_artist_away_from_discoveries(tmp_path:
 def test_last_batch_counts_the_floored_news_of_the_latest_run(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     _two_batches(conn)
-    conn.execute(
-        "UPDATE candidates SET source = 'deezer_editorial', seed_artist_id = NULL, "
-        "neighbour_artist_id = NULL, detail = 'electro' "
-        "WHERE deezer_track_id BETWEEN 300600 AND 300899"
-    )
-    conn.commit()
+    as_news(conn, 300600, 300899, source="deezer_editorial", detail="electro")
     cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=100, min_score_nouveautes=0.5)
     assert train(conn, tmp_path / "models", cfg, NOW).promoted
     rescore(conn, tmp_path / "models", cfg)

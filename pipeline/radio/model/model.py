@@ -4,7 +4,7 @@ docs/recherches/2026-09-30-modele-audio-seul.md).
 Chaque fournée de candidats est classée famille par famille (découvertes, nouveautés) ; les
 mieux notés de chaque famille sont retenus, en nombre fixé par la grille d'antenne
 (docs/recherches/2026-10-02-cycle-de-vie.md), et jamais sous le plancher de score de leur famille
-(décision du 2026-10-19 pour les nouveautés : au plus `keep_nouveautes`, jamais sous 0,6).
+(décision du 2026-10-19 pour les nouveautés : `min_score_nouveautes`).
 Seuls les votes d'examen jugent : un nouveau modèle n'est mis en service que si son AUC d'examen
 n'est pas inférieure à celle du modèle en service.
 """
