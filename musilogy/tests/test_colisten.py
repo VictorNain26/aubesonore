@@ -139,3 +139,13 @@ def test_the_cache_key_follows_the_parameters(monkeypatch):
     assert cache_key() == key
     monkeypatch.setitem(colisten.PARAMETERS, "colisten_k", 49)
     assert cache_key() != key
+
+
+def test_a_kept_colisten_is_read_from_its_file_not_held_in_memory(tmp_path):
+    # 45 million rows held in the build's capped memory push every later step
+    # to spill: once kept, the table is the file, computed or read back.
+    cache = tmp_path / "colisten.parquet"
+    for users in (USERS, {1: [A, B]}):
+        c = from_cache(tmp_path, users, cache)
+        views = c.execute("SELECT view_name FROM duckdb_views() WHERE NOT internal").fetchall()
+        assert views == [("colisten",)]

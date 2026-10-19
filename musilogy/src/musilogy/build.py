@@ -157,18 +157,22 @@ def colisten_from(
     else computed from the listens and kept at `cache`. The cache's path names
     the listens and the rule (paths.colisten_cache): what it holds is what the
     computation would give. A build without listens keeps nothing."""
-    if cache is not None and cache.exists():
-        set_parameters(con)
-        con.execute(
-            "CREATE OR REPLACE TABLE colisten AS SELECT * FROM read_parquet(?)", [cache.as_posix()]
-        )
-        _set_variable(con, "listening_snapshot", snapshot, "VARCHAR")
-        return
-    load_listening(con, listens, snapshot)
-    build_colisten(con)
-    if cache is not None and listens is not None:
+    if cache is None or not cache.exists():
+        load_listening(con, listens, snapshot)
+        build_colisten(con)
+        if cache is None or listens is None:
+            return
         with written_aside(cache) as aside:
-            con.execute("COPY colisten TO ? (FORMAT parquet)", [aside.as_posix()])
+            con.execute("COPY colisten TO ? (FORMAT parquet, COMPRESSION zstd)", [aside.as_posix()])
+        con.execute("DROP TABLE colisten")
+    else:
+        set_parameters(con)
+        _set_variable(con, "listening_snapshot", snapshot, "VARCHAR")
+    # Once kept, the table is its file: 45 million rows held in the build's
+    # capped memory would push every later step to spill. A view takes no
+    # prepared parameter: the path goes in as a literal.
+    literal = "'" + cache.as_posix().replace("'", "''") + "'"
+    con.execute(f"CREATE OR REPLACE VIEW colisten AS SELECT * FROM read_parquet({literal})")
 
 
 def load_official(
