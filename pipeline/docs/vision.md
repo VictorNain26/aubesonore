@@ -129,14 +129,13 @@ priorité.
   d'acquisition (`recherches/2026-10-02-cycle-de-vie.md` §3 à §5). Un candidat entré depuis dans
   la bibliothèque n'est plus noté : ce n'est plus une découverte.
 - **Plancher des nouveautés.** Au plus `keep_nouveautes`, et jamais une nouveauté notée sous
-  `min_score_nouveautes` (`config/editorial.toml`) : décision du 2026-10-19. Avec ~110 nouveautés par semaine, en
-  retenir 80 faisait tomber leur coupure vers 0,23-0,25, contre 0,75-0,79 pour les découvertes
-  (Mastodon, « In the Ruins », métal noté 0,54, est passé à l'antenne sans vote). Sur les votes
-  d'examen des nouveautés, une note d'au moins 0,6 donnait 12 oui et 0 non, une note plus basse
-  4 oui et 4 non. Une nouveauté sous le plancher ne prend pas la place de son artiste ; celles
-  qu'il écarte alors que le quota restait sont comptées, une par artiste (`scores.floored`), dans
-  le rapport de `train` et de `radio votes`. Une famille sans titre retenu prend son plancher
-  pour coupure de leçon. Les découvertes n'ont pas de plancher. Quand le stock de nouveautés
+  `min_score_nouveautes` (`config/editorial.toml`) : décision du 2026-10-19
+  (`recherches/2026-10-19-plancher-nouveautes.md`) ; les nouveautés, peu nombreuses, passaient
+  presque toutes. Une nouveauté sous le plancher ne prend pas la place de son artiste ; celles
+  qu'il écarte sont comptées (`scores.floored`) une par artiste et dans la limite des places
+  restantes, ce que la fournée aurait retenu sans lui, dans le rapport de `train` et de
+  `radio votes`. Tant qu'il écarte des titres, le plancher est la coupure de leçon de la famille.
+  Les découvertes n'ont pas de plancher. Quand le stock de nouveautés
   baisse, la grille réduit leur part d'antenne en proportion et la rend aux autres (§7.3).
 - **Un titre par artiste.** Une fournée retient au plus un titre par artiste, toutes familles
   confondues : son mieux noté (règle de Spotify Release Radar, « one song per artist per week »).

@@ -146,6 +146,19 @@ def test_news_stopped_by_an_exhausted_quota_are_not_counted_as_floored(tmp_path:
     assert kept[(1, "hypem")] == 3 and not floored
 
 
+def test_floored_news_are_counted_only_up_to_the_quota_left(tmp_path: Path) -> None:
+    conn = make_model_db(tmp_path)
+    _two_batches(conn)
+    as_news(conn, 200000, 200299, run_id=1)
+    as_news(conn, 300000, 300599, run_id=1)
+    cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=5, min_score_nouveautes=0.5)
+    assert train(conn, tmp_path / "models", cfg, NOW).promoted
+    rescore(conn, tmp_path / "models", cfg)
+    kept, floored = _kept_and_floored(conn)
+    # 3 aimés retenus, 2 places restaient : sans plancher, 2 rejetés seulement seraient entrés.
+    assert kept[(1, "hypem")] == 3 and floored == {(1, "hypem"): 2}
+
+
 def test_a_floored_news_does_not_take_its_artist_away_from_discoveries(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     _two_batches(conn)

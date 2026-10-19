@@ -65,10 +65,44 @@ def test_a_family_without_retained_title_takes_its_floor_as_cut(tmp_path: Path) 
     # coupure, elles n'auraient aucune leçon ; le plancher en tient lieu, et les plus proches
     # sont les k = 1 (0,375), pas les k = 0 (0,4375).
     as_news(conn, 300600)
+    conn.execute("UPDATE scores SET floored = 1 WHERE deezer_track_id >= 300600 AND score > 0.43")
     conn.commit()
     sel = select_batch(conn, _rng(), 0, 18, NOW, floor={"decouvertes": 0.0, "nouveautes": 0.4})
     news = [(3000 + a) * 100 + 1 for a in range(6, 12)]
     assert sorted(sel.lesson) == [(2000 + a) * 100 for a in range(12)] + news
+
+
+def test_the_floor_is_the_cut_while_it_keeps_news_off_air(tmp_path: Path) -> None:
+    conn = make_model_db(tmp_path)
+    serve_scores(conn)
+    # Dernière fournée : les aimés 2006 à 2008 et les rejetés 3006 à 3011 sont des nouveautés.
+    # Les aimés passent le plancher de 0,45 ; les rejetés, sous lui, ont été écartés alors que le
+    # quota restait : la limite réelle est le plancher, pas la plus basse note retenue (0,5625).
+    as_news(conn, 200600, 200899)
+    as_news(conn, 300600)
+    conn.execute(
+        "UPDATE scores SET accepted = 0, floored = 1 "
+        "WHERE deezer_track_id >= 300600 AND score > 0.43"
+    )
+    conn.commit()
+    sel = select_batch(conn, _rng(), 0, 15, NOW, floor={"decouvertes": 0.0, "nouveautes": 0.45})
+    discoveries = [(2000 + a) * 100 for a in (*range(6), 9, 10, 11)]
+    news = [(3000 + a) * 100 for a in range(6, 12)]
+    assert sorted(sel.lesson) == discoveries + news
+
+
+def test_a_family_without_floor_nor_retained_title_gets_no_lesson(tmp_path: Path) -> None:
+    conn = make_model_db(tmp_path)
+    serve_scores(conn)
+    # Aucune découverte retenue dans la dernière fournée, et pas de plancher : la famille n'a pas
+    # de coupure ; une coupure à 0 enverrait en leçon ses rejets les plus nets.
+    conn.execute(
+        "UPDATE scores SET accepted = 0 WHERE deezer_track_id IN "
+        "(SELECT deezer_track_id FROM candidates WHERE run_id = 2)"
+    )
+    conn.commit()
+    sel = select_batch(conn, _rng(), 0, 10, NOW, floor=NO_FLOOR)
+    assert sel.lesson == []
 
 
 def test_exam_splits_evenly_between_discoveries_and_fresh_picks(tmp_path: Path) -> None:

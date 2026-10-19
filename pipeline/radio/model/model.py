@@ -150,12 +150,17 @@ def write_scores(
         left = dict(keep)
         taken: set[int] = set()
         below: set[int] = set()
+        marked = dict.fromkeys(left, 0)
         for i in idx[np.argsort(-scores[idx], kind="stable")]:
             family, artist = groups[i][1], artist_of[int(table.track_ids[rows[i]])]
             if left[family] == 0 or artist in taken:
                 continue
             if scores[i] < floor[family]:
-                floored[i] = artist not in below
+                # Compté une fois par artiste, et tant qu'une place restait : ce que la fournée
+                # aurait retenu sans plancher.
+                if artist not in below and marked[family] < left[family]:
+                    floored[i] = True
+                    marked[family] += 1
                 below.add(artist)
                 continue
             accepted[i] = True
