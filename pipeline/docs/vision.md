@@ -513,8 +513,10 @@ lit sur la machine :
   (`_status_lines`, `radio/cli/votes.py`) ;
 - les journaux : `journalctl --user -u <unité>`.
 
-Angle mort accepté : un flux coupé ou la playlist de secours à l'antenne ne font échouer aucune
-unité ; ils ne se voient qu'à l'écoute ou dans AzuraCast.
+Angles morts acceptés, qui ne font échouer aucune unité : un flux coupé ou la playlist de secours
+à l'antenne, qui se voient à l'écoute ou dans AzuraCast ; un timer qui ne se déclenche plus
+(machine éteinte, lingering coupé, unité non reliée), dont `systemctl --user list-timers` donne
+le dernier passage.
 
 ### 8.3 Non-régression
 
