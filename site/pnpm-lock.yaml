@@ -108,16 +108,16 @@ importers:
         version: link:../../packages/shared-types
       '@elysiajs/cors':
         specifier: ^1.4.2
-        version: 1.4.2(elysia@1.4.30(@sinclair/typebox@0.34.47)(@types/bun@1.3.14)(exact-mirror@0.2.6(@sinclair/typebox@0.34.47))(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3))
+        version: 1.4.2(elysia@1.4.30(@sinclair/typebox@0.34.47)(@types/bun@1.4.3)(exact-mirror@0.2.6(@sinclair/typebox@0.34.47))(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3))
       better-auth:
         specifier: ^1.6.24
-        version: 1.6.24(drizzle-kit@0.31.11)(drizzle-orm@0.45.2(@types/pg@8.20.0)(bun-types@1.3.14)(kysely@0.29.4)(pg@8.20.0))(pg@8.20.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vitest@4.1.11)
+        version: 1.6.24(drizzle-kit@0.31.11)(drizzle-orm@0.45.2(@types/pg@8.20.0)(bun-types@1.4.3)(kysely@0.29.4)(pg@8.20.0))(pg@8.20.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vitest@4.1.11)
       drizzle-orm:
         specifier: ^0.45.2
-        version: 0.45.2(@types/pg@8.20.0)(bun-types@1.3.14)(kysely@0.29.4)(pg@8.20.0)
+        version: 0.45.2(@types/pg@8.20.0)(bun-types@1.4.3)(kysely@0.29.4)(pg@8.20.0)
       elysia:
         specifier: ^1.4.30
-        version: 1.4.30(@sinclair/typebox@0.34.47)(@types/bun@1.3.14)(exact-mirror@0.2.6(@sinclair/typebox@0.34.47))(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3)
+        version: 1.4.30(@sinclair/typebox@0.34.47)(@types/bun@1.4.3)(exact-mirror@0.2.6(@sinclair/typebox@0.34.47))(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3)
       file-type:
         specifier: '>=21.3.2'
         version: 22.0.1
@@ -135,8 +135,8 @@ importers:
         version: 1.4.2(typescript@5.9.3)
     devDependencies:
       '@types/bun':
-        specifier: 1.3.14
-        version: 1.3.14
+        specifier: 1.4.3
+        version: 1.4.3
       '@types/html-to-text':
         specifier: 9.0.4
         version: 9.0.4
@@ -2237,8 +2237,8 @@ packages:
   '@types/babel__traverse@7.28.0':
     resolution: {integrity: sha512-8PvcXf70gTDZBgt9ptxJ8elBeBjcLOAcOtoO/mPJjtji1+CdGbHgm77om1GrsPxsiE+uXIpNSK64UYaIwQXd4Q==}
 
-  '@types/bun@1.3.14':
-    resolution: {integrity: sha512-h1hFqFVcvAvD9j9K7ZW7vd82aSA+rTdznZa+5bwvCwqSB1jmmfLcbIWhOLx1/+boy/xmjgCs/OMUL8hRJSmnPw==}
+  '@types/bun@1.4.3':
+    resolution: {integrity: sha512-N67Pqy8JXbAY/j0tNraS3V5mubGvc6rrrNDmDCtZLlFzccbUJPDb0tvgUBC5q4m8ybkP93Jcn1QB+RYQ6PvBhw==}
 
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
@@ -2689,8 +2689,8 @@ packages:
   buffer-from@1.1.2:
     resolution: {integrity: sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ==}
 
-  bun-types@1.3.14:
-    resolution: {integrity: sha512-4N0ig0fEomHt5R0KCFWjovxow98rIoRwKolrYdCcknNwMekCXRnWEUvgu5soYV8QXtVsrUD8B95MBOZGPvr6KQ==}
+  bun-types@1.4.3:
+    resolution: {integrity: sha512-tinRJNGOmUN+tEAsn2y2e942n9JHRHR42iUYzDH75NmhJqVBokGSQkkfSFdNWwsANIdrK6ACH9t01M452YyTwg==}
 
   bundle-name@4.1.0:
     resolution: {integrity: sha512-tjwM5exMg6BGRI+kNmTntNsvdZS1X8BFYS6tnJ2hdH0kVxM6/eVZ2xy+FqStSWvYmtfFMDLIxurorHwDKfDz5Q==}
@@ -6048,12 +6048,12 @@ snapshots:
       nanostores: 1.4.1
       zod: 4.4.3
 
-  '@better-auth/drizzle-adapter@1.6.24(@better-auth/core@1.6.24(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.2(@types/pg@8.20.0)(bun-types@1.3.14)(kysely@0.29.4)(pg@8.20.0))':
+  '@better-auth/drizzle-adapter@1.6.24(@better-auth/core@1.6.24(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.2(@types/pg@8.20.0)(bun-types@1.4.3)(kysely@0.29.4)(pg@8.20.0))':
     dependencies:
       '@better-auth/core': 1.6.24(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1)
       '@better-auth/utils': 0.4.2
     optionalDependencies:
-      drizzle-orm: 0.45.2(@types/pg@8.20.0)(bun-types@1.3.14)(kysely@0.29.4)(pg@8.20.0)
+      drizzle-orm: 0.45.2(@types/pg@8.20.0)(bun-types@1.4.3)(kysely@0.29.4)(pg@8.20.0)
 
   '@better-auth/kysely-adapter@1.6.24(@better-auth/core@1.6.24(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(kysely@0.29.4)':
     dependencies:
@@ -6237,9 +6237,9 @@ snapshots:
 
   '@drizzle-team/brocli@0.10.2': {}
 
-  '@elysiajs/cors@1.4.2(elysia@1.4.30(@sinclair/typebox@0.34.47)(@types/bun@1.3.14)(exact-mirror@0.2.6(@sinclair/typebox@0.34.47))(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3))':
+  '@elysiajs/cors@1.4.2(elysia@1.4.30(@sinclair/typebox@0.34.47)(@types/bun@1.4.3)(exact-mirror@0.2.6(@sinclair/typebox@0.34.47))(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3))':
     dependencies:
-      elysia: 1.4.30(@sinclair/typebox@0.34.47)(@types/bun@1.3.14)(exact-mirror@0.2.6(@sinclair/typebox@0.34.47))(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3)
+      elysia: 1.4.30(@sinclair/typebox@0.34.47)(@types/bun@1.4.3)(exact-mirror@0.2.6(@sinclair/typebox@0.34.47))(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3)
 
   '@emnapi/core@1.10.0':
     dependencies:
@@ -7091,9 +7091,9 @@ snapshots:
       '@babel/types': 7.29.8
     optional: true
 
-  '@types/bun@1.3.14':
+  '@types/bun@1.4.3':
     dependencies:
-      bun-types: 1.3.14
+      bun-types: 1.4.3
 
   '@types/chai@5.2.3':
     dependencies:
@@ -7511,10 +7511,10 @@ snapshots:
 
   baseline-browser-mapping@2.11.26: {}
 
-  better-auth@1.6.24(drizzle-kit@0.31.11)(drizzle-orm@0.45.2(@types/pg@8.20.0)(bun-types@1.3.14)(kysely@0.29.4)(pg@8.20.0))(pg@8.20.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vitest@4.1.11):
+  better-auth@1.6.24(drizzle-kit@0.31.11)(drizzle-orm@0.45.2(@types/pg@8.20.0)(bun-types@1.4.3)(kysely@0.29.4)(pg@8.20.0))(pg@8.20.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vitest@4.1.11):
     dependencies:
       '@better-auth/core': 1.6.24(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1)
-      '@better-auth/drizzle-adapter': 1.6.24(@better-auth/core@1.6.24(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.2(@types/pg@8.20.0)(bun-types@1.3.14)(kysely@0.29.4)(pg@8.20.0))
+      '@better-auth/drizzle-adapter': 1.6.24(@better-auth/core@1.6.24(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(drizzle-orm@0.45.2(@types/pg@8.20.0)(bun-types@1.4.3)(kysely@0.29.4)(pg@8.20.0))
       '@better-auth/kysely-adapter': 1.6.24(@better-auth/core@1.6.24(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(kysely@0.29.4)
       '@better-auth/memory-adapter': 1.6.24(@better-auth/core@1.6.24(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)
       '@better-auth/mongo-adapter': 1.6.24(@better-auth/core@1.6.24(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.3.7(zod@4.4.3))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)
@@ -7532,7 +7532,7 @@ snapshots:
       zod: 4.4.3
     optionalDependencies:
       drizzle-kit: 0.31.11
-      drizzle-orm: 0.45.2(@types/pg@8.20.0)(bun-types@1.3.14)(kysely@0.29.4)(pg@8.20.0)
+      drizzle-orm: 0.45.2(@types/pg@8.20.0)(bun-types@1.4.3)(kysely@0.29.4)(pg@8.20.0)
       pg: 8.20.0
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
@@ -7577,9 +7577,10 @@ snapshots:
 
   buffer-from@1.1.2: {}
 
-  bun-types@1.3.14:
+  bun-types@1.4.3:
     dependencies:
       '@types/node': 25.8.0
+      undici-types: 7.24.6
 
   bundle-name@4.1.0:
     dependencies:
@@ -7827,10 +7828,10 @@ snapshots:
       esbuild: 0.25.12
       tsx: 4.21.0
 
-  drizzle-orm@0.45.2(@types/pg@8.20.0)(bun-types@1.3.14)(kysely@0.29.4)(pg@8.20.0):
+  drizzle-orm@0.45.2(@types/pg@8.20.0)(bun-types@1.4.3)(kysely@0.29.4)(pg@8.20.0):
     optionalDependencies:
       '@types/pg': 8.20.0
-      bun-types: 1.3.14
+      bun-types: 1.4.3
       kysely: 0.29.4
       pg: 8.20.0
 
@@ -7846,7 +7847,7 @@ snapshots:
 
   electron-to-chromium@1.5.443: {}
 
-  elysia@1.4.30(@sinclair/typebox@0.34.47)(@types/bun@1.3.14)(exact-mirror@0.2.6(@sinclair/typebox@0.34.47))(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3):
+  elysia@1.4.30(@sinclair/typebox@0.34.47)(@types/bun@1.4.3)(exact-mirror@0.2.6(@sinclair/typebox@0.34.47))(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3):
     dependencies:
       '@sinclair/typebox': 0.34.47
       cookie: 1.1.1
@@ -7856,7 +7857,7 @@ snapshots:
       memoirist: 0.4.0
       openapi-types: 12.1.3
     optionalDependencies:
-      '@types/bun': 1.3.14
+      '@types/bun': 1.4.3
       typescript: 5.9.3
 
   emoji-regex@10.6.0: {}
