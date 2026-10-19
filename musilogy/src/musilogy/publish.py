@@ -137,7 +137,6 @@ def extraction_matches_rows_loaded(
 SAME_SOUND_PARAMETERS = (
     "same_sound_min_colour",
     "same_sound_styles_shrink",
-    "same_sound_genres_shrink",
     "same_sound_min_style_records",
 )
 PARAMETERS = ("dump_year", "min_year", *COLISTEN_PARAMETERS, *SAME_SOUND_PARAMETERS)

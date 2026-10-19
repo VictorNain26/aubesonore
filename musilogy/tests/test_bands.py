@@ -38,11 +38,11 @@ def test_future_begin_falls_back_to_first_album(con):
     ) == [(None, 2016, "first_album")]
 
 
-def test_homonyms_without_date_or_genre_stay_in_artists_with_no_y0(con):
+def test_homonyms_without_date_or_style_stay_in_artists_with_no_y0(con):
     assert rows(
         con,
         """
-        SELECT mbid, y0, len(genres) FROM artists
+        SELECT mbid, y0, len(styles) FROM artists
         WHERE mbid IN ('9d953ee6-4ea6-4b0e-aea6-7268d380bef1',
                        '8d3431db-bc83-4dc2-93b8-0e46e31d09f7',
                        '6959c3d5-3e7f-41bb-aba3-50e38225d23d')
@@ -85,37 +85,14 @@ def test_month_precision_is_reduced_to_the_year(con):
     ) == [(1978, 1980)]
 
 
-def test_group_without_any_genre_is_in_artists_but_carries_no_vocabulary(con):
-    # Thunder Jolt: Group, dated, and neither it nor its albums carry a genre —
-    # kept in `artists` all the same: the population is complete.
+def test_group_without_any_style_is_in_artists_but_carries_no_vocabulary(con):
+    # Thunder Jolt: Group, dated, and no Discogs record of its own — kept in
+    # `artists` all the same, with an empty list of styles: the population is
+    # complete.
     thunder_jolt = "d36b0fad-abd7-44e4-88fa-f638bbf8c9a6"
     assert con.execute(
-        "SELECT y0, len(genres), genre_source FROM artists WHERE mbid = ?", [thunder_jolt]
-    ).fetchone() == (1970, 0, None)
-
-
-def test_a_band_that_declares_no_genre_takes_its_albums(con):
-    # The Belle Stars declare none; their albums carry four, which the band is
-    # now found by, labelled as coming from the albums.
-    belle_stars = "62f7a211-0056-45fe-934a-37a388a7356f"
-    row = con.execute(
-        "SELECT len(genres_declared), genre_source, genres = genres_from_albums, len(genres) "
-        "FROM artists WHERE mbid = ?",
-        [belle_stars],
-    ).fetchone()
-    assert row == (0, "albums", True, 4)
-
-
-def test_declared_genres_win_over_album_genres(con):
-    # Joy Division declares four genres and its albums carry five: the band is
-    # found by its own four, never by a union in which albums could outvote it.
-    joy_division = "9a58fda3-f4ed-4080-a3a5-f457aac9fcdd"
-    row = con.execute(
-        "SELECT genre_source, genres = genres_declared, len(genres_from_albums) "
-        "FROM artists WHERE mbid = ?",
-        [joy_division],
-    ).fetchone()
-    assert row == ("declared", True, 5)
+        "SELECT y0, styles FROM artists WHERE mbid = ?", [thunder_jolt]
+    ).fetchone() == (1970, [])
 
 
 def test_declared_begin_before_the_lower_bound_is_not_evidence(con):

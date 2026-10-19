@@ -1,12 +1,19 @@
-The data produced by this pipeline is licensed under
-Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported
-(CC BY-NC-SA 3.0).
+The data produced by this pipeline rests on CC0 sources only:
 
-https://creativecommons.org/licenses/by-nc-sa/3.0/
+- MusicBrainz core data (artists, dates, release groups, relations, URLs),
+  from the dump and the official-status snapshots: CC0.
+- ListenBrainz listens and popularity statistics: CC0.
+- Wikidata (discography classification): CC0.
+- Discogs data dump (releases, styles): CC0.
 
-MusicBrainz core data is CC0, but genres and tags are CC-BY-NC-SA 3.0.
-`bands` and `genres` depend on them, so the produced dataset inherits that
-licence: attribution, non-commercial use, share alike. The versioned test
-fixtures and the published blobs follow the same terms.
+MusicBrainz's supplementary data — genres and tags, which MusicBrainz
+publishes under a non-commercial licence — is not read: the extraction drops
+it, and no table, versioned test fixture or delivery built from this version
+carries it. Deliveries built before it, under data/out/, and the schema loaded
+from one of them still carry MusicBrainz genres until the next run and load
+replace them.
+
+The licence of the produced dataset, versioned test fixtures and published
+deliveries included, is still to be decided by the owner of this repository.
 
 The code in this repository is under the MIT licence; see LICENSE.

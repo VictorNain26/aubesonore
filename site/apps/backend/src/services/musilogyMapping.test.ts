@@ -22,7 +22,7 @@ const card = (fields: Partial<CardRow>): CardRow => ({
   y_end: null,
   y_end_source: null,
   ended: null,
-  genres: null,
+  styles: null,
   ...fields,
 });
 

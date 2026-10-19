@@ -16,15 +16,14 @@ RETURNS TABLE (
   y_end integer,
   y_end_source text,
   ended boolean,
-  genres jsonb,
-  genre_source text,
+  styles jsonb,
   listen_count bigint,
   user_count bigint
 )
 LANGUAGE sql STABLE
 AS $$
   SELECT a.mbid, a.name, a.disambiguation, a.type, a.country, a.begin_area, a.y_birth,
-         a.y0, a.y0_source, a.y_end, a.y_end_source, a.ended, a.genres, a.genre_source,
+         a.y0, a.y0_source, a.y_end, a.y_end_source, a.ended, a.styles,
          p.listen_count, p.user_count
   FROM musilogy.artists a
   LEFT JOIN musilogy.popularity p USING (mbid)
@@ -215,11 +214,11 @@ $$;
 -- « Même son » (88_same_sound.sql, docs/vision.md §2.2): the artist's
 -- neighbours of the co-listening, in either direction, whose colour agrees,
 -- the first 8 — the depth the rule was measured at (2026-10-11); the table
--- keeps them all — in their rank order, each with its reason — the style, with
--- the artist's decade of most records in it (NULL when none is dated), or the
--- genre (`source` says which) that weighs most in what the two share —
--- and its side in time (musilogy.side). Every neighbour is in the dump: a colour comes from
--- its styles or its genres, which only an artist of the dump has.
+-- keeps them all — in their rank order, each with its reason — the style that
+-- weighs most in what the two share, with the artist's decade of most records
+-- in it (NULL when none is dated; `source` names the colour, always 'styles')
+-- — and its side in time (musilogy.side). Every neighbour is in the dump: a
+-- colour comes from its styles, which only an artist of the dump has.
 CREATE FUNCTION musilogy.artist_same_sound(artist text)
 RETURNS TABLE (
   mbid text,

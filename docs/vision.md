@@ -89,7 +89,8 @@ artistes similaires ») :
   de MusicBrainz), dans les deux sens ;
 - **le même son** : un voisin n'est retenu que si ses styles s'accordent avec ceux de l'artiste
   (les styles Discogs de leurs disques, environ 600 sous-genres, pondérés par leur rareté et leur
-  part dans l'œuvre, sinon les genres MusicBrainz), à n'importe quelle époque : l'écoute propose,
+  part dans l'œuvre ; un artiste sans Discogs n'a pas de « même son »), à n'importe quelle
+  époque : l'écoute propose,
   le contenu confirme, un hybride « en cascade » (Burke, 2002). La co-occurrence d'écoute est la
   source la plus proche du jugement humain de similarité (Berenzweig et al., 2004), le contenu
   écarte ce qu'y mêlent les auditeurs éclectiques ;
@@ -154,7 +155,7 @@ milliers de groupes post-punk : recopiée sur chacune de leurs pages, elle ne di
 l'auditeur, et Google traite comme abus les « pages substantiellement similaires » et le contenu
 « assemblé d'autres pages sans valeur ajoutée », quand il recommande « une hiérarchie clairement
 définie et navigable » (règles anti-spam de Google Search, lues le 2026-10-10). La page artiste
-mène à ses courants par sa ligne de genres ; un artiste sans un seul auditeur y est relié par ses
+mène à ses courants par sa ligne de styles ; un artiste sans un seul auditeur y est relié par ses
 styles.
 
 **Les sources.** Les liens entre genres de Wikidata et de MusicBrainz (CC0) et les infobox de
@@ -176,8 +177,8 @@ une ressemblance s'accordent (Burkholder, 2018).
 
 Un ordre de départ, chaque section seulement quand elle a quelque chose à montrer :
 
-1. **Qui** : le portrait, une ligne de faits au-dessus du nom, le nom, une ligne de genres dessous
-   (les styles Discogs par époque, sinon les genres MusicBrainz), chacun menant à sa page de
+1. **Qui** : le portrait, une ligne de faits au-dessus du nom, le nom, une ligne de styles dessous
+   (les styles Discogs de ses disques, les plus portés d'abord), chacun menant à sa page de
    courant (§2.3), l'ouverture de Wikipédia ou, sans
    article, les faits dits en une phrase ; puis où l'écouter ailleurs (Deezer, Spotify, Bandcamp,
    site officiel…), un bouton par plateforme.
@@ -238,7 +239,8 @@ Revue du 2026-10-06, textes lus ce jour-là ; ce n'est pas un avis juridique.
 
 | Source | Pour nous | Ce qui le dit |
 |---|---|---|
-| dumps MusicBrainz, Discogs, Wikidata | libres (CC0) | data.discogs.com : « made available under the CC0 No Rights Reserved license » |
+| dumps MusicBrainz (données de base), Discogs, Wikidata | libres (CC0) | data.discogs.com : « made available under the CC0 No Rights Reserved license » |
+| genres et tags MusicBrainz (données supplémentaires) | non commercial (CC BY-NC-SA 3.0), non utilisés | musicbrainz.org/doc/MusicBrainz_Database : les « tags (including genre associations) » sont sous CC BY-NC-SA 3.0 ; Musilogy ne les lit plus depuis le 2026-10-17, ses sources sont toutes CC0 (`musilogy/LICENSE-DATA`) |
 | écoutes ListenBrainz : export des statistiques, écoutes complètes (notre co-écoute) | libre (CC0) | metabrainz.org/datasets/postgres-dumps : les données ListenBrainz sont publiées en CC0 ; elles remplacent le service des artistes similaires, dont la licence n'était pas affichée |
 | Wikipédia (faits écrits, ouverture de l'article) | CC BY-SA | la page renvoie à l'article et les Mentions légales créditent la licence ; on n'en garde que des liens entre artistes, jamais le texte |
 | MLHD+ (historiques Last.fm, 583 000 utilisateurs) | exclu | aucune licence affichée (wiki MusicBrainz, 2026-10-09) ; tiré de données Last.fm réservées au non-commercial |
@@ -448,7 +450,7 @@ l'historique git.
 
 1. **Les pages de courant** (écart 1) : un relevé daté des liens entre genres (Wikidata,
    MusicBrainz, Wikipédia), épinglé, mesuré source par source ; les artistes de chaque courant par
-   époque ; la page, reliée depuis la ligne de genres.
+   époque ; la page, reliée depuis la ligne de styles.
 2. **Naviguer et chercher** (§2.6) : la recherche par artiste et par courant, le chemin
    parcouru, essayés sur ordinateur et sur téléphone.
 3. **Les données à jour** : un dump MusicBrainz plus récent, le dump Discogs mensuel, les écoutes

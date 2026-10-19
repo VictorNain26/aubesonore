@@ -13,15 +13,14 @@ def test_every_witness_is_present():
     assert set(WITNESSES) <= ids
 
 
-def test_beatles_genres_carry_mbid_and_votes():
-    with (FIX / "artists.jsonl").open(encoding="utf-8") as fh:
-        for line in fh:
-            rec = json.loads(line)
-            if rec["mbid"] == "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d":
-                assert rec["genres"], "genres must be preserved"
-                assert all(g["mbid"] and "votes" in g for g in rec["genres"])
-                return
-    raise AssertionError("The Beatles missing from fixtures")
+def test_no_fixture_line_carries_a_genre():
+    # The fixtures are distributed with the repository: MusicBrainz's genre
+    # associations, CC BY-NC-SA, are not in them, nor anywhere in the data.
+    for name in ("artists.jsonl", "release_groups.jsonl"):
+        with (FIX / name).open(encoding="utf-8") as fh:
+            lines = [json.loads(line) for line in fh]
+        assert lines, name
+        assert not [rec["mbid"] for rec in lines if "genres" in rec], name
 
 
 def test_every_release_group_credits_a_witness():
@@ -97,6 +96,7 @@ def test_make_fixtures_replayed_on_the_fixtures_gives_them_back(tmp_path, monkey
     monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
     monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
     monkeypatch.setattr(cli, "FIXTURES_DIR", tmp_path)
+    monkeypatch.setattr(cli, "verified_extraction", lambda: None)
     monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
     monkeypatch.setattr(cli, "verified_discography", lambda: FIX / "discography.jsonl")
     monkeypatch.setattr(cli, "verified_official", lambda: [FIX / "official.jsonl"])

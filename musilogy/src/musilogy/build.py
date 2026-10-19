@@ -43,7 +43,6 @@ RAW_ARTIST_FIELDS = {
     "country": "VARCHAR",
     "begin_area": "VARCHAR",
     "begin_area_mbid": "VARCHAR",
-    "genres": "STRUCT(mbid VARCHAR, name VARCHAR, votes INTEGER)[]",
     "relations": (
         'STRUCT(type VARCHAR, direction VARCHAR, mbid VARCHAR, begin VARCHAR, "end" VARCHAR)[]'
     ),
@@ -56,7 +55,6 @@ RAW_RG_FIELDS = {
     "date": "VARCHAR",
     "secondary": "VARCHAR[]",
     "artists": "VARCHAR[]",
-    "genres": "STRUCT(mbid VARCHAR, name VARCHAR, votes INTEGER)[]",
 }
 RAW_POPULARITY_FIELDS = {
     "artist_mbid": "VARCHAR",
@@ -238,9 +236,6 @@ INVARIANTS = (
     "release_extra_secondary_type",
     "release_filed_mismatch",
     "release_uncredited",
-    "artist_genres_out_of_order",
-    "genre_source_mismatch",
-    "genres_from_albums_mismatch",
     "link_endpoint_missing",
     "link_incomplete",
     "link_unexpected_type",
@@ -268,6 +263,7 @@ INVARIANTS = (
     "official_asked_twice",
     "official_unsourced",
     "duplicate_style",
+    "artist_styles_mismatch",
     "style_without_artist",
     "style_decade_malformed",
     "discogs_link_ambiguous",

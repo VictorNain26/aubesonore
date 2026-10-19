@@ -21,6 +21,7 @@ import { DiscoveryTrail } from './DiscoveryTrail';
 import { PageMessage } from '../shell/PageMessage';
 import type { TrailStep } from '../lib/discoveryTrail';
 import { ReleasesSection } from '../musilogy/Releases';
+import { termOf } from '../musilogy/MusilogyTimeline';
 
 export type ArtistPageState =
   | { status: 'loading' }
@@ -151,8 +152,8 @@ function ListenLinks({ links }: { links: ArtistProfile['links'] }) {
   );
 }
 
-// MusicBrainz's genres, the most voted first: three say the music, more read as a tag cloud.
-const GENRES_SHOWN = 3;
+// Discogs' styles, the most records first: three say the music, more read as a tag cloud.
+const STYLES_SHOWN = 3;
 
 function Portrait({ text }: { text: string }) {
   return <p className="text-intro m-0 max-w-prose">{text}</p>;
@@ -176,7 +177,7 @@ function Profile({
   // Without a Wikipedia article, the facts are said in a sentence rather than listed.
   const portrait = !profile.summary && profile.facts ? portraitSentence(profile.facts) : null;
   const facts = profile.facts && !portrait ? factsLine(profile.facts) : null;
-  const genres = musilogy?.card.genres.slice(0, GENRES_SHOWN) ?? [];
+  const styles = musilogy?.card.styles.slice(0, STYLES_SHOWN).map(termOf) ?? [];
   const sections = [
     ...(kept.length > 0 ? [{ id: 'kept', label: m.artist_kept_title() }] : []),
     ...(musilogy?.releases && musilogy.releases.length > 0
@@ -206,7 +207,7 @@ function Profile({
             <p className="text-label text-text-muted m-0 font-mono uppercase">{facts}</p>
           ) : null}
           <h1 className="text-hero m-0 mt-2 break-words">{profile.name}</h1>
-          {genres.length > 0 ? <p className="text-sub m-0 mt-3">{genres.join(' · ')}</p> : null}
+          {styles.length > 0 ? <p className="text-sub m-0 mt-3">{styles.join(' · ')}</p> : null}
           {profile.summary || portrait ? (
             <div className="mt-6">
               {profile.summary ? <Summary summary={profile.summary} /> : null}

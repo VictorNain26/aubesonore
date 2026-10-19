@@ -83,6 +83,20 @@ JOIN discogs_record_years ry USING (record)
 JOIN discogs_record_styles rs USING (record)
 GROUP BY ALL;
 
+-- The line under an artist's name (docs/vision.md §2.4): its styles, whatever
+-- the decade, each counted in records, most records first, a tie by name. An
+-- artist Discogs does not reach has an empty list, never NULL. MusicBrainz's
+-- genres are not read: their licence is not CC0 (LICENSE-DATA).
+CREATE OR REPLACE TABLE artists AS
+WITH summed AS (
+  SELECT artist_mbid AS mbid,
+    list({'style': style, 'records': records} ORDER BY records DESC, style) AS styles
+  FROM (SELECT artist_mbid, style, sum(records)::BIGINT AS records FROM styles GROUP BY ALL)
+  GROUP BY 1
+)
+SELECT a.*, coalesce(s.styles, []::STRUCT(style VARCHAR, records BIGINT)[]) AS styles
+FROM artists a LEFT JOIN summed s USING (mbid);
+
 -- MusicBrainz is the authority on an artist's dates and Discogs never moves
 -- them: a first record dated before the declared formation is counted, not
 -- corrected. A one-year margin leaves out a formation dated at the end of the

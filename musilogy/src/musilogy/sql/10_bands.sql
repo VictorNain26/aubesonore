@@ -1,5 +1,5 @@
 -- Population. Every artist extracted by extract.py, special purpose artists
--- aside, is published, whatever its type (none included), dates or genres.
+-- aside, is published, whatever its type (none included) or dates.
 --
 -- Only a formation becomes y0_declared (formed(), 00_macros.sql). A person's
 -- begin is a birth: it travels as y_birth instead. The begin of an artist
@@ -18,7 +18,7 @@ SELECT
   -- MusicBrainz writes an absent comment as an empty string: NULL says
   -- "none" in one way only.
   nullif(disambiguation, '') AS disambiguation,
-  type, ended, country, begin_area, begin_area_mbid, genres,
+  type, ended, country, begin_area, begin_area_mbid,
   CASE WHEN formed(type)
         AND yr(begin) BETWEEN getvariable('min_year') AND getvariable('dump_year')
        THEN yr(begin) END AS y0_declared,
@@ -86,13 +86,5 @@ SELECT mbid, name, disambiguation,
   type, y0_declared, y_end_declared, y_birth, ended, country, begin_area,
   -- The area's identity, beside its name: two artists from London share a
   -- name, not necessarily a place (London, Ontario).
-  begin_area_mbid,
-  -- Explicit sort (votes descending, then name), never inherited from
-  -- the source (alphabetical). list_sort does not accept a lambda comparator
-  -- in 1.5.5: sort by key, projecting each genre onto {k: [-votes], n: name,
-  -- v: genre}, list_sort compares structs field by field.
-  list_transform(
-    list_sort(list_transform(genres, x -> {'k': [-x.votes::INT], 'n': x.name, 'v': x})),
-    y -> y.v
-  ) AS genres_declared
+  begin_area_mbid
 FROM dated;

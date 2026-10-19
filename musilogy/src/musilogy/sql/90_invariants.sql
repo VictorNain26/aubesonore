@@ -119,45 +119,6 @@ CREATE OR REPLACE VIEW release_uncredited AS
   WHERE NOT EXISTS (
     SELECT 1 FROM raw_release_groups r
     WHERE r.mbid = x.rg_mbid AND list_contains(r.artists, x.artist_mbid));
--- Independent of the sort applied at construction time (10_bands.sql):
--- compares each adjacent pair, does not reuse artists' sort formula.
--- Both raw lists are checked; `genres` is one of them, which
--- genre_source_mismatch pins.
-CREATE OR REPLACE VIEW artist_genres_out_of_order AS
-  SELECT mbid FROM artists, (SELECT unnest([genres_declared, genres_from_albums]) AS l) AS t
-  WHERE len(t.l) > 1
-    AND EXISTS (
-      SELECT 1 FROM range(1, len(t.l)) AS r(i)
-      WHERE t.l[i + 1].votes > t.l[i].votes
-         OR (t.l[i + 1].votes = t.l[i].votes AND t.l[i + 1].name < t.l[i].name)
-    );
--- 25_band_genres.sql: genre_source is non-NULL exactly when a band has
--- genres, and it names the list `genres` was copied from; `albums` only
--- ever stands in for a band that declares nothing.
-CREATE OR REPLACE VIEW genre_source_mismatch AS
-  SELECT mbid FROM artists
-  WHERE (len(genres) = 0) <> (genre_source IS NULL)
-     OR (genre_source = 'declared' AND genres IS DISTINCT FROM genres_declared)
-     OR (genre_source = 'albums'
-         AND (genres IS DISTINCT FROM genres_from_albums OR len(genres_declared) > 0))
-     OR (genre_source IS NOT NULL AND genre_source NOT IN ('declared', 'albums'));
--- Recomputed from the release-groups themselves, with the votes summed by a
--- GROUP BY rather than read back from artist_album_genres.
-CREATE OR REPLACE VIEW genres_from_albums_mismatch AS
-  WITH expected AS (
-    SELECT artist_mbid AS mbid, list_sort(list({'mbid': genre, 'votes': votes})) AS l
-    FROM (
-      SELECT a.artist_mbid, t.g.mbid AS genre, sum(t.g.votes)::INTEGER AS votes
-      FROM albums a
-      JOIN raw_release_groups r ON r.mbid = a.rg_mbid,
-           UNNEST(coalesce(r.genres, [])) AS t(g)
-      GROUP BY ALL
-    )
-    GROUP BY artist_mbid
-  )
-  SELECT b.mbid FROM artists b LEFT JOIN expected e USING (mbid)
-  WHERE list_sort(list_transform(b.genres_from_albums, x -> {'mbid': x.mbid, 'votes': x.votes}))
-        IS DISTINCT FROM coalesce(e.l, []);
 -- 80_links.sql. Both ends must be artists of this pipeline.
 -- NOT EXISTS, not NOT IN: see album_without_artist above, same NULL trap.
 CREATE OR REPLACE VIEW link_endpoint_missing AS
@@ -296,6 +257,26 @@ CREATE OR REPLACE VIEW official_unsourced AS
 -- One row per artist, decade and style.
 CREATE OR REPLACE VIEW duplicate_style AS
   SELECT artist_mbid, decade, style FROM styles GROUP BY ALL HAVING count(*) > 1;
+-- The line under an artist's name holds its rows of `styles` and nothing else,
+-- the records summed over the decades by a GROUP BY and compared as a set; its
+-- order, most records first and a tie by name, checked pair by pair rather
+-- than by the sort that built it.
+CREATE OR REPLACE VIEW artist_styles_mismatch AS
+  WITH expected AS (
+    SELECT mbid, list_sort(list({'style': style, 'records': records})) AS l
+    FROM (
+      SELECT artist_mbid AS mbid, style, sum(records)::BIGINT AS records FROM styles GROUP BY ALL
+    )
+    GROUP BY mbid
+  )
+  SELECT a.mbid FROM artists a LEFT JOIN expected e USING (mbid)
+  WHERE list_sort(a.styles) IS DISTINCT FROM coalesce(e.l, [])
+     OR EXISTS (
+       SELECT 1 FROM range(1, len(a.styles)) AS r(i)
+       WHERE a.styles[i + 1].records > a.styles[i].records
+          OR (a.styles[i + 1].records = a.styles[i].records
+              AND a.styles[i + 1].style < a.styles[i].style)
+     );
 CREATE OR REPLACE VIEW style_without_artist AS
   SELECT artist_mbid, style FROM styles s
   WHERE NOT EXISTS (SELECT 1 FROM artists a WHERE a.mbid = s.artist_mbid);
@@ -344,8 +325,8 @@ CREATE OR REPLACE VIEW colisten_out_of_order AS
 -- without a gap, by the co-listening's score then the neighbour's MBID; every pair a co-listening pair
 -- in one direction or the other, with the higher score of the two, of colour
 -- 0.35 or more (a literal: the build reads a variable), explained by a style
--- or genre both artists carry; a style's decade one the artist has it in, NULL
--- only when the artist has no dated record of it.
+-- both artists carry, the only source; the style's decade one the artist has
+-- it in, NULL only when the artist has no dated record of it.
 CREATE OR REPLACE VIEW duplicate_same_sound AS
   SELECT artist_mbid, neighbour_mbid FROM same_sound GROUP BY ALL HAVING count(*) > 1;
 CREATE OR REPLACE VIEW same_sound_self AS
@@ -374,21 +355,13 @@ CREATE OR REPLACE VIEW same_sound_unsourced AS
 CREATE OR REPLACE VIEW same_sound_colour_out_of_range AS
   SELECT artist_mbid, neighbour_mbid FROM same_sound
   WHERE colour IS NULL OR colour < 0.35 OR colour > 1 + 1e-9
-     OR source IS NULL OR source NOT IN ('styles', 'genres');
+     OR source IS DISTINCT FROM 'styles';
 CREATE OR REPLACE VIEW same_sound_unexplained AS
   SELECT s.artist_mbid, s.neighbour_mbid FROM same_sound s
-  WHERE CASE s.source
-    WHEN 'styles' THEN NOT EXISTS (SELECT 1 FROM styles a WHERE a.artist_mbid = s.artist_mbid
-                                   AND a.style = s.term
-                                   AND a.decade IS NOT DISTINCT FROM s.decade)
-      OR (s.decade IS NULL AND EXISTS (SELECT 1 FROM styles a
-                                        WHERE a.artist_mbid = s.artist_mbid AND a.style = s.term
-                                          AND a.decade IS NOT NULL))
-      OR NOT EXISTS (SELECT 1 FROM styles b WHERE b.artist_mbid = s.neighbour_mbid
-                     AND b.style = s.term)
-    ELSE s.decade IS NOT NULL
-      OR NOT EXISTS (SELECT 1 FROM artists a, UNNEST(a.genres) AS t(g)
-                     WHERE a.mbid = s.artist_mbid AND t.g.name = s.term)
-      OR NOT EXISTS (SELECT 1 FROM artists b, UNNEST(b.genres) AS t(g)
-                     WHERE b.mbid = s.neighbour_mbid AND t.g.name = s.term)
-  END;
+  WHERE NOT EXISTS (SELECT 1 FROM styles a WHERE a.artist_mbid = s.artist_mbid
+                    AND a.style = s.term AND a.decade IS NOT DISTINCT FROM s.decade)
+     OR (s.decade IS NULL AND EXISTS (SELECT 1 FROM styles a
+                                      WHERE a.artist_mbid = s.artist_mbid AND a.style = s.term
+                                        AND a.decade IS NOT NULL))
+     OR NOT EXISTS (SELECT 1 FROM styles b WHERE b.artist_mbid = s.neighbour_mbid
+                    AND b.style = s.term);

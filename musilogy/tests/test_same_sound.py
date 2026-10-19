@@ -1,7 +1,6 @@
 """« Même son » (88_same_sound.sql) on a synthetic build: six listeners share
 every artist, so the co-listening scores A's neighbours alike and they rank by
-MBID, and the Discogs records and MusicBrainz genres below make each rule of
-the colour visible."""
+MBID, and the Discogs records below make each rule of the colour visible."""
 
 import pytest
 
@@ -30,17 +29,9 @@ G = "00000000-0000-4000-8000-0000000005a7"
 ABSENT = "00000000-0000-4000-8000-0000000005ff"
 
 
-def genre(name, votes=9):
-    return {"mbid": f"g-{name}", "name": name, "votes": votes}
-
-
-def artist(mbid, discogs_id=None, genres=(), begin="1970"):
+def artist(mbid, discogs_id=None, begin="1970"):
     return synthetic_artist(
-        mbid,
-        begin,
-        None,
-        genres=[genre(g) for g in genres],
-        urls=[discogs_url(discogs_id)] if discogs_id else None,
+        mbid, begin, None, urls=[discogs_url(discogs_id)] if discogs_id else None
     )
 
 
@@ -50,17 +41,16 @@ def records(discogs_id, style, year, n, first_id):
 
 
 # A and B: Krautrock of the 1970s, thirty records each. C: synth-pop only.
-# D: Krautrock, but of the 1990s, and the genre A carries. E: no Discogs
-# records, A's genre. F: Krautrock of the 1980s. G: rock, so that Krautrock is
-# not every artist's style.
+# D: Krautrock, but of the 1990s. E: no Discogs records. F: Krautrock of the
+# 1980s. G: rock, so that Krautrock is not every artist's style.
 ARTISTS = [
-    artist(A, 1, ["krautrock"]),
+    artist(A, 1),
     artist(B, 2),
-    artist(C, 3, ["synth-pop"]),
-    artist(D, 4, ["krautrock"]),
-    artist(E, None, ["krautrock"]),
+    artist(C, 3),
+    artist(D, 4),
+    artist(E),
     artist(F, 5),
-    artist(G, 6, ["rock"]),
+    artist(G, 6),
 ]
 RELEASES = [
     *records(1, "Krautrock", "1972", 30, 100),
@@ -94,13 +84,12 @@ def same_sound(c, mbid=A):
 
 def test_only_the_neighbours_whose_colour_agrees_in_any_era(tmp_path):
     # B, D and F share A's style, D twenty years later and F ten. C shares
-    # nothing. E has no Discogs records: its genre speaks. The reason's decade
-    # is A's.
+    # nothing. E has no Discogs records, so no colour: however close the
+    # co-listening, it is no neighbour. The reason's decade is A's.
     assert same_sound(built(tmp_path)) == [
         (B, 1, "styles", "Krautrock", 1970),
         (D, 2, "styles", "Krautrock", 1970),
-        (E, 3, "genres", "krautrock", None),
-        (F, 4, "styles", "Krautrock", 1970),
+        (F, 3, "styles", "Krautrock", 1970),
     ]
 
 
@@ -136,15 +125,13 @@ def test_a_thin_profile_is_shrunk_below_the_threshold(tmp_path):
     releases = [r for r in RELEASES if r["artists"] != [2]] + records(
         2, "Krautrock", "1974", 3, 200
     )
-    assert [row[0] for row in same_sound(built(tmp_path, releases=releases))] == [D, E, F]
+    assert [row[0] for row in same_sound(built(tmp_path, releases=releases))] == [D, F]
 
 
 def test_a_profile_of_undated_records_has_no_colour(tmp_path):
-    # B's thirty records carry no date: shrunk by 0 / (0 + 10), as measured; and
-    # B's Discogs styles still hide its genres.
-    artists = [*(a for a in ARTISTS if a["mbid"] != B), artist(B, 2, ["krautrock"])]
+    # B's thirty records carry no date: shrunk by 0 / (0 + 10), as measured.
     releases = [r for r in RELEASES if r["artists"] != [2]] + records(2, "Krautrock", None, 30, 200)
-    assert [row[0] for row in same_sound(built(tmp_path, artists, releases))] == [D, E, F]
+    assert [row[0] for row in same_sound(built(tmp_path, releases=releases))] == [D, F]
 
 
 def test_the_reason_is_the_style_that_weighs_most_in_what_the_two_share(tmp_path):
@@ -157,12 +144,6 @@ def test_the_reason_is_the_style_that_weighs_most_in_what_the_two_share(tmp_path
     assert same_sound(built(tmp_path, releases=releases))[0][3:] == ("Krautrock", 1970)
 
 
-def test_two_discogs_profiles_without_a_style_in_common_are_not_overturned_by_a_genre(tmp_path):
-    # C's synth-pop shares nothing with A's Krautrock; C also carries A's genre.
-    artists = [*(a for a in ARTISTS if a["mbid"] != C), artist(C, 3, ["krautrock"])]
-    assert C not in [row[0] for row in same_sound(built(tmp_path, artists))]
-
-
 def test_the_shrink_counts_only_the_dated_records(tmp_path):
     # B: three dated Krautrock records of A's decade and forty undated ones.
     # Shrunk by 3 / (3 + 10), not 43 / (43 + 10): the rule as measured.
@@ -171,7 +152,7 @@ def test_the_shrink_counts_only_the_dated_records(tmp_path):
         *records(2, "Krautrock", "1974", 3, 200),
         *records(2, "Krautrock", None, 40, 300_000),
     ]
-    assert [row[0] for row in same_sound(built(tmp_path, releases=releases))] == [D, E, F]
+    assert [row[0] for row in same_sound(built(tmp_path, releases=releases))] == [D, F]
 
 
 def test_a_style_the_artist_has_no_dated_record_of_gives_no_decade(tmp_path):
@@ -181,8 +162,7 @@ def test_a_style_the_artist_has_no_dated_record_of_gives_no_decade(tmp_path):
     assert same_sound(built(tmp_path, releases=releases)) == [
         (B, 1, "styles", "Krautrock", None),
         (D, 2, "styles", "Krautrock", None),
-        (E, 3, "genres", "krautrock", None),
-        (F, 4, "styles", "Krautrock", None),
+        (F, 3, "styles", "Krautrock", None),
     ]
 
 
@@ -212,6 +192,11 @@ A_B = f"artist_mbid = '{A}' AND neighbour_mbid = '{B}'"
         (
             "same_sound_colour_out_of_range",
             f"UPDATE same_sound SET colour = 0.3 WHERE {A_B}",
+        ),
+        # The styles are the only colour: no other source explains a pair.
+        (
+            "same_sound_colour_out_of_range",
+            f"UPDATE same_sound SET source = 'genres' WHERE {A_B}",
         ),
         (
             "same_sound_rank_out_of_range",
@@ -259,16 +244,15 @@ def test_no_listens_give_no_same_sound(tmp_path):
 
 def test_the_site_reads_same_sound_in_rank_order_each_with_its_reason_and_side(tmp_path, pg):
     # A began in 1970; B (1960) more than 3 years before, D (1970) and F
-    # (1972) during, E (1982) after. A neighbour absent from the dump is left
-    # out.
+    # (1982) after. A neighbour absent from the dump is left out.
     artists = [
-        artist(A, 1, ["krautrock"], "1970"),
-        artist(B, 2, begin="1960"),
-        artist(C, 3, ["synth-pop"]),
-        artist(D, 4, ["krautrock"]),
-        artist(E, None, ["krautrock"], "1982"),
-        artist(F, 5, begin="1972"),
-        artist(G, 6, ["rock"]),
+        artist(A, 1, "1970"),
+        artist(B, 2, "1960"),
+        artist(C, 3),
+        artist(D, 4),
+        artist(E),
+        artist(F, 5, "1982"),
+        artist(G, 6),
     ]
     loaded(tmp_path, pg, artists, listening=LISTENERS, discogs=RELEASES)
     assert pg_query(
@@ -277,8 +261,7 @@ def test_the_site_reads_same_sound_in_rank_order_each_with_its_reason_and_side(t
     ) == [
         (B, 1, "styles", "Krautrock", 1970, "before"),
         (D, 2, "styles", "Krautrock", 1970, "during"),
-        (E, 3, "genres", "krautrock", None, "after"),
-        (F, 4, "styles", "Krautrock", 1970, "during"),
+        (F, 3, "styles", "Krautrock", 1970, "after"),
     ]
     assert pg_query(pg, f"SELECT count(*) FROM musilogy.artist_same_sound('{ABSENT}')") == [(0,)]
 
@@ -324,13 +307,13 @@ def test_the_site_reads_the_first_8_the_depth_the_rule_was_measured_at(tmp_path,
     # Ten neighbours of A's very colour: the table keeps them all, the page
     # reads the first 8.
     near = [f"00000000-0000-4000-8000-0000000006{i:02x}" for i in range(10)]
-    artists = [artist(A, 1, ["krautrock"]), *(artist(n, 10 + i) for i, n in enumerate(near))]
+    artists = [artist(A, 1), *(artist(n, 10 + i) for i, n in enumerate(near))]
     releases = [
         *records(1, "Krautrock", "1972", 30, 100),
         *(r for i in range(10) for r in records(10 + i, "Krautrock", "1974", 30, 1000 + 100 * i)),
         *records(6, "Rock", "1975", 30, 600),
     ]
-    artists.append(artist(G, 6, ["rock"]))
+    artists.append(artist(G, 6))
     loaded(tmp_path, pg, artists, listening={u: [A, *near] for u in range(1, 7)}, discogs=releases)
     assert pg_query(pg, f"SELECT mbid, rank FROM musilogy.artist_same_sound('{A}')") == [
         (n, i + 1) for i, n in enumerate(near[:8])
