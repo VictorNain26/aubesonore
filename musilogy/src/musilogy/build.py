@@ -7,8 +7,8 @@ from pathlib import Path
 
 import duckdb
 
-from musilogy.colisten import build_colisten
-from musilogy.paths import DATA_DIR
+from musilogy.colisten import build_colisten, set_parameters
+from musilogy.paths import DATA_DIR, written_aside
 
 
 def connect() -> duckdb.DuckDBPyConnection:
@@ -147,6 +147,34 @@ def load_listening(
     _set_variable(con, "listening_snapshot", snapshot, "VARCHAR")
 
 
+def colisten_from(
+    con: duckdb.DuckDBPyConnection,
+    listens: Path | None,
+    snapshot: str | None,
+    cache: Path | None,
+) -> None:
+    """The co-listening, read from `cache` when a run already computed it,
+    else computed from the listens and kept at `cache`. The cache's path names
+    the listens and the rule (paths.colisten_cache): what it holds is what the
+    computation would give. A build without listens neither reads nor keeps one."""
+    if cache is None or listens is None or not cache.exists():
+        load_listening(con, listens, snapshot)
+        build_colisten(con)
+        if cache is None or listens is None:
+            return
+        with written_aside(cache) as aside:
+            con.execute("COPY colisten TO ? (FORMAT parquet, COMPRESSION zstd)", [aside.as_posix()])
+        con.execute("DROP TABLE colisten")
+    else:
+        set_parameters(con)
+        _set_variable(con, "listening_snapshot", snapshot, "VARCHAR")
+    # Once kept, the table is its file: 45 million rows held in the build's
+    # capped memory would push every later step to spill. A view takes no
+    # prepared parameter: the path goes in as a literal.
+    literal = "'" + cache.as_posix().replace("'", "''") + "'"
+    con.execute(f"CREATE OR REPLACE VIEW colisten AS SELECT * FROM read_parquet({literal})")
+
+
 def load_official(
     con: duckdb.DuckDBPyConnection, parts: Sequence[Path], snapshots: Sequence[str] | None
 ) -> None:
@@ -195,14 +223,14 @@ def build(
     discogs_dump: str | None = None,
     listening: Path | None = None,
     listening_snapshot: str | None = None,
+    colisten_cache: Path | None = None,
 ) -> None:
     load_raw(con, artists, rgs)
     load_popularity(con, popularity, popularity_snapshot)
     load_discography(con, discography, discography_snapshot)
     load_official(con, official, official_snapshots)
     load_discogs(con, discogs, discogs_dump)
-    load_listening(con, listening, listening_snapshot)
-    build_colisten(con)
+    colisten_from(con, listening, listening_snapshot, colisten_cache)
     _set_variable(con, "dump_year", dump_year, "INTEGER")
     _set_variable(con, "min_year", min_year, "INTEGER")
     for path in sorted(sql_dir.glob("*.sql")):

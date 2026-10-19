@@ -16,6 +16,10 @@ multiplies, scores and keeps the top K of each artist."""
 
 from __future__ import annotations
 
+import hashlib
+import json
+from pathlib import Path
+
 import duckdb
 import numpy as np
 import scipy.sparse as sp
@@ -33,6 +37,8 @@ CHUNK = 100
 # Scored rows handed to DuckDB at once: the whole result held in Python, then
 # copied once more to be joined, took the peak to 4.2 GB (2026-10-08).
 BATCH = 2_000_000
+# The computation itself, part of cache_key.
+SOURCE = Path(__file__).read_bytes()
 
 PARAMETERS = {
     "colisten_min_listeners": MIN_LISTENERS,
@@ -51,13 +57,27 @@ def scores(common: np.ndarray, pop_ref: float, pop_cand: np.ndarray) -> np.ndarr
     )
 
 
-def build_colisten(con: duckdb.DuckDBPyConnection) -> None:
-    """Writes `colisten(artist_mbid, neighbour_mbid, common, score, rank)` from
-    `raw_listening`; no listens give an empty table."""
+def cache_key() -> str:
+    """The rule, digested into the name of a kept co-listening
+    (paths.colisten_cache): its parameters and this module's source, so that
+    one computed by other parameters or another computation is never read.
+    Any edit here, a comment included, computes it again."""
+    rule = json.dumps(PARAMETERS, sort_keys=True).encode() + SOURCE
+    return hashlib.sha256(rule).hexdigest()[:12]
+
+
+def set_parameters(con: duckdb.DuckDBPyConnection) -> None:
+    """The rule's parameters as variables, for the manifest and the invariants."""
     for name, value in PARAMETERS.items():
         # Typed: a bare 0.3 would be a DECIMAL, which the manifest cannot write.
         sql_type = "DOUBLE" if isinstance(value, float) else "INTEGER"
         con.execute(f"SET VARIABLE {name} = {value}::{sql_type}")
+
+
+def build_colisten(con: duckdb.DuckDBPyConnection) -> None:
+    """Writes `colisten(artist_mbid, neighbour_mbid, common, score, rank)` from
+    `raw_listening`; no listens give an empty table."""
+    set_parameters(con)
     con.execute(
         f"""
         CREATE OR REPLACE TABLE colisten_artists AS
