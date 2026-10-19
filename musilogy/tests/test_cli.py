@@ -3,9 +3,11 @@ import json
 import pytest
 
 from musilogy import REFERENCE_DUMP as DUMP
-from musilogy import cli
+from musilogy import REFERENCE_LISTENING, cli
 from musilogy.build import RAW_ARTIST_FIELDS, RAW_DISCOGS_FIELDS, RAW_RG_FIELDS
+from musilogy.colisten import cache_key
 from musilogy.fetch import ChecksumError, sha256_file
+from musilogy.paths import colisten_cache
 from musilogy.publish import Drift, Trace, counters, delivered, table_counts
 from tests.conftest import FIX, delivery_manifest
 
@@ -760,3 +762,17 @@ def test_run_compares_with_the_previous_delivery_before_overwriting_it(
     cli.run(["artists"])
     assert [args[1] for args in published] == [tmp_path / "out" / DUMP]
     assert [args[4] for args in published] == [Trace([Drift("artists", 1, artists)], {}, {})]
+
+
+@pytest.mark.usefixtures("published_by_run")
+def test_run_hands_build_the_colisten_cache_of_the_pinned_listens_and_rule(monkeypatch):
+    handed = {}
+
+    def build(*_args, **kwargs):
+        handed.update(kwargs)
+        raise SystemExit("stop after build")
+
+    monkeypatch.setattr(cli, "build", build)
+    with pytest.raises(SystemExit):
+        cli.run()
+    assert handed["colisten_cache"] == colisten_cache(REFERENCE_LISTENING, cache_key())

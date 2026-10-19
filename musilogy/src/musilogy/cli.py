@@ -30,6 +30,7 @@ from musilogy.build import (
     connect,
     ndjson,
 )
+from musilogy.colisten import cache_key
 from musilogy.extract import (
     extract,
     extract_discogs,
@@ -59,6 +60,7 @@ from musilogy.paths import (
     RAW_DIR,
     SQL_DIR,
     aside_of,
+    colisten_cache,
     discography_snapshot,
     discography_sums,
     discogs_dump,
@@ -517,6 +519,7 @@ def run(accepted_drift: Sequence[str] = ()) -> None:
         discogs_dump=REFERENCE_DISCOGS,
         listening=listening,
         listening_snapshot=REFERENCE_LISTENING,
+        colisten_cache=colisten_cache(REFERENCE_LISTENING, cache_key()),
     )
 
     violations = check_invariants(con, SQL_DIR)

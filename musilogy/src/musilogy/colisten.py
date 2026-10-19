@@ -16,6 +16,9 @@ multiplies, scores and keeps the top K of each artist."""
 
 from __future__ import annotations
 
+import hashlib
+import json
+
 import duckdb
 import numpy as np
 import scipy.sparse as sp
@@ -51,13 +54,26 @@ def scores(common: np.ndarray, pop_ref: float, pop_cand: np.ndarray) -> np.ndarr
     )
 
 
-def build_colisten(con: duckdb.DuckDBPyConnection) -> None:
-    """Writes `colisten(artist_mbid, neighbour_mbid, common, score, rank)` from
-    `raw_listening`; no listens give an empty table."""
+def cache_key() -> str:
+    """The rule's parameters, digested into the name of a kept co-listening
+    (paths.colisten_cache): one computed under other parameters is never read.
+    A change to the computation that leaves them unchanged is not seen: its
+    PR removes the kept files."""
+    return hashlib.sha256(json.dumps(PARAMETERS, sort_keys=True).encode()).hexdigest()[:12]
+
+
+def set_parameters(con: duckdb.DuckDBPyConnection) -> None:
+    """The rule's parameters as variables, for the manifest and the invariants."""
     for name, value in PARAMETERS.items():
         # Typed: a bare 0.3 would be a DECIMAL, which the manifest cannot write.
         sql_type = "DOUBLE" if isinstance(value, float) else "INTEGER"
         con.execute(f"SET VARIABLE {name} = {value}::{sql_type}")
+
+
+def build_colisten(con: duckdb.DuckDBPyConnection) -> None:
+    """Writes `colisten(artist_mbid, neighbour_mbid, common, score, rank)` from
+    `raw_listening`; no listens give an empty table."""
+    set_parameters(con)
     con.execute(
         f"""
         CREATE OR REPLACE TABLE colisten_artists AS

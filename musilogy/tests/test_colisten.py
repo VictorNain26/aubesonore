@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 
 from musilogy import colisten
-from musilogy.build import load_listening
-from musilogy.colisten import build_colisten, scores
+from musilogy.build import colisten_from, load_listening
+from musilogy.colisten import build_colisten, cache_key, scores
 from tests.conftest import listening_file
 
 A = "a0000000-0000-0000-0000-000000000000"
@@ -92,3 +92,50 @@ def test_the_rule_shrinks_a_thin_overlap():
     thin = scores(np.array([2.0]), 4, np.array([4.0]))
     thick = scores(np.array([20.0]), 40, np.array([40.0]))
     assert thin[0] < thick[0] / 2
+
+
+def from_cache(tmp_path, users, cache):
+    c = duckdb.connect(":memory:")
+    listens = listening_file(tmp_path / f"listens-{len(users)}", users)
+    colisten_from(c, listens, "test", cache)
+    return c
+
+
+def rows(con):
+    return con.execute("SELECT * FROM colisten ORDER BY artist_mbid, rank").fetchall()
+
+
+def test_a_computed_colisten_is_kept_and_read_back_as_computed(tmp_path):
+    cache = tmp_path / "work" / "colisten.parquet"
+    computed = from_cache(tmp_path, USERS, cache)
+    assert cache.exists()
+    # Other listens: what is read is the cache, not a computation.
+    read = from_cache(tmp_path, {1: [A, B]}, cache)
+    assert rows(read) == rows(computed)
+    assert (
+        read.execute("DESCRIBE colisten").fetchall()
+        == computed.execute("DESCRIBE colisten").fetchall()
+    )
+    # The manifest and the invariants read the rule's parameters either way.
+    assert read.execute("SELECT getvariable('colisten_k')").fetchone() == (colisten.K,)
+
+
+def test_without_listens_nothing_is_kept(tmp_path):
+    cache = tmp_path / "colisten.parquet"
+    c = duckdb.connect(":memory:")
+    colisten_from(c, None, None, cache)
+    assert rows(c) == []
+    assert not cache.exists()
+
+
+def test_without_a_cache_the_colisten_is_computed(tmp_path):
+    c = duckdb.connect(":memory:")
+    colisten_from(c, listening_file(tmp_path / "listens", USERS), "test", None)
+    assert neighbours(c, A) == [(B, 4, 1), (C, 3, 2)]
+
+
+def test_the_cache_key_follows_the_parameters(monkeypatch):
+    key = cache_key()
+    assert cache_key() == key
+    monkeypatch.setitem(colisten.PARAMETERS, "colisten_k", 49)
+    assert cache_key() != key

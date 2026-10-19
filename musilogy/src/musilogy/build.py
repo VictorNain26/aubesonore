@@ -7,8 +7,8 @@ from pathlib import Path
 
 import duckdb
 
-from musilogy.colisten import build_colisten
-from musilogy.paths import DATA_DIR
+from musilogy.colisten import build_colisten, set_parameters
+from musilogy.paths import DATA_DIR, written_aside
 
 
 def connect() -> duckdb.DuckDBPyConnection:
@@ -147,6 +147,30 @@ def load_listening(
     _set_variable(con, "listening_snapshot", snapshot, "VARCHAR")
 
 
+def colisten_from(
+    con: duckdb.DuckDBPyConnection,
+    listens: Path | None,
+    snapshot: str | None,
+    cache: Path | None,
+) -> None:
+    """The co-listening, read from `cache` when a run already computed it,
+    else computed from the listens and kept at `cache`. The cache's path names
+    the listens and the rule (paths.colisten_cache): what it holds is what the
+    computation would give. A build without listens keeps nothing."""
+    if cache is not None and cache.exists():
+        set_parameters(con)
+        con.execute(
+            "CREATE OR REPLACE TABLE colisten AS SELECT * FROM read_parquet(?)", [cache.as_posix()]
+        )
+        _set_variable(con, "listening_snapshot", snapshot, "VARCHAR")
+        return
+    load_listening(con, listens, snapshot)
+    build_colisten(con)
+    if cache is not None and listens is not None:
+        with written_aside(cache) as aside:
+            con.execute("COPY colisten TO ? (FORMAT parquet)", [aside.as_posix()])
+
+
 def load_official(
     con: duckdb.DuckDBPyConnection, parts: Sequence[Path], snapshots: Sequence[str] | None
 ) -> None:
@@ -195,14 +219,14 @@ def build(
     discogs_dump: str | None = None,
     listening: Path | None = None,
     listening_snapshot: str | None = None,
+    colisten_cache: Path | None = None,
 ) -> None:
     load_raw(con, artists, rgs)
     load_popularity(con, popularity, popularity_snapshot)
     load_discography(con, discography, discography_snapshot)
     load_official(con, official, official_snapshots)
     load_discogs(con, discogs, discogs_dump)
-    load_listening(con, listening, listening_snapshot)
-    build_colisten(con)
+    colisten_from(con, listening, listening_snapshot, colisten_cache)
     _set_variable(con, "dump_year", dump_year, "INTEGER")
     _set_variable(con, "min_year", min_year, "INTEGER")
     for path in sorted(sql_dir.glob("*.sql")):

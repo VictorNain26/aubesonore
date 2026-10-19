@@ -73,6 +73,13 @@ def listening_sums(ref: str) -> Path:
     return REFERENCE_DIR / f"listenbrainz-listens-{ref}.SHA256SUMS"
 
 
+def colisten_cache(ref: str, key: str) -> Path:
+    """Our co-listening, kept once computed: about ten hours over every listen,
+    for a result that depends only on the listens and the rule's parameters,
+    both named here (colisten.cache_key)."""
+    return DATA_DIR / "work" / f"colisten-{ref}" / f"colisten-{key}.parquet"
+
+
 def official_snapshot(date: str) -> Path:
     return RAW_DIR / "musicbrainz" / date / "official-release-groups.jsonl"
 
