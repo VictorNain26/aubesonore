@@ -55,6 +55,11 @@ weak_weight = 0.1
 # ~12 % d'échecs d'acquisition.
 keep_decouvertes = 80
 keep_nouveautes = 80
+# Plancher de note des nouveautés, décision du 2026-10-19 : au plus keep_nouveautes, jamais sous
+# 0,6. Avec ~110 candidates par semaine, 80 retenues faisaient tomber la coupure vers 0,23-0,25
+# (0,75-0,79 pour les découvertes) ; votes d'examen des nouveautés : note >= 0,6, 12 oui et 0 non ;
+# sous 0,6, 4 oui et 4 non. 0 retient sans plancher.
+min_score_nouveautes = 0.6
 # Nombre de derniers votes d'examen qui jugent le modèle.
 exam_window = 60
 

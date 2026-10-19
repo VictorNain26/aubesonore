@@ -11,6 +11,8 @@ from tests_radio.model_factory import NOW, add_vote, make_model_db, serve_scores
 
 LATER = datetime(2026, 9, 26, tzinfo=UTC)
 
+NO_FLOOR = ModelConfig().floor
+
 
 def test_status_measures_the_serving_model_and_the_page_yes_rate(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
@@ -39,12 +41,12 @@ def test_status_without_a_model_still_counts_ballots(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     assert load_status(conn, tmp_path / "models", 60, 7, LATER).model_id is None
     serve_scores(conn)  # modèle n°1 promu, sans fichier : on ne mesure que la file ici
-    select_batch(conn, np.random.default_rng(0), 10, 10, NOW)
+    select_batch(conn, np.random.default_rng(0), 10, 10, NOW, floor=NO_FLOOR)
     conn.execute("UPDATE models SET promoted = 0")
     conn.commit()
     st = load_status(conn, tmp_path / "models", 60, 7, LATER)
     assert st.model_id is None and st.exam_auc is None
     assert st.pending == 20
     assert st.last_selection == NOW
-    assert st.batch == Batch(2, 48, 24)
+    assert st.batch == Batch(2, 48, 24, 0)
     assert st.stale_selection_days == 1

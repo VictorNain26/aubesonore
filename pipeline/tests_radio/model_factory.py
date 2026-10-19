@@ -97,7 +97,10 @@ def serve_scores(conn: sqlite3.Connection) -> None:
             "neighbour_artist_id) VALUES (?, ?, 'voisin', 1000, ?)",
             (tid, 2 if aid % 100 >= 6 else 1, aid),
         )
-        conn.execute("INSERT INTO scores VALUES (?, 1, ?, ?)", (tid, score, int(score >= 0.5)))
+        conn.execute(
+            "INSERT INTO scores (deezer_track_id, model_id, score, accepted) VALUES (?, 1, ?, ?)",
+            (tid, score, int(score >= 0.5)),
+        )
     conn.commit()
 
 

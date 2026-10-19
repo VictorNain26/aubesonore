@@ -8,7 +8,9 @@
   d'entraînement (radio/model/dataset.py).
 - Leçon : les titres les plus incertains (note la plus proche de la coupure de leur famille,
   découvertes ou nouveautés, dans la dernière fournée), au plus un par artiste : échantillonnage
-  par incertitude (Settles, Active Learning Literature Survey, 2009).
+  par incertitude (Settles, Active Learning Literature Survey, 2009). Une famille sans titre
+  retenu, toutes ses notes sous son plancher, prend ce plancher pour coupure : sans quoi elle
+  n'aurait aucune leçon.
 - À l'aveugle : l'ordre de présentation est tiré au hasard, la page ne montre que l'artiste et
   le titre.
 - Un titre voté ou déjà présenté ne revient jamais. Tant qu'un bulletin attend, aucune nouvelle
@@ -19,6 +21,7 @@
 """
 
 import sqlite3
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -157,7 +160,13 @@ def _pick_lessons(
 
 
 def select_batch(
-    conn: sqlite3.Connection, rng: np.random.Generator, n_exam: int, n_lesson: int, now: str
+    conn: sqlite3.Connection,
+    rng: np.random.Generator,
+    n_exam: int,
+    n_lesson: int,
+    now: str,
+    *,
+    floor: Mapping[str, float],
 ) -> Selection:
     waiting = pending_ballots(conn)
     if waiting:
@@ -199,6 +208,8 @@ def select_batch(
     ):
         family = FAMILY[str(source)]
         cuts[family] = min(cuts.get(family, 1.0), float(score))
+    for family in families.keys() - cuts.keys():
+        cuts[family] = floor[family]
     exam = _draw_exam(families, n_exam, rng)
     # Un artiste d'examen, de cette sélection ou d'une précédente, ne reçoit jamais de vote de
     # leçon : le modèle candidat l'aurait vu, pas celui en service, et l'examen le favoriserait.

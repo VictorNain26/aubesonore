@@ -142,6 +142,9 @@ def main() -> None:
 
 
 def _batch_line(b: Batch) -> str:
-    return (
+    line = (
         f"Dernière fournée (passe n°{b.run_id}) : {_n(b.retained)} retenus sur {_n(b.n)} candidats"
     )
+    if b.floored:
+        line += f", {_n(b.floored)} nouveautés écartées sous le plancher de score"
+    return line

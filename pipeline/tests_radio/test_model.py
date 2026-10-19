@@ -7,7 +7,7 @@ import pytest
 
 import radio.model.model as model_mod
 from radio.core.config import ModelConfig
-from radio.model.model import _decide, rescore, train
+from radio.model.model import Batch, _decide, last_batch, rescore, train
 from tests_radio.model_factory import NOW, add_vote, make_model_db
 
 
@@ -70,6 +70,146 @@ def test_each_batch_and_family_keeps_its_best_and_library_titles_are_not_discove
         for t, (_, a) in scores.items()
         if a and groups[t][1] == "voisin" and groups[t][0] == 1
     )
+
+
+def _news(conn: Any, low: int, high: int) -> None:
+    """Les candidats `low` à `high` deviennent des nouveautés Hype Machine de la fournée 1."""
+    conn.execute(
+        "UPDATE candidates SET source = 'hypem', seed_artist_id = NULL, "
+        "neighbour_artist_id = NULL, detail = 'Blog', run_id = 1 "
+        "WHERE deezer_track_id BETWEEN ? AND ?",
+        (low, high),
+    )
+    conn.commit()
+
+
+def _kept_and_floored(conn: Any) -> tuple[Counter[tuple[int, str]], Counter[tuple[int, str]]]:
+    kept: Counter[tuple[int, str]] = Counter()
+    floored: Counter[tuple[int, str]] = Counter()
+    for run, source, accepted, below in conn.execute(
+        "SELECT c.run_id, c.source, s.accepted, s.floored FROM scores s "
+        "JOIN candidates c USING (deezer_track_id)"
+    ):
+        kept[(int(run), str(source))] += int(accepted)
+        floored[(int(run), str(source))] += int(below)
+    return +kept, +floored
+
+
+def test_the_floor_keeps_low_scored_news_off_air_and_counts_them_once_per_artist(
+    tmp_path: Path,
+) -> None:
+    conn = make_model_db(tmp_path)
+    _two_batches(conn)
+    # Fournée 1 : 3 artistes aimés (2000 à 2002) et 6 rejetés (3000 à 3005), 4 titres chacun,
+    # deviennent des nouveautés ; le quota de 100 n'est jamais épuisé.
+    _news(conn, 200000, 200299)
+    _news(conn, 300000, 300599)
+    cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=100, min_score_nouveautes=0.5)
+    assert train(conn, tmp_path / "models", cfg, NOW).promoted
+    rescore(conn, tmp_path / "models", cfg)
+    kept, floored = _kept_and_floored(conn)
+    # Les aimés passent le plancher, un titre par artiste ; les rejetés restent sous le plancher
+    # et sont comptés une fois par artiste, comme ils auraient été retenus.
+    assert kept[(1, "hypem")] == 3
+    assert floored == {(1, "hypem"): 6}
+    assert (
+        conn.execute(
+            "SELECT MIN(score) >= 0.5 FROM scores JOIN candidates USING (deezer_track_id) "
+            "WHERE source = 'hypem' AND accepted = 1"
+        ).fetchone()[0]
+        == 1
+    )
+    # Les découvertes n'ont pas de plancher : tous leurs artistes entrent.
+    assert kept[(1, "voisin")] == 9 and kept[(2, "voisin")] == 6
+
+
+def test_a_zero_floor_keeps_every_news_artist(tmp_path: Path) -> None:
+    conn = make_model_db(tmp_path)
+    _two_batches(conn)
+    _news(conn, 200000, 200299)
+    _news(conn, 300000, 300599)
+    cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=100)
+    assert cfg.floor == {"decouvertes": 0.0, "nouveautes": 0.0}
+    assert train(conn, tmp_path / "models", cfg, NOW).promoted
+    rescore(conn, tmp_path / "models", cfg)
+    kept, floored = _kept_and_floored(conn)
+    assert kept[(1, "hypem")] == 9 and not floored
+
+
+def test_no_news_above_the_floor_retains_none_and_names_them_all(tmp_path: Path) -> None:
+    conn = make_model_db(tmp_path)
+    _two_batches(conn)
+    _news(conn, 300000, 300599)
+    cfg = ModelConfig(keep_decouvertes=10, keep_nouveautes=100, min_score_nouveautes=0.5)
+    assert train(conn, tmp_path / "models", cfg, NOW).promoted
+    rescore(conn, tmp_path / "models", cfg)
+    kept, floored = _kept_and_floored(conn)
+    assert (1, "hypem") not in kept and floored == {(1, "hypem"): 6}
+    assert kept[(1, "voisin")] == 10 and kept[(2, "voisin")] == 6
+
+
+def test_news_stopped_by_an_exhausted_quota_are_not_counted_as_floored(tmp_path: Path) -> None:
+    conn = make_model_db(tmp_path)
+    _two_batches(conn)
+    _news(conn, 200000, 200299)
+    _news(conn, 300000, 300599)
+    cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=3, min_score_nouveautes=0.5)
+    assert train(conn, tmp_path / "models", cfg, NOW).promoted
+    rescore(conn, tmp_path / "models", cfg)
+    kept, floored = _kept_and_floored(conn)
+    # Les 3 aimés épuisent le quota avant que les rejetés n'atteignent le plancher.
+    assert kept[(1, "hypem")] == 3 and not floored
+
+
+def test_a_floored_news_does_not_take_its_artist_away_from_discoveries(tmp_path: Path) -> None:
+    conn = make_model_db(tmp_path)
+    _two_batches(conn)
+    _news(conn, 300000, 300599)
+    cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=100, min_score_nouveautes=0.5)
+    assert train(conn, tmp_path / "models", cfg, NOW).promoted
+    rescore(conn, tmp_path / "models", cfg)
+    # Le moins bien noté de chaque artiste rejeté redevient une découverte : ses nouveautés,
+    # mieux notées mais sous le plancher, ne doivent pas lui prendre sa place.
+    lowest = [
+        int(r[0])
+        for r in conn.execute(
+            "SELECT deezer_track_id FROM scores s JOIN tracks t USING (deezer_track_id) "
+            "WHERE deezer_track_id BETWEEN 300000 AND 300599 "
+            "AND score = (SELECT MIN(score) FROM scores JOIN tracks u USING (deezer_track_id) "
+            "WHERE u.deezer_artist_id = t.deezer_artist_id)"
+        )
+    ]
+    assert len(lowest) == 6
+    conn.executemany(
+        "UPDATE candidates SET source = 'voisin', seed_artist_id = 1000, "
+        "neighbour_artist_id = ?, detail = NULL WHERE deezer_track_id = ?",
+        [(t // 100, t) for t in lowest],
+    )
+    conn.commit()
+    rescore(conn, tmp_path / "models", cfg)
+    accepted = {
+        int(r[0]) for r in conn.execute("SELECT deezer_track_id FROM scores WHERE accepted")
+    }
+    assert set(lowest) <= accepted
+    kept, floored = _kept_and_floored(conn)
+    assert (1, "hypem") not in kept and floored == {(1, "hypem"): 6}
+
+
+def test_last_batch_counts_the_floored_news_of_the_latest_run(tmp_path: Path) -> None:
+    conn = make_model_db(tmp_path)
+    _two_batches(conn)
+    conn.execute(
+        "UPDATE candidates SET source = 'deezer_editorial', seed_artist_id = NULL, "
+        "neighbour_artist_id = NULL, detail = 'electro' "
+        "WHERE deezer_track_id BETWEEN 300600 AND 300899"
+    )
+    conn.commit()
+    cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=100, min_score_nouveautes=0.5)
+    assert train(conn, tmp_path / "models", cfg, NOW).promoted
+    rescore(conn, tmp_path / "models", cfg)
+    # Fournée 2 : 12 artistes rejetés de 4 titres ; les nouveautés de 3006 à 3008 sont sous le
+    # plancher, les 9 voisins entrent (pas de plancher pour les découvertes).
+    assert last_batch(conn) == Batch(2, 48, 9, 3)
 
 
 def test_a_worse_model_is_kept_out_of_service(

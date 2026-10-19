@@ -106,11 +106,16 @@ class ModelConfig(BaseModel):
     weak_weight: float = Field(default=0.1, ge=0, le=1)
     keep_decouvertes: int = Field(default=80, ge=1)
     keep_nouveautes: int = Field(default=80, ge=1)
+    min_score_nouveautes: float = Field(default=0.0, ge=0, le=1)
     exam_window: int = Field(default=60, ge=10, le=1000)
 
     @property
     def keep(self) -> dict[str, int]:
         return {"decouvertes": self.keep_decouvertes, "nouveautes": self.keep_nouveautes}
+
+    @property
+    def floor(self) -> dict[str, float]:
+        return {"decouvertes": 0.0, "nouveautes": self.min_score_nouveautes}
 
 
 class AcquisitionConfig(BaseModel):
