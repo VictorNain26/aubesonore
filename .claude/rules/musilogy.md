@@ -87,6 +87,7 @@ uv run musilogy snapshot-listens <ref>  # toutes les écoutes ListenBrainz (arch
 uv run musilogy make-fixtures # depuis les extractions et les relevés épinglés
 uv run musilogy load          # charge data/out/ dans la base du site (environnement libpq)
 uv run musilogy load --sample # charge le pipeline passé sur les fixtures : la petite Musilogy d'un poste
+uv run musilogy bench sample|fetch|pool <tour>|check|report  # le banc d'évaluation des similaires (bench.py)
 MUSILOGY_TEST_PG='host=… dbname=…' uv run pytest  # tests Postgres compris : un Postgres jetable, jamais celui du site
 ```
 

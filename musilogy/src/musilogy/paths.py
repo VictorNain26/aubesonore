@@ -16,6 +16,15 @@ REPO_ROOT = PACKAGE_DIR.parents[1]
 DATA_DIR = REPO_ROOT / "data"
 RAW_DIR = DATA_DIR / "raw"
 FIXTURES_DIR = REPO_ROOT / "tests" / "fixtures"
+# What the bench's judges are told (bench.py): versioned, its digest pinned by each draw.
+CONSIGNE = REPO_ROOT / "docs" / "consigne-juges.md"
+
+
+def bench_dir(version: str) -> Path:
+    """The evaluation bench's data: its draw, the systems' answers, the
+    verdicts. Out of the repository, which is public: Last.fm's and Deezer's
+    answers are not ours to publish."""
+    return DATA_DIR / "bench" / version
 
 
 def aside_of(dest: Path) -> Path:

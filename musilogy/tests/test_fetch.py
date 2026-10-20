@@ -263,7 +263,7 @@ def test_a_throttled_wikidata_query_waits_for_its_retry_after(monkeypatch, slept
             )
         return EMPTY_SPARQL, Message()
 
-    monkeypatch.setattr(fetch, "_get", get)
+    monkeypatch.setattr(fetch, "get_json", get)
     assert fetch.discography() == []
     assert slept == [9.0]
 
@@ -294,7 +294,7 @@ def test_an_official_snapshot_joins_the_pages_and_paces_each_request(tmp_path, m
     artist = mbids(1)[0]
     first, second = mbids(100, start=500), mbids(3, start=400)
     get, asked = browsing({artist: [browse(artist, first, 103), browse(artist, second, 103)]})
-    monkeypatch.setattr(fetch, "_get", get)
+    monkeypatch.setattr(fetch, "get_json", get)
     dest = tmp_path / "snap" / "official-release-groups.jsonl"
 
     assert fetch.fetch_official(iter([artist]), dest) == 1
@@ -311,7 +311,7 @@ def test_an_official_snapshot_joins_the_pages_and_paces_each_request(tmp_path, m
 def test_an_official_snapshot_cut_short_resumes_where_it_stopped(tmp_path, monkeypatch):
     artists = mbids(4)
     get, asked = browsing({a: [browse(a, [])] for a in artists})
-    monkeypatch.setattr(fetch, "_get", get)
+    monkeypatch.setattr(fetch, "get_json", get)
     dest = tmp_path / "official-release-groups.jsonl"
     written = [json.dumps({"artist_mbid": a, "release_groups": []}) + "\n" for a in artists[:2]]
     dest.with_name(dest.name + ".partial").write_text(
@@ -329,7 +329,7 @@ def test_an_artist_musicbrainz_no_longer_holds_is_left_unsurveyed(monkeypatch):
     def gone(url, _params):
         raise urllib.error.HTTPError(url, 404, "Not Found", Message(), None)
 
-    monkeypatch.setattr(fetch, "_get", gone)
+    monkeypatch.setattr(fetch, "get_json", gone)
     artist = mbids(1)[0]
     assert fetch.official_release_groups(artist) == {"artist_mbid": artist, "release_groups": None}
 
@@ -338,7 +338,7 @@ def test_an_artist_musicbrainz_no_longer_holds_is_left_unsurveyed(monkeypatch):
 def test_an_answer_for_the_artist_merged_into_is_left_unsurveyed(monkeypatch):
     artist, merged_into = mbids(2)
     get, _ = browsing({artist: [browse(merged_into, mbids(2, start=500))]})
-    monkeypatch.setattr(fetch, "_get", get)
+    monkeypatch.setattr(fetch, "get_json", get)
     assert fetch.official_release_groups(artist)["release_groups"] is None
 
 
@@ -350,7 +350,7 @@ def test_a_release_group_of_another_artist_is_refused(monkeypatch):
     page["release-groups"] += browse(other, mbids(1, start=600))["release-groups"]
     page["release-group-count"] = 3
     get, _ = browsing({artist: [page]})
-    monkeypatch.setattr(fetch, "_get", get)
+    monkeypatch.setattr(fetch, "get_json", get)
     with pytest.raises(fetch.DownloadError):
         fetch.official_release_groups(artist)
 
@@ -369,7 +369,7 @@ def test_pages_that_do_not_add_up_are_refused(monkeypatch, second):
     # partial or doubled list that would pass for the artist's whole work.
     artist = mbids(1)[0]
     get, _ = browsing({artist: [browse(artist, mbids(100, start=500), 103), second(artist)]})
-    monkeypatch.setattr(fetch, "_get", get)
+    monkeypatch.setattr(fetch, "get_json", get)
     with pytest.raises(fetch.DownloadError):
         fetch.official_release_groups(artist)
 
