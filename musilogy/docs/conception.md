@@ -29,9 +29,13 @@ reconnues, sans couche maison :
    cosinus (TF-IDF, la base du filtrage par contenu) ; un artiste qui a moins de trois disques
    stylés n'a pas de couleur.
 4. **Le classement** : le score de la co-écoute, parmi les voisins que la couleur confirme.
-5. **La mesure** : des paires jugées à partir de sources sur un ensemble de candidats regroupés
-   (le *pooling* de TREC ; Ellis et al., ISMIR 2002 pour la vérité terrain de la similarité
-   d'artistes), une précision par artiste de référence avec son intervalle de confiance.
+5. **La mesure** : le banc d'évaluation (`src/musilogy/bench.py`, `musilogy bench`). Des
+   références tirées au hasard par tranche de popularité ; les premiers voisins de chaque système
+   regroupés (le *pooling* de TREC ; Ellis et al., ISMIR 2002 pour la vérité terrain de la
+   similarité d'artistes) ; chaque paire jugée une fois à partir de sources, par deux juges et un
+   troisième quand ils divergent, selon `docs/consigne-juges.md` ; précision, rappel sur le pool
+   et couverture par référence, avec leurs intervalles de confiance. Ses données restent hors du
+   dépôt (`paths.bench_dir`).
 
 La co-écoute se lit dans les deux sens : un artiste parmi les voisins de l'artiste, ou dont
 l'artiste est un voisin, au plus haut des deux scores. La couleur se compare toutes décennies

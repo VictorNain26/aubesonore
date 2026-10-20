@@ -214,7 +214,7 @@ def _backoff(attempt: int) -> float:
     return min(2.0**attempt, MAX_BACKOFF)
 
 
-def _with_retries(
+def with_retries(
     call: Callable[[], tuple[Any, Message]], service: str = "ListenBrainz"
 ) -> tuple[Any, Message]:
     """One request, through the service's outages: a 429 waits for the reset
@@ -250,7 +250,7 @@ def popularity_batch(mbids: list[str]) -> tuple[list[dict[str, Any]], float]:
 
     The response is an external payload: it must answer the batch asked, in
     order, or a count lands on the wrong artist without anything noticing."""
-    rows, headers = _with_retries(lambda: _post(POPULARITY_URL, {"artist_mbids": mbids}))
+    rows, headers = with_retries(lambda: _post(POPULARITY_URL, {"artist_mbids": mbids}))
     if (
         not isinstance(rows, list)
         or [r.get("artist_mbid") if isinstance(r, dict) else None for r in rows] != mbids
@@ -308,7 +308,7 @@ RELEASE_GROUPS_URL = "https://musicbrainz.org/ws/2/release-group"
 # are all promotions, bootlegs or pseudo-releases, as the artist's page on
 # musicbrainz.org does (same page, "release-group-status"). The service allows
 # one request a second on average, and answers 503 above it
-# (musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting): _with_retries waits.
+# (musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting): with_retries waits.
 BROWSE_LIMIT = 100
 
 
@@ -356,7 +356,7 @@ def official_release_groups(mbid: str) -> dict[str, Any]:
             "offset": str(len(ids)),
             "fmt": "json",
         }
-        page, _ = _with_retries(partial(_get_known, RELEASE_GROUPS_URL, params), "MusicBrainz")
+        page, _ = with_retries(partial(_get_known, RELEASE_GROUPS_URL, params), "MusicBrainz")
         time.sleep(max(0.0, MIN_INTERVAL - (time.monotonic() - started)))
         if page is None:
             return {"artist_mbid": mbid, "release_groups": None}
@@ -437,7 +437,7 @@ def discography() -> list[dict[str, str]]:
     rows: set[tuple[str, str]] = set()
     for qid, form in DISCOGRAPHY_FORMS.items():
         params = {"query": DISCOGRAPHY_QUERY.format(form=qid), "format": "json"}
-        answer, _ = _with_retries(partial(_get, WDQS_URL, params), "Wikidata")
+        answer, _ = with_retries(partial(_get, WDQS_URL, params), "Wikidata")
         try:
             rows |= {(b["rg"]["value"], form) for b in answer["results"]["bindings"]}
         except (KeyError, TypeError) as e:

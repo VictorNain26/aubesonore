@@ -6,6 +6,8 @@ license = "MIT"
 dependencies = [
     "duckdb==1.5.5",
     # Our co-listening's sparse product (colisten.py), the one step not in SQL.
+    "ir-measures==0.4.3",
+    "krippendorff==0.9.0",
     "numpy==2.5.3",
     "scipy==1.18.1",
 ]
