@@ -2,6 +2,10 @@
 verdict, the vote of the judges and the report's numbers, each known in advance."""
 
 import json
+import math
+import shutil
+import urllib.error
+from email.message import Message
 from typing import Any
 
 import duckdb
@@ -184,14 +188,42 @@ def test_the_report_gives_the_share_of_controls_judged_good():
     labels = {"r1": {"c": "parente", "x": "meme_son"}}
     out = report(refs, labels, {"ours": {"r1": ["x"]}}, {}, controls={"r1": "c"})
     assert out["controls_good"] == pytest.approx(1.0)
-    # The control judged good is no good pair of the pool: x alone is.
-    assert out["systems"]["ours"]["tail"]["recall"][0] == pytest.approx(1.0)
+
+
+def test_a_control_a_system_shows_is_measured_like_any_judged_pair():
+    refs = [{"mbid": "r1", "stratum": "tail", "listeners": 10}]
+    labels = {"r1": {"c": "etranger", "x": "meme_son"}}
+    out = report(refs, labels, {"ours": {"r1": ["x", "c"]}}, {}, controls={"r1": "c"})
+    assert out["systems"]["ours"]["tail"]["large"][0] == pytest.approx(0.5)
+    assert out["systems"]["ours"]["tail"]["foreign"][0] == pytest.approx(0.5)
 
 
 def test_recall_leaves_out_a_reference_whose_pool_holds_no_good_pair():
     refs = [{"mbid": "r1", "stratum": "tail", "listeners": 10}]
     out = report(refs, {"r1": {"x": "lointain"}}, {"ours": {"r1": ["x"]}}, {}, controls={})
     assert out["per"]["ours"]["recall"] == {}
+
+
+def test_recall_leaves_out_a_reference_a_system_gives_no_answer_for():
+    refs = [{"mbid": "r1", "stratum": "tail", "listeners": 10}]
+    labels = {"r1": {"x": "meme_son"}}
+    runs: dict[str, dict[str, list[str]]] = {"ours": {"r1": []}, "deezer": {}}
+    out = report(refs, labels, runs, {}, controls={})
+    # Ours answered nothing and found nothing; Deezer was never asked.
+    assert out["per"]["ours"]["recall"] == {"r1": 0.0}
+    assert out["per"]["deezer"]["recall"] == {}
+
+
+def test_a_verdict_judging_one_candidate_twice_is_refused():
+    v = verdict()
+    v["verdicts"].append({**v["verdicts"][0], "son": "etranger"})
+    assert "judged twice: x" in problems(v, REF, {"x", "y"})
+
+
+def test_agreement_is_unmeasured_when_the_judges_never_differ_in_kind():
+    same = judged(p=("parente", "parente"), q=("parente", "inconnu"))
+    assert math.isnan(agreement(same["a"], same["b"]))
+    assert math.isnan(agreement({}, {}))
 
 
 def test_the_differences_pair_the_references_both_systems_are_measured_on():
@@ -283,18 +315,24 @@ def write_verdict(folder, round_, judge, ref, sons):
     )
 
 
-def test_the_bench_goes_from_the_draw_to_the_report(tmp_path, monkeypatch):
-    out = delivered(tmp_path / "out")
-    folder = tmp_path / "bench"
-    monkeypatch.setattr(bench, "PER_STRATUM", 1)
-    assert bench.take_sample(folder, out) == 1
-    with pytest.raises(SystemExit):
-        bench.take_sample(folder, out)
-    assert [r["mbid"] for r in bench.references(folder)] == ["r"]
+def answered(folder):
     bench._write(
         folder / "answers.json",
         {"lastfm": {"r": [{"name": "Lone", "url": "https://last.fm/lone"}]}, "deezer": {"r": None}},
     )
+
+
+def test_the_bench_goes_from_the_draw_to_the_report(tmp_path, monkeypatch):
+    out = delivered(tmp_path / "out")
+    folder = tmp_path / "bench"
+    monkeypatch.setattr(bench, "PER_STRATUM", 1)
+    # Every reference judged again, to see the stability round hold nothing up.
+    monkeypatch.setattr(bench, "AGAIN", 1)
+    assert bench.take_sample(folder, out) == 1
+    with pytest.raises(SystemExit):
+        bench.take_sample(folder, out)
+    assert [r["mbid"] for r in bench.references(folder)] == ["r"]
+    answered(folder)
     # n1 n2 from ours, Lone from Last.fm, q the control.
     assert bench.make_round(folder, out, "r1") == 4
     target = bench._read(folder / "targets" / "r1" / "r.json")
@@ -307,21 +345,52 @@ def test_the_bench_goes_from_the_draw_to_the_report(tmp_path, monkeypatch):
     sons_b = {"n1": "meme_son", "n2": "lointain", "lastfm:Lone": "etranger", "q": "etranger"}
     write_verdict(folder, "r1", "a", "r", sons_a)
     write_verdict(folder, "r1", "b", "r", sons_b)
-    if (folder / "targets" / "r1-again" / "r.json").exists():
-        write_verdict(folder, "r1-again", "a2", "r", sons_a)
-    # n2 is split: judge c settles it.
-    assert bench.check(folder) == ["r1-third/c/r: missing"]
+    # n2 is split: judge c settles it, before judge a has judged again.
+    assert bench.check(folder) == ["r1-again/a2/r: missing", "r1-third/c/r: missing"]
     third = bench._read(folder / "targets" / "r1-third" / "r.json")
     assert [c["mbid"] for c in third["candidates"]] == ["n2"]
     write_verdict(folder, "r1-third", "c", "r", {"n2": "parente"})
+    write_verdict(folder, "r1-again", "a2", "r", sons_a)
     assert bench.check(folder) == []
 
-    result = bench.write_report(folder, out)
+    # The report reads what the rounds froze, no delivery.
+    shutil.rmtree(out)
+    result = bench.write_report(folder)
     assert result["systems"]["ours"]["all"]["large"][0] == pytest.approx(1.0)
     assert result["systems"]["ours"]["all"]["strict"][0] == pytest.approx(0.5)
     assert result["systems"]["lastfm"]["all"]["foreign"][0] == pytest.approx(1.0)
     assert result["controls_good"] == pytest.approx(0.0)
     assert result["differences"]["lastfm"]["large"]["all"][0] == pytest.approx(-1.0)
+
+
+def test_the_first_round_refuses_a_delivery_other_than_the_one_drawn_on(tmp_path, monkeypatch):
+    out = delivered(tmp_path / "out")
+    folder = tmp_path / "bench"
+    monkeypatch.setattr(bench, "PER_STRATUM", 1)
+    bench.take_sample(folder, out)
+    answered(folder)
+    manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+    (out / "manifest.json").write_text(json.dumps({**manifest, "rebuilt": True}), encoding="utf-8")
+    with pytest.raises(SystemExit, match="not the delivery"):
+        bench.make_round(folder, out, "r1")
+
+
+def test_a_first_round_cut_short_freezes_nothing_and_is_taken_again(tmp_path, monkeypatch):
+    out = delivered(tmp_path / "out")
+    folder = tmp_path / "bench"
+    monkeypatch.setattr(bench, "PER_STRATUM", 1)
+    bench.take_sample(folder, out)
+    answered(folder)
+
+    def fails(*_):
+        raise duckdb.OutOfMemoryException("cut short")
+
+    with monkeypatch.context() as m:
+        m.setattr(bench, "draw_controls", fails)
+        with pytest.raises(duckdb.OutOfMemoryException):
+            bench.make_round(folder, out, "r1")
+    assert not (folder / "runs").exists()
+    assert bench.make_round(folder, out, "r1") == 4
 
 
 def test_the_bench_refuses_a_delivery_its_manifest_does_not_vouch_for(tmp_path):
@@ -402,17 +471,45 @@ def test_deezer_is_asked_only_for_a_reference_tied_to_one_deezer_artist(monkeypa
     }
 
 
-def test_lastfm_is_asked_by_name_when_it_does_not_know_the_mbid(monkeypatch):
-    answers = iter([{"error": 6}, {"similarartists": {"artist": [{"name": "Y", "url": "u"}]}}])
+def lastfm_asked(monkeypatch, answers):
     asked: list[dict[str, str]] = []
+    given = iter(answers)
 
     def ask(url, params):
         assert url == bench.LASTFM_URL
         asked.append(params)
-        return next(answers)
+        return next(given)
 
     monkeypatch.setattr(bench, "_ask", ask)
-    out = bench.fetch_lastfm([{"mbid": "r", "name": "Ref"}], key="k")
+    return asked
+
+
+def test_lastfm_is_asked_by_name_when_it_does_not_know_the_mbid(monkeypatch):
+    similar = {"similarartists": {"artist": [{"name": "Y", "url": "u"}]}}
+    asked = lastfm_asked(monkeypatch, [{"error": 6}, similar])
+    out = bench.fetch_lastfm([{"mbid": "r", "name": "Ref"}], key="k", unique={"r"})
     assert asked[0]["mbid"] == "r"
     assert asked[1]["artist"] == "Ref"
     assert out == {"r": [{"name": "Y", "mbid": None, "url": "u"}]}
+
+
+def test_lastfm_is_not_asked_by_a_name_other_artists_bear(monkeypatch):
+    asked = lastfm_asked(monkeypatch, [{"error": 6}])
+    out = bench.fetch_lastfm([{"mbid": "r", "name": "Nova"}], key="k", unique=set())
+    assert len(asked) == 1
+    assert out == {"r": []}
+
+
+def test_a_unique_name_is_one_no_other_artist_bears():
+    con = delivery()
+    con.execute("INSERT INTO artists (mbid, name, name_key) VALUES ('r2', 'REF', 'ref')")
+    assert bench.unique_names(con, ["r", "q"]) == {"q"}
+
+
+def test_a_service_refusing_one_reference_answers_an_error(monkeypatch):
+    def refuse(url, *_):
+        raise urllib.error.HTTPError(url, 404, "Not Found", Message(), None)
+
+    monkeypatch.setattr(bench, "get_json", refuse)
+    monkeypatch.setattr(bench, "SERVICE_INTERVAL", 0)
+    assert bench._ask(bench.LASTFM_URL, {}) == {"error": 404}

@@ -681,7 +681,7 @@ def bench_check(version: str) -> None:
 
 
 def bench_report(version: str) -> None:
-    result = write_report(bench_dir(version), out_dir(DUMP))
+    result = write_report(bench_dir(version))
     print(
         f"agreement {result['agreement']:.2f}, stability {result['stability']:.2f}, "
         f"controls judged good {result['controls_good']:.0%}, disputed {result['disputed']}"
