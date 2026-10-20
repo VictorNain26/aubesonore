@@ -260,8 +260,10 @@ def popularity_batch(mbids: list[str]) -> tuple[list[dict[str, Any]], float]:
     return rows, _reset_in(headers) if remaining == 0 else MIN_INTERVAL
 
 
-def _get(url: str, params: dict[str, str]) -> tuple[Any, Message]:
-    req = _request(f"{url}?{urllib.parse.urlencode(params)}")
+def get_json(
+    url: str, params: dict[str, str], headers: dict[str, str] | None = None
+) -> tuple[Any, Message]:
+    req = _request(f"{url}?{urllib.parse.urlencode(params)}", headers=headers)
     with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as r:
         return json.load(r), r.headers
 
@@ -316,7 +318,7 @@ def _get_known(url: str, params: dict[str, str]) -> tuple[Any, Message]:
     """MusicBrainz answers 404 for an artist it no longer holds: an answer,
     not a refusal."""
     try:
-        return _get(url, params)
+        return get_json(url, params)
     except urllib.error.HTTPError as e:
         if e.code == HTTPStatus.NOT_FOUND:
             return None, e.headers
@@ -437,7 +439,7 @@ def discography() -> list[dict[str, str]]:
     rows: set[tuple[str, str]] = set()
     for qid, form in DISCOGRAPHY_FORMS.items():
         params = {"query": DISCOGRAPHY_QUERY.format(form=qid), "format": "json"}
-        answer, _ = with_retries(partial(_get, WDQS_URL, params), "Wikidata")
+        answer, _ = with_retries(partial(get_json, WDQS_URL, params), "Wikidata")
         try:
             rows |= {(b["rg"]["value"], form) for b in answer["results"]["bindings"]}
         except (KeyError, TypeError) as e:

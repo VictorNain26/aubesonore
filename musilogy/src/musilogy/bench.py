@@ -8,8 +8,7 @@ third where they split; the systems then measured against the judged pool,
 never counting an unjudged pair as a bad one (Buckley & Voorhees, SIGIR 2004).
 
 The measures are ir_measures' (trec_eval underneath), the intervals scipy's
-bootstrap over references, the agreement of the judges Krippendorff's alpha:
-nothing here re-implements them.
+bootstrap over references, the agreement of the judges Krippendorff's alpha.
 
 Last.fm's and Deezer's lists are read to be measured against, never published:
 the bench's data stay in data/bench/, out of the repository."""
@@ -21,11 +20,8 @@ import json
 import math
 import re
 import time
-import urllib.parse
-import urllib.request
-from collections import Counter
 from collections.abc import Mapping, Sequence
-from email.message import Message
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -33,10 +29,12 @@ import duckdb
 import ir_measures
 import krippendorff
 import numpy as np
-from ir_measures import Qrel, ScoredDoc, SetP, SetR
+from ir_measures import Judged, Qrel, ScoredDoc, SetP, SetR
 from scipy import stats
 
-from musilogy.fetch import DOWNLOAD_TIMEOUT, with_retries
+from musilogy.build import connect
+from musilogy.fetch import get_json, sha256_file, with_retries
+from musilogy.load import verified_manifest
 from musilogy.paths import CONSIGNE, written_aside
 
 # Listeners of the reference, both ends included; None leaves the top open.
@@ -50,42 +48,48 @@ STRATA: dict[str, tuple[int, int | None]] = {
 SHOWN = 8
 DEPTH = 10
 # From the lowest: in doubt between two verdicts, the judge takes the lower
-# (consigne.md), and so does the vote.
+# (docs/consigne-juges.md), and so does the vote.
 LABELS = ("etranger", "lointain", "parente", "meme_son")
 GOOD = {"parente", "meme_son"}
 RELEVANCE = {"etranger": 0, "lointain": 0, "parente": 1, "meme_son": 2}
 UNKNOWN = "inconnu"
 # Known verdicts a pair needs before the vote settles it.
 VOTES = 2
-# Spellings MusicBrainz and the services write a hyphen in.
-HYPHEN = "\u2010"
 CONFIDENCE = 0.95
+MEASURES = ("strict", "large", "recall", "foreign", "judged", "less_known")
 
 
-def _blind(seed: str, value: str) -> str:
-    return hashlib.sha256(f"{seed}:{value}".encode()).hexdigest()
+def _blind(seed: str, value: str) -> int:
+    return int(hashlib.sha256(f"{seed}:{value}".encode()).hexdigest(), 16)
 
 
 def draw_references(
     con: duckdb.DuckDBPyConnection, per_stratum: int, seed: str
 ) -> list[dict[str, Any]]:
-    """`per_stratum` artists of each stratum, drawn among those the co-listening
-    knows (`popularity`, `colisten`), the same for one seed whatever DuckDB's
-    version: the order is a digest of the seed and the MBID."""
-    refs: list[dict[str, Any]] = []
-    for stratum, (low, high) in STRATA.items():
-        rows = con.execute(
-            """
-            SELECT mbid, user_count FROM popularity
-            WHERE user_count >= ? AND (? IS NULL OR user_count <= ?)
-              AND mbid IN (SELECT artist_mbid FROM colisten
-                           UNION SELECT neighbour_mbid FROM colisten)
-            ORDER BY sha256(? || ':' || mbid) LIMIT ?
-            """,
-            [low, high, high, seed, per_stratum],
-        ).fetchall()
-        refs += [{"mbid": m, "stratum": stratum, "listeners": n} for m, n in rows]
-    return refs
+    """`per_stratum` artists of each stratum, drawn among those the
+    co-listening knows, the same for one seed whatever DuckDB's version: the
+    order is a digest of the seed and the MBID. An artist with a neighbour is
+    one's neighbour too (listeners in common go both ways), so `artist_mbid`
+    alone names them all."""
+    case = " ".join(
+        f"WHEN user_count <= {high} THEN '{name}'" for name, (_, high) in STRATA.items() if high
+    )
+    top = next(name for name, (_, high) in STRATA.items() if high is None)
+    rows = con.execute(
+        f"""
+        SELECT CASE {case} ELSE '{top}' END AS stratum, mbid, user_count FROM popularity p
+        WHERE user_count >= ? AND EXISTS (SELECT 1 FROM colisten c WHERE c.artist_mbid = p.mbid)
+        QUALIFY row_number() OVER (PARTITION BY stratum ORDER BY sha256(? || ':' || mbid)) <= ?
+        ORDER BY sha256(? || ':' || mbid)
+        """,
+        [min(low for low, _ in STRATA.values()), seed, per_stratum, seed],
+    ).fetchall()
+    return [
+        {"mbid": m, "stratum": s, "listeners": n}
+        for name in STRATA
+        for s, m, n in rows
+        if s == name
+    ]
 
 
 def pooled(
@@ -188,12 +192,13 @@ def interval(values: Sequence[float], seed: int = 0) -> tuple[float, float, floa
 def _per_reference(
     measure: Any, qrels: list[Qrel], run: Mapping[str, Sequence[str]]
 ) -> dict[str, float]:
+    """One measure for each reference the run shows something for: trec_eval
+    also scores, at 0, those it shows nothing for."""
     docs = [
         ScoredDoc(ref, cand, float(SHOWN - rank))
         for ref, cands in run.items()
         for rank, cand in enumerate(cands[:SHOWN])
     ]
-    # trec_eval also scores, at 0, the references the run shows nothing for.
     return {
         m.query_id: float(m.value)
         for m in ir_measures.iter_calc([measure], qrels, docs)
@@ -230,68 +235,52 @@ def report(
     controls: Mapping[str, str],
 ) -> dict[str, Any]:
     """Each system's first SHOWN neighbours against the judged pool, per stratum
-    and for all: precision strict (même son) and large (with parenté) over the
-    judged pairs shown, the share of strangers, recall of the pool's good pairs,
-    the share of shown pairs judged, coverage, and the share of neighbours less
-    known than their reference. Means over references, with their intervals;
-    `per` keeps each reference's value, for the paired differences. The
-    controls are left out of the pool: they test the judges, not the systems."""
+    and for all (`systems`): precision strict (même son) and large (with
+    parenté) over the judged pairs shown, recall of the pool's good pairs, the
+    share of strangers, the share of shown pairs judged, the share of
+    neighbours less known than their reference, coverage. Means over
+    references with their intervals; `per` keeps each reference's value, for
+    the paired differences. The controls are left out of the pool: they test
+    the judges, not the systems."""
     judged_controls = [labels[r][c] for r, c in controls.items() if c in labels.get(r, {})]
     labels = {
         ref: {c: v for c, v in by.items() if controls.get(ref) != c} for ref, by in labels.items()
     }
-    qrels = [
-        Qrel(ref, cand, RELEVANCE[label])
-        for ref, by in labels.items()
-        for cand, label in by.items()
-    ]
+    qrels = [Qrel(r, c, RELEVANCE[v]) for r, by in labels.items() for c, v in by.items()]
+    foreign = [Qrel(r, c, int(v == "etranger")) for r, by in labels.items() for c, v in by.items()]
     has_good = {r for r, by in labels.items() if any(v in GOOD for v in by.values())}
-    measures = {
-        "strict": SetP(rel=2, judged_only=True),
-        "large": SetP(rel=1, judged_only=True),
-        "foreign": None,
-        "recall": SetR(rel=1),
-        "judged": None,
-        "less_known": None,
-    }
-    out: dict[str, Any] = {}
+    of_ref = {r["mbid"]: r["listeners"] for r in refs}
+    strata = _strata(refs)
+    out: dict[str, Any] = {"systems": {}, "per": {}}
     for system, run in runs.items():
-        shown = {ref: list(run.get(ref, []))[:SHOWN] for ref in labels.keys() | run.keys()}
-        per: dict[str, dict[str, float]] = {}
-        for name, measure in measures.items():
-            if measure is not None:
-                per[name] = _per_reference(measure, qrels, {r: c for r, c in shown.items() if c})
-        # Recall means something only where the pool holds a good pair.
-        per["recall"] = {r: v for r, v in per["recall"].items() if r in has_good}
-        per["foreign"] = {
-            r: Counter(labels[r].get(c) for c in cs)["etranger"]
-            / sum(1 for c in cs if c in labels[r])
-            for r, cs in shown.items()
-            if any(c in labels.get(r, {}) for c in cs)
+        shown = {r: list(cs)[:SHOWN] for r, cs in run.items() if cs}
+        recall = _per_reference(SetR(rel=1), qrels, shown)
+        per = {
+            "strict": _per_reference(SetP(rel=2, judged_only=True), qrels, shown),
+            "large": _per_reference(SetP(rel=1, judged_only=True), qrels, shown),
+            # Recall means something only where the pool holds a good pair; a
+            # reference shown nothing found none of them.
+            "recall": {r: recall.get(r, 0.0) for r in has_good},
+            "foreign": _per_reference(SetP(rel=1, judged_only=True), foreign, shown),
+            "judged": _per_reference(Judged @ SHOWN, qrels, shown),
+            "less_known": {
+                r: float(np.mean([listeners[c] < of_ref[r] for c in cs if c in listeners]))
+                for r, cs in shown.items()
+                if any(c in listeners for c in cs)
+            },
         }
-        per["judged"] = {
-            r: sum(c in labels.get(r, {}) for c in cs) / len(cs) for r, cs in shown.items() if cs
-        }
-        by_listeners = {r["mbid"]: r["listeners"] for r in refs}
-        per["less_known"] = {
-            r: sum(listeners[c] < by_listeners[r] for c in cs if c in listeners)
-            / sum(c in listeners for c in cs)
-            for r, cs in shown.items()
-            if any(c in listeners for c in cs)
-        }
-        # A reference shown nothing, whose pool holds good pairs, found none of them.
-        for r, cs in shown.items():
-            if not cs and r in has_good:
-                per["recall"][r] = 0.0
-        out[system] = {"per": per}
-        for stratum, members in _strata(refs).items():
-            row: dict[str, Any] = {
-                name: interval([per[name][m] for m in members if m in per[name]])
-                for name in measures
+        out["per"][system] = per
+        out["systems"][system] = {
+            stratum: {
+                **{
+                    name: interval([per[name][m] for m in members if m in per[name]])
+                    for name in MEASURES
+                },
+                "coverage": sum(1 for m in members if m in shown) / len(members),
+                "references": len(members),
             }
-            row["coverage"] = sum(1 for m in members if shown.get(m)) / len(members)
-            row["references"] = len(members)
-            out[system][stratum] = row
+            for stratum, members in strata.items()
+        }
     out["controls_good"] = (
         sum(v in GOOD for v in judged_controls) / len(judged_controls)
         if judged_controls
@@ -304,10 +293,11 @@ def report(
 
 # Last.fm's and Deezer's answers are measured against, never published (module
 # docstring); the requests name the bench, nothing else.
-BENCH_UA = "musilogy-bench/0.1"
+BENCH_UA = {"User-Agent": "musilogy-bench/0.1"}
 LASTFM_URL = "https://ws.audioscrobbler.com/2.0/"
 DEEZER_URL = "https://api.deezer.com/artist/{}/related"
-DEEZER_ARTIST = re.compile(r"deezer\.com/(?:[a-z]{2}/)?artist/(\d+)")
+# A Deezer artist's page, as MusicBrainz relates it (sql/82_urls.sql keeps it).
+DEEZER_ARTIST = r"deezer\.com/(?:[a-z]{2}/)?artist/(\d+)"
 # Last.fm asks for no more than five requests a second, averaged over five minutes.
 SERVICE_INTERVAL = 0.5
 # A control: an artist many sources describe, sharing no Discogs style with
@@ -317,8 +307,10 @@ DELIVERY_TABLES = ("artists", "urls", "popularity", "colisten", "same_sound", "s
 
 
 def open_delivery(folder: Path) -> duckdb.DuckDBPyConnection:
-    """A connection on a published delivery's tables, read where they lie."""
-    con = duckdb.connect(":memory:")
+    """The bounded connection of the build (build.connect), on a published
+    delivery's tables, checked against its manifest and read where they lie."""
+    verified_manifest(folder, DELIVERY_TABLES)
+    con = connect()
     for table in DELIVERY_TABLES:
         path = (folder / f"{table}.parquet").as_posix().replace("'", "''")
         con.execute(f"CREATE VIEW {table} AS SELECT * FROM read_parquet('{path}')")
@@ -344,16 +336,20 @@ def draw_controls(con: duckdb.DuckDBPyConnection, refs: Sequence[str], seed: str
     styles the reference has."""
     rows = con.execute(
         """
-        WITH pool AS (
-          SELECT p.mbid FROM popularity p
-          JOIN (SELECT artist_mbid FROM styles GROUP BY 1 HAVING sum(records) >= 3) s
-            ON s.artist_mbid = p.mbid
-          WHERE p.user_count >= ?
+        WITH profile AS (
+          SELECT artist_mbid, list(DISTINCT style) AS styles, sum(records) AS n
+          FROM styles GROUP BY 1
+        ),
+        pool AS (
+          SELECT p.mbid, f.styles FROM popularity p JOIN profile f ON f.artist_mbid = p.mbid
+          WHERE p.user_count >= ? AND f.n >= 3
+        ),
+        refs AS (
+          SELECT r.ref, coalesce(f.styles, []) AS styles
+          FROM (SELECT unnest(?) AS ref) r LEFT JOIN profile f ON f.artist_mbid = r.ref
         )
-        SELECT r.ref, c.mbid FROM (SELECT unnest(?) AS ref) r, pool c
-        WHERE c.mbid <> r.ref AND NOT EXISTS (
-          SELECT 1 FROM styles a JOIN styles b ON a.style = b.style
-          WHERE a.artist_mbid = r.ref AND b.artist_mbid = c.mbid)
+        SELECT r.ref, c.mbid FROM refs r, pool c
+        WHERE c.mbid <> r.ref AND NOT list_has_any(r.styles, c.styles)
         QUALIFY row_number() OVER (PARTITION BY r.ref ORDER BY sha256(? || r.ref || c.mbid)) = 1
         """,
         [CONTROL_MIN_LISTENERS, list(refs), seed],
@@ -361,25 +357,18 @@ def draw_controls(con: duckdb.DuckDBPyConnection, refs: Sequence[str], seed: str
     return dict(rows)
 
 
-def _ask(url: str) -> Any:
-    req = urllib.request.Request(url, headers={"User-Agent": BENCH_UA})
-
-    def call() -> tuple[Any, Message]:
-        with urllib.request.urlopen(req, timeout=DOWNLOAD_TIMEOUT) as r:
-            return json.load(r), r.headers
-
+def _ask(url: str, params: dict[str, str]) -> Any:
     time.sleep(SERVICE_INTERVAL)
-    return with_retries(call, service=url.split("/")[2])[0]
+    return with_retries(partial(get_json, url, params, BENCH_UA), url.split("/")[2])[0]
 
 
 def fetch_lastfm(refs: Sequence[Mapping[str, Any]], key: str) -> dict[str, list[dict[str, Any]]]:
     """Last.fm's similar artists of each reference, by MBID, else by name."""
     out = {}
     for ref in refs:
-        body: Any = {"error": None}
         for who in ({"mbid": ref["mbid"]}, {"artist": ref["name"]}):
-            params = {"method": "artist.getSimilar", "limit": str(DEPTH), "api_key": key, **who}
-            body = _ask(f"{LASTFM_URL}?{urllib.parse.urlencode({**params, 'format': 'json'})}")
+            asked = {"method": "artist.getSimilar", "limit": str(DEPTH), "format": "json"}
+            body = _ask(LASTFM_URL, {**asked, "api_key": key, **who})
             if "error" not in body:
                 break
         artists = [] if "error" in body else body.get("similarartists", {}).get("artist", [])
@@ -390,42 +379,30 @@ def fetch_lastfm(refs: Sequence[Mapping[str, Any]], key: str) -> dict[str, list[
     return out
 
 
-def _deezer_ids(con: duckdb.DuckDBPyConnection) -> dict[str, set[str]]:
-    """The MBIDs MusicBrainz relates to each Deezer artist."""
-    found: dict[str, set[str]] = {}
-    for mbid, url in con.execute(
-        "SELECT artist_mbid, url FROM urls WHERE url LIKE '%deezer.com/%artist/%'"
-    ).fetchall():
-        if m := DEEZER_ARTIST.search(url):
-            found.setdefault(m.group(1), set()).add(mbid)
-    return found
-
-
 def fetch_deezer(
     con: duckdb.DuckDBPyConnection, refs: Sequence[Mapping[str, Any]]
 ) -> dict[str, list[dict[str, Any]] | None]:
     """Deezer's related artists of each reference MusicBrainz relates to one
     Deezer artist; None for the others."""
-    of_mbid: dict[str, list[str]] = {}
-    for deezer, mbids in _deezer_ids(con).items():
-        for mbid in mbids:
-            of_mbid.setdefault(mbid, []).append(deezer)
+    ids = dict(
+        con.execute(
+            "SELECT artist_mbid, list(DISTINCT regexp_extract(url, ?, 1)) FROM urls "
+            "WHERE artist_mbid IN (SELECT unnest(?)) AND regexp_matches(url, ?) GROUP BY 1",
+            [DEEZER_ARTIST, [r["mbid"] for r in refs], DEEZER_ARTIST],
+        ).fetchall()
+    )
     out: dict[str, list[dict[str, Any]] | None] = {}
     for ref in refs:
-        ids = of_mbid.get(ref["mbid"], [])
-        if len(ids) != 1:
+        deezer = ids.get(ref["mbid"], [])
+        if len(deezer) != 1:
             out[ref["mbid"]] = None
             continue
-        body = _ask(f"{DEEZER_URL.format(ids[0])}?limit={DEPTH}")
+        body = _ask(DEEZER_URL.format(deezer[0]), {"limit": str(DEPTH)})
         out[ref["mbid"]] = [
             {"name": a["name"], "deezer_id": str(a["id"]), "url": a.get("link")}
             for a in body.get("data", [])[:DEPTH]
         ]
     return out
-
-
-def _key(name: str) -> str:
-    return " ".join(name.casefold().replace(HYPHEN, "-").split())
 
 
 def resolved_runs(
@@ -436,20 +413,35 @@ def resolved_runs(
 ) -> tuple[dict[str, dict[str, list[str]]], dict[str, dict[str, Any]]]:
     """The services' answers as candidates of the pool: the MBID the answer
     gives when MusicBrainz knows it, or the one MBID MusicBrainz relates to its
-    Deezer artist; else a candidate of ours of the same name for this
-    reference; else the answer itself (`lastfm:` or `deezer:`), judged from the
-    service's page. Never a name matched across the catalogue."""
-    asked = [a["mbid"] for answers in lastfm.values() for a in answers if a.get("mbid")]
+    Deezer artist; else a candidate of ours whose `name_key` (sql/10_bands.sql)
+    is the answer's, for this reference; else the answer itself (`lastfm:` or
+    `deezer:`), judged from the service's page. Never a name matched across the
+    catalogue."""
+    answers = [a for by in (lastfm, deezer) for a_s in by.values() for a in a_s or []]
     known = {
         m
         for (m,) in con.execute(
-            "SELECT mbid FROM artists WHERE mbid IN (SELECT unnest(?))", [asked]
+            "SELECT mbid FROM artists WHERE mbid IN (SELECT unnest(?))",
+            [[a["mbid"] for a in answers if a.get("mbid")]],
         ).fetchall()
     }
-    by_deezer = _deezer_ids(con)
-    names = dict(
+    by_deezer = dict(
         con.execute(
-            "SELECT mbid, name FROM artists WHERE mbid IN (SELECT unnest(?))",
+            "SELECT regexp_extract(url, ?, 1) AS id, list(DISTINCT artist_mbid) FROM urls "
+            "WHERE regexp_matches(url, ?) AND id IN (SELECT unnest(?)) GROUP BY 1",
+            [DEEZER_ARTIST, DEEZER_ARTIST, [a["deezer_id"] for a in answers if a.get("deezer_id")]],
+        ).fetchall()
+    )
+    # The same key as the catalogue's, for the answers' names.
+    key_of = dict(
+        con.execute(
+            "SELECT name, strip_accents(lower(name)) FROM (SELECT unnest(?) AS name)",
+            [[a["name"] for a in answers]],
+        ).fetchall()
+    )
+    ours_keys = dict(
+        con.execute(
+            "SELECT mbid, name_key FROM artists WHERE mbid IN (SELECT unnest(?))",
             [[m for run in ours.values() for m in run]],
         ).fetchall()
     )
@@ -461,19 +453,19 @@ def resolved_runs(
     )
     for system, answers_of in services:
         runs[system] = {}
-        for ref, answers in answers_of.items():
-            if answers is None:
+        for ref, given in answers_of.items():
+            if given is None:
                 continue
-            same_name = {_key(names[m]): m for m in ours.get(ref, []) if m in names}
+            same_name = {ours_keys[m]: m for m in ours.get(ref, []) if m in ours_keys}
             run = []
-            for a in answers:
-                mbids = by_deezer.get(a.get("deezer_id") or "", set())
+            for a in given:
+                mbids = by_deezer.get(a.get("deezer_id"), [])
                 if a.get("mbid") in known:
                     cand = a["mbid"]
                 elif len(mbids) == 1:
-                    cand = next(iter(mbids))
-                elif _key(a["name"]) in same_name:
-                    cand = same_name[_key(a["name"])]
+                    cand = mbids[0]
+                elif key_of[a["name"]] in same_name:
+                    cand = same_name[key_of[a["name"]]]
                 else:
                     cand = f"{system}:{a.get('deezer_id') or a['name']}"
                     external[cand] = {"mbid": cand, "name": a["name"], "urls": [a.get("url")]}
@@ -487,10 +479,13 @@ def describe(con: duckdb.DuckDBPyConnection, mbids: Sequence[str]) -> dict[str, 
     relates to it, its MusicBrainz page first."""
     rows = con.execute(
         """
+        WITH asked AS (SELECT unnest(?) AS mbid)
         SELECT a.mbid, a.name, nullif(a.disambiguation, ''), a.type, a.y0, a.y_end, a.country,
           list(u.url ORDER BY u.url) FILTER (WHERE u.url IS NOT NULL)
-        FROM artists a LEFT JOIN urls u ON u.artist_mbid = a.mbid
-        WHERE a.mbid IN (SELECT unnest(?)) GROUP BY ALL
+        FROM artists a
+        LEFT JOIN (SELECT * FROM urls WHERE artist_mbid IN (SELECT mbid FROM asked)) u
+          ON u.artist_mbid = a.mbid
+        WHERE a.mbid IN (SELECT mbid FROM asked) GROUP BY ALL
         """,
         [list(mbids)],
     ).fetchall()
@@ -506,6 +501,7 @@ def describe(con: duckdb.DuckDBPyConnection, mbids: Sequence[str]) -> dict[str, 
 # references.json   the draw, with the delivery and the consigne it was made with
 # answers.json      Last.fm's and Deezer's answers, fetched once
 # runs/<system>.json  each system's candidates per reference, frozen
+# external.json     the services' answers MusicBrainz does not identify
 # controls.json     each reference's control
 # targets/<round>/<ref>.json            what a judge is given
 # verdicts/<round>/<judge>/<ref>.json   what a judge wrote
@@ -517,9 +513,17 @@ def describe(con: duckdb.DuckDBPyConnection, mbids: Sequence[str]) -> dict[str, 
 BENCH_VERSION = "v1"
 PER_STRATUM = 50
 SEED = "musilogy-bench-v1"
-JUDGES = {"": ("a", "b"), "-third": ("c",), "-again": ("a2",)}
+VOTERS = ("a", "b", "c")
 # One reference in twenty is judged again.
 AGAIN = 20
+
+
+def _judges(round_: str) -> tuple[str, ...]:
+    if round_.endswith("-third"):
+        return ("c",)
+    if round_.endswith("-again"):
+        return ("a2",)
+    return ("a", "b")
 
 
 def _read(path: Path) -> Any:
@@ -531,16 +535,12 @@ def _write(path: Path, value: Any) -> None:
         aside.write_text(json.dumps(value, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
-def _consigne_digest() -> str:
-    return hashlib.sha256(CONSIGNE.read_bytes()).hexdigest()
-
-
 def references(folder: Path) -> list[dict[str, Any]]:
     """The bench's references, refused if the consigne changed since the
     draw: verdicts given under two consignes do not mix, the bench takes a
     new version."""
     sample = _read(folder / "references.json")
-    if sample["consigne"] != _consigne_digest():
+    if sample["consigne"] != sha256_file(CONSIGNE):
         raise SystemExit(f"{CONSIGNE.name} changed since {folder.name} was drawn: a new version")
     refs: list[dict[str, Any]] = sample["references"]
     return refs
@@ -556,15 +556,8 @@ def take_sample(folder: Path, delivery: Path) -> int:
     names = describe(con, [r["mbid"] for r in refs])
     for r in refs:
         r["name"] = names[r["mbid"]]["name"]
-    _write(
-        dest,
-        {
-            "seed": SEED,
-            "delivery": delivery.name,
-            "consigne": _consigne_digest(),
-            "references": refs,
-        },
-    )
+    sample = {"seed": SEED, "delivery": delivery.name, "consigne": sha256_file(CONSIGNE)}
+    _write(dest, {**sample, "references": refs})
     return len(refs)
 
 
@@ -576,24 +569,32 @@ def take_answers(folder: Path, delivery: Path, lastfm_key: str, day: str) -> Non
         raise SystemExit(f"{dest} exists: the services' answers are taken once")
     refs = references(folder)
     con = open_delivery(delivery)
-    answers = {"fetched": day, "lastfm": fetch_lastfm(refs, lastfm_key)}
-    answers["deezer"] = fetch_deezer(con, refs)
-    _write(dest, answers)
+    _write(
+        dest,
+        {
+            "fetched": day,
+            "lastfm": fetch_lastfm(refs, lastfm_key),
+            "deezer": fetch_deezer(con, refs),
+        },
+    )
 
 
 def _runs(folder: Path) -> dict[str, dict[str, list[str]]]:
     return {p.stem: _read(p) for p in sorted((folder / "runs").glob("*.json"))}
 
 
-def _targeted(folder: Path) -> dict[str, set[str]]:
-    """The pairs some round already gives the judges."""
-    out: dict[str, set[str]] = {}
-    for path in (folder / "targets").glob("*/*.json"):
-        if path.parent.name.endswith(tuple(s for s in JUDGES if s)):
-            continue
-        target = _read(path)
-        out.setdefault(target["ref"]["mbid"], set()).update(c["mbid"] for c in target["candidates"])
-    return out
+def _targets(folder: Path) -> dict[Path, dict[str, Any]]:
+    return {p: _read(p) for p in sorted((folder / "targets").glob("*/*.json"))}
+
+
+def _rounds(targets: Mapping[Path, Mapping[str, Any]]) -> dict[tuple[str, str], str]:
+    """The round that first gave each pair: the rounds a and b judge."""
+    return {
+        (t["ref"]["mbid"], c["mbid"]): p.parent.name
+        for p, t in targets.items()
+        if _judges(p.parent.name) == ("a", "b")
+        for c in t["candidates"]
+    }
 
 
 def make_round(folder: Path, delivery: Path, name: str) -> int:
@@ -602,10 +603,8 @@ def make_round(folder: Path, delivery: Path, name: str) -> int:
     first round, then any run since added under runs/."""
     if not re.fullmatch(r"[a-z0-9]+", name) or (folder / "targets" / name).exists():
         raise SystemExit(f"round {name!r}: lower-case letters and digits, and new")
-    refs = references(folder)
-    mbids = [r["mbid"] for r in refs]
+    mbids = [r["mbid"] for r in references(folder)]
     con = open_delivery(delivery)
-    external_path = folder / "external.json"
     if not (folder / "runs").exists():
         answers = _read(folder / "answers.json")
         runs, external = resolved_runs(
@@ -613,21 +612,20 @@ def make_round(folder: Path, delivery: Path, name: str) -> int:
         )
         for system, run in runs.items():
             _write(folder / "runs" / f"{system}.json", run)
-        _write(external_path, external)
+        _write(folder / "external.json", external)
         _write(folder / "controls.json", draw_controls(con, mbids, SEED))
-    controls = _read(folder / "controls.json")
-    pool = pooled(_runs(folder), DEPTH, controls, SEED)
-    done = _targeted(folder)
-    new = {r: [c for c in pool.get(r, []) if c not in done.get(r, set())] for r in mbids}
+    pool = pooled(_runs(folder), DEPTH, _read(folder / "controls.json"), SEED)
+    done = _rounds(_targets(folder))
+    new = {r: [c for c in pool.get(r, []) if (r, c) not in done] for r in mbids}
     new = {r: cs for r, cs in new.items() if cs}
     known = {
         **describe(con, [c for cs in new.values() for c in cs] + mbids),
-        **_read(external_path),
+        **_read(folder / "external.json"),
     }
     for ref, cands in new.items():
         target = {"ref": known[ref], "candidates": [known[c] for c in cands]}
         _write(folder / "targets" / name / f"{ref}.json", target)
-        if int(_blind(SEED + name, ref), 16) % AGAIN == 0:
+        if _blind(SEED + name, ref) % AGAIN == 0:
             _write(folder / "targets" / f"{name}-again" / f"{ref}.json", target)
     return sum(len(cs) for cs in new.values())
 
@@ -642,40 +640,41 @@ def _votes(folder: Path) -> dict[str, dict[str, dict[str, str]]]:
     return out
 
 
+def _labels(
+    votes: Mapping[str, Mapping[str, Mapping[str, str]]],
+) -> tuple[dict[str, dict[str, str]], list[tuple[str, str]]]:
+    return final_labels({j: votes[j] for j in VOTERS if j in votes})
+
+
 def check(folder: Path) -> list[str]:
     """What the judges still owe and what they wrote wrong; the pairs judges a
     and b split on go to judge c, in the third round of their round."""
+    targets = _targets(folder)
     found: list[str] = []
-    for target_path in sorted((folder / "targets").glob("*/*.json")):
-        round_ = target_path.parent.name
-        target = _read(target_path)
-        ref = target["ref"]["mbid"]
+    for path, target in targets.items():
+        round_, ref = path.parent.name, target["ref"]["mbid"]
         expected = {c["mbid"] for c in target["candidates"]}
-        suffix = next((s for s in JUDGES if s and round_.endswith(s)), "")
-        for judge in JUDGES[suffix]:
-            path = folder / "verdicts" / round_ / judge / target_path.name
-            if not path.exists():
+        for judge in _judges(round_):
+            verdict = folder / "verdicts" / round_ / judge / path.name
+            if not verdict.exists():
                 found.append(f"{round_}/{judge}/{ref}: missing")
                 continue
-            found += [f"{round_}/{judge}/{ref}: {p}" for p in problems(_read(path), ref, expected)]
+            found += [
+                f"{round_}/{judge}/{ref}: {p}" for p in problems(_read(verdict), ref, expected)
+            ]
     if found:
         return found
     votes = _votes(folder)
-    _, disputed = final_labels({j: votes[j] for j in ("a", "b", "c") if j in votes})
-    rounds = {
-        (_read(p)["ref"]["mbid"], c["mbid"]): p.parent.name
-        for p in (folder / "targets").glob("*/*.json")
-        if not p.parent.name.endswith(tuple(s for s in JUDGES if s))
-        for c in _read(p)["candidates"]
-    }
+    _, disputed = _labels(votes)
+    rounds = _rounds(targets)
     third: dict[tuple[str, str], list[str]] = {}
     for ref, cand in disputed:
         if cand not in votes.get("c", {}).get(ref, {}):
             third.setdefault((rounds[ref, cand], ref), []).append(cand)
     for (round_, ref), cands in third.items():
-        target = _read(folder / "targets" / round_ / f"{ref}.json")
-        target["candidates"] = [c for c in target["candidates"] if c["mbid"] in cands]
-        _write(folder / "targets" / f"{round_}-third" / f"{ref}.json", target)
+        target = targets[folder / "targets" / round_ / f"{ref}.json"]
+        given = {**target, "candidates": [c for c in target["candidates"] if c["mbid"] in cands]}
+        _write(folder / "targets" / f"{round_}-third" / f"{ref}.json", given)
         found.append(f"{round_}-third/c/{ref}: missing")
     return found
 
@@ -685,25 +684,22 @@ def write_report(folder: Path, delivery: Path) -> dict[str, Any]:
     judges' agreement, their stability and the controls."""
     refs = references(folder)
     votes = _votes(folder)
-    labels, disputed = final_labels({j: votes[j] for j in ("a", "b", "c") if j in votes})
+    labels, disputed = _labels(votes)
     runs = _runs(folder)
     con = open_delivery(delivery)
-    cands = {c for run in runs.values() for cs in run.values() for c in cs}
     listeners = dict(
         con.execute(
             "SELECT mbid, user_count FROM popularity WHERE mbid IN (SELECT unnest(?))",
-            [list(cands)],
+            [list({c for run in runs.values() for cs in run.values() for c in cs})],
         ).fetchall()
     )
     out = report(refs, labels, runs, listeners, _read(folder / "controls.json"))
     out["agreement"] = agreement(votes["a"], votes["b"])
     out["stability"] = agreement(votes["a"], votes["a2"]) if "a2" in votes else math.nan
     out["disputed"] = len(disputed)
+    per = out["per"]
     out["differences"] = {
-        system: {
-            name: differences(refs, out[system]["per"][name], out["ours"]["per"][name])
-            for name in ("strict", "large", "recall")
-        }
+        system: {name: differences(refs, per[system][name], per["ours"][name]) for name in MEASURES}
         for system in runs
         if system != "ours"
     }

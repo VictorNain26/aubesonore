@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -20,12 +21,12 @@ TABLES = ("artists", "links", "popularity", "releases", "urls", "same_sound")
 PROJECTIONS = {"artists": "* REPLACE (to_json(styles) AS styles)"}
 
 
-def _verified_manifest(published: Path) -> dict[str, Any]:
+def verified_manifest(published: Path, tables: Sequence[str] = TABLES) -> dict[str, Any]:
     """The delivery is read at a boundary: a run interrupted mid-publish, or a
     file touched since, must not reach the site."""
     manifest: dict[str, Any] = json.loads((published / "manifest.json").read_text(encoding="utf-8"))
     digests = manifest["output_sha256"]
-    for table in TABLES:
+    for table in tables:
         name = f"{table}.parquet"
         if sha256_file(published / name) != digests.get(name):
             raise ChecksumError(f"{name} does not match the manifest of {published}")
@@ -55,7 +56,7 @@ def load(published: Path, conninfo: str = "") -> dict[str, int]:
     environment (PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE, PGSSLMODE,
     PGSSLROOTCERT) unless a libpq connection string is given, so no
     credential travels through the command line."""
-    manifest = _verified_manifest(published)
+    manifest = verified_manifest(published)
     con = connect()
     con.execute("INSTALL postgres")
     con.execute("LOAD postgres")

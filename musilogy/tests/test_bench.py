@@ -1,6 +1,7 @@
 """The evaluation bench on hand-written data: the draw, the pool, the checks of a
 verdict, the vote of the judges and the report's numbers, each known in advance."""
 
+import json
 from typing import Any
 
 import duckdb
@@ -20,6 +21,7 @@ from musilogy.bench import (
     report,
     resolved_runs,
 )
+from musilogy.fetch import ChecksumError, sha256_file
 
 REF = "a0000000-0000-0000-0000-000000000000"
 
@@ -163,7 +165,7 @@ def test_the_report_counts_what_each_system_shows_against_the_judged_pool():
     runs = {"ours": {"r1": ["x", "y", "z", "u"], "r2": []}, "other": {"r1": ["w"], "r2": ["v"]}}
     listeners = {"x": 10, "y": 10_000, "z": 10, "w": 10, "v": 10}
     out = report(refs, labels, runs, listeners, controls={})
-    ours = out["ours"]["head"]
+    ours = out["systems"]["ours"]["head"]
     # r1 shows x y z judged (u is not): strict 1/3, large 2/3; r2 shows nothing.
     assert ours["strict"][0] == pytest.approx(1 / 3)
     assert ours["large"][0] == pytest.approx(2 / 3)
@@ -174,7 +176,7 @@ def test_the_report_counts_what_each_system_shows_against_the_judged_pool():
     assert ours["coverage"] == pytest.approx(1 / 2)
     # Less known than the reference (1 000 listeners): x z, not y.
     assert ours["less_known"][0] == pytest.approx(2 / 3)
-    assert out["other"]["head"]["large"][0] == pytest.approx((1 + 0) / 2)
+    assert out["systems"]["other"]["head"]["large"][0] == pytest.approx((1 + 0) / 2)
 
 
 def test_the_report_gives_the_share_of_controls_judged_good():
@@ -183,13 +185,13 @@ def test_the_report_gives_the_share_of_controls_judged_good():
     out = report(refs, labels, {"ours": {"r1": ["x"]}}, {}, controls={"r1": "c"})
     assert out["controls_good"] == pytest.approx(1.0)
     # The control judged good is no good pair of the pool: x alone is.
-    assert out["ours"]["tail"]["recall"][0] == pytest.approx(1.0)
+    assert out["systems"]["ours"]["tail"]["recall"][0] == pytest.approx(1.0)
 
 
 def test_recall_leaves_out_a_reference_whose_pool_holds_no_good_pair():
     refs = [{"mbid": "r1", "stratum": "tail", "listeners": 10}]
     out = report(refs, {"r1": {"x": "lointain"}}, {"ours": {"r1": ["x"]}}, {}, controls={})
-    assert out["ours"]["per"]["recall"] == {}
+    assert out["per"]["ours"]["recall"] == {}
 
 
 def test_the_differences_pair_the_references_both_systems_are_measured_on():
@@ -212,10 +214,10 @@ def delivery():
     con = duckdb.connect(":memory:")
     con.execute(
         "CREATE TABLE artists (mbid VARCHAR, name VARCHAR, disambiguation VARCHAR, "
-        "type VARCHAR, y0 INTEGER, y_end INTEGER, country VARCHAR)"
+        "type VARCHAR, y0 INTEGER, y_end INTEGER, country VARCHAR, name_key VARCHAR)"
     )
     con.executemany(
-        "INSERT INTO artists VALUES (?, ?, '', 'Group', 1990, NULL, 'FR')",
+        "INSERT INTO artists VALUES (?, ?, '', 'Group', 1990, NULL, 'FR', NULL)",
         [
             ("r", "Ref"),
             ("n1", "Air"),
@@ -225,6 +227,7 @@ def delivery():
             ("dz", "Deezer Pick"),
         ],
     )
+    con.execute("UPDATE artists SET name_key = strip_accents(lower(name))")
     con.execute("CREATE TABLE urls (artist_mbid VARCHAR, type VARCHAR, url VARCHAR)")
     con.executemany(
         "INSERT INTO urls VALUES (?, 'free streaming', ?)",
@@ -260,8 +263,11 @@ def delivered(folder):
     con = delivery()
     con.execute("CREATE TABLE colisten AS SELECT 'r' AS artist_mbid, 'dz' AS neighbour_mbid")
     folder.mkdir()
+    digests = {}
     for table in bench.DELIVERY_TABLES:
         con.execute(f"COPY {table} TO '{folder / table}.parquet' (FORMAT parquet)")
+        digests[f"{table}.parquet"] = sha256_file(folder / f"{table}.parquet")
+    (folder / "manifest.json").write_text(json.dumps({"output_sha256": digests}), encoding="utf-8")
     return folder
 
 
@@ -311,11 +317,18 @@ def test_the_bench_goes_from_the_draw_to_the_report(tmp_path, monkeypatch):
     assert bench.check(folder) == []
 
     result = bench.write_report(folder, out)
-    assert result["ours"]["all"]["large"][0] == pytest.approx(1.0)
-    assert result["ours"]["all"]["strict"][0] == pytest.approx(0.5)
-    assert result["lastfm"]["all"]["foreign"][0] == pytest.approx(1.0)
+    assert result["systems"]["ours"]["all"]["large"][0] == pytest.approx(1.0)
+    assert result["systems"]["ours"]["all"]["strict"][0] == pytest.approx(0.5)
+    assert result["systems"]["lastfm"]["all"]["foreign"][0] == pytest.approx(1.0)
     assert result["controls_good"] == pytest.approx(0.0)
     assert result["differences"]["lastfm"]["large"]["all"][0] == pytest.approx(-1.0)
+
+
+def test_the_bench_refuses_a_delivery_its_manifest_does_not_vouch_for(tmp_path):
+    out = delivered(tmp_path / "out")
+    (out / "styles.parquet").write_bytes(b"cut short")
+    with pytest.raises(ChecksumError):
+        bench.open_delivery(out)
 
 
 def test_a_changed_consigne_refuses_the_bench_drawn_under_the_old_one(tmp_path, monkeypatch):
@@ -373,16 +386,16 @@ def test_a_judge_starts_from_the_musicbrainz_page_then_its_links():
 
 
 def test_deezer_is_asked_only_for_a_reference_tied_to_one_deezer_artist(monkeypatch):
-    asked: list[str] = []
+    asked: list[tuple[str, dict[str, str]]] = []
     answer = {"data": [{"name": "X", "id": 9, "link": "https://www.deezer.com/artist/9"}]}
 
-    def ask(url):
-        asked.append(url)
+    def ask(url, params):
+        asked.append((url, params))
         return answer
 
     monkeypatch.setattr(bench, "_ask", ask)
     out = bench.fetch_deezer(delivery(), [{"mbid": "r"}, {"mbid": "q"}])
-    assert asked == ["https://api.deezer.com/artist/7/related?limit=10"]
+    assert asked == [("https://api.deezer.com/artist/7/related", {"limit": "10"})]
     assert out == {
         "r": [{"name": "X", "deezer_id": "9", "url": "https://www.deezer.com/artist/9"}],
         "q": None,
@@ -391,14 +404,15 @@ def test_deezer_is_asked_only_for_a_reference_tied_to_one_deezer_artist(monkeypa
 
 def test_lastfm_is_asked_by_name_when_it_does_not_know_the_mbid(monkeypatch):
     answers = iter([{"error": 6}, {"similarartists": {"artist": [{"name": "Y", "url": "u"}]}}])
-    asked: list[str] = []
+    asked: list[dict[str, str]] = []
 
-    def ask(url):
-        asked.append(url)
+    def ask(url, params):
+        assert url == bench.LASTFM_URL
+        asked.append(params)
         return next(answers)
 
     monkeypatch.setattr(bench, "_ask", ask)
     out = bench.fetch_lastfm([{"mbid": "r", "name": "Ref"}], key="k")
-    assert "mbid=r" in asked[0]
-    assert "artist=Ref" in asked[1]
+    assert asked[0]["mbid"] == "r"
+    assert asked[1]["artist"] == "Ref"
     assert out == {"r": [{"name": "Y", "mbid": None, "url": "u"}]}

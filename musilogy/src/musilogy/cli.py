@@ -30,6 +30,9 @@ from musilogy.bench import (
     take_sample,
     write_report,
 )
+from musilogy.bench import (
+    MEASURES as BENCH_MEASURES,
+)
 from musilogy.build import (
     RAW_ARTIST_FIELDS,
     RAW_DISCOGS_FIELDS,
@@ -683,14 +686,11 @@ def bench_report(version: str) -> None:
         f"agreement {result['agreement']:.2f}, stability {result['stability']:.2f}, "
         f"controls judged good {result['controls_good']:.0%}, disputed {result['disputed']}"
     )
-    systems = [s for s in result if isinstance(result[s], dict) and "all" in result[s]]
-    for system in systems:
-        for stratum, row in result[system].items():
-            if stratum == "per":
-                continue
+    for system, strata in result["systems"].items():
+        for stratum, row in strata.items():
             cells = "  ".join(
                 f"{name} {row[name][0]:.0%} [{row[name][1]:.0%}, {row[name][2]:.0%}]"
-                for name in ("strict", "large", "recall", "foreign", "judged", "less_known")
+                for name in BENCH_MEASURES
             )
             print(
                 f"{system:8} {stratum:6} n={row['references']:3} "
