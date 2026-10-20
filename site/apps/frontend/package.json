@@ -53,7 +53,7 @@
     "rollup-plugin-visualizer": "7.0.1",
     "tailwindcss": "4.3.0",
     "typescript": "5.9.3",
-    "vite": "8.0.16",
+    "vite": "8.1.6",
     "vitest": "4.1.11",
     "workbox-core": "7.4.1",
     "workbox-precaching": "7.4.0"
