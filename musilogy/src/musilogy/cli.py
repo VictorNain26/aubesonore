@@ -27,6 +27,7 @@ from musilogy.bench import (
     check,
     make_round,
     take_answers,
+    take_run,
     take_sample,
     write_report,
 )
@@ -771,6 +772,15 @@ def main() -> None:
     steps.add_parser(
         "fetch", help="ask Last.fm (LASTFM_API_KEY) and Deezer for their similar artists, once"
     ).set_defaults(handler=lambda args: bench_fetch(args.version))
+    run_parser = steps.add_parser(
+        "run", help="freeze the delivery's « même son », built by another rule, as a run"
+    )
+    run_parser.add_argument("name", help="the run's name, e.g. neighbours")
+    run_parser.set_defaults(
+        handler=lambda args: print(
+            take_run(bench_dir(args.version), out_dir(DUMP), args.name), "references answered"
+        )
+    )
     round_parser = steps.add_parser("pool", help="give the judges the pairs no round gave yet")
     round_parser.add_argument("round", help="the round's name, e.g. r1")
     round_parser.set_defaults(

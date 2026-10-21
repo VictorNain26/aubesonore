@@ -614,6 +614,18 @@ def take_answers(folder: Path, delivery: Path, lastfm_key: str, day: str) -> Non
     _write(dest, {"fetched": day, "lastfm": lastfm, "deezer": fetch_deezer(con, refs)})
 
 
+def take_run(folder: Path, delivery: Path, name: str) -> int:
+    """Freezes the « même son » of a delivery built by another rule as the run
+    `name`, once: the next round pools what it shows that no round judged.
+    Returns the references it answers."""
+    dest = folder / "runs" / f"{name}.json"
+    if not re.fullmatch(r"[a-z0-9]+", name) or dest.exists():
+        raise SystemExit(f"run {name!r}: lower-case letters and digits, and taken once")
+    run = delivered_run(open_delivery(delivery), [r["mbid"] for r in references(folder)])
+    _write(dest, run)
+    return sum(1 for cands in run.values() if cands)
+
+
 def _runs(folder: Path) -> dict[str, dict[str, list[str]]]:
     return {p.stem: _read(p) for p in sorted((folder / "runs").glob("*.json"))}
 

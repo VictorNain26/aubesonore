@@ -62,6 +62,17 @@ pipeline étant déterministe, un contrefactuel est toujours possible. Un critè
 d'acceptation se donne en nombre ou en code de sortie : « `musilogy run` publie
 sans `--accept-drift links` » plutôt que « corriger les liens ».
 
+Une étude sur un échantillon dit si une règle est juste, jamais ce qu'elle coûte.
+Avant d'écrire les tests et le code d'une règle qui parcourt une grande table
+(`colisten`, les écoutes, `releases`), ses requêtes les plus lourdes passent sur
+les données complètes du serveur, sous la borne de `build.connect()`, et la PR
+donne le nombre de lignes produites face à la livraison précédente, leur pic de
+mémoire et leur durée : un volume multiplié dit souvent une règle fausse avant
+même son coût. On conçoit pour cette échelle d'emblée,
+suivant le guide de performance de DuckDB : des clés entières plutôt que des
+MBID en texte, un opérateur bloquant par requête, les tables intermédiaires
+libérées dès qu'elles ne servent plus.
+
 ## Données sur victorserv
 
 - Les données vivent hors de tout checkout, dans `~/musilogy-data` (`data/`

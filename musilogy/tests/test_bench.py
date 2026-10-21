@@ -290,9 +290,13 @@ def delivery():
     return con
 
 
-def delivered(folder):
-    """delivery() written as a published delivery, with a co-listening."""
+def delivered(folder, same_sound=None):
+    """delivery() written as a published delivery, with a co-listening, and
+    other « même son » rows when given."""
     con = delivery()
+    if same_sound is not None:
+        con.execute("DELETE FROM same_sound")
+        con.executemany("INSERT INTO same_sound VALUES (?, ?, ?)", same_sound)
     con.execute("CREATE TABLE colisten AS SELECT 'r' AS artist_mbid, 'dz' AS neighbour_mbid")
     folder.mkdir()
     digests = {}
@@ -361,6 +365,26 @@ def test_the_bench_goes_from_the_draw_to_the_report(tmp_path, monkeypatch):
     assert result["systems"]["lastfm"]["all"]["foreign"][0] == pytest.approx(1.0)
     assert result["controls_good"] == pytest.approx(0.0)
     assert result["differences"]["lastfm"]["large"]["all"][0] == pytest.approx(-1.0)
+
+
+def test_a_new_rules_run_is_taken_once_and_its_unjudged_pairs_go_to_a_new_round(
+    tmp_path, monkeypatch
+):
+    out = delivered(tmp_path / "out")
+    folder = tmp_path / "bench"
+    monkeypatch.setattr(bench, "PER_STRATUM", 1)
+    bench.take_sample(folder, out)
+    answered(folder)
+    bench.make_round(folder, out, "r1")
+    # A delivery built by another rule: n1 judged in r1, p never.
+    other = delivered(tmp_path / "other", [("r", "p", 1), ("r", "n1", 2)])
+    assert bench.take_run(folder, other, "neighbours") == 1
+    assert bench._read(folder / "runs" / "neighbours.json") == {"r": ["p", "n1"]}
+    with pytest.raises(SystemExit, match="taken once"):
+        bench.take_run(folder, other, "neighbours")
+    assert bench.make_round(folder, other, "r2") == 1
+    target = bench._read(folder / "targets" / "r2" / "r.json")
+    assert [c["mbid"] for c in target["candidates"]] == ["p"]
 
 
 def test_the_first_round_refuses_a_delivery_other_than_the_one_drawn_on(tmp_path, monkeypatch):

@@ -213,7 +213,7 @@ $$;
 
 -- « Même son » (88_same_sound.sql, docs/vision.md §2.2): the artist's
 -- neighbours of the co-listening, in either direction, whose colour agrees,
--- the first 8 — the depth the rule was measured at (2026-10-11); the table
+-- the first 8 — the depth the bench measures; the table
 -- keeps them all — in their rank order, each with its reason — the style that
 -- weighs most in what the two share, with the artist's decade of most records
 -- in it (NULL when none is dated; `source` names the colour, always 'styles')

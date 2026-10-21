@@ -86,7 +86,7 @@ Musilogy's data is loaded into the `musilogy` schema: `musilogyService` calls on
 
 - **A section not loaded yet is `null`, never empty.** A function Postgres does not know (`42883`, or the schema missing) makes its section `null` and the page leaves it out; the card and the search answer 503, and the search says Musilogy is not available, never that it is « reloading » (a load may not come).
 - An end date is shown only when declared, never inferred from a last album; a start read from the first album says so.
-- **Proximity is the sound, nothing else** (vision §2.2): neighbours are `artist_same_sound`, the first 8 (the depth the rule was measured at). Declared influences and labels are not sound and are not shown.
+- **Proximity is the sound, nothing else** (vision §2.2): neighbours are `artist_same_sound`, the first 8 (the depth the bench measures). Declared influences and labels are not sound and are not shown.
 - Albums and EPs are paged (`Releases.tsx`): drawing thousands at once froze the page.
 - Every artist link goes through `pagePathOf`. A section with nothing in it is left out, never titled over an absence. A single year reads alone (« 1992 »), never « de 1992 à 1992 ».
 - `MusilogyTimeline`: the owner rejected a light band behind the rows. The artist's own row is `aria-hidden` (the page header says its years).
