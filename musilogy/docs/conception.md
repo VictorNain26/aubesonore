@@ -28,7 +28,8 @@ reconnues, sans couche maison :
    un profil de styles Discogs pondérés par leur rareté et leur part dans l'œuvre, comparé par
    cosinus (TF-IDF, la base du filtrage par contenu) ; un artiste qui a moins de trois disques
    stylés n'a pas de couleur.
-4. **Le classement** : le score de la co-écoute, parmi les voisins que la couleur confirme.
+4. **Le classement** : la couleur partagée. Parmi les candidats que le banc a jugés, c'est elle
+   qui sépare les bons des mauvais, pas le score de la co-écoute (2026-10-21).
 5. **La mesure** : le banc d'évaluation (`src/musilogy/bench.py`, `musilogy bench`). Des
    références tirées au hasard par tranche de popularité ; les premiers voisins de chaque système
    regroupés (le *pooling* de TREC ; Ellis et al., ISMIR 2002 pour la vérité terrain de la
@@ -134,14 +135,10 @@ albums), `links` (appartenances, pseudonymes et changements de nom),
   entre quand sa couleur s'accorde à celle de l'artiste : leurs profils de
   styles Discogs (toutes décennies confondues, pondérés par la rareté du style),
   comparés par cosinus et rabattus pour un profil mince (ses disques datés),
-  valent au moins 0,35 ; un artiste sans profil Discogs n'a pas de voisin. C'est
-  la règle mesurée une fois sur 75 artistes, 87 % de bons voisins parmi les 8
-  premiers (`docs/vision.md` §2.2, 2026-10-11), quand les genres MusicBrainz
-  tenaient encore lieu de couleur à un artiste sans Discogs (retirés le
-  2026-10-17, leur licence n'étant pas CC0) ;
-  ses seuils sont posés dans le fichier SQL et relus par le manifeste
-  (`parameters`). `rank` de 1 à n par `colisten_score`, le plus haut score de
-  co-écoute des deux sens, à égalité par MBID du voisin ; la raison est le style
+  valent au moins 0,35 ; un artiste sans profil Discogs n'a pas de voisin. Ce
+  que vaut la règle est le rapport du banc (`musilogy bench report`) ; ses seuils sont posés dans le fichier SQL et relus par le manifeste
+  (`parameters`). `rank` de 1 à n par `colour`, à égalité par MBID du voisin ;
+  `colisten_score` est le plus haut score de co-écoute des deux sens ; la raison est le style
   (`term`, avec la `decade` où l'artiste en a le plus de disques, NULL s'il n'a
   aucun disque daté de ce style) qui pèse le plus dans ce que les deux
   partagent ; `source` nomme la couleur, toujours `styles`. Tout voisin est un
@@ -150,7 +147,7 @@ albums), `links` (appartenances, pseudonymes et changements de nom),
   somme en décimal exact, pour qu'une livraison reste la même octet pour
   octet. Sept invariants : une paire en
   double, un artiste voisin de lui-même, des rangs troués, un ordre qui
-  contredit le score de co-écoute, une paire absente de la co-écoute dans les
+  contredit la couleur, une paire absente de la co-écoute dans les
   deux sens ou à un autre score,
   une couleur sous 0,35 ou une source autre que `styles`, une raison que les deux
   artistes ne portent pas.

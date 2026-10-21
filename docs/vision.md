@@ -94,7 +94,7 @@ artistes similaires ») :
   le contenu confirme, un hybride « en cascade » (Burke, 2002). La co-occurrence d'écoute est la
   source la plus proche du jugement humain de similarité (Berenzweig et al., 2004), le contenu
   écarte ce qu'y mêlent les auditeurs éclectiques ;
-- **la pertinence classe** : le score de la co-écoute, parmi les voisins confirmés ; jamais la
+- **la pertinence classe** : la couleur partagée, parmi les voisins confirmés ; jamais la
   popularité, jamais l'époque.
 
 **Ce qui n'en est pas une preuve** : le label (mesuré : 26 % de bons), une influence déclarée, la
@@ -116,17 +116,11 @@ de chacun le diviserait par trois, mais retirerait 176 070 artistes (899 265 →
 mesure qui montre que ces écoutes nuisent ; une bibliothèque de produit matriciel creux plus
 rapide n'a rien gagné (mesuré le 2026-10-10).
 
-**La mesure**, une fois, sur la méthode figée (2026-10-11) : les 8 premiers voisins des
-références de l'étude du 2026-10-08 et de 30 artistes joués tirés par décennie de début, jugés à
-partir de sources citées (même son, parenté, lointain, étranger, inconnu), avec une règle
-d'adoption écrite avant les données. 87 % de bons (même son ou parenté) en moyenne par artiste,
-intervalle à 95 % [83, 91], sur 75 artistes et 508 paires ; aucun étranger, 6 inconnus ; de 85 à
-91 % selon la tranche d'auditeurs, de 69 % (4 artistes des années 1980) à 93 % selon la décennie
-de début. Deux juges s'accordent sur 36 des 39 paires jugées deux fois.
-45 des 62 références ont des voisins : les autres ont moins de 3 auditeurs, ou aucun voisin dont
-la couleur s'accorde. On ne montre que des voisins confirmés, sans compléter une liste trop
-courte. Les clics des auditeurs départagent plus tard deux réglages, sans jamais
-nourrir la similarité, ce qui ferait boucle.
+**La mesure** est le banc (`musilogy bench`, `musilogy/docs/conception.md`, « La mesure ») :
+des références tirées par tranche de popularité, les voisins de chaque système jugés à partir de
+sources citées ; son rapport dit ce que vaut la règle, ce document ne le recopie pas. On ne
+montre que des voisins confirmés, sans compléter une liste trop courte. Les clics des auditeurs
+départagent plus tard deux réglages, sans jamais nourrir la similarité, ce qui ferait boucle.
 
 **L'audio**, la couleur du son elle-même, n'est pas une source pour tous : les extraits Deezer
 sont exclus par leurs conditions (§2.5), AcousticBrainz est mesuré trop faible (AUC 0,65). Les

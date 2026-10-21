@@ -1,6 +1,6 @@
 """« Même son » (88_same_sound.sql) on a synthetic build: six listeners share
-every artist, so the co-listening scores A's neighbours alike and they rank by
-MBID, and the Discogs records below make each rule of the colour visible."""
+every artist, so the co-listening proposes each to each, A's neighbours of one
+colour rank by MBID, and the Discogs records below make each rule of the colour visible."""
 
 import pytest
 
@@ -93,10 +93,11 @@ def test_only_the_neighbours_whose_colour_agrees_in_any_era(tmp_path):
     ]
 
 
-def test_both_directions_of_the_co_listening_ranked_by_its_score(tmp_path, monkeypatch):
+def test_both_directions_of_the_co_listening_ranked_by_the_colour(tmp_path, monkeypatch):
     # One neighbour each: A's is C, which 8 of its 11 listeners share; B's is
     # A, with the 3 listeners B has. B never makes A's own list, yet it is in
-    # A's « Même son », after C, by the score B's list gives A.
+    # A's « Même son », and first: its colour is A's, where a quarter of C's
+    # records are synth-pop, however much more the two are listened together.
     monkeypatch.setattr(colisten, "K", 1)
     c = built(
         tmp_path,
@@ -105,11 +106,12 @@ def test_both_directions_of_the_co_listening_ranked_by_its_score(tmp_path, monke
             *records(1, "Krautrock", "1972", 30, 100),
             *records(2, "Krautrock", "1974", 30, 200),
             *records(3, "Krautrock", "1976", 30, 300),
+            *records(3, "Synth-pop", "1983", 10, 400),
             *records(6, "Rock", "1975", 30, 600),
         ],
         {**{u: [A, C] for u in range(1, 9)}, **{u: [A, B] for u in range(9, 12)}},
     )
-    assert [row[:2] for row in same_sound(c)] == [(C, 1), (B, 2)]
+    assert [row[:2] for row in same_sound(c)] == [(B, 1), (C, 2)]
     [(kept, given)] = c.execute(
         "SELECT s.colisten_score, l.score FROM same_sound s JOIN colisten l "
         "ON l.artist_mbid = s.neighbour_mbid AND l.neighbour_mbid = s.artist_mbid "
@@ -172,7 +174,7 @@ A_B = f"artist_mbid = '{A}' AND neighbour_mbid = '{B}'"
 @pytest.mark.parametrize(
     ("invariant", "mutation"),
     [
-        # B and D tie on the score: the tie must fall to the MBID.
+        # B and D tie on the colour: the tie must fall to the MBID.
         (
             "same_sound_out_of_order",
             f"UPDATE same_sound SET rank = 3 - rank WHERE artist_mbid = '{A}' AND rank <= 2",

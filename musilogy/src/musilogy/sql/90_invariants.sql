@@ -322,7 +322,7 @@ CREATE OR REPLACE VIEW colisten_out_of_order AS
     FROM colisten WINDOW w AS (PARTITION BY artist_mbid ORDER BY rank)
   ) WHERE score > score_before OR (score = score_before AND neighbour_mbid < neighbour_before);
 -- 88_same_sound.sql: one row per pair, never the artist itself, ranks 1..n
--- without a gap, by the co-listening's score then the neighbour's MBID; every pair a co-listening pair
+-- without a gap, by the colour then the neighbour's MBID; every pair a co-listening pair
 -- in one direction or the other, with the higher score of the two, of colour
 -- 0.35 or more (a literal: the build reads a variable), explained by a style
 -- both artists carry, the only source; the style's decade one the artist has
@@ -336,11 +336,11 @@ CREATE OR REPLACE VIEW same_sound_rank_out_of_range AS
   HAVING min(rank) <> 1 OR max(rank) <> count(*);
 CREATE OR REPLACE VIEW same_sound_out_of_order AS
   SELECT artist_mbid, rank FROM (
-    SELECT artist_mbid, rank, colisten_score, neighbour_mbid,
-           lag(colisten_score) OVER w AS score_before, lag(neighbour_mbid) OVER w AS neighbour_before
+    SELECT artist_mbid, rank, colour, neighbour_mbid,
+           lag(colour) OVER w AS colour_before, lag(neighbour_mbid) OVER w AS neighbour_before
     FROM same_sound WINDOW w AS (PARTITION BY artist_mbid ORDER BY rank)
-  ) WHERE colisten_score > score_before
-     OR (colisten_score = score_before AND neighbour_mbid < neighbour_before);
+  ) WHERE colour > colour_before
+     OR (colour = colour_before AND neighbour_mbid < neighbour_before);
 CREATE OR REPLACE VIEW same_sound_unsourced AS
   WITH both_ways AS (
     SELECT artist_mbid, neighbour_mbid, max(score) AS score FROM (
