@@ -288,40 +288,54 @@ function filiationCount({ bands, memberProjects, otherNames, credits }: Musilogy
   );
 }
 
-interface CloseTab extends Tab {
-  /** The section's intro while the tab is shown: what its list is. */
-  note: string;
+/** A tab's panel: what its list is, in one sentence, then the list. */
+function Panel({ note, children }: { note: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-6">
+      <p className="text-intro text-text-muted max-w-blurb m-0">{note}</p>
+      {children}
+    </div>
+  );
 }
 
 /**
  * The tabs that have something to show, in the order a reader goes: the same sound, the same
  * public, then the facts of the filiation (docs/vision.md §2.2).
  */
-function closeTabs(artist: MusilogyArtist, thisYear: number): CloseTab[] {
+function closeTabs(artist: MusilogyArtist, thisYear: number): Tab[] {
   const { card, sameSound, colisten } = artist;
   return [
     sameSound?.length
       ? {
           id: 'same-sound',
           label: m.musilogy_tab_same_sound(),
-          note: sameSoundNote(sameSound),
-          panel: <MusilogyTimeline card={card} close={sameSound} thisYear={thisYear} />,
+          panel: (
+            <Panel note={sameSoundNote(sameSound)}>
+              <MusilogyTimeline card={card} close={sameSound} thisYear={thisYear} />
+            </Panel>
+          ),
         }
       : null,
     colisten?.length
       ? {
           id: 'colisten',
           label: m.musilogy_tab_colisten(),
-          note: m.musilogy_colisten_note(),
-          panel: <MusilogyTimeline card={card} close={colisten} thisYear={thisYear} />,
+          panel: (
+            <Panel note={m.musilogy_colisten_note()}>
+              <MusilogyTimeline card={card} close={colisten} thisYear={thisYear} />
+            </Panel>
+          ),
         }
       : null,
     filiationCount(artist) > 0
       ? {
           id: 'filiation',
           label: m.musilogy_tab_filiation(),
-          note: m.musilogy_filiation_note(),
-          panel: <Filiation artist={artist} />,
+          panel: (
+            <Panel note={m.musilogy_filiation_note()}>
+              <Filiation artist={artist} />
+            </Panel>
+          ),
         }
       : null,
   ].filter((tab) => tab !== null);
@@ -353,7 +367,7 @@ export function MusilogySections({
   const shown = tabs.find((tab) => tab.id === chosen) ?? tabs[0];
   if (!shown) return null;
   return (
-    <Section id="close" title={m.musilogy_close_title()} body={shown.note} sticky>
+    <Section id="close" title={m.musilogy_close_title()} sticky>
       <Tabs label={m.musilogy_close_title()} tabs={tabs} selected={shown.id} onSelect={setChosen} />
     </Section>
   );

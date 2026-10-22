@@ -39,13 +39,14 @@ export function listDiscovered(): string[] {
   return [...discovered].sort();
 }
 
-/** Every artist a page links to: its three tabs of close artists, bands, projects, other names. */
+/**
+ * The links the rule was measured on: « Même son », bands, projects, other names. The links of
+ * « Écoutés ensemble » and the credits are left out until their effect on the set is measured.
+ */
 function linkedArtists(page: MusilogyArtist): MusilogyArtistRef[] {
-  const { sameSound, colisten, credits, bands } = page;
+  const { sameSound, bands } = page;
   return [
     ...(sameSound ?? []),
-    ...(colisten ?? []),
-    ...(credits ?? []),
     ...(bands ? [...bands.members, ...bands.groups] : []),
     ...(page.memberProjects ?? []),
     ...(page.otherNames ?? []),

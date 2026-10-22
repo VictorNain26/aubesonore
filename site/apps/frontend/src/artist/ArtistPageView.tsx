@@ -255,7 +255,10 @@ function Profile({
           <ReleasesSection releases={musilogy.releases} />
         ) : null}
 
-        {musilogy ? <MusilogySections artist={musilogy} thisYear={thisYear} /> : null}
+        {musilogy ? (
+          // Keyed by the artist: the next artist opens on its own first tab, not the last one's.
+          <MusilogySections key={musilogy.card.mbid} artist={musilogy} thisYear={thisYear} />
+        ) : null}
       </div>
     </>
   );

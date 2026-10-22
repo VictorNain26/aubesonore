@@ -182,7 +182,7 @@ describe('MusilogySections', () => {
     expect(screen.getByRole('link', { name: 'Slade' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'The Kinks' })).not.toBeInTheDocument();
     // No style under a name the same public brings, nor said above them.
-    expect(screen.queryByText(/glam rock/)).not.toBeInTheDocument();
+    expect(within(screen.getByRole('tabpanel')).queryByText(/glam rock/)).not.toBeInTheDocument();
   });
 
   it('gives the artists credited together in the filiation, the count of records said', () => {

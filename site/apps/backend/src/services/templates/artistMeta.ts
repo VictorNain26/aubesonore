@@ -31,7 +31,7 @@ const WORDS = {
   },
 } as const;
 
-/** The bands, projects and other names of the page's filiation tab (musilogy/ArtistSections.tsx). */
+/** The bands, projects and other names of the page's filiation tab, its credits left aside: « ses groupes et projets ». */
 function bandCount({ bands, memberProjects, otherNames }: MusilogyArtist): number {
   return (
     (bands ? bands.members.length + bands.groups.length : 0) +

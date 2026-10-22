@@ -1,8 +1,8 @@
-import { useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface Tab {
-  /** Unique on the page: the tab's and its panel's ids derive from it. */
+  /** Unique among the tabs: the tab's and its panel's ids derive from it. */
   id: string;
   label: string;
   panel: ReactNode;
@@ -33,6 +33,8 @@ export function Tabs({
   onSelect: (id: string) => void;
 }) {
   const buttons = useRef(new Map<string, HTMLButtonElement>());
+  // Two tab sets on one page never share an id.
+  const prefix = useId();
 
   function onKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     const step = STEP[event.key];
@@ -63,9 +65,9 @@ export function Tabs({
               }}
               type="button"
               role="tab"
-              id={`tab-${tab.id}`}
+              id={`${prefix}tab-${tab.id}`}
               aria-selected={isSelected}
-              aria-controls={`panel-${tab.id}`}
+              aria-controls={`${prefix}panel-${tab.id}`}
               tabIndex={isSelected ? 0 : -1}
               onClick={() => onSelect(tab.id)}
               onKeyDown={(event) => onKeyDown(event, index)}
@@ -85,8 +87,8 @@ export function Tabs({
         <div
           key={tab.id}
           role="tabpanel"
-          id={`panel-${tab.id}`}
-          aria-labelledby={`tab-${tab.id}`}
+          id={`${prefix}panel-${tab.id}`}
+          aria-labelledby={`${prefix}tab-${tab.id}`}
           hidden={tab.id !== selected}
           // Focusable, so that a keyboard reaches a panel whose first content is not a link.
           tabIndex={0}

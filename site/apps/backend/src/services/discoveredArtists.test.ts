@@ -145,16 +145,16 @@ describe('discovered artists', () => {
     ]);
   });
 
-  it('counts a link from any tab of close artists', async () => {
-    // One page links to "just-enough" through its same public, another through its credits
-    // only: the two links still count.
+  it('counts no link from the same public nor the credits, which the rule was not measured on', async () => {
     const [first, second] = played;
-    pagesByMbid[first!] = { ...page([]), colisten: [ref('just-enough')] };
-    pagesByMbid[second!] = { ...page([]), credits: [{ ...ref('just-enough'), records: 1 }] };
+    pagesByMbid['heard'] = page([], 5);
+    wikidata['heard'] = 'Q5';
+    pagesByMbid[first!] = { ...pagesByMbid[first!]!, colisten: [ref('heard')] };
+    pagesByMbid[second!] = { ...pagesByMbid[second!]!, credits: [{ ...ref('heard'), records: 1 }] };
 
     await refreshDiscovered();
 
-    expect(isDiscovered('just-enough')).toBe(true);
+    expect(isDiscovered('heard')).toBe(false);
   });
 
   it('keeps the last set when a run fails', async () => {

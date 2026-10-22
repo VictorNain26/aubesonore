@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import type { MusilogyArtist } from '@aubesonore/shared-types/client';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { makeArtistProfile } from '../mocks/handlers';
 import {
@@ -113,6 +113,26 @@ describe('ArtistPageView', () => {
     expect(screen.getByRole('heading', { name: 'Artistes proches' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Explorer dans Musilogy' })).not.toBeInTheDocument();
+  });
+
+  it("opens the next artist's close artists on its own first tab", () => {
+    const withBands: MusilogyArtist = {
+      ...MUSILOGY,
+      bands: { members: [], groups: [{ ...MUSILOGY.sameSound![0]!, yBegin: null, yEnd: null }] },
+    };
+    const page = (musilogy: MusilogyArtist) => (
+      <ArtistPageView
+        state={{ status: 'ready', profile: makeArtistProfile() }}
+        musilogy={musilogy}
+        thisYear={2026}
+      />
+    );
+    const { rerender } = render(page(withBands), { wrapper: MemoryRouter });
+    fireEvent.click(screen.getByRole('tab', { name: 'Filiation' }));
+
+    rerender(page({ ...withBands, card: { ...withBands.card, mbid: 'another-artist' } }));
+
+    expect(screen.getByRole('tab', { name: 'Même son' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('says who, their music and where to hear them first, then what was kept, records, where next', () => {
