@@ -60,7 +60,7 @@ pnpm data:pull            # les données publiques de la production (exige l'acc
 - **`pnpm musilogy:sample`** (`scripts/musilogy-sample.sh`) charge dans le schéma `musilogy` le pipeline de musilogy passé sur ses fixtures versionnées (`musilogy load --sample`) : le même schéma et le même chemin de code que la production, quelques centaines d'artistes au lieu de millions ;
 - **`pnpm data:pull`** (`scripts/pull-public-data.sh`) copie de la production, en lecture seule, ses tables publiques (artistes joués, slugs, profils, passages de l'antenne) ; jamais une donnée d'auditeur, ni les données YouTube, à durée de vie limitée. L'auditeur de test garde ses titres, et leur lien aux artistes copiés.
 
-La base locale a donc le moteur, la version et le schéma de la production, et un échantillon cohérent de ses données : elle suffit pour un changement du backend ou des données. Les sections de Musilogy n'y existent que pour les artistes de l'échantillon (dont ceux de l'auditeur de test), et « même son » y est vide (l'échantillon ne porte aucune écoute).
+La base locale a donc le moteur, la version et le schéma de la production, et un échantillon cohérent de ses données : elle suffit pour un changement du backend ou des données. Les sections de Musilogy n'y existent que pour les artistes de l'échantillon (dont ceux de l'auditeur de test), et « Écoutés ensemble » y est vide (l'échantillon ne porte aucune écoute).
 
 `PUBLIC_API_PROXY_TARGET` (vide par défaut) relaie au besoin les lectures publiques vers l'API de production, en lecture seule ; la session et les titres gardés restent locaux. Un `.env` copié d'un exemple plus ancien le fixe encore : le vider pour lire la base locale.
 
