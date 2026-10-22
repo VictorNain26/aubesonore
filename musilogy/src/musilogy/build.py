@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
@@ -25,8 +26,11 @@ def connect() -> duckdb.DuckDBPyConnection:
             "threads": 2,
             "max_temp_directory_size": "10GB",
             # In memory, DuckDB spills to `.tmp` under the caller's cwd:
-            # anchored on the data instead, created only when a query spills.
-            "temp_directory": (DATA_DIR / "tmp").as_posix(),
+            # anchored on the data instead, created only when a query spills
+            # and removed on close. One folder per process: two builds
+            # spilling into one name their files alike, and the first to
+            # close deleted the other's, eleven hours in (2026-10-22).
+            "temp_directory": (DATA_DIR / "tmp" / f"duckdb-{os.getpid()}").as_posix(),
         },
     )
 
