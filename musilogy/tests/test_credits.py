@@ -133,6 +133,21 @@ def test_the_site_reads_the_most_credited_first_then_by_name(tmp_path, pg):
         (Q, "Queue", 2),
         (S, "Ess", 1),
     ]
+
+
+def test_the_site_reads_the_first_24(tmp_path, pg):
+    many = [f"00000000-0000-4000-8000-00000000a{i:03x}" for i in range(30)]
+    artists = [*ARTISTS, *(artist(m) for m in many)]
+    groups = [
+        synthetic_release_group(f"00000000-0000-4000-8000-00000000b{i:03x}", P, "1999", [m])
+        for i, m in enumerate(many)
+    ]
+    loaded(tmp_path, pg, artists, release_groups=groups)
+    assert pg_query(pg, f"SELECT count(*) FROM musilogy.artist_credits('{P}')") == [(24,)]
+
+
+def test_artist_credits_keeps_the_signature_the_site_reads(tmp_path, pg):
+    loaded(tmp_path, pg, ARTISTS)
     assert pg_query(
         pg,
         "SELECT pg_get_function_result(p.oid) FROM pg_proc p "

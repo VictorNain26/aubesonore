@@ -256,7 +256,9 @@ AS $$
 $$;
 
 -- The artists credited with the artist on its records (86_credits.sql), the
--- most records together first, then by name.
+-- most records together first, then by name: the first 24, twice what the
+-- page shows before « voir plus ». Each one shown publishes its page's
+-- address, and a producer is credited with hundreds.
 CREATE FUNCTION musilogy.artist_credits(artist text)
 RETURNS TABLE (
   mbid text,
@@ -271,7 +273,8 @@ AS $$
   FROM musilogy.credits c
   JOIN musilogy.artists o ON o.mbid = c.other_mbid
   WHERE c.artist_mbid = artist
-  ORDER BY c.records DESC, o.name, o.mbid;
+  ORDER BY c.records DESC, o.name, o.mbid
+  LIMIT 24;
 $$;
 
 -- The rank of each artist among those of its very name (name_key): the most
