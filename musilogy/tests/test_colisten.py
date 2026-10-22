@@ -8,7 +8,7 @@ import pytest
 from musilogy import colisten
 from musilogy.build import colisten_from, load_listening
 from musilogy.colisten import build_colisten, cache_key, scores
-from tests.conftest import listening_file
+from tests.conftest import listening_file, loaded, pg_query, synthetic_artist
 
 A = "a0000000-0000-0000-0000-000000000000"
 B = "b0000000-0000-0000-0000-000000000000"
@@ -166,7 +166,7 @@ def test_the_cache_key_follows_the_computation(monkeypatch):
 def test_the_cache_key_ignores_comments_and_docstrings(monkeypatch):
     # Ten hours of computation are not redone for a word in a comment.
     key = cache_key()
-    commented = colisten.SOURCE.replace(b'"""Our co-listening', b'"""Another word on our co-listening')
+    commented = colisten.SOURCE.replace(b'"""Our co-listening', b'"""Another word on it')
     monkeypatch.setattr(colisten, "SOURCE", commented + b"# a remark\n")
     assert cache_key() == key
 
@@ -189,3 +189,28 @@ def test_a_kept_colisten_is_read_from_its_file_not_held_in_memory(tmp_path):
         c = from_cache(tmp_path, users, cache)
         views = c.execute("SELECT view_name FROM duckdb_views() WHERE NOT internal").fetchall()
         assert views == [("colisten",)]
+
+
+def test_the_site_reads_the_colisten_in_rank_order(tmp_path, pg):
+    # B declares its end; C's is not declared.
+    artists = [
+        synthetic_artist(A, "1970", None),
+        synthetic_artist(B, "1970", "1979"),
+        synthetic_artist(C, "1975", None),
+    ]
+    loaded(tmp_path, pg, artists, listening=USERS)
+    assert pg_query(pg, f"SELECT mbid, y_end, rank FROM musilogy.artist_colisten('{A}')") == [
+        (B, 1979, 1),
+        (C, None, 2),
+    ]
+    assert pg_query(
+        pg,
+        "SELECT pg_get_function_result(p.oid) FROM pg_proc p "
+        "JOIN pg_namespace n ON n.oid = p.pronamespace "
+        "WHERE n.nspname = 'musilogy' AND p.proname = 'artist_colisten'",
+    ) == [
+        (
+            "TABLE(mbid text, name text, disambiguation text, y0 integer, y_end integer, "
+            "ended boolean, rank integer)",
+        )
+    ]

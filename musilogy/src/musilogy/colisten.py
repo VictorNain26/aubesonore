@@ -67,7 +67,7 @@ def top(score: np.ndarray, cols: np.ndarray, k: int) -> np.ndarray:
         (candidates,) = np.nonzero(score >= kth)
     else:
         candidates = np.arange(len(score))
-    return candidates[np.lexsort((cols[candidates], -score[candidates]))][:k]
+    return candidates[np.lexsort((cols[candidates], -score[candidates]))][:k]  # type: ignore[no-any-return]
 
 
 def _code(source: bytes) -> str:

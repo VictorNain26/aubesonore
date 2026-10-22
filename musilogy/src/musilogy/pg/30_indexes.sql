@@ -4,6 +4,9 @@ CREATE INDEX ON links (src_mbid);
 CREATE INDEX ON links (dst_mbid);
 -- artist_urls; artist_releases reads the primary key.
 CREATE INDEX ON urls (artist_mbid);
--- An artist's « Même son », read in its rank order (artist_same_sound).
+-- An artist's neighbours, read in their rank order (artist_same_sound,
+-- artist_colisten), and its credits (artist_credits).
 CREATE INDEX ON same_sound (artist_mbid, rank);
+CREATE INDEX ON colisten (artist_mbid, rank);
+CREATE INDEX ON credits (artist_mbid);
 ANALYZE;

@@ -2,6 +2,17 @@
 -- the tables: the site depends on these signatures, not on how the tables are
 -- laid out, and every query it runs is tested here against Postgres.
 
+-- An artist's end, only when declared: a last album's year is not an end, and
+-- 67 297 of 108 743 neighbours shown carried one while still active
+-- (2026-10-11). A simple immutable SQL function, inlined into the queries that
+-- call it.
+CREATE FUNCTION musilogy.declared_end(y_end integer, y_end_source text)
+RETURNS integer
+LANGUAGE sql IMMUTABLE
+AS $$
+  SELECT CASE WHEN y_end_source = 'declared' THEN y_end END;
+$$;
+
 CREATE FUNCTION musilogy.artist_card(artist text)
 RETURNS TABLE (
   mbid text,
@@ -67,7 +78,7 @@ AS $$
   WITH r AS (SELECT * FROM musilogy.releases WHERE artist_mbid = artist AND official IS NOT FALSE),
   first_album AS (SELECT min(y) AS y FROM r WHERE primary_type = 'Album'),
   career AS (
-    SELECT CASE WHEN y_end_source = 'declared' THEN y_end END AS y_end
+    SELECT musilogy.declared_end(y_end, y_end_source) AS y_end
     FROM musilogy.artists WHERE mbid = artist
   )
   SELECT r.rg_mbid, r.title, r.primary_type, r.soundtrack, r.remix, r.y
@@ -196,57 +207,69 @@ AS $$
   ORDER BY 5 NULLS LAST, 3, 2;
 $$;
 
--- A neighbour's side in time (docs/conception.md, section 3): 'before' when it
--- began more than 3 years before the artist, 'after' more than 3 years after,
--- 'during' otherwise, NULL when either has no y0. Inlined, like is_part_of.
-CREATE FUNCTION musilogy.side(artist_y0 integer, other_y0 integer)
-RETURNS text
-LANGUAGE sql IMMUTABLE
-AS $$
-  SELECT CASE
-    WHEN artist_y0 IS NULL OR other_y0 IS NULL THEN NULL
-    WHEN other_y0 < artist_y0 - 3 THEN 'before'
-    WHEN other_y0 > artist_y0 + 3 THEN 'after'
-    ELSE 'during'
-  END;
-$$;
-
--- « Même son » (88_same_sound.sql, docs/vision.md §2.2): the artist's
--- neighbours of the co-listening, in either direction, whose colour agrees,
--- the first 8 — the depth the bench measures; the table
--- keeps them all — in their rank order, each with its reason — the style that
--- weighs most in what the two share, with the artist's decade of most records
--- in it (NULL when none is dated; `source` names the colour, always 'styles')
--- — and its side in time (musilogy.side). Every neighbour is in the dump: a
--- colour comes from its styles, which only an artist of the dump has.
+-- « Même son » (samesound.py, docs/vision.md §2.2): the artists whose colour
+-- is closest, in their rank order, each with its reason, the style that
+-- weighs most in what the two share.
 CREATE FUNCTION musilogy.artist_same_sound(artist text)
 RETURNS TABLE (
   mbid text,
   name text,
   disambiguation text,
-  type text,
   y0 integer,
   y_end integer,
   ended boolean,
   rank integer,
-  source text,
-  term text,
-  decade integer,
-  side text
+  term text
 )
 LANGUAGE sql STABLE
 AS $$
-  -- An end only when declared: a last album's year is not an end (artist_releases
-  -- reads it the same way), and 67 297 of 108 743 neighbours shown carried one
-  -- while still active (2026-10-11).
-  SELECT o.mbid, o.name, o.disambiguation, o.type, o.y0,
-         CASE WHEN o.y_end_source = 'declared' THEN o.y_end END, o.ended, s.rank,
-         s.source, s.term, s.decade, musilogy.side(a.y0, o.y0)
-  FROM musilogy.artists a
-  JOIN musilogy.same_sound s ON s.artist_mbid = a.mbid
+  SELECT o.mbid, o.name, o.disambiguation, o.y0, musilogy.declared_end(o.y_end, o.y_end_source),
+         o.ended, s.rank, s.term
+  FROM musilogy.same_sound s
   JOIN musilogy.artists o ON o.mbid = s.neighbour_mbid
-  WHERE a.mbid = artist AND s.rank <= 8
+  WHERE s.artist_mbid = artist
   ORDER BY s.rank;
+$$;
+
+-- « Écoutés ensemble » (colisten.py, docs/vision.md §2.2): the artists the
+-- same listeners listen to, in their rank order.
+CREATE FUNCTION musilogy.artist_colisten(artist text)
+RETURNS TABLE (
+  mbid text,
+  name text,
+  disambiguation text,
+  y0 integer,
+  y_end integer,
+  ended boolean,
+  rank integer
+)
+LANGUAGE sql STABLE
+AS $$
+  SELECT o.mbid, o.name, o.disambiguation, o.y0, musilogy.declared_end(o.y_end, o.y_end_source),
+         o.ended, c.rank
+  FROM musilogy.colisten c
+  JOIN musilogy.artists o ON o.mbid = c.neighbour_mbid
+  WHERE c.artist_mbid = artist
+  ORDER BY c.rank;
+$$;
+
+-- The artists credited with the artist on its records (86_credits.sql), the
+-- most records together first, then by name.
+CREATE FUNCTION musilogy.artist_credits(artist text)
+RETURNS TABLE (
+  mbid text,
+  name text,
+  disambiguation text,
+  y0 integer,
+  records integer
+)
+LANGUAGE sql STABLE
+AS $$
+  SELECT o.mbid, o.name, o.disambiguation, o.y0, c.records
+  FROM musilogy.credits c
+  JOIN musilogy.artists o ON o.mbid = c.other_mbid
+  WHERE c.artist_mbid = artist
+  ORDER BY c.records DESC, o.name, o.mbid;
 $$;
 
 -- The rank of each artist among those of its very name (name_key): the most

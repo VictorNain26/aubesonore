@@ -60,18 +60,28 @@ CREATE TABLE urls (
   ended boolean NOT NULL
 );
 
--- « Même son » (88_same_sound.sql). No key during the copy: millions of rows,
--- indexed once loaded (30_indexes.sql). One pair per row is an invariant of
--- the build.
+-- The neighbours of the tabs, each pair once (an invariant of the build). No
+-- key during the copy: millions of rows, indexed once loaded
+-- (30_indexes.sql). « Même son » (samesound.py), with its reason:
 CREATE TABLE same_sound (
   artist_mbid text COLLATE "C" NOT NULL,
   neighbour_mbid text COLLATE "C" NOT NULL,
   rank integer NOT NULL,
-  colisten_score double precision NOT NULL,
-  source text NOT NULL,
-  colour double precision NOT NULL,
-  term text NOT NULL,
-  decade integer
+  term text NOT NULL
+);
+
+-- « Écoutés ensemble » (colisten.py).
+CREATE TABLE colisten (
+  artist_mbid text COLLATE "C" NOT NULL,
+  neighbour_mbid text COLLATE "C" NOT NULL,
+  rank integer NOT NULL
+);
+
+-- Credited together (86_credits.sql), both ways.
+CREATE TABLE credits (
+  artist_mbid text COLLATE "C" NOT NULL,
+  other_mbid text COLLATE "C" NOT NULL,
+  records integer NOT NULL
 );
 
 CREATE TABLE manifest (

@@ -321,47 +321,46 @@ CREATE OR REPLACE VIEW colisten_out_of_order AS
            lag(score) OVER w AS score_before, lag(neighbour_mbid) OVER w AS neighbour_before
     FROM colisten WINDOW w AS (PARTITION BY artist_mbid ORDER BY rank)
   ) WHERE score > score_before OR (score = score_before AND neighbour_mbid < neighbour_before);
--- 88_same_sound.sql: one row per pair, never the artist itself, ranks 1..n
--- without a gap, by the colour then the neighbour's MBID; every pair a co-listening pair
--- in one direction or the other, with the higher score of the two, of colour
--- 0.35 or more (a literal: the build reads a variable), explained by a style
--- both artists carry, the only source; the style's decade one the artist has
--- it in, NULL only when the artist has no dated record of it.
+-- same_sound (samesound.py): one row per pair, never the artist itself, ranks
+-- 1..K without a gap, by the colour then the neighbour's MBID, every colour
+-- above zero and at most one, explained by a style both artists carry.
 CREATE OR REPLACE VIEW duplicate_same_sound AS
   SELECT artist_mbid, neighbour_mbid FROM same_sound GROUP BY ALL HAVING count(*) > 1;
 CREATE OR REPLACE VIEW same_sound_self AS
   SELECT artist_mbid FROM same_sound WHERE artist_mbid = neighbour_mbid;
 CREATE OR REPLACE VIEW same_sound_rank_out_of_range AS
   SELECT artist_mbid FROM same_sound GROUP BY artist_mbid
-  HAVING min(rank) <> 1 OR max(rank) <> count(*);
+  HAVING min(rank) <> 1 OR max(rank) <> count(*) OR max(rank) > 8;
 CREATE OR REPLACE VIEW same_sound_out_of_order AS
   SELECT artist_mbid, rank FROM (
-    SELECT artist_mbid, rank, colour, neighbour_mbid,
-           lag(colour) OVER w AS colour_before, lag(neighbour_mbid) OVER w AS neighbour_before
+    SELECT artist_mbid, rank, score, neighbour_mbid,
+           lag(score) OVER w AS score_before, lag(neighbour_mbid) OVER w AS neighbour_before
     FROM same_sound WINDOW w AS (PARTITION BY artist_mbid ORDER BY rank)
-  ) WHERE colour > colour_before
-     OR (colour = colour_before AND neighbour_mbid < neighbour_before);
-CREATE OR REPLACE VIEW same_sound_unsourced AS
-  WITH both_ways AS (
-    SELECT artist_mbid, neighbour_mbid, max(score) AS score FROM (
-      SELECT artist_mbid, neighbour_mbid, score FROM colisten
-      UNION ALL
-      SELECT neighbour_mbid, artist_mbid, score FROM colisten
-    ) GROUP BY ALL
-  )
-  SELECT s.artist_mbid, s.neighbour_mbid FROM same_sound s
-  LEFT JOIN both_ways c USING (artist_mbid, neighbour_mbid)
-  WHERE s.colisten_score IS DISTINCT FROM c.score;
-CREATE OR REPLACE VIEW same_sound_colour_out_of_range AS
+  ) WHERE score > score_before OR (score = score_before AND neighbour_mbid < neighbour_before);
+CREATE OR REPLACE VIEW same_sound_score_out_of_range AS
   SELECT artist_mbid, neighbour_mbid FROM same_sound
-  WHERE colour IS NULL OR colour < 0.35 OR colour > 1 + 1e-9
-     OR source IS DISTINCT FROM 'styles';
+  WHERE score IS NULL OR score <= 0 OR score > 1 + 1e-9;
 CREATE OR REPLACE VIEW same_sound_unexplained AS
   SELECT s.artist_mbid, s.neighbour_mbid FROM same_sound s
-  WHERE NOT EXISTS (SELECT 1 FROM styles a WHERE a.artist_mbid = s.artist_mbid
-                    AND a.style = s.term AND a.decade IS NOT DISTINCT FROM s.decade)
-     OR (s.decade IS NULL AND EXISTS (SELECT 1 FROM styles a
-                                      WHERE a.artist_mbid = s.artist_mbid AND a.style = s.term
-                                        AND a.decade IS NOT NULL))
+  WHERE NOT EXISTS (SELECT 1 FROM styles a WHERE a.artist_mbid = s.artist_mbid AND a.style = s.term)
      OR NOT EXISTS (SELECT 1 FROM styles b WHERE b.artist_mbid = s.neighbour_mbid
                     AND b.style = s.term);
+-- credits (86_credits.sql): one row per pair, both ways with the same count,
+-- never the artist itself, at least one record, and never a pair `links`
+-- relates.
+CREATE OR REPLACE VIEW duplicate_credit AS
+  SELECT artist_mbid, other_mbid FROM credits GROUP BY ALL HAVING count(*) > 1;
+CREATE OR REPLACE VIEW credit_self AS
+  SELECT artist_mbid FROM credits WHERE artist_mbid = other_mbid;
+CREATE OR REPLACE VIEW credit_one_way AS
+  SELECT c.artist_mbid, c.other_mbid FROM credits c
+  WHERE NOT EXISTS (SELECT 1 FROM credits b WHERE b.artist_mbid = c.other_mbid
+                    AND b.other_mbid = c.artist_mbid AND b.records = c.records);
+CREATE OR REPLACE VIEW credit_without_record AS
+  SELECT artist_mbid, other_mbid FROM credits WHERE records IS NULL OR records < 1;
+CREATE OR REPLACE VIEW credit_linked AS
+  SELECT c.artist_mbid, c.other_mbid FROM credits c JOIN links l
+    ON l.src_mbid = c.artist_mbid AND l.dst_mbid = c.other_mbid
+  UNION ALL
+  SELECT c.artist_mbid, c.other_mbid FROM credits c JOIN links l
+    ON l.src_mbid = c.other_mbid AND l.dst_mbid = c.artist_mbid;
