@@ -100,13 +100,18 @@ def _batches(
         return
     # Spawned, not forked: the build's DuckDB holds threads, and a fork copies
     # their locks in whatever state they are.
-    with ProcessPoolExecutor(
+    pool = ProcessPoolExecutor(
         WORKERS,
         mp_context=multiprocessing.get_context("spawn"),
         initializer=_hold,
         initargs=(colours, terms, shrink, K),
-    ) as pool:
+    )
+    try:
         yield from pool.map(_closest, batches)
+    finally:
+        # A failure downstream drops the batches not started: the workers stop rather than
+        # compute every one of them for nothing.
+        pool.shutdown(cancel_futures=True)
 
 
 def build_same_sound(con: duckdb.DuckDBPyConnection) -> None:

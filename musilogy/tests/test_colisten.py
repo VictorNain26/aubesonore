@@ -214,3 +214,14 @@ def test_the_site_reads_the_colisten_in_rank_order(tmp_path, pg):
             "ended boolean, rank integer)",
         )
     ]
+
+
+def test_the_site_leaves_out_a_neighbour_the_dump_does_not_hold_ranks_closed(tmp_path, pg):
+    # B, A's first neighbour, is not in the dump: C comes first.
+    loaded(
+        tmp_path,
+        pg,
+        [synthetic_artist(A, "1970", None), synthetic_artist(C, "1975", None)],
+        listening=USERS,
+    )
+    assert pg_query(pg, f"SELECT mbid, rank FROM musilogy.artist_colisten('{A}')") == [(C, 1)]

@@ -92,6 +92,17 @@ def test_each_pair_both_ways(tmp_path):
     assert credits(c, S) == [(P, 1)]
 
 
+def test_a_collective_release_group_counts_every_artist_it_credits(tmp_path):
+    # Eleven credited, nine of them outside the population: still a collective's record.
+    outside = [f"00000000-0000-4000-8000-0000000009{i:02x}" for i in range(9)]
+    c = build_synthetic(
+        tmp_path,
+        ARTISTS,
+        [synthetic_release_group(RG_PQ, P, "1995", co_artists=[R, *outside])],
+    )
+    assert credits(c, R) == []
+
+
 def test_musicbrainz_alone_credits_a_pair(tmp_path):
     assert credits(built(tmp_path, releases=[]), Q) == [(P, 1)]
 

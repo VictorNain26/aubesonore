@@ -232,7 +232,9 @@ AS $$
 $$;
 
 -- « Écoutés ensemble » (colisten.py, docs/vision.md §2.2): the artists the
--- same listeners listen to, in their rank order.
+-- same listeners listen to, in their rank order. A neighbour ListenBrainz
+-- names by an MBID the dump does not hold (merged or newer since) is left out,
+-- 3 007 of 7 194 003 pairs (2026-10-22); the ranks shown close the gap.
 CREATE FUNCTION musilogy.artist_colisten(artist text)
 RETURNS TABLE (
   mbid text,
@@ -246,7 +248,7 @@ RETURNS TABLE (
 LANGUAGE sql STABLE
 AS $$
   SELECT o.mbid, o.name, o.disambiguation, o.y0, musilogy.declared_end(o.y_end, o.y_end_source),
-         o.ended, c.rank
+         o.ended, (row_number() OVER (ORDER BY c.rank))::integer
   FROM musilogy.colisten c
   JOIN musilogy.artists o ON o.mbid = c.neighbour_mbid
   WHERE c.artist_mbid = artist

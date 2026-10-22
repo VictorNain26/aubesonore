@@ -12,10 +12,15 @@ SET VARIABLE credits_max_artists = 10::INTEGER;
 
 SET preserve_insertion_order = false;
 
+-- Counted on every artist the release group credits, in the population or not, as on Discogs.
 CREATE OR REPLACE TABLE credits_musicbrainz AS
-WITH r AS (
-  SELECT rg_mbid, artist_mbid FROM releases WHERE official IS NOT FALSE
-  QUALIFY count(*) OVER (PARTITION BY rg_mbid) <= getvariable('credits_max_artists')
+WITH small AS (
+  SELECT mbid FROM raw_release_groups
+  WHERE len(list_distinct(artists)) <= getvariable('credits_max_artists')
+),
+r AS (
+  SELECT rg_mbid, artist_mbid FROM releases
+  WHERE official IS NOT FALSE AND rg_mbid IN (SELECT mbid FROM small)
 )
 SELECT x.artist_mbid, y.artist_mbid AS other_mbid, count(*) AS records
 FROM r x JOIN r y ON x.rg_mbid = y.rg_mbid AND x.artist_mbid <> y.artist_mbid

@@ -101,8 +101,8 @@ Punk → Madonna), rien pour les petits artistes que Discogs n'atteint pas (2026
   groupes, les autres groupes de ses membres et ses autres noms (MusicBrainz), puis les artistes
   crédités avec lui sur ses disques (MusicBrainz et Discogs), du plus de disques communs au moins.
 
-Chaque onglet montre au plus 8 voisins, dans l'ordre de son propre score ; la filiation montre ses
-faits, repliés au-delà des premiers. Un onglet vide ne s'affiche pas. Jamais la popularité ni
+Chaque onglet montre ses premiers voisins, dans l'ordre de son propre score ; la filiation montre
+ses faits, repliés au-delà des premiers. Un onglet vide ne s'affiche pas. Jamais la popularité ni
 l'époque ne classent.
 
 **Ce qui n'en est pas une preuve** : le label (mesuré : 26 % de bons), une influence déclarée, la
