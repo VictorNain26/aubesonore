@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
-import type { MusilogyArtist, MusilogyNeighbour } from '@aubesonore/shared-types/client';
+import type { MusilogyCard, MusilogyNeighbour } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
 import { cn } from '@/lib/utils';
 import { ARTIST_LINK, STRETCHED } from '../design/classes';
@@ -9,11 +9,6 @@ import { pagePathOf } from '../lib/musilogy';
 
 // The link covers its whole row: the target is the row, never the name alone.
 
-/** The close artists, the closest first: musilogy's rank, ties already settled. */
-export function closeArtistsOf({ neighbours }: MusilogyArtist): readonly MusilogyNeighbour[] {
-  return neighbours ?? [];
-}
-
 /** A Discogs style as the page says it, in lower case: « krautrock », like the line under the name. */
 export function termOf(style: string): string {
   return style.toLowerCase();
@@ -21,12 +16,13 @@ export function termOf(style: string): string {
 
 /**
  * The style at least half of the close artists share, said once above them rather than
- * on every row; a tie goes to the closer one. Null when none is shared that widely.
+ * on every row; a tie goes to the closer one. Null when none is shared that widely, or when the
+ * list gives no style (« Écoutés ensemble »).
  */
 export function sharedTerm(close: readonly MusilogyNeighbour[]): string | null {
   const counts = new Map<string, number>();
-  for (const artist of close)
-    counts.set(termOf(artist.term), (counts.get(termOf(artist.term)) ?? 0) + 1);
+  for (const { term } of close)
+    if (term !== null) counts.set(termOf(term), (counts.get(termOf(term)) ?? 0) + 1);
   let best: string | null = null;
   let most = 0;
   for (const [term, count] of counts) {
@@ -144,9 +140,9 @@ export function yearsOf(artist: Years): string {
     : String(artist.y0);
 }
 
-/** The intro: the sound they share. */
-export function timelineNote(artist: MusilogyArtist): string {
-  const shared = sharedTerm(closeArtistsOf(artist));
+/** The intro of « Même son »: the sound they share. */
+export function sameSoundNote(close: readonly MusilogyNeighbour[]): string {
+  const shared = sharedTerm(close);
   return shared ? m.musilogy_close_shared({ term: shared }) : m.musilogy_close_same();
 }
 
@@ -242,22 +238,22 @@ function Drawing({
 }
 
 /**
- * The close artists of an artist, the closest first, each with its years drawn on one axis shared
+ * Close artists of an artist, in their tab's order, each with its years drawn on one axis shared
  * by all and written on its bar (docs/vision.md §2.4): who came before, alongside and after reads at
  * a glance, without grouping them by decade. The artist itself leads, its bar in ink and the others
  * grey (Datawrapper, « Emphasize with color »: grey everything but what matters), its start and end
  * drawn as lines through the rows.
  */
 export function MusilogyTimeline({
-  artist,
+  card,
+  close,
   thisYear,
 }: {
-  artist: MusilogyArtist;
+  card: MusilogyCard;
+  close: readonly MusilogyNeighbour[];
   thisYear: number;
 }) {
-  const close = closeArtistsOf(artist);
   if (close.length === 0) return null;
-  const { card } = artist;
   const shared = sharedTerm(close);
   const ownYears: Years = {
     y0: card.y0,
@@ -333,10 +329,10 @@ export function MusilogyTimeline({
         ) : null}
         <ol className="relative m-0 list-none p-0">
           {close.map((neighbour) => {
-            const differs = shared !== null && termOf(neighbour.term) !== shared;
+            const term = neighbour.term === null ? null : termOf(neighbour.term);
             const note = [
               neighbour.y0 === null ? m.musilogy_start_unknown() : null,
-              shared === null || differs ? termOf(neighbour.term) : null,
+              term !== shared ? term : null,
             ].filter(Boolean);
             return (
               <li

@@ -48,7 +48,9 @@ const ref = (mbid: string, played = false): MusilogyNeighbour => ({
 function page(close: MusilogyNeighbour[], releases = 0): MusilogyArtist {
   return {
     card: {} as MusilogyArtist['card'],
-    neighbours: close,
+    sameSound: close,
+    colisten: null,
+    credits: null,
     releases: Array.from({ length: releases }, (_, i) => ({
       mbid: `rg${i}`,
       title: `r${i}`,
@@ -141,6 +143,18 @@ describe('discovered artists', () => {
       { mbid: 'rich', name: 'rich' },
       { mbid: 'just-enough', name: 'just-enough' },
     ]);
+  });
+
+  it('counts no link from the same public nor the credits, which the rule was not measured on', async () => {
+    const [first, second] = played;
+    pagesByMbid['heard'] = page([], 5);
+    wikidata['heard'] = 'Q5';
+    pagesByMbid[first!] = { ...pagesByMbid[first!]!, colisten: [ref('heard')] };
+    pagesByMbid[second!] = { ...pagesByMbid[second!]!, credits: [{ ...ref('heard'), records: 1 }] };
+
+    await refreshDiscovered();
+
+    expect(isDiscovered('heard')).toBe(false);
   });
 
   it('keeps the last set when a run fails', async () => {

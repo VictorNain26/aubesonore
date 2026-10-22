@@ -214,15 +214,21 @@ export interface MusilogyCard extends MusilogyArtistRef {
   styles: string[];
 }
 
-/** A neighbour of « Même son »: listened to by the same public, of the same colour. */
+/** A neighbour of « Même son » or « Écoutés ensemble » (docs/vision.md §2.2). */
 export interface MusilogyNeighbour extends MusilogyArtistRef {
   yEnd: number | null;
   /** MusicBrainz says it has ended, even without a date. */
   ended: boolean;
-  /** Its place among the artist's neighbours, from 1: the order that counts, ties settled. */
+  /** Its place among the artist's neighbours of that tab, from 1: the order that counts. */
   rank: number;
-  /** The Discogs style the two share most: why it is close. */
-  term: string;
+  /** « Même son »: the Discogs style the two share most, why it is close; null elsewhere. */
+  term: string | null;
+}
+
+/** An artist credited with the artist on its records. */
+export interface MusilogyCredit extends MusilogyArtistRef {
+  /** How many records they share. */
+  records: number;
 }
 
 /** A record of the artist's work (docs/vision.md §2.4). */
@@ -267,11 +273,13 @@ export interface MusilogyOtherName extends MusilogyArtistRef {
 export interface MusilogyArtist {
   card: MusilogyCard;
   /**
-   * The artist's close artists, by their rank, the closest first. Null, like every section
-   * below, while the data behind it is not loaded yet; empty when it holds none.
+   * The three tabs of close artists (docs/vision.md §2.2), each in its own order. Null, like
+   * every section below, while the data behind it is not loaded yet; empty when it holds none.
    */
-  neighbours: MusilogyNeighbour[] | null;
-  /** Null while the data behind a section is not loaded yet; empty when it holds none. */
+  sameSound: MusilogyNeighbour[] | null;
+  colisten: MusilogyNeighbour[] | null;
+  /** The filiation: these credits, with the bands, member projects and other names below. */
+  credits: MusilogyCredit[] | null;
   releases: MusilogyRelease[] | null;
   bands: MusilogyBands | null;
   memberProjects: MusilogyProject[] | null;

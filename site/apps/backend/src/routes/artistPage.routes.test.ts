@@ -564,7 +564,7 @@ describe('the addresses pages had before slugs', () => {
     mockShell();
     musilogyAnswer = {
       card: { name: 'Protomartyr' },
-      neighbours: [{ mbid: 'm1', name: 'Preoccupations', rank: 1 }],
+      sameSound: [{ mbid: 'm1', name: 'Preoccupations', rank: 1 }],
       releases: null,
       bands: null,
     };

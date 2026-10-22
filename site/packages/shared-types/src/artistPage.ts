@@ -30,13 +30,13 @@ export function countryName(code: string, locale: SiteLocale): string | undefine
  */
 export function artistPageName(
   profile: Pick<ArtistProfile, 'name' | 'facts'>,
-  musilogy: Pick<MusilogyArtist, 'neighbours'> | null,
+  musilogy: Pick<MusilogyArtist, 'sameSound' | 'colisten'> | null,
   locale: SiteLocale
 ): string {
   const facts = profile.facts;
   const where = facts?.place ?? (facts?.country ? countryName(facts.country, locale) : undefined);
   const about = [facts?.kind ? kindWord(facts.kind, locale) : undefined, where].filter(Boolean);
   const name = about.length > 0 ? `${profile.name} (${about.join(', ')})` : profile.name;
-  if (!musilogy?.neighbours?.length) return name;
+  if (!musilogy?.sameSound?.length && !musilogy?.colisten?.length) return name;
   return `${name}${locale === 'fr' ? ' : ' : ': '}${SIMILAR[locale]}`;
 }

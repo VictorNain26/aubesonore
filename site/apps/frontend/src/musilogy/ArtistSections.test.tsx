@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import type { MusilogyArtist, MusilogyNeighbour } from '@aubesonore/shared-types/client';
@@ -41,7 +41,7 @@ function artist(overrides: Partial<MusilogyArtist> = {}): MusilogyArtist {
       ended: true,
       styles: ['Glam', 'Rock & Roll'],
     },
-    neighbours: [
+    sameSound: [
       neighbour(3, { name: 'The Kinks' }),
       neighbour(4, {
         name: 'David Bowie',
@@ -50,6 +50,11 @@ function artist(overrides: Partial<MusilogyArtist> = {}): MusilogyArtist {
       }),
       neighbour(14, { name: 'Ramones', term: 'Punk' }),
     ],
+    colisten: [
+      neighbour(5, { name: 'Gary Glitter', term: null }),
+      neighbour(6, { name: 'Slade', term: null }),
+    ],
+    credits: [],
     releases: [],
     bands: {
       members: [{ ...neighbour(20, { name: 'Marc Bolan' }), yBegin: 1967, yEnd: 1977 }],
@@ -77,11 +82,18 @@ function show(shown: MusilogyArtist) {
   return render(<Sections artist={shown} />, { wrapper: MemoryRouter });
 }
 
+/** The page, its filiation tab open. */
+function showFiliation(shown: MusilogyArtist) {
+  const view = show(shown);
+  fireEvent.click(screen.getByRole('tab', { name: 'Filiation' }));
+  return view;
+}
+
 describe('MusilogySections', () => {
   it('lists the close artists by rank, each a link to its page, the sound they share said once', () => {
     show(artist());
 
-    expect(screen.getByRole('heading', { name: 'Artistes similaires' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Artistes proches' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'The Kinks' })).toHaveAttribute(
       'href',
       `/artiste/${neighbour(3).mbid}`
@@ -93,7 +105,7 @@ describe('MusilogySections', () => {
     expect(screen.getByText('depuis 1974')).toBeInTheDocument();
     expect(screen.getByText('depuis 1963')).toBeInTheDocument();
     // The artist itself leads the timeline, drawn for the eye, and is no link to its own page.
-    expect(screen.getByText('T. Rex')).toBeInTheDocument();
+    expect(within(screen.getByRole('tabpanel')).getByText('T. Rex')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'T. Rex' })).not.toBeInTheDocument();
   });
 
@@ -109,7 +121,7 @@ describe('MusilogySections', () => {
   it('leads to the page of a neighbour never played at its slug too, else at its MBID', () => {
     const named = neighbour(40, { name: 'Gorillaz', slug: 'gorillaz' });
     const unnamed = neighbour(41, { name: 'Unnamed' });
-    show(artist({ neighbours: [named, unnamed] }));
+    show(artist({ sameSound: [named, unnamed] }));
 
     expect(screen.getByRole('link', { name: 'Gorillaz' })).toHaveAttribute(
       'href',
@@ -122,18 +134,71 @@ describe('MusilogySections', () => {
   });
 
   it('names each band link from the artist side', () => {
-    show(artist());
+    showFiliation(artist());
 
     expect(screen.getByRole('heading', { name: 'Membres' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Marc Bolan' })).toBeInTheDocument();
   });
 
-  it('leaves out every section with nothing in it, without a title over an absence', () => {
-    show(artist({ neighbours: null }));
+  it('leaves out every tab with nothing in it, and opens the first one left', () => {
+    show(artist({ sameSound: null, colisten: [] }));
 
-    expect(screen.queryByRole('heading', { name: 'Artistes similaires' })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Filiation']);
+    expect(screen.getByRole('tab', { name: 'Filiation' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('heading', { name: 'Membres' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Groupes et projets' })).toBeInTheDocument();
+  });
+
+  it('leaves out the section, title and all, when no tab has anything', () => {
+    show(
+      artist({
+        sameSound: [],
+        colisten: null,
+        bands: { members: [], groups: [] },
+        memberProjects: [],
+        otherNames: [],
+        credits: [],
+      })
+    );
+
+    expect(screen.queryByRole('heading', { name: 'Artistes proches' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+  });
+
+  it('shows one tab at a time, the same sound first, each saying what its list is', () => {
+    show(artist());
+
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'Même son',
+      'Écoutés ensemble',
+      'Filiation',
+    ]);
+    expect(screen.getByRole('link', { name: 'The Kinks' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Slade' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Écoutés ensemble' }));
+
+    expect(screen.getByText('Ceux que le même public écoute.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Slade' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'The Kinks' })).not.toBeInTheDocument();
+    // No style under a name the same public brings, nor said above them.
+    expect(within(screen.getByRole('tabpanel')).queryByText(/glam rock/)).not.toBeInTheDocument();
+  });
+
+  it('gives the artists credited together in the filiation, the count of records said', () => {
+    showFiliation(
+      artist({
+        credits: [
+          { ...neighbour(50, { name: 'Tony Visconti' }), records: 4 },
+          { ...neighbour(51, { name: 'Elton John' }), records: 1 },
+        ],
+      })
+    );
+
+    expect(screen.getByRole('heading', { name: 'Crédités ensemble' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Tony Visconti' })).toBeInTheDocument();
+    expect(screen.getByText('4 disques')).toBeInTheDocument();
+    expect(screen.getByText('1 disque')).toBeInTheDocument();
   });
 
   it('shows the albums, then the EPs folded past the first eight, with their covers', async () => {
@@ -182,7 +247,7 @@ describe('MusilogySections', () => {
 
   it("calls a person's groups its bands, and a group's its joint projects", () => {
     const uilab = { ...neighbour(60, { name: 'Uilab' }), yBegin: 1997, yEnd: 1997 };
-    const { rerender } = show(artist({ bands: { members: [], groups: [uilab] } }));
+    const { rerender } = showFiliation(artist({ bands: { members: [], groups: [uilab] } }));
     expect(screen.getByRole('heading', { name: 'Projets communs' })).toBeInTheDocument();
 
     const person = artist({ bands: { members: [], groups: [uilab] } });
@@ -192,7 +257,7 @@ describe('MusilogySections', () => {
 
   it('puts the other groups under the member who leads there, and says what each other name is', () => {
     const took = { ...neighbour(52, { name: 'Steve Peregrine Took' }), yBegin: 1967, yEnd: 1969 };
-    show(
+    showFiliation(
       artist({
         bands: {
           members: [{ ...neighbour(20, { name: 'Marc Bolan' }), yBegin: 1967, yEnd: 1977 }, took],
@@ -226,7 +291,7 @@ describe('MusilogySections', () => {
       ...neighbour(100 + n, { name: `Project ${n}` }),
       via,
     });
-    show(
+    showFiliation(
       artist({
         bands: {
           members: [
@@ -265,7 +330,7 @@ describe('MusilogySections', () => {
       yBegin: null,
       yEnd: null,
     });
-    show(
+    showFiliation(
       artist({
         bands: { members: [twin(30), twin(31)], groups: [] },
         memberProjects: [{ ...neighbour(50, { name: 'Shagrat' }), via: ['John Smith'] }],
@@ -289,7 +354,7 @@ describe('MusilogySections', () => {
         groups: [group(0, 1997, 1997), ...Array.from({ length: 13 }, (_, i) => group(i + 1))],
       },
     });
-    show({ ...person, card: { ...person.card, kind: 'person' } });
+    showFiliation({ ...person, card: { ...person.card, kind: 'person' } });
 
     expect(screen.getByText('1997')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Group 13' })).not.toBeInTheDocument();
@@ -297,7 +362,7 @@ describe('MusilogySections', () => {
   });
 
   it('shows every close artist at once, with nothing to open', () => {
-    show(artist({ neighbours: Array.from({ length: 8 }, (_, i) => neighbour(i)) }));
+    show(artist({ sameSound: Array.from({ length: 8 }, (_, i) => neighbour(i)) }));
 
     expect(screen.getAllByRole('listitem').length).toBeGreaterThanOrEqual(8);
     expect(screen.getByRole('link', { name: 'Artist 7' })).toBeInTheDocument();
@@ -305,7 +370,7 @@ describe('MusilogySections', () => {
   });
 
   it('keeps a close artist whose start is unknown in its rank, said so', () => {
-    show(artist({ neighbours: [neighbour(3), neighbour(30, { name: 'Undated Band', y0: null })] }));
+    show(artist({ sameSound: [neighbour(3), neighbour(30, { name: 'Undated Band', y0: null })] }));
 
     expect(screen.getByRole('link', { name: 'Undated Band' })).toBeInTheDocument();
     expect(screen.getByText('début inconnu')).toBeInTheDocument();

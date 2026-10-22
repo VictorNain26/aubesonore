@@ -4,17 +4,19 @@ import type {
   MusilogyArtist,
   MusilogyArtistRef,
   MusilogyBandmate,
+  MusilogyCredit,
   MusilogyOtherName,
   MusilogyProject,
 } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
 import type { PageNavItem } from '../design/PageNav';
 import { Section } from '../design/Section';
+import { Tabs, type Tab } from '../design/Tabs';
 import { ARTIST_LINK, TEXT_ACTION } from '../design/classes';
 import { cn } from '@/lib/utils';
 import { DISCOVERY } from '../lib/discoveryTrail';
 import { pagePathOf } from '../lib/musilogy';
-import { closeArtistsOf, MusilogyTimeline, timelineNote } from './MusilogyTimeline';
+import { MusilogyTimeline, sameSoundNote } from './MusilogyTimeline';
 
 // A list shows its closest first; the rest opens on demand.
 const FIRST_SHOWN = 12;
@@ -225,12 +227,20 @@ function InlineArtists<T extends MusilogyArtistRef>({
   );
 }
 
+/** « 3 disques »: what an artist credited with the artist shares with it. */
+function recordsOf(credit: MusilogyCredit): string {
+  return credit.records === 1
+    ? m.musilogy_records_one()
+    : m.musilogy_records_other({ count: String(credit.records) });
+}
+
 /**
- * Members, each with its other groups, or a person's groups; then other names (docs/vision.md
- * §2.4), rather than MusicBrainz's dozen relation types.
+ * The filiation (docs/vision.md §2.4): members, each with its other groups, or a person's groups;
+ * other names; then the artists credited with it, the most records first. Rubrics rather than
+ * MusicBrainz's dozen relation types.
  */
-function Bands({ artist }: { artist: MusilogyArtist }) {
-  const { bands, memberProjects, otherNames } = artist;
+function Filiation({ artist }: { artist: MusilogyArtist }) {
+  const { bands, memberProjects, otherNames, credits } = artist;
   const { byMember, loose } = tieProjects(bands?.members ?? [], memberProjects ?? []);
   return (
     <div className="flex flex-col gap-8">
@@ -260,31 +270,90 @@ function Bands({ artist }: { artist: MusilogyArtist }) {
           <InlineArtists artists={otherNames} noteOf={(name) => NAME_KINDS[name.kind]()} />
         </SubList>
       ) : null}
+      {credits && credits.length > 0 ? (
+        <SubList label={m.musilogy_credited()}>
+          <InlineArtists artists={credits} noteOf={recordsOf} limit={FIRST_SHOWN} />
+        </SubList>
+      ) : null}
     </div>
   );
 }
 
-function bandCount({ bands, memberProjects, otherNames }: MusilogyArtist): number {
+function filiationCount({ bands, memberProjects, otherNames, credits }: MusilogyArtist): number {
   return (
     (bands ? bands.members.length + bands.groups.length : 0) +
     (memberProjects?.length ?? 0) +
-    (otherNames?.length ?? 0)
+    (otherNames?.length ?? 0) +
+    (credits?.length ?? 0)
   );
+}
+
+/** A tab's panel: what its list is, in one sentence, then the list. */
+function Panel({ note, children }: { note: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-6">
+      <p className="text-intro text-text-muted max-w-blurb m-0">{note}</p>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * The tabs that have something to show, in the order a reader goes: the same sound, the same
+ * public, then the facts of the filiation (docs/vision.md §2.2).
+ */
+function closeTabs(artist: MusilogyArtist, thisYear: number): Tab[] {
+  const { card, sameSound, colisten } = artist;
+  return [
+    sameSound?.length
+      ? {
+          id: 'same-sound',
+          label: m.musilogy_tab_same_sound(),
+          panel: (
+            <Panel note={sameSoundNote(sameSound)}>
+              <MusilogyTimeline card={card} close={sameSound} thisYear={thisYear} />
+            </Panel>
+          ),
+        }
+      : null,
+    colisten?.length
+      ? {
+          id: 'colisten',
+          label: m.musilogy_tab_colisten(),
+          panel: (
+            <Panel note={m.musilogy_colisten_note()}>
+              <MusilogyTimeline card={card} close={colisten} thisYear={thisYear} />
+            </Panel>
+          ),
+        }
+      : null,
+    filiationCount(artist) > 0
+      ? {
+          id: 'filiation',
+          label: m.musilogy_tab_filiation(),
+          panel: (
+            <Panel note={m.musilogy_filiation_note()}>
+              <Filiation artist={artist} />
+            </Panel>
+          ),
+        }
+      : null,
+  ].filter((tab) => tab !== null);
 }
 
 /** The sections MusilogySections shows, for the page's anchors (PageNav). */
 export function musilogyNav(artist: MusilogyArtist): PageNavItem[] {
-  const close = closeArtistsOf(artist).length > 0;
-  return [
-    close ? { id: 'close', label: m.musilogy_close_title() } : null,
-    bandCount(artist) > 0 ? { id: 'bands', label: m.musilogy_links_title() } : null,
-  ].filter((item) => item !== null);
+  const close =
+    Boolean(artist.sameSound?.length) ||
+    Boolean(artist.colisten?.length) ||
+    filiationCount(artist) > 0;
+  return close ? [{ id: 'close', label: m.musilogy_close_title() }] : [];
 }
 
 /**
- * Where to go next from an artist: its close artists, the closest first, their years drawn on one
- * axis; then the bands and their projects. A section with nothing in it is left out: no « nothing
- * yet » under a title.
+ * Where to go next from an artist: its close artists, in three tabs, the first one with something
+ * to show open. A tab with nothing in it is left out, and the section with it when all are: no
+ * « nothing yet » under a title.
  */
 export function MusilogySections({
   artist,
@@ -293,19 +362,13 @@ export function MusilogySections({
   artist: MusilogyArtist;
   thisYear: number;
 }) {
-  const close = closeArtistsOf(artist).length > 0;
+  const tabs = closeTabs(artist, thisYear);
+  const [chosen, setChosen] = useState<string | null>(null);
+  const shown = tabs.find((tab) => tab.id === chosen) ?? tabs[0];
+  if (!shown) return null;
   return (
-    <>
-      {close ? (
-        <Section id="close" title={m.musilogy_close_title()} body={timelineNote(artist)} sticky>
-          <MusilogyTimeline artist={artist} thisYear={thisYear} />
-        </Section>
-      ) : null}
-      {bandCount(artist) > 0 ? (
-        <Section id="bands" title={m.musilogy_links_title()} sticky>
-          <Bands artist={artist} />
-        </Section>
-      ) : null}
-    </>
+    <Section id="close" title={m.musilogy_close_title()} sticky>
+      <Tabs label={m.musilogy_close_title()} tabs={tabs} selected={shown.id} onSelect={setChosen} />
+    </Section>
   );
 }
