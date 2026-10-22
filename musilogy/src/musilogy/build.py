@@ -168,9 +168,9 @@ def colisten_from(
     else:
         set_parameters(con)
         _set_variable(con, "listening_snapshot", snapshot, "VARCHAR")
-    # Once kept, the table is its file: 45 million rows held in the build's
-    # capped memory would push every later step to spill. A view takes no
-    # prepared parameter: the path goes in as a literal.
+    # Once kept, the table is its file: seven million rows held in the build's
+    # capped memory would push later steps to spill. A view takes no prepared
+    # parameter: the path goes in as a literal.
     literal = "'" + cache.as_posix().replace("'", "''") + "'"
     con.execute(f"CREATE OR REPLACE VIEW colisten AS SELECT * FROM read_parquet({literal})")
 

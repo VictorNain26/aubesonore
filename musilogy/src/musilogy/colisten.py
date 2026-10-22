@@ -1,6 +1,6 @@
-"""Our co-listening (docs/conception.md §2, `colisten`): for each artist that at
-least MIN_LISTENERS ListenBrainz users listen to, its K closest artists by
-listeners in common, corrected for popularity.
+"""Our co-listening, « Écoutés ensemble » (docs/conception.md §2, `colisten`):
+for each artist that at least MIN_LISTENERS ListenBrainz users listen to, its K
+closest artists by listeners in common, corrected for popularity.
 
 The rule, measured on the evaluation set (2026-10-07, commit 57bcd8d3 of docs/vision.md):
 cosine with an asymmetric exponent, score(j, i) = c / (pop_j^ALPHA * pop_i^(1 - ALPHA)),
@@ -16,6 +16,7 @@ multiplies, scores and keeps the top K of each artist."""
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 from pathlib import Path
@@ -28,8 +29,8 @@ MIN_LISTENERS = 3
 MIN_COMMON = 2
 ALPHA = 0.3
 SHRINK = 10.0
-# « Même son » looks for the colour among all 50 (88_same_sound.sql); the page shows 8.
-K = 50
+# The neighbours the page shows.
+K = 8
 # Rows of the artist-by-artist product computed at once. Over all listens a
 # famous artist shares listeners with most of the 899 265 others: at 100 rows,
 # the whole build of the co-listening peaked at 3.9 GB (2026-10-10).
@@ -57,13 +58,39 @@ def scores(common: np.ndarray, pop_ref: float, pop_cand: np.ndarray) -> np.ndarr
     )
 
 
+def top(score: np.ndarray, cols: np.ndarray, k: int) -> np.ndarray:
+    """The positions of the k best scores, best first, a tie falling to the
+    lower column, the neighbour's MBID order: also at the last place kept,
+    where argpartition alone would pick any of the tied."""
+    if len(score) > k:
+        kth = score[np.argpartition(-score, k - 1)[k - 1]]
+        (candidates,) = np.nonzero(score >= kth)
+    else:
+        candidates = np.arange(len(score))
+    return candidates[np.lexsort((cols[candidates], -score[candidates]))][:k]
+
+
+def _code(source: bytes) -> str:
+    """The module's code without its comments and docstrings, which the
+    parser drops or this removes: what computes, not what explains."""
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
+            and ast.get_docstring(node, clean=False) is not None
+        ):
+            node.body = node.body[1:]
+    return ast.dump(tree)
+
+
 def cache_key() -> str:
     """The rule, digested into the name of a kept co-listening
-    (paths.colisten_cache): its parameters and this module's source, so that
-    one computed by other parameters or another computation is never read.
-    Any edit here, a comment included, computes it again."""
-    rule = json.dumps(PARAMETERS, sort_keys=True).encode() + SOURCE
-    return hashlib.sha256(rule).hexdigest()[:12]
+    (paths.colisten_cache): its parameters and this module's code, so that one
+    computed by other parameters or another computation is never read. A
+    comment or a docstring does not count: ten hours are not redone for a
+    word."""
+    rule = json.dumps(PARAMETERS, sort_keys=True) + _code(SOURCE)
+    return hashlib.sha256(rule.encode()).hexdigest()[:12]
 
 
 def set_parameters(con: duckdb.DuckDBPyConnection) -> None:
@@ -148,19 +175,18 @@ def build_colisten(con: duckdb.DuckDBPyConnection) -> None:
             if not len(cols):
                 continue
             score = scores(common, pop[ref], pop[cols])
-            top = np.argpartition(-score, K - 1)[:K] if len(score) > K else np.arange(len(score))
-            # Score first, then the neighbour's MBID (idx follows it): a tie
-            # never depends on the order the product came out in.
-            top = top[np.lexsort((cols[top], -score[top]))]
-            n = len(top)
+            # idx follows the MBID: a tie never depends on the order the
+            # product came out in.
+            kept = top(score, cols, K)
+            n = len(kept)
             parts.append(
                 (
                     np.full(n, ref, np.int32),
-                    cols[top].astype(np.int32),
-                    common[top].astype(np.int32),
+                    cols[kept].astype(np.int32),
+                    common[kept].astype(np.int32),
                     # Double, as computed: rounded to float32, distinct scores
                     # tied in the table while their ranks kept them apart.
-                    score[top],
+                    score[kept],
                     np.arange(1, n + 1, dtype=np.int16),
                 )
             )
