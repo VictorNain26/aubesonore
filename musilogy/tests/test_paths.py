@@ -1,5 +1,8 @@
+import os
+
 import pytest
 
+from musilogy.build import connect
 from musilogy.paths import (
     DATA_DIR,
     FIXTURES_DIR,
@@ -82,3 +85,13 @@ def test_a_folder_can_be_written_aside(tmp_path):
         aside.mkdir()
         (aside / "00.parquet").write_bytes(b"x")
     assert (dest / "00.parquet").read_bytes() == b"x"
+
+
+def test_each_build_spills_into_its_own_folder():
+    # Two DuckDB processes spilling into one folder name their files alike:
+    # the one that closed first deleted the other's, which failed after
+    # eleven hours (2026-10-22). Each connection spills into a folder of its
+    # own, under the data's tmp/, which DuckDB removes on close.
+    folder = connect().execute("SELECT current_setting('temp_directory')").fetchone()
+    assert folder is not None
+    assert folder[0] == (DATA_DIR / "tmp" / f"duckdb-{os.getpid()}").as_posix()
