@@ -1,10 +1,9 @@
-"""CLI entry point: run, the snapshots, make-fixtures, load, bench."""
+"""CLI entry point: run, the snapshots, make-fixtures, load."""
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
 import tempfile
 from collections.abc import Callable, Iterator, Sequence
@@ -22,18 +21,6 @@ from musilogy import (
     REFERENCE_POPULARITY,
 )
 from musilogy import REFERENCE_DUMP as DUMP
-from musilogy.bench import (
-    BENCH_VERSION,
-    check,
-    make_round,
-    take_answers,
-    take_run,
-    take_sample,
-    write_report,
-)
-from musilogy.bench import (
-    MEASURES as BENCH_MEASURES,
-)
 from musilogy.build import (
     RAW_ARTIST_FIELDS,
     RAW_DISCOGS_FIELDS,
@@ -73,7 +60,6 @@ from musilogy.paths import (
     RAW_DIR,
     SQL_DIR,
     aside_of,
-    bench_dir,
     colisten_cache,
     discography_snapshot,
     discography_sums,
@@ -667,39 +653,6 @@ def load_site(sample: bool = False) -> None:
         print(load(publish_sample(Path(tmp))))
 
 
-def bench_fetch(version: str) -> None:
-    key = os.environ.get("LASTFM_API_KEY")
-    if not key:
-        raise SystemExit("LASTFM_API_KEY is not set")
-    take_answers(bench_dir(version), out_dir(DUMP), key, _today())
-
-
-def bench_check(version: str) -> None:
-    owed = check(bench_dir(version))
-    print("\n".join(owed) if owed else "every pair is judged")
-    if owed:
-        raise SystemExit(1)
-
-
-def bench_report(version: str) -> None:
-    result = write_report(bench_dir(version))
-    print(
-        f"agreement {result['agreement']:.2f}, stability {result['stability']:.2f}, "
-        f"controls judged good {result['controls_good']:.0%}, disputed {result['disputed']}"
-    )
-    for system, strata in result["systems"].items():
-        for stratum, row in strata.items():
-            cells = "  ".join(
-                f"{name} {row[name][0]:.0%} [{row[name][1]:.0%}, {row[name][2]:.0%}]"
-                for name in BENCH_MEASURES
-            )
-            print(
-                f"{system:8} {stratum:6} n={row['references']:3} "
-                f"coverage {row['coverage']:.0%}  {cells}"
-            )
-    print(f"written: {bench_dir(version) / 'report.json'}")
-
-
 def _drift_name(name: str) -> str:
     """What --accept-drift can name before the build runs: a table, a counter
     group, or a counter of one. Whether the counter exists, only the build
@@ -761,39 +714,6 @@ def main() -> None:
         "--sample", action="store_true", help="load the pipeline run on the test fixtures instead"
     )
     load_parser.set_defaults(handler=lambda args: load_site(args.sample))
-    bench_parser = subparsers.add_parser(
-        "bench", help="the evaluation bench of the similar artists (bench.py)"
-    )
-    bench_parser.add_argument("--version", default=BENCH_VERSION, help="the bench's version")
-    steps = bench_parser.add_subparsers(dest="step", required=True)
-    steps.add_parser("sample", help="draw the references, once").set_defaults(
-        handler=lambda args: print(take_sample(bench_dir(args.version), out_dir(DUMP)), "drawn")
-    )
-    steps.add_parser(
-        "fetch", help="ask Last.fm (LASTFM_API_KEY) and Deezer for their similar artists, once"
-    ).set_defaults(handler=lambda args: bench_fetch(args.version))
-    run_parser = steps.add_parser(
-        "run", help="freeze the delivery's « même son », built by another rule, as a run"
-    )
-    run_parser.add_argument("name", help="the run's name, e.g. neighbours")
-    run_parser.set_defaults(
-        handler=lambda args: print(
-            take_run(bench_dir(args.version), out_dir(DUMP), args.name), "references answered"
-        )
-    )
-    round_parser = steps.add_parser("pool", help="give the judges the pairs no round gave yet")
-    round_parser.add_argument("round", help="the round's name, e.g. r1")
-    round_parser.set_defaults(
-        handler=lambda args: print(
-            make_round(bench_dir(args.version), out_dir(DUMP), args.round), "pairs to judge"
-        )
-    )
-    steps.add_parser(
-        "check", help="what the judges owe or wrote wrong; the split pairs to a third"
-    ).set_defaults(handler=lambda args: bench_check(args.version))
-    steps.add_parser("report", help="measure every run against the judged pool").set_defaults(
-        handler=lambda args: bench_report(args.version)
-    )
 
     args = parser.parse_args()
     args.handler(args)
