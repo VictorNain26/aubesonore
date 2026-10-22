@@ -11,18 +11,20 @@ Les chemins ci-dessous sont relatifs à `pipeline/`.
 ## Ce que fait ce dépôt
 
 Le pipeline de la radio AubeSonore : goût, découverte, acquisition, publication sur AzuraCast
-et page de vote. **`docs/vision.md` est l'unique document de conception et d'exploitation** : le
+et page de vote. **`pipeline/docs/vision.md` est l'unique document de conception et d'exploitation** : le
 lire avant toute modification, et le tenir à jour dans le même commit que le code. Les mesures et
 sources qui fondent chaque décision sont dans `docs/recherches/`.
 
 ## Commandes
 
 ```bash
-uv sync                                  # dépendances (.venv)
-.venv/bin/pytest -q -W error             # suite complète, ~12 s, sans réseau
-.venv/bin/ruff check radio tests_radio && .venv/bin/ruff format --check radio tests_radio
-.venv/bin/mypy                           # strict
-.venv/bin/radio --help                   # les commandes ci-dessous
+# Depuis la racine de la worktree ; la CI lance les mêmes (.github/actions/check-python).
+uv --directory pipeline sync                          # dépendances (.venv)
+pipeline/scripts/dev-setup.sh                         # une fois : rsgain et le modèle EffNet, sans quoi des tests se sautent
+uv --directory pipeline run pytest -q -W error -rs    # suite complète, sans réseau
+uv --directory pipeline run ruff check && uv --directory pipeline run ruff format --check
+uv --directory pipeline run mypy                      # strict
+uv --directory pipeline run radio --help              # les commandes ci-dessous
 sqlite3 data/radio.db .schema            # le schéma en vigueur, que les migrations reconstruisent
 ```
 
