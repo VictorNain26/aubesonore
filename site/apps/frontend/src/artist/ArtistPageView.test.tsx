@@ -32,7 +32,7 @@ const MUSILOGY: MusilogyArtist = {
     ended: false,
     styles: [],
   },
-  neighbours: [
+  sameSound: [
     {
       mbid: '00000000-0000-4000-8000-000000000002',
       name: 'Nils Frahm',
@@ -46,6 +46,8 @@ const MUSILOGY: MusilogyArtist = {
       term: 'Modern Classical',
     },
   ],
+  colisten: [],
+  credits: [],
   releases: [],
   bands: { members: [], groups: [] },
   memberProjects: [],
@@ -108,7 +110,7 @@ describe('ArtistPageView', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(screen.getByRole('heading', { name: 'Artistes similaires' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Artistes proches' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Explorer dans Musilogy' })).not.toBeInTheDocument();
   });
@@ -145,14 +147,14 @@ describe('ArtistPageView', () => {
       'Écouter ailleurs',
       'Vos titres gardés',
       'Albums et EP',
-      'Artistes similaires',
+      'Artistes proches',
     ]);
     expect(
       screen
         .getAllByRole('link')
         .filter((link) => link.getAttribute('href')?.startsWith('#'))
         .map((link) => link.textContent)
-    ).toEqual(['Vos titres gardés', 'Albums et EP', 'Artistes similaires']);
+    ).toEqual(['Vos titres gardés', 'Albums et EP', 'Artistes proches']);
     expect(screen.getByRole('list', { name: 'Écouter ailleurs' })).toContainElement(
       screen.getByRole('link', { name: 'Bandcamp' })
     );

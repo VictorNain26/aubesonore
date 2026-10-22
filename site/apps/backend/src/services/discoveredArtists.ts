@@ -39,11 +39,13 @@ export function listDiscovered(): string[] {
   return [...discovered].sort();
 }
 
-/** Every artist a page links to: close artists, bands, projects, other names. */
+/** Every artist a page links to: its three tabs of close artists, bands, projects, other names. */
 function linkedArtists(page: MusilogyArtist): MusilogyArtistRef[] {
-  const { neighbours, bands } = page;
+  const { sameSound, colisten, credits, bands } = page;
   return [
-    ...(neighbours ?? []),
+    ...(sameSound ?? []),
+    ...(colisten ?? []),
+    ...(credits ?? []),
     ...(bands ? [...bands.members, ...bands.groups] : []),
     ...(page.memberProjects ?? []),
     ...(page.otherNames ?? []),

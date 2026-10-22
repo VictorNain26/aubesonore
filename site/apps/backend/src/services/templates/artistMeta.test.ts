@@ -40,9 +40,11 @@ const neighbour = (name: string, rank: number) => ({
 
 const MUSILOGY = {
   card: {},
-  neighbours: ['Neu!', 'Can', 'Depeche Mode', 'New Order', 'Orbital'].map((n, i) =>
+  sameSound: ['Neu!', 'Can', 'Depeche Mode', 'New Order', 'Orbital'].map((n, i) =>
     neighbour(n, i + 1)
   ),
+  colisten: [neighbour('Tangerine Dream', 1)],
+  credits: null,
   releases: [{ mbid: 'r1', title: 'Autobahn', primaryType: 'Album', year: 1974 }],
   bands: { members: [{ mbid: 'b1', name: 'Ralf Hütter' }], groups: [] },
   memberProjects: null,
@@ -61,6 +63,18 @@ describe('artistTitle', () => {
 
   it('promises no similar artists when the page has none', () => {
     expect(artistTitle(KRAFTWERK, null, 'fr')).toBe('Kraftwerk (groupe, Düsseldorf) · AubeSonore');
+    const none = { ...MUSILOGY, sameSound: [], colisten: [] };
+    expect(artistTitle(KRAFTWERK, none, 'fr')).toBe('Kraftwerk (groupe, Düsseldorf) · AubeSonore');
+  });
+
+  it('names similar artists when only the same public has some', () => {
+    const heard = { ...MUSILOGY, sameSound: [] };
+    expect(artistTitle(KRAFTWERK, heard, 'en')).toBe(
+      'Kraftwerk (band, Düsseldorf): similar artists · AubeSonore'
+    );
+    expect(artistDescription(KRAFTWERK, heard, 'en')).toContain(
+      'Similar artists: Tangerine Dream.'
+    );
   });
 
   it('falls back on the country, then on the name alone', () => {
@@ -108,7 +122,7 @@ describe('artistDescription', () => {
   it('stays within 200 characters', () => {
     const long = {
       ...MUSILOGY,
-      neighbours: MUSILOGY.neighbours!.map((n) => ({ ...n, name: n.name.repeat(12) })),
+      sameSound: MUSILOGY.sameSound!.map((n) => ({ ...n, name: n.name.repeat(12) })),
     };
     expect(artistDescription(KRAFTWERK, long, 'fr').length).toBeLessThanOrEqual(200);
   });

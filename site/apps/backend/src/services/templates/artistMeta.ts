@@ -31,7 +31,7 @@ const WORDS = {
   },
 } as const;
 
-/** What the page's « Groupes et projets » section counts (bandCount, musilogy/ArtistSections.tsx). */
+/** The bands, projects and other names of the page's filiation tab (musilogy/ArtistSections.tsx). */
 function bandCount({ bands, memberProjects, otherNames }: MusilogyArtist): number {
   return (
     (bands ? bands.members.length + bands.groups.length : 0) +
@@ -88,7 +88,8 @@ export function artistDescription(
   locale: SiteLocale
 ): string {
   const words = WORDS[locale];
-  const neighbours = musilogy?.neighbours ?? [];
+  // The same sound first, else the same public: the first tab the page shows.
+  const neighbours = musilogy?.sameSound?.length ? musilogy.sameSound : (musilogy?.colisten ?? []);
   const holds = [
     musilogy?.releases?.length ? words.records : null,
     musilogy && bandCount(musilogy) > 0 ? words.bands : null,

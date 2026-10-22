@@ -7,6 +7,7 @@ import {
   type MusilogyArtist,
   type MusilogyArtistRef,
   type MusilogyBandmate,
+  type MusilogyCredit,
   type MusilogyNeighbour,
   type MusilogyOtherName,
   type MusilogyProject,
@@ -75,7 +76,16 @@ interface NeighbourRow extends Record<string, unknown> {
   y_end: number | null;
   ended: boolean | null;
   rank: number;
-  term: string;
+  /** artist_same_sound only. */
+  term?: string;
+}
+
+interface CreditRow extends Record<string, unknown> {
+  mbid: string;
+  name: string;
+  disambiguation: string | null;
+  y0: number | null;
+  records: number;
 }
 
 interface BandRow extends Record<string, unknown> {
@@ -158,14 +168,23 @@ export async function getMusilogyArtist(mbid: string): Promise<MusilogyArtist | 
 }
 
 async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
-  const [{ card, releases: releaseRows }, neighbourRows, bandRows, projectRows, nameRows] =
-    await Promise.all([
-      readCore(mbid),
-      section<NeighbourRow>(sql`SELECT * FROM musilogy.artist_same_sound(${mbid})`),
-      section<BandRow>(sql`SELECT * FROM musilogy.artist_bands(${mbid})`),
-      section<ProjectRow>(sql`SELECT * FROM musilogy.artist_member_projects(${mbid})`),
-      section<OtherNameRow>(sql`SELECT * FROM musilogy.artist_other_names(${mbid})`),
-    ]);
+  const [
+    { card, releases: releaseRows },
+    sameSoundRows,
+    colistenRows,
+    creditRows,
+    bandRows,
+    projectRows,
+    nameRows,
+  ] = await Promise.all([
+    readCore(mbid),
+    section<NeighbourRow>(sql`SELECT * FROM musilogy.artist_same_sound(${mbid})`),
+    section<NeighbourRow>(sql`SELECT * FROM musilogy.artist_colisten(${mbid})`),
+    section<CreditRow>(sql`SELECT * FROM musilogy.artist_credits(${mbid})`),
+    section<BandRow>(sql`SELECT * FROM musilogy.artist_bands(${mbid})`),
+    section<ProjectRow>(sql`SELECT * FROM musilogy.artist_member_projects(${mbid})`),
+    section<OtherNameRow>(sql`SELECT * FROM musilogy.artist_other_names(${mbid})`),
+  ]);
   if (!card) {
     musilogyCache.set(mbid, null);
     return null;
@@ -174,7 +193,7 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
   // The page and every page it links to: their addresses are published here.
   const linked = [
     { mbid: card.mbid, name: card.name },
-    ...[neighbourRows, bandRows, projectRows, nameRows].flatMap((rows) =>
+    ...[sameSoundRows, colistenRows, creditRows, bandRows, projectRows, nameRows].flatMap((rows) =>
       (rows ?? []).map((row) => ({ mbid: row.mbid, name: row.name }))
     ),
   ];
@@ -201,7 +220,7 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
     yEnd: row.y_end,
     ended: row.ended === true,
     rank: row.rank,
-    term: row.term,
+    term: row.term ?? null,
   });
   const bandmate = (row: BandRow): MusilogyBandmate => ({
     ...ref(row.mbid, row.name, row.disambiguation, row.y0),
@@ -227,8 +246,17 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
       ended: card.ended,
       styles: (card.styles ?? []).map((style) => style.style),
     },
-    // By rank, not score: musilogy settles equal scores, common among artists with few listeners.
-    neighbours: neighbourRows && neighbourRows.map(neighbour).sort((a, b) => a.rank - b.rank),
+    // Each in the order its function gives: the order is musilogy's rule, not the page's.
+    sameSound: sameSoundRows && sameSoundRows.map(neighbour),
+    colisten: colistenRows && colistenRows.map(neighbour),
+    credits:
+      creditRows &&
+      creditRows.map(
+        (row): MusilogyCredit => ({
+          ...ref(row.mbid, row.name, row.disambiguation, row.y0),
+          records: row.records,
+        })
+      ),
     releases: releaseRows && releaseRows.map(release),
     bands: bandRows && {
       members: bandRows.filter((row) => row.role === 'member').map(bandmate),

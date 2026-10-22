@@ -1,7 +1,14 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import type { MusilogyArtist, MusilogyNeighbour } from '@aubesonore/shared-types/client';
-import { axisOf, barLabelsOf, sharedTerm, spanOf, timelineNote, yearsOf } from './MusilogyTimeline';
+import type { MusilogyNeighbour } from '@aubesonore/shared-types/client';
+import {
+  axisOf,
+  barLabelsOf,
+  sameSoundNote,
+  sharedTerm,
+  spanOf,
+  yearsOf,
+} from './MusilogyTimeline';
 
 function neighbour(term: string, overrides: Partial<MusilogyNeighbour> = {}): MusilogyNeighbour {
   return {
@@ -20,6 +27,10 @@ function neighbour(term: string, overrides: Partial<MusilogyNeighbour> = {}): Mu
 }
 
 describe('sharedTerm', () => {
+  it('finds none in a list without styles', () => {
+    expect(sharedTerm([neighbour('Krautrock', { term: null })])).toBeNull();
+  });
+
   it('names the style at least half of them share, said once above them', () => {
     expect(
       sharedTerm(['Krautrock', 'Krautrock', 'Ambient', 'Krautrock'].map((t) => neighbour(t)))
@@ -112,35 +123,11 @@ describe('yearsOf', () => {
   });
 });
 
-describe('timelineNote', () => {
-  const can = (overrides: Partial<MusilogyArtist['card']> = {}, terms = ['Krautrock']) =>
-    ({
-      card: {
-        mbid: '13501c7d-d181-45ba-af52-5f101d8516a0',
-        name: 'Can',
-        disambiguation: null,
-        y0: 1968,
-        played: null,
-        slug: null,
-        kind: 'group',
-        y0Source: 'declared',
-        yEnd: 1991,
-        yEndSource: 'declared',
-        ended: true,
-        styles: [],
-        ...overrides,
-      },
-      neighbours: terms.map((t) => neighbour(t)),
-      releases: null,
-      bands: null,
-      memberProjects: null,
-      otherNames: null,
-    }) as MusilogyArtist;
-
+describe('sameSoundNote', () => {
   it('says the sound they share, once', () => {
-    expect(timelineNote(can())).toBe('Le même son, surtout krautrock.');
-    expect(timelineNote(can({}, ['Krautrock', 'Ambient', 'Post Rock']))).toBe('Le même son.');
-    // Without a start, nothing to draw it from.
-    expect(timelineNote(can({ y0: null }))).toBe('Le même son, surtout krautrock.');
+    expect(sameSoundNote([neighbour('Krautrock')])).toBe('Le même son, surtout krautrock.');
+    expect(
+      sameSoundNote(['Krautrock', 'Ambient', 'Post Rock'].map((term) => neighbour(term)))
+    ).toBe('Le même son.');
   });
 });

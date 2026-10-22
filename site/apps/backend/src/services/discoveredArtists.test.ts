@@ -48,7 +48,9 @@ const ref = (mbid: string, played = false): MusilogyNeighbour => ({
 function page(close: MusilogyNeighbour[], releases = 0): MusilogyArtist {
   return {
     card: {} as MusilogyArtist['card'],
-    neighbours: close,
+    sameSound: close,
+    colisten: null,
+    credits: null,
     releases: Array.from({ length: releases }, (_, i) => ({
       mbid: `rg${i}`,
       title: `r${i}`,
@@ -141,6 +143,18 @@ describe('discovered artists', () => {
       { mbid: 'rich', name: 'rich' },
       { mbid: 'just-enough', name: 'just-enough' },
     ]);
+  });
+
+  it('counts a link from any tab of close artists', async () => {
+    // One page links to "just-enough" through its same public, another through its credits
+    // only: the two links still count.
+    const [first, second] = played;
+    pagesByMbid[first!] = { ...page([]), colisten: [ref('just-enough')] };
+    pagesByMbid[second!] = { ...page([]), credits: [{ ...ref('just-enough'), records: 1 }] };
+
+    await refreshDiscovered();
+
+    expect(isDiscovered('just-enough')).toBe(true);
   });
 
   it('keeps the last set when a run fails', async () => {
