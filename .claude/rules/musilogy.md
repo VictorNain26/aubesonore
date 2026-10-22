@@ -86,7 +86,8 @@ libérées dès qu'elles ne servent plus.
 ## Commandes
 
 ```bash
-cd musilogy                   # toutes les commandes partent d'ici
+# Depuis la racine de la worktree, où Claude Code est lancé (CLAUDE.md racine) :
+# uv --directory musilogy run … ; ci-dessous, la commande seule.
 uv sync
 uv run pytest                 # suite rapide, sur les témoins
 uv run ruff check && uv run ruff format --check && uv run mypy  # les contrôles de la CI ; `mypy src` seul saute les tests

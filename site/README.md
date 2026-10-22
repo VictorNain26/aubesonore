@@ -41,7 +41,7 @@ Auth : Better Auth (email vérifié + OAuth Google). Liens d'écoute : API iTune
 ### Prérequis
 
 - Docker avec Compose v2.22 ou plus (profils, `develop.watch`), OpenSSL
-- Node.js ≥ 20 et pnpm ≥ 10 pour les commandes du dépôt (tests, lint)
+- Node.js ≥ 22 et pnpm ≥ 10 pour les commandes du dépôt (tests, lint)
 
 ### La pile locale, en une commande
 
@@ -95,7 +95,7 @@ Toute la stack est auto-hébergée sur le même serveur et exposée via Cloudfla
 - **Rendu serveur** : `renderer`, qui dessine les pages artistes pour le backend.
 - **Base de données** : PostgreSQL.
 
-Le déploiement est automatique et _pull-based_ : merger sur `master` suffit. Sur le serveur, le timer systemd utilisateur `aubesonore-deploy.timer` lance toutes les 2 minutes [`scripts/deploy.sh`](scripts/deploy.sh), qui compare le checkout à `origin/master` (`git ls-remote`) et, quand `master` a bougé, sur un checkout propre et hors de la passe hebdomadaire de la radio : aligne `pipeline/.venv` sur `uv.lock`, avance le checkout (`git merge --ff-only`), reconstruit les conteneurs seulement si `site/` a changé, attend leurs healthchecks (300 s), redémarre la page de vote quand `pipeline/` a changé, puis nettoie les vieilles images. Un échec revient au commit précédent (voir `scripts/deploy.sh`).
+Le déploiement est automatique et _pull-based_ : merger sur `master` suffit. Sur le serveur, le timer systemd utilisateur `aubesonore-deploy.timer` lance toutes les 2 minutes [`scripts/deploy.sh`](scripts/deploy.sh), qui compare le checkout à `origin/master` (`git ls-remote`) et, quand `master` a bougé, sur un checkout propre et hors de la passe hebdomadaire de la radio : avance le checkout (`git merge --ff-only`), aligne `pipeline/.venv` sur `uv.lock` quand `pipeline/` a changé, reconstruit les conteneurs seulement si `site/` a changé, attend leurs healthchecks (300 s), redémarre la page de vote quand `pipeline/` a changé, puis nettoie les vieilles images. Un échec revient au commit précédent (voir `scripts/deploy.sh`).
 
 Aucun runner self-hosted ni webhook entrant : le dépôt est public, et le polling ne demande ni credential ni port ouvert. Le backend applique au démarrage les nouvelles migrations `apps/backend/drizzle/*.sql` (`src/db/migrate.ts`, SQL idempotent) : un changement de `site/apps/backend/src/db/schema.ts` livré avec sa migration (dans le même commit de `master`) se déploie seul ; que la migration corresponde au schéma relève de la revue de PR. Sans migration, il bloque le déploiement : l'appliquer à la main, l'acquitter avec `git -C ~/aubesonore config aubesonore.appliedSchema <blob>` (le script affiche la commande exacte), puis relancer `systemctl --user start aubesonore-deploy`.
 
