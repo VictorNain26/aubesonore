@@ -139,7 +139,9 @@ def test_the_site_reads_the_first_24(tmp_path, pg):
     many = [f"00000000-0000-4000-8000-00000000a{i:03x}" for i in range(30)]
     artists = [*ARTISTS, *(artist(m) for m in many)]
     groups = [
-        synthetic_release_group(f"00000000-0000-4000-8000-00000000b{i:03x}", P, "1999", [m])
+        synthetic_release_group(
+            f"00000000-0000-4000-8000-00000000b{i:03x}", P, "1999", co_artists=[m]
+        )
         for i, m in enumerate(many)
     ]
     loaded(tmp_path, pg, artists, release_groups=groups)
