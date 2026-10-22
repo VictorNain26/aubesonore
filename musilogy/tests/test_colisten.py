@@ -8,7 +8,7 @@ import pytest
 from musilogy import colisten
 from musilogy.build import colisten_from, load_listening
 from musilogy.colisten import build_colisten, cache_key, scores
-from tests.conftest import listening_file
+from tests.conftest import listening_file, loaded, pg_query, synthetic_artist
 
 A = "a0000000-0000-0000-0000-000000000000"
 B = "b0000000-0000-0000-0000-000000000000"
@@ -80,6 +80,20 @@ def test_only_the_top_k_are_kept(tmp_path, monkeypatch):
     assert neighbours(built(tmp_path), A) == [(B, 4, 1)]
 
 
+def test_a_tie_at_the_last_place_kept_falls_to_the_mbid(tmp_path, monkeypatch):
+    # Twelve artists each listened to by the same three users as REF, so all
+    # tie: the three kept are the first three by MBID, whatever order the
+    # product gives them in.
+    ref = "00000000-0000-4000-8000-000000000000"
+    tied = [f"00000000-0000-4000-8000-0000000000{i:02x}" for i in range(1, 13)]
+    monkeypatch.setattr(colisten, "K", 3)
+    c = duckdb.connect(":memory:")
+    users = {u: [ref, *tied] for u in range(1, 4)}
+    load_listening(c, listening_file(tmp_path / "listens", users), "test")
+    build_colisten(c)
+    assert [n for n, _, _ in neighbours(c, ref)] == tied[:3]
+
+
 def test_no_listens_give_an_empty_table():
     c = duckdb.connect(":memory:")
     load_listening(c, None, None)
@@ -145,8 +159,16 @@ def test_the_cache_key_follows_the_computation(monkeypatch):
     # A change to the rule that keeps its parameters must not read a
     # co-listening computed by the previous rule.
     key = cache_key()
-    monkeypatch.setattr(colisten, "SOURCE", colisten.SOURCE + b"# another rule\n")
+    monkeypatch.setattr(colisten, "SOURCE", colisten.SOURCE + b"CHUNK = 7\n")
     assert cache_key() != key
+
+
+def test_the_cache_key_ignores_comments_and_docstrings(monkeypatch):
+    # Ten hours of computation are not redone for a word in a comment.
+    key = cache_key()
+    commented = colisten.SOURCE.replace(b'"""Our co-listening', b'"""Another word on it')
+    monkeypatch.setattr(colisten, "SOURCE", commented + b"# a remark\n")
+    assert cache_key() == key
 
 
 def test_without_listens_a_kept_colisten_is_not_read(tmp_path):
@@ -160,10 +182,46 @@ def test_without_listens_a_kept_colisten_is_not_read(tmp_path):
 
 
 def test_a_kept_colisten_is_read_from_its_file_not_held_in_memory(tmp_path):
-    # 45 million rows held in the build's capped memory push every later step
-    # to spill: once kept, the table is the file, computed or read back.
+    # Millions of rows held in the build's capped memory push later steps to
+    # spill: once kept, the table is the file, computed or read back.
     cache = tmp_path / "colisten.parquet"
     for users in (USERS, {1: [A, B]}):
         c = from_cache(tmp_path, users, cache)
         views = c.execute("SELECT view_name FROM duckdb_views() WHERE NOT internal").fetchall()
         assert views == [("colisten",)]
+
+
+def test_the_site_reads_the_colisten_in_rank_order(tmp_path, pg):
+    # B declares its end; C's is not declared.
+    artists = [
+        synthetic_artist(A, "1970", None),
+        synthetic_artist(B, "1970", "1979"),
+        synthetic_artist(C, "1975", None),
+    ]
+    loaded(tmp_path, pg, artists, listening=USERS)
+    assert pg_query(pg, f"SELECT mbid, y_end, rank FROM musilogy.artist_colisten('{A}')") == [
+        (B, 1979, 1),
+        (C, None, 2),
+    ]
+    assert pg_query(
+        pg,
+        "SELECT pg_get_function_result(p.oid) FROM pg_proc p "
+        "JOIN pg_namespace n ON n.oid = p.pronamespace "
+        "WHERE n.nspname = 'musilogy' AND p.proname = 'artist_colisten'",
+    ) == [
+        (
+            "TABLE(mbid text, name text, disambiguation text, y0 integer, y_end integer, "
+            "ended boolean, rank integer)",
+        )
+    ]
+
+
+def test_the_site_leaves_out_a_neighbour_the_dump_does_not_hold_ranks_closed(tmp_path, pg):
+    # B, A's first neighbour, is not in the dump: C comes first.
+    loaded(
+        tmp_path,
+        pg,
+        [synthetic_artist(A, "1970", None), synthetic_artist(C, "1975", None)],
+        listening=USERS,
+    )
+    assert pg_query(pg, f"SELECT mbid, rank FROM musilogy.artist_colisten('{A}')") == [(C, 1)]

@@ -11,7 +11,7 @@ from musilogy.fetch import expected_sums, sha256_file
 from musilogy.paths import PACKAGE_DIR, SQL_DIR, dump_sums, extraction_sidecar, popularity_sums
 from musilogy.publish import (
     COUNTER_TABLES,
-    SAME_SOUND_PARAMETERS,
+    PARAMETERS,
     TABLES,
     Comparison,
     Drift,
@@ -218,9 +218,10 @@ def test_manifest_carries_the_parameters_the_build_actually_used(tmp_path):
         "dump_year": 2030,
         "min_year": 1900,
         **COLISTEN_PARAMETERS,
-        "same_sound_min_colour": 0.35,
-        "same_sound_styles_shrink": 10,
         "same_sound_min_style_records": 3,
+        "same_sound_shrink": 10,
+        "same_sound_k": 8,
+        "credits_max_artists": 10,
     }
 
 
@@ -350,13 +351,21 @@ def test_manifest_carries_the_digest_of_every_delivered_file(con, tmp_path):
         assert digest == sha256_file(tmp_path / name)
 
 
-def test_the_manifest_names_every_parameter_88_same_sound_sets():
-    # Case this must catch: a SET VARIABLE added to 88_same_sound.sql without
-    # its name in SAME_SOUND_PARAMETERS. The manifest reads back only the names
-    # listed, so the new bound would shape the delivery without being stated.
-    sql = (SQL_DIR / "88_same_sound.sql").read_text(encoding="utf-8")
-    sets = re.findall(r"^\s*SET\s+VARIABLE\s+(\w+)", sql, re.MULTILINE | re.IGNORECASE)
-    assert set(sets) == set(SAME_SOUND_PARAMETERS)
+def test_the_manifest_names_every_parameter_the_sql_sets():
+    # Case this must catch: a SET VARIABLE added to a rule without its name in
+    # PARAMETERS. The manifest reads back only the names listed, so the new
+    # bound would shape the delivery without being stated.
+    sets = {
+        name
+        for path in SQL_DIR.glob("*.sql")
+        for name in re.findall(
+            r"^\s*SET\s+VARIABLE\s+(\w+)",
+            path.read_text(encoding="utf-8"),
+            re.MULTILINE | re.IGNORECASE,
+        )
+    }
+    assert sets
+    assert sets <= set(PARAMETERS)
 
 
 # The data diff: a delivery's counts and counters against the previous

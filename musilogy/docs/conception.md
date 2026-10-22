@@ -7,44 +7,9 @@ dans son `manifest.json`.
 ## Rôle
 
 musilogy produit, hors ligne et depuis des sources épinglées et datées, les
-données de **Musilogy** : pour un artiste, les artistes du même son ; dans quels groupes ses membres ont joué. `musilogy load` les copie dans le schéma
-`musilogy` de la base du site, qui ne lit que des fonctions SQL (§4).
-
-## Méthode des artistes similaires
-
-Les artistes similaires (`docs/vision.md` §2.2) viennent d'une seule chaîne, faite de méthodes
-reconnues, sans couche maison :
-
-1. **Qui écoute quoi** : pour chaque utilisateur de ListenBrainz, les artistes qu'il écoute,
-   identifiés par leur MBID.
-2. **Le même public** (`colisten`) : le filtrage collaboratif « article à article », la méthode des
-   « ceux qui aiment X aiment aussi Y » (Sarwar et al., WWW 2001 ; Linden, Smith et York, *IEEE
-   Internet Computing*, 2003). Deux artistes se comparent par leurs auditeurs communs, avec le
-   cosinus asymétrique d'Aiolli (RecSys 2013, la méthode gagnante du *Million Song Dataset
-   Challenge*), c / (pop_artiste^α × pop_voisin^(1−α)), qui corrige la popularité, et le lissage
-   c / (c + h) de Bell et Koren (2007), qui se méfie d'un lien porté par peu d'auditeurs.
-3. **Le même son** (`same_sound`) : un recommandeur hybride « en cascade » (Burke, *User Modeling
-   and User-Adapted Interaction*, 2002) : la co-écoute propose, la couleur filtre. La couleur est
-   un profil de styles Discogs pondérés par leur rareté et leur part dans l'œuvre, comparé par
-   cosinus (TF-IDF, la base du filtrage par contenu) ; un artiste qui a moins de trois disques
-   stylés n'a pas de couleur.
-4. **Le classement** : la couleur partagée. Parmi les candidats que le banc a jugés, c'est elle
-   qui sépare les bons des mauvais, pas le score de la co-écoute (2026-10-21).
-5. **La mesure** : le banc d'évaluation (`src/musilogy/bench.py`, `musilogy bench`). Des
-   références tirées au hasard par tranche de popularité ; les premiers voisins de chaque système
-   regroupés (le *pooling* de TREC ; Ellis et al., ISMIR 2002 pour la vérité terrain de la
-   similarité d'artistes) ; chaque paire jugée une fois à partir de sources, par deux juges et un
-   troisième quand ils divergent, selon `docs/consigne-juges.md` ; précision, rappel sur le pool
-   et couverture par référence, avec leurs intervalles de confiance. Ses données restent hors du
-   dépôt (`paths.bench_dir`).
-
-La co-écoute se lit dans les deux sens : un artiste parmi les voisins de l'artiste, ou dont
-l'artiste est un voisin, au plus haut des deux scores. La couleur se compare toutes décennies
-confondues : la comparer décennie par décennie, un choix maison, écartait les artistes d'un même
-son à des décennies d'écart sans rendre les paires gardées plus justes (2026-10-09).
-
-La généalogie (`docs/vision.md` §2.3) est une autre question, avec ses propres preuves (liens
-entre genres, faits écrits) ; elle ne passe pas par la co-écoute.
+données de **Musilogy** : pour un artiste, ses voisins en trois onglets — le même
+son, le même public, la filiation — et son œuvre. `musilogy load` les copie dans
+le schéma `musilogy` de la base du site, qui ne lit que des fonctions SQL (§4).
 
 ## 1. Sources
 
@@ -71,14 +36,13 @@ plusieurs sources — les proches (`docs/vision.md` §2.2) — vit dans une
 couche dérivée qui lit les tables sources, garde la raison de chaque lien et
 ne réécrit jamais une source.
 
-**Une exception au SQL, la co-écoute** (`colisten.py`). Compter, pour chaque
-paire d'artistes, les utilisateurs qui écoutent les deux est un produit de
-matrices creuses : les 120 millions de lignes utilisateur-artiste de toutes
-les écoutes donnent des milliards de paires, de l'ordre de 9 × 10¹¹
-incréments en auto-jointure SQL. La lecture, les filtres et la numérotation restent en SQL
-(DuckDB) ; scipy ne fait que le produit, le score et les K meilleurs voisins
-de chaque artiste. La règle et ses paramètres sont dans le module et dans le
-manifeste (`parameters`).
+**Deux exceptions au SQL, la co-écoute et le même son** (`colisten.py`,
+`samesound.py`). Compter, pour chaque paire d'artistes, les auditeurs qu'ils
+partagent, ou comparer chaque couleur à toutes les autres, est un produit de
+matrices creuses, des milliards de paires qu'une auto-jointure SQL ne tient pas
+(chaque module dit sa taille). La lecture, les filtres, la numérotation et les
+raisons restent en SQL (DuckDB) ; scipy ne fait que le produit, le score et les
+K meilleurs voisins de chaque artiste.
 
 ## 2. Tables
 
@@ -115,55 +79,53 @@ albums), `links` (appartenances, pseudonymes et changements de nom),
   une ligne.
 
 - `colisten(artist_mbid, neighbour_mbid, common, score, rank)` (`colisten.py`,
-  sur toutes les écoutes ListenBrainz épinglées) : notre co-écoute. Pour
-  chaque artiste qu'au moins 3 utilisateurs écoutent, ses 50 meilleurs voisins
-  parmi ceux avec qui il partage au moins 2 auditeurs, au score
-  c / (pop_artiste^0,3 × pop_voisin^0,7) × c / (c + 10), où c compte les
-  auditeurs communs et pop les auditeurs de chacun : la règle mesurée le
-  2026-10-07 contre le service de ListenBrainz (64 % de voisins justes contre
-  54 %, et nettement plus d'artistes peu connus parmi eux ; la mesure est au
-  commit 57bcd8d3 de `docs/vision.md`). « Même son » cherche la couleur parmi les 50. Un rang de 1 à 50 sans
-  trou, jamais l'artiste lui-même ; un voisin absent du dump reste dans la
-  table. Publiée, non chargée dans le site : `same_sound` la lit. Cinq invariants :
-  une paire en double, un artiste voisin de lui-même, des rangs hors de 1 à K
-  ou troués, une paire sous le seuil d'auditeurs communs, un rang qui ne suit pas
-  l'ordre du score puis du MBID du voisin.
+  sur toutes les écoutes ListenBrainz épinglées) : « Écoutés ensemble », les K
+  meilleurs voisins de chaque artiste assez écouté, rangés de 1 à K par score,
+  à égalité par MBID du voisin. La règle a été mesurée le 2026-10-07 contre le
+  service de ListenBrainz (commit 57bcd8d3 de `docs/vision.md`). Gardée une fois
+  calculée (`paths.colisten_cache`) : dix heures, pour un résultat qui ne dépend
+  que des écoutes épinglées et du code de la règle.
+- `same_sound(artist_mbid, neighbour_mbid, rank, score, term)` (`samesound.py`) :
+  « Même son », les K artistes dont la couleur est la plus proche, rangés par
+  score puis MBID du voisin, chacun avec sa raison (`term`), le style qui pèse
+  le plus dans ce que les deux partagent.
+- `credits(artist_mbid, other_mbid, records)` (`86_credits.sql`) : deux
+  artistes crédités ensemble, dans les deux sens, avec le nombre de disques
+  qu'ils partagent.
 
-- `same_sound(artist_mbid, neighbour_mbid, rank, colisten_score, source, colour,
-  term, decade)` (`88_same_sound.sql`) : « Même son », la première table de la
-  couche dérivée (§1). Un voisin de `colisten`, dans un sens ou dans l'autre, y
-  entre quand sa couleur s'accorde à celle de l'artiste : leurs profils de
-  styles Discogs (toutes décennies confondues, pondérés par la rareté du style),
-  comparés par cosinus et rabattus pour un profil mince (ses disques datés),
-  valent au moins 0,35 ; un artiste sans profil Discogs n'a pas de voisin. Ce
-  que vaut la règle est le rapport du banc (`musilogy bench report`) ; ses seuils sont posés dans le fichier SQL et relus par le manifeste
-  (`parameters`). `rank` de 1 à n par `colour`, à égalité par MBID du voisin ;
-  `colisten_score` est le plus haut score de co-écoute des deux sens ; la raison est le style
-  (`term`, avec la `decade` où l'artiste en a le plus de disques, NULL s'il n'a
-  aucun disque daté de ce style) qui pèse le plus dans ce que les deux
-  partagent ; `source` nomme la couleur, toujours `styles`. Tout voisin est un
-  artiste du dump : sa couleur vient de ses styles, que seul un artiste du dump
-  porte. La couleur se
-  somme en décimal exact, pour qu'une livraison reste la même octet pour
-  octet. Sept invariants : une paire en
-  double, un artiste voisin de lui-même, des rangs troués, un ordre qui
-  contredit la couleur, une paire absente de la co-écoute dans les
-  deux sens ou à un autre score,
-  une couleur sous 0,35 ou une source autre que `styles`, une raison que les deux
-  artistes ne portent pas.
+Les invariants de ces tables sont dans `90_invariants.sql`.
 
-## 3. Proximité × temps
+## 3. Les voisins : trois onglets
 
-La proximité vient de la co-écoute ; le temps lui donne un sens. Un voisin est :
+Chaque onglet répond à une question, avec une source et une méthode, et aucun ne
+filtre un autre (`docs/vision.md` §2.2). Chacun est la méthode publiée la plus
+simple qui réponde à sa définition, sans couche maison ni seuil réglé sur des
+verdicts :
 
-- `before` quand il a commencé (`y0`) plus de 3 ans avant l'artiste ;
-- `after` quand il a commencé plus de 3 ans après ;
-- `during` sinon ;
-- `NULL` quand l'un des deux n'a pas de `y0`.
+1. **Même son** (`same_sound`, `samesound.py`) : le filtrage par contenu. La
+   couleur d'un artiste est son profil de styles Discogs pondérés par leur part
+   dans l'œuvre et leur rareté (TF-IDF), comparé par cosinus à celui de **tous**
+   les artistes qui en ont un, rabattu pour un profil mince (le lissage
+   c / (c + h) de Bell et Koren, 2007, sur ses disques datés).
+2. **Écoutés ensemble** (`colisten`, `colisten.py`) : le filtrage collaboratif
+   « article à article », la méthode des « ceux qui aiment X aiment aussi Y »
+   (Sarwar et al., WWW 2001 ; Linden, Smith et York, *IEEE Internet Computing*,
+   2003). Deux artistes se comparent par leurs auditeurs communs, avec le cosinus
+   asymétrique d'Aiolli (RecSys 2013, la méthode gagnante du *Million Song
+   Dataset Challenge*), qui corrige la popularité, et le même lissage. C'est le
+   public, pas le son : aucune couleur ne le filtre.
+3. **Filiation** : des faits, sans score. Les appartenances et les autres noms
+   de MusicBrainz (`links`), et les artistes crédités avec lui sur ses disques
+   (`credits`, `86_credits.sql`), dans MusicBrainz et Discogs.
 
-Le seuil de 3 ans (`pg/90_artist.sql`, `musilogy.side`) est à juger sur des artistes connus (T. Rex,
-1967 : Kinks et Beatles avant, Bowie et Roxy Music pendant, Ramones et Clash
-après) et à mesurer avant d'être changé.
+Les règles, leurs paramètres et leurs invariants sont dans le code cité ; le
+manifeste relit les paramètres (`parameters`). Il n'y a pas de juges (leur coût
+en quota, 2026-10-22) : ce que livre un onglet se mesure par sa couverture, la
+part des artistes qui y ont au moins un voisin, relevée dans la PR qui change
+sa règle.
+
+La généalogie (`docs/vision.md` §2.3) est une autre question, avec ses propres
+preuves (liens entre genres, faits écrits) ; elle ne passe pas par ces onglets.
 
 ## 4. Contrat avec le site
 
@@ -189,17 +151,21 @@ musilogy.artist_card(artist text) RETURNS TABLE (
 -- sur toutes les décennies, du plus de disques au moins, à égalité par nom ;
 -- [] pour un artiste que Discogs n'atteint pas.
 
--- « Même son » : les 8 premiers voisins de la co-écoute, dans un sens ou dans
--- l'autre, dont la couleur s'accorde, la profondeur à laquelle la règle a été
--- mesurée (la table les garde tous), dans leur rang, chacun avec sa raison
--- (source 'styles', la seule : term est un style Discogs, decade la décennie où
--- l'artiste en a le plus de disques, NULL s'il n'en a aucun daté) et son côté
--- dans le temps (§3, musilogy.side) ;
--- y_end seulement déclaré, jamais l'année d'un dernier album.
+-- Les trois onglets de voisins. Dans les deux premiers, y_end seulement
+-- déclaré, jamais l'année d'un dernier album (musilogy.declared_end).
+-- « Même son » : dans leur rang, chacun avec sa raison, un style Discogs.
 musilogy.artist_same_sound(artist text) RETURNS TABLE (
-  mbid text, name text, disambiguation text, type text, y0 integer,
-  y_end integer, ended boolean, rank integer, source text, term text,
-  decade integer, side text)
+  mbid text, name text, disambiguation text, y0 integer, y_end integer,
+  ended boolean, rank integer, term text)
+-- « Écoutés ensemble » : dans leur rang.
+musilogy.artist_colisten(artist text) RETURNS TABLE (
+  mbid text, name text, disambiguation text, y0 integer, y_end integer,
+  ended boolean, rank integer)
+-- « Filiation », crédités ensemble : le plus de disques communs d'abord, puis
+-- par nom ; les appartenances et autres noms sont artist_bands,
+-- artist_member_projects et artist_other_names, plus bas.
+musilogy.artist_credits(artist text) RETURNS TABLE (
+  mbid text, name text, disambiguation text, y0 integer, records integer)
 
 -- Recherche par nom, pour entrer dans Musilogy par un artiste quelconque :
 -- préfixe du nom normalisé (`name_key`), les plus écoutés d'abord.
@@ -248,9 +214,6 @@ musilogy.artist_urls(artist text) RETURNS TABLE (type text, url text)
 
 `artist_homonym_rank` classe les six Nirvana en 191 ms (production, 2026-10-12), par
 la projection `search`, indexée sur `name_key`.
-
-`artist_same_sound`, mesurée le 2026-10-09 sur un Postgres jetable : 0,07 ms
-pour Daft Punk, index chaud. La table pèse 484 Mo dans la base, index compris.
 
 `search_artists` normalise la requête comme `name_key` l'est dans DuckDB
 (`strip_accents(lower(name))`), par une fonction Postgres interne,

@@ -15,10 +15,23 @@ from musilogy.paths import PG_DIR
 
 SCHEMA = "musilogy"
 STAGING = "musilogy_next"
-TABLES = ("artists", "links", "popularity", "releases", "urls", "same_sound")
+TABLES = (
+    "artists",
+    "links",
+    "popularity",
+    "releases",
+    "urls",
+    "same_sound",
+    "colisten",
+    "credits",
+)
 # Postgres has no anonymous composite type: a list of style structs travels as
-# JSON.
-PROJECTIONS = {"artists": "* REPLACE (to_json(styles) AS styles)"}
+# JSON. A neighbour's score ranks it in the build; the site reads the rank.
+PROJECTIONS = {
+    "artists": "* REPLACE (to_json(styles) AS styles)",
+    "same_sound": "* EXCLUDE (score)",
+    "colisten": "* EXCLUDE (common, score)",
+}
 
 
 def verified_manifest(published: Path, tables: Sequence[str] = TABLES) -> dict[str, Any]:

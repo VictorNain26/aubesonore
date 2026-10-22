@@ -28,7 +28,7 @@ Tout fonctionne sans compte ; le compte personnalise (les titres gardés), il ne
 | **Écouter** | « Qu'est-ce qui passe ? » | accueil | le direct, ce qui vient de passer, les plus gardés |
 | **Garder** | « Je ne veux pas le perdre » | bibliothèque, compte | aimer, retrouver |
 | **Savoir** | « Qui est-ce ? » | page artiste | portrait, quelques lignes sur lui, où l'écouter, ses albums et EP, vos titres gardés |
-| **Découvrir** | « Où aller ensuite ? » | la même page ; la recherche pour y entrer par un nom | des artistes similaires, de toutes les époques ; ses groupes et ceux de ses membres |
+| **Découvrir** | « Où aller ensuite ? » | la même page ; la recherche pour y entrer par un nom | ses artistes proches, de toutes les époques : le même son, le même public, la filiation |
 | **Comprendre** | « D'où vient ce son ? » | page de courant | les courants dont il est né, ceux qu'il a engendrés, ses artistes époque par époque |
 
 Les gestes se bouclent : le titre en cours mène à sa page, et chaque artiste cité sur une page
@@ -60,8 +60,9 @@ du direct.
 **Mieux comprendre la musique et son évolution, en partant d'un artiste.** Musilogy répond à deux
 questions, chacune avec sa méthode et ses preuves :
 
-1. **Qui sonne comme lui ?** Des artistes similaires, de toutes les époques, les plus pertinents
-   d'abord : de quoi découvrir des artistes qu'on ne connaît pas (§2.2).
+1. **Qui est proche de lui ?** Ceux qui font la même musique, ceux que le même public écoute,
+   ceux avec qui il a joué, de toutes les époques : de quoi découvrir des artistes qu'on ne
+   connaît pas (§2.2).
 2. **D'où vient son son, où est-il allé ?** La généalogie de ses courants, chacun sa page : d'où
    il est né, ce qu'il a engendré, ses artistes époque par époque (§2.3).
 
@@ -78,24 +79,31 @@ qui a engendré qui : elle relie surtout des artistes de la même époque et de 
 comme le font les musicologues et les ouvrages de référence. Le dossier qui fonde ces choix :
 `musilogy/docs/research/2026-10-09-similarite-genealogie.md`.
 
-### 2.2 Les artistes similaires
+### 2.2 Les artistes proches : trois onglets
 
-**La méthode**, reconnue et sans couche maison (`musilogy/docs/conception.md`, « Méthode des
-artistes similaires ») :
+**Trois questions, trois onglets**, chacun avec sa source et sa méthode, sans qu'aucun ne filtre
+l'autre (`musilogy/docs/conception.md` §3). Une seule liste qui voulait dire à la fois le même son,
+la même scène et le même public empilait des portes : le canon grand public pour les stars (Daft
+Punk → Madonna), rien pour les petits artistes que Discogs n'atteint pas (2026-10-21).
 
-- **le même public** : notre co-écoute, le filtrage collaboratif « article à article » (Sarwar et
-  al., 2001 ; Linden et al., 2003) avec le cosinus asymétrique d'Aiolli (2013), qui corrige la
-  popularité, calculée sur **toutes les écoutes publiques de ListenBrainz** (CC0, déjà rapprochées
-  de MusicBrainz), dans les deux sens ;
-- **le même son** : un voisin n'est retenu que si ses styles s'accordent avec ceux de l'artiste
-  (les styles Discogs de leurs disques, environ 600 sous-genres, pondérés par leur rareté et leur
-  part dans l'œuvre ; un artiste sans Discogs n'a pas de « même son »), à n'importe quelle
-  époque : l'écoute propose,
-  le contenu confirme, un hybride « en cascade » (Burke, 2002). La co-occurrence d'écoute est la
-  source la plus proche du jugement humain de similarité (Berenzweig et al., 2004), le contenu
-  écarte ce qu'y mêlent les auditeurs éclectiques ;
-- **la pertinence classe** : la couleur partagée, parmi les voisins confirmés ; jamais la
-  popularité, jamais l'époque.
+- **Même son** : qui fait la même musique, à toute époque ? Les styles Discogs de ses disques
+  (quelque 750 sous-genres), pondérés par leur rareté et leur part dans l'œuvre, comparés à ceux de
+  **tous** les artistes qui en ont, quel que soit leur public : le filtrage par contenu. Daft Punk
+  y trouve la French touch (Cassius, Bob Sinclar, Superfunk). Un artiste sans Discogs n'a pas de
+  « même son ».
+- **Écoutés ensemble** : qui le même public écoute-t-il ? Notre co-écoute, le filtrage
+  collaboratif « article à article » (Sarwar et al., 2001 ; Linden et al., 2003) avec le cosinus
+  d'Aiolli (2013), qui corrige la popularité, sur **toutes les écoutes publiques de ListenBrainz**
+  (CC0, déjà rapprochées de MusicBrainz). C'est le public, pas le son, et l'onglet le dit : la
+  co-occurrence d'écoute est la source la plus proche du jugement humain de similarité
+  (Berenzweig et al., 2004), mais elle mêle ce qu'écoutent les auditeurs éclectiques.
+- **Filiation** : avec qui a-t-il fait de la musique ? Des faits, sans score : ses membres, ses
+  groupes, les autres groupes de ses membres et ses autres noms (MusicBrainz), puis les artistes
+  crédités avec lui sur ses disques (MusicBrainz et Discogs), du plus de disques communs au moins.
+
+Chaque onglet montre ses premiers voisins, dans l'ordre de son propre score ; la filiation montre
+ses faits, repliés au-delà des premiers. Un onglet vide ne s'affiche pas. Jamais la popularité ni
+l'époque ne classent.
 
 **Ce qui n'en est pas une preuve** : le label (mesuré : 26 % de bons), une influence déclarée, la
 popularité, l'époque. Le service des artistes similaires de ListenBrainz est parti, remplacé par
@@ -105,8 +113,8 @@ notre co-écoute (#459, 2026-10-10).
 artiste) donnent au moins 3 auditeurs, le seuil de la co-écoute, à 899 265 artistes, contre
 371 602 avec l'export des statistiques, qui ne garde que les 1 000 artistes les plus écoutés de
 chaque utilisateur : 48 % des artistes de 1 à 19 auditeurs au lieu de 5 %, 77 % des artistes
-apparus dans les années 2020 au lieu de 42 %. Un artiste sans auditeur n'a pas d'artistes
-similaires ; la généalogie de ses courants le situe (§2.3).
+apparus dans les années 2020 au lieu de 42 %. Un artiste sans auditeur n'a pas de voisins
+« écoutés ensemble » ; sa couleur et sa filiation le situent.
 
 **Toutes les écoutes de chaque auditeur comptent**, même au-delà de ses artistes favoris : ce
 sont elles qui portent les artistes confidentiels. Le calcul croît comme le carré du nombre
@@ -116,11 +124,11 @@ de chacun le diviserait par trois, mais retirerait 176 070 artistes (899 265 →
 mesure qui montre que ces écoutes nuisent ; une bibliothèque de produit matriciel creux plus
 rapide n'a rien gagné (mesuré le 2026-10-10).
 
-**La mesure** est le banc (`musilogy bench`, `musilogy/docs/conception.md`, « La mesure ») :
-des références tirées par tranche de popularité, les voisins de chaque système jugés à partir de
-sources citées ; son rapport dit ce que vaut la règle, ce document ne le recopie pas. On ne
-montre que des voisins confirmés, sans compléter une liste trop courte. Les clics des auditeurs
-départagent plus tard deux réglages, sans jamais nourrir la similarité, ce qui ferait boucle.
+**La mesure.** Pas de juges : leur coût en quota a arrêté le banc (2026-10-22). Chaque onglet est
+la méthode publiée la plus simple qui réponde à sa définition, et ce qu'il livre se mesure par sa
+couverture, la part des artistes qui y ont au moins un voisin. Au banc, la couleur seule tenait
+77 % de bons voisins parmi ses paires jugées, presque toutes (2026-10-21). Les clics des auditeurs
+départageront plus tard deux réglages, sans jamais nourrir la similarité, ce qui ferait boucle.
 
 **L'audio**, la couleur du son elle-même, n'est pas une source pour tous : les extraits Deezer
 sont exclus par leurs conditions (§2.5), AcousticBrainz est mesuré trop faible (AUC 0,65). Les
@@ -131,7 +139,7 @@ bibliothèque, plus tard.
 écoutes et celles de MLHD+, un historique de Last.fm) sert à deux choses techniques : classer la
 recherche (« The Beatles » de Liverpool avant le groupe doo-wop de Philadelphie) et borner les
 relevés longs, que les limites des API (une requête par seconde) rendent impossibles sur les 2,98
-millions d'artistes. Il ne choisit pas les artistes similaires.
+millions d'artistes. Il ne choisit aucun voisin.
 
 ### 2.3 La généalogie : les pages de courant
 
@@ -185,9 +193,9 @@ Un ordre de départ, chaque section seulement quand elle a quelque chose à mont
    musilogy (`musilogy/README.md`, `22_releases`), mesurée sur les artistes joués : elle s'ajuste
    quand un cas réel la contredit. Le 2026-10-05, Protomartyr, Bloc Party ou Can gardent leur
    discographie entière, les Beatles s'arrêtent en 1970.
-4. **Où aller ensuite** : les artistes similaires (§2.2), les plus pertinents d'abord, chaque nom
-   menant à sa page ; puis les groupes et projets en deux rubriques plutôt que
-   les douze types de relation de MusicBrainz :
+4. **Où aller ensuite** : les artistes proches (§2.2), en trois onglets, Même son, Écoutés
+   ensemble et Filiation, chaque nom menant à sa page. La filiation dit les groupes et projets en
+   rubriques plutôt que les douze types de relation de MusicBrainz :
    - **Membres** d'un groupe, avec leurs années, chacun suivi de ses autres groupes et projets
      solo (« aussi dans … »), seulement ceux qui ont un disque, pour que chaque lien mène à de la
      musique, du plus ancien au plus récent ; les membres repliés au-delà d'une douzaine. Les
@@ -195,10 +203,12 @@ Un ordre de départ, chaque section seulement quand elle a quelque chose à mont
      de Discogs, « Member of » de Rate Your Music et d'AllMusic), jamais en liste à part
      (2026-10-12). Les **Groupes** d'une personne, ou les projets communs d'un groupe, sur une ligne,
      avec leurs années ;
-   - **Autres noms**, sur une ligne : pseudonymes et changements de nom.
+   - **Autres noms**, sur une ligne : pseudonymes et changements de nom ;
+   - **Crédités ensemble**, sur une ligne : les artistes qui partagent ses disques, avec leur
+     nombre.
 
    Les relations qui parlent de la vie plutôt que de la musique (famille, professeur, musicien de
-   tournée, groupe hommage) restent hors de la page.
+   tournée, groupe hommage) restent hors de la page, comme les labels.
 
 **Le portrait**, seulement sous une licence connue (§2.5), puisqu'aucune source ne couvre tous
 les artistes : la photo de l'élément Wikidata sur Wikimedia Commons, sinon la pochette du premier
@@ -374,7 +384,7 @@ l'artiste principal, chaque crédité est relié.
 | portrait | Wikimedia Commons (photo créditée), puis une pochette, puis l'aube de l'artiste (§2.4) | l'image de l'artiste exact sous une licence connue |
 | faits (type, lieu, années), liens d'écoute, albums et EP | le dump MusicBrainz, via musilogy | une seule source pour toute page, reproductible |
 | ouverture de l'article | Wikipédia (CC BY-SA), via l'identifiant Wikidata du dump | — |
-| artistes similaires (même public et même courant), généalogie (courants, faits écrits), groupes et projets | musilogy, datés de leurs dumps et relevés | reproductibles, avec leur provenance |
+| artistes proches (même son, même public, filiation), généalogie (courants, faits écrits) | musilogy, datés de leurs dumps et relevés | reproductibles, avec leur provenance |
 
 Un artiste plus récent que le dump épinglé n'a pas de faits jusqu'au suivant (§7, étape 3).
 

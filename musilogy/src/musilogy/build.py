@@ -9,6 +9,7 @@ import duckdb
 
 from musilogy.colisten import build_colisten, set_parameters
 from musilogy.paths import DATA_DIR, written_aside
+from musilogy.samesound import build_same_sound
 
 
 def connect() -> duckdb.DuckDBPyConnection:
@@ -168,9 +169,9 @@ def colisten_from(
     else:
         set_parameters(con)
         _set_variable(con, "listening_snapshot", snapshot, "VARCHAR")
-    # Once kept, the table is its file: 45 million rows held in the build's
-    # capped memory would push every later step to spill. A view takes no
-    # prepared parameter: the path goes in as a literal.
+    # Once kept, the table is its file: seven million rows held in the build's
+    # capped memory would push later steps to spill. A view takes no prepared
+    # parameter: the path goes in as a literal.
     literal = "'" + cache.as_posix().replace("'", "''") + "'"
     con.execute(f"CREATE OR REPLACE VIEW colisten AS SELECT * FROM read_parquet({literal})")
 
@@ -237,6 +238,8 @@ def build(
         if path.name.startswith("90_"):
             continue
         con.execute(path.read_text(encoding="utf-8"))
+    # « Même son » reads the styles of 84_discogs.sql.
+    build_same_sound(con)
 
 
 INVARIANTS = (
@@ -285,9 +288,13 @@ INVARIANTS = (
     "same_sound_self",
     "same_sound_rank_out_of_range",
     "same_sound_out_of_order",
-    "same_sound_unsourced",
-    "same_sound_colour_out_of_range",
+    "same_sound_score_out_of_range",
     "same_sound_unexplained",
+    "duplicate_credit",
+    "credit_self",
+    "credit_one_way",
+    "credit_without_record",
+    "credit_linked",
     "official_asked_twice",
     "official_unsourced",
     "duplicate_style",

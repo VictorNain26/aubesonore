@@ -1,10 +1,9 @@
-"""« Même son » (88_same_sound.sql) on a synthetic build: six listeners share
-every artist, so the co-listening proposes each to each, A's neighbours of one
-colour rank by MBID, and the Discogs records below make each rule of the colour visible."""
+"""« Même son » (samesound.py) on a synthetic build: the Discogs records below
+make each rule of the colour visible, with no listens at all."""
 
 import pytest
 
-from musilogy import colisten
+from musilogy import samesound
 from musilogy.build import check_invariants
 from musilogy.paths import SQL_DIR
 from tests.conftest import (
@@ -12,7 +11,6 @@ from tests.conftest import (
     discogs_file,
     discogs_release,
     discogs_url,
-    listening_file,
     loaded,
     pg_query,
     synthetic_artist,
@@ -60,80 +58,68 @@ RELEASES = [
     *records(5, "Krautrock", "1981", 30, 500),
     *records(6, "Rock", "1975", 30, 600),
 ]
-LISTENERS = {user: [A, B, C, D, E, F] for user in range(1, 7)}
 
 
-def built(tmp_path, artists=ARTISTS, releases=RELEASES, listeners=LISTENERS):
-    c = build_synthetic(
-        tmp_path,
-        artists,
-        listening=listening_file(tmp_path / "listens", listeners),
-        discogs=discogs_file(tmp_path / "discogs.jsonl", releases),
-    )
+def built(tmp_path, artists=ARTISTS, releases=RELEASES):
+    c = build_synthetic(tmp_path, artists, discogs=discogs_file(tmp_path / "d.jsonl", releases))
     assert check_invariants(c, SQL_DIR) == []
     return c
 
 
 def same_sound(c, mbid=A):
     return c.execute(
-        "SELECT neighbour_mbid, rank, source, term, decade FROM same_sound "
-        "WHERE artist_mbid = ? ORDER BY rank",
+        "SELECT neighbour_mbid, rank, term FROM same_sound WHERE artist_mbid = ? ORDER BY rank",
         [mbid],
     ).fetchall()
 
 
-def test_only_the_neighbours_whose_colour_agrees_in_any_era(tmp_path):
-    # B, D and F share A's style, D twenty years later and F ten. C shares
-    # nothing. E has no Discogs records, so no colour: however close the
-    # co-listening, it is no neighbour. The reason's decade is A's.
+def test_the_closest_colours_among_every_artist_with_one(tmp_path):
+    # No listens at all: the colour alone finds B, D and F, whatever their
+    # decade, tied and so ranked by MBID. C and G share no style with A, and
+    # E has no Discogs records, so no colour.
     assert same_sound(built(tmp_path)) == [
-        (B, 1, "styles", "Krautrock", 1970),
-        (D, 2, "styles", "Krautrock", 1970),
-        (F, 3, "styles", "Krautrock", 1970),
+        (B, 1, "Krautrock"),
+        (D, 2, "Krautrock"),
+        (F, 3, "Krautrock"),
     ]
 
 
-def test_both_directions_of_the_co_listening_ranked_by_the_colour(tmp_path, monkeypatch):
-    # One neighbour each: A's is C, which 8 of its 11 listeners share; B's is
-    # A, with the 3 listeners B has. B never makes A's own list, yet it is in
-    # A's « Même son », and first: its colour is A's, where a quarter of C's
-    # records are synth-pop, however much more the two are listened together.
-    monkeypatch.setattr(colisten, "K", 1)
-    c = built(
-        tmp_path,
-        [artist(A, 1), artist(B, 2), artist(C, 3), artist(G, 6)],
-        [
-            *records(1, "Krautrock", "1972", 30, 100),
-            *records(2, "Krautrock", "1974", 30, 200),
-            *records(3, "Krautrock", "1976", 30, 300),
-            *records(3, "Synth-pop", "1983", 10, 400),
-            *records(6, "Rock", "1975", 30, 600),
-        ],
-        {**{u: [A, C] for u in range(1, 9)}, **{u: [A, B] for u in range(9, 12)}},
-    )
-    assert [row[:2] for row in same_sound(c)] == [(B, 1), (C, 2)]
-    [(kept, given)] = c.execute(
-        "SELECT s.colisten_score, l.score FROM same_sound s JOIN colisten l "
-        "ON l.artist_mbid = s.neighbour_mbid AND l.neighbour_mbid = s.artist_mbid "
-        "WHERE s.artist_mbid = ? AND s.neighbour_mbid = ?",
-        [A, B],
-    ).fetchall()
-    assert kept == given
-
-
-def test_a_thin_profile_is_shrunk_below_the_threshold(tmp_path):
-    # Three records, the same style and decade as A: a perfect cosine, shrunk
-    # by 3 / (3 + 10).
+def test_a_thin_profile_is_shrunk_behind_the_others(tmp_path):
+    # Three records, the same style as A: a perfect cosine, shrunk by
+    # 3 / (3 + 10), so behind D and F, shrunk by 30 / (30 + 10).
     releases = [r for r in RELEASES if r["artists"] != [2]] + records(
         2, "Krautrock", "1974", 3, 200
     )
-    assert [row[0] for row in same_sound(built(tmp_path, releases=releases))] == [D, F]
+    assert [row[0] for row in same_sound(built(tmp_path, releases=releases))] == [D, F, B]
 
 
-def test_a_profile_of_undated_records_has_no_colour(tmp_path):
+def test_a_profile_of_undated_records_is_nobodys_neighbour(tmp_path):
     # B's thirty records carry no date: shrunk by 0 / (0 + 10), as measured.
+    # B still has a colour of its own, and neighbours.
     releases = [r for r in RELEASES if r["artists"] != [2]] + records(2, "Krautrock", None, 30, 200)
-    assert [row[0] for row in same_sound(built(tmp_path, releases=releases))] == [D, F]
+    c = built(tmp_path, releases=releases)
+    assert [row[0] for row in same_sound(c)] == [D, F]
+    assert [row[0] for row in same_sound(c, B)] == [A, D, F]
+
+
+def test_under_three_records_an_artist_has_no_colour(tmp_path):
+    releases = [r for r in RELEASES if r["artists"] != [2]] + records(
+        2, "Krautrock", "1974", 2, 200
+    )
+    c = built(tmp_path, releases=releases)
+    assert [row[0] for row in same_sound(c)] == [D, F]
+    assert same_sound(c, B) == []
+
+
+def test_the_shrink_counts_only_the_dated_records(tmp_path):
+    # B: three dated Krautrock records and forty undated ones. Shrunk by
+    # 3 / (3 + 10), not 43 / (43 + 10): the rule as measured.
+    releases = [
+        *(r for r in RELEASES if r["artists"] != [2]),
+        *records(2, "Krautrock", "1974", 3, 200),
+        *records(2, "Krautrock", None, 40, 300_000),
+    ]
+    assert [row[0] for row in same_sound(built(tmp_path, releases=releases))] == [D, F, B]
 
 
 def test_the_reason_is_the_style_that_weighs_most_in_what_the_two_share(tmp_path):
@@ -143,29 +129,40 @@ def test_the_reason_is_the_style_that_weighs_most_in_what_the_two_share(tmp_path
         *records(1, "Kosmische", "1973", 5, 700),
         *records(2, "Kosmische", "1975", 5, 800),
     ]
-    assert same_sound(built(tmp_path, releases=releases))[0][3:] == ("Krautrock", 1970)
+    assert same_sound(built(tmp_path, releases=releases))[0] == (B, 1, "Krautrock")
 
 
-def test_the_shrink_counts_only_the_dated_records(tmp_path):
-    # B: three dated Krautrock records of A's decade and forty undated ones.
-    # Shrunk by 3 / (3 + 10), not 43 / (43 + 10): the rule as measured.
+def test_the_reason_sums_a_style_over_its_decades(tmp_path):
+    # Krautrock is the heaviest style of a single decade (12 records against
+    # 8), but Ambient sums 16 over the 1980s and the 1990s.
     releases = [
-        *(r for r in RELEASES if r["artists"] != [2]),
-        *records(2, "Krautrock", "1974", 3, 200),
-        *records(2, "Krautrock", None, 40, 300_000),
+        *records(1, "Krautrock", "1972", 12, 100),
+        *records(1, "Ambient", "1983", 8, 120),
+        *records(1, "Ambient", "1994", 8, 140),
+        *records(2, "Krautrock", "1974", 12, 200),
+        *records(2, "Ambient", "1985", 8, 220),
+        *records(2, "Ambient", "1996", 8, 240),
+        *records(6, "Rock", "1975", 30, 600),
     ]
-    assert [row[0] for row in same_sound(built(tmp_path, releases=releases))] == [D, F]
+    c = built(tmp_path, [artist(A, 1), artist(B, 2), artist(G, 6)], releases)
+    assert same_sound(c) == [(B, 1, "Ambient")]
 
 
-def test_a_style_the_artist_has_no_dated_record_of_gives_no_decade(tmp_path):
-    # A's thirty records carry no date: A keeps its colour, the shrink reads
-    # the neighbours' dated records, and the reason has no decade to give.
-    releases = [r for r in RELEASES if r["artists"] != [1]] + records(1, "Krautrock", None, 30, 100)
-    assert same_sound(built(tmp_path, releases=releases)) == [
-        (B, 1, "styles", "Krautrock", None),
-        (D, 2, "styles", "Krautrock", None),
-        (F, 3, "styles", "Krautrock", None),
-    ]
+def test_only_the_k_closest_are_kept(tmp_path, monkeypatch):
+    monkeypatch.setattr(samesound, "K", 2)
+    assert [row[0] for row in same_sound(built(tmp_path))] == [B, D]
+
+
+def test_batches_and_workers_give_the_same_table(tmp_path, monkeypatch):
+    whole = built(tmp_path).execute("SELECT * FROM same_sound ORDER BY ALL").fetchall()
+    monkeypatch.setattr(samesound, "BATCH", 2)
+    split = built(tmp_path).execute("SELECT * FROM same_sound ORDER BY ALL").fetchall()
+    assert split == whole
+
+
+def test_no_records_give_no_same_sound(tmp_path):
+    c = build_synthetic(tmp_path, ARTISTS)
+    assert c.execute("SELECT count(*) FROM same_sound").fetchone() == (0,)
 
 
 A_B = f"artist_mbid = '{A}' AND neighbour_mbid = '{B}'"
@@ -179,36 +176,13 @@ A_B = f"artist_mbid = '{A}' AND neighbour_mbid = '{B}'"
             "same_sound_out_of_order",
             f"UPDATE same_sound SET rank = 3 - rank WHERE artist_mbid = '{A}' AND rank <= 2",
         ),
-        (
-            "same_sound_unsourced",
-            f"UPDATE same_sound SET colisten_score = colisten_score / 2 WHERE {A_B}",
-        ),
-        (
-            "same_sound_unexplained",
-            f"UPDATE same_sound SET decade = NULL WHERE {A_B}",
-        ),
-        (
-            "same_sound_unexplained",
-            f"UPDATE same_sound SET decade = 1990 WHERE {A_B}",
-        ),
-        (
-            "same_sound_colour_out_of_range",
-            f"UPDATE same_sound SET colour = 0.3 WHERE {A_B}",
-        ),
-        # The styles are the only colour: no other source explains a pair.
-        (
-            "same_sound_colour_out_of_range",
-            f"UPDATE same_sound SET source = 'genres' WHERE {A_B}",
-        ),
+        ("same_sound_unexplained", f"UPDATE same_sound SET term = 'Rock' WHERE {A_B}"),
+        ("same_sound_self", f"UPDATE same_sound SET neighbour_mbid = artist_mbid WHERE {A_B}"),
         (
             "same_sound_rank_out_of_range",
             f"UPDATE same_sound SET rank = 9 WHERE artist_mbid = '{A}' AND neighbour_mbid = '{F}'",
         ),
-        (
-            "colisten_out_of_order",
-            f"UPDATE colisten SET rank = CASE rank WHEN 1 THEN 2 ELSE 1 END "
-            f"WHERE artist_mbid = '{A}' AND rank <= 2",
-        ),
+        ("same_sound_score_out_of_range", f"UPDATE same_sound SET score = 0 WHERE {A_B}"),
     ],
 )
 def test_a_broken_same_sound_is_reported(tmp_path, invariant, mutation):
@@ -217,53 +191,12 @@ def test_a_broken_same_sound_is_reported(tmp_path, invariant, mutation):
     assert invariant in dict(check_invariants(c, SQL_DIR))
 
 
-def test_the_reason_sums_a_style_over_its_decades(tmp_path):
-    # Krautrock is the heaviest style of a single decade (12 records against
-    # 8), but Ambient sums 16 over the 1980s and the 1990s. Within Ambient, the
-    # artist's two decades weigh the same: the earlier one.
-    releases = [
-        *records(1, "Krautrock", "1972", 12, 100),
-        *records(1, "Ambient", "1983", 8, 120),
-        *records(1, "Ambient", "1994", 8, 140),
-        *records(2, "Krautrock", "1974", 12, 200),
-        *records(2, "Ambient", "1985", 8, 220),
-        *records(2, "Ambient", "1996", 8, 240),
-        *records(6, "Rock", "1975", 30, 600),
-    ]
-    c = built(
-        tmp_path,
-        [artist(A, 1), artist(B, 2), artist(G, 6)],
-        releases,
-        {user: [A, B] for user in range(1, 7)},
-    )
-    assert same_sound(c) == [(B, 1, "styles", "Ambient", 1980)]
-
-
-def test_no_listens_give_no_same_sound(tmp_path):
-    c = build_synthetic(tmp_path, ARTISTS, discogs=discogs_file(tmp_path / "d.jsonl", RELEASES))
-    assert c.execute("SELECT count(*) FROM same_sound").fetchone() == (0,)
-
-
-def test_the_site_reads_same_sound_in_rank_order_each_with_its_reason_and_side(tmp_path, pg):
-    # A began in 1970; B (1960) more than 3 years before, D (1970) and F
-    # (1982) after. A neighbour absent from the dump is left out.
-    artists = [
-        artist(A, 1, "1970"),
-        artist(B, 2, "1960"),
-        artist(C, 3),
-        artist(D, 4),
-        artist(E),
-        artist(F, 5, "1982"),
-        artist(G, 6),
-    ]
-    loaded(tmp_path, pg, artists, listening=LISTENERS, discogs=RELEASES)
-    assert pg_query(
-        pg,
-        f"SELECT mbid, rank, source, term, decade, side FROM musilogy.artist_same_sound('{A}')",
-    ) == [
-        (B, 1, "styles", "Krautrock", 1970, "before"),
-        (D, 2, "styles", "Krautrock", 1970, "during"),
-        (F, 3, "styles", "Krautrock", 1970, "after"),
+def test_the_site_reads_same_sound_in_rank_order_each_with_its_reason(tmp_path, pg):
+    loaded(tmp_path, pg, ARTISTS, discogs=RELEASES)
+    assert pg_query(pg, f"SELECT mbid, rank, term FROM musilogy.artist_same_sound('{A}')") == [
+        (B, 1, "Krautrock"),
+        (D, 2, "Krautrock"),
+        (F, 3, "Krautrock"),
     ]
     assert pg_query(pg, f"SELECT count(*) FROM musilogy.artist_same_sound('{ABSENT}')") == [(0,)]
 
@@ -279,7 +212,6 @@ def test_the_site_reads_a_neighbours_end_only_when_declared(tmp_path, pg):
         pg,
         artists,
         release_groups=[synthetic_release_group("00000000-0000-4000-8000-0000000007d1", D, "1999")],
-        listening=LISTENERS,
         discogs=RELEASES,
     )
     assert pg_query(pg, f"SELECT y_end, y_end_source FROM musilogy.artists WHERE mbid = '{D}'") == [
@@ -298,25 +230,7 @@ def test_artist_same_sound_keeps_the_signature_the_site_reads(tmp_path, pg):
         "WHERE n.nspname = 'musilogy' AND p.proname = 'artist_same_sound'",
     ) == [
         (
-            "TABLE(mbid text, name text, disambiguation text, type text, y0 integer, "
-            "y_end integer, ended boolean, rank integer, source text, term text, "
-            "decade integer, side text)",
+            "TABLE(mbid text, name text, disambiguation text, y0 integer, y_end integer, "
+            "ended boolean, rank integer, term text)",
         )
-    ]
-
-
-def test_the_site_reads_the_first_8_the_depth_the_rule_was_measured_at(tmp_path, pg):
-    # Ten neighbours of A's very colour: the table keeps them all, the page
-    # reads the first 8.
-    near = [f"00000000-0000-4000-8000-0000000006{i:02x}" for i in range(10)]
-    artists = [artist(A, 1), *(artist(n, 10 + i) for i, n in enumerate(near))]
-    releases = [
-        *records(1, "Krautrock", "1972", 30, 100),
-        *(r for i in range(10) for r in records(10 + i, "Krautrock", "1974", 30, 1000 + 100 * i)),
-        *records(6, "Rock", "1975", 30, 600),
-    ]
-    artists.append(artist(G, 6))
-    loaded(tmp_path, pg, artists, listening={u: [A, *near] for u in range(1, 7)}, discogs=releases)
-    assert pg_query(pg, f"SELECT mbid, rank FROM musilogy.artist_same_sound('{A}')") == [
-        (n, i + 1) for i, n in enumerate(near[:8])
     ]
