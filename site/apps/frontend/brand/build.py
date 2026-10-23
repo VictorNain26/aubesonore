@@ -36,7 +36,7 @@ FONTS = FRONTEND.parent.parent / "node_modules/@fontsource-variable"
 # Every axis of Fraunces, so the wordmark can be set at its own optical size and softness.
 FONT = FONTS / "fraunces/files/fraunces-latin-full-normal.woff2"
 # The site's own files, for the sharing cards: the titles' Fraunces and the text's Atkinson.
-TITLE_FONT = FONTS / "fraunces/files/fraunces-latin-wght-normal.woff2"
+TITLE_FONT = FONTS / "fraunces/files/fraunces-latin-opsz-normal.woff2"
 TEXT_FONT = FONTS / "atkinson-hyperlegible-next/files/atkinson-hyperlegible-next-latin-wght-normal.woff2"
 PUBLIC, SVG_OUT = FRONTEND / "public", FRONTEND / "brand/svg"
 ART_TS = FRONTEND / "src/design/logoArt.ts"

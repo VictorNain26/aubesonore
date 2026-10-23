@@ -8,7 +8,7 @@ import {
   type HydrationState,
 } from 'react-router';
 import '@fontsource-variable/atkinson-hyperlegible-next';
-import '@fontsource-variable/fraunces';
+import '@fontsource-variable/fraunces/opsz.css';
 import './index.css';
 import { handlePreloadError } from './lib/preloadReload';
 import { readLocaleChoice } from './stores/localeStore';
