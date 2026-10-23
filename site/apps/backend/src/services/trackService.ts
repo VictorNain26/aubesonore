@@ -6,6 +6,7 @@ import type { KeptArtistPage } from '@aubesonore/shared-types/client';
 import { findItunesCover } from './trackLinksService';
 import { keepCover } from './coverService';
 import { resolveArtist } from './artistResolver';
+import { mbidSlug, ownSlug, pageSlug } from './artistSlugs';
 import { findPlay } from './radioPlayService';
 import { resolveSong, songKey, youtubeUrls } from './youtubeLinks';
 import { logger } from '../lib/logger';
@@ -141,12 +142,13 @@ export async function getLikedTracks({ user }: { user: User }): Promise<LikedTra
   const rows = await db
     .select({
       track: schema.likedTracks,
-      slug: schema.artistSlug.slug,
+      slug: pageSlug,
       name: schema.artist.displayName,
     })
     .from(schema.likedTracks)
     .leftJoin(schema.artist, eq(schema.artist.id, schema.likedTracks.artistId))
-    .leftJoin(schema.artistSlug, eq(schema.artistSlug.artistId, schema.likedTracks.artistId))
+    .leftJoin(mbidSlug, eq(mbidSlug.mbid, schema.artist.mbid))
+    .leftJoin(ownSlug, eq(ownSlug.artistId, schema.artist.id))
     .where(eq(schema.likedTracks.userId, user.id))
     .orderBy(desc(schema.likedTracks.createdAt))
     .limit(LIKED_TRACKS_MAX_PAGE);
