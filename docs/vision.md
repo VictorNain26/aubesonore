@@ -303,8 +303,9 @@ ligne.
 8. **Mesurer avant de décider, et revenir sur une décision quand la mesure change.** Une règle se
    mesure sur les artistes joués, avec des exemples gardés et écartés ; la mesure s'écrit là où la
    décision est prise.
-9. **Un seul style**, sobre et doux, en français et en anglais ; aucune interface expliquée par une
-   légende.
+9. **Un seul style, de jour comme de nuit**, sobre et doux, en français et en anglais : la nuit
+   change la lumière, pas le dessin ; aucune interface expliquée par une légende. Ses valeurs sont
+   dans `site/apps/frontend/src/design/tokens.css`.
 
 ## 4. Architecture
 
