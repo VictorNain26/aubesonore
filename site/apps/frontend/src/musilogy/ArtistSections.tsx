@@ -118,7 +118,10 @@ function MemberRow({
         ) : null}
       </span>
       {member.disambiguation ? (
-        <span className="text-ui text-text-muted truncate">{member.disambiguation}</span>
+        // MusicBrainz writes its disambiguations in English, whatever the page's language.
+        <span lang="en" className="text-ui text-text-muted truncate">
+          {member.disambiguation}
+        </span>
       ) : null}
       {projects.length > 0 ? <AlsoIn projects={projects} /> : null}
     </li>

@@ -329,7 +329,8 @@ describe('MusilogySections', () => {
         .getAllByRole('listitem')
         .find((row) => within(row).queryByRole('link', { name })) as HTMLElement;
     expect(within(rowOf('Ann')).getByRole('link', { name: 'Project 0' })).toBeTruthy();
-    expect(within(rowOf('Ann')).getByText('drummer')).toBeTruthy();
+    // MusicBrainz writes it in English: marked so, on a French page (WCAG 3.1.2).
+    expect(within(rowOf('Ann')).getByText('drummer')).toHaveAttribute('lang', 'en');
     expect(within(rowOf('Ann')).getByText('aussi dans')).toBeTruthy();
     expect(within(rowOf('Bob')).getByRole('link', { name: 'Project 0' })).toBeTruthy();
     expect(within(rowOf('Bob')).queryByRole('link', { name: 'Project 9' })).toBeNull();

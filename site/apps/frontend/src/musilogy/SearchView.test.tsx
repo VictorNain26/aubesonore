@@ -71,6 +71,8 @@ describe('MusilogyHomeView', () => {
     rerender(view({ status: 'searching', hits: [hit] }));
     expect(screen.getByRole('link', { name: 'T. Rex' })).toBeInTheDocument();
     expect(screen.getByText('1967')).toBeInTheDocument();
+    // MusicBrainz writes it in English: marked so, on a French page (WCAG 3.1.2).
+    expect(screen.getByText('glam rock band')).toHaveAttribute('lang', 'en');
 
     rerender(view({ status: 'done', hits: [] }));
     expect(screen.getByText('Aucun artiste de ce nom.')).toBeInTheDocument();
