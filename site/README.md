@@ -21,7 +21,7 @@ aubesonore/
 - **Garder** : un auditeur connecté garde un titre ; ses liens d'écoute viennent des API d'iTunes et de Deezer (par ISRC). Chaque titre gardé est relié à sa diffusion et à son artiste.
 - **Mes titres** (`/mes-titres`, `/en/my-tracks`) : les titres gardés, par date d'ajout ou par artiste (`?sort=artist`), le nom de l'artiste menant à sa page, chacun à écouter sur YouTube (son Art Track vérifiée quand l'API YouTube en trouve une, sinon une recherche) ; retirer un titre s'annule pendant 5 secondes.
 - **Page artiste** (tout artiste que l'antenne a joué ou que Musilogy connaît, à son slug ; son MBID y renvoie en 301) : portrait sous licence connue (photo Wikimedia Commons créditée, sinon pochette du premier disque, sinon l'aube de l'artiste), faits MusicBrainz, ouverture de l'article Wikipédia ou, sans article, les faits dits en une phrase ; vos titres gardés de l'artiste ; où l'écouter ; les sections de Musilogy qui ont du contenu. L'artiste est identifié par l'ISRC du titre joué, vérifié contre le titre et le nom.
-- **Musilogy** : sur chaque page artiste, les artistes du même son en frise, ses groupes et projets, ses albums et EP ; la recherche par nom (`/musilogy`).
+- **Musilogy** : sur chaque page artiste, ses artistes proches en trois onglets, Même son, Écoutés ensemble et Filiation (`docs/vision.md` §2.2), puis ses albums et EP ; la recherche par nom (`/musilogy`).
 - **Pochettes** : celles de l'antenne, redimensionnées par nginx (`/covers/…`), et, pour un titre gardé, la pochette iTunes vérifiée (artiste) quand elle existe, sinon celle de l'antenne copiée par le backend (`/api/covers/:sha256`), qui garde ainsi la sienne après son départ de l'antenne ; celles des disques, du Cover Art Archive, gardées en cache par nginx (`/caa/…`) ; à défaut, un visuel « onde » déterministe dessiné côté client.
 - **Diffusion** : AirPlay dans Safari ; Chromecast dans Chrome, vers le récepteur AubeSonore (`cast/receiver.html`), qui suit lui-même le titre en cours.
 - **PWA** installable.
@@ -84,7 +84,7 @@ Détails par app : [backend](apps/backend/README.md) · [frontend](apps/frontend
 
 ## Dépendances
 
-Renovate ouvre les PR de dépendances (pnpm, uv, GitHub Actions, images Docker), le lundi avant 6 h, et les liste dans l'issue _Dependency Dashboard_. Il fusionne seul, une fois la CI verte, les mises à jour sûres : épinglages, devDependencies mineures et correctifs, correctifs des dépendances stables, Actions mineures. Les majeures et les images Docker passent en revue manuelle. La politique est dans [`renovate.json`](../renovate.json) à la racine. Dependabot ne sert plus qu'aux alertes de sécurité.
+Renovate ouvre les PR de dépendances et fusionne seul les plus sûres ; sa politique est dans [`renovate.json`](../renovate.json) à la racine.
 
 ## Déploiement
 
@@ -99,18 +99,7 @@ Le déploiement est automatique et _pull-based_ : merger sur `master` suffit. Su
 
 Aucun runner self-hosted ni webhook entrant : le dépôt est public, et le polling ne demande ni credential ni port ouvert. Le backend applique au démarrage les nouvelles migrations `apps/backend/drizzle/*.sql` (`src/db/migrate.ts`, SQL idempotent) : un changement de `site/apps/backend/src/db/schema.ts` livré avec sa migration (dans le même commit de `master`) se déploie seul ; que la migration corresponde au schéma relève de la revue de PR. Sans migration, il bloque le déploiement : l'appliquer à la main, l'acquitter avec `git -C ~/aubesonore config aubesonore.appliedSchema <blob>` (le script affiche la commande exacte), puis relancer `systemctl --user start aubesonore-deploy`.
 
-Installation, une fois, sur le serveur (unités et script supposent le dépôt AubeSonore cloné dans `~/aubesonore`, le site dans `~/aubesonore/site` ; ailleurs, ajuster `ExecStart` et définir `REPO_DIR`) :
-
-```bash
-cd ~/aubesonore/site
-./scripts/make-certs.sh            # TLS de Postgres, si certs/ n'existe pas déjà
-cp .env.example .env               # puis les vraies valeurs : chaque ligne dit celle de la production
-ln -s ~/aubesonore/site/scripts/systemd/* ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now aubesonore-deploy.timer aubesonore-backup.timer
-loginctl enable-linger <utilisateur>   # les timers tournent sans session ouverte
-journalctl --user -u aubesonore-deploy # logs
-```
+L'installation sur le serveur, une fois, est dans [`azuracast/RUNBOOK.md`](../azuracast/RUNBOOK.md), section « 3. Application web ». Unités et script supposent le dépôt cloné dans `~/aubesonore` ; ailleurs, ajuster `ExecStart` et définir `REPO_DIR`. Les logs : `journalctl --user -u aubesonore-deploy`.
 
 `aubesonore-backup.timer` lance chaque nuit (03:30) [`scripts/backup-db.sh`](scripts/backup-db.sh) : un `pg_dump -Fc` vers un disque physiquement séparé de celui du volume Docker, vérifié par `pg_restore --list` et conservé 14 jours.
 

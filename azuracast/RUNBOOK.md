@@ -85,9 +85,11 @@ n'existent nulle part ailleurs.
 
 ```bash
 cd ~/aubesonore/site
+./scripts/make-certs.sh               # TLS de Postgres (certs/ n'est ni versionné ni sauvegardé)
 # .env : ta copie (sinon .env.example : secrets d'auth, SMTP, base, clé YouTube à recréer)
 docker compose up -d --build
 ln -s ~/aubesonore/site/scripts/systemd/* ~/.config/systemd/user/
+systemctl --user daemon-reload
 systemctl --user enable --now aubesonore-deploy.timer aubesonore-backup.timer
 ```
 
