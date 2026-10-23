@@ -7,7 +7,7 @@ from typer.testing import CliRunner
 import radio.cli as cli
 from radio.core.config import Settings
 from radio.core.db import connect
-from tests_radio.model_factory import add_vote, as_news, make_model_db, seed_run
+from tests.model_factory import add_vote, as_news, make_model_db, seed_run
 
 runner = CliRunner()
 

@@ -1,4 +1,4 @@
-"""Mesures de chaque titre à l'antenne, pour l'enchaînement (docs/vision.md §7.3,
+"""Mesures de chaque titre à l'antenne, pour l'enchaînement (docs/conception.md §7.3,
 docs/recherches/2026-10-02-mesures-titres.md).
 
 Chaîne officielle MTG, un seul réseau d'embedding : MSD-MusiCNN, puis les têtes danceability et

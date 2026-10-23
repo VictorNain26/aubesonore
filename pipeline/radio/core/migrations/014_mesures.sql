@@ -1,4 +1,4 @@
--- Mesures de chaque titre à l'antenne, pour l'enchaînement (docs/vision.md §7.3) : sur le titre
+-- Mesures de chaque titre à l'antenne, pour l'enchaînement (docs/conception.md §7.3) : sur le titre
 -- entier, ses 30 premières et ses 30 dernières secondes.
 CREATE TABLE track_features (
     deezer_track_id    INTEGER PRIMARY KEY,

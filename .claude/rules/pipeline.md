@@ -11,7 +11,7 @@ Les chemins ci-dessous sont relatifs à `pipeline/`.
 ## Ce que fait ce dépôt
 
 Le pipeline de la radio AubeSonore : goût, découverte, acquisition, publication sur AzuraCast
-et page de vote. **`pipeline/docs/vision.md` est l'unique document de conception et d'exploitation** : le
+et page de vote. **`pipeline/docs/conception.md` est l'unique document de conception et d'exploitation** : le
 lire avant toute modification, et le tenir à jour dans le même commit que le code. Les mesures et
 sources qui fondent chaque décision sont dans `docs/recherches/`.
 
@@ -62,6 +62,6 @@ commun de leurs réponses (`check_status`, `json_or_none`).
   contient ni `BEGIN` ni `COMMIT`.
 - Ne jamais éditer `~/aubesonore` : la passe hebdomadaire en importe le code de `pipeline/`.
 - Sockseek et rsgain sont des binaires figés dans `~/.local/bin` (versions et sha256 dans
-  `docs/vision.md`) ; ffmpeg et fpcalc viennent d'apt.
+  `docs/conception.md`) ; ffmpeg et fpcalc viennent d'apt.
 - Les unités systemd de `deploy/systemd/` sont liées par `systemctl --user link`. Il faut les
   re-lier si le dépôt change de place.

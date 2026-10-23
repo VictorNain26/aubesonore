@@ -13,7 +13,7 @@ from radio.library.artists import register_library
 from radio.sources.deezer import DeezerTrack
 from radio.sources.hypem import API, HypemClient, HypemError, HypemTrack, HypemUnavailable
 from radio.votes.suivi import yes_by_source
-from tests_radio.factories import make_library
+from tests.factories import make_library
 
 NOW = "2026-10-01T00:00:00+00:00"
 CFG = FreshConfig(hypem_pages=1, deezer_editorial={"alternative": 85}, tracks_per_album=2)

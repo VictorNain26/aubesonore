@@ -7,7 +7,7 @@ from radio.library.artists import (
     library_names,
     register_library,
 )
-from tests_radio.factories import make_library
+from tests.factories import make_library
 
 
 def test_library_artists(tmp_path: Path) -> None:

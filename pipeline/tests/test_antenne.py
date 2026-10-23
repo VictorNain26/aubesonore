@@ -13,7 +13,7 @@ from radio.core.config import AntenneConfig, Creneau, GrilleConfig
 from radio.core.media import Probe, Tags, ToolError
 from radio.sources.azuracast import AzuracastClient, AzuracastError, AzuracastUnavailable, Media
 from radio.sources.deezer import DeezerAlbum, DeezerError, DeezerTrack, TrackPage
-from tests_radio.model_factory import NOW, add_vote, make_model_db, serve_scores
+from tests.model_factory import NOW, add_vote, make_model_db, serve_scores
 
 ROOT = PurePosixPath("/media/plex/Musique")
 LATER = datetime(2026, 12, 1, tzinfo=UTC)

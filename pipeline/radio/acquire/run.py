@@ -1,4 +1,4 @@
-"""Passe d'acquisition (docs/vision.md §5, §6) : retenus → Sockseek → contrôle → fichier prêt.
+"""Passe d'acquisition (docs/conception.md §5, §6) : retenus → Sockseek → contrôle → fichier prêt.
 
 Chaque issue est écrite dès qu'elle est connue : une panne de Deezer arrête la passe sans perdre
 le travail fait. Un titre en échec est retenté aux passes suivantes, jusqu'à `max_attempts`. Un

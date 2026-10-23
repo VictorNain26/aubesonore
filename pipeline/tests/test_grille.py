@@ -31,7 +31,7 @@ from radio.core.config import Categorie, Creneau, GrilleConfig, Settings
 from radio.core.db import connect
 from radio.core.report import last_stages
 from radio.sources.azuracast import AzuracastClient
-from tests_radio.model_factory import make_model_db
+from tests.model_factory import make_model_db
 
 FRIDAY = date(2026, 10, 2)
 SATURDAY = date(2026, 10, 3)
@@ -672,7 +672,7 @@ def test_grille_command_writes_a_full_day(tmp_path: Path, grille_env: FakeAzurac
 def test_a_short_hour_is_published_then_fails_the_grid(
     tmp_path: Path, grille_env: FakeAzuracast
 ) -> None:
-    # Breaks if a short hour passes in silence: it runs out and the fallback plays (vision §1),
+    # Breaks if a short hour passes in silence: it runs out and the fallback plays (conception §1),
     # and only a failed command shows it.
     _on_air(tmp_path, 10)
     res = CliRunner().invoke(cli.app, ["grille"])

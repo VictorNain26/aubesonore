@@ -1,4 +1,4 @@
--- Acquisition (docs/vision.md §5, §6) et rapports d'étape (§8.1).
+-- Acquisition (docs/conception.md §5, §6) et rapports d'étape (§8.1).
 
 -- Dernier état de chaque titre retenu tenté : prêt (fichier préparé) ou en échec (raison).
 CREATE TABLE acquisitions (

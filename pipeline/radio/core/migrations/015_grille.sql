@@ -1,4 +1,4 @@
--- Grille publiée (docs/vision.md §7.3) : les titres que chaque heure écrite va jouer. La grille
+-- Grille publiée (docs/conception.md §7.3) : les titres que chaque heure écrite va jouer. La grille
 -- suivante compte un titre publié mais pas encore joué comme joué à la fin de son heure : à
 -- 23:00, l'heure de 23 h n'est pas encore dans l'historique d'AzuraCast.
 CREATE TABLE grille (

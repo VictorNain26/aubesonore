@@ -22,7 +22,7 @@
   },
   "packageRules": [
     {
-      "description": "pipeline/ : essentia-tensorflow est figé sur dev1389, dernière roue cp312 ; les versions suivantes ne publient que des roues cp314 (pipeline/docs/vision.md)",
+      "description": "pipeline/ : essentia-tensorflow est figé sur dev1389, dernière roue cp312 ; les versions suivantes ne publient que des roues cp314 (pipeline/docs/conception.md)",
       "matchPackageNames": ["essentia-tensorflow"],
       "enabled": false
     },

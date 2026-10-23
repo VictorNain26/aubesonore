@@ -8,7 +8,7 @@ from radio.core.config import REPO_ROOT
 from radio.core.db import connect
 from radio.discover.negatives import NegativeArtist, import_negatives, load_negatives
 from radio.sources.deezer import DeezerError, DeezerTrack, DeezerUnavailable
-from tests_radio.factories import make_library
+from tests.factories import make_library
 
 
 def test_repo_negatives_file() -> None:
@@ -74,7 +74,7 @@ def test_import_negatives(tmp_path: Path) -> None:
 
 
 def test_import_negatives_skips_library_artists(tmp_path: Path) -> None:
-    # M83 (83) est un artiste de bibliothèque (tests_radio.factories.make_library) : un négatif
+    # M83 (83) est un artiste de bibliothèque (tests.factories.make_library) : un négatif
     # partageant son deezer_id serait une étiquette empoisonnée (F5).
     conn = make_library(tmp_path)
     dz = FakeDeezer({901: [dt(1, 901, "Track")]})

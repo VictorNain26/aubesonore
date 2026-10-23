@@ -10,7 +10,7 @@ from radio.core.backup import backup
 from radio.core.config import Settings
 from radio.core.db import connect
 from radio.core.report import last_stages
-from tests_radio.model_factory import add_vote, make_model_db
+from tests.model_factory import add_vote, make_model_db
 
 TODAY = date(2026, 10, 2)
 

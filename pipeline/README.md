@@ -3,7 +3,7 @@
 Le pipeline de la webradio [AubeSonore](https://radio.aubesonore.fr) : découvrir des titres dans
 la couleur de la bibliothèque Plex de Victor, les acquérir et les faire passer à l'antenne.
 
-- Vision, conception et exploitation : [`docs/vision.md`](docs/vision.md).
+- Vision, conception et exploitation : [`docs/conception.md`](docs/conception.md).
 - Mesures et sources de chaque décision : [`docs/recherches/`](docs/recherches/).
 - Réglages : [`config/editorial.toml`](config/editorial.toml).
 

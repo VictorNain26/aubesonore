@@ -1,4 +1,4 @@
--- Votes de Victor (docs/vision.md §4). Pas de clé étrangère vers `tracks` : un vote ne se perd jamais,
+-- Votes de Victor (docs/conception.md §4). Pas de clé étrangère vers `tracks` : un vote ne se perd jamais,
 -- même si son titre quitte la table (titre retiré de Plex). Un vote sans signaux est compté.
 CREATE TABLE votes (
     deezer_track_id INTEGER PRIMARY KEY,
@@ -8,7 +8,7 @@ CREATE TABLE votes (
     source          TEXT NOT NULL
 ) STRICT;
 
--- Historique des entraînements (docs/vision.md §4) : une ligne par entraînement, promu ou non.
+-- Historique des entraînements (docs/conception.md §4) : une ligne par entraînement, promu ou non.
 -- `file` : nom du fichier joblib dans <data_dir>/models/. Le modèle en service est le dernier
 -- promu.
 CREATE TABLE models (

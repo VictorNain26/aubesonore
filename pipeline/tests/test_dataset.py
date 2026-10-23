@@ -14,7 +14,7 @@ from radio.model.dataset import (
     weights,
 )
 from radio.signals.table import load_signals
-from tests_radio.model_factory import add_vote, make_model_db
+from tests.model_factory import add_vote, make_model_db
 
 
 def test_categories_and_exam(tmp_path: Path) -> None:

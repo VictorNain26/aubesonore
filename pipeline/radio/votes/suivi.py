@@ -1,10 +1,10 @@
-"""Suivi des sources (docs/vision.md §8.1) : ce que chaque source et chaque genre apportent, de la
-fournée à l'antenne, et les points à ajuster.
+"""Suivi des sources (docs/conception.md §8.1) : ce que chaque source et chaque genre apportent,
+de la fournée à l'antenne, et les points à ajuster.
 
 - Parcours de la dernière fournée : candidats, retenus, prêts ou publiés, échecs d'acquisition,
   à l'antenne.
 - Points à ajuster, chacun nommé avec sa règle :
-  - une source sous les autres à l'examen, dès `MIN_VOTES` votes (vision §3.1) ;
+  - une source sous les autres à l'examen, dès `MIN_VOTES` votes (conception §3.1) ;
   - un genre lu qui n'a rien apporté de neuf à la dernière fournée ;
   - une source dont la moitié des retenus reste introuvable sur Soulseek.
 """
@@ -77,7 +77,7 @@ def last_flows(conn: sqlite3.Connection) -> tuple[int | None, list[Flow]]:
 
 
 def yes_by_source(conn: sqlite3.Connection) -> list[tuple[str, YesRate]]:
-    """Taux de oui à l'examen par source (docs/vision.md §3), puis par blog ou genre : l'examen
+    """Taux de oui à l'examen par source (docs/conception.md §3), puis par blog ou genre : l'examen
     tire uniformément dans chaque famille de la fournée, donc il juge la source elle-même, avant
     le modèle."""
     rows = conn.execute(

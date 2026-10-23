@@ -2,7 +2,7 @@
 
 Ce document fixe la direction de ce qui traverse les pièces : les produits, qui possède quoi,
 comment les pièces se parlent. Chaque pièce garde sa conception propre
-(`pipeline/docs/vision.md`, `site/README.md`, `azuracast/RUNBOOK.md`, `musilogy/docs/conception.md`)
+(`pipeline/docs/conception.md`, `site/README.md`, `azuracast/RUNBOOK.md`, `musilogy/docs/conception.md`)
 et ne doit pas le contredire. C'est une direction, pas un règlement : une règle se rediscute quand
 l'usage ou une mesure la contredit, et quand le système réel contredit ce document, le système a
 raison et le document se corrige.
@@ -333,7 +333,7 @@ ligne.
 
 | Entre | Contrat | Où il est écrit |
 |---|---|---|
-| pipeline → AzuraCast | API AzuraCast, dossier `antenne/` ; l'ISRC de chaque titre écrit dans le fichier (trame ID3 `TSRC`), qu'AzuraCast range dans le champ `isrc` du média ; jamais de `PUT /file/{id}`, qui réécrit et supprime les balises | `pipeline/docs/vision.md` §6 et §7.2 |
+| pipeline → AzuraCast | API AzuraCast, dossier `antenne/` ; l'ISRC de chaque titre écrit dans le fichier (trame ID3 `TSRC`), qu'AzuraCast range dans le champ `isrc` du média ; jamais de `PUT /file/{id}`, qui réécrit et supprime les balises | `pipeline/docs/conception.md` §6 et §7.2 |
 | site ← AzuraCast | now-playing et historique en lecture, dont `song.isrc` | `site/apps/backend/src/services/nowPlaying.ts`, `site/apps/backend/src/services/radioService.ts` |
 | site ← musilogy | les fonctions SQL de `musilogy/src/musilogy/pg/90_*.sql` : le site n'appelle qu'elles, jamais les tables | `musilogy/docs/conception.md` §4 |
 | site ← Deezer, Wikipédia, Wikimedia Commons | chacun isolé, autorisé à tomber seul, son dernier résultat gardé en base (§4.6) ; MusicBrainz n'est appelé en direct que pour identifier un titre joué (§4.4) | `site/apps/backend/src/services/deezerService.ts`, `wikipediaService.ts`, `commonsService.ts`, `artistResolver.ts` |
@@ -407,7 +407,7 @@ choix assumé, et il impose :
   hebdomadaire ;
 - **des sauvegardes sur un disque distinct**, dont les médias de l'antenne (restic, quotidien) ;
 - **aucune surveillance externe ni notification** : une panne se lit sur la machine
-  (`pipeline/docs/vision.md` §8.2).
+  (`pipeline/docs/conception.md` §8.2).
 
 Risques acceptés tant que leur déclencheur ne s'est pas produit :
 

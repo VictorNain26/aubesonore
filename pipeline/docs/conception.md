@@ -341,7 +341,7 @@ Justification : `recherches/…-observabilite.md` §3.
   AzuraCast lit les balises avec getID3, qui range `TSRC` sous `isrc` (`PhpReader`,
   `MetadataTags::Isrc`, `StationMedia` : vérifié dans le conteneur le 2026-10-04) ; le titre en
   cours l'expose dans `song.isrc`, que le site lit pour identifier le titre et son artiste
-  (`docs/vision.md` racine, §4.4).
+  (`docs/vision.md` à la racine du dépôt, §4.4).
 - **Réalignement à chaque passe.** On compare la base au contenu de `antenne/` et on rapporte les
   écarts.
 
@@ -548,19 +548,7 @@ le dernier passage.
 **Réglages.** Les secrets et les URL sont dans `.env` (modèle : `.env.example`, jamais commité).
 Le reste est dans `config/editorial.toml`.
 
-**Installer les unités.**
-
-```bash
-for u in deploy/systemd/*; do systemctl --user link "$PWD/$u"; done
-systemctl --user daemon-reload
-systemctl --user enable --now radio-weekly.timer radio-backup.timer radio-grille.timer radio-votes.service
-loginctl enable-linger
-```
-
-Les liens pointent vers le dépôt : il faut les re-lier si le dépôt change de place. Le linger
-est indispensable : il lance le gestionnaire systemd de l'utilisateur au démarrage et le garde
-après la déconnexion, ce qui fait tourner les unités sans session ouverte (`man loginctl`,
-`enable-linger`). Il est actif sur la machine (`loginctl show-user victormoi -p Linger`).
+**Installer les unités** : `azuracast/RUNBOOK.md` (le linger en tête, les unités en « 2. Pipeline »).
 
 **Partir d'une base vide**, quand il n'y a pas de copie à restaurer. `negatives-sync` n'est pas
 dans la passe hebdomadaire : il se lance une fois, avant le premier `train`, qui exige des
@@ -594,7 +582,7 @@ La passe hebdomadaire prend ensuite le relais.
 
 ## 10. Hors périmètre
 
-- Le site d'écoute, pièce `site/` du même dépôt (`docs/vision.md`).
+- Le site d'écoute, pièce `site/` du même dépôt (`docs/vision.md` à la racine).
 - Les likes du site comme signal : cela couplerait le site et le pipeline.
 - La sauvegarde des médias de l'antenne, qui n'est pas faite ici : depuis le 2026-10-03, une
   tâche de l'hôte les sauvegarde avec restic (`azuracast/RUNBOOK.md`), car ils ne se

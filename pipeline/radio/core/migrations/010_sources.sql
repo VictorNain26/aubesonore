@@ -1,5 +1,5 @@
 -- Chaque candidat garde sa source, pour juger chaque source sur les votes d'examen
--- (docs/vision.md §3) : un voisin d'une graine, un titre de Hype Machine (detail = blog), un titre
+-- (docs/conception.md §3) : un voisin d'une graine, un titre de Hype Machine (detail = blog), un titre
 -- d'une sélection éditoriale Deezer (detail = genre). Seul un voisin a une graine.
 -- Reconstruction de table : https://www.sqlite.org/lang_altertable.html#otheralter
 

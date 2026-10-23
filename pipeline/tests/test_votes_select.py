@@ -12,7 +12,7 @@ from radio.votes.select import (
     select_batch,
     week_votes,
 )
-from tests_radio.model_factory import NO_FLOOR, NOW, as_news, make_model_db, serve_scores
+from tests.model_factory import NO_FLOOR, NOW, as_news, make_model_db, serve_scores
 
 
 def _rng(seed: int = 0) -> np.random.Generator:

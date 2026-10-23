@@ -68,7 +68,7 @@ Points à ne pas rejouer de travers :
 ```bash
 cd ~/aubesonore/pipeline
 uv sync
-# sockseek et rsgain : binaires figés dans ~/.local/bin (versions et sha256 : docs/vision.md)
+# sockseek et rsgain : binaires figés dans ~/.local/bin (versions et sha256 : docs/conception.md)
 # ffmpeg et fpcalc (libchromaprint-tools) : apt ; dans models/, le modèle EffNet (radio/signals/audio.py)
 # et les quatre modèles de mesure (MODELS de radio/signals/features.py, essentia.upf.edu/models, sha256 vérifiés)
 # .env : ta copie (sinon .env.example, secrets à recréer), avec la clé d'API AzuraCast régénérée

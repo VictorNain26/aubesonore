@@ -3,7 +3,7 @@ from pathlib import Path
 
 from radio.core.config import FreshConfig
 from radio.votes.suivi import load_suivi, suivi_lines
-from tests_radio.model_factory import add_vote, make_model_db, serve_scores
+from tests.model_factory import add_vote, make_model_db, serve_scores
 
 
 def _db(tmp_path: Path) -> sqlite3.Connection:

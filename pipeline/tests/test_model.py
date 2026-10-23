@@ -8,7 +8,7 @@ import pytest
 import radio.model.model as model_mod
 from radio.core.config import ModelConfig
 from radio.model.model import Batch, _decide, last_batch, rescore, train
-from tests_radio.model_factory import NOW, add_vote, as_news, make_model_db
+from tests.model_factory import NOW, add_vote, as_news, make_model_db
 
 
 def test_decide_keeps_the_serving_model_unless_the_new_one_is_as_good() -> None:

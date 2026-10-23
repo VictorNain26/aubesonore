@@ -62,6 +62,7 @@ class LastfmClient:
             "method": method,
             "api_key": self._key,
             "format": "json",
+            # Décision mesurée : docs/recherches/2026-10-04-lastfm-autocorrect.md.
             "autocorrect": 1,
             **params,
         }

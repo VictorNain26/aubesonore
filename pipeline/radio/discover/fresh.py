@@ -1,4 +1,4 @@
-"""Nouveautés (docs/vision.md §3) : des titres récents choisis par des humains, ajoutés à la
+"""Nouveautés (docs/conception.md §3) : des titres récents choisis par des humains, ajoutés à la
 dernière fournée et jugés par le modèle comme les voisins.
 
 Chaque candidat garde sa source (et le blog ou le genre) : les votes d'examen jugent chaque

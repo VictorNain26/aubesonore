@@ -1,4 +1,4 @@
-"""Rapports d'étape (docs/vision.md §8.1) : une ligne par étape et par passe."""
+"""Rapports d'étape (docs/conception.md §8.1) : une ligne par étape et par passe."""
 
 import json
 import os
