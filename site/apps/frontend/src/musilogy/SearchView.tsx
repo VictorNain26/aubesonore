@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import { Search, X } from 'lucide-react';
 import type { MusilogySearchHit } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
+import { LineLoader } from '../design/LineLoader';
 import { KIND_LABELS } from '../lib/artistKind';
 import { ARTIST_LINK, STRETCHED } from '../design/classes';
 import { cn } from '@/lib/utils';
@@ -29,12 +30,7 @@ const HIT_COLUMNS =
 function SearchHitRow({ hit }: { hit: MusilogySearchHit }) {
   const kind = hit.kind ? KIND_LABELS[hit.kind]() : null;
   return (
-    <li
-      className={cn(
-        HIT_COLUMNS,
-        'border-border reveal relative min-h-18 border-b py-2.5 focus-within:animate-none'
-      )}
-    >
+    <li className={cn(HIT_COLUMNS, 'reveal wave-rule min-h-18 py-2.5 focus-within:animate-none')}>
       <span className="flex min-w-0 flex-col gap-0.5">
         <Link
           to={pagePathOf(hit)}
@@ -65,31 +61,12 @@ function SearchHitRow({ hit }: { hit: MusilogySearchHit }) {
   );
 }
 
-function HitsSkeleton() {
-  return (
-    <ol aria-busy="true" className="m-0 list-none p-0">
-      {Array.from({ length: 5 }, (_, i) => (
-        <li
-          key={i}
-          className="border-border flex min-h-18 flex-col justify-center gap-2 border-b py-2.5"
-        >
-          <span className="bg-surface-raised h-4 w-1/3" />
-          <span className="bg-surface-raised h-3 w-1/2" />
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 function SearchHits({ hits, stale }: { hits: MusilogySearchHit[]; stale: boolean }) {
   return (
     <div className={cn('ease-out-quart transition-opacity duration-150', stale && 'opacity-50')}>
       <div
         aria-hidden="true"
-        className={cn(
-          HIT_COLUMNS,
-          'border-border text-caption text-text-muted hidden border-b pb-3 md:grid'
-        )}
+        className={cn(HIT_COLUMNS, 'text-caption text-text-muted wave-rule hidden pb-3 md:grid')}
       >
         <span>{m.musilogy_col_artist()}</span>
         <span>{m.musilogy_col_kind()}</span>
@@ -200,7 +177,7 @@ export function MusilogyHomeView({
             search.hits.length > 0 ? (
               <SearchHits hits={search.hits} stale />
             ) : (
-              <HitsSkeleton />
+              <LineLoader className="min-h-90" />
             )
           ) : search.hits.length > 0 ? (
             <SearchHits hits={search.hits} stale={false} />

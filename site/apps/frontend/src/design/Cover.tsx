@@ -51,7 +51,7 @@ export function Cover({ src, alt, seed, className, priority = false, sizes, onEr
           }}
         />
       ) : (
-        <CoverGlyph seed={seed} size="md" className="size-full" />
+        <CoverGlyph seed={seed} className="size-full" />
       )}
     </div>
   );

@@ -14,7 +14,7 @@ const TRIGGER =
   'text-ui border-accent ease-out-quart hover:bg-accent hover:text-on-accent focus-visible:outline-accent inline-flex min-h-11 items-center rounded-full border px-4.5 transition-[color,background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
 
 const PAGE_LINK =
-  'font-display text-section ease-out-quart focus-visible:outline-accent flex min-h-14 items-center transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:underline-offset-8';
+  'font-display text-section ease-out-quart focus-visible:outline-accent flex min-h-14 items-center transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 aria-[current=page]:wave-underline';
 
 /**
  * The site's pages on a phone, where the header has no room for them: a Menu button opens them

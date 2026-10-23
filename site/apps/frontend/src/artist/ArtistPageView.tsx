@@ -22,6 +22,10 @@ import { PageMessage } from '../shell/PageMessage';
 import type { TrailStep } from '../lib/discoveryTrail';
 import { ReleasesSection } from '../musilogy/Releases';
 import { termOf } from '../musilogy/MusilogyTimeline';
+import { Wave } from '../design/Wave';
+import { LineLoader } from '../design/LineLoader';
+import { hashOf, seedOf } from '../design/wave';
+import type { CSSProperties } from 'react';
 
 export type ArtistPageState =
   | { status: 'loading' }
@@ -159,6 +163,32 @@ function Portrait({ text }: { text: string }) {
   return <p className="text-intro m-0 max-w-prose">{text}</p>;
 }
 
+/**
+ * The artist's own horizon, between who they are and the sections: the site's line, still, drawn
+ * by their MBID (else the page's id), so the same artist always gets the same one; the dawn's
+ * light rises behind it where their sun is.
+ */
+function ArtistHorizon({ seed }: { seed: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      data-testid="artist-horizon"
+      className="relative mt-8 h-32 md:mt-12 md:h-40"
+      style={{ '--sun': `${15 + (hashOf(seed) % 71)}%` } as CSSProperties}
+    >
+      <div className="horizon-glow absolute inset-x-0 bottom-6 h-full" />
+      <Wave
+        width={1440}
+        height={110}
+        amplitude={22}
+        seed={seedOf(seed)}
+        traces={2}
+        className="text-text absolute inset-x-0 bottom-6 h-24 w-full md:h-28"
+      />
+    </div>
+  );
+}
+
 type KeptTrack = Pick<ClientLikedTrack, 'id' | 'title' | 'album' | 'createdAt'>;
 
 function Profile({
@@ -218,21 +248,23 @@ function Profile({
             </div>
           ) : null}
           {sections.length > 1 ? (
-            <div className="border-border mt-8 border-t pt-2">
+            <div className="wave-rule-top mt-8 pt-2">
               <PageNav items={sections} />
             </div>
           ) : null}
         </div>
       </div>
 
-      <div className="px-page flex flex-col gap-16 py-16 md:gap-28 md:py-28">
+      <ArtistHorizon seed={profile.mbid ?? profile.id} />
+
+      <div className="px-page flex flex-col gap-16 pt-6 pb-16 md:gap-28 md:pt-10 md:pb-28">
         {kept.length > 0 ? (
           <Section id="kept" title={m.artist_kept_title()}>
             <ol className="m-0 list-none p-0">
               {kept.map((track) => (
                 <li
                   key={track.id}
-                  className="border-border reveal grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1"
+                  className="reveal wave-rule grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 py-2 md:px-1"
                 >
                   <span className="flex min-w-0 flex-col">
                     <span className="text-row truncate">{track.title}</span>
@@ -293,10 +325,7 @@ export function ArtistPageView({
     >
       <SiteHeader />
       {state.status === 'loading' ? (
-        <div aria-busy="true" className="px-page flex flex-col gap-6 pt-10 md:pt-16">
-          <span className="bg-surface-raised aspect-square w-40 md:w-60" />
-          <span className="bg-surface-raised h-12 w-2/3" />
-        </div>
+        <LineLoader className="px-page min-h-60 pt-10 md:pt-16" />
       ) : state.status === 'missing' ? (
         <PageMessage title={m.artist_missing_title()} body={m.artist_missing_body()} />
       ) : state.status === 'error' ? (

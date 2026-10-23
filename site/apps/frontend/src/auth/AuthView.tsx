@@ -385,7 +385,7 @@ export function AuthView({
                 <div className="flex flex-col gap-4">
                   <Button type="submit" loading={isLoading} className="h-14 w-full justify-center">
                     {isLoading
-                      ? m.auth_loading()
+                      ? m.loading()
                       : mode === 'signin'
                         ? m.auth_submit_signin()
                         : mode === 'signup'

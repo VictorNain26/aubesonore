@@ -13,6 +13,7 @@ import { CoverOpenLarge } from '../design/CoverOpenLarge';
 import { formatClock } from '../lib/time';
 import { ARTIST_LINK, TEXT_ACTION } from '../design/classes';
 import * as m from '@/paraglide/messages.js';
+import { LineLoader } from '../design/LineLoader';
 
 const PAGE = 10;
 
@@ -57,13 +58,7 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
 
       <div className="flex flex-col">
         {status === 'loading' && rows.length === 0 ? (
-          <ol aria-busy="true" className="m-0 list-none p-0">
-            {Array.from({ length: 6 }, (_, i) => (
-              <li key={i} className="border-border flex min-h-16 items-center border-b">
-                <span className="bg-surface-raised h-4 w-2/3" />
-              </li>
-            ))}
-          </ol>
+          <LineLoader className="min-h-96" />
         ) : rows.length === 0 ? (
           <p className="text-text-muted m-0">
             {status === 'error' ? m.since_dawn_error() : m.since_dawn_empty()}
@@ -74,7 +69,7 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
               <li
                 key={row.id}
                 className={cn(
-                  'border-border ease-out-soft hover:bg-accent/3 grid min-h-16 grid-cols-[3rem_2.75rem_minmax(0,1fr)_2.75rem] items-center gap-x-3 border-b py-2 transition-colors duration-300 md:px-1 lg:min-h-15 lg:grid-cols-[4.5rem_2.75rem_minmax(0,1.2fr)_minmax(0,1fr)_2.75rem] lg:gap-x-6',
+                  'ease-out-soft hover:bg-accent/3 wave-rule grid min-h-16 grid-cols-[3rem_2.75rem_minmax(0,1fr)_2.75rem] items-center gap-x-3 py-2 transition-colors duration-300 md:px-1 lg:min-h-15 lg:grid-cols-[4.5rem_2.75rem_minmax(0,1.2fr)_minmax(0,1fr)_2.75rem] lg:gap-x-6',
                   initialIds !== null && !initialIds.has(row.id) ? 'thread-in' : 'reveal'
                 )}
               >

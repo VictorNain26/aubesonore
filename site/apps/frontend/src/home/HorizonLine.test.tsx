@@ -1,17 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import {
-  HorizonLine,
-  LAYERS,
-  QUIET,
-  autoGain,
-  bandsOf,
-  type Gain,
-  stepMotion,
-  traceOffset,
-  type Bands,
-} from './HorizonLine';
+import { HorizonLine, autoGain, bandsOf, type Gain, stepMotion } from './HorizonLine';
+import { LAYERS, QUIET, traceOffset, type Bands } from '../design/wave';
 
 const analyser = { current: null as unknown };
 vi.mock('../lib/player', () => ({ getAnalyser: () => analyser.current }));
@@ -265,19 +256,19 @@ describe('HorizonLine', () => {
       ctx as unknown as CanvasRenderingContext2D
     );
     const root = document.documentElement;
-    root.style.setProperty('--color-text', 'rgb(1, 2, 3)');
+    root.style.setProperty('--text', 'rgb(1, 2, 3)');
 
     render(<HorizonLine isPlaying={false} />);
     expect(ctx.strokeStyle).toContain('rgb(1, 2, 3)');
     ctx.stroke.mockClear();
 
-    root.style.setProperty('--color-text', 'rgb(9, 8, 7)');
+    root.style.setProperty('--text', 'rgb(9, 8, 7)');
     turned();
 
     // Drawn again at once: a line at rest has no next frame to repaint it.
     expect(ctx.stroke).toHaveBeenCalledTimes(LAYERS.length);
     expect(ctx.strokeStyle).toContain('rgb(9, 8, 7)');
-    root.style.removeProperty('--color-text');
+    root.style.removeProperty('--text');
   });
 
   it('draws a still line once under reduced motion', () => {

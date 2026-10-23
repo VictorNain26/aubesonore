@@ -105,6 +105,8 @@ const checkScheme = (scheme, vars) => {
     ['on-accent/accent', c('on-accent'), c('accent'), 4.5],
     ['on-accent-muted/accent', c('on-accent-muted'), c('accent'), 4.5],
     ['text/dawn-glow', c('text'), glow, 4.5],
+    // The wave under the current page and the selected tab: a mark, beside text that holds AA.
+    ['dawn-ink/surface', c('dawn-ink'), c('surface'), 3.0],
   ];
   for (const [label, fg, bg, floor] of pairs) {
     const r = ratio(fg, bg);

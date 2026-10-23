@@ -1,10 +1,19 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactElement } from 'react';
 import { render as rtlRender, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
 import { PlayerBarView, type PlayerBarViewProps } from './PlayerBar';
+import type * as PlayerModule from '../lib/player';
+
+type Player = typeof PlayerModule;
+
+const stream = vi.hoisted((): { analyser: unknown } => ({ analyser: null }));
+vi.mock('../lib/player', async (importOriginal) => ({
+  ...(await importOriginal<Player>()),
+  getAnalyser: () => stream.analyser,
+}));
 
 // The track links to the artist's page: a router <Link>.
 const render = (ui: ReactElement) => rtlRender(ui, { wrapper: MemoryRouter });
@@ -195,5 +204,86 @@ describe('PlayerBarView', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Fermer' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+});
+
+describe('the line along its edge', () => {
+  let frames: FrameRequestCallback[] = [];
+  const heard = vi.fn();
+
+  function drawn(reducedMotion = false) {
+    frames = [];
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => frames.push(cb));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: reducedMotion && query.includes('reduced-motion'),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    const ctx = {
+      clearRect: vi.fn(),
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      strokeStyle: '',
+    };
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      ctx as unknown as CanvasRenderingContext2D
+    );
+    stream.analyser = {
+      frequencyBinCount: 64,
+      context: { sampleRate: 48000 },
+      getByteFrequencyData: heard,
+    };
+    return ctx;
+  }
+
+  function runFrames(count: number) {
+    let now = performance.now();
+    for (let i = 0; i < count; i++) {
+      now += 1000 / 60;
+      frames.shift()?.(now);
+    }
+  }
+
+  afterEach(() => {
+    stream.analyser = null;
+    heard.mockReset();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('listens to the stream only while the live is heard, calm otherwise', () => {
+    const ctx = drawn();
+    const { rerender } = render(<PlayerBarView {...props({ listen: 'idle' })} />);
+    runFrames(5);
+    expect(ctx.stroke).toHaveBeenCalled();
+    expect(heard).not.toHaveBeenCalled();
+
+    rerender(<PlayerBarView {...props({ listen: 'connecting' })} />);
+    runFrames(5);
+    expect(heard).not.toHaveBeenCalled();
+
+    rerender(<PlayerBarView {...props({ listen: 'playing' })} />);
+    runFrames(5);
+    expect(heard).toHaveBeenCalled();
+  });
+
+  it('is drawn in the dawn, the token itself: the theme emits no --color-dawn', () => {
+    const ctx = drawn();
+    const root = document.documentElement;
+    root.style.setProperty('--dawn', 'rgb(4, 5, 6)');
+    render(<PlayerBarView {...props()} />);
+    expect(ctx.strokeStyle).toContain('rgb(4, 5, 6)');
+    root.style.removeProperty('--dawn');
+  });
+
+  it('holds still under reduced motion, even while the live plays', () => {
+    const ctx = drawn(true);
+    render(<PlayerBarView {...props({ listen: 'playing' })} />);
+    expect(frames).toHaveLength(0);
+    expect(ctx.stroke).toHaveBeenCalledOnce();
+    expect(heard).not.toHaveBeenCalled();
   });
 });

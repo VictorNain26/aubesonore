@@ -10,6 +10,7 @@ import { artistPath } from '../lib/artistProfile';
 import type { LikedTrack } from '../lib/api';
 import { artistNameOf, nextSort, type KeptSort, type SortKey } from './order';
 import * as m from '@/paraglide/messages.js';
+import { LineLoader } from '../design/LineLoader';
 
 export type MyTracksState =
   | { status: 'signed-out'; signInHref: string; from: string }
@@ -105,12 +106,7 @@ function focusAfterRemoval(button: HTMLElement): void {
 
 const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
   return (
-    <li
-      className={cn(
-        ROW,
-        'border-border reveal min-h-18 gap-y-0.5 border-b py-2.5 focus-within:animate-none'
-      )}
-    >
+    <li className={cn(ROW, 'reveal wave-rule min-h-18 gap-y-0.5 py-2.5 focus-within:animate-none')}>
       <CoverOpenLarge
         src={track.artworkUrl}
         alt=""
@@ -163,19 +159,6 @@ const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
     </li>
   );
 }, sameRow);
-
-function Skeleton() {
-  return (
-    <ol aria-busy="true" className="m-0 list-none p-0">
-      {Array.from({ length: 6 }, (_, i) => (
-        <li key={i} className="border-border flex min-h-18 items-center gap-3 border-b py-2.5">
-          <span className="bg-surface-raised size-11 shrink-0" />
-          <span className="bg-surface-raised h-4 w-1/2" />
-        </li>
-      ))}
-    </ol>
-  );
-}
 
 /** Search the kept tracks by title or artist; Échap clears it. */
 function SearchField({
@@ -243,7 +226,7 @@ function SortHeader({
     <div
       role="group"
       aria-label={m.library_order_label()}
-      className={cn('border-border flex items-center gap-x-6 border-b pb-1 md:grid', WIDE_COLUMNS)}
+      className={cn('wave-rule flex items-center gap-x-6 pb-1 md:grid', WIDE_COLUMNS)}
     >
       <span className="hidden md:block" />
       {columns.map(({ key, label }) => {
@@ -332,7 +315,7 @@ export function MyTracksView({
           </Link>
         </div>
       ) : state.status === 'loading' ? (
-        <Skeleton />
+        <LineLoader className="min-h-108" />
       ) : state.status === 'error' ? (
         <div className="flex flex-col gap-3">
           <p className="text-row m-0">{m.library_error()}</p>
@@ -349,7 +332,7 @@ export function MyTracksView({
         <div className="flex flex-col gap-6">
           <SearchField query={query} onQueryChange={onQueryChange} />
           {state.tracks.length === 0 ? (
-            <div className="border-border flex flex-col items-start gap-3 border-t pt-8">
+            <div className="wave-rule-top flex flex-col items-start gap-3 pt-8">
               <p className="text-row m-0">{m.library_search_empty({ query: query.trim() })}</p>
               <button type="button" onClick={() => onQueryChange('')} className={TEXT_ACTION}>
                 {m.library_search_clear()}

@@ -20,9 +20,9 @@ const BRAND_LINK =
 const OUTLINE_PILL =
   'text-ui border-accent ease-out-quart hover:bg-accent hover:text-on-accent focus-visible:outline-accent inline-flex min-h-11 items-center rounded-full border px-4.5 transition-[color,background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
 
-// The page the listener is on: marked, not hidden, and not reacting to the pointer.
-const CURRENT_LINK = 'underline decoration-2 underline-offset-8 hover:opacity-100';
-const CURRENT_PILL = 'bg-accent text-on-accent';
+// The page the listener is on: underlined with the line, not hidden, and not reacting to the
+// pointer.
+const CURRENT_LINK = 'wave-underline hover:opacity-100';
 
 const AVATAR =
   'bg-accent text-on-accent ease-out-quart focus-visible:outline-accent flex size-11 items-center justify-center rounded-full font-semibold transition-[scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95';
@@ -99,7 +99,7 @@ export function SiteHeader() {
               <Link
                 to={libraryHref}
                 aria-current={onLibrary ? 'page' : undefined}
-                className={cn(OUTLINE_PILL, onLibrary && CURRENT_PILL)}
+                className={cn(OUTLINE_PILL, onLibrary && 'wave-underline')}
               >
                 {m.nav_my_tracks()}
               </Link>

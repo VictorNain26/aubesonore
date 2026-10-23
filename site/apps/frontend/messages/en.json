@@ -55,7 +55,7 @@
   "auth_password_label": "Password",
   "auth_password_confirm_label": "Confirm password",
   "auth_forgot_link": "Forgot password?",
-  "auth_loading": "Loading…",
+  "loading": "Loading…",
   "auth_submit_signin": "Sign in",
   "auth_submit_signup": "Create my account",
   "auth_submit_forgot": "Send the link",

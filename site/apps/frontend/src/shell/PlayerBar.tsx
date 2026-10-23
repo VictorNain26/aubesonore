@@ -15,6 +15,7 @@ import { artistPath } from '../lib/artistProfile';
 import { Cover } from '../design/Cover';
 import { VolumeControl } from './VolumeControl';
 import { NowPlayingSheet } from './NowPlayingSheet';
+import { HorizonLine } from '../home/HorizonLine';
 import {
   ListenDisc,
   listenAria,
@@ -56,6 +57,10 @@ export interface PlayerBarViewProps {
   hasChanged?: boolean;
 }
 
+/** The edge line's rest swell, as a share of its 24 px: a pixel and a quarter; seven and a half
+ *  while the live is heard. */
+const BAR_LINE_AMPLITUDE = 1.25 / 24;
+
 const TRACK_LINK =
   'ease-out-quart focus-visible:outline-on-accent flex min-w-0 flex-1 items-center gap-3 rounded-full py-1 pr-2 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-60';
 
@@ -65,7 +70,8 @@ const TRACK_LINK =
  * them on screen. Every page keeps its height free at the bottom (`pb-bar`), so it
  * hides nothing. The track leads to the artist's page; when the live moves on, the
  * cover comes into focus and the words fade in. Volume sits in it with a mouse;
- * phones use their buttons.
+ * phones use their buttons. The site's line runs along its top edge, alive while the live is
+ * heard.
  */
 export function PlayerBarView({
   isHidden,
@@ -100,11 +106,20 @@ export function PlayerBarView({
       }}
       className={cn(
         // On phones the gaps tighten (the 44 px targets stay) so the title keeps a few more letters.
-        'bg-accent text-on-accent shadow-bar bottom-safe max-w-bar fixed inset-x-3 z-40 mx-auto flex items-center gap-2 rounded-full py-1.5 pr-1.5 pl-1.5 md:gap-3 md:pr-3',
+        'bg-accent text-on-accent shadow-bar bottom-safe max-w-bar fixed inset-x-3 z-40 mx-auto flex items-center gap-2 py-1.5 pr-1.5 pl-1.5 md:gap-3 md:pr-3',
         'ease-spring transition-[translate,opacity] duration-500',
         hidden && 'pointer-events-none translate-y-24 opacity-0'
       )}
     >
+      {/* The line along its top edge, in the dawn: calm at rest, listening while the live is
+          heard. Out of the flow, over the edge: the bar keeps its height. */}
+      <HorizonLine
+        isPlaying={listen === 'playing'}
+        traces={1}
+        ink="dawn"
+        amplitude={BAR_LINE_AMPLITUDE}
+        className="pointer-events-none absolute inset-x-0 -top-3 h-6 w-full"
+      />
       <button
         type="button"
         onClick={onToggleListen}

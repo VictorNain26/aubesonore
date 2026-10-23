@@ -42,7 +42,7 @@ export function SiteFooterView({
   onInstall,
 }: SiteFooterViewProps) {
   return (
-    <footer className="border-border text-ui mx-page flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t pt-5 pb-5 font-normal md:gap-y-6 md:pt-7 md:pb-7">
+    <footer className="text-ui mx-page wave-rule-top flex flex-wrap items-center justify-between gap-x-6 gap-y-2 pt-5 pb-5 font-normal md:gap-y-6 md:pt-7 md:pb-7">
       <span className="text-text-muted">
         © {new Date().getFullYear()} AubeSonore · {m.footer_free()}
       </span>
