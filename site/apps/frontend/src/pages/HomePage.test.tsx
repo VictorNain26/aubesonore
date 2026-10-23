@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
@@ -87,15 +87,12 @@ describe('HomePage', { timeout: PAGE_TEST_TIMEOUT }, () => {
   it("names the site in the tab, not the page the listener came from, in the page's language", async () => {
     // What the tab says on arriving from another page (its server-drawn title, usePageTitle).
     document.title = 'Mentions légales et confidentialité · AubeSonore';
-    openHome();
+    const router = await openHome();
 
-    await waitFor(() =>
-      expect(document.title).toBe('AubeSonore · Radio de découverte indé, électro, hip-hop')
-    );
+    expect(document.title).toBe('AubeSonore · Radio de découverte indé, électro, hip-hop');
 
-    await userEvent.click(await screen.findByRole('link', { name: 'en' }));
-    await waitFor(() =>
-      expect(document.title).toBe('AubeSonore · Discovery radio: indie, electronic, hip-hop')
-    );
+    await userEvent.click(screen.getByRole('link', { name: 'en' }));
+    await settle(router);
+    expect(document.title).toBe('AubeSonore · Discovery radio: indie, electronic, hip-hop');
   });
 });
