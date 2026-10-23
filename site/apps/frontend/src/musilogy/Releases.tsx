@@ -46,9 +46,7 @@ function Record({ release }: { release: MusilogyRelease }) {
       <span className="flex min-w-0 flex-col">
         <span className="text-ui break-words">{release.title}</span>
         {hints.length > 0 ? (
-          <span className="text-ui text-text-muted font-mono tabular-nums">
-            {hints.join(' · ')}
-          </span>
+          <span className="text-ui text-text-muted tabular-nums">{hints.join(' · ')}</span>
         ) : null}
       </span>
     </li>

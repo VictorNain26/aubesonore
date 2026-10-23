@@ -27,7 +27,7 @@ export function Cover({ src, alt, seed, className, priority = false, sizes, onEr
 
   return (
     <div
-      className={cn('bg-surface-raised overflow-hidden rounded-sm', className)}
+      className={cn('bg-surface-raised overflow-hidden', className)}
       // alt="" marks the cover as decoration: its fallback glyph must not be
       // announced either, or a link around it reads "Pochette indisponible".
       aria-hidden={!usable && alt === '' ? true : undefined}

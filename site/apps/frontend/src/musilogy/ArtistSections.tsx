@@ -112,9 +112,7 @@ function MemberRow({
           {member.name}
         </Link>
         {years ? (
-          <span className="text-ui text-text-muted font-mono whitespace-nowrap tabular-nums">
-            {years}
-          </span>
+          <span className="text-ui text-text-muted whitespace-nowrap tabular-nums">{years}</span>
         ) : null}
       </span>
       {member.disambiguation ? (

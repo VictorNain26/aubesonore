@@ -22,7 +22,7 @@ const css = (
   await Promise.all(stylesheets.map(([, href]) => readFile(`dist${href}`, 'utf8')))
 ).join('\n');
 const titleFont = (await readdir('dist/assets')).find((f) =>
-  f.startsWith('bricolage-grotesque-latin-wght-normal-')
+  f.startsWith('fraunces-latin-opsz-normal-')
 );
 if (!titleFont) throw new Error('prerender: title font not found in dist/assets');
 const head = `<link rel="preload" href="/assets/${titleFont}" as="font" type="font/woff2" crossorigin />

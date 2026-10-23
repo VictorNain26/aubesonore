@@ -10,12 +10,12 @@ import * as m from '@/paraglide/messages.js';
 import { useHeaderOnScroll } from '../lib/headerOnScroll';
 
 const NAV_LINK =
-  'text-ui ease-out-quart focus-visible:outline-accent hidden min-h-11 items-center rounded-sm transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-97 md:inline-flex';
+  'text-ui ease-out-quart focus-visible:outline-accent hidden min-h-11 items-center transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-97 md:inline-flex';
 
 // The padding makes a 44 px target of the lockup (21 px on a phone, 25 wider); the margin keeps the
 // header's layout.
 const BRAND_LINK =
-  'focus-visible:outline-accent -my-3 flex flex-col gap-2 rounded-sm py-3 focus-visible:outline-2 focus-visible:outline-offset-4';
+  'focus-visible:outline-accent -my-3 flex flex-col gap-2 py-3 focus-visible:outline-2 focus-visible:outline-offset-4';
 
 const OUTLINE_PILL =
   'text-ui border-accent ease-out-quart hover:bg-accent hover:text-on-accent focus-visible:outline-accent inline-flex min-h-11 items-center rounded-full border px-4.5 transition-[color,background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
@@ -52,7 +52,7 @@ export function SiteHeader() {
   const brand = (
     <Link to={localizeHref('/')} className={BRAND_LINK}>
       {/* Under 22rem the lockup steps down a size, so Menu keeps the page's right gutter. */}
-      <Logo intro className="text-mark max-[22rem]:text-title h-[0.795em] self-start" />
+      <Logo intro className="text-mark max-[22rem]:text-title h-[0.839em] self-start" />
       <span className="sr-only">AubeSonore, </span>
       {/* On phones the line costs two rows above Écouter: it stays in the link's name only. */}
       <span

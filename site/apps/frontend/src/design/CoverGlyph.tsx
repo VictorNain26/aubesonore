@@ -33,7 +33,7 @@ export function CoverGlyph({ seed, size = 'sm', className }: CoverGlyphProps) {
 
   return (
     <div
-      className={cn(SIZE[size], tint, 'relative shrink-0 overflow-hidden rounded-sm', className)}
+      className={cn(SIZE[size], tint, 'relative shrink-0 overflow-hidden', className)}
       role="img"
       aria-label="Pochette indisponible"
     >

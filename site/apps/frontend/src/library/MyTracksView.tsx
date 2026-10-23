@@ -169,8 +169,8 @@ function Skeleton() {
     <ol aria-busy="true" className="m-0 list-none p-0">
       {Array.from({ length: 6 }, (_, i) => (
         <li key={i} className="border-border flex min-h-18 items-center gap-3 border-b py-2.5">
-          <span className="bg-surface-raised size-11 shrink-0 rounded-sm" />
-          <span className="bg-surface-raised h-4 w-1/2 rounded-sm" />
+          <span className="bg-surface-raised size-11 shrink-0" />
+          <span className="bg-surface-raised h-4 w-1/2" />
         </li>
       ))}
     </ol>
@@ -221,7 +221,7 @@ function SearchField({
 }
 
 const SORT_BUTTON =
-  'group text-label text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -mx-1 inline-flex min-h-11 items-center gap-1.5 justify-self-start rounded-sm px-1 font-mono uppercase transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
+  'group text-caption text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -mx-1 inline-flex min-h-11 items-center gap-1.5 justify-self-start px-1 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
 
 /**
  * The columns' names, each a sort: a click orders the list by it, a second click reverses it. On a
@@ -309,7 +309,7 @@ export function MyTracksView({
     >
       <div className="flex flex-col gap-3">
         {total > 0 ? (
-          <span className="text-label text-text-muted font-mono uppercase" aria-live="polite">
+          <span className="text-caption text-text-muted" aria-live="polite">
             {query.trim()
               ? m.library_count_filtered({ shown, count: total })
               : total > 1
@@ -318,7 +318,7 @@ export function MyTracksView({
           </span>
         ) : null}
         {/* Focusable by script only: it takes the focus a last removed row leaves. */}
-        <h1 tabIndex={-1} className="text-section m-0 outline-none">
+        <h1 tabIndex={-1} className="font-display text-section m-0 outline-none">
           {m.library_title()}
         </h1>
         <p className="text-intro text-text-muted max-w-blurb m-0">{m.library_body()}</p>

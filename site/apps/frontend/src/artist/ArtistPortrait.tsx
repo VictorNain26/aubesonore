@@ -129,7 +129,7 @@ export function ArtistPortrait({ images, name, seed }: ArtistPortraitProps) {
       <div
         aria-hidden="true"
         data-testid="artist-dawn"
-        className="artist-dawn rounded-sm"
+        className="artist-dawn"
         style={{ ...shapeOf(SQUARE), ...dawnOf(seed) }}
       />
     );
@@ -168,7 +168,7 @@ export function ArtistPortrait({ images, name, seed }: ArtistPortraitProps) {
       {usable.kind === 'photo' ? (
         <span
           aria-hidden="true"
-          className="bg-surface text-text-muted text-label absolute right-2 bottom-2 inline-flex size-6 items-center justify-center rounded-full font-mono"
+          className="bg-surface text-text-muted text-caption absolute right-2 bottom-2 inline-flex size-6 items-center justify-center rounded-full"
         >
           ©
         </span>

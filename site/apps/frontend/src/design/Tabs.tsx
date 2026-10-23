@@ -92,7 +92,7 @@ export function Tabs({
           hidden={tab.id !== selected}
           // Focusable, so that a keyboard reaches a panel whose first content is not a link.
           tabIndex={0}
-          className="focus-visible:outline-accent rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4"
+          className="focus-visible:outline-accent focus-visible:outline-2 focus-visible:outline-offset-4"
         >
           {tab.panel}
         </div>

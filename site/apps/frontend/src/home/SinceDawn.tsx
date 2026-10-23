@@ -49,7 +49,7 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
       className="wide:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] wide:gap-16 grid scroll-mt-10 gap-6"
     >
       <div className="reveal wide:sticky wide:top-below-header flex flex-col gap-2 self-start md:gap-3">
-        <h2 id="since-dawn-title" className="text-section m-0">
+        <h2 id="since-dawn-title" className="font-display text-section m-0">
           {m.since_dawn_title()}
         </h2>
         <p className="text-intro text-text-muted max-w-blurb m-0">{m.since_dawn_body()}</p>
@@ -60,7 +60,7 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
           <ol aria-busy="true" className="m-0 list-none p-0">
             {Array.from({ length: 6 }, (_, i) => (
               <li key={i} className="border-border flex min-h-16 items-center border-b">
-                <span className="bg-surface-raised h-4 w-2/3 rounded-sm" />
+                <span className="bg-surface-raised h-4 w-2/3" />
               </li>
             ))}
           </ol>
@@ -80,7 +80,7 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
               >
                 <span
                   className={cn(
-                    'text-ui font-mono whitespace-nowrap tabular-nums',
+                    'text-ui whitespace-nowrap tabular-nums',
                     row.isNow ? 'text-text' : 'text-text-muted font-normal'
                   )}
                 >

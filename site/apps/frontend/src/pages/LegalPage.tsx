@@ -36,7 +36,7 @@ export function LegalPage() {
       <SiteHeader />
       <main id="main" className="px-page flex flex-1 flex-col gap-12 py-16 md:py-28">
         <div className="flex flex-col gap-3">
-          <h1 className="text-section m-0">{m.legal_title()}</h1>
+          <h1 className="font-display text-section m-0">{m.legal_title()}</h1>
           <p className="text-text-muted m-0">{m.legal_updated()}</p>
         </div>
         <Section title={m.legal_publisher_title()}>

@@ -25,7 +25,6 @@ from pathlib import Path
 
 import uharfbuzz as hb
 from fontTools.pens.boundsPen import BoundsPen
-from fontTools.pens.pointInsidePen import PointInsidePen
 from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.transformPen import TransformPen
 from fontTools.ttLib import TTFont
@@ -34,15 +33,27 @@ from PIL import Image
 
 FRONTEND = Path(__file__).resolve().parent.parent
 FONTS = FRONTEND.parent.parent / "node_modules/@fontsource-variable"
-FONT = FONTS / "bricolage-grotesque/files/bricolage-grotesque-latin-wdth-normal.woff2"
+# Every axis of Fraunces, so the wordmark can be set at its own optical size and softness.
+FONT = FONTS / "fraunces/files/fraunces-latin-full-normal.woff2"
+# The site's own files, for the sharing cards: the titles' Fraunces and the text's Atkinson.
+TITLE_FONT = FONTS / "fraunces/files/fraunces-latin-opsz-normal.woff2"
+TEXT_FONT = FONTS / "atkinson-hyperlegible-next/files/atkinson-hyperlegible-next-latin-wght-normal.woff2"
 PUBLIC, SVG_OUT = FRONTEND / "public", FRONTEND / "brand/svg"
 ART_TS = FRONTEND / "src/design/logoArt.ts"
 
-# The palette's hex values (tokens.css is oklch; icons and older Cast devices want hex).
-PAPER, INK, DAWN, MUTED = "#E8E0D7", "#211F26", "#F2AC81", "#4A4650"
+# The day palette's hex values (tokens.css is oklch; icons want hex): --surface, --text, --dawn,
+# --text-muted, and the sky's rose and lilac that fringe the dawn.
+PAPER, INK, DAWN, MUTED = "#F1E5DC", "#1B233A", "#FCB17E", "#454B69"
+ROSE, LILAC = "#EDA3AF", "#A894C2"
 
-# The wordmark: Bricolage Grotesque at weight 500, width 85 %, tracking −1.5 %.
-WORD, WGHT, WDTH, TRACKING = "aubesonore", 500, 85, -0.015
+# The wordmark: Fraunces at its display size, weight 560, softness 60, without its wonky letters,
+# tracking −2 %.
+WORD, TRACKING = "aubesonore", -0.02
+AXES = {"opsz": 144, "wght": 560, "SOFT": 60, "WONK": 0}
+# The line's weight on the 512 grid: the « e »'s crossbar of the first wordmark (Bricolage
+# Grotesque, 62 units under a 702.2-unit « b »), kept so the symbol stays the same drawing whatever
+# the letters (README.md, Construction).
+STROKE = 150 * 62 / 702.2
 
 Point = tuple[float, float]
 
@@ -55,38 +66,15 @@ def f(v: float) -> str:
 
 
 def font_instance() -> TTFont:
-    return instantiateVariableFont(TTFont(FONT), {"wght": WGHT, "wdth": WDTH})
+    return instantiateVariableFont(TTFont(FONT), AXES)
 
 
 def measure(inst: TTFont) -> dict[str, float]:
-    """What the symbol is drawn from: the « b »'s ascender, the x-height and the « e »'s
-    crossbar, the thinnest stroke of the word (its délié)."""
+    """What the lockup is set from: the « b »'s ascender and the x-height."""
     gs, cmap = inst.getGlyphSet(), inst.getBestCmap()
-
-    def glyph(c: str):
-        return gs[cmap[ord(c)]]
-
-    def bounds(c: str):
-        pen = BoundsPen(gs)
-        glyph(c).draw(pen)
-        return pen.bounds
-
-    def inside(x: float, y: float) -> bool:
-        pen = PointInsidePen(gs, (x, y))
-        glyph("e").draw(pen)
-        return pen.getResult()
-
-    xmin, ymin, xmax, ymax = bounds("e")
-    x, runs, start = (xmin + xmax) / 2, [], None
-    for y in range(int(ymin), int(ymax) + 2):
-        if inside(x, y) and start is None:
-            start = y
-        elif not inside(x, y) and start is not None:
-            runs.append((start, y))
-            start = None
-    xheight = inst["OS/2"].sxHeight
-    crossbar = next(b - a for a, b in runs if a < xheight / 2 < b)
-    return {"ascender": bounds("b")[3], "xheight": xheight, "crossbar": crossbar}
+    pen = BoundsPen(gs)
+    gs[cmap[ord("b")]].draw(pen)
+    return {"ascender": pen.bounds[3], "xheight": inst["OS/2"].sxHeight}
 
 
 def glyphs(inst: TTFont) -> tuple[list[str], float]:
@@ -313,7 +301,7 @@ def main() -> None:
     metrics = measure(inst)
     letters, word_width = glyphs(inst)
     unit = metrics["ascender"] / 150  # font units per grid unit, once the sun's radius meets the « b »
-    t = metrics["crossbar"] / unit
+    t = STROKE
 
     master = Horizon(stroke=t, gap=t, peak=t, periods=2)
     px32 = Horizon(stroke=2, gap=2, peak=2, periods=1.5, sun_r=14, sun_cx=16, y=21, reach=1, caps="butt")
@@ -382,7 +370,9 @@ def main() -> None:
         render(icon_html(size, width), size, size, PUBLIC / name)
 
     # Sharing cards: the line of the hero, then the lockup at the foot, in the light of dawn.
-    faces = font_face("Bricolage", FONT, "font-weight:200 800;font-stretch:75% 100%")
+    faces = font_face("Fraunces", TITLE_FONT, "font-weight:100 900") + font_face(
+        "Atkinson", TEXT_FONT, "font-weight:200 800"
+    )
     lockup_px = 58
     for lang, title, sub in (
         ("fr", "Des titres à l’aube de vous plaire.", "Indé, électro, hip-hop, des années 60 à aujourd’hui."),
@@ -390,13 +380,13 @@ def main() -> None:
     ):
         logo = svg_doc(lockup_box, lockup_body("o", DAWN, INK, INK), lockup_px * lockup_box[2] / lockup_box[3], lockup_px)
         html = f"""<style>{faces}
-body{{background:{PAPER};font-family:Bricolage,sans-serif;color:{INK};position:relative}}
+body{{background:{PAPER};font-family:Atkinson,sans-serif;color:{INK};position:relative}}
 .glow{{position:absolute;inset:auto -10% -170px -10%;height:420px;background:
 radial-gradient(40% 46% at 30% 60%,color-mix(in oklab,{DAWN} 70%,transparent) 0%,transparent 72%),
-radial-gradient(26% 34% at 12% 58%,color-mix(in oklab,#E9C4CF 55%,transparent) 0%,transparent 72%),
-radial-gradient(24% 30% at 52% 62%,color-mix(in oklab,#D9D3E6 50%,transparent) 0%,transparent 72%);filter:blur(8px)}}
+radial-gradient(26% 34% at 12% 58%,color-mix(in oklab,{ROSE} 55%,transparent) 0%,transparent 72%),
+radial-gradient(24% 30% at 52% 62%,color-mix(in oklab,{LILAC} 50%,transparent) 0%,transparent 72%);filter:blur(8px)}}
 .text{{position:absolute;left:76px;top:70px;display:flex;flex-direction:column;gap:30px}}
-h1{{margin:0;width:15ch;font-size:80px;line-height:.98;font-weight:520;letter-spacing:-.032em;text-wrap:balance}}
+h1{{margin:0;width:15ch;font-family:Fraunces,serif;font-size:80px;line-height:.98;font-weight:460;letter-spacing:-.032em;text-wrap:balance}}
 p{{margin:0 0 0 2px;font-size:28px;line-height:1.3;color:{MUTED};font-weight:450}}
 .logo{{position:absolute;left:76px;bottom:78px}}</style>
 <div class="glow"></div><div class="text"><h1>{title}</h1><p>{sub}</p></div>
@@ -418,7 +408,7 @@ p{{margin:0 0 0 2px;font-size:28px;line-height:1.3;color:{MUTED};font-weight:450
         "// the rules and run the script again.\n"
         f"export const LOGO_ART = {json.dumps(art, ensure_ascii=False)} as const;\n"
     )
-    print(f"t = {t:.2f} on the 512 grid, {metrics['crossbar']:.0f} font units; lockup {lockup_box}")
+    print(f"t = {t:.2f} on the 512 grid, {t * unit:.0f} font units; lockup {lockup_box}")
 
 
 if __name__ == "__main__":

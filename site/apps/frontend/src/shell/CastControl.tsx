@@ -79,7 +79,7 @@ export function CastControl({
           collisionPadding={16}
           className="z-60"
         >
-          <Popover.Popup className="border-border bg-surface-raised text-text ease-out-quart flex w-[min(20rem,calc(100vw-2rem))] origin-(--transform-origin) flex-col gap-2 rounded-md border p-4 transition-[opacity,scale] duration-150 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
+          <Popover.Popup className="border-border bg-surface-raised text-text ease-out-quart flex w-[min(20rem,calc(100vw-2rem))] origin-(--transform-origin) flex-col gap-2 border p-4 transition-[opacity,scale] duration-150 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
             <Popover.Title className="text-ui m-0 font-semibold">
               {m.cast_none_title()}
             </Popover.Title>

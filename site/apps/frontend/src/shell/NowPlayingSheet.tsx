@@ -57,7 +57,7 @@ export function NowPlayingSheet({
       <Drawer.Portal>
         <Drawer.Backdrop className="sheet-backdrop bg-accent fixed inset-0 z-50 min-h-dvh" />
         <Drawer.Viewport className="fixed inset-0 z-50 flex items-end justify-center">
-          <Drawer.Popup className="sheet-popup bg-surface text-text shadow-lift relative w-full rounded-t-md px-6 pt-3 outline-none">
+          <Drawer.Popup className="sheet-popup bg-surface text-text shadow-lift relative w-full px-6 pt-3 outline-none">
             <span
               aria-hidden="true"
               className="bg-border mx-auto mb-6 block h-1 w-10 rounded-full"
@@ -77,7 +77,9 @@ export function NowPlayingSheet({
                 // down to its actions, then holds without scrolling.
                 className="shadow-cover mb-4 aspect-square w-[min(100%,36svh)] self-center"
               />
-              <Drawer.Title className="text-section m-0 text-balance">{track.title}</Drawer.Title>
+              <Drawer.Title className="font-display text-section m-0 text-balance">
+                {track.title}
+              </Drawer.Title>
               <p className="text-headline text-text-muted m-0 font-normal">
                 {artistHref ? (
                   <Link to={artistHref} className={cn(ARTIST_LINK, 'py-3 underline-offset-6')}>

@@ -187,7 +187,11 @@ export function HorizonLine({ isPlaying, className }: HorizonLineProps) {
     if (!canvas || !ctx) return;
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const ink = getComputedStyle(document.documentElement).getPropertyValue('--color-text').trim();
+    // The ink follows the device's day or night: read again, and drawn at once, when it turns.
+    const dark = window.matchMedia('(prefers-color-scheme: dark)');
+    const readInk = () =>
+      getComputedStyle(document.documentElement).getPropertyValue('--color-text').trim();
+    let ink = readInk();
     let motion: WaveMotion = {
       liveness: isPlayingRef.current ? 1 : 0,
       drift: LAYERS.map(() => 0),
@@ -285,6 +289,11 @@ export function HorizonLine({ isPlaying, className }: HorizonLineProps) {
     intersectionObserver.observe(canvas);
     document.addEventListener('visibilitychange', sync);
     reducedMotion.addEventListener('change', sync);
+    const turn = (): void => {
+      ink = readInk();
+      paint(performance.now());
+    };
+    dark.addEventListener('change', turn);
     sync();
     // The entrance reveals the line from 0.3 s (draw-in, tokens.css), while the first frame can
     // come long after, once the page has hydrated: drawn now, the reveal never uncovers an
@@ -297,6 +306,7 @@ export function HorizonLine({ isPlaying, className }: HorizonLineProps) {
       intersectionObserver.disconnect();
       document.removeEventListener('visibilitychange', sync);
       reducedMotion.removeEventListener('change', sync);
+      dark.removeEventListener('change', turn);
     };
   }, []);
 
