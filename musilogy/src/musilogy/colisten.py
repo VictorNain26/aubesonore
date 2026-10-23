@@ -1,4 +1,4 @@
-"""Our co-listening, « Écoutés ensemble » (docs/conception.md §2, `colisten`):
+"""Our co-listening, « Écoutés ensemble » (docs/conception.md §3, `colisten`):
 for each artist that at least MIN_LISTENERS ListenBrainz users listen to, its K
 closest artists by listeners in common, corrected for popularity.
 
