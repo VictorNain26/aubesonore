@@ -59,14 +59,12 @@ export const useAuthStore = create<AuthStore>((set) => ({
     });
   },
 
+  // Signed in only when Better Auth opened a session (a token); with email verification
+  // required it opens none until the link in the email is followed.
   signUp: async (email, password, name) => {
-    const response = await authApi.signUp(email, password, name);
-    set({
-      user: response.user,
-      isAuthenticated: true,
-      isLoading: false,
-      authError: null,
-    });
+    const { token, user } = await authApi.signUp(email, password, name);
+    if (token === null) return;
+    set({ user, isAuthenticated: true, isLoading: false, authError: null });
   },
 
   signOut: async () => {

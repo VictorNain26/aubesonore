@@ -14,8 +14,10 @@ export const handlers = [
       user: { id: 'u1', email: 'test@example.com', name: 'Test' },
     });
   }),
+  // Better Auth's answer under requireEmailVerification: the user, no token and no session cookie.
   http.post(`${API}/api/auth/sign-up/email`, () => {
     return HttpResponse.json({
+      token: null,
       user: { id: 'u1', email: 'test@example.com', name: 'Test' },
     });
   }),

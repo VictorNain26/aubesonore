@@ -51,12 +51,27 @@ describe('useAuthStore', () => {
     });
   });
 
-  it('signUp stores the returned user as authenticated', async () => {
-    vi.mocked(authApi.signUp).mockResolvedValue(session);
+  it('signUp without a token leaves the listener signed out until the email is verified', async () => {
+    // requireEmailVerification: Better Auth creates the user but opens no session.
+    vi.mocked(authApi.signUp).mockResolvedValue({ token: null, user });
+    useAuthStore.setState({ isLoading: false });
 
     await useAuthStore.getState().signUp('jane@example.com', 'password123', 'Jane');
 
     expect(authApi.signUp).toHaveBeenCalledWith('jane@example.com', 'password123', 'Jane');
+    expect(useAuthStore.getState()).toMatchObject({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      authError: null,
+    });
+  });
+
+  it('signUp with a token stores the returned user as authenticated', async () => {
+    vi.mocked(authApi.signUp).mockResolvedValue({ token: 'session-token', user });
+
+    await useAuthStore.getState().signUp('jane@example.com', 'password123', 'Jane');
+
     expect(useAuthStore.getState()).toMatchObject({
       user,
       isAuthenticated: true,
