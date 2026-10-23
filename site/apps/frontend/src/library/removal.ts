@@ -24,8 +24,8 @@ function commit(id: string): void {
   void useLikedTracksStore
     .getState()
     .unlikeTrack(id)
-    .then((removed) => {
-      if (!removed) toastError(m.library_remove_failed());
+    .then((outcome) => {
+      if (outcome !== 'done') toastError(m.library_remove_failed());
     });
 }
 

@@ -22,23 +22,42 @@ describe('likedTracksStore', () => {
       )
     );
 
-    await useLikedTracksStore.getState().likeTrack({
+    const outcome = await useLikedTracksStore.getState().likeTrack({
       title: 'T',
       artist: 'A',
       youtubeUrl: 'https://youtube.com/x',
     });
 
+    expect(outcome).toBe('failed');
     expect(useLikedTracksStore.getState().tracks).toHaveLength(0);
     expect(useLikedTracksStore.getState().error).not.toBeNull();
   });
 
-  it('keeps optimistic track on success and replaces temp id with server id', async () => {
-    await useLikedTracksStore.getState().likeTrack({
+  it('tells a keep refused for want of a session (401) from a failure', async () => {
+    server.use(
+      http.post('http://localhost:3000/api/track/like', () =>
+        HttpResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      )
+    );
+
+    const outcome = await useLikedTracksStore.getState().likeTrack({
       title: 'T',
       artist: 'A',
       youtubeUrl: 'https://youtube.com/x',
     });
 
+    expect(outcome).toBe('signed-out');
+    expect(useLikedTracksStore.getState().tracks).toHaveLength(0);
+  });
+
+  it('keeps optimistic track on success and replaces temp id with server id', async () => {
+    const outcome = await useLikedTracksStore.getState().likeTrack({
+      title: 'T',
+      artist: 'A',
+      youtubeUrl: 'https://youtube.com/x',
+    });
+
+    expect(outcome).toBe('done');
     const tracks = useLikedTracksStore.getState().tracks;
     expect(tracks).toHaveLength(1);
     expect(tracks[0]?.id).toBe('t1');
@@ -70,8 +89,9 @@ describe('likedTracksStore', () => {
       )
     );
 
-    await useLikedTracksStore.getState().unlikeTrack('existing-1');
+    const outcome = await useLikedTracksStore.getState().unlikeTrack('existing-1');
 
+    expect(outcome).toBe('failed');
     const tracks = useLikedTracksStore.getState().tracks;
     expect(tracks).toHaveLength(1);
     expect(tracks[0]?.id).toBe('existing-1');

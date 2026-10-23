@@ -19,6 +19,8 @@ interface AuthActions {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** The server no longer knows the session (a 401): the page stops showing the listener signed in. */
+  sessionEnded: () => void;
 }
 
 export type AuthStore = AuthState & AuthActions;
@@ -69,6 +71,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   signOut: async () => {
     await authApi.signOut();
+    set({ user: null, isAuthenticated: false, isLoading: false, authError: null });
+  },
+
+  sessionEnded: () => {
     set({ user: null, isAuthenticated: false, isLoading: false, authError: null });
   },
 }));

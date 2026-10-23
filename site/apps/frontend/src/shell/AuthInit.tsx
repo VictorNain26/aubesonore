@@ -16,7 +16,7 @@ async function keepPendingTrack(): Promise<void> {
   await useLikedTracksStore.getState().refresh();
   const { tracks, likeTrack } = useLikedTracksStore.getState();
   if (isTrackLiked(tracks, request.title, request.artist)) return;
-  if (await likeTrack(request)) toast.success(m.toast_kept());
+  if ((await likeTrack(request)) === 'done') toast.success(m.toast_kept());
 }
 
 export function AuthInit(): null {
