@@ -172,7 +172,7 @@ export function AuthPage() {
         resetForm();
         setMode('verification-sent');
       } else if (mode === 'forgot') {
-        await authApi.forgetPassword(email);
+        await authApi.requestPasswordReset(email);
         setPendingEmail(email);
         resetForm();
         setMode('reset-sent');

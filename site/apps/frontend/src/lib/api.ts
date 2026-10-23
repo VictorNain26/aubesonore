@@ -139,20 +139,17 @@ export const authApi = {
     });
   },
 
-  forgetPassword: async (email: string): Promise<void> => {
+  requestPasswordReset: async (email: string): Promise<void> => {
     // Better Auth appends ?token=<TOKEN> (or ?error=INVALID_TOKEN) to redirectTo.
     // /reset-password is the sign-in page in its new-password form.
-    const response = await fetch(`${API_BASE_URL}/api/auth/forget-password`, {
+    const response = await fetch(`${API_BASE_URL}/api/auth/request-password-reset`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, redirectTo: `${window.location.origin}/reset-password` }),
     });
-    if (!response.ok && response.status !== 404) {
-      // 404 is returned when the email isn't registered — treat as success to
-      // avoid email enumeration. Other errors bubble up.
-      throw await authError(response, m.error_request_failed);
-    }
+    // An unknown address gets the same 200 as a known one, so a failure is never an answer.
+    if (!response.ok) throw await authError(response, m.error_request_failed);
   },
 
   resetPassword: async (token: string, newPassword: string): Promise<void> => {

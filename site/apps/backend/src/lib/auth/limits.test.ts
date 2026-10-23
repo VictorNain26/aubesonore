@@ -10,7 +10,7 @@ function makeAuth() {
     baseURL: 'http://localhost:3000',
     secret: 'test-secret-test-secret-test-secret-32',
     database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
-    emailAndPassword: { enabled: true },
+    emailAndPassword: { enabled: true, sendResetPassword: async () => {} },
     rateLimit: AUTH_RATE_LIMIT,
     advanced: { ipAddress: AUTH_CLIENT_IP },
   });
@@ -47,5 +47,23 @@ describe('sign-in limits', () => {
     // Chains of two, as a proxy on the way writes them: read alone, they would share one bucket.
     for (let i = 0; i < 5; i++) await signIn(auth, '203.0.113.7', '10.0.0.2, 203.0.113.7');
     expect((await signIn(auth, '203.0.113.8', '10.0.0.2, 203.0.113.8')).status).not.toBe(429);
+  });
+});
+
+describe('password reset limits', () => {
+  it('count the route the reset form calls, three a minute per client', async () => {
+    const auth = makeAuth();
+    const statuses: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      const response = await auth.handler(
+        new Request('http://localhost:3000/api/auth/request-password-reset', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.7' },
+          body: JSON.stringify({ email: 'listener@example.com' }),
+        })
+      );
+      statuses.push(response.status);
+    }
+    expect(statuses).toEqual([200, 200, 200, 429]);
   });
 });
