@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
@@ -8,6 +8,11 @@ import { MemoryRouter, Route, Routes } from 'react-router';
 import { AuthInit } from '../shell/AuthInit';
 import { useAuthStore } from '../stores/authStore';
 import { AuthPage } from './AuthPage';
+import { toast } from 'sonner';
+
+vi.mock('sonner', () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}));
 
 function open(entry: string | { pathname: string; search?: string; state?: unknown }) {
   useAuthStore.setState({ user: null, isLoading: true, isAuthenticated: false, authError: null });
@@ -88,7 +93,7 @@ describe('AuthPage', () => {
   it('says where the reset link went, and leads back to sign-in', async () => {
     let asked: unknown = null;
     server.use(
-      http.post('http://localhost:3000/api/auth/forget-password', async ({ request }) => {
+      http.post('http://localhost:3000/api/auth/request-password-reset', async ({ request }) => {
         asked = await request.json();
         return HttpResponse.json({ status: true });
       })
@@ -102,7 +107,10 @@ describe('AuthPage', () => {
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Vérifiez votre boîte mail' })
     ).toBeInTheDocument();
-    expect(asked).toMatchObject({ email: 'jane@example.com' });
+    expect(asked).toEqual({
+      email: 'jane@example.com',
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
     // One sentence: the address, a comma, then what waits in the inbox.
     const sentence =
       'Si un compte existe pour jane@example.com, un e-mail vous attend avec un lien pour choisir un nouveau mot de passe.';
@@ -112,5 +120,32 @@ describe('AuthPage', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Retour à la connexion' }));
     expect(screen.getByRole('heading', { level: 1, name: 'Se connecter' })).toBeInTheDocument();
+  });
+
+  it('keeps the form and says so when the reset request fails, even with a 404', async () => {
+    server.use(
+      http.post(
+        'http://localhost:3000/api/auth/request-password-reset',
+        () => new HttpResponse(null, { status: 404 })
+      )
+    );
+    open('/connexion');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mot de passe oublié ?' }));
+    await userEvent.type(screen.getByLabelText('Adresse e-mail'), 'jane@example.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Envoyer le lien' }));
+
+    await vi.waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        "La demande n'a pas abouti. Réessayez dans un instant.",
+        expect.anything()
+      )
+    );
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Mot de passe oublié' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { level: 1, name: 'Vérifiez votre boîte mail' })
+    ).not.toBeInTheDocument();
   });
 });
