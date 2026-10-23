@@ -1,3 +1,4 @@
+import { PASSWORD_MIN_LENGTH } from '@aubesonore/shared-types/auth';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 
@@ -50,6 +51,9 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    // Stated, not left to Better Auth's default (8, with a maximum of 128: better-auth
+    // dist/context/create-context.mjs): the forms read the same constant.
+    minPasswordLength: PASSWORD_MIN_LENGTH,
 
     sendResetPassword: async ({ user, url }, request): Promise<void> => {
       await sendBetterAuthEmail({

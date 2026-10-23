@@ -6,6 +6,7 @@ import type {
   User,
 } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
+import { PASSWORD_MIN_LENGTH } from '@aubesonore/shared-types/auth';
 
 export type {
   ClientLikedTrack as LikedTrack,
@@ -70,7 +71,7 @@ const AUTH_ERRORS: Record<string, () => string> = {
   USER_ALREADY_EXISTS: m.auth_error_exists,
   USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: m.auth_error_exists,
   INVALID_EMAIL: m.auth_error_email_invalid,
-  PASSWORD_TOO_SHORT: m.auth_error_password_length,
+  PASSWORD_TOO_SHORT: () => m.auth_error_password_length({ min: PASSWORD_MIN_LENGTH }),
   PASSWORD_TOO_LONG: m.auth_error_password_long,
   INVALID_TOKEN: m.error_link_invalid,
   TOKEN_EXPIRED: m.error_link_invalid,

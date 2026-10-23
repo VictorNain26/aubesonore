@@ -62,6 +62,29 @@ describe('AuthPage', () => {
     expect(await screen.findByLabelText('Nom')).toBeInTheDocument();
   });
 
+  it.each([
+    { form: 'sign-up', entry: { pathname: '/connexion' }, signUp: true },
+    {
+      form: 'a new password',
+      entry: { pathname: '/reset-password', search: '?token=some-token' },
+      signUp: false,
+    },
+  ])('asks for 8 characters on $form, the server minimum', async ({ entry, signUp }) => {
+    open(entry);
+    if (signUp) await userEvent.click(screen.getByRole('button', { name: 'Créer un compte' }));
+    const passwordInput = await screen.findByLabelText('Mot de passe');
+    expect(passwordInput).toHaveAttribute('minlength', '8');
+    const tooShort = 'Le mot de passe doit contenir au moins 8 caractères.';
+
+    await userEvent.type(passwordInput, 'abc1234');
+    await userEvent.tab();
+    expect(screen.getByText(tooShort)).toBeInTheDocument();
+    expect(passwordInput).toHaveAttribute('aria-invalid', 'true');
+
+    await userEvent.type(passwordInput, '5');
+    expect(screen.queryByText(tooShort)).not.toBeInTheDocument();
+  });
+
   it('goes back to the page the listener came from once signed in', async () => {
     open({ pathname: '/connexion', state: { from: '/artist/a-1/mickey-3d' } });
 
@@ -96,7 +119,7 @@ describe('AuthPage', () => {
       screen.getByRole('heading', { level: 1, name: 'Nouveau mot de passe' })
     ).toBeInTheDocument();
     const passwordInput = screen.getByLabelText('Mot de passe');
-    expect(passwordInput).toHaveAccessibleDescription('6 caractères minimum.');
+    expect(passwordInput).toHaveAccessibleDescription('8 caractères minimum.');
     const confirmInput = screen.getByLabelText('Confirmer le mot de passe');
 
     await userEvent.type(passwordInput, 'password123');
