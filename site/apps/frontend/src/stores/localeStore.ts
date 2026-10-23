@@ -32,7 +32,7 @@ interface LocaleState {
   locale: Locale;
   /** The listener's choice, remembered; the URL follows it through the router (useSwitchLocale). */
   setLocale: (locale: Locale) => void;
-  /** Back and forward can land on a URL of the other language: follow it. */
+  /** Back and forward can land on a URL of the other language: follow it, and say it on <html>. */
   syncWithUrl: () => void;
 }
 
@@ -50,9 +50,11 @@ export const useLocaleStore = create<LocaleState>((set, get) => ({
   },
   syncWithUrl: () => {
     const locale = extractLocaleFromUrl(window.location.href) ?? baseLocale;
+    // Set even when the language is unchanged: on the first load of an English URL the store is
+    // already English while the HTML served for it may say French (the dev server's index.html).
+    document.documentElement.lang = locale;
     if (locale === get().locale) return;
     void setParaglideLocale(locale, { reload: false });
-    document.documentElement.lang = locale;
     set({ locale });
   },
 }));
