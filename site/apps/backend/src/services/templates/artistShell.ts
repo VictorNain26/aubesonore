@@ -180,3 +180,49 @@ export function renderArtistShell(
     .transform(new Response(shell, { headers: { 'content-type': 'text/html' } }))
     .text();
 }
+
+// The frontend's not-found page says the same (message notfound_meta_title).
+const NOT_FOUND_TITLE: Record<SiteLocale, string> = {
+  fr: 'Page introuvable · AubeSonore',
+  en: 'Page not found · AubeSonore',
+};
+
+/**
+ * The shell of an unknown artist's 404, in the page's language: it says the page is not found
+ * and stays out of search results. The home page's canonical, og:url and description go: kept,
+ * they would declare the 404 a copy of the home page. The client draws the not-found screen.
+ */
+export function renderMissingShell(shell: string, locale: SiteLocale): Promise<string> {
+  const title = NOT_FOUND_TITLE[locale];
+  return new HTMLRewriter()
+    .on('html', {
+      element(element) {
+        element.setAttribute('lang', locale);
+      },
+    })
+    .on('title', {
+      element(element) {
+        element.setInnerContent(title);
+      },
+    })
+    .on('meta[property="og:title"], meta[name="twitter:title"]', {
+      element(element) {
+        element.setAttribute('content', title);
+      },
+    })
+    .on('link[rel="canonical"]', {
+      element(element) {
+        element.replace('<meta name="robots" content="noindex" />', { html: true });
+      },
+    })
+    .on(
+      'meta[property="og:url"], meta[name="description"], meta[property="og:description"], meta[name="twitter:description"]',
+      {
+        element(element) {
+          element.remove();
+        },
+      }
+    )
+    .transform(new Response(shell, { headers: { 'content-type': 'text/html' } }))
+    .text();
+}
