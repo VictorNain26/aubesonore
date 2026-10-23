@@ -12,6 +12,7 @@ import { forgetHomeData } from '../lib/homeData';
 import { useLocaleStore } from '../stores/localeStore';
 import type { NowPlaying } from '../lib/azuracast';
 import { routes } from '../routes';
+import { PAGE_TEST_TIMEOUT, settle } from '../mocks/settle';
 
 const API = 'http://localhost:3000';
 
@@ -19,9 +20,12 @@ const API = 'http://localhost:3000';
  * The site at its home page, its routes and loaders as it serves them, in the browser's history:
  * the page's language is its URL's (Paraglide), which the router moves.
  */
-function openHome() {
+async function openHome() {
   window.history.replaceState(null, '', '/');
-  return render(<RouterProvider router={createBrowserRouter(routes)} />);
+  const router = createBrowserRouter(routes);
+  render(<RouterProvider router={router} />);
+  await settle(router);
+  return router;
 }
 
 beforeEach(() => {
@@ -56,26 +60,27 @@ afterEach(() => {
   useLocaleStore.getState().setLocale('fr');
 });
 
-describe('HomePage', () => {
+describe('HomePage', { timeout: PAGE_TEST_TIMEOUT }, () => {
   it('puts the promise, the track on air, the thread and the ranking on one page', async () => {
-    openHome();
+    await openHome();
 
     expect(
-      await screen.findByRole('heading', { name: /Des titres à l'aube de vous plaire\./ })
+      screen.getByRole('heading', { name: /Des titres à l'aube de vous plaire\./ })
     ).toBeInTheDocument();
     expect(screen.getAllByText('Nüchtern').length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: "Depuis l'aube" })).toBeInTheDocument();
-    expect(await screen.findByText('Oh No')).toBeInTheDocument();
+    expect(screen.getByText('Oh No')).toBeInTheDocument();
     expect(screen.getByText('gardé 2 fois')).toBeInTheDocument();
   });
 
   it('switches the page to English from the footer', async () => {
-    openHome();
+    const router = await openHome();
 
-    await userEvent.click(await screen.findByRole('link', { name: 'en' }));
+    await userEvent.click(screen.getByRole('link', { name: 'en' }));
+    await settle(router);
 
     expect(
-      await screen.findByRole('heading', { name: /The first light of your next favourite songs\./ })
+      screen.getByRole('heading', { name: /The first light of your next favourite songs\./ })
     ).toBeInTheDocument();
   });
 });

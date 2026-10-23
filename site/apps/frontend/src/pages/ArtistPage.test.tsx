@@ -12,6 +12,7 @@ import {
   seedArtistPage,
 } from '../lib/artistPageData';
 import { ArtistPage } from './ArtistPage';
+import { PAGE_TEST_TIMEOUT, settle } from '../mocks/settle';
 
 /** The page at `path`, through its route and its loader, as the site serves it (routes.tsx). */
 function open(path: string) {
@@ -19,27 +20,27 @@ function open(path: string) {
     [{ path: '/artiste/:slug', Component: ArtistPage, loader: artistLoader }],
     { initialEntries: [path] }
   );
-  return render(<RouterProvider router={router} />);
+  render(<RouterProvider router={router} />);
+  return router;
 }
 
-describe('ArtistPage', () => {
+describe('ArtistPage', { timeout: PAGE_TEST_TIMEOUT }, () => {
   it('loads the profile of the slug in the url', async () => {
-    open('/artiste/hania-rani');
+    await settle(open('/artiste/hania-rani'));
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Hania Rani' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Hania Rani' })).toBeInTheDocument();
     // Set by an effect after the heading renders: what the server's <title> says (artistPageName).
     await waitFor(() => expect(document.title).toBe('Hania Rani (artiste, Pologne) · AubeSonore'));
   });
 
   it('is drawn once its data has come, content and footer together', async () => {
     // An artist no earlier test opened: a page seen before comes back at once.
-    open('/artiste/nils-frahm');
+    const router = open('/artiste/nils-frahm');
 
     // Nothing of the page before its loader answers: no footer pushed down by what comes after.
     expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument();
-    await screen.findByRole('heading', { level: 1 });
+    await settle(router);
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
   });
 
@@ -69,11 +70,9 @@ describe('ArtistPage', () => {
     if (!data) throw new Error('no embedded data');
     seedArtistPage(data);
 
-    open('/artiste/rendu-serveur');
+    await settle(open('/artiste/rendu-serveur'));
 
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Rendu Serveur' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Rendu Serveur' })).toBeInTheDocument();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
   });
 
@@ -95,33 +94,29 @@ describe('ArtistPage', () => {
       musilogy: null,
     });
 
-    open('/artiste/deja-la');
+    await settle(open('/artiste/deja-la'));
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Déjà Là' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Déjà Là' })).toBeInTheDocument();
   });
 
   it('shows the not-found state for a slug the API does not know, with the way back', async () => {
-    open('/artiste/nope');
+    await settle(open('/artiste/nope'));
 
-    expect(
-      await screen.findByRole('heading', { name: 'Artiste introuvable.' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Artiste introuvable.' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Revenir au direct' })).toHaveAttribute('href', '/');
     await waitFor(() => expect(document.title).toBe('Page introuvable · AubeSonore'));
   });
 
   it('shows the not-found state for a slug the API rejects as malformed', async () => {
-    open('/artiste/malformed');
+    await settle(open('/artiste/malformed'));
 
-    expect(
-      await screen.findByRole('heading', { name: 'Artiste introuvable.' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Artiste introuvable.' })).toBeInTheDocument();
   });
 
   it('shows the player bar, since no hero carries the listen button here', async () => {
     useHeroListenVisible.setState({ visible: true });
 
-    open('/artiste/hania-rani');
+    await settle(open('/artiste/hania-rani'));
 
     await waitFor(() => expect(useHeroListenVisible.getState().visible).toBe(false));
   });
