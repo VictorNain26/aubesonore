@@ -97,6 +97,7 @@
   "since_dawn_more": "Earlier today",
   "since_dawn_empty": "Nothing played yet today.",
   "since_dawn_error": "Today's history is unavailable for now.",
+  "since_dawn_partial": "The rest of today is unavailable for now.",
   "most_kept_title": "Most kept",
   "most_kept_body": "The tracks listeners kept most.",
   "most_kept_period": "Period",

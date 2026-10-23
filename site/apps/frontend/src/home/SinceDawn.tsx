@@ -145,6 +145,9 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
           >
             {m.since_dawn_more()}
           </button>
+        ) : status === 'error' && rows.length > 0 ? (
+          // Only the live feed's tracks came: say the day goes on further than the list.
+          <p className="text-text-muted mt-5 mb-0 md:ml-29 lg:ml-42">{m.since_dawn_partial()}</p>
         ) : null}
       </div>
     </section>

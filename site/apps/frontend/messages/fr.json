@@ -97,6 +97,7 @@
   "since_dawn_more": "Plus tôt dans la journée",
   "since_dawn_empty": "Rien n'est encore passé aujourd'hui.",
   "since_dawn_error": "L'historique du jour est indisponible pour l'instant.",
+  "since_dawn_partial": "Le reste de la journée est indisponible pour l'instant.",
   "most_kept_title": "Les plus gardés",
   "most_kept_body": "Les titres que les auditeurs ont le plus gardés.",
   "most_kept_period": "Période",
