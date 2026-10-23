@@ -6,7 +6,9 @@ paths:
 
 # musilogy
 
-Les chemins ci-dessous sont relatifs à `musilogy/`.
+Les chemins ci-dessous sont relatifs à `musilogy/` ; les commandes partent de la
+racine de la worktree, où Claude Code est lancé (`CLAUDE.md` racine), par
+`uv --directory musilogy run …`.
 
 Les données de Musilogy (`docs/vision.md` à la racine, §2), produites hors
 ligne depuis des sources épinglées et transformées en tables Parquet
@@ -85,22 +87,8 @@ libérées dès qu'elles ne servent plus.
 
 ## Commandes
 
-```bash
-# Depuis la racine de la worktree, où Claude Code est lancé (CLAUDE.md racine) :
-# uv --directory musilogy run … ; ci-dessous, la commande seule.
-uv sync
-uv run pytest                 # suite rapide, sur les témoins
-uv run ruff check && uv run ruff format --check && uv run mypy  # les contrôles de la CI ; `mypy src` seul saute les tests
-uv run musilogy run           # fetch → extract → transform → validate → compare → publish (relevés épinglés exigés)
-uv run musilogy snapshot-popularity  # relevé ListenBrainz daté, à épingler
-uv run musilogy snapshot-official    # disques officiels MusicBrainz, des dizaines d'heures, reprenable
-uv run musilogy snapshot-discography # disques classés par Wikidata, à épingler
-uv run musilogy snapshot-listens <ref>  # toutes les écoutes ListenBrainz (archive lue en flux), à épingler
-uv run musilogy make-fixtures # depuis les extractions et les relevés épinglés
-uv run musilogy load          # charge data/out/ dans la base du site (environnement libpq)
-uv run musilogy load --sample # charge le pipeline passé sur les fixtures : la petite Musilogy d'un poste
-MUSILOGY_TEST_PG='host=… dbname=…' uv run pytest  # tests Postgres compris : un Postgres jetable, jamais celui du site
-```
+Installation, tests (Postgres compris), contrôles de la CI et commandes du
+pipeline : `README.md`, « Installation, tests, exécution ».
 
 Charger la base du site, depuis victorserv (le port de `aubesonore-db` n'est
 publié que sur `127.0.0.1:5433`, et `pg_hba.conf` impose TLS ; le certificat
@@ -111,7 +99,7 @@ PGPASSWORD="$(grep '^POSTGRES_PASSWORD=' ~/aubesonore/site/.env | cut -d= -f2-)"
 PGHOST=localhost PGPORT=5433 PGUSER=aubesonore PGDATABASE=aubesonore \
 PGSSLMODE=verify-full PGSSLROOTCERT=~/aubesonore/site/certs/ca.crt \
 systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=0 \
-  nice -n 10 uv run musilogy load
+  nice -n 10 uv --directory musilogy run musilogy load
 ```
 
 ## Travaux lourds sur victorserv
@@ -123,7 +111,7 @@ l'a déjà gelée.
 
 ```bash
 systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=0 \
-  nice -n 10 uv run musilogy run
+  nice -n 10 uv --directory musilogy run musilogy run
 ```
 
 - La co-écoute sur toutes les écoutes demande plus : `musilogy run` part alors

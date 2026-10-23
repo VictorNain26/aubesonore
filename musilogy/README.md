@@ -10,35 +10,20 @@ Produit, hors ligne et depuis des sources épinglées et datées, les données d
 
 ## Les dix tables
 
-Le nombre de lignes de chaque table est dans le `manifest.json` de sa livraison (`counts`) :
+Le nombre de lignes de chaque table est dans le `manifest.json` de sa livraison (`counts`) ; ses colonnes, dans le fichier qui la construit (`src/musilogy/`), et ses invariants dans `sql/90_invariants.sql` :
 
-| Table | Contenu |
-|---|---|
-| `artists` | un artiste, de tout type MusicBrainz ou sans type, hors artistes à usage spécial : ses preuves de dates, sa ligne de vie dérivée, ses styles Discogs |
-| `albums` | une sortie d'album créditée à un seul artiste ; non chargée dans le site, elle sert les dates |
-| `links` | un lien typé entre deux artistes qu'une page montre — appartenance, pseudonyme, changement de nom —, avec ses années |
-| `popularity` | les écoutes ListenBrainz d'un artiste, relevées à une date |
-| `releases` | un album ou un EP crédité à un artiste, dont les types secondaires se limitent à bande originale et remix ; une ligne par artiste crédité |
-| `urls` | une page web qu'une page artiste utilise parmi celles que MusicBrainz relie à un artiste (plateforme d'écoute, site officiel, Wikidata), terminées comprises |
-| `colisten` | un voisin « Écoutés ensemble » d'un artiste, selon notre co-écoute, avec ses auditeurs communs, son score et son rang |
-| `styles` | un style Discogs des disques d'un artiste, par décennie de première édition, compté en disques ; non chargée dans le site |
-| `same_sound` | un voisin « Même son » d'un artiste : une couleur proche de la sienne, avec son score, son rang et sa raison |
-| `credits` | deux artistes crédités ensemble sur des disques, avec leur nombre, dans les deux sens |
-
-Colonnes réelles (voir `src/musilogy/sql/`) :
-
-- **`artists`** : `mbid`, `name`, `disambiguation`, `name_key`, `type`, `y0_declared`, `y_end_declared`, `y_birth`, `ended`, `country`, `begin_area`, `begin_area_mbid`, `y_first_album`, `y_last_album`, `y0`, `y0_source`, `y_end`, `y_end_source`, `styles` (liste de `{style, records}`, triée, vide sans Discogs).
-- **`albums`** : `artist_mbid`, `rg_mbid`, `title`, `y`, `soundtrack`.
-- **`links`** : `src_mbid`, `dst_mbid`, `type`, `y_begin`, `y_end`.
-- **`popularity`** : `mbid`, `listen_count`, `user_count`, `snapshot`.
-- **`releases`** : `artist_mbid`, `rg_mbid`, `title`, `primary_type` (`Album` ou `EP`), `soundtrack`, `remix`, `y`, `filed_original` (Wikidata le classe album studio ou EP), `official` (MusicBrainz y relève une édition officielle, `snapshot-official`).
-- **`urls`** : `artist_mbid`, `type` (type de relation MusicBrainz), `url`, `ended`.
-- **`colisten`** : `artist_mbid`, `neighbour_mbid`, `common`, `score`, `rank`.
-- **`styles`** : `artist_mbid`, `decade` (NULL pour un disque sans édition datée), `style`, `records`.
-- **`same_sound`** : `artist_mbid`, `neighbour_mbid`, `rank`, `score`, `term` (le style de la raison).
-- **`credits`** : `artist_mbid`, `other_mbid`, `records`.
-
-`name_key` est la clé de recherche d'un nom tapé : `strip_accents(lower(name))`, « bjork » trouve Björk.
+| Table | Contenu | Construite par |
+|---|---|---|
+| `artists` | un artiste, de tout type MusicBrainz ou sans type, hors artistes à usage spécial : ses preuves de dates, sa ligne de vie dérivée, ses styles Discogs | `sql/10_bands.sql`, complétée par `20_albums`, `30_bands_lifespan` et `84_discogs` |
+| `albums` | une sortie d'album créditée à un seul artiste ; non chargée dans le site, elle sert les dates | `sql/20_albums.sql` |
+| `links` | un lien typé entre deux artistes qu'une page montre — appartenance, pseudonyme, changement de nom —, avec ses années | `sql/80_links.sql` |
+| `popularity` | les écoutes ListenBrainz d'un artiste, relevées à une date | `sql/87_popularity.sql` |
+| `releases` | un album ou un EP crédité à un artiste, dont les types secondaires se limitent à bande originale et remix ; une ligne par artiste crédité | `sql/22_releases.sql` |
+| `urls` | une page web qu'une page artiste utilise parmi celles que MusicBrainz relie à un artiste (plateforme d'écoute, site officiel, Wikidata), terminées comprises | `sql/82_urls.sql` |
+| `colisten` | un voisin « Écoutés ensemble » d'un artiste, selon notre co-écoute, avec ses auditeurs communs, son score et son rang | `colisten.py` |
+| `styles` | un style Discogs des disques d'un artiste, par décennie de première édition, compté en disques ; non chargée dans le site | `sql/84_discogs.sql` |
+| `same_sound` | un voisin « Même son » d'un artiste : une couleur proche de la sienne, avec son score, son rang et sa raison | `samesound.py` |
+| `credits` | deux artistes crédités ensemble sur des disques, avec leur nombre, dans les deux sens | `sql/86_credits.sql` |
 
 ## Les règles
 
@@ -112,14 +97,11 @@ Ces empreintes de sortie sont opposables parce que la livraison est reproductibl
 
 Les tables de `load.TABLES` sont chargées, plus `manifest` (dump, relevés, commit) ; les autres restent en Parquet tant qu'aucune fonction ne les lit, et un score de voisin, qui le range dans la construction, ne se charge pas (`load.PROJECTIONS`). La liste des styles d'un artiste, que Postgres ne sait pas typer en structure anonyme, devient du `jsonb`. `20_search.sql` en tire `search`, la projection étroite de la recherche (`name_key` en collation C, nombre d'auditeurs, MBID), rangée par `name_key`. Mesuré sur un Postgres 16 jetable, avec le dump de référence : 408 s de chargement, 1 259 Mo en tout, dont 192 Mo et 68 Mo d'index pour la projection de recherche. Avec `releases` et `urls` (2026-10-05, sur victorserv) : 214 s, 2 667 Mo, dont 549 Mo pour `releases` et 274 Mo pour `urls`.
 
-**Ce que lit le site : des fonctions, pas des tables.** Il appelle les fonctions de `pg/90_*.sql`, testées ici contre Postgres, et dépend de leurs signatures, pas de la disposition des tables. Le contrat complet est `docs/conception.md` §4.
+**Ce que lit le site : des fonctions, pas des tables.** Il appelle les fonctions de `pg/90_*.sql`, testées ici contre Postgres, et dépend de leurs signatures, pas de la disposition des tables. Leur liste et ce que chacune donne : `docs/conception.md` §4. Ce qu'elles ont donné, mesuré :
 
-- `artist_card(mbid)` donne la fiche.
-- Les groupes et projets, en deux rubriques plutôt que les types MusicBrainz, les membres (suivis de leurs autres groupes et projets) et les autres noms (docs/vision.md §2.4). `artist_bands(mbid)` donne les membres d'un groupe (`member`) ou les groupes d'une personne (`group`), membre, fondateur et collaboration confondus, une ligne par artiste de la première année déclarée à la dernière. `artist_member_projects(mbid)` donne, à deux pas d'un groupe, les autres groupes de ses membres et les noms sous lesquels ils jouent, seulement ceux qui ont un disque (`artist_releases`), sans l'artiste, ses membres, ses anciens ou nouveaux noms ni les projets auxquels il prend part lui-même (Stereolab dans Uilab, le seul cas chez les 336 artistes joués), avec les membres qui y mènent (`via`), du plus ancien au plus récent. `artist_other_names(mbid)` donne les pseudonymes (`alias`), la personne derrière un pseudonyme (`person`) et les changements de nom (`former`, `later`). Mesuré le 2026-10-05 sur les 336 artistes joués : 161 ont des membres, 129 au moins un projet de membre qui a un disque (médiane 5, 90e centile 18, au plus 65 pour Underground Resistance), 53 d'autres noms ; de Stereolab à McCarthy (Lætitia Sadier, Tim Gane), Monade, Cavern of Anti-Matter, de The Notwist à Lali Puna et 13 & God. Les projets des 336 se calculent en 2 s au total sur le Postgres jetable, 0,3 s pour Underground Resistance.
-- `artist_same_sound(mbid)`, `artist_colisten(mbid)` et `artist_credits(mbid)` donnent les onglets « Même son », « Écoutés ensemble » et les crédités ensemble de la filiation, dont les groupes et autres noms viennent des fonctions ci-dessus.
-- `artist_releases(mbid)` donne l'œuvre que la page montre (docs/vision.md §2.4) : albums studio, bandes originales et remix, EP à partir du premier album (tous les EP d'un artiste sans album), rien après la fin déclarée d'un groupe sauf ce que Wikidata classe album studio ou EP, et un disque sans année seulement s'il est ainsi classé, en dernier ; du plus récent au plus ancien. Pour les Beatles, de *Let It Be* à *Please Please Me* (1970-1963). `artist_urls(mbid)` ses pages encore à lui (relation non terminée), par type puis URL. Moins d'une milliseconde, cache chaud, sur les Rolling Stones.
-- `artist_homonym_rank(mbids)` donne le rang de chaque artiste parmi ceux de son nom exact (`name_key`), les plus écoutés d'abord : le site en tire l'adresse de chaque page (docs/vision.md §5).
-- `search_artists(requête, taille)` cherche par préfixe du nom normalisé, les plus écoutés d'abord (`user_count`), ceux que ListenBrainz ne connaît pas en dernier, puis par nom et MBID. La requête est normalisée comme `name_key` (`strip_accents(lower(name))` dans DuckDB) par `musilogy.name_key(text)` : minuscules, décomposition canonique, retrait des marques combinantes — la catégorie Unicode M entière, 2 450 points, mesurée en interrogeant DuckDB sur chaque point de code —, recomposition. Sur le dump de référence, elle redonne le `name_key` de tous les noms sauf 6, des lettres cerclées (Ⓐ) que la libc du Postgres du site ne met pas en minuscule ; le seul bloc des diacritiques latins en manquait 12 987. Une requête vide ne trouve personne. Temps mesurés sur le Postgres jetable, cache chaud, médiane de 7 appels : « a » (157 112 noms) 78 ms, « the » 46 ms, « bjork », « radiohead » ou « sigur ros » moins de 4 ms ; le premier appel après le chargement, cache froid, a pris 1,8 s pour « a ». Lue directement dans `artists`, « a » prenait environ 1 s cache chaud.
+- Les groupes et projets (docs/vision.md §2.4), le 2026-10-05 sur les 336 artistes joués : 161 ont des membres, 129 au moins un projet de membre qui a un disque (médiane 5, 90e centile 18, au plus 65 pour Underground Resistance), 53 d'autres noms ; de Stereolab à McCarthy (Lætitia Sadier, Tim Gane), Monade, Cavern of Anti-Matter, de The Notwist à Lali Puna et 13 & God. Stereolab dans Uilab est le seul projet auquel un des 336 prend part lui-même, que `artist_member_projects` écarte. Les projets des 336 se calculent en 2 s au total sur le Postgres jetable, 0,3 s pour Underground Resistance.
+- `artist_releases` : pour les Beatles, de *Let It Be* à *Please Please Me* (1970-1963) ; avec `artist_urls`, moins d'une milliseconde, cache chaud, sur les Rolling Stones.
+- `search_artists` normalise la requête comme `name_key` (`strip_accents(lower(name))` dans DuckDB) par `musilogy.name_key(text)` : minuscules, décomposition canonique, retrait des marques combinantes — la catégorie Unicode M entière, 2 450 points, mesurée en interrogeant DuckDB sur chaque point de code —, recomposition. Sur le dump de référence, elle redonne le `name_key` de tous les noms sauf 6, des lettres cerclées (Ⓐ) que la libc du Postgres du site ne met pas en minuscule ; le seul bloc des diacritiques latins en manquait 12 987. Temps mesurés sur le Postgres jetable, cache chaud, médiane de 7 appels : « a » (157 112 noms) 78 ms, « the » 46 ms, « bjork », « radiohead » ou « sigur ros » moins de 4 ms ; le premier appel après le chargement, cache froid, a pris 1,8 s pour « a ». Lue directement dans `artists`, « a » prenait environ 1 s cache chaud.
 
 ## Comparaison avec la livraison précédente
 
@@ -139,7 +121,7 @@ La co-écoute, une fois calculée, est gardée dans `data/work/` et relue tant q
 
 ## Installation, tests, exécution
 
-Python 3.12 géré par `uv`.
+Python 3.12 géré par `uv`. Les commandes ci-dessous partent de `musilogy/` ; depuis la racine d'AubeSonore, `uv --directory musilogy run …`.
 
 ```bash
 uv sync
@@ -148,12 +130,12 @@ uv sync
 Deux niveaux de test :
 
 - `uv run pytest` — suite rapide, quelques secondes, sans dépendance au dump. Tourne sur les témoins réels de `cli.WITNESSES`, versionnés dans `tests/fixtures/` (extraits authentiques du dump de référence, jamais de données inventées) et sur quelques enregistrements synthétiques pour les formes qu'aucun témoin ne porte.
-- `tests/test_load.py`, `tests/test_artist.py`, `tests/test_search.py`, `tests/test_official.py`, `tests/test_same_sound.py`, `tests/test_colisten.py`, `tests/test_credits.py` — le chargement et les fonctions SQL du site, contre un vrai Postgres jetable désigné par `MUSILOGY_TEST_PG` (chaîne de connexion libpq ; les tests y suppriment et recréent les schémas `musilogy`). Sans elle, ces tests sont sautés, sauf en CI, qui fournit un service Postgres 16 et échoue si la variable manque.
+- Les tests qui demandent la fixture `pg` (`tests/conftest.py`) — le chargement et les fonctions SQL du site — tournent contre un vrai Postgres jetable désigné par `MUSILOGY_TEST_PG` (chaîne de connexion libpq ; les tests y suppriment et recréent les schémas `musilogy`, jamais celui du site) : `MUSILOGY_TEST_PG='host=… dbname=…' uv run pytest`. Sans elle, ces tests sont sautés, sauf en CI, qui fournit un service Postgres 16 et échoue si la variable manque.
 
 La suite passe depuis n'importe quel répertoire : tous les chemins sont ancrés sur le paquet (`musilogy.paths`), jamais sur le répertoire courant.
 
 ```bash
-uv run musilogy run                 # fetch → extract → transform → validate → compare → publish
+uv run musilogy run                 # fetch → extract → transform → validate → compare → publish (relevés épinglés exigés)
 uv run musilogy snapshot-popularity # relevé ListenBrainz daté, à épingler (~1 h)
 uv run musilogy snapshot-official   # albums et EP que MusicBrainz montre pour les artistes d'au moins 500 auditeurs (~30 h, reprenable)
 uv run musilogy snapshot-discography # relevé Wikidata daté des disques classés album studio, EP ou BO, à épingler
@@ -165,31 +147,11 @@ uv run musilogy load --sample       # charge le pipeline passé sur les fixtures
 
 Aucune sortie du pipeline n'est versionnée ; seules les empreintes et les fixtures le sont.
 
-Qualité : `uv run ruff check`, `uv run ruff format --check`, `uv run mypy`. La CI (`.github/workflows/musilogy.yml`, à la racine d'AubeSonore) passe ces trois contrôles plus la suite.
+Qualité : `uv run ruff check`, `uv run ruff format --check`, `uv run mypy` (`mypy src` seul saute les tests). La CI (`.github/workflows/musilogy.yml`, à la racine d'AubeSonore) passe ces trois contrôles plus la suite.
 
 ## Structure du dépôt
 
-```
-src/musilogy/
-  fetch.py               télécharge et vérifie les archives MusicBrainz et Discogs (SHA-256), relève ListenBrainz, MusicBrainz et Wikidata
-  extract.py             projette les enregistrements bruts en flux, sans logique métier
-  build.py               enchaîne les fichiers SQL, vérifie les invariants
-  colisten.py            notre co-écoute, « Écoutés ensemble » (produit matriciel creux)
-  samesound.py           « Même son », chaque couleur contre toutes (produit matriciel creux)
-  publish.py             écrit les Parquet et manifest.json
-  cli.py                 les commandes
-  load.py                charge les Parquet publiés dans la base du site
-  paths.py               chemins ancrés sur le paquet
-  reference/             empreintes des archives et des relevés épinglés
-  sql/                   les règles, en ordre topologique
-  pg/                    les tables et les fonctions que lit le site, côté Postgres
-tests/
-  conftest.py            fixtures partagées
-  fixtures/              témoins réels versionnés
-  test_*.py              une suite par règle
-docs/conception.md       la conception en vigueur : sources, tables, contrat avec le site
-docs/research/           notes de recherche datées
-```
+Le paquet est `src/musilogy/` : chaque module dit son rôle dans sa docstring, `sql/` porte les règles DuckDB, `pg/` le SQL Postgres, `reference/` les empreintes des archives et des relevés épinglés. Les tests sont dans `tests/`, leurs témoins réels dans `tests/fixtures/`. `docs/conception.md` est la conception en vigueur, `docs/research/` les notes de recherche datées.
 
 ## Licence et attribution
 

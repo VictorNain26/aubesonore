@@ -1,4 +1,4 @@
-"""« Même son » (docs/conception.md §2, `same_sound`): for each artist Discogs
+"""« Même son » (docs/conception.md §3, `same_sound`): for each artist Discogs
 gives a colour, the K artists whose colour is closest, among every artist with
 one, whoever listens to them.
 

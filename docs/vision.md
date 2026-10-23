@@ -82,24 +82,21 @@ comme le font les musicologues et les ouvrages de référence. Le dossier qui fo
 ### 2.2 Les artistes proches : trois onglets
 
 **Trois questions, trois onglets**, chacun avec sa source et sa méthode, sans qu'aucun ne filtre
-l'autre (`musilogy/docs/conception.md` §3). Une seule liste qui voulait dire à la fois le même son,
-la même scène et le même public empilait des portes : le canon grand public pour les stars (Daft
-Punk → Madonna), rien pour les petits artistes que Discogs n'atteint pas (2026-10-21).
+l'autre. Une seule liste qui voulait dire à la fois le même son, la même scène et le même public
+empilait des portes : le canon grand public pour les stars (Daft Punk → Madonna), rien pour les
+petits artistes que Discogs n'atteint pas (2026-10-21).
 
-- **Même son** : qui fait la même musique, à toute époque ? Les styles Discogs de ses disques
-  (quelque 750 sous-genres), pondérés par leur rareté et leur part dans l'œuvre, comparés à ceux de
-  **tous** les artistes qui en ont, quel que soit leur public : le filtrage par contenu. Daft Punk
-  y trouve la French touch (Cassius, Bob Sinclar, Superfunk). Un artiste sans Discogs n'a pas de
+- **Même son** : qui fait la même musique, à toute époque, quel que soit son public ? Daft Punk y
+  trouve la French touch (Cassius, Bob Sinclar, Superfunk). Un artiste sans Discogs n'a pas de
   « même son ».
-- **Écoutés ensemble** : qui le même public écoute-t-il ? Notre co-écoute, le filtrage
-  collaboratif « article à article » (Sarwar et al., 2001 ; Linden et al., 2003) avec le cosinus
-  d'Aiolli (2013), qui corrige la popularité, sur **toutes les écoutes publiques de ListenBrainz**
-  (CC0, déjà rapprochées de MusicBrainz). C'est le public, pas le son, et l'onglet le dit : la
-  co-occurrence d'écoute est la source la plus proche du jugement humain de similarité
-  (Berenzweig et al., 2004), mais elle mêle ce qu'écoutent les auditeurs éclectiques.
+- **Écoutés ensemble** : qui le même public écoute-t-il, sur toutes les écoutes publiques de
+  ListenBrainz ? C'est le public, pas le son, et l'onglet le dit : il mêle ce qu'écoutent les
+  auditeurs éclectiques.
 - **Filiation** : avec qui a-t-il fait de la musique ? Des faits, sans score : ses membres, ses
-  groupes, les autres groupes de ses membres et ses autres noms (MusicBrainz), puis les artistes
-  crédités avec lui sur ses disques (MusicBrainz et Discogs), du plus de disques communs au moins.
+  groupes, les autres groupes de ses membres et ses autres noms, puis les artistes crédités avec
+  lui sur ses disques, du plus de disques communs au moins.
+
+La méthode de chaque onglet, ses sources et ses références : `musilogy/docs/conception.md` §3.
 
 Chaque onglet montre ses premiers voisins, dans l'ordre de son propre score ; la filiation montre
 ses faits, repliés au-delà des premiers. Un onglet vide ne s'affiche pas. Jamais la popularité ni
@@ -124,11 +121,11 @@ de chacun le diviserait par trois, mais retirerait 176 070 artistes (899 265 →
 mesure qui montre que ces écoutes nuisent ; une bibliothèque de produit matriciel creux plus
 rapide n'a rien gagné (mesuré le 2026-10-10).
 
-**La mesure.** Pas de juges : leur coût en quota a arrêté le banc (2026-10-22). Chaque onglet est
-la méthode publiée la plus simple qui réponde à sa définition, et ce qu'il livre se mesure par sa
-couverture, la part des artistes qui y ont au moins un voisin. Au banc, la couleur seule tenait
-77 % de bons voisins parmi ses paires jugées, presque toutes (2026-10-21). Les clics des auditeurs
-départageront plus tard deux réglages, sans jamais nourrir la similarité, ce qui ferait boucle.
+**La mesure.** Pas de juges : leur coût en quota a arrêté le banc (2026-10-22). Ce qu'un onglet
+livre se mesure par sa couverture, la part des artistes qui y ont au moins un voisin. Au banc, la
+couleur seule tenait 77 % de bons voisins parmi ses paires jugées, presque toutes (2026-10-21).
+Les clics des auditeurs départageront plus tard deux réglages, sans jamais nourrir la similarité,
+ce qui ferait boucle.
 
 **L'audio**, la couleur du son elle-même, n'est pas une source pour tous : les extraits Deezer
 sont exclus par leurs conditions (§2.5), AcousticBrainz est mesuré trop faible (AUC 0,65). Les
