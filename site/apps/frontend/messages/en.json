@@ -8,6 +8,7 @@
   "library_error": "Your tracks could not be loaded.",
   "library_removed": "“{title}” removed",
   "library_remove_failed": "The track could not be removed. Try again.",
+  "track_keep_failed": "The track could not be kept. Try again.",
   "trends_tab_week": "This week",
   "trends_tab_all_time": "All time",
   "toast_link_copied": "Link copied",

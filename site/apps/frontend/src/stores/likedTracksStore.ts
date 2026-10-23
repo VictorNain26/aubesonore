@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { trackApi, type LikedTrack, type LikeTrackRequest } from '../lib/api';
+import { HttpError, trackApi, type LikedTrack, type LikeTrackRequest } from '../lib/api';
 
 // Liked-tracks state. Consumers subscribe to slices granularly via
 // Zustand selectors. Auth-driven refresh/clear is wired by <AuthInit />
@@ -14,11 +14,18 @@ interface LikedTracksState {
   likingTrackId: string | null;
 }
 
+/** How a keep or an unkeep ended: done, refused for want of a session (401), or failed. */
+export type KeepOutcome = 'done' | 'signed-out' | 'failed';
+
+function failureOf(err: unknown): KeepOutcome {
+  return err instanceof HttpError && err.status === 401 ? 'signed-out' : 'failed';
+}
+
 interface LikedTracksActions {
   refresh: () => Promise<void>;
   clear: () => void;
-  likeTrack: (data: LikeTrackRequest) => Promise<LikedTrack | null>;
-  unlikeTrack: (trackId: string) => Promise<boolean>;
+  likeTrack: (data: LikeTrackRequest) => Promise<KeepOutcome>;
+  unlikeTrack: (trackId: string) => Promise<KeepOutcome>;
   setLikingTrackId: (id: string | null) => void;
 }
 
@@ -102,13 +109,13 @@ export const useLikedTracksStore = create<LikedTracksStore>((set, get) => ({
       set((state) => ({
         tracks: state.tracks.map((t) => (t.id === tempId ? result.track : t)),
       }));
-      return result.track;
+      return 'done';
     } catch (err) {
       set((state) => ({
         tracks: state.tracks.filter((t) => t.id !== tempId),
         error: err instanceof Error ? err.message : 'Erreur lors du like',
       }));
-      return null;
+      return failureOf(err);
     }
   },
 
@@ -116,13 +123,13 @@ export const useLikedTracksStore = create<LikedTracksStore>((set, get) => ({
     const current = get().tracks;
     const previousIndex = current.findIndex((t) => t.id === trackId);
     const trackToRemove = previousIndex >= 0 ? current[previousIndex] : undefined;
-    if (!trackToRemove) return false;
+    if (!trackToRemove) return 'failed';
 
     set((state) => ({ tracks: state.tracks.filter((t) => t.id !== trackId) }));
 
     try {
       await trackApi.unlikeTrack(trackId);
-      return true;
+      return 'done';
     } catch (err) {
       set((state) => {
         const newTracks = [...state.tracks];
@@ -132,7 +139,7 @@ export const useLikedTracksStore = create<LikedTracksStore>((set, get) => ({
           error: err instanceof Error ? err.message : 'Erreur lors de la suppression',
         };
       });
-      return false;
+      return failureOf(err);
     }
   },
 }));

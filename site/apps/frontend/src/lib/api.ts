@@ -13,6 +13,16 @@ export type {
 
 export type { User } from '@aubesonore/shared-types/client';
 
+/** A failed answer of the API, its status kept for a caller that tells one apart. */
+export class HttpError extends Error {
+  constructor(
+    readonly status: number,
+    message = `HTTP ${status}`
+  ) {
+    super(message);
+  }
+}
+
 async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
@@ -27,17 +37,10 @@ async function fetchApi<T>(endpoint: string, options: RequestInit = {}): Promise
     const error = (await response.json().catch(() => ({ error: m.error_network() }))) as {
       error?: string;
     };
-    throw new Error(error.error || `HTTP ${response.status}`);
+    throw new HttpError(response.status, error.error || `HTTP ${response.status}`);
   }
 
   return response.json() as Promise<T>;
-}
-
-/** A failed answer of the API, its status kept for a caller that tells one apart. */
-export class HttpError extends Error {
-  constructor(readonly status: number) {
-    super(`HTTP ${status}`);
-  }
 }
 
 /** A public request to the API: its body, or an HttpError for any failed answer. */

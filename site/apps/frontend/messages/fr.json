@@ -8,6 +8,7 @@
   "library_error": "Vos titres n'ont pas pu être chargés.",
   "library_removed": "« {title} » retiré",
   "library_remove_failed": "Le titre n'a pas pu être retiré. Réessayez.",
+  "track_keep_failed": "Le titre n'a pas pu être gardé. Réessayez.",
   "trends_tab_week": "Cette semaine",
   "trends_tab_all_time": "Depuis le début",
   "toast_link_copied": "Lien copié",
