@@ -7,11 +7,12 @@ import { artistPath } from '../lib/artistProfile';
 import { CoverOpenLarge } from '../design/CoverOpenLarge';
 import { ARTIST_LINK } from '../design/classes';
 import * as m from '@/paraglide/messages.js';
+import { LineLoader } from '../design/LineLoader';
 
 type Period = 'week' | 'allTime';
 
 const TAB =
-  'text-body text-text-muted data-[active]:text-text ease-out-quart focus-visible:outline-accent min-h-11 font-medium transition-[color,scale] duration-150 active:scale-97 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-4 data-[active]:font-semibold';
+  'text-body text-text-muted data-[active]:text-text ease-out-quart focus-visible:outline-accent min-h-11 font-medium transition-[color,scale] duration-150 active:scale-97 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-4 data-[active]:font-semibold data-[active]:wave-underline';
 
 export interface MostKeptViewProps {
   trends: Record<Period, TrendEntry[]> | null;
@@ -90,14 +91,13 @@ export function MostKeptView({ trends, status }: MostKeptViewProps) {
             </h2>
             <p className="text-intro text-text-muted m-0">{m.most_kept_body()}</p>
           </div>
-          <Tabs.List aria-label={m.most_kept_period()} className="relative flex gap-6">
+          <Tabs.List aria-label={m.most_kept_period()} className="flex gap-6">
             <Tabs.Tab value="week" className={TAB}>
               {m.trends_tab_week()}
             </Tabs.Tab>
             <Tabs.Tab value="allTime" className={TAB}>
               {m.trends_tab_all_time()}
             </Tabs.Tab>
-            <Tabs.Indicator className="bg-accent ease-out-soft absolute bottom-0 left-(--active-tab-left) h-0.5 w-(--active-tab-width) transition-[left,width] duration-300" />
           </Tabs.List>
         </div>
 
@@ -108,14 +108,7 @@ export function MostKeptView({ trends, status }: MostKeptViewProps) {
             ) : status === 'error' ? (
               <p className="text-text-muted m-0">{m.most_kept_error()}</p>
             ) : (
-              <div aria-busy="true" className="flex gap-3.5 md:grid md:grid-cols-5 md:gap-6">
-                {Array.from({ length: 5 }, (_, i) => (
-                  <div
-                    key={i}
-                    className="bg-surface-raised aspect-square w-38 shrink-0 md:w-auto"
-                  />
-                ))}
-              </div>
+              <LineLoader className="h-38 md:h-48" />
             )}
           </Tabs.Panel>
         ))}

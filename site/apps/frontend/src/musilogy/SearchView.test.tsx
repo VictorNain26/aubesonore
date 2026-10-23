@@ -66,7 +66,7 @@ describe('MusilogyHomeView', () => {
     expect(screen.getByText("Tapez au moins deux lettres d'un nom.")).toBeInTheDocument();
 
     rerender(view({ status: 'searching', hits: [] }));
-    expect(screen.getByRole('list', { busy: true })).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Chargement…' })).toBeInTheDocument();
 
     rerender(view({ status: 'searching', hits: [hit] }));
     expect(screen.getByRole('link', { name: 'T. Rex' })).toBeInTheDocument();

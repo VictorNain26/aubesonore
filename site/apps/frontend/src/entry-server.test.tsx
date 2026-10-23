@@ -76,7 +76,7 @@ describe('entry-server', () => {
     expect(fr).toMatch(/<h1[^>]*>Кино<\/h1>/);
     expect(fr).toContain('Groupe de rock soviétique.');
     expect(fr).toContain('<footer');
-    expect(fr).not.toContain('aria-busy="true"');
+    expect(fr).not.toContain('role="progressbar"');
 
     const en = await artistPageHtml(
       { locale: 'en', profile: PROFILE, musilogy: null },

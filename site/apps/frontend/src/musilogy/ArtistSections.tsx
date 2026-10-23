@@ -98,7 +98,7 @@ function MemberRow({
   // With a line under it, the name sits at the foot of its 44 px target, close to that line.
   const below = member.disambiguation || projects.length > 0;
   return (
-    <li className="border-border reveal flex min-h-14 flex-col justify-center border-b py-1 md:px-1">
+    <li className="reveal wave-rule flex min-h-14 flex-col justify-center py-1 md:px-1">
       <span className={cn('flex justify-between gap-6', below ? 'items-end' : 'items-center')}>
         <Link
           to={pagePathOf(member)}

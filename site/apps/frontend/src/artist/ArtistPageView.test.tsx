@@ -272,6 +272,31 @@ describe('ArtistPageView', () => {
   });
 });
 
+describe("the artist's own horizon", () => {
+  const BOWIE = '5441c29d-3602-4898-b1a1-b77fa23b8e50';
+  const RANI = '00000000-0000-4000-8000-000000000001';
+
+  function horizonOf(overrides: Parameters<typeof makeArtistProfile>[0]) {
+    const { unmount } = show({ status: 'ready', profile: makeArtistProfile(overrides) });
+    const html = screen.getByTestId('artist-horizon').innerHTML;
+    const lines = [...html.matchAll(/<path[^>]* d="([^"]+)"/g)].map((match) => match[1]);
+    unmount();
+    return lines;
+  }
+
+  it('draws the same line for the same artist, every time', () => {
+    const first = horizonOf({ mbid: BOWIE });
+    expect(first.length).toBeGreaterThan(0);
+    expect(horizonOf({ mbid: BOWIE })).toEqual(first);
+  });
+
+  it('draws it from the artist, not the name: two artists, two horizons', () => {
+    expect(horizonOf({ mbid: BOWIE })).not.toEqual(horizonOf({ mbid: RANI }));
+    // Without an MBID, the page's own id seeds it.
+    expect(horizonOf({ mbid: null, id: 'a-1' })).not.toEqual(horizonOf({ mbid: null, id: 'a-2' }));
+  });
+});
+
 describe('factsLine', () => {
   const group = {
     kind: 'group' as const,

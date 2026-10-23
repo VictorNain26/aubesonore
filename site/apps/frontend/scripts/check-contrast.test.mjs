@@ -15,6 +15,7 @@ const day = {
   'on-accent': 'var(--surface)',
   'on-accent-muted': 'oklch(0.8 0.03 275)',
   dawn: 'oklch(0.82 0.11 55)',
+  'dawn-ink': 'oklch(0.6 0.13 45)',
 };
 const night = {
   surface: 'oklch(0.235 0.045 268)',
@@ -24,6 +25,7 @@ const night = {
   'text-faint': 'oklch(0.74 0.035 285)',
   'on-accent-muted': 'oklch(0.42 0.05 275)',
   dawn: 'oklch(0.62 0.12 45)',
+  'dawn-ink': 'var(--dawn)',
 };
 const decls = (vars) =>
   Object.entries(vars)
@@ -72,6 +74,12 @@ describe('checkTokens', () => {
 
   it('accepts a token just inside the gamut', () => {
     expect(failures(checkTokens(css({ ...day, dawn: 'oklch(0.82 0.095 42)' }, night)))).toEqual([]);
+  });
+
+  it('fails a dawn ink too light for its wave to mark the current page', () => {
+    // The mockup's ink, 2.3:1 on the paper: the wave alone says which page is open (WCAG 1.4.11).
+    const rows = checkTokens(css({ ...day, 'dawn-ink': 'oklch(0.7 0.13 50)' }, night));
+    expect(failures(rows)).toEqual(['day dawn-ink/surface']);
   });
 
   it('refuses tokens without a night block', () => {

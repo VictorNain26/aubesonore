@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { getAnalyser } from '../lib/player';
+import { AMPLITUDE, LAYERS, QUIET, waveY, type Bands } from '../design/wave';
 
 // ─────────────────────────────────────────────
 // The horizon line: two traces drifting against each other, each a sum of
@@ -19,59 +20,8 @@ import { getAnalyser } from '../lib/player';
 // `isPlaying` is read from a ref so a change does not restart the loop.
 // ─────────────────────────────────────────────
 
-type Sine = readonly [harmonic: number, weight: number, phase: number];
-
-export interface WaveLayer {
-  sines: readonly Sine[];
-  /** Share of the common amplitude this trace gets. */
-  gain: number;
-  /** Seconds to drift one width, at rest and while playing. */
-  period: { rest: number; live: number };
-  /** 1 drifts left, -1 drifts right. */
-  direction: 1 | -1;
-  /** Ink opacity and stroke width (CSS px). */
-  alpha: number;
-  width: number;
-}
-
-export const LAYERS: readonly WaveLayer[] = [
-  {
-    sines: [
-      [2, 0.55, 0],
-      [5, 0.3, 1.3],
-      [11, 0.15, 0.4],
-    ],
-    gain: 1,
-    period: { rest: 28, live: 9 },
-    direction: 1,
-    alpha: 1,
-    width: 1.4,
-  },
-  {
-    sines: [
-      [3, 0.5, 2.1],
-      [7, 0.35, 0.2],
-      [13, 0.15, 1.9],
-    ],
-    gain: 0.8,
-    period: { rest: 36, live: 13 },
-    direction: -1,
-    alpha: 0.3,
-    width: 1,
-  },
-];
-
-/** Peak offset as a share of the canvas height, at rest and while playing. */
-export const AMPLITUDE = { rest: 5 / 120, live: 30 / 120 };
-
 /** Seconds for amplitude and speed to cover about two thirds of a change. */
 const EASE_SECONDS = 0.6;
-
-/** Loudness of the stream in three bands, 0..1. */
-export type Bands = readonly [bass: number, mid: number, treble: number];
-
-/** Where the bands sit when nothing is heard: the line is then the mockup's. */
-export const QUIET: Bands = [0.5, 0.5, 0.5];
 
 const BAND_HZ = [250, 2000, 8000] as const;
 /** Bands rise fast and fall slowly, like a meter, so the line follows beats without jitter. */
@@ -128,16 +78,6 @@ export function autoGain(gain: Gain | null, raw: Bands, dt: number): { gain: Gai
   return { gain: { floor, ceiling }, bands };
 }
 
-/** Signed offset of a trace (about -1.6..1.6) at `u`, a position in widths; each sine is
- *  scaled by its band, from 0.4 (silent) to 1.6 (loudest); 0.5 leaves it as drawn. */
-export function traceOffset(sines: readonly Sine[], u: number, bands: Bands = QUIET): number {
-  return sines.reduce(
-    (y, [n, w, p], k) =>
-      y + w * (0.4 + 1.2 * (bands[k] ?? 0.5)) * Math.sin(2 * Math.PI * n * u + p),
-    0
-  );
-}
-
 export interface WaveMotion {
   /** Eased 0 (rest) .. 1 (live). */
   liveness: number;
@@ -171,9 +111,21 @@ export function stepMotion(
 interface HorizonLineProps {
   isPlaying: boolean;
   className?: string;
+  /** The full trace alone (the player bar's edge), or with its echo (the horizon). */
+  traces?: 1 | 2;
+  /** The colour token the line is drawn in. */
+  ink?: 'text' | 'dawn';
+  /** Peak offset at rest, as a share of the canvas height; live, it swells as AMPLITUDE does. */
+  amplitude?: number;
 }
 
-export function HorizonLine({ isPlaying, className }: HorizonLineProps) {
+export function HorizonLine({
+  isPlaying,
+  className,
+  traces = 2,
+  ink: inkToken = 'text',
+  amplitude = AMPLITUDE.rest,
+}: HorizonLineProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isPlayingRef = useRef(isPlaying);
 
@@ -188,9 +140,11 @@ export function HorizonLine({ isPlaying, className }: HorizonLineProps) {
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     // The ink follows the device's day or night: read again, and drawn at once, when it turns.
+    // The semantic token itself (--text, --dawn): the theme emits a --color-* only where a
+    // stylesheet reads it.
     const dark = window.matchMedia('(prefers-color-scheme: dark)');
     const readInk = () =>
-      getComputedStyle(document.documentElement).getPropertyValue('--color-text').trim();
+      getComputedStyle(document.documentElement).getPropertyValue(`--${inkToken}`).trim();
     let ink = readInk();
     let motion: WaveMotion = {
       liveness: isPlayingRef.current ? 1 : 0,
@@ -226,19 +180,22 @@ export function HorizonLine({ isPlaying, className }: HorizonLineProps) {
       }
 
       const { width, height } = canvas;
-      const mid = height / 2;
-      const amplitude =
-        height * (AMPLITUDE.rest + (AMPLITUDE.live - AMPLITUDE.rest) * motion.liveness);
       const step = 4 * dpr;
 
       ctx.clearRect(0, 0, width, height);
-      LAYERS.forEach((layer, i) => {
-        const drift = motion.drift[i] ?? 0;
+      LAYERS.slice(0, traces).forEach((layer, i) => {
+        const wave = {
+          width,
+          height,
+          amplitude: height * amplitude,
+          liveness: motion.liveness,
+          layer: i,
+          drift: motion.drift[i] ?? 0,
+          bands: motion.bands,
+        };
         ctx.beginPath();
         for (let x = 0; x <= width + step; x += step) {
-          const y =
-            mid +
-            amplitude * layer.gain * traceOffset(layer.sines, x / width + drift, motion.bands);
+          const y = waveY(x, wave);
           if (x === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
@@ -308,7 +265,7 @@ export function HorizonLine({ isPlaying, className }: HorizonLineProps) {
       reducedMotion.removeEventListener('change', sync);
       dark.removeEventListener('change', turn);
     };
-  }, []);
+  }, [traces, inkToken, amplitude]);
 
   return <canvas ref={canvasRef} className={className} aria-hidden="true" />;
 }

@@ -311,10 +311,7 @@ export function MusilogyTimeline({
         ) : null}
         {own && axis ? (
           // A reference drawn for the eye: the page's header already says the artist's years.
-          <div
-            aria-hidden="true"
-            className={cn(ROW, 'border-border relative items-center border-b py-3')}
-          >
+          <div aria-hidden="true" className={cn(ROW, 'wave-rule items-center py-3')}>
             <span />
             <span className="text-row min-w-0 font-semibold">{card.name}</span>
             <Drawing
@@ -337,10 +334,7 @@ export function MusilogyTimeline({
             return (
               <li
                 key={neighbour.mbid}
-                className={cn(
-                  ROW,
-                  'group border-border reveal-early relative items-center border-b py-3'
-                )}
+                className={cn(ROW, 'group reveal-early wave-rule items-center py-3')}
               >
                 <span
                   aria-hidden="true"

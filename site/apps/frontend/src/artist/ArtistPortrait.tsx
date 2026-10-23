@@ -5,21 +5,16 @@ import { cn } from '@/lib/utils';
 import { artworkSrc, artworkSrcSet } from '../lib/artwork';
 import { ARTIST_LINK } from '../design/classes';
 import { OpenLarge } from '../design/OpenLarge';
+import { hashOf } from '../design/wave';
 
 const OUTSIDE_LINK = { rel: 'noopener noreferrer', target: '_blank' } as const;
-
-function hash(seed: string): number {
-  let h = 5381;
-  for (let i = 0; i < seed.length; i += 1) h = (h * 33) ^ seed.charCodeAt(i);
-  return Math.abs(h);
-}
 
 /**
  * Where an artist's dawn rises (`artist-dawn`, tokens.css): placed by its id,
  * so the same artist always gets the same one and two artists rarely the same.
  */
 export function dawnOf(seed: string): CSSProperties {
-  const h = hash(seed);
+  const h = hashOf(seed);
   return {
     '--sun': `${30 + (h % 41)}%`,
     '--rose': `${12 + ((h >> 6) % 30)}%`,

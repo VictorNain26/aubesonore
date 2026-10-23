@@ -55,7 +55,7 @@
   "auth_password_label": "Mot de passe",
   "auth_password_confirm_label": "Confirmer le mot de passe",
   "auth_forgot_link": "Mot de passe oublié ?",
-  "auth_loading": "Chargement…",
+  "loading": "Chargement…",
   "auth_submit_signin": "Se connecter",
   "auth_submit_signup": "Créer mon compte",
   "auth_submit_forgot": "Envoyer le lien",
