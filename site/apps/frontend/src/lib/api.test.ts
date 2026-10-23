@@ -135,6 +135,13 @@ describe('authApi errors', () => {
     );
   });
 
+  it('names the minimum length when the server finds the password too short', async () => {
+    answer('sign-up/email', 400, { message: 'Password too short', code: 'PASSWORD_TOO_SHORT' });
+    await expect(authApi.signUp('a@b.fr', 'abc1234', 'A')).rejects.toThrow(
+      'Le mot de passe doit contenir au moins 8 caractères.'
+    );
+  });
+
   it('says to wait when the rate limit answers, and falls back on an unknown code', async () => {
     answer('sign-in/email', 429, { message: 'Too many requests. Please try again later.' });
     await expect(authApi.signIn('a@b.fr', 'secret-pass')).rejects.toThrow(

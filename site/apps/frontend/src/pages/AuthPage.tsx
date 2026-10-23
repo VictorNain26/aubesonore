@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { toastError } from '../lib/appToast';
 import { AuthView, type AuthMode } from '../auth/AuthView';
 import * as m from '@/paraglide/messages.js';
+import { PASSWORD_MIN_LENGTH } from '@aubesonore/shared-types/auth';
 
 function validateEmailFormat(value: string): string | undefined {
   if (!value) return undefined;
@@ -22,7 +23,9 @@ function validateEmailFormat(value: string): string | undefined {
 
 function validatePasswordLength(value: string): string | undefined {
   if (!value) return undefined;
-  return value.length >= 6 ? undefined : m.auth_error_password_length();
+  return value.length >= PASSWORD_MIN_LENGTH
+    ? undefined
+    : m.auth_error_password_length({ min: PASSWORD_MIN_LENGTH });
 }
 
 function validatePasswordMatch(password: string, confirm: string): string | undefined {

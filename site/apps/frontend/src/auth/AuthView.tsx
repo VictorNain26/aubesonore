@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '../design/Button';
 import { TextField } from '../design/TextField';
 import * as m from '@/paraglide/messages.js';
+import { PASSWORD_MIN_LENGTH } from '@aubesonore/shared-types/auth';
 
 export type AuthMode =
   | 'signin'
@@ -322,13 +323,17 @@ export function AuthView({
                         id="password"
                         ref={passwordRef}
                         label={m.auth_password_label()}
-                        description={mode === 'signin' ? undefined : m.auth_password_hint()}
+                        description={
+                          mode === 'signin'
+                            ? undefined
+                            : m.auth_password_hint({ min: PASSWORD_MIN_LENGTH })
+                        }
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={(e) => onPasswordChange(e.target.value)}
                         onBlur={onPasswordBlur}
                         required
-                        minLength={6}
+                        minLength={PASSWORD_MIN_LENGTH}
                         autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
                         error={errors.password}
                         trailing={passwordToggle}
@@ -355,7 +360,7 @@ export function AuthView({
                       onChange={(e) => onPasswordConfirmChange(e.target.value)}
                       onBlur={onPasswordConfirmBlur}
                       required
-                      minLength={6}
+                      minLength={PASSWORD_MIN_LENGTH}
                       autoComplete="new-password"
                       error={errors.passwordConfirm}
                     />
