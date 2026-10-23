@@ -34,7 +34,7 @@ export function Section({
           sticky && 'wide:sticky wide:top-below-header'
         )}
       >
-        <h2 id={`${id}-title`} className="text-section m-0">
+        <h2 id={`${id}-title`} className="font-display text-section m-0">
           {title}
         </h2>
         {body ? <p className="text-intro text-text-muted max-w-blurb m-0">{body}</p> : null}

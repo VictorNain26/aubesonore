@@ -109,10 +109,7 @@ export function NowPlayingView({
             className={cn('shadow-cover size-full', hasChanged && 'swap-in')}
           />
         ) : (
-          <div
-            aria-hidden="true"
-            className="artwork-size bg-surface-raised aspect-square rounded-sm"
-          />
+          <div aria-hidden="true" className="artwork-size bg-surface-raised aspect-square" />
         )}
       </div>
 
@@ -125,7 +122,7 @@ export function NowPlayingView({
           <div key={trackKey} className={cn('flex flex-col gap-2', hasChanged && 'swap-in-late')}>
             <h2
               className={cn(
-                'm-0 text-balance',
+                'font-display m-0 text-balance',
                 track.title.length > LONG_TITLE ? 'text-section' : 'text-hero'
               )}
             >
@@ -153,8 +150,8 @@ export function NowPlayingView({
           </p>
         ) : (
           <div aria-busy="true" className="flex flex-col gap-2">
-            <span className="bg-surface-raised h-16 w-3/4 rounded-sm" />
-            <span className="bg-surface-raised h-7 w-1/3 rounded-sm" />
+            <span className="bg-surface-raised h-16 w-3/4" />
+            <span className="bg-surface-raised h-7 w-1/3" />
           </div>
         )}
 
@@ -272,7 +269,7 @@ export function NowPlayingFallback({ resetErrorBoundary }: FallbackProps) {
   const listen = listenState(isPlaying, isConnecting);
   return (
     <div role="alert" className="flex flex-col gap-2">
-      <p className="text-section m-0">{m.error_track_title()}</p>
+      <p className="font-display text-section m-0">{m.error_track_title()}</p>
       <p className="text-intro text-text-muted m-0">{m.error_track_body()}</p>
       <div className="mt-6 flex flex-col gap-3 md:mt-8 md:flex-row md:items-center md:gap-6">
         <button

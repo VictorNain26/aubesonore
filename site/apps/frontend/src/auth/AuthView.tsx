@@ -83,10 +83,10 @@ function GoogleLogo({ className }: { className?: string }) {
 }
 
 const TEXT_LINK_CLASSES =
-  'ease-out-quart focus-visible:outline-accent inline-flex min-h-11 items-center rounded-sm underline decoration-1 underline-offset-4 transition-opacity duration-150 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
+  'ease-out-quart focus-visible:outline-accent inline-flex min-h-11 items-center underline decoration-1 underline-offset-4 transition-opacity duration-150 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
 
 const BACK_LINK_CLASSES =
-  'text-ui text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -ml-1 inline-flex min-h-11 items-center gap-2 self-start rounded-sm px-1 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
+  'text-ui text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -ml-1 inline-flex min-h-11 items-center gap-2 self-start px-1 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
 
 /**
  * What an account brings: beside the form on wide screens, under it on a phone. A phone that
@@ -96,7 +96,7 @@ function AuthPitch({ className, withTitle = true }: { className?: string; withTi
   return (
     <div className={cn('flex flex-col gap-6 md:gap-8', className)}>
       {withTitle ? (
-        <p className="text-section md:text-hero max-w-hero m-0 text-balance">
+        <p className="font-display text-section md:text-hero max-w-hero m-0 text-balance">
           {m.auth_aside_title()}
         </p>
       ) : null}
@@ -243,7 +243,7 @@ export function AuthView({
               <h1
                 ref={headingRef}
                 tabIndex={-1}
-                className="text-section m-0 text-balance outline-none"
+                className="font-display text-section m-0 text-balance outline-none"
               >
                 {headerCopy.title}
               </h1>

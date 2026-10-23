@@ -1,4 +1,4 @@
-import '@fontsource-variable/bricolage-grotesque';
+import '@fontsource-variable/atkinson-hyperlegible-next';
 import type * as Caf from 'chromecast-caf-receiver/cast.framework';
 import type * as CafDebug from 'chromecast-caf-receiver/cast.debug';
 import { safeParse } from 'valibot';

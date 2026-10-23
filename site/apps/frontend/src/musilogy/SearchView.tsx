@@ -58,7 +58,7 @@ function SearchHitRow({ hit }: { hit: MusilogySearchHit }) {
         ) : null}
       </span>
       <span className="text-sub text-text-muted hidden md:block">{kind}</span>
-      <span className="text-ui text-text-muted font-mono whitespace-nowrap tabular-nums md:justify-self-start">
+      <span className="text-ui text-text-muted whitespace-nowrap tabular-nums md:justify-self-start">
         {hit.y0 ?? null}
       </span>
     </li>
@@ -73,8 +73,8 @@ function HitsSkeleton() {
           key={i}
           className="border-border flex min-h-18 flex-col justify-center gap-2 border-b py-2.5"
         >
-          <span className="bg-surface-raised h-4 w-1/3 rounded-sm" />
-          <span className="bg-surface-raised h-3 w-1/2 rounded-sm" />
+          <span className="bg-surface-raised h-4 w-1/3" />
+          <span className="bg-surface-raised h-3 w-1/2" />
         </li>
       ))}
     </ol>
@@ -88,7 +88,7 @@ function SearchHits({ hits, stale }: { hits: MusilogySearchHit[]; stale: boolean
         aria-hidden="true"
         className={cn(
           HIT_COLUMNS,
-          'border-border text-label text-text-muted hidden border-b pb-3 font-mono uppercase md:grid'
+          'border-border text-caption text-text-muted hidden border-b pb-3 md:grid'
         )}
       >
         <span>{m.musilogy_col_artist()}</span>
@@ -142,7 +142,7 @@ export function MusilogyHomeView({
       className="lift-in px-page flex flex-1 flex-col gap-10 pt-10 pb-16 md:gap-14 md:pt-16 md:pb-24"
     >
       <div className="grid gap-5 md:grid-cols-2 md:items-end md:gap-16">
-        <h1 className="text-hero m-0">{m.musilogy_title()}</h1>
+        <h1 className="font-display text-hero m-0">{m.musilogy_title()}</h1>
         <p className="text-intro text-text-muted max-w-aside m-0 md:pb-2">{m.musilogy_lead()}</p>
       </div>
 

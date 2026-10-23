@@ -14,25 +14,25 @@ CHROME=/usr/bin/chromium uv run brand/build.py
 
 The symbol is drawn on a 512 grid from four measures:
 
-| Measure           | Value                 | Why                                                       |
-| ----------------- | --------------------- | --------------------------------------------------------- |
-| Sun radius **R**  | 150                   | the grid's unit                                           |
-| Line weight **t** | 13.2 (R × 62 / 702)   | the « e »'s crossbar, the word's thinnest stroke          |
-| Gap **g**         | t                     | the sun never touches the line, so one colour still reads |
-| Wave crest        | t                     | the wave stays a ripple, not a sea                        |
-| Horizon           | R + 50 each side      |                                                           |
-| Waves             | 2 across the diameter | under a Hann window: no kink where the line turns         |
+| Measure           | Value                 | Why                                                              |
+| ----------------- | --------------------- | ---------------------------------------------------------------- |
+| Sun radius **R**  | 150                   | the grid's unit                                                  |
+| Line weight **t** | R × 62 / 702.2        | the first wordmark's « e » crossbar, kept as the letters changed |
+| Gap **g**         | t                     | the sun never touches the line, so one colour still reads        |
+| Wave crest        | t                     | the wave stays a ripple, not a sea                               |
+| Horizon           | R + 50 each side      |                                                                  |
+| Waves             | 2 across the diameter | under a Hann window: no kink where the line turns                |
 
 - The line is 5 cubic Béziers, nodes on the extremes, handles horizontal.
 - The sun is cut by the wave's parallel along its normal, so the gap keeps its width on the slopes.
 
 ## Lockup
 
-In font units of the wordmark (Bricolage Grotesque, weight 500, width 85 %, tracking −1.5 %,
-outlined with HarfBuzz's kerning):
+In font units of the wordmark (Fraunces, the site's title face, set at its display size, soft and
+without its wonky letters: `AXES` and `TRACKING` in `build.py`; outlined with HarfBuzz's kerning):
 
 - the horizon is the word's baseline;
-- the sun rises to the « b »'s ascender, so R = 702 units;
+- the sun rises to the « b »'s ascender, so R is the ascender's height;
 - half an x-height separates the end of the line from the « a »;
 - clear space all around: one x-height.
 

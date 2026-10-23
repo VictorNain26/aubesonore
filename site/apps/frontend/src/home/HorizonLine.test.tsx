@@ -251,6 +251,35 @@ describe('HorizonLine', () => {
     expect(scheduled.size).toBe(1);
   });
 
+  it("takes the night's ink as soon as the device turns dark, at rest or moving", () => {
+    let turned: () => void = () => undefined;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      addEventListener: (_: string, listener: () => void) => {
+        if (query === '(prefers-color-scheme: dark)') turned = listener;
+      },
+      removeEventListener: vi.fn(),
+    }));
+    const ctx = fakeContext();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      ctx as unknown as CanvasRenderingContext2D
+    );
+    const root = document.documentElement;
+    root.style.setProperty('--color-text', 'rgb(1, 2, 3)');
+
+    render(<HorizonLine isPlaying={false} />);
+    expect(ctx.strokeStyle).toContain('rgb(1, 2, 3)');
+    ctx.stroke.mockClear();
+
+    root.style.setProperty('--color-text', 'rgb(9, 8, 7)');
+    turned();
+
+    // Drawn again at once: a line at rest has no next frame to repaint it.
+    expect(ctx.stroke).toHaveBeenCalledTimes(LAYERS.length);
+    expect(ctx.strokeStyle).toContain('rgb(9, 8, 7)');
+    root.style.removeProperty('--color-text');
+  });
+
   it('draws a still line once under reduced motion', () => {
     window.matchMedia = vi
       .fn()

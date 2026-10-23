@@ -203,10 +203,8 @@ function Profile({
             where to hear them, and the way down the page. */}
         <div className="lift-in-late wide:justify-end flex min-w-0 flex-col">
           <DiscoveryTrail steps={trail} />
-          {facts ? (
-            <p className="text-label text-text-muted m-0 font-mono uppercase">{facts}</p>
-          ) : null}
-          <h1 className="text-hero m-0 mt-2 break-words">{profile.name}</h1>
+          {facts ? <p className="text-caption text-text-muted m-0">{facts}</p> : null}
+          <h1 className="font-display text-hero m-0 mt-2 break-words">{profile.name}</h1>
           {styles.length > 0 ? <p className="text-sub m-0 mt-3">{styles.join(' · ')}</p> : null}
           {profile.summary || portrait ? (
             <div className="mt-6">
@@ -242,7 +240,7 @@ function Profile({
                       <span className="text-ui text-text-muted truncate">{track.album}</span>
                     ) : null}
                   </span>
-                  <span className="text-ui text-text-muted font-mono whitespace-nowrap tabular-nums">
+                  <span className="text-ui text-text-muted whitespace-nowrap tabular-nums">
                     {formatKeptAt(track.createdAt)}
                   </span>
                 </li>
@@ -296,8 +294,8 @@ export function ArtistPageView({
       <SiteHeader />
       {state.status === 'loading' ? (
         <div aria-busy="true" className="px-page flex flex-col gap-6 pt-10 md:pt-16">
-          <span className="bg-surface-raised aspect-square w-40 rounded-sm md:w-60" />
-          <span className="bg-surface-raised h-12 w-2/3 rounded-sm" />
+          <span className="bg-surface-raised aspect-square w-40 md:w-60" />
+          <span className="bg-surface-raised h-12 w-2/3" />
         </div>
       ) : state.status === 'missing' ? (
         <PageMessage title={m.artist_missing_title()} body={m.artist_missing_body()} />

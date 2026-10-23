@@ -47,7 +47,7 @@ function Ranking({ entries, period }: { entries: TrendEntry[]; period: Period })
             triggerClassName="w-full"
             className="aspect-square w-full"
           />
-          <span className="text-label text-text-muted flex justify-between font-mono">
+          <span className="text-caption text-text-muted flex justify-between tabular-nums">
             <span>{String(i + 1).padStart(2, '0')}</span>
             {/* Under two, a count shows how quiet it is rather than what people like. */}
             {entry.likes >= 2 ? (
@@ -85,7 +85,7 @@ export function MostKeptView({ trends, status }: MostKeptViewProps) {
       <Tabs.Root defaultValue="week" className="flex flex-col gap-6 md:gap-10">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div className="reveal flex flex-col gap-2 md:gap-3">
-            <h2 id="most-kept-title" className="text-section m-0">
+            <h2 id="most-kept-title" className="font-display text-section m-0">
               {m.most_kept_title()}
             </h2>
             <p className="text-intro text-text-muted m-0">{m.most_kept_body()}</p>
@@ -112,7 +112,7 @@ export function MostKeptView({ trends, status }: MostKeptViewProps) {
                 {Array.from({ length: 5 }, (_, i) => (
                   <div
                     key={i}
-                    className="bg-surface-raised aspect-square w-38 shrink-0 rounded-sm md:w-auto"
+                    className="bg-surface-raised aspect-square w-38 shrink-0 md:w-auto"
                   />
                 ))}
               </div>

@@ -12,7 +12,7 @@ Application React/Vite de la webradio **AubeSonore** : écoute du flux AzuraCast
 
 ## Design system
 
-Un seul style, sans thème sombre : papier clair, encre, une lumière abricot. Tokens Tailwind v4 dans `src/design/tokens.css`, seule source des couleurs, tailles et polices (Bricolage Grotesque via Fontsource, auto-hébergée). Contraste AA vérifié en CI (`scripts/check-contrast.mjs`). Conventions dans [`.claude/rules/site-frontend.md`](../../../.claude/rules/site-frontend.md).
+Un seul style, de jour et de nuit (la nuit suit le réglage sombre de l'appareil). Tokens Tailwind v4 dans `src/design/tokens.css`, seule source des couleurs, tailles et polices (auto-hébergées via Fontsource). Contraste AA et gamut sRGB vérifiés en CI, de jour et de nuit (`scripts/check-contrast.mjs`). Conventions dans [`.claude/rules/site-frontend.md`](../../../.claude/rules/site-frontend.md).
 
 ## Installation
 

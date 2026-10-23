@@ -14,7 +14,7 @@ const TRIGGER =
   'text-ui border-accent ease-out-quart hover:bg-accent hover:text-on-accent focus-visible:outline-accent inline-flex min-h-11 items-center rounded-full border px-4.5 transition-[color,background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
 
 const PAGE_LINK =
-  'text-section ease-out-quart focus-visible:outline-accent flex min-h-14 items-center rounded-sm transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:underline-offset-8';
+  'font-display text-section ease-out-quart focus-visible:outline-accent flex min-h-14 items-center transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 aria-[current=page]:underline aria-[current=page]:decoration-2 aria-[current=page]:underline-offset-8';
 
 /**
  * The site's pages on a phone, where the header has no room for them: a Menu button opens them
@@ -45,7 +45,7 @@ export function MobileMenu() {
         <Dialog.Popup className="bg-surface text-text ease-out-soft px-page fixed inset-0 z-50 flex flex-col overflow-y-auto pt-5 pb-10 transition-[opacity,translate] duration-300 focus-visible:outline-none data-[ending-style]:-translate-y-2 data-[ending-style]:opacity-0 data-[starting-style]:-translate-y-2 data-[starting-style]:opacity-0">
           <div className="flex items-center justify-between gap-4">
             <Dialog.Title className="text-mark m-0">
-              <Logo className="block h-[0.795em]" />
+              <Logo className="block h-[0.839em]" />
               <span className="sr-only">AubeSonore</span>
             </Dialog.Title>
             <Dialog.Close aria-label={m.close()} className={CLOSE_BUTTON}>
@@ -104,7 +104,7 @@ export function MobileMenu() {
                   aria-pressed={locale === code}
                   className={cn(
                     TEXT_ACTION,
-                    'min-w-11 justify-center font-mono uppercase',
+                    'min-w-11 justify-center',
                     locale === code ? 'font-bold' : 'text-text-muted'
                   )}
                 >

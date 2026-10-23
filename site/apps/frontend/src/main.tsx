@@ -7,8 +7,8 @@ import {
   type RouteMatch,
   type HydrationState,
 } from 'react-router';
-import '@fontsource-variable/bricolage-grotesque';
-import '@fontsource-variable/geist-mono';
+import '@fontsource-variable/atkinson-hyperlegible-next';
+import '@fontsource-variable/fraunces';
 import './index.css';
 import { handlePreloadError } from './lib/preloadReload';
 import { readLocaleChoice } from './stores/localeStore';

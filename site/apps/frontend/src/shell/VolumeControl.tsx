@@ -62,7 +62,7 @@ export function VolumeControl({
             PANEL[tone]
           )}
         >
-          <span aria-hidden="true" className="text-caption font-mono tabular-nums">
+          <span aria-hidden="true" className="text-caption tabular-nums">
             {Math.round(level * 100)}
           </span>
           <Slider

@@ -18,7 +18,6 @@ const twMerge = extendTailwindMerge({
         'row',
         'sub',
         'ui',
-        'label',
       ],
       shadow: ['cover', 'lift', 'bar'],
     },
