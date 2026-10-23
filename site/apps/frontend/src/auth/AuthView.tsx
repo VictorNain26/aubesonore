@@ -18,8 +18,6 @@ export type AuthMode =
 export interface AuthViewProps {
   /** Title the listener tried to keep: the sign-in heading names it. */
   keepTitle?: string | undefined;
-  /** The stream plays: warn that the Google redirect stops it. */
-  isListening: boolean;
   /** Flux courant : détermine titre, champs affichés et libellé du bouton. */
   mode: AuthMode;
   /** Désactive les actions et affiche le spinner du bouton de soumission. */
@@ -41,7 +39,7 @@ export interface AuthViewProps {
   onDone: () => void;
   /** Soumission du formulaire (le conteneur gère `preventDefault`). */
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  /** Connexion OAuth Google. */
+  /** Google sign-in, in a popup (a redirect when the popup is blocked). */
   onOAuthGoogle: () => void;
   onToggleShowPassword: () => void;
   onNameChange: (value: string) => void;
@@ -159,7 +157,6 @@ function MailSentBody({
  */
 export function AuthView({
   keepTitle,
-  isListening,
   mode,
   isLoading,
   email,
@@ -264,21 +261,16 @@ export function AuthView({
               <form onSubmit={onSubmit} className="max-w-form flex flex-col gap-8">
                 {withAccountChoice ? (
                   <div className="flex flex-col gap-6">
-                    <div className="flex flex-col gap-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={onOAuthGoogle}
-                        disabled={isLoading}
-                        className="border-accent h-13 w-full justify-center gap-2.5 border hover:bg-transparent hover:opacity-80"
-                      >
-                        <GoogleLogo className="size-4.5" />
-                        {m.auth_oauth_google()}
-                      </Button>
-                      {isListening ? (
-                        <p className="text-caption text-text-muted m-0">{m.auth_google_stops()}</p>
-                      ) : null}
-                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={onOAuthGoogle}
+                      disabled={isLoading}
+                      className="border-accent h-13 w-full justify-center gap-2.5 border hover:bg-transparent hover:opacity-80"
+                    >
+                      <GoogleLogo className="size-4.5" />
+                      {m.auth_oauth_google()}
+                    </Button>
                     <div className="text-ui text-text-muted flex items-center gap-4 font-normal">
                       <span className="border-border flex-1 border-t" />
                       {m.auth_or()}

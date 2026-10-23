@@ -9,6 +9,7 @@ import { AuthInit } from '../shell/AuthInit';
 import { useAuthStore } from '../stores/authStore';
 import { AuthPage } from './AuthPage';
 import { toast } from 'sonner';
+import { reportGoogleOutcome } from '../auth/googleSignIn';
 
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -110,6 +111,37 @@ describe('AuthPage', () => {
     expect(screen.getByText('jane@example.com')).toBeInTheDocument();
     expect(screen.queryByText('accueil')).not.toBeInTheDocument();
     expect(useAuthStore.getState()).toMatchObject({ user: null, isAuthenticated: false });
+  });
+
+  it('signs in with Google in a popup and goes back to where the listener was, without leaving', async () => {
+    let signedIn = false;
+    server.use(
+      http.post('http://localhost:3000/api/auth/sign-in/social', () =>
+        HttpResponse.json({ url: 'https://accounts.google.com/o/oauth2/auth?client_id=x' })
+      ),
+      http.get('http://localhost:3000/api/auth/get-session', () =>
+        signedIn
+          ? HttpResponse.json({ user: { id: 'u1', email: 'a@b.c', name: 'A' } })
+          : HttpResponse.json(null)
+      )
+    );
+    const popup = { location: { href: 'about:blank' }, close: vi.fn() };
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(popup as unknown as Window);
+    try {
+      open({ pathname: '/connexion', state: { from: '/artist/a-1/mickey-3d' } });
+
+      await userEvent.click(screen.getByRole('button', { name: 'Continuer avec Google' }));
+      await vi.waitFor(() => expect(popup.location.href).toContain('accounts.google.com'));
+
+      // The return page, in the popup, once Google sent the listener back signed in.
+      signedIn = true;
+      reportGoogleOutcome('?lang=fr');
+
+      expect(await screen.findByText('page artiste', {}, { timeout: 3000 })).toBeInTheDocument();
+      expect(useAuthStore.getState().isAuthenticated).toBe(true);
+    } finally {
+      openSpy.mockRestore();
+    }
   });
 
   it('opens on the new password from the reset link, and flags mismatched passwords', async () => {
