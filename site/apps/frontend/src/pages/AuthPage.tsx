@@ -111,8 +111,8 @@ export function AuthPage() {
     });
   };
 
-  const resetForm = () => {
-    setEmail('');
+  const resetForm = ({ keepEmail = false } = {}) => {
+    if (!keepEmail) setEmail('');
     setPassword('');
     setPasswordConfirm('');
     setName('');
@@ -205,7 +205,8 @@ export function AuthPage() {
 
   const switchTo = (next: AuthMode) => {
     setMode(next);
-    resetForm();
+    // The address typed stays: the next form asks for it too.
+    resetForm({ keepEmail: true });
   };
 
   return (

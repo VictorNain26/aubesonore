@@ -85,6 +85,16 @@ describe('AuthPage', () => {
     expect(screen.queryByText(tooShort)).not.toBeInTheDocument();
   });
 
+  it("keeps the typed address on a switch, the focus on the new form's title", async () => {
+    open('/connexion');
+
+    await userEvent.type(screen.getByLabelText('Adresse e-mail'), 'jane@example.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Mot de passe oublié ?' }));
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Mot de passe oublié' })).toHaveFocus();
+    expect(screen.getByLabelText('Adresse e-mail')).toHaveValue('jane@example.com');
+  });
+
   it('goes back to the page the listener came from once signed in', async () => {
     open({ pathname: '/connexion', state: { from: '/artist/a-1/mickey-3d' } });
 
