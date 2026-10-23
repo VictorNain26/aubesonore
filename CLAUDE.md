@@ -95,7 +95,6 @@ When this file disagrees with the running system, the system is right — correc
 - **Scheduling is systemd *user* timers**, not cron, and depends on lingering being enabled.
 - **Secrets are untracked `.env` files in `site/`, `pipeline/` and `azuracast/`** (plus `azuracast/azuracast.env`, mode 600), and the broadcast runtime also
   holds listener access logs. Keep all of it out of diffs, pastes, and issue reports.
-- **Language**: documentation follows the piece: the pipeline, azuracast and musilogy document in
-  French, the site in English.
-  At the root, `README.md` and `docs/` are in French, like the product; `CLAUDE.md`,
-  `SECURITY.md` and the workflow comments are in English.
+- **Language**: human documentation (`README.md` files and `docs/`) is in French in every piece,
+  like the product. `CLAUDE.md`, `SECURITY.md` and the workflow comments are in English; each
+  `.claude/rules/<piece>.md` keeps its own language.
