@@ -58,6 +58,25 @@ describe('SinceDawnView', () => {
     ).toBeInTheDocument();
   });
 
+  it('says the rest of the day is missing when only the live tracks came, past the last of them', async () => {
+    const partial = "Le reste de la journée est indisponible pour l'instant.";
+    render(<SinceDawnView rows={rows(15)} status="error" onToggleKeep={vi.fn()} />);
+
+    expect(screen.queryByText(partial)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Plus tôt dans la journée' }));
+    expect(screen.getByText(partial)).toBeInTheDocument();
+    expect(
+      screen.queryByText("L'historique du jour est indisponible pour l'instant.")
+    ).not.toBeInTheDocument();
+  });
+
+  it('says nothing of the rest of the day when the whole day came', () => {
+    render(<SinceDawnView rows={rows(3)} status="ready" onToggleKeep={vi.fn()} />);
+    expect(
+      screen.queryByText("Le reste de la journée est indisponible pour l'instant.")
+    ).not.toBeInTheDocument();
+  });
+
   it('lets a track that joins the thread slide in, but not the ones already there', () => {
     const first = rows(3).map((r) => ({ ...r, id: r.id + 1 }));
     const { rerender } = render(

@@ -62,6 +62,8 @@ export function isTrackLiked(
 
 type LikedTracksStore = LikedTracksState & LikedTracksActions;
 
+let refreshing: Promise<void> | null = null;
+
 export const useLikedTracksStore = create<LikedTracksStore>((set, get) => ({
   tracks: [],
   isLoading: false,
@@ -70,17 +72,24 @@ export const useLikedTracksStore = create<LikedTracksStore>((set, get) => ({
 
   setLikingTrackId: (id) => set({ likingTrackId: id }),
 
-  refresh: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const data = await trackApi.getLikedTracks();
-      set({ tracks: data, isLoading: false });
-    } catch (err) {
-      set({
-        isLoading: false,
-        error: err instanceof Error ? err.message : 'Erreur de chargement',
-      });
-    }
+  // A sign-in asks from AuthInit and from the page shown at once: a refresh made while one is in
+  // flight waits for that one rather than asking the library again.
+  refresh: () => {
+    refreshing ??= (async () => {
+      set({ isLoading: true, error: null });
+      try {
+        const data = await trackApi.getLikedTracks();
+        set({ tracks: data, isLoading: false });
+      } catch (err) {
+        set({
+          isLoading: false,
+          error: err instanceof Error ? err.message : 'Erreur de chargement',
+        });
+      } finally {
+        refreshing = null;
+      }
+    })();
+    return refreshing;
   },
 
   clear: () => {

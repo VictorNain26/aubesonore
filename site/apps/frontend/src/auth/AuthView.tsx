@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { localizeHref } from '@/paraglide/runtime.js';
 import { ArrowLeft, Eye, EyeOff, Heart, ListOrdered } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -196,6 +196,15 @@ export function AuthView({
     'verification-sent': { title: m.auth_verification_title(), desc: null },
     'reset-password': { title: m.auth_new_password(), desc: null },
   }[mode];
+  // A new form replaces the one the focus was in: its title takes the focus, which would else fall
+  // to the body. Not on the first one, opened with the page.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const shownMode = useRef(mode);
+  useEffect(() => {
+    if (shownMode.current === mode) return;
+    shownMode.current = mode;
+    headingRef.current?.focus();
+  }, [mode]);
   const withAccountChoice = mode === 'signin' || mode === 'signup';
   const withBack = mode === 'forgot' || mode === 'reset-password';
   // A title that already says why (« Pour garder … ») needs no promise under it.
@@ -231,7 +240,13 @@ export function AuthView({
                   {m.auth_back_to_signin()}
                 </button>
               ) : null}
-              <h1 className="text-section m-0 text-balance">{headerCopy.title}</h1>
+              <h1
+                ref={headingRef}
+                tabIndex={-1}
+                className="text-section m-0 text-balance outline-none"
+              >
+                {headerCopy.title}
+              </h1>
               {headerCopy.desc ? (
                 <p className="text-intro text-text-muted m-0">{headerCopy.desc}</p>
               ) : null}

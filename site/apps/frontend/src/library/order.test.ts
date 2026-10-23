@@ -68,6 +68,18 @@ describe('sortKept', () => {
     ]);
   });
 
+  it('files a name under its first letter, the quotes or dots before it aside', () => {
+    const quoted = [
+      kept('h', 'David Bowie', '2026-10-01', { title: '"Heroes"' }),
+      kept('i', 'Black Sabbath', '2026-10-02', { title: 'Into the Void' }),
+      kept('a', '...And You Will Know Us by the Trail of Dead', '2026-10-03', {
+        title: 'Another Morning Stoner',
+      }),
+    ];
+    expect(ids(sortKept(quoted, { key: 'title', dir: 'asc' }, 'fr'))).toEqual(['a', 'h', 'i']);
+    expect(ids(sortKept(quoted, { key: 'artist', dir: 'asc' }, 'fr'))).toEqual(['a', 'i', 'h']);
+  });
+
   it('orders by the artist of the page, newest first within one artist either way', () => {
     expect(ids(sortKept(tracks, { key: 'artist', dir: 'asc' }, 'fr'))).toEqual([
       '5',

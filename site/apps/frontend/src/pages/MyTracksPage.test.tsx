@@ -216,6 +216,27 @@ describe('MyTracksPage', () => {
     expect(deleted).toBe(false);
   });
 
+  it('hands the keyboard focus to the next row on a removal, to the one before for the last', async () => {
+    signIn();
+    open();
+
+    const nightcall = await screen.findByRole('button', { name: 'Ne plus garder « Nightcall »' });
+    nightcall.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(screen.getByRole('button', { name: 'Ne plus garder « Get Lucky »' })).toHaveFocus();
+
+    await userEvent.keyboard('{Enter}');
+    expect(screen.getByRole('button', { name: 'Ne plus garder « One More Time »' })).toHaveFocus();
+
+    // The list empty, the page's title takes it.
+    await userEvent.keyboard('{Enter}');
+    expect(screen.getByRole('heading', { level: 1, name: 'Mes titres' })).toHaveFocus();
+    act(() => {
+      toast.dismiss();
+    });
+    await toastGone();
+  });
+
   it('removes the track once the toast is dismissed (swiped away)', async () => {
     let deletedId: string | null = null;
     server.use(

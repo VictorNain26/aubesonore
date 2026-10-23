@@ -52,7 +52,8 @@ function SearchHitRow({ hit }: { hit: MusilogySearchHit }) {
                 {hit.disambiguation ? ' · ' : null}
               </span>
             ) : null}
-            {hit.disambiguation}
+            {/* MusicBrainz writes its disambiguations in English, whatever the page's language. */}
+            {hit.disambiguation ? <span lang="en">{hit.disambiguation}</span> : null}
           </span>
         ) : null}
       </span>

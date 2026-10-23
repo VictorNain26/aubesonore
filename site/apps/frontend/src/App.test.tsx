@@ -12,6 +12,18 @@ vi.mock('./pages/ArtistPage', () => {
 });
 
 describe('App', { timeout: PAGE_TEST_TIMEOUT }, () => {
+  // First in the file: React Router warns once per run.
+  it('draws nothing, and says nothing, while the first page the client draws loads', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const router = createMemoryRouter(routes, { initialEntries: ['/artiste/hania-rani'] });
+    const { container } = render(<RouterProvider router={router} />);
+
+    expect(container).toBeEmptyDOMElement();
+    await settle(router);
+    expect(warn.mock.calls.flat().join(' ')).not.toContain('HydrateFallback');
+    warn.mockRestore();
+  });
+
   it('shows the artist page error state when its chunk fails to load', async () => {
     const router = createMemoryRouter(routes, { initialEntries: ['/artiste/hania-rani'] });
     render(<RouterProvider router={router} />);

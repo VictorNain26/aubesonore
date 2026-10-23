@@ -42,6 +42,8 @@ const TITLES: Record<AuthMode, () => string> = {
   'verification-sent': m.auth_verification_title,
 };
 
+let forgetPendingKeep: ReturnType<typeof setTimeout> | undefined;
+
 /**
  * Sign in, sign up, a forgotten password and a new one, on a page of the site (/connexion,
  * /en/sign-in, and Better Auth's /reset-password?token= link). Opened with a SignInState: its first
@@ -77,13 +79,16 @@ export function AuthPage() {
   }, [isAuthenticated, mode, backTo, navigate]);
 
   // Left without signing in: forget the track they wanted to keep. A redirect to Google unloads
-  // the page without unmounting it, so the track survives the round trip.
-  useEffect(
-    () => () => {
-      if (!useAuthStore.getState().isAuthenticated) takePendingKeep();
-    },
-    []
-  );
+  // the page without unmounting it, so the track survives the round trip. The forgetting waits a
+  // task: a page mounted again at once (StrictMode, a page React keeps) cancels it.
+  useEffect(() => {
+    clearTimeout(forgetPendingKeep);
+    return () => {
+      forgetPendingKeep = setTimeout(() => {
+        if (!useAuthStore.getState().isAuthenticated) takePendingKeep();
+      }, 0);
+    };
+  }, []);
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -111,8 +116,8 @@ export function AuthPage() {
     });
   };
 
-  const resetForm = () => {
-    setEmail('');
+  const resetForm = ({ keepEmail = false } = {}) => {
+    if (!keepEmail) setEmail('');
     setPassword('');
     setPasswordConfirm('');
     setName('');
@@ -205,7 +210,8 @@ export function AuthPage() {
 
   const switchTo = (next: AuthMode) => {
     setMode(next);
-    resetForm();
+    // The address typed stays: the next form asks for it too.
+    resetForm({ keepEmail: true });
   };
 
   return (

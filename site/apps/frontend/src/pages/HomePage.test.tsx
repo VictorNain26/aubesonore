@@ -83,4 +83,16 @@ describe('HomePage', { timeout: PAGE_TEST_TIMEOUT }, () => {
       screen.getByRole('heading', { name: /The first light of your next favourite songs\./ })
     ).toBeInTheDocument();
   });
+
+  it("names the site in the tab, not the page the listener came from, in the page's language", async () => {
+    // What the tab says on arriving from another page (its server-drawn title, usePageTitle).
+    document.title = 'Mentions légales et confidentialité · AubeSonore';
+    const router = await openHome();
+
+    expect(document.title).toBe('AubeSonore · Radio de découverte indé, électro, hip-hop');
+
+    await userEvent.click(screen.getByRole('link', { name: 'en' }));
+    await settle(router);
+    expect(document.title).toBe('AubeSonore · Discovery radio: indie, electronic, hip-hop');
+  });
 });

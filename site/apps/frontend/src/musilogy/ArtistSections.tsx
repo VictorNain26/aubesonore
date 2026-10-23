@@ -118,7 +118,10 @@ function MemberRow({
         ) : null}
       </span>
       {member.disambiguation ? (
-        <span className="text-ui text-text-muted truncate">{member.disambiguation}</span>
+        // MusicBrainz writes its disambiguations in English, whatever the page's language.
+        <span lang="en" className="text-ui text-text-muted truncate">
+          {member.disambiguation}
+        </span>
       ) : null}
       {projects.length > 0 ? <AlsoIn projects={projects} /> : null}
     </li>
@@ -332,7 +335,14 @@ function closeTabs(artist: MusilogyArtist, thisYear: number): Tab[] {
           id: 'filiation',
           label: m.musilogy_tab_filiation(),
           panel: (
-            <Panel note={m.musilogy_filiation_note()}>
+            <Panel
+              note={
+                // As the rubrics go: a person's bands, a group's members (Filiation).
+                card.kind === 'person'
+                  ? m.musilogy_filiation_note()
+                  : m.musilogy_filiation_note_group()
+              }
+            >
               <Filiation artist={artist} />
             </Panel>
           ),

@@ -90,6 +90,19 @@ function ArtistName({ track, className }: { track: LikedTrack; className?: strin
   );
 }
 
+/**
+ * The focus a removed row leaves goes to the next row's heart, else the one before, else the
+ * page's title: the row leaves the page, and with it the focus, to the body.
+ */
+function focusAfterRemoval(button: HTMLElement): void {
+  const row = button.closest('li');
+  const neighbour = row?.nextElementSibling ?? row?.previousElementSibling;
+  const target =
+    neighbour?.querySelector<HTMLElement>('[data-remove]') ??
+    button.closest('main')?.querySelector<HTMLElement>('h1');
+  target?.focus();
+}
+
 const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
   return (
     <li
@@ -135,7 +148,11 @@ const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
         </a>
         <button
           type="button"
-          onClick={() => onRemove(track.id, track.title)}
+          data-remove
+          onClick={(event) => {
+            focusAfterRemoval(event.currentTarget);
+            onRemove(track.id, track.title);
+          }}
           aria-label={m.track_unkeep_aria({ title: track.title })}
           title={m.track_unkeep_aria({ title: track.title })}
           className={ICON_ACTION}
@@ -300,7 +317,10 @@ export function MyTracksView({
                 : m.library_count_one()}
           </span>
         ) : null}
-        <h1 className="text-section m-0">{m.library_title()}</h1>
+        {/* Focusable by script only: it takes the focus a last removed row leaves. */}
+        <h1 tabIndex={-1} className="text-section m-0 outline-none">
+          {m.library_title()}
+        </h1>
         <p className="text-intro text-text-muted max-w-blurb m-0">{m.library_body()}</p>
       </div>
 

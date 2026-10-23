@@ -323,7 +323,9 @@ describe('GET /artiste/:slug', () => {
     const res = await app.handle(new Request('http://localhost/en/artist/daft_punk'));
 
     expect(res.status).toBe(404);
-    expect(await res.text()).toBe(SHELL);
+    const html = await res.text();
+    expect(html).toContain('<html lang="en">');
+    expect(html).toContain('<title>Page not found · AubeSonore</title>');
     expect(profileSpy).not.toHaveBeenCalled();
   });
 
@@ -439,13 +441,22 @@ describe('GET /artiste/:slug', () => {
     expect(res.status).toBe(503);
   });
 
-  it('answers 404 with the untouched shell when the artist is unknown', async () => {
+  it('answers 404 when the artist is unknown, the shell no longer naming the home page', async () => {
     mockShell();
 
     const res = await app.handle(new Request('http://localhost/artiste/inconnu'));
 
     expect(res.status).toBe(404);
-    expect(await res.text()).toBe(SHELL);
+    const html = await res.text();
+    expect(html).toContain('<html lang="fr">');
+    expect(html).toContain('<title>Page introuvable · AubeSonore</title>');
+    expect(html).toContain('<meta property="og:title" content="Page introuvable · AubeSonore" />');
+    expect(html).toContain('<meta name="robots" content="noindex" />');
+    // The home's address, and its description, belong to the home page.
+    expect(html).not.toContain('rel="canonical"');
+    expect(html).not.toContain('og:url');
+    expect(html).not.toContain('home description');
+    expect(html).toContain('<div id="root"></div>');
   });
 });
 

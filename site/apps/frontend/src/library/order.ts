@@ -25,9 +25,13 @@ export function artistNameOf(track: LikedTrack): string {
 
 const newestFirst = (a: LikedTrack, b: LikedTrack) => b.createdAt.localeCompare(a.createdAt);
 
+/** A name as it files: from its first letter or digit, so « "Heroes" » goes under H. */
+const filedAs = (name: string) => name.replace(/^[^\p{L}\p{N}]+/u, '');
+
 /**
  * The kept tracks in the order of one column. Titles and artists follow the reading order of
- * `locale` (case and accents aside); tracks tied on one are newest first, whichever the direction.
+ * `locale` (case and accents aside, and the quotes or dots a name opens with); tracks tied on one
+ * are newest first, whichever the direction.
  */
 export function sortKept(
   tracks: readonly LikedTrack[],
@@ -39,7 +43,7 @@ export function sortKept(
   const collator = new Intl.Collator(locale, { sensitivity: 'base', numeric: true });
   const nameOf = sort.key === 'title' ? (t: LikedTrack) => t.title : artistNameOf;
   return [...tracks].sort(
-    (a, b) => sign * collator.compare(nameOf(a), nameOf(b)) || newestFirst(a, b)
+    (a, b) => sign * collator.compare(filedAs(nameOf(a)), filedAs(nameOf(b))) || newestFirst(a, b)
   );
 }
 

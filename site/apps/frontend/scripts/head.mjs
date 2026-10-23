@@ -3,7 +3,7 @@
 // JSON-LD, og:site_name and the author, stays the site's. The JSON-LD describes the site in the
 // page's language.
 
-export const SITE = 'https://aubesonore.fr';
+const SITE = 'https://aubesonore.fr';
 
 export function replaceOrFail(html, from, to) {
   if (!html.includes(from)) throw new Error(`prerender: "${from}" not found in index.html`);

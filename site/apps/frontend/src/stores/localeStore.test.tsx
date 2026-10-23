@@ -72,4 +72,16 @@ describe('localeStore', () => {
     expect(getLocale()).toBe('fr');
     expect(document.documentElement.lang).toBe('fr');
   });
+
+  it('gives the page its language on the first load of an English URL', () => {
+    // An English page opened directly: the language is English from the start, while the shell
+    // served for it (or the dev server's index.html) says French.
+    window.history.replaceState(null, '', '/en/musilogy');
+    useLocaleStore.setState({ locale: 'en' });
+    document.documentElement.lang = 'fr';
+
+    useLocaleStore.getState().syncWithUrl();
+
+    expect(document.documentElement.lang).toBe('en');
+  });
 });

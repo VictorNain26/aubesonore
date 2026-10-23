@@ -28,6 +28,10 @@ export const routes: RouteObject[] = [
   {
     id: 'root',
     Component: App,
+    // A first page the client draws itself (the dev server's empty root, an artist page the
+    // renderer did not draw in time) shows nothing until its code and data have come, as
+    // React Router does without it, minus its warning.
+    HydrateFallback: () => null,
     children: [
       { id: 'home', path: '/', Component: HomePage, loader: homeLoader },
       { id: 'home-en', path: '/en', Component: HomePage, loader: homeLoader },

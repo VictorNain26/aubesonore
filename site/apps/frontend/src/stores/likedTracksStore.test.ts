@@ -141,6 +141,24 @@ describe('likedTracksStore', () => {
     expect(isTrackLiked(tracks, 'Hellow', 'orld')).toBe(true);
   });
 
+  it('asks the library once for refreshes made while one is in flight, again once it has come', async () => {
+    let asked = 0;
+    server.use(
+      http.get('http://localhost:3000/api/track/like', () => {
+        asked++;
+        return HttpResponse.json([]);
+      })
+    );
+    const { refresh } = useLikedTracksStore.getState();
+
+    await Promise.all([refresh(), refresh(), refresh()]);
+    expect(asked).toBe(1);
+    expect(useLikedTracksStore.getState().isLoading).toBe(false);
+
+    await refresh();
+    expect(asked).toBe(2);
+  });
+
   it('clear() wipes tracks and error', () => {
     useLikedTracksStore.setState({
       tracks: [
