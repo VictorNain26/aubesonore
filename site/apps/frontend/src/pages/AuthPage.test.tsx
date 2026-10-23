@@ -72,6 +72,23 @@ describe('AuthPage', () => {
     expect(await screen.findByText('page artiste', {}, { timeout: 3000 })).toBeInTheDocument();
   });
 
+  it('after sign-up, asks to open the verification email and leaves the listener signed out', async () => {
+    open('/connexion');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Créer un compte' }));
+    await userEvent.type(await screen.findByLabelText('Nom'), 'Jane');
+    await userEvent.type(screen.getByLabelText('Adresse e-mail'), 'jane@example.com');
+    await userEvent.type(screen.getByLabelText('Mot de passe'), 'password123');
+    await userEvent.click(screen.getByRole('button', { name: 'Créer mon compte' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Vérifiez votre boîte mail' })
+    ).toBeInTheDocument();
+    expect(screen.getByText('jane@example.com')).toBeInTheDocument();
+    expect(screen.queryByText('accueil')).not.toBeInTheDocument();
+    expect(useAuthStore.getState()).toMatchObject({ user: null, isAuthenticated: false });
+  });
+
   it('opens on the new password from the reset link, and flags mismatched passwords', async () => {
     open({ pathname: '/reset-password', search: '?token=some-token' });
 

@@ -165,9 +165,8 @@ export function AuthPage() {
         void navigate(backTo, { replace: true });
       } else if (mode === 'signup') {
         await signUp(email, password, name);
-        // requireEmailVerification: true on the backend → show the verify
-        // screen instead of toasting + closing. The session is created but
-        // login won't fully work until the email is confirmed.
+        // requireEmailVerification: true on the backend → no session yet, the
+        // verify screen instead of toasting + closing.
         setPendingEmail(email);
         resetForm();
         setMode('verification-sent');

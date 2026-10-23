@@ -3,6 +3,7 @@ import type {
   AuthResponse,
   ClientLikedTrack,
   LikeTrackRequest as KeepRequest,
+  User,
 } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
 
@@ -83,6 +84,13 @@ async function authError(response: Response, fallback: () => string): Promise<Er
   return new Error((known ?? fallback)());
 }
 
+/**
+ * Better Auth's sign-up answer (better-auth, dist/api/routes/sign-up.mjs): a token and a session
+ * cookie only when it signs the user in; null under requireEmailVerification, until the email
+ * link is opened.
+ */
+type SignUpResponse = { token: string | null; user: User };
+
 type KeepAnswer = { message: string; track: ClientLikedTrack };
 
 export const trackApi = {
@@ -109,7 +117,7 @@ export const authApi = {
     return data as AuthResponse;
   },
 
-  signUp: async (email: string, password: string, name: string): Promise<AuthResponse> => {
+  signUp: async (email: string, password: string, name: string): Promise<SignUpResponse> => {
     const response = await fetch(`${API_BASE_URL}/api/auth/sign-up/email`, {
       method: 'POST',
       credentials: 'include',
@@ -117,7 +125,7 @@ export const authApi = {
       body: JSON.stringify({ email, password, name }),
     });
     if (!response.ok) throw await authError(response, m.error_signup_failed);
-    return response.json() as Promise<AuthResponse>;
+    return response.json() as Promise<SignUpResponse>;
   },
 
   signIn: async (email: string, password: string): Promise<AuthResponse> => {
