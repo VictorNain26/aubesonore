@@ -332,7 +332,14 @@ function closeTabs(artist: MusilogyArtist, thisYear: number): Tab[] {
           id: 'filiation',
           label: m.musilogy_tab_filiation(),
           panel: (
-            <Panel note={m.musilogy_filiation_note()}>
+            <Panel
+              note={
+                // As the rubrics go: a person's bands, a group's members (Filiation).
+                card.kind === 'person'
+                  ? m.musilogy_filiation_note()
+                  : m.musilogy_filiation_note_group()
+              }
+            >
               <Filiation artist={artist} />
             </Panel>
           ),

@@ -205,6 +205,7 @@
   "musilogy_tab_filiation": "Connections",
   "musilogy_colisten_note": "Those the same listeners play.",
   "musilogy_filiation_note": "Its bands, its other names, those it shares records with.",
+  "musilogy_filiation_note_group": "Its members, its other names, those it shares records with.",
   "musilogy_credited": "Credited together",
   "musilogy_records_one": "1 record",
   "musilogy_records_other": "{count} records",

@@ -205,6 +205,7 @@
   "musilogy_tab_filiation": "Filiation",
   "musilogy_colisten_note": "Ceux que le même public écoute.",
   "musilogy_filiation_note": "Ses groupes, ses autres noms, ceux qui partagent ses disques.",
+  "musilogy_filiation_note_group": "Ses membres, ses autres noms, ceux qui partagent ses disques.",
   "musilogy_credited": "Crédités ensemble",
   "musilogy_records_one": "1 disque",
   "musilogy_records_other": "{count} disques",

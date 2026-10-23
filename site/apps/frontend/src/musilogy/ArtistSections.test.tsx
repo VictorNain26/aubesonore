@@ -255,6 +255,19 @@ describe('MusilogySections', () => {
     expect(screen.getByRole('heading', { name: 'Groupes' })).toBeInTheDocument();
   });
 
+  it("says a person's filiation starts with its bands, a group's with its members", () => {
+    const { rerender } = showFiliation(artist());
+    expect(
+      screen.getByText('Ses membres, ses autres noms, ceux qui partagent ses disques.')
+    ).toBeInTheDocument();
+
+    const person = artist();
+    rerender(<Sections artist={{ ...person, card: { ...person.card, kind: 'person' } }} />);
+    expect(
+      screen.getByText('Ses groupes, ses autres noms, ceux qui partagent ses disques.')
+    ).toBeInTheDocument();
+  });
+
   it('puts the other groups under the member who leads there, and says what each other name is', () => {
     const took = { ...neighbour(52, { name: 'Steve Peregrine Took' }), yBegin: 1967, yEnd: 1969 };
     showFiliation(
