@@ -16,15 +16,13 @@ beforeEach(async () => {
   await db.execute(sql`TRUNCATE liked_tracks, youtube_link, "user" CASCADE`);
   await emptyArtistTables();
   const now = new Date();
-  await db
-    .insert(user)
-    .values({
-      id: listener.id,
-      name: 'L',
-      email: 'l@example.test',
-      createdAt: now,
-      updatedAt: now,
-    });
+  await db.insert(user).values({
+    id: listener.id,
+    name: 'L',
+    email: 'l@example.test',
+    createdAt: now,
+    updatedAt: now,
+  });
 });
 
 afterAll(async () => {
