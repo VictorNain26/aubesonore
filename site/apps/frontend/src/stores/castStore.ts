@@ -11,7 +11,7 @@ import * as m from '@/paraglide/messages.js';
 // The Web Sender's lifecycle as developers.google.com/cast/docs/web_sender/integrate and the
 // CastVideos-chrome sample run it: the button follows CAST_STATE_CHANGED; STARTED loads the
 // live, RESUMED (a reload, another tab) joins what plays without loading again; every failure
-// but the listener's own cancel is said.
+// but the listener's own cancel is said, once, where requestSession rejects.
 
 interface CastStore {
   /** The browser can cast (Chromium, the SDK loaded). */
@@ -103,8 +103,7 @@ function start(set: (state: Partial<CastStore>) => void): void {
   });
 
   context.addEventListener(cast.framework.CastContextEventType.SESSION_STATE_CHANGED, (event) => {
-    const { SESSION_STARTED, SESSION_RESUMED, SESSION_START_FAILED, SESSION_ENDED } =
-      cast.framework.SessionState;
+    const { SESSION_STARTED, SESSION_RESUMED, SESSION_ENDED } = cast.framework.SessionState;
     const session = context.getCurrentSession();
     if (event.sessionState === SESSION_STARTED || event.sessionState === SESSION_RESUMED) {
       if (!session) return;
@@ -122,8 +121,6 @@ function start(set: (state: Partial<CastStore>) => void): void {
       });
       set({ deviceName: session.getCastDevice().friendlyName });
       if (started) usePlayer.getState().toggle();
-    } else if (event.sessionState === SESSION_START_FAILED) {
-      castFailed();
     } else if (event.sessionState === SESSION_ENDED) {
       disconnect();
     }
@@ -146,6 +143,9 @@ export const useCastStore = create<CastStore>((set) => ({
   },
   openPicker: () => {
     // Connected, Chrome shows its own dialog with the device and Stop casting (cast-dialog).
+    // Every failure to start rejects here with its chrome.cast.ErrorCode; the framework also
+    // sends SESSION_START_FAILED for it, CANCEL included (closing the picker), so that event is
+    // left alone and a failure is said once. CANCEL is the listener's choice, not an error.
     cast.framework.CastContext.getInstance()
       .requestSession()
       .catch((code: unknown) => {
