@@ -249,7 +249,11 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
       stopTimer = null;
       isStopping = true;
       audio.pause();
-      audio.src = '';
+      // Removed, not emptied: an empty src is the page's own address, which the element fails to
+      // load and reports as an error in a later task, past the guard below. With no source,
+      // load() only drops the stream (HTML, the media element load algorithm).
+      audio.removeAttribute('src');
+      audio.load();
       queueMicrotask(() => {
         isStopping = false;
       });
