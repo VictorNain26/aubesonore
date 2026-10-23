@@ -154,10 +154,12 @@ export default defineConfig(({ mode }) => {
     build: {
       sourcemap: false,
       rolldownOptions: {
-        // The Cast receiver is a page of its own, which a TV opens (vite.dev/guide/build#multi-page-app).
+        // The Cast receiver is a page of its own, which a TV opens (vite.dev/guide/build#multi-page-app),
+        // and so is the page the Google sign-in popup ends on (src/auth/googleSignIn.ts).
         input: {
           main: path.resolve(__dirname, 'index.html'),
           receiver: path.resolve(__dirname, 'cast/receiver.html'),
+          googleReturn: path.resolve(__dirname, 'auth/google.html'),
         },
         output: {
           // React alone, so that updating any other library leaves this chunk cached. The test

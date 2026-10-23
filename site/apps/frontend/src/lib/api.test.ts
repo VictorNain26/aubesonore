@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import { authApi, getJson, HttpError, readKnown } from './api';
@@ -39,19 +39,8 @@ describe('authApi.getSession', () => {
   });
 });
 
-describe('authApi.signInWithProvider', () => {
-  let location: { origin: string; href: string };
-
-  beforeEach(() => {
-    location = { origin: 'http://localhost:3000', href: 'http://localhost:3000/en/' };
-    vi.stubGlobal('window', { location });
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it('redirects to the provider and comes back to the page the listener was on', async () => {
+describe('authApi.googleSignInUrl', () => {
+  it("asks Better Auth for Google's address, with where to come back and where to report an error", async () => {
     const authorizeUrl = 'https://accounts.google.com/o/oauth2/auth?client_id=x';
     let receivedBody: unknown;
     server.use(
@@ -61,23 +50,41 @@ describe('authApi.signInWithProvider', () => {
       })
     );
 
-    await authApi.signInWithProvider('google', 'http://localhost:3000/artist/a-1/x');
+    const url = await authApi.googleSignInUrl({
+      callbackURL: 'http://localhost:3000/auth/google.html',
+      errorCallbackURL: 'http://localhost:3000/auth/google.html',
+    });
 
+    expect(url).toBe(authorizeUrl);
+    expect(receivedBody).toEqual({
+      provider: 'google',
+      callbackURL: 'http://localhost:3000/auth/google.html',
+      errorCallbackURL: 'http://localhost:3000/auth/google.html',
+    });
+  });
+
+  it('sends no error address when none is given', async () => {
+    let receivedBody: unknown;
+    server.use(
+      http.post('http://localhost:3000/api/auth/sign-in/social', async ({ request }) => {
+        receivedBody = await request.json();
+        return HttpResponse.json({ url: 'https://accounts.google.com/o' });
+      })
+    );
+    await authApi.googleSignInUrl({ callbackURL: 'http://localhost:3000/artist/a-1/x' });
     expect(receivedBody).toEqual({
       provider: 'google',
       callbackURL: 'http://localhost:3000/artist/a-1/x',
     });
-    expect(location.href).toBe(authorizeUrl);
   });
 
   it('throws when the response has no redirect URL', async () => {
     server.use(
       http.post('http://localhost:3000/api/auth/sign-in/social', () => HttpResponse.json({}))
     );
-    await expect(authApi.signInWithProvider('google', 'http://localhost:3000/')).rejects.toThrow(
-      "La connexion avec Google n'a pas pu démarrer. Réessayez."
-    );
-    expect(location.href).toBe('http://localhost:3000/en/');
+    await expect(
+      authApi.googleSignInUrl({ callbackURL: 'http://localhost:3000/' })
+    ).rejects.toThrow("La connexion avec Google n'a pas pu démarrer. Réessayez.");
   });
 
   it("never shows the server's English message, only the page's own words", async () => {
@@ -86,9 +93,9 @@ describe('authApi.signInWithProvider', () => {
         HttpResponse.json({ message: 'Provider not configured' }, { status: 400 })
       )
     );
-    await expect(authApi.signInWithProvider('google', 'http://localhost:3000/')).rejects.toThrow(
-      'Connexion impossible'
-    );
+    await expect(
+      authApi.googleSignInUrl({ callbackURL: 'http://localhost:3000/' })
+    ).rejects.toThrow('Connexion impossible');
   });
 
   it('falls back to a default message when the error body is not JSON', async () => {
@@ -98,9 +105,9 @@ describe('authApi.signInWithProvider', () => {
         () => new HttpResponse('upstream down', { status: 502 })
       )
     );
-    await expect(authApi.signInWithProvider('google', 'http://localhost:3000/')).rejects.toThrow(
-      'Connexion impossible'
-    );
+    await expect(
+      authApi.googleSignInUrl({ callbackURL: 'http://localhost:3000/' })
+    ).rejects.toThrow('Connexion impossible');
   });
 });
 
