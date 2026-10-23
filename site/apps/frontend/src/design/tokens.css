@@ -385,14 +385,16 @@
 }
 
 /* The light behind an artist's own horizon: the dawn's rose and lilac, rising where its sun is
-   (--sun, from its id). */
+   (--sun, from its id). Centred above the box's foot and faded out toward it, so the light
+   never ends on a straight edge. */
 @utility horizon-glow {
   background: radial-gradient(
-    45% 100% at var(--sun, 22%) 100%,
+    45% 70% at var(--sun, 22%) 72%,
     color-mix(in oklab, var(--dawn-rose) 45%, transparent) 0%,
     color-mix(in oklab, var(--dawn-lilac) 25%, transparent) 45%,
     transparent 75%
   );
+  mask-image: linear-gradient(to top, transparent, black 45%);
 }
 
 /* Page gutters: 1.5rem, 2.5rem from md, and wider past --container-page so the content stays
