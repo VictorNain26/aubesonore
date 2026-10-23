@@ -12,7 +12,7 @@ from radio.core.config import Settings
 from radio.core.report import record_stage
 from radio.model.model import Batch, YesRate
 from radio.votes.status import Status
-from tests_radio.model_factory import make_model_db, serve_scores
+from tests.model_factory import make_model_db, serve_scores
 
 runner = CliRunner()
 

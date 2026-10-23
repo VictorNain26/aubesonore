@@ -16,12 +16,12 @@ lastfm_similar_limit = 100
 
 [nouveautes]
 # Titres récents choisis par des humains, ajoutés à la fournée de la semaine et jugés par le modèle.
-# Hype Machine : pages du classement « lastweek » des blogs (API v2 non documentée, cf. vision §3).
+# Hype Machine : pages du classement « lastweek » des blogs (API v2 non documentée, cf. conception §3).
 # Le classement tient en 3 pages (50 titres) ; la page 4 répond 404 (mesuré le 2026-10-02).
 hypem_pages = 3
 # Titres les plus écoutés retenus par album des sélections éditoriales Deezer.
 tracks_per_album = 3
-# Compte Hype Machine dont les favoris publics ne sont plus des découvertes (vision §3.2).
+# Compte Hype Machine dont les favoris publics ne sont plus des découvertes (conception §3.2).
 hypem_favorites_user = "GhostRAvage"
 
 [nouveautes.deezer_editorial]

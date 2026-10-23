@@ -1,4 +1,4 @@
--- Bibliothèque d'antenne (docs/vision.md §7) et fichier Plex des titres, pour les repères (§6).
+-- Bibliothèque d'antenne (docs/conception.md §7) et fichier Plex des titres, pour les repères (§6).
 ALTER TABLE library_tracks ADD COLUMN file TEXT;
 
 -- Titres publiés sur AzuraCast par le pipeline. Pas de clé étrangère : un repère retiré de Plex

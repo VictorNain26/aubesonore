@@ -1,6 +1,6 @@
 -- Une découverte déposée sur AzuraCast passe à « publiée » dans la transaction de son entrée à
 -- l'antenne, et son fichier prêt, effacé, n'est plus référencé. Sortie ensuite de l'antenne, elle
--- n'est jamais republiée (docs/vision.md §7.1).
+-- n'est jamais republiée (docs/conception.md §7.1).
 -- Reconstruction de table : https://www.sqlite.org/lang_altertable.html#otheralter
 
 CREATE TABLE acquisitions_new (

@@ -1,4 +1,4 @@
-"""Bibliothèque d'antenne (docs/vision.md §7) : ce que le pipeline publie dans `antenne/`, et le
+"""Bibliothèque d'antenne (docs/conception.md §7) : ce que le pipeline publie dans `antenne/`, et le
 cycle de vie de chaque titre (docs/recherches/2026-10-02-cycle-de-vie.md §4).
 
 AzuraCast fait autorité : un titre de la base absent d'AzuraCast est oublié et compté ; un

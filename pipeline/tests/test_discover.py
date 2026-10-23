@@ -12,7 +12,7 @@ from radio.discover.run import NoLibraryArtistsError, discover_pass
 from radio.discover.seeds import recently_used
 from radio.sources.deezer import DeezerArtist, DeezerError, DeezerTrack, DeezerUnavailable
 from radio.sources.lastfm import LastfmUnavailable
-from tests_radio.factories import make_library
+from tests.factories import make_library
 
 NOW = datetime(2026, 9, 25, tzinfo=UTC)
 CFG = DiscoverConfig()

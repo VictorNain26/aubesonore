@@ -2,7 +2,7 @@
 
 Quatre études en lecture seule (code et documentation des versions installées, API GitHub pour
 la maintenance), et une mesure. Toutes les sources ont été consultées le 2026-09-30. Ces études
-fondent les choix de `docs/vision.md` §5 à §8.
+fondent les choix de `docs/conception.md` §5 à §8.
 
 ## 1. Acquisition Soulseek
 

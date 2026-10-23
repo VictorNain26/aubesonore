@@ -1,4 +1,4 @@
-"""Client Hype Machine — API v2 en lecture, sans clé (docs/vision.md §3).
+"""Client Hype Machine — API v2 en lecture, sans clé (docs/conception.md §3).
 
 Cette API n'a pas de documentation publique et `api.hypem.com/robots.txt` refuse les robots :
 usage choisi en connaissance de cause (2026-10-01), à très faible volume (quelques requêtes par

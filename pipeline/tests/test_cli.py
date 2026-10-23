@@ -16,7 +16,7 @@ from radio.sources.deezer import DeezerArtist, DeezerTrack, DeezerUnavailable
 from radio.sources.hypem import HypemUnavailable
 from radio.sources.lastfm import LastfmUnavailable
 from radio.sources.plex import LibraryGuardError, PlexTrack
-from tests_radio.factories import make_library
+from tests.factories import make_library
 
 runner = CliRunner()
 

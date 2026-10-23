@@ -1,4 +1,4 @@
-"""Téléchargement Soulseek par Sockseek 3.0.5 (docs/vision.md §5).
+"""Téléchargement Soulseek par Sockseek 3.0.5 (docs/conception.md §5).
 
 Sockseek fait la recherche, le classement, le téléchargement et la limite de rythme ; ici, on ne
 fait que lui passer la liste et lire son index. Les fichiers sont nommés par l'id Deezer

@@ -1,4 +1,4 @@
-"""Favoris Hype Machine de Victor (docs/vision.md §3.2).
+"""Favoris Hype Machine de Victor (docs/conception.md §3.2).
 
 Retrouvés sur Deezer par la règle stricte de la bibliothèque, ils prennent l'origine `favorite` :
 un titre déjà aimé n'est plus une découverte (un candidat qui en devient un sort de la

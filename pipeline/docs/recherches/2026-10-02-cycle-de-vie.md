@@ -5,7 +5,7 @@ rester à l'antenne pour toujours parce qu'il est bien noté ; s'inspirer de ce 
 la radio dans sa globalité, chaque élément cohérent avec les autres.
 
 Cette proposition relie les étapes 2 (sources), 4 (goût), 5 (acquisition), 7 (antenne) et 8
-(enchaînement) de `docs/vision.md`. Les pratiques citées sont sourcées dans
+(enchaînement) de `docs/conception.md`. Les pratiques citées sont sourcées dans
 `2026-10-02-rotation-radio.md` ; **[S]** = sourcé, **[I]** = déduit ici, **[M]** = mesuré.
 
 ## 1. Le constat
@@ -37,7 +37,7 @@ Une radio programmée découpe chaque heure en créneaux, chacun réservé à un
 la grille, quelle que soit sa taille ; sa taille fixe seulement la fréquence à laquelle chacun de
 ses titres revient (le « turnover » [S]).
 
-L'enchaînement (vision §7.3) devait déjà écrire des playlists horaires séquentielles. **Le même
+L'enchaînement (conception §7.3) devait déjà écrire des playlists horaires séquentielles. **Le même
 planificateur remplit les créneaux de la grille, puis ordonne l'heure en fil qui dérive.** C'est
 ce qui rend tout cohérent : la part de nouveautés, la rotation et l'ordre se décident au même
 endroit. Avec les poids des playlists AzuraCast, il faudrait deux mécanismes qui se contredisent :
@@ -180,7 +180,7 @@ titres distincts, au plus 2 passages par jour avec 341 titres pour 384 créneaux
   impossible à tenir [I].
 - **L'offre de nouveautés doit se renouveler.** Si Deezer garde la même sélection d'une semaine
   à l'autre, ses titres déjà vus ne comptent plus et l'offre fond. Le rapport compte les titres
-  « déjà vus » par source, et une source qui n'apporte plus rien est remplacée (vision §3.1).
+  « déjà vus » par source, et une source qui n'apporte plus rien est remplacée (conception §3.1).
 - **Les échecs d'acquisition** (12 % le 2026-10-01 [M]) : on retient ~80 titres par catégorie
   pour en publier ~70.
 - **Le modèle change chaque semaine** : la promotion utilise le score du jour de la fin de
@@ -203,7 +203,7 @@ titres distincts, au plus 2 passages par jour avec 341 titres pour 384 créneaux
 3. **Mesures par titre** pour l'enchaînement. Livrée le 2026-10-02.
 4. **Planificateur et grille** dans AzuraCast, sonde Gatus. Livrée le 2026-10-02.
 
-Chaque étape met `docs/vision.md` à jour dans le même commit.
+Chaque étape met `docs/conception.md` à jour dans le même commit.
 
 ## 9. Offre de nouveautés mesurée
 
@@ -248,7 +248,7 @@ Machine et 22 genres éditoriaux Deezer, puis `radio signals`, puis notes du mod
   Victor aime (2026-10-02 : pop, rap, surtout le hip-hop américain, R&B plutôt ancien, musique
   asiatique), à l'essai, avec soul & funk, voisin du R&B ancien. Écartés : indienne (3 titres),
   chanson française, latino, reggae, arabe, africaine, country (aucun goût exprimé, notes
-  basses), metal (négatif de démarrage). Les votes d'examen jugent chaque genre (vision §3.1).
+  basses), metal (négatif de démarrage). Les votes d'examen jugent chaque genre (conception §3.1).
 - **Classique** : la bibliothèque de Victor en contient (Debussy, Satie, Chopin, Tchaïkovski,
   Radu Lupu), donc la règle « un genre présent chez un de ses artistes est gardé » s'applique.
 - **Résultat** : 362 nouveautés ; la 80e note 0,749, au-dessus de l'ancienne coupure (0,708).

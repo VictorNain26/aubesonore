@@ -15,8 +15,8 @@ from radio.core.config import Settings
 from radio.core.db import connect
 from radio.votes.app import create_app
 from radio.votes.select import pending_ballots
-from tests_radio.model_factory import add_vote, make_model_db, seed_run
-from tests_radio.test_votes_app import OK, FakeDeezer, _verify
+from tests.model_factory import add_vote, make_model_db, seed_run
+from tests.test_votes_app import OK, FakeDeezer, _verify
 
 runner = CliRunner()
 

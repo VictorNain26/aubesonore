@@ -52,7 +52,7 @@ lecteur du site.
   pipeline perd l'accès aux fichiers — panne silencieuse et déroutante.
 - **AzuraCast n'applique que sa fenêtre anti-doublon.** La séparation entre deux
   passages d'un même artiste (3 h) est tenue par la grille du pipeline (`radio
-  grille`, `pipeline/docs/vision.md` §7.3), dont les playlists tournent sans
+  grille`, `pipeline/docs/conception.md` §7.3), dont les playlists tournent sans
   `avoid_duplicates`.
 
 ## Modifier la topologie

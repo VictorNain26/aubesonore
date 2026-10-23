@@ -155,7 +155,7 @@ class Tags:
     album: str
     cover: bytes | None
     # Écrit en trame TSRC : AzuraCast la lit (getID3) dans le champ `isrc` du média, que le
-    # site lit dans le titre en cours (docs/vision.md racine, §4.4).
+    # site lit dans le titre en cours (`docs/vision.md` à la racine du dépôt, §4.4).
     isrc: str | None = None
 
 

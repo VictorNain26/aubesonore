@@ -11,7 +11,7 @@ from radio.acquire.sockseek import SockseekError
 from radio.core.config import AcquisitionConfig
 from radio.core.media import Probe, Tags
 from radio.sources.deezer import DeezerAlbum, DeezerError, DeezerTrack, DeezerUnavailable, TrackPage
-from tests_radio.model_factory import NOW, add_vote, make_model_db, serve_scores
+from tests.model_factory import NOW, add_vote, make_model_db, serve_scores
 
 CFG = AcquisitionConfig(max_per_pass=4, max_attempts=2)
 

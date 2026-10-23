@@ -11,7 +11,7 @@ qui traverse plusieurs pièces.
 | Dossier | Rôle | Pour commencer |
 |---|---|---|
 | [`site/`](site/) | Site d'écoute et API (pnpm, Bun, React) | [README](site/README.md), [règles agent](.claude/rules/site.md) |
-| [`pipeline/`](pipeline/) | Goût, découverte, acquisition et publication à l'antenne (Python, uv) | [conception](pipeline/docs/vision.md), [règles agent](.claude/rules/pipeline.md) |
+| [`pipeline/`](pipeline/) | Goût, découverte, acquisition et publication à l'antenne (Python, uv) | [conception](pipeline/docs/conception.md), [règles agent](.claude/rules/pipeline.md) |
 | [`azuracast/`](azuracast/) | Configuration du serveur de diffusion (Docker) | [runbook](azuracast/RUNBOOK.md), [règles agent](.claude/rules/azuracast.md) |
 | [`musilogy/`](musilogy/) | Données de Musilogy, hors ligne : MusicBrainz, Discogs, ListenBrainz, Wikidata (Python, DuckDB) | [README](musilogy/README.md), [règles agent](.claude/rules/musilogy.md) |
 

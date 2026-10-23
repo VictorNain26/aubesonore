@@ -1,4 +1,4 @@
-"""Preuve d'identité d'un fichier téléchargé (docs/vision.md §5) : format, durée et débit, puis
+"""Preuve d'identité d'un fichier téléchargé (docs/conception.md §5) : format, durée et débit, puis
 empreintes Chromaprint brutes (`fpcalc -raw`) du fichier et de l'extrait Deezer, part de bits
 identiques au meilleur décalage. Méthode et seuil mesurés :
 docs/recherches/2026-09-30-acquisition-publication-observabilite.md §2.

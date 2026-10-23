@@ -1,4 +1,4 @@
-"""Copie quotidienne de la base et des modèles sur un autre disque (docs/vision.md §9).
+"""Copie quotidienne de la base et des modèles sur un autre disque (docs/conception.md §9).
 
 La base est copiée par l'API de sauvegarde de SQLite, cohérente même pendant une écriture
 (https://docs.python.org/3/library/sqlite3.html#sqlite3.Connection.backup), puis vérifiée.

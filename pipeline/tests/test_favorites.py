@@ -15,8 +15,8 @@ from radio.model.model import FavoritesRetained, favorites_retained, rescore, tr
 from radio.signals.audio import DIM, MODEL_TAG, to_blob
 from radio.sources.deezer import DeezerTrack
 from radio.sources.hypem import API, HypemClient, HypemNotFound, HypemTrack
-from tests_radio.factories import make_library
-from tests_radio.model_factory import DISLIKED, LIKED, make_model_db, seed_run
+from tests.factories import make_library
+from tests.model_factory import DISLIKED, LIKED, make_model_db, seed_run
 
 NOW = "2026-10-02T00:00:00+00:00"
 

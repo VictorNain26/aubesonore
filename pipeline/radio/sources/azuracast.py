@@ -1,4 +1,4 @@
-"""Client AzuraCast 0.23.8 — endpoints réellement utilisés (docs/vision.md §7.2).
+"""Client AzuraCast 0.23.8 — endpoints réellement utilisés (docs/conception.md §7.2).
 
 Formes vérifiées dans la spécification OpenAPI de l'instance et le code au commit 62a30e5
 (docs/recherches/2026-09-30-acquisition-publication-observabilite.md §3). Jamais de

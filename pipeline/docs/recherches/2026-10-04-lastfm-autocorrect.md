@@ -33,4 +33,4 @@ artiste similaire (0, contre 5 sans autocorrection). Faut-il la couper ?
 
 Garder `autocorrect=1`. Redemander sans autocorrection quand la page corrigée est vide
 récupérerait 2 artistes sur 790 (17 voisins, 0,3 %) au prix d'un second appel et d'un mécanisme
-de plus : il ne prouve pas son utilité (`docs/vision.md` §2).
+de plus : il ne prouve pas son utilité (`docs/conception.md` §2).

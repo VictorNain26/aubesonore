@@ -1,4 +1,4 @@
--- Les favoris Hype Machine de Victor (docs/vision.md §3.2) : un titre qu'il a déjà aimé n'est
+-- Les favoris Hype Machine de Victor (docs/conception.md §3.2) : un titre qu'il a déjà aimé n'est
 -- plus une découverte, et la part de ses favoris que retiendrait le modèle mesure son goût.
 -- Origine `favorite` ; la bibliothèque garde la priorité sur elle.
 -- Reconstruction de table : https://www.sqlite.org/lang_altertable.html#otheralter
