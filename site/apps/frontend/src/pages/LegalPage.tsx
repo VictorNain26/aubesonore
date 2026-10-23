@@ -54,14 +54,14 @@ export function LegalPage() {
           <p className="m-0">{m.legal_data_purpose()}</p>
           <p className="m-0">{m.legal_data_processors()}</p>
           {/* YouTube API Services Developer Policies III.A.1-2: a link to YouTube's Terms of
-              Service, and the Google Privacy Policy at the address they give. */}
+              Service, and the Google Privacy Policy at the address they give, over https. */}
           <p className="m-0">
             {m.legal_youtube_intro()}{' '}
             <a href="https://www.youtube.com/t/terms" className={LINK}>
               {m.legal_youtube_terms()}
             </a>
             {m.legal_youtube_privacy_intro()}{' '}
-            <a href="http://www.google.com/policies/privacy" className={LINK}>
+            <a href="https://www.google.com/policies/privacy" className={LINK}>
               {m.legal_youtube_privacy()}
             </a>
             .

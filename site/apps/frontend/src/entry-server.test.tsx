@@ -53,6 +53,12 @@ describe('entry-server', () => {
     expect(await pageHtml('en', '/en/legal/')).toContain('Legal notice and privacy');
   });
 
+  it("links every outside page of the legal page over https, Google's privacy policy included", async () => {
+    const fr = await pageHtml('fr', '/mentions-legales/');
+    expect(fr).toContain('href="https://www.google.com/policies/privacy"');
+    expect(fr).not.toContain('href="http://');
+  });
+
   it('renders the 404 in the language of its path, leading back to the live', async () => {
     const fr = await pageHtml('fr', '/404');
     expect(fr).toContain('Un blanc à l&#x27;antenne.');
