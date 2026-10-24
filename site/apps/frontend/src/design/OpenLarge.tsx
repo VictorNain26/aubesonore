@@ -70,8 +70,9 @@ export function OpenLarge({
         aria-label={label}
         style={style}
         className={cn(
-          // The covers' hover, one for every image that opens: it lifts, and gives way under the press.
-          'ease-out-soft hover:shadow-lift focus-visible:outline-accent block cursor-zoom-in p-0 transition-[translate,box-shadow,scale] duration-500 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-98 motion-safe:hover:-translate-y-1.5',
+          // The covers' hover, one for every image that opens: it dims a little, and gives way under
+          // the press. Flat, as the page is: no lift, no shadow.
+          'ease-out-quart focus-visible:outline-accent block cursor-zoom-in p-0 transition-[opacity,scale] duration-200 hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-98',
           className
         )}
       >

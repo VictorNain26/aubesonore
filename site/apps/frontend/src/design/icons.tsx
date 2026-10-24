@@ -156,19 +156,6 @@ export function EyeClosedIcon(props: IconProps) {
   );
 }
 
-/** The kept tracks that rank: three rows, the first a small wave, as in the menu. */
-export function RankingIcon(props: IconProps) {
-  return (
-    <Icon {...props}>
-      <path d="M7 5 Q8.85 3.3 10.67 5 T14.33 5 T18 5" />
-      <path d="M7 10 H18 M7 15 H15" />
-      <circle cx="3.5" cy="5" r="0.7" fill="currentColor" />
-      <circle cx="3.5" cy="10" r="0.7" fill="currentColor" />
-      <circle cx="3.5" cy="15" r="0.7" fill="currentColor" />
-    </Icon>
-  );
-}
-
 const SPEAKER = 'M2.5 7.5 H5.5 L10 4 V16 L5.5 12.5 H2.5 Z';
 
 /** The sound cut: the speaker, and a cross where its waves were. */

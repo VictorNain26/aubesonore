@@ -1,18 +1,12 @@
 import { memo } from 'react';
-import {
-  ArrowDownIcon,
-  ArrowUpDownIcon,
-  ArrowUpIcon,
-  CloseIcon,
-  PlayIcon,
-  SearchIcon,
-} from '../design/icons';
+import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, PlayIcon } from '../design/icons';
 import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
 import { getLocale } from '@/paraglide/runtime.js';
 import { CoverOpenLarge } from '../design/CoverOpenLarge';
 import { KeepHeart } from '../design/KeepHeart';
-import { ARTIST_LINK, TEXT_ACTION } from '../design/classes';
+import { ARTIST_LINK, OUTLINE_ACTION, TEXT_ACTION } from '../design/classes';
+import { SearchField } from '../design/SearchField';
 import { artistPath } from '../lib/artistProfile';
 import type { LikedTrack } from '../lib/api';
 import { artistNameOf, nextSort, type KeptSort, type SortKey } from './order';
@@ -27,10 +21,7 @@ export type MyTracksState =
   | { status: 'ready'; tracks: readonly LikedTrack[]; total: number };
 
 const ICON_ACTION =
-  'ease-out-quart focus-visible:outline-accent flex size-11 items-center justify-center rounded-full transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90';
-
-const PILL =
-  'text-ui border-accent ease-out-quart hover:bg-accent hover:text-on-accent focus-visible:outline-accent inline-flex min-h-11 items-center self-start rounded-full border px-4.5 transition-[color,background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
+  'ease-out-quart focus-visible:outline-accent flex size-11 items-center justify-center transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90';
 
 // One formatter per locale and form: a library holds up to 500 rows.
 const keptOnFormats = new Map<string, Intl.DateTimeFormat>();
@@ -167,45 +158,6 @@ const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
   );
 }, sameRow);
 
-/** Search the kept tracks by title or artist; Échap clears it. */
-function SearchField({
-  query,
-  onQueryChange,
-}: {
-  query: string;
-  onQueryChange: (query: string) => void;
-}) {
-  return (
-    <div role="search" className="relative w-full sm:max-w-md">
-      <label>
-        <span className="sr-only">{m.library_search_label()}</span>
-        <SearchIcon className="text-text-muted pointer-events-none absolute top-1/2 left-4 size-4.5 -translate-y-1/2" />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') onQueryChange('');
-          }}
-          placeholder={m.library_search_placeholder()}
-          autoComplete="off"
-          className="text-ui border-accent ease-out-quart placeholder:text-text-faint hover:bg-surface-raised focus-visible:outline-accent h-11 w-full rounded-full border bg-transparent pr-12 pl-11 transition-colors duration-150 focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-search-cancel-button]:hidden"
-        />
-      </label>
-      {query ? (
-        <button
-          type="button"
-          onClick={() => onQueryChange('')}
-          aria-label={m.library_search_clear()}
-          className={cn(ICON_ACTION, 'absolute top-0 right-0')}
-        >
-          <CloseIcon className="size-4" />
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
 const SORT_BUTTON =
   'group text-caption text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -mx-1 inline-flex min-h-11 items-center gap-1.5 justify-self-start px-1 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
 
@@ -302,7 +254,7 @@ export function MyTracksView({
           </span>
         ) : null}
         {/* Focusable by script only: it takes the focus a last removed row leaves. */}
-        <h1 tabIndex={-1} className="font-display text-section m-0 outline-none">
+        <h1 tabIndex={-1} className="font-display text-page m-0 outline-none">
           {m.library_title()}
         </h1>
         <p className="text-intro text-text-muted max-w-blurb m-0">{m.library_body()}</p>
@@ -311,7 +263,11 @@ export function MyTracksView({
       {state.status === 'signed-out' ? (
         <div className="flex flex-col gap-5">
           <p className="text-row m-0">{m.library_signed_out()}</p>
-          <Link to={state.signInHref} state={{ from: state.from }} className={PILL}>
+          <Link
+            to={state.signInHref}
+            state={{ from: state.from }}
+            className={cn(OUTLINE_ACTION, 'self-start')}
+          >
             {m.nav_sign_in()}
           </Link>
         </div>
@@ -331,7 +287,13 @@ export function MyTracksView({
         </div>
       ) : (
         <div className="flex flex-col gap-6">
-          <SearchField query={query} onQueryChange={onQueryChange} />
+          <SearchField
+            label={m.library_search_label()}
+            placeholder={m.library_search_placeholder()}
+            query={query}
+            onQueryChange={onQueryChange}
+            className="sm:max-w-md"
+          />
           {state.tracks.length === 0 ? (
             <div className="wave-rule-top flex flex-col items-start gap-3 pt-8">
               <p className="text-row m-0">{m.library_search_empty({ query: query.trim() })}</p>

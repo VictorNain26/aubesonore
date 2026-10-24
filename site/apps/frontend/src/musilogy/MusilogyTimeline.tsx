@@ -155,7 +155,7 @@ const ROW = cn('grid', COLUMNS);
 // the bar under them.
 const TRACK =
   'pointer-events-none relative col-start-2 h-9 @min-[44rem]:col-start-3 @min-[44rem]:row-start-1';
-const BAR = 'absolute top-6 rounded-full';
+const BAR = 'absolute top-6';
 // On the page's colour, so no line runs through a year: a label's halo, its padding taken back by a
 // margin so the year itself starts or ends where the bar does.
 const LABEL =

@@ -7,11 +7,8 @@ import { Logo } from '../design/Logo';
 import { localizeHref } from '@/paraglide/runtime.js';
 import { useAuthStore } from '../stores/authStore';
 import { useLocale, useSwitchLocale } from '../stores/localeStore';
-import { CLOSE_BUTTON, TEXT_ACTION } from '../design/classes';
+import { CLOSE_BUTTON, OUTLINE_ACTION, TEXT_ACTION } from '../design/classes';
 import * as m from '@/paraglide/messages.js';
-
-const TRIGGER =
-  'text-ui border-accent ease-out-quart hover:bg-accent hover:text-on-accent focus-visible:outline-accent inline-flex min-h-11 items-center rounded-full border px-4.5 transition-[color,background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
 
 const PAGE_LINK =
   'font-display text-section ease-out-quart focus-visible:outline-accent flex min-h-14 items-center transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 aria-[current=page]:wave-underline';
@@ -39,7 +36,7 @@ export function MobileMenu() {
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
-      <Dialog.Trigger className={TRIGGER}>{m.menu_open()}</Dialog.Trigger>
+      <Dialog.Trigger className={OUTLINE_ACTION}>{m.menu_open()}</Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Popup className="bg-surface text-text ease-out-soft px-page fixed inset-0 z-50 flex flex-col overflow-y-auto pt-5 pb-10 transition-[opacity,translate] duration-300 focus-visible:outline-none data-[ending-style]:-translate-y-2 data-[ending-style]:opacity-0 data-[starting-style]:-translate-y-2 data-[starting-style]:opacity-0">
           <div className="flex items-center justify-between gap-4">
@@ -72,7 +69,7 @@ export function MobileMenu() {
             </ul>
           </nav>
 
-          <div className="border-border mt-auto flex flex-col gap-6 border-t pt-6">
+          <div className="wave-rule-top mt-auto flex flex-col gap-6 pt-6">
             {user ? (
               <div className="flex items-center justify-between gap-4">
                 <span className="flex min-w-0 flex-col">

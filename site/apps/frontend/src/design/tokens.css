@@ -101,7 +101,14 @@
   --text-hero--line-height: 0.98;
   --text-hero--font-weight: 460;
   --text-hero--letter-spacing: -0.032em;
-  /* The title on air, the home page's largest words: 46 px on a phone, about 100 at 1280. */
+  /* A page's title (Musilogy, Mes titres, sign-in, legal, a page's message): one size for all,
+     40 px on a phone, about 60 at 1280, 72 on a large screen. */
+  --text-page: clamp(2.5rem, 1.75rem + 2.6vw, 4.5rem);
+  --text-page--line-height: 1;
+  --text-page--font-weight: 460;
+  --text-page--letter-spacing: -0.032em;
+  /* A page's largest words, above the page's title: the title on air, an artist's name. 46 px on
+     a phone, about 100 at 1280, 128 on a large screen. */
   --text-now: clamp(2.875rem, 8vw, 8rem);
   --text-now--line-height: 0.92;
   --text-now--font-weight: 460;
@@ -139,7 +146,7 @@
 
   --radius-*: initial;
   /* Two shapes: the disc (Écouter, the live) and the right angle, Tailwind's default, for the
-     rest. */
+     rest. design/shapes.test.ts holds the files allowed a disc. */
   --radius-full: 9999px;
 
   --ease-out-quart: cubic-bezier(0.2, 0, 0, 1);
@@ -147,12 +154,10 @@
   --ease-spring: cubic-bezier(0.3, 1.6, 0.5, 1);
 
   --shadow-*: initial;
+  /* One shadow, under the cover on air: the rest of the page is flat. */
   --shadow-cover: 0 24px 60px -26px oklch(0.3 0.04 330 / 0.45);
-  --shadow-lift: 0 22px 40px -22px oklch(0.3 0.04 330 / 0.55);
-  --shadow-bar: 0 16px 40px -12px oklch(0.204 0.012 293 / 0.5);
 
-  /* Reading measures: the hero line holds on three lines, a caption on two. */
-  --container-hero: 13ch;
+  /* Reading measures: a caption holds on two lines. */
   --container-blurb: 28ch;
   --container-form: 24rem;
   --container-aside: 34rem;
@@ -475,22 +480,6 @@
   @media (prefers-reduced-motion: no-preference) {
     animation: settle 0.9s var(--ease-out-soft) 0.12s both;
   }
-}
-
-/* The same dawn, seen from the foot of a panel (sign-in, kept tracks). */
-@utility dawn-rise {
-  background:
-    radial-gradient(
-      70% 34% at 50% 100%,
-      color-mix(in oklab, var(--dawn) 75%, transparent) 0%,
-      transparent 72%
-    ),
-    radial-gradient(
-      40% 24% at 25% 96%,
-      color-mix(in oklab, var(--dawn-rose) 55%, transparent) 0%,
-      transparent 72%
-    ),
-    var(--surface);
 }
 
 /* The dawn of an artist without an image: the same light, placed by its id (--sun, --rose,

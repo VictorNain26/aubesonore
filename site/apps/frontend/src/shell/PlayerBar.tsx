@@ -82,7 +82,7 @@ export function PlayerBarView({
     <section
       aria-label={m.player_label()}
       // On phones the gaps tighten (the 44 px targets stay) so the title keeps a few more letters.
-      className="bg-accent text-on-accent shadow-bar bottom-safe max-w-bar fixed inset-x-3 z-40 mx-auto flex items-center gap-2 py-1.5 pr-1.5 pl-1.5 md:gap-3 md:pr-3"
+      className="bg-accent text-on-accent bottom-safe max-w-bar fixed inset-x-3 z-40 mx-auto flex items-center gap-2 py-1.5 pr-1.5 pl-1.5 md:gap-3 md:pr-3"
     >
       {/* The line along its top edge, in the dawn: calm at rest, listening while the live is
           heard. Out of the flow, over the edge: the bar keeps its height. */}
