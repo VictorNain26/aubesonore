@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
-import { Cast } from 'lucide-react';
+import { CastIcon } from '../design/icons';
 import { cn } from '@/lib/utils';
 import type { Diffusion } from '../hooks/useDiffusion';
 import { TEXT_ACTION } from '../design/classes';
@@ -29,13 +29,7 @@ export function CastControl({
   const connected = device !== null;
   const label = connected ? m.cast_on({ device }) : m.cast_label();
 
-  const icon = (
-    <Cast
-      className={cn('size-4', connecting && 'motion-safe:animate-pulse')}
-      strokeWidth={1.8}
-      aria-hidden="true"
-    />
-  );
+  const icon = <CastIcon className={cn('size-4', connecting && 'motion-safe:animate-pulse')} />;
 
   return (
     <Popover.Root

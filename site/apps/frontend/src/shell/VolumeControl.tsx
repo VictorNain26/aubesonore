@@ -1,4 +1,4 @@
-import { Volume1, Volume2, VolumeX } from 'lucide-react';
+import { VolumeHighIcon, VolumeLowIcon, VolumeOffIcon } from '../design/icons';
 import { cn } from '@/lib/utils';
 import { Slider } from '../design/Slider';
 import * as m from '@/paraglide/messages.js';
@@ -25,7 +25,7 @@ export function VolumeControl({
   className,
 }: VolumeControlProps) {
   const level = isMuted ? 0 : volume;
-  const Icon = level === 0 ? VolumeX : level < 0.5 ? Volume1 : Volume2;
+  const Icon = level === 0 ? VolumeOffIcon : level < 0.5 ? VolumeLowIcon : VolumeHighIcon;
 
   return (
     <div className={cn('flex shrink-0 items-center gap-1', className)}>
@@ -35,7 +35,7 @@ export function VolumeControl({
         aria-label={level === 0 ? m.volume_unmute() : m.volume_mute()}
         className="ease-out-quart flex size-11 items-center justify-center rounded-full transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current active:opacity-50"
       >
-        <Icon className="size-4" aria-hidden="true" />
+        <Icon className="size-4" />
       </button>
       <span className="hidden w-28 sm:flex lg:w-35">
         <Slider

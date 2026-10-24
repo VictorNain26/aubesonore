@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { Link, useLocation } from 'react-router';
-import { X } from 'lucide-react';
+import { CloseIcon } from '../design/icons';
 import { cn } from '@/lib/utils';
 import { Logo } from '../design/Logo';
 import { localizeHref } from '@/paraglide/runtime.js';
@@ -48,7 +48,7 @@ export function MobileMenu() {
               <span className="sr-only">AubeSonore</span>
             </Dialog.Title>
             <Dialog.Close aria-label={m.close()} className={CLOSE_BUTTON}>
-              <X className="size-4.5" strokeWidth={1.8} aria-hidden="true" />
+              <CloseIcon className="size-4.5" />
             </Dialog.Close>
           </div>
 
