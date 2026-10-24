@@ -22,6 +22,7 @@ const playedAt = Math.floor(new Date(2026, 9, 1, 17, 1).getTime() / 1000);
 
 function props(overrides: Partial<PlayerBarViewProps> = {}): PlayerBarViewProps {
   return {
+    isHidden: false,
     listen: 'idle',
     onToggleListen: vi.fn(),
     track: { title: 'Mimoun', artist: 'Mickey 3D', album: '', art: undefined, playedAt },
@@ -66,6 +67,30 @@ describe('PlayerBarView', () => {
   it('says Écouter while nothing is known of the live', () => {
     render(<PlayerBarView {...props({ track: null })} />);
     expect(screen.getByText('Écouter')).toBeInTheDocument();
+  });
+
+  it('is inert while hidden, so nothing in it can be focused', () => {
+    render(<PlayerBarView {...props({ isHidden: true })} />);
+    expect(screen.getByRole('region', { hidden: true })).toHaveAttribute('inert');
+  });
+
+  it('stays on screen while it holds the keyboard focus', async () => {
+    const { rerender } = render(<PlayerBarView {...props()} />);
+
+    await userEvent.tab();
+    rerender(<PlayerBarView {...props({ isHidden: true })} />);
+    expect(screen.getByRole('region')).not.toHaveAttribute('inert');
+
+    await userEvent.tab({ shift: true });
+    expect(screen.getByRole('region', { hidden: true })).toHaveAttribute('inert');
+  });
+
+  it('leaves for the hero after a click, which focuses a button too', async () => {
+    const { rerender } = render(<PlayerBarView {...props()} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Écouter le direct' }));
+    rerender(<PlayerBarView {...props({ isHidden: true })} />);
+    expect(screen.getByRole('region', { hidden: true })).toHaveAttribute('inert');
   });
 
   it('keeps the track with a constant label', async () => {

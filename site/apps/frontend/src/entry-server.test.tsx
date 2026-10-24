@@ -27,9 +27,8 @@ describe('entry-server', () => {
     expect(html.match(/<h1[^>]*>.*?<\/h1>/g)).toEqual([
       expect.stringMatching(/>Une aube à chaque titre\.<\/h1>$/),
     ]);
-    expect(html).toContain(
-      'Des sons qui n’ont pas encore de nom pour vous. Gardez ceux qui vous plaisent.'
-    );
+    // The welcome is its one sentence: no line under it.
+    expect(html).not.toContain('Des sons qui n’ont pas encore de nom pour vous.');
     expect(html).toContain('Depuis l’aube');
   });
 
@@ -38,7 +37,7 @@ describe('entry-server', () => {
     expect(html.match(/<h1[^>]*>.*?<\/h1>/g)).toEqual([
       expect.stringMatching(/>A dawn with every track\.<\/h1>$/),
     ]);
-    expect(html).toContain('Sounds you don’t have a name for yet. Keep the ones you love.');
+    expect(html).not.toContain('Sounds you don’t have a name for yet.');
     expect(html).toContain('Most kept');
   });
 
@@ -50,6 +49,12 @@ describe('entry-server', () => {
     expect(await pageHtml('fr')).toMatch(
       /<a href="\/" hrefLang="fr" lang="fr" aria-current="true"/
     );
+  });
+
+  it("draws the home page's player bar out of the way, the hero holding the player, and every other page's in view", async () => {
+    const bar = /<section aria-label="Lecteur du direct"[^>]*>/;
+    expect((await pageHtml('fr')).match(bar)?.[0]).toContain('inert');
+    expect((await pageHtml('fr', '/mentions-legales/')).match(bar)?.[0]).not.toContain('inert');
   });
 
   it('renders the legal page with the publisher and the data controller, under the header', async () => {

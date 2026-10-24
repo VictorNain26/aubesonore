@@ -57,8 +57,12 @@ export function CastControl({
             }
           >
             {icon}
-            {/* The bar shows the word once there is room for it, the device always. */}
-            <span className={cn(variant === 'bar' && !connected && 'sr-only md:not-sr-only')}>
+            {/* The bar shows the word once there is room for it, the device always; the hero's
+                actions hide it to the eye on a phone (data-label, hero-actions). */}
+            <span
+              data-label
+              className={cn(variant === 'bar' && !connected && 'sr-only md:not-sr-only')}
+            >
               {label}
             </span>
           </button>
