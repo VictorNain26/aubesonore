@@ -7,6 +7,12 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { visualizer } from 'rollup-plugin-visualizer';
 import type { PluginOption } from 'vite';
 import path from 'path';
+import { readFileSync } from 'node:fs';
+
+// The installed app describes itself as the home page does (messages/fr.json, meta_description).
+const { meta_description: description } = JSON.parse(
+  readFileSync(new URL('./messages/fr.json', import.meta.url), 'utf8')
+) as { meta_description: string };
 
 // What a fresh database has no answer to: Musilogy, the artist pages, today's plays and the
 // trends, and the covers stored with plays. A listener's own data (session, kept tracks) and the
@@ -59,8 +65,7 @@ export default defineConfig(({ mode }) => {
         manifest: {
           name: 'AubeSonore',
           short_name: 'AubeSonore',
-          description:
-            "Webradio de découverte : rock et pop indé, électronique, hip-hop, des années 60 à aujourd'hui. Gratuite, sans publicité.",
+          description,
           lang: 'fr',
           categories: ['music'],
           theme_color: '#f1e5dc',

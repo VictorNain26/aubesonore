@@ -44,7 +44,10 @@ describe('AuthPage', () => {
   it('names the track the listener wanted to keep', () => {
     open({ pathname: '/connexion', state: { keepTitle: 'Mimoun' } });
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Pour garder « Mimoun », connectez-vous.' })
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'Pour garder «\u00a0Mimoun\u00a0», connectez-vous.',
+      })
     ).toBeInTheDocument();
   });
 
@@ -91,7 +94,7 @@ describe('AuthPage', () => {
     open('/connexion');
 
     await userEvent.type(screen.getByLabelText('Adresse e-mail'), 'jane@example.com');
-    await userEvent.click(screen.getByRole('button', { name: 'Mot de passe oublié ?' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Mot de passe oublié\u00a0?' }));
 
     expect(screen.getByRole('heading', { level: 1, name: 'Mot de passe oublié' })).toHaveFocus();
     expect(screen.getByLabelText('Adresse e-mail')).toHaveValue('jane@example.com');
@@ -170,7 +173,7 @@ describe('AuthPage', () => {
     );
     open('/connexion');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Mot de passe oublié ?' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Mot de passe oublié\u00a0?' }));
     await userEvent.type(screen.getByLabelText('Adresse e-mail'), 'jane@example.com');
     await userEvent.click(screen.getByRole('button', { name: 'Envoyer le lien' }));
 
@@ -201,13 +204,13 @@ describe('AuthPage', () => {
     );
     open('/connexion');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Mot de passe oublié ?' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Mot de passe oublié\u00a0?' }));
     await userEvent.type(screen.getByLabelText('Adresse e-mail'), 'jane@example.com');
     await userEvent.click(screen.getByRole('button', { name: 'Envoyer le lien' }));
 
     await vi.waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
-        "La demande n'a pas abouti. Réessayez dans un instant.",
+        'La demande n’a pas abouti. Réessayez dans un instant.',
         expect.anything()
       )
     );

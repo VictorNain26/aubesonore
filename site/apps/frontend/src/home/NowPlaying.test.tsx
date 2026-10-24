@@ -153,7 +153,7 @@ describe('NowPlayingFallback', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByRole('alert')).toHaveTextContent("Le titre en cours ne s'affiche pas.");
+    expect(screen.getByRole('alert')).toHaveTextContent('Le titre en cours ne s’affiche pas.');
     expect(screen.getByRole('button', { name: 'Écouter le direct' })).toBeInTheDocument();
 
     shouldThrow = false;

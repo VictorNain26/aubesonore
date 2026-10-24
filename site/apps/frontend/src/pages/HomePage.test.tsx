@@ -66,7 +66,7 @@ describe('HomePage', { timeout: PAGE_TEST_TIMEOUT }, () => {
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Une aube à chaque titre.');
     expect(screen.getAllByText('Nüchtern').length).toBeGreaterThan(0);
-    expect(screen.getByRole('heading', { name: "Depuis l'aube" })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Depuis l’aube' })).toBeInTheDocument();
     expect(screen.getByText('Oh No')).toBeInTheDocument();
     expect(screen.getByText('gardé 2 fois')).toBeInTheDocument();
   });

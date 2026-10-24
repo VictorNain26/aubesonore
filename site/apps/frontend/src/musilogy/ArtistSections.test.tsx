@@ -406,7 +406,7 @@ describe('linkYears', () => {
     const link = { ...neighbour(1), yBegin: 1971, yEnd: 1975 };
     expect(linkYears(link)).toBe('de 1971 à 1975');
     expect(linkYears({ ...link, yEnd: null })).toBe('depuis 1971');
-    expect(linkYears({ ...link, yBegin: null })).toBe("jusqu'en 1975");
+    expect(linkYears({ ...link, yBegin: null })).toBe('jusqu’en 1975');
     expect(linkYears({ ...link, yEnd: 1971 })).toBe('1971');
     expect(linkYears({ ...link, yBegin: null, yEnd: null })).toBeNull();
   });

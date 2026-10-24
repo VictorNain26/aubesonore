@@ -75,7 +75,7 @@ describe('authApi.signInWithProvider', () => {
       http.post('http://localhost:3000/api/auth/sign-in/social', () => HttpResponse.json({}))
     );
     await expect(authApi.signInWithProvider('google', 'http://localhost:3000/')).rejects.toThrow(
-      "La connexion avec Google n'a pas pu démarrer. Réessayez."
+      'La connexion avec Google n’a pas pu démarrer. Réessayez.'
     );
     expect(location.href).toBe('http://localhost:3000/en/');
   });
@@ -123,7 +123,7 @@ describe('authApi errors', () => {
   it('tells an unconfirmed address and an address already registered apart', async () => {
     answer('sign-in/email', 403, { message: 'Email not verified', code: 'EMAIL_NOT_VERIFIED' });
     await expect(authApi.signIn('a@b.fr', 'secret-pass')).rejects.toThrow(
-      'Adresse e-mail pas encore confirmée : ouvrez le lien reçu par e-mail.'
+      'Adresse e-mail pas encore confirmée\u00a0: ouvrez le lien reçu par e-mail.'
     );
 
     answer('sign-up/email', 422, {

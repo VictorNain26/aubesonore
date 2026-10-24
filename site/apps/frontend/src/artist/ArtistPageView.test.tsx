@@ -344,7 +344,7 @@ describe('portraitSentence', () => {
 
   it('says where and when a group formed, and until when it played', () => {
     expect(portraitSentence(group)).toBe(
-      "Groupe originaire de Paris, France, formé en 1993. Actif jusqu'en 2021."
+      'Groupe originaire de Paris, France, formé en 1993. Actif jusqu’en 2021.'
     );
     expect(portraitSentence({ ...group, ended: null, active: true })).toBe(
       'Groupe originaire de Paris, France, formé en 1993. Toujours en activité.'

@@ -28,9 +28,9 @@ describe('entry-server', () => {
       expect.stringMatching(/>Une aube à chaque titre\.<\/h1>$/),
     ]);
     expect(html).toContain(
-      'Des sons qui n&#x27;ont pas encore de nom pour vous. Gardez ceux qui vous plaisent.'
+      'Des sons qui n’ont pas encore de nom pour vous. Gardez ceux qui vous plaisent.'
     );
-    expect(html).toContain('Depuis l&#x27;aube');
+    expect(html).toContain('Depuis l’aube');
   });
 
   it('renders the English home page as static HTML, its one heading the welcome line', async () => {
@@ -38,7 +38,7 @@ describe('entry-server', () => {
     expect(html.match(/<h1[^>]*>.*?<\/h1>/g)).toEqual([
       expect.stringMatching(/>A dawn with every track\.<\/h1>$/),
     ]);
-    expect(html).toContain('Sounds you don&#x27;t have a name for yet. Keep the ones you love.');
+    expect(html).toContain('Sounds you don’t have a name for yet. Keep the ones you love.');
     expect(html).toContain('Most kept');
   });
 
@@ -69,7 +69,7 @@ describe('entry-server', () => {
 
   it('renders the 404 in the language of its path, leading back to the live', async () => {
     const fr = await pageHtml('fr', '/404');
-    expect(fr).toContain('Un blanc à l&#x27;antenne.');
+    expect(fr).toContain('Un blanc à l’antenne.');
     expect(fr).not.toContain('Dead air');
     const en = await pageHtml('en', '/en/404');
     expect(en).toContain('Dead air.');
@@ -115,7 +115,7 @@ describe('entry-server', () => {
   it('gives each language its own title and description', () => {
     expect(meta('fr').title).toBe('AubeSonore · Radio de découverte indé, électro, hip-hop');
     expect(meta('en').title).toBe('AubeSonore · Discovery radio: indie, electronic, hip-hop');
-    expect(meta('en').description).toMatch(/^Free, ad-free web radio/);
+    expect(meta('en').description).toMatch(/^A free, ad-free discovery web radio/);
     expect(meta('fr', 'legal').description).not.toBe(meta('fr', 'legal').title);
   });
 });

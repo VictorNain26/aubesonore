@@ -74,6 +74,6 @@ describe('MostKeptView', () => {
 
   it('says the ranking is unavailable on error', () => {
     render(<MostKeptView trends={null} status="error" />, { wrapper });
-    expect(screen.getByText("Le classement est indisponible pour l'instant.")).toBeInTheDocument();
+    expect(screen.getByText('Le classement est indisponible pour l’instant.')).toBeInTheDocument();
   });
 });

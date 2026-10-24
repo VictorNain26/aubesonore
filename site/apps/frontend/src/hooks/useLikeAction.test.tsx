@@ -60,7 +60,7 @@ describe('useLikeAction', () => {
       { action: { label: string; onClick: () => void } },
     ];
     expect(message).toBe('Gardé.');
-    expect(options.action.label).toBe('Découvrir Test Artist');
+    expect(options.action.label).toBe('Voir Test Artist');
 
     act(() => options.action.onClick());
     expect(result.current.location.pathname).toBe('/artiste/test-artist');
@@ -83,7 +83,7 @@ describe('useLikeAction', () => {
 
     expect(mockedToastSuccess).not.toHaveBeenCalled();
     expect(mockedToastError).toHaveBeenCalledWith(
-      "Le titre n'a pas pu être gardé. Réessayez.",
+      'Le titre n’a pas pu être gardé. Réessayez.',
       expect.anything()
     );
     expect(useLikedTracksStore.getState().tracks).toHaveLength(0);
@@ -125,7 +125,7 @@ describe('useLikeAction', () => {
 
     expect(mockedToastSuccess).not.toHaveBeenCalled();
     expect(mockedToastError).toHaveBeenCalledWith(
-      "Le titre n'a pas pu être retiré. Réessayez.",
+      'Le titre n’a pas pu être retiré. Réessayez.',
       expect.anything()
     );
     expect(useLikedTracksStore.getState().tracks).toEqual([kept]);

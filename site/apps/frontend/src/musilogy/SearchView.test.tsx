@@ -63,7 +63,7 @@ describe('MusilogyHomeView', () => {
       <MusilogyHomeView query="t. r" onQueryChange={vi.fn()} search={search} />
     );
     const { rerender } = render(view({ status: 'idle' }), { wrapper: MemoryRouter });
-    expect(screen.getByText("Tapez au moins deux lettres d'un nom.")).toBeInTheDocument();
+    expect(screen.getByText('Tapez au moins deux lettres d’un nom.')).toBeInTheDocument();
 
     rerender(view({ status: 'searching', hits: [] }));
     expect(screen.getByRole('progressbar', { name: 'Chargement…' })).toBeInTheDocument();
