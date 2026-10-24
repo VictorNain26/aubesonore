@@ -89,6 +89,25 @@ describe('SiteHeader', () => {
     expect(screen.getByRole('link', { name: 'Musilogy' })).not.toHaveAttribute('aria-current');
   });
 
+  it('marks the current page one way, whichever page it is', () => {
+    signIn();
+    const { unmount } = render(
+      <MemoryRouter initialEntries={['/musilogy']}>
+        <SiteHeader />
+      </MemoryRouter>
+    );
+    const musilogy = screen.getByRole('link', { name: 'Musilogy' }).className;
+    unmount();
+
+    render(
+      <MemoryRouter initialEntries={['/mes-titres']}>
+        <SiteHeader />
+      </MemoryRouter>
+    );
+    expect(screen.getByRole('link', { name: 'Mes titres' }).className).toBe(musilogy);
+    expect(musilogy).toContain('wave-underline');
+  });
+
   it('keeps the account in its own menu, where the listener signs out', async () => {
     const signOut = signIn();
     render(<SiteHeader />, { wrapper: MemoryRouter });

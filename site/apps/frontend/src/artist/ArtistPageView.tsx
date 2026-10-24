@@ -126,15 +126,16 @@ function Summary({ summary }: { summary: ArtistSummary }) {
   );
 }
 
-// An action that leaves the site: a pill, so it reads apart from the text and the page's anchors.
-const LISTEN_PILL =
-  'text-ui bg-surface-raised ease-out-quart hover:bg-accent/10 focus-visible:outline-accent inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 transition-[background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
+// An action that leaves the site: a raised block at a right angle, so it reads apart from the text
+// and the page's anchors (the disc is for Écouter only).
+const PLATFORM_LINK =
+  'text-ui bg-surface-raised ease-out-quart hover:bg-accent/10 focus-visible:outline-accent inline-flex min-h-11 items-center gap-1.5 px-4 transition-[background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
 
-/** Where else to hear the artist: one pill per platform, each opening outside. */
+/** Where else to hear the artist: one link per platform, each opening outside. */
 function ListenLinks({ links }: { links: ArtistProfile['links'] }) {
   return (
     <>
-      {/* Named for those who move by headings; the pills say it to the eye. */}
+      {/* Named for those who move by headings; the links say it to the eye. */}
       <h2 id="listen-title" className="sr-only">
         {m.artist_listen_title()}
       </h2>
@@ -145,7 +146,7 @@ function ListenLinks({ links }: { links: ArtistProfile['links'] }) {
       >
         {links.map((link) => (
           <li key={link.url} className="shrink-0">
-            <a href={link.url} {...OUTSIDE_LINK} className={LISTEN_PILL}>
+            <a href={link.url} {...OUTSIDE_LINK} className={PLATFORM_LINK}>
               {PLATFORM_LABELS[link.platform]()}
               <ExternalIcon className="text-text-muted size-4" />
             </a>
@@ -220,7 +221,7 @@ function Profile({
     <>
       {/* The sections' 4/8 grid: the portrait in the title column, who they are beside it. */}
       <div className="px-page wide:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] wide:gap-16 grid gap-6 pt-10 md:pt-16">
-        {/* Its entrance on a wrapper: an animation filled forward would hold the hover's lift.
+        {/* Its entrance on a wrapper, apart from the image's own hover and press.
             Beside the text, its foot on the text's foot, whatever its shape. */}
         <div className="lift-in portrait-room wide:self-end">
           <ArtistPortrait
@@ -233,9 +234,10 @@ function Profile({
             where to hear them, and the way down the page. */}
         <div className="lift-in-late wide:justify-end flex min-w-0 flex-col">
           <DiscoveryTrail steps={trail} />
-          {facts ? <p className="text-caption text-text-muted m-0">{facts}</p> : null}
-          <h1 className="font-display text-hero m-0 mt-2 break-words">{profile.name}</h1>
-          {styles.length > 0 ? <p className="text-sub m-0 mt-3">{styles.join(' · ')}</p> : null}
+          {facts ? <p className="text-sub text-text-muted m-0">{facts}</p> : null}
+          {/* The page's largest words, above every page's title: the name, as the title on air. */}
+          <h1 className="font-display text-now m-0 mt-3 break-words">{profile.name}</h1>
+          {styles.length > 0 ? <p className="text-sub m-0 mt-4">{styles.join(' · ')}</p> : null}
           {profile.summary || portrait ? (
             <div className="mt-6">
               {profile.summary ? <Summary summary={profile.summary} /> : null}

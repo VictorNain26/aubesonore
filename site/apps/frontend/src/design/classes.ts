@@ -10,9 +10,13 @@ export const ARTIST_LINK =
 export const BACK_TO_LIVE =
   'bg-accent text-on-accent text-ui ease-spring focus-visible:outline-accent inline-flex h-14 items-center rounded-full px-6 font-semibold transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95';
 
-/** A round 44px close button, for a full-screen menu or a sheet. */
+/** A square 44px close button, for a full-screen menu, a sheet or a large image. */
 export const CLOSE_BUTTON =
-  'ease-out-quart hover:bg-surface-raised focus-visible:outline-accent inline-flex size-11 shrink-0 items-center justify-center rounded-full transition-[background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90';
+  'ease-out-quart hover:bg-surface-raised focus-visible:outline-accent inline-flex size-11 shrink-0 items-center justify-center transition-[background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90';
+
+/** An outlined action at a right angle (Se connecter, Menu): it fills with ink under the pointer. */
+export const OUTLINE_ACTION =
+  'text-ui border-accent ease-out-quart hover:bg-accent hover:text-on-accent focus-visible:outline-accent inline-flex min-h-11 items-center border px-4.5 transition-[color,background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
 
 /** A link stretched over its whole row (its ::after covers the row, which is `relative`). */
 export const STRETCHED = "after:absolute after:inset-0 after:content-['']";

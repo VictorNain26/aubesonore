@@ -35,7 +35,7 @@ export function Button({
       disabled={disabled === true || loading}
       aria-busy={loading || undefined}
       className={cn(
-        'text-body ease-out-quart inline-flex h-11 items-center gap-2 rounded-full font-medium transition-opacity duration-150',
+        'text-body ease-out-quart inline-flex h-11 items-center gap-2 font-medium transition-opacity duration-150',
         'focus-visible:outline-accent focus-visible:outline-2 focus-visible:outline-offset-2',
         'active:opacity-80 disabled:pointer-events-none disabled:opacity-50',
         VARIANT_CLASSES[variant],

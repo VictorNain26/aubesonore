@@ -19,7 +19,7 @@ export function PageMessage({
     <div
       className={cn('lift-in px-page flex flex-1 flex-col justify-center gap-3 py-16', className)}
     >
-      <h1 className="font-display text-hero m-0">{title}</h1>
+      <h1 className="font-display text-page m-0">{title}</h1>
       <p className="text-intro text-text-muted max-w-blurb m-0">{body}</p>
       <p className="m-0 mt-6">
         <Link to={localizeHref('/')} className={BACK_TO_LIVE}>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import { localizeHref } from '@/paraglide/runtime.js';
-import { ArrowLeftIcon, EyeClosedIcon, EyeIcon, HeartIcon, RankingIcon } from '../design/icons';
+import { ArrowLeftIcon, EyeClosedIcon, EyeIcon } from '../design/icons';
 import { cn } from '@/lib/utils';
 import { Button } from '../design/Button';
 import { TextField } from '../design/TextField';
@@ -89,27 +89,20 @@ const BACK_LINK_CLASSES =
   'text-ui text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -ml-1 inline-flex min-h-11 items-center gap-2 self-start px-1 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
 
 /**
- * What an account brings: beside the form on wide screens, under it on a phone. A phone that
- * already shows the promise under the form's title gets the list alone.
+ * What an account brings, in the site's voice: the promise in the display face, then two plain
+ * lines, as the charter sets a line and its sentence. Beside the form on wide screens, under it on
+ * a phone. A phone that already shows the promise under the form's title gets the lines alone.
  */
 function AuthPitch({ className, withTitle = true }: { className?: string; withTitle?: boolean }) {
   return (
-    <div className={cn('flex flex-col gap-6 md:gap-8', className)}>
+    <div className={cn('max-w-aside flex flex-col gap-5 md:gap-6', className)}>
       {withTitle ? (
-        <p className="font-display text-section md:text-hero max-w-hero m-0 text-balance">
-          {m.auth_aside_title()}
-        </p>
+        <p className="font-display text-section m-0 text-balance">{m.auth_aside_title()}</p>
       ) : null}
-      <ul className="text-intro text-text-muted max-w-aside m-0 flex list-none flex-col gap-4 p-0">
-        <li className="flex items-start gap-3.5">
-          <HeartIcon className="text-text mt-1 size-5 shrink-0" />
-          {m.auth_aside_library()}
-        </li>
-        <li className="flex items-start gap-3.5">
-          <RankingIcon className="text-text mt-1 size-5 shrink-0" />
-          {m.auth_aside_ranking()}
-        </li>
-      </ul>
+      <div className="text-intro m-0 flex flex-col gap-2">
+        <p className="m-0">{m.auth_aside_library()}</p>
+        <p className="m-0">{m.auth_aside_ranking()}</p>
+      </div>
     </div>
   );
 }
@@ -223,7 +216,7 @@ export function AuthView({
       <div className="grid w-full gap-14 md:grid-cols-2 md:items-center md:gap-0">
         <AuthPitch className="hidden md:flex md:pr-16 lg:pr-24" />
 
-        <div className="md:border-border md:border-l md:pl-16 lg:pl-24">
+        <div className="md:pl-16 lg:pl-24">
           <div key={mode} className="panel-in flex flex-col gap-8">
             <div className="max-w-aside flex flex-col gap-3">
               {withBack ? (
@@ -239,7 +232,7 @@ export function AuthView({
               <h1
                 ref={headingRef}
                 tabIndex={-1}
-                className="font-display text-section m-0 text-balance outline-none"
+                className="font-display text-page m-0 text-balance wrap-break-word outline-none"
               >
                 {headerCopy.title}
               </h1>
@@ -291,9 +284,9 @@ export function AuthView({
                       ) : null}
                     </div>
                     <div className="text-ui text-text-muted flex items-center gap-4 font-normal">
-                      <span className="border-border flex-1 border-t" />
+                      <span aria-hidden="true" className="wave-rule h-1.5 flex-1" />
                       {m.auth_or()}
-                      <span className="border-border flex-1 border-t" />
+                      <span aria-hidden="true" className="wave-rule h-1.5 flex-1" />
                     </div>
                   </div>
                 ) : null}
@@ -405,7 +398,7 @@ export function AuthView({
                 </div>
 
                 {withAccountChoice ? (
-                  <p className="border-border text-ui text-text-muted m-0 border-t pt-5 font-normal">
+                  <p className="wave-rule-top text-ui text-text-muted m-0 pt-5 font-normal">
                     {mode === 'signin' ? m.auth_no_account() : m.auth_have_account()}{' '}
                     <button
                       type="button"
@@ -422,10 +415,7 @@ export function AuthView({
         </div>
 
         {withAccountChoice ? (
-          <AuthPitch
-            className="border-border border-t pt-10 md:hidden"
-            withTitle={!promiseOnPhone}
-          />
+          <AuthPitch className="wave-rule-top pt-10 md:hidden" withTitle={!promiseOnPhone} />
         ) : null}
       </div>
     </main>

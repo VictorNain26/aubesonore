@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Link } from 'react-router';
-import { CloseIcon, SearchIcon } from '../design/icons';
 import type { MusilogySearchHit } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
 import { LineLoader } from '../design/LineLoader';
+import { SearchField } from '../design/SearchField';
 import { KIND_LABELS } from '../lib/artistKind';
 import { ARTIST_LINK, STRETCHED } from '../design/classes';
 import { cn } from '@/lib/utils';
@@ -116,71 +116,47 @@ export function MusilogyHomeView({
   return (
     <main
       id="main"
-      className="lift-in px-page flex flex-1 flex-col gap-10 pt-10 pb-16 md:gap-14 md:pt-16 md:pb-24"
+      // Wide, the sections' 4/8 grid: the title and what Musilogy is in the title column, the search
+      // beside them, its line on the foot of the lead, the answers under it: an empty search fills the
+      // screen's width.
+      className="lift-in px-page wide:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] wide:gap-x-16 wide:gap-y-8 grid flex-1 content-start gap-8 pt-10 pb-16 md:gap-12 md:pt-16 md:pb-24"
     >
-      <div className="grid gap-5 md:grid-cols-2 md:items-end md:gap-16">
-        <h1 className="font-display text-hero m-0">{m.musilogy_title()}</h1>
-        <p className="text-intro text-text-muted max-w-aside m-0 md:pb-2">{m.musilogy_lead()}</p>
+      <div className="flex flex-col gap-4">
+        <h1 className="font-display text-page m-0">{m.musilogy_title()}</h1>
+        <p className="text-intro text-text-muted max-w-aside m-0">{m.musilogy_lead()}</p>
       </div>
 
-      <div className="flex flex-col gap-8">
-        <div ref={searchRef} role="search" className="relative w-full max-w-2xl scroll-mt-4">
-          <label>
-            <span className="sr-only">{m.musilogy_search_label()}</span>
-            <SearchIcon className="text-text-muted pointer-events-none absolute top-1/2 left-5 size-5 -translate-y-1/2" />
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => {
-                onQueryChange(event.target.value);
-                liftAboveKeyboard();
-              }}
-              onFocus={() => {
-                liftedThisFocus.current = false;
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') onQueryChange('');
-              }}
-              placeholder={m.musilogy_search_placeholder()}
-              autoComplete="off"
-              className={cn(
-                'text-row border-accent ease-out-quart placeholder:text-text-faint hover:bg-surface-raised focus-visible:outline-accent h-14 w-full rounded-full border bg-transparent pl-13 font-normal transition-colors duration-150 focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-search-cancel-button]:hidden',
-                // The clear button's room is kept only while it shows: a phone needs it for the placeholder.
-                query ? 'pr-14' : 'pr-5'
-              )}
-            />
-          </label>
-          {query ? (
-            <button
-              type="button"
-              onClick={() => onQueryChange('')}
-              aria-label={m.library_search_clear()}
-              className="ease-out-quart focus-visible:outline-accent absolute top-1.5 right-1.5 flex size-11 items-center justify-center rounded-full transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90"
-            >
-              <CloseIcon className="size-4.5" />
-            </button>
-          ) : null}
-        </div>
+      <SearchField
+        ref={searchRef}
+        label={m.musilogy_search_label()}
+        placeholder={m.musilogy_search_placeholder()}
+        query={query}
+        onQueryChange={onQueryChange}
+        onType={liftAboveKeyboard}
+        onFocus={() => {
+          liftedThisFocus.current = false;
+        }}
+        className="wide:self-end scroll-mt-4"
+      />
 
-        <div aria-live="polite" className={cn(lifted && query && 'min-h-svh')}>
-          {search.status === 'idle' ? (
-            <p className="text-text-muted m-0">{m.musilogy_search_hint()}</p>
-          ) : search.status === 'unavailable' ? (
-            <Empty text={m.musilogy_unavailable_body()} />
-          ) : search.status === 'error' ? (
-            <Empty text={m.musilogy_search_error()} />
-          ) : search.status === 'searching' ? (
-            search.hits.length > 0 ? (
-              <SearchHits hits={search.hits} stale />
-            ) : (
-              <LineLoader className="min-h-90" />
-            )
-          ) : search.hits.length > 0 ? (
-            <SearchHits hits={search.hits} stale={false} />
+      <div aria-live="polite" className={cn('wide:col-start-2', lifted && query && 'min-h-svh')}>
+        {search.status === 'idle' ? (
+          <p className="text-text-muted m-0">{m.musilogy_search_hint()}</p>
+        ) : search.status === 'unavailable' ? (
+          <Empty text={m.musilogy_unavailable_body()} />
+        ) : search.status === 'error' ? (
+          <Empty text={m.musilogy_search_error()} />
+        ) : search.status === 'searching' ? (
+          search.hits.length > 0 ? (
+            <SearchHits hits={search.hits} stale />
           ) : (
-            <Empty text={m.musilogy_search_empty()} />
-          )}
-        </div>
+            <LineLoader className="min-h-90" />
+          )
+        ) : search.hits.length > 0 ? (
+          <SearchHits hits={search.hits} stale={false} />
+        ) : (
+          <Empty text={m.musilogy_search_empty()} />
+        )}
       </div>
     </main>
   );

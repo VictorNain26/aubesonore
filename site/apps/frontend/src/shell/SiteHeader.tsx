@@ -8,6 +8,7 @@ import { localizeHref } from '@/paraglide/runtime.js';
 import { cn } from '@/lib/utils';
 import * as m from '@/paraglide/messages.js';
 import { useHeaderOnScroll } from '../lib/headerOnScroll';
+import { OUTLINE_ACTION } from '../design/classes';
 
 const NAV_LINK =
   'text-ui ease-out-quart focus-visible:outline-accent hidden min-h-11 items-center transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-97 md:inline-flex';
@@ -17,11 +18,8 @@ const NAV_LINK =
 const BRAND_LINK =
   'focus-visible:outline-accent -my-3 flex py-3 focus-visible:outline-2 focus-visible:outline-offset-4';
 
-const OUTLINE_PILL =
-  'text-ui border-accent ease-out-quart hover:bg-accent hover:text-on-accent focus-visible:outline-accent inline-flex min-h-11 items-center rounded-full border px-4.5 transition-[color,background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
-
-// The page the listener is on: underlined with the line, not hidden, and not reacting to the
-// pointer.
+// The page the listener is on, Musilogy or Mes titres alike: underlined with the line, not hidden,
+// and not reacting to the pointer.
 const CURRENT_LINK = 'wave-underline hover:opacity-100';
 
 const AVATAR =
@@ -82,13 +80,13 @@ export function SiteHeader() {
             {m.musilogy_title()}
           </Link>
           {isLoading ? (
-            <span aria-hidden="true" className="bg-surface-raised h-11 w-32 rounded-full" />
+            <span aria-hidden="true" className="bg-surface-raised h-11 w-32" />
           ) : isAuthenticated && user ? (
-            <span className="flex items-center gap-3">
+            <span className="flex items-center gap-7">
               <Link
                 to={libraryHref}
                 aria-current={onLibrary ? 'page' : undefined}
-                className={cn(OUTLINE_PILL, onLibrary && 'wave-underline')}
+                className={cn(NAV_LINK, onLibrary && CURRENT_LINK)}
               >
                 {m.nav_my_tracks()}
               </Link>
@@ -113,7 +111,7 @@ export function SiteHeader() {
             <Link
               to={localizeHref('/connexion')}
               state={{ from: pathname }}
-              className={OUTLINE_PILL}
+              className={OUTLINE_ACTION}
             >
               {m.nav_sign_in()}
             </Link>
