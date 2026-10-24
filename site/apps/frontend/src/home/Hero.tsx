@@ -8,8 +8,8 @@ import * as m from '@/paraglide/messages.js';
 
 /**
  * The opening screen, the first screen whole (design/tokens.css, hero): the welcome in one quiet
- * line (the page's one heading: it names the page and holds still, where the title on air changes
- * every few minutes; its first sentence alone on a phone), then the player, the biggest thing on
+ * sentence (the page's one heading: it names the page and holds still, where the title on air
+ * changes every few minutes), then the player, the biggest thing on
  * the page, its cover taking the room left; at its foot the horizon, the line that carries the live
  * sound, with the dawn light rising along it. While its player is on screen the player bar stays
  * away (stores/heroPlayerStore.ts).
@@ -52,12 +52,9 @@ export function Hero() {
 
       <SiteHeader />
 
-      <div className="px-page relative z-10 flex flex-wrap items-baseline gap-x-5 gap-y-1">
-        <h1 className="font-display text-title m-0 font-normal italic">{m.hero_title()}</h1>
-        <p className="text-intro text-text-muted phone:hidden m-0 text-pretty">
-          {m.hero_tagline()}
-        </p>
-      </div>
+      <h1 className="px-page font-display text-title relative z-10 m-0 font-normal italic">
+        {m.hero_title()}
+      </h1>
 
       <div ref={player} className="px-page player-room relative z-10">
         <ErrorBoundary FallbackComponent={NowPlayingFallback}>

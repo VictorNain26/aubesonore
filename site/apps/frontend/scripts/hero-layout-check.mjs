@@ -257,7 +257,7 @@ const MEASURE = `(() => {
   const disc = buttons[0];
   const inView = (b) => b && b.top >= 0 && b.left >= 0 && b.bottom <= vh && b.right <= vw;
   const header = box(hero.querySelector('header'));
-  const welcome = box(hero.querySelector('h1').parentElement);
+  const welcome = box(hero.querySelector('h1'));
   const cover = box(hero.querySelector('.cover-fit'));
   const h2 = hero.querySelector('h2');
   const title = box(h2);
@@ -265,7 +265,6 @@ const MEASURE = `(() => {
   const dot = box(hero.querySelector('.now-arrive'));
   const glow = box(hero.querySelector('.dawn-band').parentElement);
   const bar = document.querySelector('section[aria-label="Lecteur du direct"]');
-  const tagline = hero.querySelector('h1 + p');
   const overlap = (a, b) => a && b && a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
   const pairs = [['header', header], ['welcome', welcome], ['cover', cover], ['title', title]];
   const overlaps = [];
@@ -300,7 +299,6 @@ const MEASURE = `(() => {
     barAway: bar.hasAttribute('inert') && getComputedStyle(bar).opacity === '0',
     // The dawn's light is held to its box (home/Horizon.tsx).
     glowUnderActions: glow.top >= rowBox.bottom,
-    tagline: getComputedStyle(tagline).display !== 'none',
     heroHeight: Math.round(box(hero).height),
     // Paper left empty between the welcome line and the player, past the hero's own gap.
     spaceAbove: Math.round(
@@ -324,6 +322,8 @@ async function scrolledBar(y, shown) {
       if (o === '${shown ? 1 : 0}' && bar.hasAttribute('inert') !== ${shown}) break;
       await new Promise((r) => setTimeout(r, 100));
     }
+    // The slide ends on a spring past its opacity: let it rest before measuring where it is.
+    await new Promise((r) => setTimeout(r, 600));
     // The track's title in the bar, as wide as it shows (the phone's line or the larger one's).
     const titleWidth = Math.max(
       ...[...bar.querySelectorAll('.truncate.font-semibold')].map((s) => s.getBoundingClientRect().width)
@@ -332,6 +332,16 @@ async function scrolledBar(y, shown) {
       inert: bar.hasAttribute('inert'),
       opacity: getComputedStyle(bar).opacity,
       titleWidth: Math.round(titleWidth),
+      // Edge to edge on the screen's foot, its line along the whole top edge.
+      edgeToEdge: (() => {
+        const r = bar.getBoundingClientRect();
+        const line = bar.querySelector('canvas').getBoundingClientRect();
+        const vw = document.documentElement.clientWidth;
+        const ok = r.left === 0 && Math.abs(r.right - vw) < 1 && Math.abs(r.bottom - window.innerHeight) < 1
+          && line.left <= 0 && line.right >= vw - 1;
+        return ok || JSON.stringify({ r, line, vw, vh: window.innerHeight });
+      })(),
+      barHeight: Math.round(bar.getBoundingClientRect().height),
     };
   })()`);
 }
@@ -361,27 +371,35 @@ for (const [width, height] of VIEWPORTS) {
     if (r.sideScroll) fails.push('sideways scroll');
     if (!r.glowUnderActions) fails.push('dawn under the actions');
     if (r.titleLines > 3) fails.push(`title on ${r.titleLines} lines, cut at 3`);
-    if ((width < 640 || height < 480) && r.tagline) fails.push('second sentence on a phone');
     let scroll = '';
     if (title === TITLES[1]) {
       // The player scrolled away, then back.
       const away = await scrolledBar(Math.ceil(r.slotBottom) + 20, true);
+      if (process.env.SHOTS) {
+        const { data } = await page('Page.captureScreenshot', { format: 'png' });
+        const name = `${width}x${height}-bar-${process.env.SCHEME ?? 'light'}.png`;
+        writeFileSync(join(process.env.SHOTS, name), Buffer.from(data, 'base64'));
+      }
       const back = await scrolledBar(0, false);
       const ok = !away.inert && away.opacity === '1' && back.inert && back.opacity === '0';
+      if (away.edgeToEdge !== true)
+        fails.push(`bar not edge to edge on the foot ${away.edgeToEdge}`);
       if (!ok) fails.push('bar does not follow the hero');
-      scroll = ok ? `yes, title ${away.titleWidth} px` : `NO ${JSON.stringify({ away, back })}`;
+      scroll = ok
+        ? `yes, ${away.barHeight} px high, title ${away.titleWidth} px`
+        : `NO ${JSON.stringify({ away, back })}`;
     }
     failures += fails.length;
     rows.push(
-      `| ${width}×${height} | ${title.length} | ${r.cover} | ${r.spaceAbove} | ${r.titlePx}/${r.titleLines} | ${r.discPx} | ${r.iconsOnly ? 'icons' : 'words'} | ${r.tagline ? 'two' : 'one'} | ${r.heroHeight} | ${scroll} | ${fails.length ? fails.join('; ') : 'ok'} |`
+      `| ${width}×${height} | ${title.length} | ${r.cover} | ${r.spaceAbove} | ${r.titlePx}/${r.titleLines} | ${r.discPx} | ${r.iconsOnly ? 'icons' : 'words'} | ${r.heroHeight} | ${scroll} | ${fails.length ? fails.join('; ') : 'ok'} |`
     );
   }
 }
 
 console.log(
-  '| screen | title chars | cover px | empty above px | title px/lines | disc px | actions | welcome sentences | hero px | bar follows scroll | checks |'
+  '| screen | title chars | cover px | empty above px | title px/lines | disc px | actions | hero px | bar follows scroll | checks |'
 );
-console.log('|---|---|---|---|---|---|---|---|---|---|---|');
+console.log('|---|---|---|---|---|---|---|---|---|---|');
 console.log(rows.join('\n'));
 browser.close();
 process.exit(failures ? 1 : 0);

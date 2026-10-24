@@ -100,11 +100,10 @@ export function PlayerBarView({
         if (!e.currentTarget.contains(e.relatedTarget)) setHasFocus(false);
       }}
       className={cn(
-        // On phones the gaps tighten (the 44 px targets stay) so the title keeps a few more
-        // letters. A container: what it shows follows its own width (VolumeControl).
-        'bg-accent text-on-accent bottom-safe max-w-bar @container fixed inset-x-3 z-40 mx-auto flex items-center gap-2 py-1.5 pr-1.5 pl-1.5 md:gap-3 md:pr-3',
+        // Edge to edge, on the screen's foot (the mockups); its content keeps the page's gutters.
+        'player-bar bg-accent text-on-accent fixed inset-x-0 bottom-0 z-40',
         'ease-spring motion-safe:transition-[translate,opacity] motion-safe:duration-500',
-        hidden && 'pointer-events-none translate-y-24 opacity-0'
+        hidden && 'pointer-events-none translate-y-full opacity-0'
       )}
     >
       {/* The line along its top edge, in the dawn: calm at rest, listening while the live is
@@ -116,86 +115,90 @@ export function PlayerBarView({
         amplitude={BAR_LINE_AMPLITUDE}
         className="pointer-events-none absolute inset-x-0 -top-3 h-6 w-full"
       />
-      <button
-        type="button"
-        onClick={onToggleListen}
-        aria-label={listenAria(listen)}
-        aria-busy={listen === 'connecting'}
-        className="group ease-spring focus-visible:outline-on-accent shrink-0 rounded-full transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95"
-      >
-        <ListenDisc state={listen} className="size-12" />
-      </button>
-
-      {track && isOnline ? (
-        <>
-          {/* A phone opens the whole track in a sheet; a larger screen goes to the artist's page. */}
-          <span className="flex min-w-0 flex-1 md:hidden">
-            <NowPlayingSheet
-              track={track}
-              artistHref={artistHref}
-              listen={listen}
-              onToggleListen={onToggleListen}
-              isKept={isKept}
-              onToggleKeep={onToggleKeep}
-              onShare={onShare}
-              diffusion={diffusion}
-            >
-              <TrackLine track={track} hasChanged={hasChanged} />
-            </NowPlayingSheet>
-          </span>
-          <span className="hidden min-w-0 flex-1 md:flex">
-            {artistHref ? (
-              <Link
-                to={artistHref}
-                title={`${track.title}, ${track.artist}`}
-                className={TRACK_LINK}
-              >
-                <TrackLine track={track} hasChanged={hasChanged} />
-              </Link>
-            ) : (
-              <span
-                title={`${track.title}, ${track.artist}`}
-                className="flex min-w-0 flex-1 items-center gap-3"
-              >
-                <TrackLine track={track} hasChanged={hasChanged} />
-              </span>
-            )}
-          </span>
-        </>
-      ) : (
-        <span className="text-ui min-w-0 flex-1 truncate font-semibold">
-          {isOnline ? listenLabel(listen) : m.off_air()}
-        </span>
-      )}
-
-      {track && isOnline ? (
+      {/* On phones the gaps tighten (the 44 px targets stay) so the title keeps a few more
+          letters. A container: what it shows follows its own width (VolumeControl). */}
+      <div className="px-page @container flex items-center gap-2 py-1.5 md:gap-3">
         <button
           type="button"
-          onClick={onToggleKeep}
-          aria-pressed={isKept}
-          aria-label={m.track_keep_aria({ title: track.title })}
-          className={ICON_BUTTON}
+          onClick={onToggleListen}
+          aria-label={listenAria(listen)}
+          aria-busy={listen === 'connecting'}
+          className="group ease-spring focus-visible:outline-on-accent shrink-0 rounded-full transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95"
         >
-          <KeepHeart isKept={isKept} className="size-4" />
+          <ListenDisc state={listen} className="size-12" />
         </button>
-      ) : null}
 
-      {/* The speaker only from 22rem of bar (a 376 px phone): on a narrower one the title needs
+        {track && isOnline ? (
+          <>
+            {/* A phone opens the whole track in a sheet; a larger screen goes to the artist's page. */}
+            <span className="flex min-w-0 flex-1 md:hidden">
+              <NowPlayingSheet
+                track={track}
+                artistHref={artistHref}
+                listen={listen}
+                onToggleListen={onToggleListen}
+                isKept={isKept}
+                onToggleKeep={onToggleKeep}
+                onShare={onShare}
+                diffusion={diffusion}
+              >
+                <TrackLine track={track} hasChanged={hasChanged} />
+              </NowPlayingSheet>
+            </span>
+            <span className="hidden min-w-0 flex-1 md:flex">
+              {artistHref ? (
+                <Link
+                  to={artistHref}
+                  title={`${track.title}, ${track.artist}`}
+                  className={TRACK_LINK}
+                >
+                  <TrackLine track={track} hasChanged={hasChanged} />
+                </Link>
+              ) : (
+                <span
+                  title={`${track.title}, ${track.artist}`}
+                  className="flex min-w-0 flex-1 items-center gap-3"
+                >
+                  <TrackLine track={track} hasChanged={hasChanged} />
+                </span>
+              )}
+            </span>
+          </>
+        ) : (
+          <span className="text-ui min-w-0 flex-1 truncate font-semibold">
+            {isOnline ? listenLabel(listen) : m.off_air()}
+          </span>
+        )}
+
+        {track && isOnline ? (
+          <button
+            type="button"
+            onClick={onToggleKeep}
+            aria-pressed={isKept}
+            aria-label={m.track_keep_aria({ title: track.title })}
+            className={ICON_BUTTON}
+          >
+            <KeepHeart isKept={isKept} className="size-4" />
+          </button>
+        ) : null}
+
+        {/* The speaker only from 21rem of bar (a 384 px phone): on a narrower one the title needs
           the room, and the phone's own buttons set the level. */}
-      <VolumeControl
-        volume={volume}
-        isMuted={isMuted}
-        onVolumeChange={onVolumeChange}
-        onToggleMute={onToggleMute}
-        className="hidden @min-[22rem]:flex"
-      />
+        <VolumeControl
+          volume={volume}
+          isMuted={isMuted}
+          onVolumeChange={onVolumeChange}
+          onToggleMute={onToggleMute}
+          className="hidden @min-[21rem]:flex"
+        />
 
-      {/* Diffuser is in the track's sheet on a phone. */}
-      {diffusion ? (
-        <span className="hidden md:flex">
-          <CastControl diffusion={diffusion} variant="bar" />
-        </span>
-      ) : null}
+        {/* Diffuser is in the track's sheet on a phone. */}
+        {diffusion ? (
+          <span className="hidden md:flex">
+            <CastControl diffusion={diffusion} variant="bar" />
+          </span>
+        ) : null}
+      </div>
     </section>
   );
 }

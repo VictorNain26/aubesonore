@@ -44,7 +44,14 @@
   /* The calm rule between rows: a tile of the line, drawn by ruleMask() in design/wave.ts (its test
      holds this value to it), used as a mask in the rule's colour (wave-rule). */
   --wave-rule: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22640%22%20height%3D%226%22%20viewBox%3D%220%200%20640%206%22%3E%3Cpath%20d%3D%22M0%203.9%20L5.98%203.87%20L11.96%203.75%20L17.94%203.56%20L23.93%203.36%20L29.91%203.2%20L35.89%203.14%20L41.87%203.19%20L47.85%203.33%20L53.83%203.5%20L59.81%203.66%20L65.79%203.74%20L71.78%203.74%20L77.76%203.67%20L83.74%203.58%20L89.72%203.5%20L95.7%203.47%20L101.68%203.48%20L107.66%203.5%20L113.64%203.49%20L119.63%203.4%20L125.61%203.2%20L131.59%202.91%20L137.57%202.57%20L143.55%202.26%20L149.53%202.02%20L155.51%201.89%20L161.5%201.88%20L167.48%201.95%20L173.46%202.05%20L179.44%202.13%20L185.42%202.17%20L191.4%202.17%20L197.38%202.16%20L203.36%202.18%20L209.35%202.27%20L215.33%202.44%20L221.31%202.66%20L227.29%202.88%20L233.27%203.04%20L239.25%203.1%20L245.23%203.06%20L251.21%202.93%20L257.2%202.76%20L263.18%202.63%20L269.16%202.58%20L275.14%202.62%20L281.12%202.75%20L287.1%202.91%20L293.08%203.05%20L299.07%203.16%20L305.05%203.21%20L311.03%203.23%20L317.01%203.27%20L322.99%203.36%20L328.97%203.53%20L334.95%203.77%20L340.93%204.03%20L346.92%204.25%20L352.9%204.38%20L358.88%204.38%20L364.86%204.25%20L370.84%204.04%20L376.82%203.8%20L382.8%203.6%20L388.79%203.45%20L394.77%203.36%20L400.75%203.31%20L406.73%203.25%20L412.71%203.15%20L418.69%202.99%20L424.67%202.79%20L430.65%202.6%20L436.64%202.47%20L442.62%202.43%20L448.6%202.51%20L454.58%202.66%20L460.56%202.83%20L466.54%202.96%20L472.52%203.01%20L478.5%202.95%20L484.49%202.81%20L490.47%202.62%20L496.45%202.45%20L502.43%202.34%20L508.41%202.3%20L514.39%202.3%20L520.37%202.31%20L526.36%202.29%20L532.34%202.21%20L538.32%202.09%20L544.3%201.95%20L550.28%201.86%20L556.26%201.87%20L562.24%202%20L568.22%202.25%20L574.21%202.57%20L580.19%202.89%20L586.17%203.17%20L592.15%203.35%20L598.13%203.44%20L604.11%203.47%20L610.09%203.49%20L616.07%203.53%20L622.06%203.61%20L628.04%203.73%20L634.02%203.84%20L640%203.9%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221%22%2F%3E%3C%2Fsvg%3E');
-  --bar-space: calc(5.75rem + env(safe-area-inset-bottom));
+  /* The player bar, by day the ink (as the accent); by night the sky one step up, not a slab of
+     paper at the foot of the screen. Its words keep AA (scripts/check-contrast.mjs). */
+  --bar: var(--accent);
+  --on-bar: var(--on-accent);
+  --on-bar-muted: var(--on-accent-muted);
+  /* The room every page keeps at its foot for the player bar: its 3.75rem, 1rem of air, and the
+     iPhone's gesture area under it. */
+  --bar-space: calc(4.75rem + env(safe-area-inset-bottom));
   /* The header back over the page when it scrolls up: py-3 around a 44 px row, and its rule. */
   --header-space: 4.5rem;
 }
@@ -65,6 +72,9 @@
     --dawn-ink: var(--dawn);
     --dawn-rose: var(--sky-lilac);
     --dawn-lilac: var(--sky-blue);
+    --bar: var(--surface-raised);
+    --on-bar: var(--text);
+    --on-bar-muted: var(--text-muted);
   }
 }
 
@@ -165,7 +175,6 @@
   --container-blurb: 28ch;
   --container-form: 24rem;
   --container-aside: 34rem;
-  --container-bar: 42rem;
   /* The content's width: the same up to 1680 px, centred beyond. */
   --container-page: 100rem;
 
@@ -610,9 +619,14 @@
   }
 }
 
-/* The player bar: above the phone's gesture area (iPhone). */
-@utility bottom-safe {
-  bottom: calc(1rem + env(safe-area-inset-bottom));
+/* The player bar (shell/PlayerBar.tsx), edge to edge on the screen's foot, its words clear of the
+   iPhone's gesture area. Inside it the accent is the bar's (--bar): what reads the accent there
+   (Écouter's disc, the focus rings) follows it, by day and by night. */
+@utility player-bar {
+  --accent: var(--bar);
+  --on-accent: var(--on-bar);
+  --on-accent-muted: var(--on-bar-muted);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* The track-on-air sheet of a phone, after Base UI's bottom-sheet example: it follows the finger
@@ -662,8 +676,8 @@
   }
 }
 
-/* The room every page keeps free at its foot for the player bar (3.75rem high, 1rem off the
-   bottom, plus 1rem of air and the iPhone's gesture area), so the bar never covers content. */
+/* The room every page keeps free at its foot for the player bar (--bar-space), so the bar never
+   covers content. */
 @utility pb-bar {
   padding-bottom: var(--bar-space);
 }
@@ -685,7 +699,7 @@
   min-height: calc(100dvh - var(--bar-space));
 }
 
-/* A phone, upright or on its side: the welcome line keeps its first sentence, Écouter is 52 px. */
+/* A phone, upright or on its side: Écouter is 52 px there. */
 @custom-variant phone {
   @media (width < 40rem), (height < 30rem) {
     @slot;

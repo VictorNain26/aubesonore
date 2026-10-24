@@ -80,7 +80,6 @@
   "error_oauth_failed": "Couldn’t sign in",
   "error_redirect_missing": "Signing in with Google couldn’t start. Try again.",
   "hero_title": "A dawn with every track.",
-  "hero_tagline": "Sounds you don’t have a name for yet. Keep the ones you love.",
   "player_listen": "Listen",
   "player_listening": "Pause",
   "player_listen_aria": "Listen live",
