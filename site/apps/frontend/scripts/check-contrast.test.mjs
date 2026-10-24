@@ -14,6 +14,9 @@ const day = {
   accent: 'var(--text)',
   'on-accent': 'var(--surface)',
   'on-accent-muted': 'oklch(0.8 0.03 275)',
+  bar: 'var(--accent)',
+  'on-bar': 'var(--on-accent)',
+  'on-bar-muted': 'var(--on-accent-muted)',
   dawn: 'oklch(0.82 0.11 55)',
   'dawn-ink': 'oklch(0.6 0.13 45)',
 };
@@ -24,6 +27,9 @@ const night = {
   'text-muted': 'oklch(0.8 0.03 280)',
   'text-faint': 'oklch(0.74 0.035 285)',
   'on-accent-muted': 'oklch(0.42 0.05 275)',
+  bar: 'var(--surface-raised)',
+  'on-bar': 'var(--text)',
+  'on-bar-muted': 'var(--text-muted)',
   dawn: 'oklch(0.62 0.12 45)',
   'dawn-ink': 'var(--dawn)',
 };
@@ -48,6 +54,11 @@ describe('checkTokens', () => {
 
   it('passes a palette that holds by day and by night', () => {
     expect(failures(checkTokens(css(day, night)))).toEqual([]);
+  });
+
+  it('fails a night bar whose words do not hold on it, as a slab of paper under paper ink would', () => {
+    const rows = checkTokens(css(day, { ...night, bar: 'var(--text)' }));
+    expect(failures(rows)).toEqual(['night on-bar/bar', 'night on-bar-muted/bar']);
   });
 
   it('checks the night block with the same pairs', () => {

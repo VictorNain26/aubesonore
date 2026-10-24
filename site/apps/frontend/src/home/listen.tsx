@@ -34,7 +34,8 @@ const ON_PRESS_SHOW =
   'group-hover:scale-100 group-hover:opacity-100 group-focus-visible:scale-100 group-focus-visible:opacity-100';
 
 const TONE = {
-  paper: { disc: 'bg-surface text-text', ring: 'border-accent/15 border-t-accent' },
+  // On an accent ground (the bar, the sheet's pill): the accent's own ink, whatever the ground.
+  paper: { disc: 'bg-on-accent text-accent', ring: 'border-accent/15 border-t-accent' },
   ink: { disc: 'bg-accent text-on-accent', ring: 'border-on-accent/15 border-t-on-accent' },
 };
 
