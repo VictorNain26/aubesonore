@@ -115,12 +115,13 @@ export function waveY(x: number, o: WaveOptions): number {
   );
 }
 
-/** The line as an SVG path from x = 0 to x = width, a point every `step`. */
-export function wavePath(o: WaveOptions & { step?: number }): string {
-  const count = Math.max(2, Math.round(o.width / (o.step ?? 4)));
+/** The line as an SVG path from x = 0 to x = `end` (the width unless said), a point every `step`. */
+export function wavePath(o: WaveOptions & { step?: number; end?: number }): string {
+  const end = o.end ?? o.width;
+  const count = Math.max(2, Math.round(end / (o.step ?? 4)));
   let d = '';
   for (let i = 0; i <= count; i++) {
-    const x = (i / count) * o.width;
+    const x = (i / count) * end;
     d += `${i === 0 ? 'M' : ' L'}${round(x)} ${round(waveY(x, o))}`;
   }
   return d;

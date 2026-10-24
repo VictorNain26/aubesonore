@@ -3,7 +3,6 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { localizeHref } from '@/paraglide/runtime.js';
 import { usePlayer } from '../lib/player';
-import { useHeroListenVisible } from '../home/listen';
 import type { SignInState } from '../lib/signIn';
 import { takePendingKeep } from '../lib/pendingKeep';
 import { SiteHeader } from '../shell/SiteHeader';
@@ -61,10 +60,6 @@ export function AuthPage() {
   const backTo = opened.from ?? localizeHref('/');
   const isListening = usePlayer((s) => s.isPlaying);
   const [mode, setMode] = useState<AuthMode>(resetToken ? 'reset-password' : defaultMode);
-  const setListenVisible = useHeroListenVisible((s) => s.setVisible);
-
-  // No hero here: the player bar is the only way to listen.
-  useEffect(() => setListenVisible(false), [setListenVisible]);
 
   useEffect(() => {
     if (resetLinkInvalid) toastError(m.toast_reset_link_invalid());

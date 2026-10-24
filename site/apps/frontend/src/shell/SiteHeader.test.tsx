@@ -114,10 +114,10 @@ describe('SiteHeader', () => {
     expect(screen.queryByRole('link', { name: 'Les plus gardés' })).not.toBeInTheDocument();
   });
 
-  it('leads home from the name on every page, a heading on the home page only', () => {
+  it('leads home from the name on every page, never a heading: the page says its own', () => {
     const { unmount } = render(<SiteHeader />, { wrapper: MemoryRouter });
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/^AubeSonore, /);
-    expect(screen.getByRole('link', { name: /^AubeSonore/ })).toHaveAttribute('href', '/');
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'AubeSonore' })).toHaveAttribute('href', '/');
     unmount();
 
     render(
@@ -125,7 +125,7 @@ describe('SiteHeader', () => {
         <SiteHeader />
       </MemoryRouter>
     );
-    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /^AubeSonore/ })).toHaveAttribute('href', '/');
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'AubeSonore' })).toHaveAttribute('href', '/');
   });
 });

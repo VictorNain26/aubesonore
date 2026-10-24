@@ -1,9 +1,8 @@
-import { useEffect, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import * as m from '@/paraglide/messages.js';
 import { SiteHeader } from '../shell/SiteHeader';
 import { SiteFooter } from '../shell/SiteFooter';
-import { useHeroListenVisible } from '../home/listen';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -19,11 +18,6 @@ const LINK = 'text-text underline decoration-1 underline-offset-4';
 
 /** Legal notice and privacy policy, pre-rendered in each language and hydrated like any page. */
 export function LegalPage() {
-  const setListenVisible = useHeroListenVisible((s) => s.setVisible);
-
-  // No hero here: the player bar is the only way to listen.
-  useEffect(() => setListenVisible(false), [setListenVisible]);
-
   // Reached inside the app, the tab says where the listener is; pre-rendered, the head already does.
   usePageTitle(m.legal_title());
   const mail = (

@@ -1,13 +1,7 @@
-import { create } from 'zustand';
 import { cn } from '@/lib/utils';
 import * as m from '@/paraglide/messages.js';
 
-/** Whether the hero's Écouter button is on screen; the player bar shows only when it is not. */
-export const useHeroListenVisible = create<{ visible: boolean; setVisible: (v: boolean) => void }>(
-  (set) => ({ visible: true, setVisible: (visible) => set({ visible }) })
-);
-
-/** The ink pill that starts the live: the page's main action, one per screen. */
+/** The ink pill that starts the live in the phone's track sheet. */
 export const LISTEN_PILL =
   'group bg-accent text-on-accent ease-spring focus-visible:outline-accent flex h-14 w-full items-center gap-3 rounded-full py-1.5 pr-6 pl-1.5 transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95 md:w-auto';
 
@@ -23,30 +17,13 @@ export function listenLabel(state: ListenState): string {
   return state === 'idle' ? m.player_listen() : m.player_listening();
 }
 
-/** Both words share one grid cell, so the button keeps the width of the longer one. */
-export function ListenLabel({ state, className }: { state: ListenState; className?: string }) {
-  const shown = listenLabel(state);
-  return (
-    <span className={cn('grid', className)}>
-      {[m.player_listen(), m.player_listening()].map((word) => (
-        <span
-          key={word}
-          aria-hidden={word !== shown || undefined}
-          className={cn('col-start-1 row-start-1', word !== shown && 'invisible')}
-        >
-          {word}
-        </span>
-      ))}
-    </span>
-  );
-}
-
 export function listenAria(state: ListenState): string {
   return state === 'idle' ? m.player_listen_aria() : m.player_pause_aria();
 }
 
+// A third of the disc: 16 px in the bar's, about 27 in the hero's.
 const GLYPH =
-  'ease-out-quart absolute inset-0 m-auto size-4 transition-[opacity,scale] duration-200';
+  'ease-out-quart absolute inset-0 m-auto size-1/3 transition-[opacity,scale] duration-200';
 const SHOWN = 'scale-100 opacity-100';
 const HIDDEN = 'scale-50 opacity-0';
 // While the live plays, the bars give way to the pause glyph under the pointer or the focus:
@@ -56,22 +33,42 @@ const ON_PRESS_HIDE =
 const ON_PRESS_SHOW =
   'group-hover:scale-100 group-hover:opacity-100 group-focus-visible:scale-100 group-focus-visible:opacity-100';
 
+const TONE = {
+  paper: { disc: 'bg-surface text-text', ring: 'border-accent/15 border-t-accent' },
+  ink: { disc: 'bg-accent text-on-accent', ring: 'border-on-accent/15 border-t-on-accent' },
+};
+
 /**
- * Paper disc with the play glyph; three live bars while the stream plays, the pause glyph when the
- * pointer or the focus is on its button (which carries `group`); a thin ring turns while the
- * stream connects. The glyphs cross-fade instead of swapping.
+ * The disc of Écouter, paper on the ink bar and in the sheet's pill, ink on the hero's paper, with
+ * the play glyph; three live bars while the stream plays, the pause glyph when the pointer or the
+ * focus is on its button (which carries `group`); a thin ring turns while the stream connects. The
+ * glyphs cross-fade instead of swapping.
  */
-export function ListenDisc({ state, className }: { state: ListenState; className?: string }) {
+export function ListenDisc({
+  state,
+  tone = 'paper',
+  className,
+}: {
+  state: ListenState;
+  tone?: keyof typeof TONE;
+  className?: string;
+}) {
   return (
     <span
       aria-hidden="true"
       className={cn(
-        'bg-surface text-text relative flex shrink-0 items-center justify-center rounded-full',
+        'relative flex shrink-0 items-center justify-center rounded-full',
+        TONE[tone].disc,
         className
       )}
     >
       {state === 'connecting' ? (
-        <span className="border-accent/15 border-t-accent absolute inset-1 rounded-full border-2 motion-safe:animate-spin" />
+        <span
+          className={cn(
+            'absolute inset-1 rounded-full border-2 motion-safe:animate-spin',
+            TONE[tone].ring
+          )}
+        />
       ) : null}
       <svg viewBox="0 0 20 20" className={cn(GLYPH, state === 'idle' ? SHOWN : HIDDEN)}>
         <path

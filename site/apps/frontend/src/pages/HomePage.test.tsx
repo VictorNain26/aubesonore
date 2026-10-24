@@ -64,9 +64,7 @@ describe('HomePage', { timeout: PAGE_TEST_TIMEOUT }, () => {
   it('puts the promise, the track on air, the thread and the ranking on one page', async () => {
     await openHome();
 
-    expect(
-      screen.getByRole('heading', { name: /Des titres à l'aube de vous plaire\./ })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Une aube à chaque titre.');
     expect(screen.getAllByText('Nüchtern').length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: "Depuis l'aube" })).toBeInTheDocument();
     expect(screen.getByText('Oh No')).toBeInTheDocument();
@@ -79,9 +77,7 @@ describe('HomePage', { timeout: PAGE_TEST_TIMEOUT }, () => {
     await userEvent.click(screen.getByRole('link', { name: 'en' }));
     await settle(router);
 
-    expect(
-      screen.getByRole('heading', { name: /The first light of your next favourite songs\./ })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('A dawn with every track.');
   });
 
   it("names the site in the tab, not the page the listener came from, in the page's language", async () => {

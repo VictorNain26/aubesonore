@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import * as m from '@/paraglide/messages.js';
-import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../shell/SiteFooter';
 import { SiteHeader } from '../shell/SiteHeader';
 import { MusilogyUnavailableError, searchMusilogy } from '../lib/musilogy';
@@ -53,11 +52,6 @@ function MusilogyHome() {
 }
 
 export function MusilogyPage() {
-  const setListenVisible = useHeroListenVisible((s) => s.setVisible);
-
-  // No hero here: the player bar is the only way to listen.
-  useEffect(() => setListenVisible(false), [setListenVisible]);
-
   return (
     <div className="min-h-page flex flex-col">
       <SiteHeader />

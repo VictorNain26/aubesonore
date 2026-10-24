@@ -1,9 +1,7 @@
-import { useEffect } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import * as m from '@/paraglide/messages.js';
 import { SiteHeader } from '../shell/SiteHeader';
 import { SiteFooter } from '../shell/SiteFooter';
-import { useHeroListenVisible } from '../home/listen';
 import { PageMessage } from '../shell/PageMessage';
 import { Wave } from '../design/Wave';
 
@@ -22,11 +20,6 @@ function silence(t: number): number {
  * under /en/), and the client hydrates it there. The horizon falls silent in its middle.
  */
 export function NotFoundPage() {
-  const setListenVisible = useHeroListenVisible((s) => s.setVisible);
-
-  // No hero here: the player bar is the only way to listen.
-  useEffect(() => setListenVisible(false), [setListenVisible]);
-
   // Reached inside the app, the tab says where the listener is; pre-rendered, the head already does.
   usePageTitle(m.notfound_meta_title());
   return (

@@ -15,7 +15,7 @@ const NAV_LINK =
 // The padding makes a 44 px target of the lockup (21 px on a phone, 25 wider); the margin keeps the
 // header's layout.
 const BRAND_LINK =
-  'focus-visible:outline-accent -my-3 flex flex-col gap-2 py-3 focus-visible:outline-2 focus-visible:outline-offset-4';
+  'focus-visible:outline-accent -my-3 flex py-3 focus-visible:outline-2 focus-visible:outline-offset-4';
 
 const OUTLINE_PILL =
   'text-ui border-accent ease-out-quart hover:bg-accent hover:text-on-accent focus-visible:outline-accent inline-flex min-h-11 items-center rounded-full border px-4.5 transition-[color,background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
@@ -37,7 +37,6 @@ export function SiteHeader() {
     }))
   );
   const { pathname } = useLocation();
-  const isHome = ['/', '/en', '/en/'].includes(pathname);
   // The sign-in page is where Se connecter leads: the header does not offer it twice.
   const isSignInPage = [localizeHref('/connexion'), '/reset-password'].includes(pathname);
   const libraryHref = localizeHref('/mes-titres');
@@ -48,22 +47,13 @@ export function SiteHeader() {
   const { slot, onFocus, state, slides, height } = useHeaderOnScroll();
   const atRest = state === 'rest';
 
-  // The same link on every page; on the home page it is also the page's heading.
+  // The same link on every page, never a heading: each page names itself (the home page with its
+  // welcome line).
   const brand = (
     <Link to={localizeHref('/')} className={BRAND_LINK}>
       {/* Under 22rem the lockup steps down a size, so Menu keeps the page's right gutter. */}
-      <Logo intro className="text-mark max-[22rem]:text-title h-[0.839em] self-start" />
-      <span className="sr-only">AubeSonore, </span>
-      {/* On phones the line costs two rows above Écouter: it stays in the link's name only. */}
-      <span
-        className={cn(
-          'text-sub text-text-muted sr-only font-normal text-balance',
-          // Back over the page, the header keeps to one line.
-          atRest && 'md:not-sr-only'
-        )}
-      >
-        {m.hero_title()}
-      </span>
+      <Logo intro className="text-mark max-[22rem]:text-title h-[0.839em]" />
+      <span className="sr-only">AubeSonore</span>
     </Link>
   );
 
@@ -72,14 +62,13 @@ export function SiteHeader() {
       <header
         onFocus={onFocus}
         className={cn(
-          'px-page relative z-10 flex items-center justify-between gap-6 pt-4 md:items-start md:pt-7',
-          !atRest &&
-            'bg-surface border-border fixed inset-x-0 top-0 z-30 border-b py-3 md:items-center md:py-3',
+          'px-page relative z-10 flex items-center justify-between gap-6 pt-4 md:pt-7',
+          !atRest && 'bg-surface border-border fixed inset-x-0 top-0 z-30 border-b py-3 md:py-3',
           state === 'hidden' && '-translate-y-full',
           slides && 'ease-out-quart motion-safe:transition-transform motion-safe:duration-300'
         )}
       >
-        {isHome ? <h1 className="m-0">{brand}</h1> : brand}
+        {brand}
         {/* Phones get the pages in a menu: the header has no room for them. */}
         <span className="shrink-0 md:hidden">
           <MobileMenu />

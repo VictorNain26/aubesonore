@@ -1,37 +1,32 @@
 import { Slider as BaseSlider } from '@base-ui/react/slider';
 import { cn } from '@/lib/utils';
+import { wavePath } from './wave';
 
 export interface SliderProps {
   /** The slider's accessible name (`aria-label`). */
   label: string;
-  /** Valeur courante. */
+  /** The current value. */
   value: number;
   /** Called with the new value as the thumb moves. */
   onValueChange: (value: number) => void;
-  /** Valeur minimale. */
   min?: number;
-  /** Valeur maximale. */
   max?: number;
-  /** The step between values. */
+  /** The step between values, and of each arrow key. */
   step?: number;
   /** Turns interaction off. */
   disabled?: boolean;
-  /** The slider's direction. */
-  orientation?: 'horizontal' | 'vertical';
-  /** What the slider sits on: paper (`surface`) or ink (`accent`). */
-  tone?: 'surface' | 'accent';
+  className?: string;
 }
 
-const TONE = {
-  surface: { track: 'bg-border', fill: 'bg-accent', thumb: 'border-accent bg-surface' },
-  accent: {
-    track: 'bg-on-accent/30',
-    fill: 'bg-on-accent',
-    thumb: 'border-on-accent bg-on-accent focus-visible:outline-on-accent',
-  },
-};
+/** The drawing's units: 100 wide, so a point's x is its share of the track in percent. */
+const LINE = { width: 100, height: 16, amplitude: 2.5, seed: 1.5, step: 2 } as const;
 
-/** A continuous value (the volume) on Base UI's `Slider`, horizontal or vertical. */
+/**
+ * A continuous value (the volume) on Base UI's `Slider`, drawn with the line: the part up to the
+ * value is the site's wave, the rest a flat rule, and a round thumb sits where they meet. In the
+ * ink of its text (currentColor), so it reads on paper and on the player bar alike. The control
+ * is 44 px high; arrows, Page keys, Home and End move it (Base UI).
+ */
 export function Slider({
   label,
   value,
@@ -40,11 +35,10 @@ export function Slider({
   max = 1,
   step = 0.01,
   disabled,
-  orientation = 'horizontal',
-  tone = 'surface',
+  className,
 }: SliderProps) {
-  const isVertical = orientation === 'vertical';
-  const colors = TONE[tone];
+  const at = max > min ? (Math.min(max, Math.max(min, value)) - min) / (max - min) : 0;
+  const x = Math.round(at * 10000) / 100;
 
   return (
     <BaseSlider.Root
@@ -54,38 +48,41 @@ export function Slider({
       max={max}
       step={step}
       disabled={disabled}
-      orientation={orientation}
-      className={
-        isVertical
-          ? 'data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
-          : 'w-full data-[disabled]:pointer-events-none data-[disabled]:opacity-50'
-      }
+      className={cn(
+        'group/slider w-full data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+        className
+      )}
     >
-      <BaseSlider.Control
-        className={
-          isVertical
-            ? 'flex h-32 w-11 touch-none items-center justify-center'
-            : 'flex h-11 w-full touch-none items-center'
-        }
-      >
-        <BaseSlider.Track
-          className={cn(
-            colors.track,
-            isVertical ? 'relative h-full w-1 rounded-full' : 'relative h-1 w-full rounded-full'
-          )}
-        >
-          <BaseSlider.Indicator
-            className={cn(
-              colors.fill,
-              isVertical ? 'absolute bottom-0 w-1 rounded-full' : 'absolute h-1 rounded-full'
-            )}
-          />
+      <BaseSlider.Control className="flex h-11 w-full cursor-pointer touch-none items-center">
+        <BaseSlider.Track className="relative h-4 w-full">
+          <svg
+            aria-hidden="true"
+            viewBox={`0 0 ${LINE.width} ${LINE.height}`}
+            preserveAspectRatio="none"
+            className="absolute inset-0 size-full overflow-visible"
+          >
+            <path
+              data-testid="slider-played"
+              d={wavePath({ ...LINE, end: x })}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.4}
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+            <path
+              data-testid="slider-rest"
+              d={`M${x} ${LINE.height / 2} L${LINE.width} ${LINE.height / 2}`}
+              fill="none"
+              stroke="currentColor"
+              strokeOpacity={0.35}
+              strokeWidth={1.2}
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
           <BaseSlider.Thumb
             aria-label={label}
-            className={cn(
-              'ease-out-quart focus-visible:outline-accent size-4 rounded-full border transition-transform duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-110',
-              colors.thumb
-            )}
+            className="ease-out-quart size-3 rounded-full bg-current transition-transform duration-150 group-hover/slider:scale-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current active:scale-125"
           />
         </BaseSlider.Track>
       </BaseSlider.Control>

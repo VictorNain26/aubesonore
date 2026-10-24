@@ -18,7 +18,7 @@ const PAGE_LINK =
 
 /**
  * The site's pages on a phone, where the header has no room for them: a Menu button opens them
- * full screen, with the account and the language. Base UI's Dialog brings the focus trap,
+ * full screen, with the account and the language. The header's logo leads home. Base UI's Dialog brings the focus trap,
  * Escape and the scroll lock.
  */
 export function MobileMenu() {
@@ -31,7 +31,6 @@ export function MobileMenu() {
   const close = () => setOpen(false);
 
   const pages = [
-    { href: localizeHref('/'), label: m.nav_live() },
     { href: localizeHref('/musilogy'), label: m.musilogy_title() },
     user
       ? { href: localizeHref('/mes-titres'), label: m.nav_my_tracks() }
