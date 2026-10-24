@@ -53,6 +53,16 @@ export interface NowPlayingViewProps {
   volume: Omit<VolumeControlProps, 'className'>;
 }
 
+/** The hero cover's width in each layout of hero-wide (design/tokens.css), repeated per media. */
+const HERO_WIDE_COVER = 'min(79vh - 6.5rem, min(100vw - 5rem, 100rem) / 2)';
+const HERO_COVER_SIZES = [
+  `(min-width: 64rem) ${HERO_WIDE_COVER}`,
+  `(min-width: 48rem) and (orientation: landscape) ${HERO_WIDE_COVER}`,
+  `(orientation: landscape) and (max-height: 30rem) ${HERO_WIDE_COVER}`,
+  '(min-width: 48rem) min(100vw - 5rem, 75vh - 18rem)',
+  'min(100vw - 3rem, 74vh - 13.75rem)',
+].join(', ');
+
 /** Écouter, the one round thing of the page: an ink disc, larger from md. */
 const LISTEN_DISC =
   'group ease-spring focus-visible:outline-accent shrink-0 rounded-full transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-95';
@@ -96,8 +106,12 @@ export function NowPlayingView({
             largeAlt={m.now_cover_alt({ title: track.title, artist: track.artist })}
             caption={m.track_caption({ title: track.title, artist: track.artist })}
             priority
-            // cover-fit: the room's width or height, whichever is shorter (design/tokens.css).
-            sizes="(min-width: 64rem) 60vh, 100vw"
+            // cover-fit (design/tokens.css): the room's width or height, whichever is shorter. Side
+            // by side (hero-wide), the height the hero's rows leave (79vh - 6.5rem, measured from
+            // 700 to 1080 px high) or half the page less its gutters; stacked, the line less the
+            // gutters or the height left under a short title, from md and on a phone. Measured
+            // within 3% of the drawn cover where the height decides (#619).
+            sizes={HERO_COVER_SIZES}
             triggerClassName="cover-fit"
             className={cn('shadow-cover size-full', hasChanged && 'swap-in')}
           />

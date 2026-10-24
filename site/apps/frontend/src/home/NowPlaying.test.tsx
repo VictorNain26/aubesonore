@@ -153,6 +153,27 @@ describe('NowPlayingView', () => {
     expect(keep()).toContainHTML('keep-pop');
   });
 
+  it('fetches the cover at the width the hero gives it, side by side or stacked', () => {
+    const art = 'https://is1-ssl.mzstatic.com/image/thumb/Music/aa/bb/x.jpg/600x600bb.jpg';
+    render(<NowPlayingView {...props({ track: { ...props().track!, art } })} />);
+    const sizes = screen
+      .getByRole('img', { name: 'Pochette de Mimoun, Mickey 3D' })
+      .getAttribute('sizes');
+
+    // Side by side (hero-wide), the room's height or half its width, whichever is shorter; then,
+    // stacked, the line or the height the rows leave, from md and on a phone.
+    const wide = 'min(79vh - 6.5rem, min(100vw - 5rem, 100rem) / 2)';
+    expect(sizes).toBe(
+      [
+        `(min-width: 64rem) ${wide}`,
+        `(min-width: 48rem) and (orientation: landscape) ${wide}`,
+        `(orientation: landscape) and (max-height: 30rem) ${wide}`,
+        '(min-width: 48rem) min(100vw - 5rem, 75vh - 18rem)',
+        'min(100vw - 3rem, 74vh - 13.75rem)',
+      ].join(', ')
+    );
+  });
+
   it('keeps the large cover open into the next track, showing the new one', async () => {
     const art = (id: string) => `https://radio.aubesonore.fr/api/station/aubesonore/art/${id}.jpg`;
     const next = { title: 'Respire', artist: 'Mickey 3D', album: 'Live', art: art('b') };
