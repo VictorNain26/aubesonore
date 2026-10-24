@@ -43,8 +43,9 @@ function Ranking({ entries, period }: { entries: TrendEntry[]; period: Period })
             title={entry.title}
             largeAlt={m.now_cover_alt({ title: entry.title, artist: entry.artist })}
             caption={m.track_caption({ title: entry.title, artist: entry.artist })}
-            // w-38 on phones; one of five columns of the page from md.
-            sizes="(min-width: 48rem) 20vw, 9.5rem"
+            // w-38 on phones; from md, one of five columns of the page (its width less the gutters,
+            // up to 100 rem, less four gaps of 1.5 rem).
+            sizes="(min-width: 48rem) calc((min(100vw - 5rem, 100rem) - 6rem) / 5), 9.5rem"
             triggerClassName="w-full"
             className="aspect-square w-full"
           />

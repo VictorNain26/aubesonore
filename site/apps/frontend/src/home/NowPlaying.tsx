@@ -92,8 +92,10 @@ export function NowPlayingView({
             largeAlt={m.now_cover_alt({ title: track.title, artist: track.artist })}
             caption={m.track_caption({ title: track.title, artist: track.artist })}
             priority
-            // artwork-size: the full width on a phone, capped by the height (design/tokens.css).
-            sizes="(min-width: 64rem) 60vh, 100vw"
+            // artwork-size (design/tokens.css): the line less the gutters, capped by the height; from
+            // 64 rem, the title column beside the text (4 of 12, page width less gutters and gap),
+            // also capped by the height. The player bar's room is 5.75 rem.
+            sizes="(min-width: 64rem) min(60vh, 100vh - 21.75rem, (min(100vw - 5rem, 100rem) - 4rem) / 3), (min-width: 48rem) and (orientation: landscape) min(100vh - 30.75rem, (100vw - 9rem) / 3), (min-width: 48rem) min(100vw - 5rem, 100vh - 30.75rem), min(100vw - 3rem, 100vh - 30.75rem)"
             triggerClassName="artwork-size aspect-square"
             className={cn('shadow-cover size-full', hasChanged && 'swap-in')}
           />

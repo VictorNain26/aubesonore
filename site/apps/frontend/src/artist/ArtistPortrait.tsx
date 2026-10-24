@@ -88,12 +88,14 @@ function shapeOf({ width, height }: Size): CSSProperties {
 }
 
 /**
- * How wide it is drawn, by `portrait-room`'s caps: a third of the screen beside the text, 5:4 of
- * it at most; above the name, the line less the gutters, or the cap times its ratio.
+ * How wide it is drawn, by `portrait-room`'s caps: beside the text, the title column (4 parts of
+ * 12 of the page less its gutters, up to 100 rem, less the 4 rem gap), no taller than 5:4 of it;
+ * above the name, the line less the gutters, or the cap times its ratio.
  */
 function sizesOf({ width, height }: Size): string {
   const ratio = `${width} / ${height}`;
-  const beside = `min(33vw, 41vw * ${ratio})`;
+  const column = '(min(100vw - 5rem, 100rem) - 4rem) / 3';
+  const beside = `min(${column}, ${column} * 1.25 * ${ratio})`;
   return [
     `(min-width: 64rem) ${beside}`,
     `(min-width: 48rem) and (orientation: landscape) ${beside}`,
