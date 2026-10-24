@@ -24,6 +24,13 @@ describe('wavePath', () => {
     expect(mean).toBeCloseTo(20, 0);
   });
 
+  it('stops at its end, the same line as the whole one up to there', () => {
+    const whole = ysOf(wavePath({ ...base, seed: 2, step: 4 }));
+    const part = wavePath({ ...base, seed: 2, step: 4, end: 160 });
+    expect(part).toMatch(/L160 -?[\d.]+$/);
+    expect(ysOf(part)).toEqual(whole.slice(0, 41));
+  });
+
   it('stays within its amplitude at rest, whatever the seed', () => {
     for (const seed of [0, 0.9, 3.3, 6.2, seedOf('a74b1b7f-71a5-4011-9441-d0b5e4122711')]) {
       const ys = ysOf(wavePath({ ...base, seed }));

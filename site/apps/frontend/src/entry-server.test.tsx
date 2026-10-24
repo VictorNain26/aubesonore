@@ -22,15 +22,23 @@ const PROFILE: ArtistProfile = {
 // Runs without window, document or localStorage, like the build-time
 // pre-render: any browser API touched at import or render time fails here.
 describe('entry-server', () => {
-  it('renders the French home page as static HTML', async () => {
+  it('renders the French home page as static HTML, its one heading the welcome line', async () => {
     const html = await pageHtml('fr');
-    expect(html).toContain('Des titres à l&#x27;aube de vous plaire.');
+    expect(html.match(/<h1[^>]*>.*?<\/h1>/g)).toEqual([
+      expect.stringMatching(/>Une aube à chaque titre\.<\/h1>$/),
+    ]);
+    expect(html).toContain(
+      'Des sons qui n&#x27;ont pas encore de nom pour vous. Gardez ceux qui vous plaisent.'
+    );
     expect(html).toContain('Depuis l&#x27;aube');
   });
 
-  it('renders the English home page as static HTML', async () => {
+  it('renders the English home page as static HTML, its one heading the welcome line', async () => {
     const html = await pageHtml('en');
-    expect(html).toContain('The first light of your next favourite songs.');
+    expect(html.match(/<h1[^>]*>.*?<\/h1>/g)).toEqual([
+      expect.stringMatching(/>A dawn with every track\.<\/h1>$/),
+    ]);
+    expect(html).toContain('Sounds you don&#x27;t have a name for yet. Keep the ones you love.');
     expect(html).toContain('Most kept');
   });
 

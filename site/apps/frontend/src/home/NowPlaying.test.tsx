@@ -37,9 +37,11 @@ describe('NowPlayingView', () => {
     expect(screen.getByRole('heading', { name: 'Mimoun' })).toBeInTheDocument();
     expect(screen.getByText('Mickey 3D')).toBeInTheDocument();
     expect(screen.getByText('Tu vas pas mourir de rire', { selector: 'cite' })).toBeInTheDocument();
-    expect(screen.getByText(/^extrait de/)).toHaveTextContent(
-      'extrait de Tu vas pas mourir de rire'
-    );
+    expect(
+      screen.getByText(
+        (_, el) => el?.tagName === 'P' && el.textContent === 'Mickey 3D · Tu vas pas mourir de rire'
+      )
+    ).toBeInTheDocument();
   });
 
   it("leaves out a single's album, which only repeats the title", () => {
@@ -50,29 +52,23 @@ describe('NowPlayingView', () => {
 
   it('puts Écouter under the title and names the action, not the waiting', async () => {
     const onToggleListen = vi.fn();
-    const button = () => screen.getByRole('button', { name: /écouter le direct|mettre en pause/i });
-    const shows = (word: string, other: string) => {
-      expect(within(button()).getByText(word)).not.toHaveAttribute('aria-hidden');
-      expect(within(button()).getByText(other)).toHaveAttribute('aria-hidden', 'true');
-    };
     const { rerender } = render(<NowPlayingView {...props({ onToggleListen })} />);
-    shows('Écouter', 'Pause');
 
     await userEvent.click(screen.getByRole('button', { name: 'Écouter le direct' }));
     expect(onToggleListen).toHaveBeenCalledOnce();
 
-    // Breaks if the label changes while the stream connects: a third word ("Un instant…") made
-    // the button change width and pushed its neighbours. The ring alone tells the waiting.
+    // The ring alone tells the waiting: the button already names what a press does.
     rerender(<NowPlayingView {...props({ listen: 'connecting' })} />);
     expect(screen.getByRole('button', { name: 'Mettre en pause' })).toHaveAttribute(
       'aria-busy',
       'true'
     );
-    shows('Pause', 'Écouter');
 
-    // Both words stay in the button: its width is the longer one's, whatever the state.
     rerender(<NowPlayingView {...props({ listen: 'playing' })} />);
-    shows('Pause', 'Écouter');
+    expect(screen.getByRole('button', { name: 'Mettre en pause' })).not.toHaveAttribute(
+      'aria-busy',
+      'true'
+    );
   });
 
   it('keeps a constant label and carries the kept state in aria-pressed', async () => {
@@ -98,13 +94,12 @@ describe('NowPlayingView', () => {
     );
   });
 
-  it('offers the volume beside Écouter only while listening', () => {
-    const volume = { volume: 0.5, isMuted: false, onVolumeChange: vi.fn(), onToggleMute: vi.fn() };
-    const { rerender } = render(<NowPlayingView {...props({ volume })} />);
+  it('leaves the volume to the player bar, whatever the state', () => {
+    const { rerender } = render(<NowPlayingView {...props()} />);
     expect(screen.queryByRole('slider')).not.toBeInTheDocument();
 
-    rerender(<NowPlayingView {...props({ volume, listen: 'playing' })} />);
-    expect(screen.getByRole('slider', { name: 'Volume' })).toHaveAttribute('aria-valuenow', '50');
+    rerender(<NowPlayingView {...props({ listen: 'playing' })} />);
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
   });
 
   it('says radio silence when the station is off air', () => {

@@ -50,21 +50,11 @@ describe('Slider', () => {
     expect(onValueChange).not.toHaveBeenCalled();
   });
 
-  it('supports a vertical orientation', () => {
-    render(
-      <Slider
-        label="Volume"
-        orientation="vertical"
-        value={0.5}
-        onValueChange={vi.fn()}
-        min={0}
-        max={1}
-        step={0.05}
-      />
-    );
-    expect(screen.getByRole('slider', { name: 'Volume' })).toHaveAttribute(
-      'aria-orientation',
-      'vertical'
-    );
+  it('draws the line up to the value, flat past it', () => {
+    render(<Slider label="Volume" value={80} min={0} max={100} onValueChange={vi.fn()} />);
+    const played = screen.getByTestId('slider-played').getAttribute('d');
+    expect(played).toMatch(/^M0 [\d.]+( L[\d.]+ [\d.]+)+$/);
+    expect(played).toMatch(/ L80 [\d.]+$/);
+    expect(screen.getByTestId('slider-rest')).toHaveAttribute('d', 'M80 8 L100 8');
   });
 });

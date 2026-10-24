@@ -20,13 +20,12 @@ beforeEach(() => {
 });
 
 describe('MobileMenu', () => {
-  it('opens the pages a phone header has no room for, Musilogy among them', async () => {
+  it('opens the pages a phone header has no room for, Musilogy among them; the logo leads home', async () => {
     await open('/musilogy');
 
     const menu = screen.getByRole('dialog');
     const links = within(menu).getAllByRole('link');
     expect(links.map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
-      ['Le direct', '/'],
       ['Musilogy', '/musilogy'],
       ['Se connecter', '/connexion'],
     ]);

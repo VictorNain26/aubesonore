@@ -16,22 +16,13 @@ import { Cover } from '../design/Cover';
 import { VolumeControl } from './VolumeControl';
 import { NowPlayingSheet } from './NowPlayingSheet';
 import { HorizonLine } from '../home/HorizonLine';
-import {
-  ListenDisc,
-  listenAria,
-  listenLabel,
-  listenState,
-  useHeroListenVisible,
-  type ListenState,
-} from '../home/listen';
+import { ListenDisc, listenAria, listenLabel, listenState, type ListenState } from '../home/listen';
 import * as m from '@/paraglide/messages.js';
 
 const ICON_BUTTON =
   'ease-out-quart focus-visible:outline-on-accent flex size-11 shrink-0 items-center justify-center rounded-full transition-opacity duration-150 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2';
 
 export interface PlayerBarViewProps {
-  /** Hidden while the hero's own Écouter button is on screen. */
-  isHidden: boolean;
   listen: ListenState;
   onToggleListen: () => void;
   track: {
@@ -65,16 +56,13 @@ const TRACK_LINK =
   'ease-out-quart focus-visible:outline-on-accent flex min-w-0 flex-1 items-center gap-3 rounded-full py-1 pr-2 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-60';
 
 /**
- * The live player, one bar for every screen: pinned to the bottom, it springs in
- * once the hero's Écouter button has scrolled away, so there is never two of
- * them on screen. Every page keeps its height free at the bottom (`pb-bar`), so it
- * hides nothing. The track leads to the artist's page; when the live moves on, the
- * cover comes into focus and the words fade in. Volume sits in it with a mouse;
- * phones use their buttons. The site's line runs along its top edge, alive while the live is
- * heard.
+ * The live player, one bar for every screen, pinned to the bottom of every page, the home page's
+ * hero included: the volume is always at hand there. Every page keeps its height free at the
+ * bottom (`pb-bar`), so it hides nothing. The track leads to the artist's page; when the live
+ * moves on, the cover comes into focus and the words fade in. The site's line runs along its top
+ * edge, alive while the live is heard.
  */
 export function PlayerBarView({
-  isHidden,
   listen,
   onToggleListen,
   track,
@@ -90,26 +78,11 @@ export function PlayerBarView({
   isOnline,
   hasChanged = false,
 }: PlayerBarViewProps) {
-  const [hasFocus, setHasFocus] = useState(false);
-  // Never hide the bar while it holds the keyboard focus (WCAG 2.4.11). Only the
-  // keyboard's: a mouse click focuses a button too (Chrome), and the bar must
-  // still leave when the listener scrolls back to the hero.
-  const hidden = isHidden && !hasFocus;
-
   return (
     <section
       aria-label={m.player_label()}
-      inert={hidden}
-      onFocus={(e) => setHasFocus(e.target.matches(':focus-visible'))}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget)) setHasFocus(false);
-      }}
-      className={cn(
-        // On phones the gaps tighten (the 44 px targets stay) so the title keeps a few more letters.
-        'bg-accent text-on-accent shadow-bar bottom-safe max-w-bar fixed inset-x-3 z-40 mx-auto flex items-center gap-2 py-1.5 pr-1.5 pl-1.5 md:gap-3 md:pr-3',
-        'ease-spring transition-[translate,opacity] duration-500',
-        hidden && 'pointer-events-none translate-y-24 opacity-0'
-      )}
+      // On phones the gaps tighten (the 44 px targets stay) so the title keeps a few more letters.
+      className="bg-accent text-on-accent shadow-bar bottom-safe max-w-bar fixed inset-x-3 z-40 mx-auto flex items-center gap-2 py-1.5 pr-1.5 pl-1.5 md:gap-3 md:pr-3"
     >
       {/* The line along its top edge, in the dawn: calm at rest, listening while the live is
           heard. Out of the flow, over the edge: the bar keeps its height. */}
@@ -189,7 +162,6 @@ export function PlayerBarView({
         isMuted={isMuted}
         onVolumeChange={onVolumeChange}
         onToggleMute={onToggleMute}
-        tone="accent"
       />
 
       {diffusion ? <CastControl diffusion={diffusion} variant="bar" /> : null}
@@ -257,7 +229,6 @@ export function PlayerBar() {
   const initializeCast = useCastStore((s) => s.initialize);
   const diffusion = useDiffusion();
   const { isLiked, handleToggleLike, handleShare } = useTrackActions();
-  const heroListenVisible = useHeroListenVisible((s) => s.visible);
   const { restoreVolume } = player;
   useEffect(() => {
     restoreVolume();
@@ -267,7 +238,6 @@ export function PlayerBar() {
 
   return (
     <PlayerBarView
-      isHidden={heroListenVisible}
       listen={listenState(player.isPlaying, player.isConnecting)}
       onToggleListen={player.toggle}
       track={

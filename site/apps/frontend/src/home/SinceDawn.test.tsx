@@ -31,6 +31,23 @@ describe('SinceDawnView', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('graduates the day above the list once the page has a now, not when pre-rendered', () => {
+    const { rerender } = render(
+      <SinceDawnView rows={rows(3)} status="ready" onToggleKeep={vi.fn()} />
+    );
+    expect(screen.queryByTestId('day-line')).not.toBeInTheDocument();
+
+    rerender(
+      <SinceDawnView
+        rows={rows(3)}
+        status="ready"
+        onToggleKeep={vi.fn()}
+        now={new Date(2026, 9, 1, 17, 5)}
+      />
+    );
+    expect(screen.getByTestId('day-line')).toBeInTheDocument();
+  });
+
   it('marks the track on air', () => {
     render(<SinceDawnView rows={rows(2)} status="ready" onToggleKeep={vi.fn()} />);
 

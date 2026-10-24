@@ -2,11 +2,13 @@ import { SiteHeader } from '../shell/SiteHeader';
 import { ErrorBoundary } from 'react-error-boundary';
 import { NowPlaying, NowPlayingFallback } from './NowPlaying';
 import { Horizon } from './Horizon';
+import * as m from '@/paraglide/messages.js';
 
 /**
- * The opening screen: the promise in a line, then what plays now, biggest,
- * with Écouter under it; the dawn light rises along the horizon, the line that
- * carries the live sound.
+ * The opening screen: the welcome in one quiet line (the page's one heading: it names the page
+ * and holds still, where the title on air changes every few minutes), then the player, the
+ * biggest thing on the page; right under it the horizon, the line that carries the live sound,
+ * with the dawn light rising along it.
  */
 export function Hero() {
   return (
@@ -30,7 +32,11 @@ export function Hero() {
 
       <SiteHeader />
 
-      <div className="px-page relative z-10 flex flex-1 items-center pt-6 md:pt-12">
+      <div className="px-page relative z-10 flex flex-1 flex-col justify-center gap-6 pt-5 md:gap-10 md:pt-12">
+        <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
+          <h1 className="font-display text-title m-0 font-normal italic">{m.hero_title()}</h1>
+          <p className="text-intro text-text-muted m-0 text-pretty">{m.hero_tagline()}</p>
+        </div>
         <ErrorBoundary FallbackComponent={NowPlayingFallback}>
           <NowPlaying />
         </ErrorBoundary>

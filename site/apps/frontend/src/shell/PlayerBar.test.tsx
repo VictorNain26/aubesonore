@@ -22,7 +22,6 @@ const playedAt = Math.floor(new Date(2026, 9, 1, 17, 1).getTime() / 1000);
 
 function props(overrides: Partial<PlayerBarViewProps> = {}): PlayerBarViewProps {
   return {
-    isHidden: false,
     listen: 'idle',
     onToggleListen: vi.fn(),
     track: { title: 'Mimoun', artist: 'Mickey 3D', album: '', art: undefined, playedAt },
@@ -69,30 +68,6 @@ describe('PlayerBarView', () => {
     expect(screen.getByText('Écouter')).toBeInTheDocument();
   });
 
-  it('is inert while hidden, so nothing in it can be focused', () => {
-    render(<PlayerBarView {...props({ isHidden: true })} />);
-    expect(screen.getByRole('region', { hidden: true })).toHaveAttribute('inert');
-  });
-
-  it('stays on screen while it holds the keyboard focus', async () => {
-    const { rerender } = render(<PlayerBarView {...props()} />);
-
-    await userEvent.tab();
-    rerender(<PlayerBarView {...props({ isHidden: true })} />);
-    expect(screen.getByRole('region')).not.toHaveAttribute('inert');
-
-    await userEvent.tab({ shift: true });
-    expect(screen.getByRole('region', { hidden: true })).toHaveAttribute('inert');
-  });
-
-  it('leaves for the hero after a click, which focuses a button too', async () => {
-    const { rerender } = render(<PlayerBarView {...props()} />);
-
-    await userEvent.click(screen.getByRole('button', { name: 'Écouter le direct' }));
-    rerender(<PlayerBarView {...props({ isHidden: true })} />);
-    expect(screen.getByRole('region', { hidden: true })).toHaveAttribute('inert');
-  });
-
   it('keeps the track with a constant label', async () => {
     const onToggleKeep = vi.fn();
     render(<PlayerBarView {...props({ onToggleKeep, isKept: true })} />);
@@ -103,13 +78,31 @@ describe('PlayerBarView', () => {
     expect(onToggleKeep).toHaveBeenCalledOnce();
   });
 
-  it('keeps the volume in view', async () => {
-    const onToggleMute = vi.fn();
-    render(<PlayerBarView {...props({ onToggleMute })} />);
+  it.each(['idle', 'connecting', 'playing'] as const)(
+    'shows the volume in the bar while %s',
+    async (listen) => {
+      const onToggleMute = vi.fn();
+      render(<PlayerBarView {...props({ listen, onToggleMute })} />);
 
-    expect(screen.getByRole('slider', { name: 'Volume' })).toHaveAttribute('aria-valuenow', '80');
-    await userEvent.click(screen.getByRole('button', { name: 'Couper le son' }));
-    expect(onToggleMute).toHaveBeenCalledOnce();
+      const slider = screen.getByRole('slider', { name: 'Volume' });
+      expect(slider).toHaveAttribute('aria-valuenow', '80');
+      await userEvent.click(screen.getByRole('button', { name: 'Couper le son' }));
+      expect(onToggleMute).toHaveBeenCalledOnce();
+    }
+  );
+
+  it('moves the volume by steps of 5 with the arrow keys, to silence with Home', async () => {
+    const onVolumeChange = vi.fn();
+    render(<PlayerBarView {...props({ onVolumeChange })} />);
+
+    const slider = screen.getByRole('slider', { name: 'Volume' });
+    slider.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(onVolumeChange).toHaveBeenLastCalledWith(0.85);
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(onVolumeChange).toHaveBeenLastCalledWith(0.75);
+    await userEvent.keyboard('{Home}');
+    expect(onVolumeChange).toHaveBeenLastCalledWith(0);
   });
 
   const diffusion = (overrides = {}) => ({

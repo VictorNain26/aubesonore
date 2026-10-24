@@ -4,7 +4,6 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { useHeroListenVisible } from '../home/listen';
 import {
   ARTIST_PAGE_DATA_ID,
   artistLoader,
@@ -111,13 +110,5 @@ describe('ArtistPage', { timeout: PAGE_TEST_TIMEOUT }, () => {
     await settle(open('/artiste/malformed'));
 
     expect(screen.getByRole('heading', { name: 'Artiste introuvable.' })).toBeInTheDocument();
-  });
-
-  it('shows the player bar, since no hero carries the listen button here', async () => {
-    useHeroListenVisible.setState({ visible: true });
-
-    await settle(open('/artiste/hania-rani'));
-
-    await waitFor(() => expect(useHeroListenVisible.getState().visible).toBe(false));
   });
 });

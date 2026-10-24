@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
 import { KeepHeart } from '../design/KeepHeart';
@@ -14,8 +14,16 @@ import { formatClock } from '../lib/time';
 import { ARTIST_LINK, TEXT_ACTION } from '../design/classes';
 import * as m from '@/paraglide/messages.js';
 import { LineLoader } from '../design/LineLoader';
+import { DayLine } from './DayLine';
 
 const PAGE = 10;
+
+const MINUTE = 60_000;
+const currentMinute = () => Math.floor(Date.now() / MINUTE);
+function onEveryMinute(change: () => void) {
+  const timer = setInterval(change, MINUTE);
+  return () => clearInterval(timer);
+}
 
 export interface ThreadRow {
   id: number;
@@ -34,9 +42,11 @@ export interface SinceDawnViewProps {
   rows: ThreadRow[];
   status: 'loading' | 'error' | 'ready';
   onToggleKeep: (id: number) => void;
+  /** The time the day line marks; null until the page runs (pre-rendered, it has no now). */
+  now?: Date | null;
 }
 
-export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps) {
+export function SinceDawnView({ rows, status, onToggleKeep, now = null }: SinceDawnViewProps) {
   const [visible, setVisible] = useState(PAGE);
   // Rows present at first load stay still; a track that arrives later slides in.
   const [initialIds, setInitialIds] = useState<Set<number> | null>(null);
@@ -64,72 +74,75 @@ export function SinceDawnView({ rows, status, onToggleKeep }: SinceDawnViewProps
             {status === 'error' ? m.since_dawn_error() : m.since_dawn_empty()}
           </p>
         ) : (
-          <ol className="m-0 list-none p-0">
-            {shown.map((row) => (
-              <li
-                key={row.id}
-                className={cn(
-                  'ease-out-soft hover:bg-accent/3 wave-rule grid min-h-16 grid-cols-[3rem_2.75rem_minmax(0,1fr)_2.75rem] items-center gap-x-3 py-2 transition-colors duration-300 md:px-1 lg:min-h-15 lg:grid-cols-[4.5rem_2.75rem_minmax(0,1.2fr)_minmax(0,1fr)_2.75rem] lg:gap-x-6',
-                  initialIds !== null && !initialIds.has(row.id) ? 'thread-in' : 'reveal'
-                )}
-              >
-                <span
+          <>
+            {now ? <DayLine now={now} /> : null}
+            <ol className="m-0 list-none p-0">
+              {shown.map((row) => (
+                <li
+                  key={row.id}
                   className={cn(
-                    'text-ui whitespace-nowrap tabular-nums',
-                    row.isNow ? 'text-text' : 'text-text-muted font-normal'
+                    'ease-out-soft hover:bg-accent/3 wave-rule grid min-h-16 grid-cols-[3rem_2.75rem_minmax(0,1fr)_2.75rem] items-center gap-x-3 py-2 transition-colors duration-300 md:px-1 lg:min-h-15 lg:grid-cols-[4.5rem_2.75rem_minmax(0,1.2fr)_minmax(0,1fr)_2.75rem] lg:gap-x-6',
+                    initialIds !== null && !initialIds.has(row.id) ? 'thread-in' : 'reveal'
                   )}
                 >
-                  {row.isNow ? <span className="sr-only">{m.on_air_sr()} </span> : null}
-                  {formatClock(row.playedAt)}
-                </span>
-                <CoverOpenLarge
-                  src={row.art}
-                  alt=""
-                  seed={`${row.artist}|${row.title}`}
-                  label={m.cover_open({ title: row.title })}
-                  title={row.title}
-                  largeAlt={m.now_cover_alt({ title: row.title, artist: row.artist })}
-                  caption={m.track_caption({ title: row.title, artist: row.artist })}
-                  sizes="2.75rem"
-                  triggerClassName="size-11"
-                  className="size-11"
-                />
-                <span className="flex min-w-0 flex-col lg:contents">
-                  <span className="text-row truncate lg:self-center">{row.title}</span>
-                  {row.artistHref ? (
-                    // Negative margins grow the tap target to 44px without moving the row.
-                    <Link
-                      to={row.artistHref}
-                      className={cn(
-                        ARTIST_LINK,
-                        'text-sub text-text-muted -my-3 truncate py-3 underline-offset-4 lg:self-center'
-                      )}
-                    >
-                      {row.artist}
-                    </Link>
-                  ) : (
-                    <span className="text-sub text-text-muted truncate lg:self-center">
-                      {row.artist}
-                    </span>
-                  )}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onToggleKeep(row.id)}
-                  disabled={row.isKeeping}
-                  aria-pressed={row.isKept}
-                  aria-label={m.track_keep_aria({ title: row.title })}
-                  className="group ease-out-quart focus-visible:outline-accent flex size-11 items-center justify-center rounded-full transition-[scale] duration-150 focus-visible:outline-2 active:scale-90 disabled:opacity-50"
-                >
-                  <KeepHeart
-                    isKept={row.isKept}
-                    className="ease-spring size-4.5 transition-transform duration-250 group-hover:scale-118"
-                    strokeWidth={1.5}
+                  <span
+                    className={cn(
+                      'text-ui whitespace-nowrap tabular-nums',
+                      row.isNow ? 'text-text' : 'text-text-muted font-normal'
+                    )}
+                  >
+                    {row.isNow ? <span className="sr-only">{m.on_air_sr()} </span> : null}
+                    {formatClock(row.playedAt)}
+                  </span>
+                  <CoverOpenLarge
+                    src={row.art}
+                    alt=""
+                    seed={`${row.artist}|${row.title}`}
+                    label={m.cover_open({ title: row.title })}
+                    title={row.title}
+                    largeAlt={m.now_cover_alt({ title: row.title, artist: row.artist })}
+                    caption={m.track_caption({ title: row.title, artist: row.artist })}
+                    sizes="2.75rem"
+                    triggerClassName="size-11"
+                    className="size-11"
                   />
-                </button>
-              </li>
-            ))}
-          </ol>
+                  <span className="flex min-w-0 flex-col lg:contents">
+                    <span className="text-row truncate lg:self-center">{row.title}</span>
+                    {row.artistHref ? (
+                      // Negative margins grow the tap target to 44px without moving the row.
+                      <Link
+                        to={row.artistHref}
+                        className={cn(
+                          ARTIST_LINK,
+                          'text-sub text-text-muted -my-3 truncate py-3 underline-offset-4 lg:self-center'
+                        )}
+                      >
+                        {row.artist}
+                      </Link>
+                    ) : (
+                      <span className="text-sub text-text-muted truncate lg:self-center">
+                        {row.artist}
+                      </span>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onToggleKeep(row.id)}
+                    disabled={row.isKeeping}
+                    aria-pressed={row.isKept}
+                    aria-label={m.track_keep_aria({ title: row.title })}
+                    className="group ease-out-quart focus-visible:outline-accent flex size-11 items-center justify-center rounded-full transition-[scale] duration-150 focus-visible:outline-2 active:scale-90 disabled:opacity-50"
+                  >
+                    <KeepHeart
+                      isKept={row.isKept}
+                      className="ease-spring size-4.5 transition-transform duration-250 group-hover:scale-118"
+                      strokeWidth={1.5}
+                    />
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </>
         )}
 
         {rows.length > visible ? (
@@ -154,6 +167,9 @@ export function SinceDawn({ history }: { history: Loaded<SongEntry[]> | null }) 
   const nowId = useNowPlayingStore((s) => s.data?.now_playing?.sh_id);
   const tracks = useLikedTracksStore((s) => s.tracks);
   const { likingTrackId, toggleLike } = useLikeAction();
+  // The day line's now: the page's clock to the minute once it runs, none when pre-rendered.
+  const minute = useSyncExternalStore(onEveryMinute, currentMinute, () => null);
+  const now = minute === null ? null : new Date(minute * MINUTE);
 
   const pages = useArtistPages(entries.map((e) => e.song.artist));
 
@@ -176,6 +192,7 @@ export function SinceDawn({ history }: { history: Loaded<SongEntry[]> | null }) 
     <SinceDawnView
       rows={rows}
       status={isLoading ? 'loading' : error ? 'error' : 'ready'}
+      now={now}
       onToggleKeep={(id) => {
         const entry = entries.find((e) => e.sh_id === id);
         if (entry) void toggleLike(entry.song.title, entry.song.artist, entry.song.art);

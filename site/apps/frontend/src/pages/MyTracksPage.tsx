@@ -3,7 +3,6 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useLocation, useSearchParams } from 'react-router';
 import { getLocale, localizeHref } from '@/paraglide/runtime.js';
 import * as m from '@/paraglide/messages.js';
-import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../shell/SiteFooter';
 import { SiteHeader } from '../shell/SiteHeader';
 import {
@@ -48,7 +47,6 @@ export function MyTracksPage() {
   // The store is filled at sign-in; this page asks again for the artist pages of tracks tied
   // since, and shows the store's tracks meanwhile.
   const [settled, setSettled] = useState(false);
-  const setListenVisible = useHeroListenVisible((s) => s.setVisible);
 
   useEffect(() => {
     if (!signedIn) return;
@@ -57,9 +55,6 @@ export function MyTracksPage() {
       .refresh()
       .finally(() => setSettled(true));
   }, [signedIn]);
-
-  // No hero here: the player bar is the only way to listen.
-  useEffect(() => setListenVisible(false), [setListenVisible]);
 
   usePageTitle(m.library_title());
 

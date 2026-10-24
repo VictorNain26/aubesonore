@@ -101,6 +101,11 @@
   --text-hero--line-height: 0.98;
   --text-hero--font-weight: 460;
   --text-hero--letter-spacing: -0.032em;
+  /* The title on air, the home page's largest words: 46 px on a phone, about 100 at 1280. */
+  --text-now: clamp(2.875rem, 8vw, 8rem);
+  --text-now--line-height: 0.92;
+  --text-now--font-weight: 460;
+  --text-now--letter-spacing: -0.04em;
   --text-mark: clamp(1.625rem, 1.4rem + 0.8vw, 2rem);
   --text-mark--line-height: 1;
   --text-mark--font-weight: 700;
@@ -510,11 +515,11 @@
     var(--surface-raised);
 }
 
-/* The opening screen fills the window: what follows starts below the fold, never cut at the
-   foot of the first screen. On a tablet in portrait, it follows its content. */
+/* The opening screen fills the window above the player bar: what follows starts below the fold,
+   never cut at the foot of the first screen. On a tablet in portrait, it follows its content. */
 @utility hero-height {
   @media (width >= 64rem) {
-    min-height: 100svh;
+    min-height: calc(100svh - var(--bar-space));
   }
 }
 

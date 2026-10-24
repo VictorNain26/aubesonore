@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import type { FallbackProps } from 'react-error-boundary';
 import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
@@ -11,19 +11,10 @@ import { useTrackActions } from '../hooks/useTrackActions';
 import { useArtistPage } from '../hooks/useArtistPage';
 import { artistPath } from '../lib/artistProfile';
 import { CoverOpenLarge } from '../design/CoverOpenLarge';
-import { VolumeControl, type VolumeControlProps } from '../shell/VolumeControl';
 import { ARTIST_LINK, TEXT_ACTION } from '../design/classes';
 import { CastControl } from '../shell/CastControl';
 import { useDiffusion, type Diffusion } from '../hooks/useDiffusion';
-import {
-  LISTEN_PILL,
-  ListenDisc,
-  ListenLabel,
-  listenAria,
-  listenState,
-  useHeroListenVisible,
-  type ListenState,
-} from './listen';
+import { ListenDisc, listenAria, listenState, type ListenState } from './listen';
 import * as m from '@/paraglide/messages.js';
 
 // Past this length the title would take three lines at hero size.
@@ -50,8 +41,6 @@ export interface NowPlayingViewProps {
   isUnreachable?: boolean;
   listen: ListenState;
   onToggleListen: () => void;
-  /** Ref on the Écouter button, watched to hide the player bar while it is visible. */
-  listenRef?: React.Ref<HTMLButtonElement>;
   isKept: boolean;
   isKeeping: boolean;
   onToggleKeep: () => void;
@@ -62,15 +51,17 @@ export interface NowPlayingViewProps {
   artistHref: string | null;
   /** True once the live has moved past the track shown at load: changes then animate. */
   hasChanged?: boolean;
-  /** Shown beside Écouter while listening, so the level is set without scrolling to the bar. */
-  volume?: Omit<VolumeControlProps, 'tone' | 'className'>;
 }
 
+/** Écouter, the one round thing of the page: an ink disc, larger from md. */
+const LISTEN_DISC =
+  'group ease-spring focus-visible:outline-accent shrink-0 rounded-full transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-95';
+
 /**
- * What plays now, the biggest thing on the page: the cover, the title, the
- * artist (a link to their page once it exists), its album, and Écouter right
- * under it, beside Garder, Partager and Diffuser. What played before is the thread just
- * below.
+ * What plays now, the biggest thing on the page: the cover, the title, the artist (a link to their
+ * page once it exists) and its album, and the round Écouter right under them, beside Garder,
+ * Partager and Diffuser. The volume is the player bar's, always on screen. What played before is
+ * the thread below.
  */
 export function NowPlayingView({
   track,
@@ -78,7 +69,6 @@ export function NowPlayingView({
   isUnreachable = false,
   listen,
   onToggleListen,
-  listenRef,
   isKept,
   isKeeping,
   onToggleKeep,
@@ -86,7 +76,6 @@ export function NowPlayingView({
   diffusion = null,
   artistHref,
   hasChanged = false,
-  volume,
 }: NowPlayingViewProps) {
   const trackKey = track ? `${track.artist}|${track.title}` : 'none';
   const album = track ? shownAlbum(track.album, track.title) : null;
@@ -123,12 +112,12 @@ export function NowPlayingView({
             <h2
               className={cn(
                 'font-display m-0 text-balance',
-                track.title.length > LONG_TITLE ? 'text-section' : 'text-hero'
+                track.title.length > LONG_TITLE ? 'text-hero' : 'text-now'
               )}
             >
               {track.title}
             </h2>
-            <p className="text-headline text-text-muted m-0 font-normal">
+            <p className="text-headline m-0 font-normal">
               {/* Inline padding grows the tap target to 44px without moving the line. */}
               {artistHref ? (
                 <Link to={artistHref} className={cn(ARTIST_LINK, 'py-3 underline-offset-6')}>
@@ -137,12 +126,13 @@ export function NowPlayingView({
               ) : (
                 track.artist
               )}
+              {album ? (
+                <span className="text-text-muted">
+                  {' · '}
+                  <cite>{album}</cite>
+                </span>
+              ) : null}
             </p>
-            {album ? (
-              <p className="text-sub text-text-muted m-0">
-                {m.now_album_from()} <cite>{album}</cite>
-              </p>
-            ) : null}
           </div>
         ) : isUnreachable ? (
           <p className="text-intro text-text-muted m-0" aria-live="polite">
@@ -155,20 +145,18 @@ export function NowPlayingView({
           </div>
         )}
 
-        <div className="mt-6 flex flex-col gap-3 md:mt-8 md:flex-row md:items-center md:gap-6">
+        <div className="mt-4 flex items-center gap-6 md:mt-6">
           <button
-            ref={listenRef}
             type="button"
             onClick={onToggleListen}
             aria-label={listenAria(listen)}
             aria-busy={listen === 'connecting'}
-            className={LISTEN_PILL}
+            className={LISTEN_DISC}
           >
-            <ListenDisc state={listen} className="size-11" />
-            <ListenLabel state={listen} className="text-ui font-semibold" />
+            <ListenDisc state={listen} tone="ink" className="size-16 md:size-20" />
           </button>
           {track && isOnline ? (
-            <span className="flex flex-wrap gap-x-5">
+            <span className="flex flex-wrap gap-x-6">
               <button
                 type="button"
                 onClick={onToggleKeep}
@@ -186,7 +174,6 @@ export function NowPlayingView({
               {diffusion ? <CastControl diffusion={diffusion} variant="text" /> : null}
             </span>
           ) : null}
-          {volume && listen !== 'idle' ? <VolumeControl {...volume} tone="surface" /> : null}
         </div>
       </div>
     </div>
@@ -205,38 +192,15 @@ export function NowPlaying() {
       isUnreachable: !s.data && s.error !== null,
     }))
   );
-  const { isPlaying, isConnecting, toggle, volume, isMuted, setVolume, toggleMute } = usePlayer(
-    useShallow((s) => ({
-      isPlaying: s.isPlaying,
-      isConnecting: s.isConnecting,
-      toggle: s.toggle,
-      volume: s.volume,
-      isMuted: s.isMuted,
-      setVolume: s.setVolume,
-      toggleMute: s.toggleMute,
-    }))
+  const { isPlaying, isConnecting, toggle } = usePlayer(
+    useShallow((s) => ({ isPlaying: s.isPlaying, isConnecting: s.isConnecting, toggle: s.toggle }))
   );
   const { isLiked, isLiking, handleToggleLike, handleShare } = useTrackActions();
   const diffusion = useDiffusion();
   const artistPage = useArtistPage(artist);
-  const setListenVisible = useHeroListenVisible((s) => s.setVisible);
-  const listenRef = useRef<HTMLButtonElement>(null);
   const trackKey = title && artist ? `${artist}|${title}` : null;
   const [firstTrackKey, setFirstTrackKey] = useState<string | null>(null);
   if (firstTrackKey === null && trackKey !== null) setFirstTrackKey(trackKey);
-
-  useEffect(() => {
-    const button = listenRef.current;
-    if (!button) return;
-    // The bar slides in once this button has left the screen; the top margin
-    // keeps it from flickering at the edge.
-    const observer = new IntersectionObserver(
-      ([entry]) => setListenVisible(entry?.isIntersecting ?? true),
-      { rootMargin: '-80px 0px 0px 0px' }
-    );
-    observer.observe(button);
-    return () => observer.disconnect();
-  }, [setListenVisible]);
 
   return (
     <NowPlayingView
@@ -245,7 +209,6 @@ export function NowPlaying() {
       isUnreachable={isUnreachable}
       listen={listenState(isPlaying, isConnecting)}
       onToggleListen={toggle}
-      listenRef={listenRef}
       isKept={isLiked}
       isKeeping={isLiking}
       onToggleKeep={handleToggleLike}
@@ -253,7 +216,6 @@ export function NowPlaying() {
       diffusion={diffusion}
       artistHref={artistPage ? artistPath(artistPage) : null}
       hasChanged={firstTrackKey !== null && trackKey !== firstTrackKey}
-      volume={{ volume, isMuted, onVolumeChange: setVolume, onToggleMute: toggleMute }}
     />
   );
 }
@@ -271,22 +233,17 @@ export function NowPlayingFallback({ resetErrorBoundary }: FallbackProps) {
     <div role="alert" className="flex flex-col gap-2">
       <p className="font-display text-section m-0">{m.error_track_title()}</p>
       <p className="text-intro text-text-muted m-0">{m.error_track_body()}</p>
-      <div className="mt-6 flex flex-col gap-3 md:mt-8 md:flex-row md:items-center md:gap-6">
+      <div className="mt-4 flex items-center gap-6 md:mt-6">
         <button
           type="button"
           onClick={toggle}
           aria-label={listenAria(listen)}
           aria-busy={listen === 'connecting'}
-          className={LISTEN_PILL}
+          className={LISTEN_DISC}
         >
-          <ListenDisc state={listen} className="size-11" />
-          <ListenLabel state={listen} className="text-ui font-semibold" />
+          <ListenDisc state={listen} tone="ink" className="size-16 md:size-20" />
         </button>
-        <button
-          type="button"
-          onClick={resetErrorBoundary}
-          className={cn(TEXT_ACTION, 'self-start md:self-auto')}
-        >
+        <button type="button" onClick={resetErrorBoundary} className={TEXT_ACTION}>
           {m.error_retry()}
         </button>
       </div>
