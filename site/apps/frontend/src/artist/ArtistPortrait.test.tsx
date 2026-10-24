@@ -30,7 +30,7 @@ describe('ArtistPortrait', () => {
   it('opens a photo large with the credit its licence asks for, each part a link', async () => {
     render(<ArtistPortrait images={[PHOTO]} name="Can" seed={SEED} />);
 
-    fireEvent.click(screen.getByRole('button', { name: "Voir l'image de Can en grand" }));
+    fireEvent.click(screen.getByRole('button', { name: 'Voir l’image de Can en grand' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Can' });
     const large = within(dialog).getByRole('img', { name: 'Portrait de Can' });
@@ -80,7 +80,7 @@ describe('ArtistPortrait', () => {
   it('opens a cover at 1200 px with its record and year, crediting nobody', async () => {
     render(<ArtistPortrait images={[COVER]} name="Neu!" seed={SEED} />);
 
-    fireEvent.click(screen.getByRole('button', { name: "Voir l'image de Neu! en grand" }));
+    fireEvent.click(screen.getByRole('button', { name: 'Voir l’image de Neu! en grand' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Neu!' });
     const large = within(dialog).getByRole('img', { name: 'Pochette de Neu!' });

@@ -52,45 +52,45 @@ describe('SinceDawnView', () => {
     render(<SinceDawnView rows={rows(2)} status="ready" onToggleKeep={vi.fn()} />);
 
     const [first, second] = screen.getAllByRole('listitem');
-    expect(first).toHaveTextContent("À l'antenne : 17:00");
+    expect(first).toHaveTextContent('À l’antenne : 17:00');
     expect(first).not.toHaveTextContent('●');
-    expect(second).not.toHaveTextContent("À l'antenne");
+    expect(second).not.toHaveTextContent('À l’antenne');
   });
 
   it('keeps a track by its id', async () => {
     const onToggleKeep = vi.fn();
     render(<SinceDawnView rows={rows(3)} status="ready" onToggleKeep={onToggleKeep} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Garder « Titre 2 »' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Garder «\u00a0Titre 2\u00a0»' }));
     expect(onToggleKeep).toHaveBeenCalledWith(2);
   });
 
   it('tells apart an empty day from an unavailable history', () => {
     const { rerender } = render(<SinceDawnView rows={[]} status="ready" onToggleKeep={vi.fn()} />);
-    expect(screen.getByText("Rien n'est encore passé aujourd'hui.")).toBeInTheDocument();
+    expect(screen.getByText('Rien n’est encore passé aujourd’hui.')).toBeInTheDocument();
 
     rerender(<SinceDawnView rows={[]} status="error" onToggleKeep={vi.fn()} />);
     expect(
-      screen.getByText("L'historique du jour est indisponible pour l'instant.")
+      screen.getByText('L’historique du jour est indisponible pour l’instant.')
     ).toBeInTheDocument();
   });
 
   it('says the rest of the day is missing when only the live tracks came, past the last of them', async () => {
-    const partial = "Le reste de la journée est indisponible pour l'instant.";
+    const partial = 'Le reste de la journée est indisponible pour l’instant.';
     render(<SinceDawnView rows={rows(15)} status="error" onToggleKeep={vi.fn()} />);
 
     expect(screen.queryByText(partial)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Plus tôt dans la journée' }));
     expect(screen.getByText(partial)).toBeInTheDocument();
     expect(
-      screen.queryByText("L'historique du jour est indisponible pour l'instant.")
+      screen.queryByText('L’historique du jour est indisponible pour l’instant.')
     ).not.toBeInTheDocument();
   });
 
   it('says nothing of the rest of the day when the whole day came', () => {
     render(<SinceDawnView rows={rows(3)} status="ready" onToggleKeep={vi.fn()} />);
     expect(
-      screen.queryByText("Le reste de la journée est indisponible pour l'instant.")
+      screen.queryByText('Le reste de la journée est indisponible pour l’instant.')
     ).not.toBeInTheDocument();
   });
 

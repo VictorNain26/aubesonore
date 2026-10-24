@@ -18,7 +18,7 @@ describe('shareTrack', () => {
     await expect(shareTrack(input)).resolves.toBe('shared');
     expect(share).toHaveBeenCalledWith({
       title: 'AubeSonore',
-      text: '« Balance Act », Psychic Lines, entendu sur AubeSonore',
+      text: '«\u00a0Balance Act\u00a0», Psychic Lines, entendu sur AubeSonore',
       url: 'https://aubesonore.fr',
     });
   });
@@ -28,7 +28,7 @@ describe('shareTrack', () => {
     vi.stubGlobal('navigator', { clipboard: { writeText } });
     await expect(shareTrack(input)).resolves.toBe('copied');
     expect(writeText).toHaveBeenCalledWith(
-      '« Balance Act », Psychic Lines, entendu sur AubeSonore https://aubesonore.fr'
+      '«\u00a0Balance Act\u00a0», Psychic Lines, entendu sur AubeSonore https://aubesonore.fr'
     );
   });
 

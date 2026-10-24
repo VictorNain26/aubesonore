@@ -585,7 +585,7 @@ describe('the addresses pages had before slugs', () => {
     ).text();
 
     expect(html).toContain('<title>Protomartyr : artistes similaires · AubeSonore</title>');
-    expect(html).toContain('content="Artistes similaires : Preoccupations."');
+    expect(html).toContain('content="Même son\u00a0: Preoccupations."');
   });
 
   it('keeps a value holding </script> inside the embedded data', async () => {

@@ -375,8 +375,8 @@ def main() -> None:
     )
     lockup_px = 58
     for lang, title, sub in (
-        ("fr", "Des titres à l’aube de vous plaire.", "Indé, électro, hip-hop, des années 60 à aujourd’hui."),
-        ("en", "The first light of your next favourite songs.", "Indie, electronic, hip-hop, from the 60s to today."),
+        ("fr", "Une aube à chaque titre.", "Des sons qui n’ont pas encore de nom pour vous."),
+        ("en", "A dawn with every track.", "Sounds you don’t have a name for yet."),
     ):
         logo = svg_doc(lockup_box, lockup_body("o", DAWN, INK, INK), lockup_px * lockup_box[2] / lockup_box[3], lockup_px)
         html = f"""<style>{faces}

@@ -187,7 +187,7 @@ describe('MyTracksPage', () => {
     open();
 
     expect(
-      await screen.findByRole('link', { name: 'Écouter « Nightcall » sur YouTube' })
+      await screen.findByRole('link', { name: 'Écouter «\u00a0Nightcall\u00a0» sur YouTube' })
     ).toHaveAttribute('href', 'https://www.youtube.com/results?search_query=3');
     expect(screen.getByText('2 oct.')).toHaveAttribute('datetime', `${YEAR}-10-02T10:00:00.000Z`);
   });
@@ -204,7 +204,7 @@ describe('MyTracksPage', () => {
     open();
 
     await userEvent.click(
-      await screen.findByRole('button', { name: 'Ne plus garder « Nightcall »' })
+      await screen.findByRole('button', { name: 'Ne plus garder «\u00a0Nightcall\u00a0»' })
     );
     expect(screen.queryByText('Nightcall')).not.toBeInTheDocument();
     expect(screen.getByText('2 titres gardés')).toBeInTheDocument();
@@ -220,13 +220,19 @@ describe('MyTracksPage', () => {
     signIn();
     open();
 
-    const nightcall = await screen.findByRole('button', { name: 'Ne plus garder « Nightcall »' });
+    const nightcall = await screen.findByRole('button', {
+      name: 'Ne plus garder «\u00a0Nightcall\u00a0»',
+    });
     nightcall.focus();
     await userEvent.keyboard('{Enter}');
-    expect(screen.getByRole('button', { name: 'Ne plus garder « Get Lucky »' })).toHaveFocus();
+    expect(
+      screen.getByRole('button', { name: 'Ne plus garder «\u00a0Get Lucky\u00a0»' })
+    ).toHaveFocus();
 
     await userEvent.keyboard('{Enter}');
-    expect(screen.getByRole('button', { name: 'Ne plus garder « One More Time »' })).toHaveFocus();
+    expect(
+      screen.getByRole('button', { name: 'Ne plus garder «\u00a0One More Time\u00a0»' })
+    ).toHaveFocus();
 
     // The list empty, the page's title takes it.
     await userEvent.keyboard('{Enter}');
@@ -249,7 +255,7 @@ describe('MyTracksPage', () => {
     open();
 
     await userEvent.click(
-      await screen.findByRole('button', { name: 'Ne plus garder « Nightcall »' })
+      await screen.findByRole('button', { name: 'Ne plus garder «\u00a0Nightcall\u00a0»' })
     );
     await screen.findByRole('button', { name: 'Annuler' });
     act(() => {
@@ -273,7 +279,7 @@ describe('MyTracksPage', () => {
     signIn();
     open();
 
-    expect(await screen.findByText("Vos titres n'ont pas pu être chargés.")).toBeInTheDocument();
+    expect(await screen.findByText('Vos titres n’ont pas pu être chargés.')).toBeInTheDocument();
     fail = false;
     await userEvent.click(screen.getByRole('button', { name: 'Réessayer' }));
 

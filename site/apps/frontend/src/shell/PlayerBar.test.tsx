@@ -45,7 +45,7 @@ describe('PlayerBarView', () => {
     const onShare = vi.fn();
     render(<PlayerBarView {...props({ onShare })} />);
 
-    await user.click(screen.getByRole('button', { name: /Ouvrir « Mimoun »/ }));
+    await user.click(screen.getByRole('button', { name: /Ouvrir «\u00a0Mimoun\u00a0»/ }));
     await user.click(await screen.findByRole('button', { name: 'Partager' }));
 
     expect(onShare).toHaveBeenCalledOnce();
@@ -58,7 +58,7 @@ describe('PlayerBarView', () => {
     // Twice: the phone's sheet trigger and the larger screens' line, one hidden by CSS.
     expect(screen.getAllByText('Mimoun')).toHaveLength(2);
     expect(screen.getAllByText('Mickey 3D')).toHaveLength(2);
-    expect(screen.queryByText(/à l'antenne/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/à l’antenne/)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Écouter le direct' }));
     expect(onToggleListen).toHaveBeenCalledOnce();
   });
@@ -72,7 +72,7 @@ describe('PlayerBarView', () => {
     const onToggleKeep = vi.fn();
     render(<PlayerBarView {...props({ onToggleKeep, isKept: true })} />);
 
-    const keep = screen.getByRole('button', { name: 'Garder « Mimoun »' });
+    const keep = screen.getByRole('button', { name: 'Garder «\u00a0Mimoun\u00a0»' });
     expect(keep).toHaveAttribute('aria-pressed', 'true');
     await userEvent.click(keep);
     expect(onToggleKeep).toHaveBeenCalledOnce();
@@ -187,7 +187,9 @@ describe('PlayerBarView', () => {
         })}
       />
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Ouvrir « Mimoun », Mickey 3D' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Ouvrir «\u00a0Mimoun\u00a0», Mickey 3D' })
+    );
 
     const sheet = await screen.findByRole('dialog', { name: 'Mimoun' });
     expect(sheet).toHaveTextContent('extrait de Tu vas pas mourir de rire');
