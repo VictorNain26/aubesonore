@@ -1,6 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import { localizeHref } from '@/paraglide/runtime.js';
-import { ArrowLeft, Eye, EyeOff, Heart, ListOrdered } from 'lucide-react';
+import { ArrowLeftIcon, EyeClosedIcon, EyeIcon, HeartIcon, RankingIcon } from '../design/icons';
 import { cn } from '@/lib/utils';
 import { Button } from '../design/Button';
 import { TextField } from '../design/TextField';
@@ -102,15 +102,11 @@ function AuthPitch({ className, withTitle = true }: { className?: string; withTi
       ) : null}
       <ul className="text-intro text-text-muted max-w-aside m-0 flex list-none flex-col gap-4 p-0">
         <li className="flex items-start gap-3.5">
-          <Heart className="text-text mt-1 size-5 shrink-0" strokeWidth={1.6} aria-hidden="true" />
+          <HeartIcon className="text-text mt-1 size-5 shrink-0" />
           {m.auth_aside_library()}
         </li>
         <li className="flex items-start gap-3.5">
-          <ListOrdered
-            className="text-text mt-1 size-5 shrink-0"
-            strokeWidth={1.6}
-            aria-hidden="true"
-          />
+          <RankingIcon className="text-text mt-1 size-5 shrink-0" />
           {m.auth_aside_ranking()}
         </li>
       </ul>
@@ -218,7 +214,7 @@ export function AuthView({
       aria-label={showPassword ? m.auth_password_hide() : m.auth_password_show()}
       aria-pressed={showPassword}
     >
-      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      {showPassword ? <EyeClosedIcon className="size-4" /> : <EyeIcon className="size-4" />}
     </Button>
   );
 
@@ -236,7 +232,7 @@ export function AuthView({
                   onClick={() => onSwitchMode('signin')}
                   className={BACK_LINK_CLASSES}
                 >
-                  <ArrowLeft className="size-4" strokeWidth={1.8} aria-hidden="true" />
+                  <ArrowLeftIcon className="size-4" />
                   {m.auth_back_to_signin()}
                 </button>
               ) : null}

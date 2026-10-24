@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { FallbackProps } from 'react-error-boundary';
 import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
-import { Share2 } from 'lucide-react';
+import { ShareIcon } from '../design/icons';
 import { cn } from '@/lib/utils';
 import { KeepHeart } from '../design/KeepHeart';
 import { useNowPlayingStore } from '../lib/azuracast';
@@ -168,7 +168,7 @@ export function NowPlayingView({
                 {m.track_keep()}
               </button>
               <button type="button" onClick={onShare} className={TEXT_ACTION}>
-                <Share2 className="size-4" strokeWidth={1.6} aria-hidden="true" />
+                <ShareIcon className="size-4" />
                 {m.track_share()}
               </button>
               {diffusion ? <CastControl diffusion={diffusion} variant="text" /> : null}

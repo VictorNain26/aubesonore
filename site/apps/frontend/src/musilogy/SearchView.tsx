@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { Link } from 'react-router';
-import { Search, X } from 'lucide-react';
+import { CloseIcon, SearchIcon } from '../design/icons';
 import type { MusilogySearchHit } from '@aubesonore/shared-types/client';
 import * as m from '@/paraglide/messages.js';
 import { LineLoader } from '../design/LineLoader';
@@ -127,11 +127,7 @@ export function MusilogyHomeView({
         <div ref={searchRef} role="search" className="relative w-full max-w-2xl scroll-mt-4">
           <label>
             <span className="sr-only">{m.musilogy_search_label()}</span>
-            <Search
-              className="text-text-muted pointer-events-none absolute top-1/2 left-5 size-5 -translate-y-1/2"
-              strokeWidth={1.8}
-              aria-hidden="true"
-            />
+            <SearchIcon className="text-text-muted pointer-events-none absolute top-1/2 left-5 size-5 -translate-y-1/2" />
             <input
               type="search"
               value={query}
@@ -161,7 +157,7 @@ export function MusilogyHomeView({
               aria-label={m.library_search_clear()}
               className="ease-out-quart focus-visible:outline-accent absolute top-1.5 right-1.5 flex size-11 items-center justify-center rounded-full transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90"
             >
-              <X className="size-4.5" strokeWidth={1.8} aria-hidden="true" />
+              <CloseIcon className="size-4.5" />
             </button>
           ) : null}
         </div>

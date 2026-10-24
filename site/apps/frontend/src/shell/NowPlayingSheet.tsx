@@ -1,6 +1,6 @@
 import { Drawer } from '@base-ui/react/drawer';
 import { Link } from 'react-router';
-import { Share2, X } from 'lucide-react';
+import { CloseIcon, ShareIcon } from '../design/icons';
 import { cn } from '@/lib/utils';
 import type { Diffusion } from '../hooks/useDiffusion';
 import { CastControl } from './CastControl';
@@ -66,7 +66,7 @@ export function NowPlayingSheet({
               aria-label={m.close()}
               className={cn(CLOSE_BUTTON, 'absolute top-2 right-3')}
             >
-              <X className="size-4.5" strokeWidth={1.8} aria-hidden="true" />
+              <CloseIcon className="size-4.5" />
             </Drawer.Close>
             <Drawer.Content className="mx-auto flex w-full max-w-sm flex-col gap-2">
               <Cover
@@ -116,7 +116,7 @@ export function NowPlayingSheet({
                     {m.track_keep()}
                   </button>
                   <button type="button" onClick={onShare} className={TEXT_ACTION}>
-                    <Share2 className="size-4" strokeWidth={1.6} aria-hidden="true" />
+                    <ShareIcon className="size-4" />
                     {m.track_share()}
                   </button>
                   {diffusion ? <CastControl diffusion={diffusion} variant="text" /> : null}

@@ -136,7 +136,6 @@ export function SinceDawnView({ rows, status, onToggleKeep, now = null }: SinceD
                     <KeepHeart
                       isKept={row.isKept}
                       className="ease-spring size-4.5 transition-transform duration-250 group-hover:scale-118"
-                      strokeWidth={1.5}
                     />
                   </button>
                 </li>

@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
-import { X } from 'lucide-react';
+import { CloseIcon } from './icons';
 import * as m from '@/paraglide/messages.js';
 import { cn } from '@/lib/utils';
 import { CLOSE_BUTTON } from './classes';
@@ -85,7 +85,7 @@ export function OpenLarge({
           <div className="flex items-center justify-between gap-4 pl-1">
             <div className="text-ui text-text-muted">{caption}</div>
             <Dialog.Close aria-label={m.close()} className={CLOSE_BUTTON}>
-              <X className="size-4.5" strokeWidth={1.8} aria-hidden="true" />
+              <CloseIcon className="size-4.5" />
             </Dialog.Close>
           </div>
         </Dialog.Popup>

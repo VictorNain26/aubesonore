@@ -24,7 +24,6 @@
     "@inlang/paraglide-js": "^2.22.0",
     "@tailwindcss/vite": "^4.3.0",
     "clsx": "^2.1.1",
-    "lucide-react": "^1.16.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-error-boundary": "^6.1.1",

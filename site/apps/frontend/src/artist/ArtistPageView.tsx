@@ -7,7 +7,7 @@ import type {
   MusilogyArtist,
 } from '@aubesonore/shared-types/client';
 import { getLocale } from '@/paraglide/runtime.js';
-import { ArrowUpRight } from 'lucide-react';
+import { ExternalIcon } from '../design/icons';
 import { cn } from '@/lib/utils';
 import { ArtistPortrait } from './ArtistPortrait';
 import { ARTIST_LINK } from '../design/classes';
@@ -147,7 +147,7 @@ function ListenLinks({ links }: { links: ArtistProfile['links'] }) {
           <li key={link.url} className="shrink-0">
             <a href={link.url} {...OUTSIDE_LINK} className={LISTEN_PILL}>
               {PLATFORM_LABELS[link.platform]()}
-              <ArrowUpRight aria-hidden="true" className="text-text-muted size-4" />
+              <ExternalIcon className="text-text-muted size-4" />
             </a>
           </li>
         ))}

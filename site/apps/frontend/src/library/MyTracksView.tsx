@@ -1,5 +1,12 @@
 import { memo } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown, Play, Search, X } from 'lucide-react';
+import {
+  ArrowDownIcon,
+  ArrowUpDownIcon,
+  ArrowUpIcon,
+  CloseIcon,
+  PlayIcon,
+  SearchIcon,
+} from '../design/icons';
 import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
 import { getLocale } from '@/paraglide/runtime.js';
@@ -140,7 +147,7 @@ const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
           title={m.library_listen({ title: track.title })}
           className={ICON_ACTION}
         >
-          <Play className="size-4.5" strokeWidth={1.6} aria-hidden="true" />
+          <PlayIcon className="size-4.5" />
         </a>
         <button
           type="button"
@@ -172,11 +179,7 @@ function SearchField({
     <div role="search" className="relative w-full sm:max-w-md">
       <label>
         <span className="sr-only">{m.library_search_label()}</span>
-        <Search
-          className="text-text-muted pointer-events-none absolute top-1/2 left-4 size-4.5 -translate-y-1/2"
-          strokeWidth={1.8}
-          aria-hidden="true"
-        />
+        <SearchIcon className="text-text-muted pointer-events-none absolute top-1/2 left-4 size-4.5 -translate-y-1/2" />
         <input
           type="search"
           value={query}
@@ -196,7 +199,7 @@ function SearchField({
           aria-label={m.library_search_clear()}
           className={cn(ICON_ACTION, 'absolute top-0 right-0')}
         >
-          <X className="size-4" strokeWidth={1.8} aria-hidden="true" />
+          <CloseIcon className="size-4" />
         </button>
       ) : null}
     </div>
@@ -231,7 +234,7 @@ function SortHeader({
       <span className="hidden md:block" />
       {columns.map(({ key, label }) => {
         const active = sort.key === key;
-        const Arrow = !active ? ArrowUpDown : sort.dir === 'asc' ? ArrowUp : ArrowDown;
+        const Arrow = !active ? ArrowUpDownIcon : sort.dir === 'asc' ? ArrowUpIcon : ArrowDownIcon;
         return (
           <button
             key={key}
@@ -250,8 +253,6 @@ function SortHeader({
                 'size-3.5',
                 !active && 'opacity-0 group-hover:opacity-60 group-focus-visible:opacity-60'
               )}
-              strokeWidth={2}
-              aria-hidden="true"
             />
           </button>
         );
