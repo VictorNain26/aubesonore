@@ -97,7 +97,11 @@
   --text-title--line-height: 1.15;
   --text-title--font-weight: 600;
   /* The type scale. */
-  --text-hero: clamp(2.375rem, 1.5rem + 3.6vw, 6.25rem);
+  /* The title on air (home/NowPlaying.tsx): one size for every title, set by its own column
+     (cqi, the hero's meta block is a container) and held by the screen's height (svh), so a
+     52-character title keeps to three lines and the cover stays the largest thing: 31 px on a
+     360 px phone, 30 on a phone on its side, 58 at 1280×720, 86 at 1920×1080. */
+  --text-hero: clamp(1.75rem, min(10cqi, 8svh), 8rem);
   --text-hero--line-height: 0.98;
   --text-hero--font-weight: 460;
   --text-hero--letter-spacing: -0.032em;
@@ -107,8 +111,8 @@
   --text-page--line-height: 1;
   --text-page--font-weight: 460;
   --text-page--letter-spacing: -0.032em;
-  /* A page's largest words, above the page's title: the title on air, an artist's name. 46 px on
-     a phone, about 100 at 1280, 128 on a large screen. */
+  /* A page's largest words, above the page's title: an artist's name. 46 px on a phone, about 100
+     at 1280, 128 on a large screen. */
   --text-now: clamp(2.875rem, 8vw, 8rem);
   --text-now--line-height: 0.92;
   --text-now--font-weight: 460;
@@ -504,11 +508,85 @@
     var(--surface-raised);
 }
 
-/* The opening screen fills the window above the player bar: what follows starts below the fold,
-   never cut at the foot of the first screen. On a tablet in portrait, it follows its content. */
-@utility hero-height {
-  @media (width >= 64rem) {
-    min-height: calc(100svh - var(--bar-space));
+/* The opening screen (home/Hero.tsx) is the first screen, whole, with no budget of height: a grid
+   whose one elastic row is the player's; the header, the welcome line and the horizon take what
+   they need. The player bar stays away while the hero's player shows (stores/heroPlayerStore.ts),
+   so no room is kept for it. A minimum, not a height: content taller than the screen (a phone on
+   its side with a long title) grows the hero rather than overlap.
+   svh, not dvh: the dynamic height follows the address bar as it folds on scroll, so the cover
+   grew and shrank under the finger and moved the page (MDN, CSS <length>, viewport units).
+   The dawn's light keeps to the horizon's row (home/Horizon.tsx): never under the actions, the
+   dawn is never under text. */
+@utility hero {
+  --horizon-height: clamp(4rem, 12svh, 9rem);
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  row-gap: clamp(0.75rem, 3svh, 2.5rem);
+  min-height: 100svh;
+}
+
+/* The hero's player: the cover takes what the rows leave, the title and the actions under it; side
+   by side (4 parts of 12 for the cover, as a section's title column) on a large screen, a landscape
+   one from md, and a phone on its side, whose height holds no stacked cover. */
+@utility hero-player {
+  display: grid;
+  grid-template-rows: 1fr auto auto;
+  grid-template-areas: 'cover' 'meta' 'actions';
+  row-gap: clamp(0.75rem, 2.5svh, 1.5rem);
+
+  @media (width >= 64rem),
+    (width >= 48rem) and (orientation: landscape),
+    (orientation: landscape) and (height < 30rem) {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    grid-template-areas: 'cover .' 'cover meta' 'cover actions';
+    column-gap: clamp(1.5rem, 4vw, 4rem);
+  }
+}
+
+/* The cover's room in the hero: what the grid leaves it, never under 8rem; the cover is the largest
+   square it holds (cover-fit), at its foot, against the title. */
+@utility cover-room {
+  container-type: size;
+  min-height: 8rem;
+  display: flex;
+  align-items: flex-end;
+}
+
+@utility cover-fit {
+  width: min(100cqw, 100cqh);
+  aspect-ratio: 1;
+}
+
+/* The hero's actions, on one line: Écouter, Garder, Partager, Diffuser and the volume. Under 30rem
+   of row (a phone) the words go and the icons stay, each a 44 px target named for screen readers:
+   the words are hidden to the eye only ([data-label]). */
+@utility hero-actions {
+  container-type: inline-size;
+
+  & > * {
+    display: flex;
+    align-items: center;
+    column-gap: 1.5rem;
+  }
+  & button {
+    min-width: 2.75rem;
+    justify-content: center;
+  }
+
+  @container (width < 30rem) {
+    & > * {
+      column-gap: 0.25rem;
+    }
+    & [data-label] {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
   }
 }
 
@@ -585,6 +663,13 @@
    a short page does not scroll. */
 @utility min-h-page {
   min-height: calc(100dvh - var(--bar-space));
+}
+
+/* A phone, upright or on its side: the welcome line keeps its first sentence, Écouter is 52 px. */
+@custom-variant phone {
+  @media (width < 40rem), (height < 30rem) {
+    @slot;
+  }
 }
 
 /* Room for the 4/12 title column beside the content: a large screen, or a landscape one from md. A
@@ -779,22 +864,6 @@
 
   &::-webkit-scrollbar {
     display: none;
-  }
-}
-
-/* The cover fills its column, the same 4 parts of 12 as a section's title column, as long as
-   the first screen still holds, above the player bar's room (--bar-space), what stands with the
-   cover: on a phone the header, the welcome line, the title, the artist and the Écouter row
-   under it (25rem in all, Garder and Partager wrapped on two lines beside the disc: 175 px of
-   cover on a 375×667 phone, 268 on 390×760, the full width from about 390×850); beside it from
-   64rem, the header and the welcome line (16rem). */
-/* svh, not dvh: the dynamic height follows the address bar as it folds on scroll, so the cover
-   grew and shrank under the finger and moved the page (MDN, CSS <length>, viewport units). */
-@utility artwork-size {
-  width: min(100%, 100svh - var(--bar-space) - 25rem);
-
-  @media (width >= 64rem) {
-    width: min(100%, 60svh, 100svh - var(--bar-space) - 16rem);
   }
 }
 

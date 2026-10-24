@@ -5,6 +5,10 @@ import { homeLoader } from './lib/homeData';
 import { HomePage } from './pages/HomePage';
 import { LegalPage } from './pages/LegalPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import type { RouteHandle } from './stores/heroPlayerStore';
+
+// The home page opens on its own player, the hero's: the player bar keeps away from it.
+const HOME: RouteHandle = { heroPlayer: true };
 
 // Loaded when opened: the sign-in code, Musilogy and the listener's tracks are not needed to
 // listen. Each page's data loader is declared here, apart from its code, so the two load together.
@@ -33,8 +37,8 @@ export const routes: RouteObject[] = [
     // React Router does without it, minus its warning.
     HydrateFallback: () => null,
     children: [
-      { id: 'home', path: '/', Component: HomePage, loader: homeLoader },
-      { id: 'home-en', path: '/en', Component: HomePage, loader: homeLoader },
+      { id: 'home', path: '/', Component: HomePage, loader: homeLoader, handle: HOME },
+      { id: 'home-en', path: '/en', Component: HomePage, loader: homeLoader, handle: HOME },
       {
         // A page chunk that fails to load (offline, a second failure inside the preloadReload
         // window) shows the page's error state in the site's frame, not a blank app. On a parent:

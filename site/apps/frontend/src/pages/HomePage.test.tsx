@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
@@ -90,5 +90,84 @@ describe('HomePage', { timeout: PAGE_TEST_TIMEOUT }, () => {
     await userEvent.click(screen.getByRole('link', { name: 'en' }));
     await settle(router);
     expect(document.title).toBe('AubeSonore · Discovery radio: indie, electronic, hip-hop');
+  });
+});
+
+/** The page's IntersectionObservers, each with what it watches, to tell one what it sees. */
+function watchIntersections() {
+  const observers: { callback: IntersectionObserverCallback; targets: Element[] }[] = [];
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      private readonly watched: { callback: IntersectionObserverCallback; targets: Element[] };
+      constructor(callback: IntersectionObserverCallback) {
+        this.watched = { callback, targets: [] };
+        observers.push(this.watched);
+      }
+      observe(target: Element) {
+        this.watched.targets.push(target);
+      }
+      unobserve() {}
+      disconnect() {}
+      takeRecords() {
+        return [];
+      }
+    }
+  );
+  return {
+    /** Tells the observer watching `element` (or a block holding it) whether it is on screen. */
+    see(element: Element, isIntersecting: boolean) {
+      const observer = observers.find((o) => o.targets.some((t) => t.contains(element)));
+      if (!observer) throw new Error('nothing watches this element');
+      act(() =>
+        observer.callback(
+          [{ isIntersecting } as IntersectionObserverEntry],
+          {} as IntersectionObserver
+        )
+      );
+    },
+  };
+}
+
+describe('the player bar beside the hero', { timeout: PAGE_TEST_TIMEOUT }, () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const bar = () => screen.getByRole('region', { name: 'Lecteur du direct', hidden: true });
+
+  it("stays away while the hero's player is on screen, and comes once it has left", async () => {
+    const intersections = watchIntersections();
+    await openHome();
+    const heroListen = within(screen.getByRole('main')).getByRole('button', {
+      name: 'Écouter le direct',
+    });
+
+    expect(bar()).toHaveAttribute('inert');
+
+    intersections.see(heroListen, false);
+    expect(bar()).not.toHaveAttribute('inert');
+
+    intersections.see(heroListen, true);
+    expect(bar()).toHaveAttribute('inert');
+  });
+
+  it('is there from the start on a page without a player at its top', async () => {
+    window.history.replaceState(null, '', '/mentions-legales');
+    const router = createBrowserRouter(routes);
+    render(<RouterProvider router={router} />);
+    await settle(router);
+
+    expect(bar()).not.toHaveAttribute('inert');
+  });
+
+  it('comes before the page in the keyboard order, right after the skip link', async () => {
+    window.history.replaceState(null, '', '/mentions-legales');
+    const router = createBrowserRouter(routes);
+    render(<RouterProvider router={router} />);
+    await settle(router);
+
+    await userEvent.tab();
+    expect(screen.getByRole('link', { name: 'Aller au contenu principal' })).toHaveFocus();
+    await userEvent.tab();
+    expect(within(bar()).getByRole('button', { name: 'Écouter le direct' })).toHaveFocus();
   });
 });

@@ -52,6 +52,12 @@ describe('entry-server', () => {
     );
   });
 
+  it("draws the home page's player bar out of the way, the hero holding the player, and every other page's in view", async () => {
+    const bar = /<section aria-label="Lecteur du direct"[^>]*>/;
+    expect((await pageHtml('fr')).match(bar)?.[0]).toContain('inert');
+    expect((await pageHtml('fr', '/mentions-legales/')).match(bar)?.[0]).not.toContain('inert');
+  });
+
   it('renders the legal page with the publisher and the data controller, under the header', async () => {
     const fr = await pageHtml('fr', '/mentions-legales/');
     expect(fr).toContain('Mentions légales et confidentialité');

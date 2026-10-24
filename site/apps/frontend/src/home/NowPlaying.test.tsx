@@ -20,6 +20,7 @@ function props(overrides: Partial<NowPlayingViewProps> = {}): NowPlayingViewProp
     },
     isOnline: true,
     listen: 'idle',
+    volume: { volume: 0.8, isMuted: false, onVolumeChange: vi.fn(), onToggleMute: vi.fn() },
     onToggleListen: vi.fn(),
     isKept: false,
     isKeeping: false,
@@ -94,12 +95,42 @@ describe('NowPlayingView', () => {
     );
   });
 
-  it('leaves the volume to the player bar, whatever the state', () => {
-    const { rerender } = render(<NowPlayingView {...props()} />);
-    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+  it('carries its own volume beside the actions, the player bar being away on the hero', async () => {
+    const onToggleMute = vi.fn();
+    const onVolumeChange = vi.fn();
+    render(
+      <NowPlayingView
+        {...props({ volume: { volume: 0.6, isMuted: false, onVolumeChange, onToggleMute } })}
+      />
+    );
 
-    rerender(<NowPlayingView {...props({ listen: 'playing' })} />);
-    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+    const slider = screen.getByRole('slider', { name: 'Volume' });
+    expect(slider).toHaveAttribute('aria-valuenow', '60');
+    slider.focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(onVolumeChange).toHaveBeenLastCalledWith(0.65);
+    await userEvent.click(screen.getByRole('button', { name: 'Couper le son' }));
+    expect(onToggleMute).toHaveBeenCalledOnce();
+  });
+
+  it('names Garder, Partager and Diffuser for screen readers, also when they show as icons alone', () => {
+    const diffusion = {
+      kind: 'chromecast' as const,
+      found: true,
+      device: null,
+      connecting: false,
+      onOpen: vi.fn(),
+    };
+    render(<NowPlayingView {...props({ diffusion })} />);
+
+    // Under 30rem of row the words are visually hidden (design/tokens.css, action-label), never
+    // taken out of the accessibility tree.
+    for (const name of ['Garder', 'Partager', 'Diffuser sur un appareil']) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    }
+    for (const word of ['Garder', 'Partager', 'Diffuser']) {
+      expect(screen.getByText(word)).not.toHaveAttribute('aria-hidden');
+    }
   });
 
   it('says radio silence when the station is off air', () => {
@@ -155,6 +186,7 @@ describe('NowPlayingFallback', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('Le titre en cours ne s’affiche pas.');
     expect(screen.getByRole('button', { name: 'Écouter le direct' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Couper le son' })).toBeInTheDocument();
 
     shouldThrow = false;
     await userEvent.click(screen.getByRole('button', { name: 'Réessayer' }));

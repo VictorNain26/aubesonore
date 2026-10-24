@@ -12,10 +12,10 @@ export interface VolumeControlProps {
 }
 
 /**
- * The volume, always in view on the player bar: the speaker mutes, and the level beside it is a
- * slider drawn with the line. Under 40rem the bar has no room for the slider and keeps the speaker
- * alone: a phone sets the level with its own buttons (and iOS ignores it from a page). The level
- * reads 0–100, so a screen reader says "60", not "0.6".
+ * The volume: the speaker mutes, and the level beside it is a slider drawn with the line. Where it
+ * sits (the player bar, the hero's actions) is a container: under 38rem of it there is no room for
+ * the slider and the speaker stays alone; a phone sets the level with its own buttons (and iOS
+ * ignores it from a page). The level reads 0–100, so a screen reader says "60", not "0.6".
  */
 export function VolumeControl({
   volume,
@@ -37,7 +37,7 @@ export function VolumeControl({
       >
         <Icon className="size-4" />
       </button>
-      <span className="hidden w-28 sm:flex lg:w-35">
+      <span className="hidden w-28 @min-[38rem]:flex @min-[40rem]:w-35">
         <Slider
           label={m.volume_slider()}
           value={Math.round(level * 100)}
