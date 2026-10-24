@@ -2,7 +2,10 @@
 // file. Measured on 2026-10-05:
 // - Apple's artwork CDN (`…/600x600bb.jpg`): all 85 Apple covers kept in production load at
 //   160 px, 81 exactly 160×160 and 4 non-square originals within a pixel or a crop, at 5 to 12
-//   times fewer bytes.
+//   times fewer bytes. It serves the same cover as WebP when the URL ends in `.webp` instead of
+//   `.jpg`: the 10 covers of « Les plus gardés » at 160, 320, 480, 600 and 1000 px all answered
+//   image/webp, 27 to 70 % lighter (480 px: 672 KB of JPEG, 228 KB of WebP for the ten,
+//   2026-10-24). Every browser the site supports decodes WebP.
 // - Deezer's image CDN (`…/1000x1000-000000-80-0-0.jpg`), artist portraits and album covers: 17 of
 //   18 portraits of artists the antenna played and 4 of 4 album covers load at 320×320, a fifth
 //   of the bytes; the 18th redirects at its own size as well.
@@ -17,7 +20,8 @@
 //   directly, a thumbnail took 2.6 s at the median behind two redirects, and 1 in 15 failed
 //   (2026-10-12).
 // Other hosts (our own store) keep their URL.
-const APPLE_SIZED = /^(https:\/\/is\d+-ssl\.mzstatic\.com\/image\/thumb\/.+)\/\d+x\d+bb\.jpg$/;
+const APPLE_SIZED =
+  /^(https:\/\/is\d+-ssl\.mzstatic\.com\/image\/thumb\/.+)\/(\d+x\d+)bb\.(?:jpg|webp)$/;
 // Only this station's art: nginx fetches it from radio.aubesonore.fr.
 const STATION_ART =
   /^https:\/\/radio\.aubesonore\.fr\/api\/station\/aubesonore\/art\/([0-9a-f]+-\d+)\.jpg$/;
@@ -44,7 +48,7 @@ function sizer(url: string): Sizer | null {
   const apple = APPLE_SIZED.exec(url);
   if (apple) {
     return {
-      at: (pixels) => `${apple[1]}/${pixels}x${pixels}bb.jpg`,
+      at: (pixels) => `${apple[1]}/${pixels}x${pixels}bb.webp`,
       widths: [160, 320, 480, 600],
     };
   }
@@ -85,12 +89,14 @@ function sizer(url: string): Sizer | null {
 }
 
 /**
- * The address a cover is fetched at: the Cover Art Archive's through this site, at the size its
- * URL names (the original's, 1200, when it names none); any other as given.
+ * The address a cover is fetched at, at the size its URL names: the Cover Art Archive's through
+ * this site (the original's, 1200, when it names none), Apple's as WebP; any other as given.
  */
 export function artworkSrc(url: string): string {
   const caa = CAA.exec(url);
-  return caa ? `/caa/${caa[2] ?? '1200'}/${caa[1]}.jpg` : url;
+  if (caa) return `/caa/${caa[2] ?? '1200'}/${caa[1]}.jpg`;
+  const apple = APPLE_SIZED.exec(url);
+  return apple ? `${apple[1]}/${apple[2]}bb.webp` : url;
 }
 
 /** The cover at `pixels` on its longer side where its host can serve that size, else as given. */

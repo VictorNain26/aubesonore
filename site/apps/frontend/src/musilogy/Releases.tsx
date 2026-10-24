@@ -38,10 +38,11 @@ function Record({ release }: { release: MusilogyRelease }) {
         }
         triggerClassName="w-full"
         className="aspect-square w-full"
-        // Two columns on a phone, three from 40 rem, four from 64 rem; a landscape tablet lays the
-        // grid in the section's 8 columns of 12. Measured from the gutters and gaps, so a 3x phone
-        // takes the 500 px file rather than the 1200.
-        sizes="(min-width: 64rem) 14rem, (min-width: 48rem) and (orientation: landscape) calc((100vw - 9rem) * 2 / 9), (min-width: 40rem) calc((100vw - 8rem) / 3), calc((100vw - 4.5rem) / 2)"
+        // Two columns on a phone, three from 40 rem, four from 64 rem; where the screen is wide the
+        // grid takes the section's 8 columns of 12 (Section.tsx). Measured from the gutters (1.5 rem,
+        // 2.5 rem from 48 rem), the page's 100 rem, the 4 rem gap beside the title and the grid's
+        // 1.5 rem gaps, so a 3x phone takes the 500 px file rather than the 1200.
+        sizes="(min-width: 64rem) calc((min(100vw - 5rem, 100rem) - 4rem) / 6 - 1.125rem), (min-width: 48rem) and (orientation: landscape) calc((100vw - 9rem) * 2 / 9 - 1rem), (min-width: 48rem) calc((100vw - 8rem) / 3), (min-width: 40rem) calc((100vw - 6rem) / 3), calc((100vw - 4.5rem) / 2)"
       />
       <span className="flex min-w-0 flex-col">
         <span className="text-ui break-words">{release.title}</span>
