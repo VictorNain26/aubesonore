@@ -92,8 +92,8 @@ export function NowPlayingView({
             largeAlt={m.now_cover_alt({ title: track.title, artist: track.artist })}
             caption={m.track_caption({ title: track.title, artist: track.artist })}
             priority
-            // artwork-size: 46svh wide, 60svh from 64rem (design/tokens.css).
-            sizes="(min-width: 64rem) 60vh, 46vh"
+            // artwork-size: the full width on a phone, capped by the height (design/tokens.css).
+            sizes="(min-width: 64rem) 60vh, 100vw"
             triggerClassName="artwork-size aspect-square"
             className={cn('shadow-cover size-full', hasChanged && 'swap-in')}
           />

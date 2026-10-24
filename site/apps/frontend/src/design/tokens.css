@@ -794,14 +794,18 @@
 }
 
 /* The cover fills its column, the same 4 parts of 12 as a section's title column, as long as
-   the first screen still holds the title and the horizon. */
+   the first screen still holds, above the player bar's room (--bar-space), what stands with the
+   cover: on a phone the header, the welcome line, the title, the artist and the Écouter row
+   under it (25rem in all, Garder and Partager wrapped on two lines beside the disc: 175 px of
+   cover on a 375×667 phone, 268 on 390×760, the full width from about 390×850); beside it from
+   64rem, the header and the welcome line (16rem). */
 /* svh, not dvh: the dynamic height follows the address bar as it folds on scroll, so the cover
    grew and shrank under the finger and moved the page (MDN, CSS <length>, viewport units). */
 @utility artwork-size {
-  width: min(100%, 46svh);
+  width: min(100%, 100svh - var(--bar-space) - 25rem);
 
   @media (width >= 64rem) {
-    width: min(100%, 60svh);
+    width: min(100%, 60svh, 100svh - var(--bar-space) - 16rem);
   }
 }
 
