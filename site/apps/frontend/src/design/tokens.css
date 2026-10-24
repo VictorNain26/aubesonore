@@ -525,19 +525,39 @@
   min-height: 100svh;
 }
 
-/* The hero's player: the cover takes what the rows leave, the title and the actions under it; side
-   by side (4 parts of 12 for the cover, as a section's title column) on a large screen, a landscape
-   one from md, and a phone on its side, whose height holds no stacked cover. */
+/* The hero side by side: a large screen, a landscape one from md, and a phone on its side, whose
+   height holds no stacked cover. */
+@custom-variant hero-wide {
+  @media (width >= 64rem),
+    (width >= 48rem) and (orientation: landscape),
+    (orientation: landscape) and (height < 30rem) {
+    @slot;
+  }
+}
+
+/* The player's room in the hero (home/Hero.tsx): side by side, a size container, so the cover's
+   column is as wide as the room is high (hero-player), never a band of empty paper above it. Its
+   height is what the hero's rows leave it, at least 8rem. */
+@utility player-room {
+  display: grid;
+
+  @variant hero-wide {
+    container-type: size;
+    min-height: 8rem;
+  }
+}
+
+/* The hero's player: the cover takes what the rows leave, the title and the actions under it. Side
+   by side, the cover's column is the room's height, up to half its width, and the title and the
+   actions stand at its foot beside it. */
 @utility hero-player {
   display: grid;
   grid-template-rows: 1fr auto auto;
   grid-template-areas: 'cover' 'meta' 'actions';
   row-gap: clamp(0.75rem, 2.5svh, 1.5rem);
 
-  @media (width >= 64rem),
-    (width >= 48rem) and (orientation: landscape),
-    (orientation: landscape) and (height < 30rem) {
-    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  @variant hero-wide {
+    grid-template-columns: min(100cqh, 50cqw) minmax(0, 1fr);
     grid-template-areas: 'cover .' 'cover meta' 'cover actions';
     column-gap: clamp(1.5rem, 4vw, 4rem);
   }

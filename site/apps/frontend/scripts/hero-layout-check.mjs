@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * The home page's first screen, measured in a real browser: titles of 4, 18, 30 and 52 characters
- * on ten screens, from a 360 px phone to 1920×1080 and phones on their side. For each it checks
+ * on twelve screens, from a 360 px phone to 1920×1080 and phones on their side. For each it checks
  * that the player bar stays away while the hero's player is on screen (and comes once it has
  * scrolled away), that Écouter and the actions are whole in the window and on one line, that the
  * horizon and its « now » dot are in the first screen, that the cover is never under 8rem, that
@@ -37,7 +37,9 @@ const VIEWPORTS = [
   [667, 375],
   [768, 1024],
   [1024, 700],
+  [1000, 720],
   [1280, 720],
+  [1366, 768],
   [1440, 900],
   [1920, 1080],
 ];
@@ -300,11 +302,16 @@ const MEASURE = `(() => {
     glowUnderActions: glow.top >= rowBox.bottom,
     tagline: getComputedStyle(tagline).display !== 'none',
     heroHeight: Math.round(box(hero).height),
+    // Paper left empty between the welcome line and the player, past the hero's own gap.
+    spaceAbove: Math.round(
+      Math.min(cover.top, title.top) - welcome.bottom - parseFloat(getComputedStyle(hero).rowGap)
+    ),
+    sideBySide: cover.right <= title.left,
     slotBottom: box(hero.querySelector('.hero-actions')).bottom + window.scrollY,
   };
 })()`;
 
-async function scrolledBar(y) {
+async function scrolledBar(y, shown) {
   return evaluate(`(async () => {
     // Room to scroll the hero away, whatever the lists below hold (the API is not served here).
     document.body.style.minHeight = '400vh';
@@ -314,7 +321,7 @@ async function scrolledBar(y) {
     await new Promise((r) => setTimeout(r, 300));
     for (let i = 0; i < 27; i++) {
       const o = getComputedStyle(bar).opacity;
-      if (o === '0' || o === '1') break;
+      if (o === '${shown ? 1 : 0}' && bar.hasAttribute('inert') !== ${shown}) break;
       await new Promise((r) => setTimeout(r, 100));
     }
     // The track's title in the bar, as wide as it shows (the phone's line or the larger one's).
@@ -348,6 +355,8 @@ for (const [width, height] of VIEWPORTS) {
     if (width < 430 && !r.iconsOnly) fails.push('words beside the icons under 430');
     if (!r.horizonInView || !r.dotInView) fails.push('horizon out of the first screen');
     if (r.cover < 128) fails.push('cover under 8rem');
+    // Side by side, the cover takes the height left: no band of empty paper above it.
+    if (r.sideBySide && r.spaceAbove > 8) fails.push(`${r.spaceAbove} px empty above the player`);
     if (r.overlaps.length) fails.push(`overlap ${r.overlaps.join(', ')}`);
     if (r.sideScroll) fails.push('sideways scroll');
     if (!r.glowUnderActions) fails.push('dawn under the actions');
@@ -356,23 +365,23 @@ for (const [width, height] of VIEWPORTS) {
     let scroll = '';
     if (title === TITLES[1]) {
       // The player scrolled away, then back.
-      const away = await scrolledBar(Math.ceil(r.slotBottom) + 20);
-      const back = await scrolledBar(0);
+      const away = await scrolledBar(Math.ceil(r.slotBottom) + 20, true);
+      const back = await scrolledBar(0, false);
       const ok = !away.inert && away.opacity === '1' && back.inert && back.opacity === '0';
       if (!ok) fails.push('bar does not follow the hero');
       scroll = ok ? `yes, title ${away.titleWidth} px` : `NO ${JSON.stringify({ away, back })}`;
     }
     failures += fails.length;
     rows.push(
-      `| ${width}×${height} | ${title.length} | ${r.cover} | ${r.titlePx}/${r.titleLines} | ${r.discPx} | ${r.iconsOnly ? 'icons' : 'words'} | ${r.tagline ? 'two' : 'one'} | ${r.heroHeight} | ${scroll} | ${fails.length ? fails.join('; ') : 'ok'} |`
+      `| ${width}×${height} | ${title.length} | ${r.cover} | ${r.spaceAbove} | ${r.titlePx}/${r.titleLines} | ${r.discPx} | ${r.iconsOnly ? 'icons' : 'words'} | ${r.tagline ? 'two' : 'one'} | ${r.heroHeight} | ${scroll} | ${fails.length ? fails.join('; ') : 'ok'} |`
     );
   }
 }
 
 console.log(
-  '| screen | title chars | cover px | title px/lines | disc px | actions | welcome sentences | hero px | bar follows scroll | checks |'
+  '| screen | title chars | cover px | empty above px | title px/lines | disc px | actions | welcome sentences | hero px | bar follows scroll | checks |'
 );
-console.log('|---|---|---|---|---|---|---|---|---|---|');
+console.log('|---|---|---|---|---|---|---|---|---|---|---|');
 console.log(rows.join('\n'));
 browser.close();
 process.exit(failures ? 1 : 0);

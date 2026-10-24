@@ -59,7 +59,7 @@ export function Hero() {
         </p>
       </div>
 
-      <div ref={player} className="px-page relative z-10 grid">
+      <div ref={player} className="px-page player-room relative z-10">
         <ErrorBoundary FallbackComponent={NowPlayingFallback}>
           <NowPlaying />
         </ErrorBoundary>
