@@ -30,6 +30,7 @@ function fakeCanvas() {
 const tokens = {
   '--surface': 'rgb(26, 32, 61)',
   '--light-veil-top': 'rgba(14, 20, 44, 0.38)',
+  '--light-veil-mid': 'rgba(16, 23, 50, 0.62)',
   '--text': 'rgb(238, 230, 220)',
   '--text-muted': 'rgb(194, 194, 214)',
   '--light-opacity': '0.9',
@@ -54,6 +55,7 @@ describe('readInks', () => {
     expect(readInks(element)).toEqual({
       surface: [26, 32, 61],
       veil: [14, 20, 44, 97 / 255],
+      veilMid: [16, 23, 50, 158 / 255],
       inks: [
         [238, 230, 220],
         [194, 194, 214],

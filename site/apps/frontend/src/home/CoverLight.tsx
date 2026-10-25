@@ -17,6 +17,8 @@ const PAINT_FILTER = 'blur(1.5px) saturate(1.35)';
  * cover-light), the words' ground.
  */
 const SHOWN = { x: 4, y: 5, width: 24, height: 22 } as const;
+/** The depth in the hero (0 at its top, 1 at its foot) of the centre of a row of SHOWN. */
+const depthOfRow = (row: number) => ((SHOWN.y + row + 0.5) / CANVAS_PIXELS) * 1.5 - 0.25;
 /** A cover as dark and as light as any: what a cover whose pixels cannot be read is dimmed for. */
 const WORST_PIXELS = new Uint8ClampedArray([0, 0, 0, 255, 255, 255, 255, 255]);
 /** Apple's CDN answers CORS (`Access-Control-Allow-Origin: *`): its pixels can be read. */
@@ -91,13 +93,14 @@ function paint(canvas: HTMLCanvasElement | null, image: HTMLImageElement) {
 function weigh(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
   const inks = readInks(canvas);
   if (!inks) return;
-  let pixels: Uint8ClampedArray;
+  let opacity: number;
   try {
-    pixels = context.getImageData(SHOWN.x, SHOWN.y, SHOWN.width, SHOWN.height).data;
+    const pixels = context.getImageData(SHOWN.x, SHOWN.y, SHOWN.width, SHOWN.height).data;
+    opacity = lightOpacity(pixels, inks, (index) => depthOfRow(Math.floor(index / SHOWN.width)));
   } catch {
-    pixels = WORST_PIXELS;
+    opacity = lightOpacity(WORST_PIXELS, inks);
   }
-  canvas.style.opacity = String(lightOpacity(pixels, inks));
+  canvas.style.opacity = String(opacity);
 }
 
 /**

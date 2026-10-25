@@ -8,6 +8,7 @@ import { lightOpacity, type LightInks } from './lightStrength';
 const NIGHT: LightInks = {
   surface: [26, 32, 61],
   veil: [14, 20, 44, 0.38],
+  veilMid: [16, 23, 50, 0.62],
   inks: [
     [238, 230, 220],
     [194, 194, 214],
@@ -110,7 +111,25 @@ describe('CoverLightView', () => {
     const opacity = Number(lights()[0]!.style.opacity);
     expect(opacity).toBeGreaterThan(0);
     expect(opacity).toBeLessThan(0.9);
-    expect(opacity).toBe(lightOpacity(flat([255, 255, 255]), NIGHT));
+    // The words are weighed under the veil where each pixel lies: never more than at the top.
+    expect(opacity).toBeGreaterThanOrEqual(lightOpacity(flat([255, 255, 255]), NIGHT));
+  });
+
+  it('weighs a pixel under the veil of its depth: white low in the hero dims the light less', () => {
+    // The part of the 32 px canvas the hero shows: 24 × 22 pixels, read row by row.
+    const region = (white: (row: number) => boolean) =>
+      Uint8ClampedArray.from({ length: 24 * 22 * 4 }, (_, i) =>
+        i % 4 === 3 ? 255 : white(Math.floor(i / 4 / 24)) ? 255 : 30
+      );
+    const weigh = (white: (row: number) => boolean) => {
+      pixels = region(white);
+      const { unmount } = render(<CoverLightView art={art('a1')} />);
+      fireEvent.load(files()[0]!);
+      const opacity = Number(lights()[0]!.style.opacity);
+      unmount();
+      return opacity;
+    };
+    expect(weigh((row) => row >= 14)).toBeGreaterThan(weigh(() => true));
   });
 
   it('dims a cover whose pixels cannot be read as much as the worst cover would need', () => {
@@ -144,6 +163,7 @@ describe('CoverLightView', () => {
       ...NIGHT,
       surface: [240, 231, 222],
       veil: [240, 231, 222, 0.55],
+      veilMid: [240, 231, 222, 0.72],
       inks: [
         [41, 45, 74],
         [77, 81, 113],

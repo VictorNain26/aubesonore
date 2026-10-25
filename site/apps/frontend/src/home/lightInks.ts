@@ -28,18 +28,20 @@ export function readInks(element: Element): LightInks | null {
   const probe = canvas.getContext('2d', { willReadFrequently: true });
   if (!probe) return null;
   const read = (name: string) => bytesOf(probe, style.getPropertyValue(name).trim());
-  const [surface, veil, text, muted] = [
+  const [surface, veil, veilMid, text, muted] = [
     '--surface',
     '--light-veil-top',
+    '--light-veil-mid',
     '--text',
     '--text-muted',
   ].map(read);
   const opacity = Number.parseFloat(style.getPropertyValue('--light-opacity'));
-  if (!surface || !veil || !text || !muted || Number.isNaN(opacity)) return null;
+  if (!surface || !veil || !veilMid || !text || !muted || Number.isNaN(opacity)) return null;
   const rgb = ([r, g, b]: readonly number[]): Rgb => [r!, g!, b!];
   return {
     surface: rgb(surface),
-    veil: [veil[0], veil[1], veil[2], veil[3]],
+    veil,
+    veilMid,
     inks: [rgb(text), rgb(muted)],
     opacity,
   };
