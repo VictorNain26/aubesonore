@@ -4,16 +4,19 @@
  * on twelve screens, from a 360 px phone to 1920×1080 and phones on their side. For each it checks
  * that the player bar stays away while the hero's player is on screen (and comes once it has
  * scrolled away), that Écouter and the actions are whole in the window and on one line, that the
- * horizon and its « now » dot are in the first screen, that the cover is never under 8rem, that
- * the title, the cover, the welcome line and the header do not overlap, that the dawn's light
- * stays under the actions, and that nothing scrolls sideways.
+ * cover is never under 8rem and carries « En direct » in its corner, that the title is at most
+ * 40 px, that the header, the cover, the title and the thread do not overlap, and that nothing
+ * scrolls sideways. Player and thread side by side (hero-split), the horizon and its « now » dot
+ * are in the first screen, and from 1280×720 the thread's eight tracks too; on an upright phone,
+ * at least its first three.
  *
  * Run on demand, not in CI: it needs a built site served locally and a Chromium.
  *   pnpm --filter=@aubesonore/frontend build
  *   pnpm --filter=@aubesonore/frontend exec vite preview --host 127.0.0.1 --port 4791 --strictPort
  *   CHROME=/path/to/chrome-headless-shell node scripts/hero-layout-check.mjs http://127.0.0.1:4791/
  * It talks to Chromium over the DevTools protocol (Node's own WebSocket, no dependency), answers
- * the live's now-playing request with each title, and exits 1 when a check fails.
+ * the live's now-playing request with each title and the history with eight tracks, and exits 1
+ * when a check fails.
  * Diffuser shows only where the browser can cast: where it does not, a stand-in of its size is
  * put in the row, so the row is measured at its widest.
  */
@@ -51,6 +54,30 @@ const TITLES = [
 ];
 for (const [i, n] of [4, 18, 30, 52].entries()) {
   if (TITLES[i].length !== n) throw new Error(`title ${i} has ${TITLES[i].length} characters`);
+}
+
+// The thread: eight tracks before the one on air, four minutes apart.
+function history() {
+  const now = Math.floor(Date.now() / 1000);
+  return Array.from({ length: 9 }, (_, i) => ({
+    sh_id: 100 - i,
+    played_at: now - 30 - i * 240,
+    duration: 240,
+    playlist: 'main',
+    streamer: '',
+    is_request: false,
+    song: {
+      id: `s${i}`,
+      art: 'https://radio.aubesonore.fr/api/station/1/art/none',
+      text: '',
+      artist: i === 0 ? 'Mickey 3D' : `Les Artistes ${i}`,
+      title: i === 0 ? currentTitle : `Un titre du fil ${i}`,
+      album: '',
+      genre: '',
+      isrc: '',
+      lyrics: '',
+    },
+  }));
 }
 
 function nowPlaying(title) {
@@ -181,6 +208,12 @@ browser.on((msg) => {
       responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, ...cors],
       body: Buffer.from(JSON.stringify(nowPlaying(currentTitle))).toString('base64'),
     });
+  } else if (request.url.includes('/api/radio/history')) {
+    void answer('Fetch.fulfillRequest', {
+      responseCode: 200,
+      responseHeaders: [{ name: 'Content-Type', value: 'application/json' }, ...cors],
+      body: Buffer.from(JSON.stringify(history())).toString('base64'),
+    });
   } else {
     void answer('Fetch.failRequest', { errorReason: 'BlockedByClient' });
   }
@@ -193,7 +226,11 @@ if (process.env.SCHEME) {
   });
 }
 await page('Fetch.enable', {
-  patterns: [{ urlPattern: '*radio.aubesonore.fr*' }, { urlPattern: '*gstatic.com*' }],
+  patterns: [
+    { urlPattern: '*radio.aubesonore.fr*' },
+    { urlPattern: '*gstatic.com*' },
+    { urlPattern: '*/api/radio/history*' },
+  ],
 });
 
 async function evaluate(expression) {
@@ -229,7 +266,8 @@ async function open(width, height, title) {
     await document.fonts.ready;
     for (let i = 0; i < 100; i++) {
       const h2 = document.querySelector('main h2');
-      if (h2 && h2.textContent === ${JSON.stringify(title)}) break;
+      const thread = document.querySelectorAll('#depuis-l-aube li').length;
+      if (h2 && h2.textContent === ${JSON.stringify(title)} && thread === 8) break;
       await new Promise((r) => setTimeout(r, 50));
     }
     // Entrance animations settled, so boxes are where they rest.
@@ -257,22 +295,24 @@ const MEASURE = `(() => {
   const disc = buttons[0];
   const inView = (b) => b && b.top >= 0 && b.left >= 0 && b.bottom <= vh && b.right <= vw;
   const header = box(hero.querySelector('header'));
-  const welcome = box(hero.querySelector('h1'));
-  const cover = box(hero.querySelector('.cover-fit'));
-  const h2 = hero.querySelector('h2');
+  const coverEl = hero.querySelector('.cover-fit');
+  const cover = box(coverEl);
+  const h2 = hero.querySelector('.hero-player h2');
   const title = box(h2);
+  const thread = box(hero.querySelector('#depuis-l-aube'));
+  const threadRows = [...hero.querySelectorAll('#depuis-l-aube li')].map(box);
   const horizon = box(hero.querySelector('[data-horizon]'));
   const dot = box(hero.querySelector('.now-arrive'));
-  const glow = box(hero.querySelector('.dawn-band').parentElement);
+  const live = [...coverEl.querySelectorAll('span')].find((s) => s.textContent === 'En direct');
+  const liveBox = box(live);
   const bar = document.querySelector('section[aria-label="Lecteur du direct"]');
   const overlap = (a, b) => a && b && a.left < b.right - 0.5 && b.left < a.right - 0.5 && a.top < b.bottom - 0.5 && b.top < a.bottom - 0.5;
-  const pairs = [['header', header], ['welcome', welcome], ['cover', cover], ['title', title]];
+  const pairs = [['header', header], ['cover', cover], ['title', title], ['thread', thread]];
   const overlaps = [];
   for (let i = 0; i < pairs.length; i++) for (let j = i + 1; j < pairs.length; j++)
     if (overlap(pairs[i][1], pairs[j][1])) overlaps.push(pairs[i][0] + '/' + pairs[j][0]);
   const actionBoxes = buttons.map(box);
   const centers = actionBoxes.map((b) => b.top + b.height / 2);
-  const rowBox = box(row);
   const style = getComputedStyle(h2);
   const lineHeight = parseFloat(style.lineHeight);
   // The lines the title would take unclamped.
@@ -297,14 +337,15 @@ const MEASURE = `(() => {
     overlaps,
     sideScroll: document.documentElement.scrollWidth > vw,
     barAway: bar.hasAttribute('inert') && getComputedStyle(bar).opacity === '0',
-    // The dawn's light is held to its box (home/Horizon.tsx).
-    glowUnderActions: glow.top >= rowBox.bottom,
     heroHeight: Math.round(box(hero).height),
-    // Paper left empty between the welcome line and the player, past the hero's own gap.
+    // Paper left empty between the header and the player, past the hero's own gap.
     spaceAbove: Math.round(
-      Math.min(cover.top, title.top) - welcome.bottom - parseFloat(getComputedStyle(hero).rowGap)
+      Math.min(cover.top, title.top) - header.bottom - parseFloat(getComputedStyle(hero).rowGap)
     ),
-    sideBySide: cover.right <= title.left,
+    split: cover.right <= thread.left,
+    // « En direct » in the cover's top left corner.
+    liveOnCover: !!liveBox && liveBox.left >= cover.left && liveBox.top >= cover.top && liveBox.left - cover.left <= 16 && liveBox.top - cover.top <= 16 && liveBox.right <= cover.right && liveBox.bottom <= cover.bottom,
+    threadInView: threadRows.filter((r) => r.bottom <= vh + 0.5).length,
     slotBottom: box(hero.querySelector('.hero-actions')).bottom + window.scrollY,
   };
 })()`;
@@ -363,14 +404,20 @@ for (const [width, height] of VIEWPORTS) {
     if (!r.actionsInView) fails.push('actions out of the window');
     if (!r.oneLine) fails.push('actions on two lines');
     if (width < 430 && !r.iconsOnly) fails.push('words beside the icons under 430');
-    if (!r.horizonInView || !r.dotInView) fails.push('horizon out of the first screen');
+    if (r.split && (!r.horizonInView || !r.dotInView))
+      fails.push('horizon out of the first screen');
     if (r.cover < 128) fails.push('cover under 8rem');
-    // Side by side, the cover takes the height left: no band of empty paper above it.
-    if (r.sideBySide && r.spaceAbove > 8) fails.push(`${r.spaceAbove} px empty above the player`);
+    if (!r.liveOnCover) fails.push("« En direct » not in the cover's corner");
+    if (r.titlePx > 40) fails.push(`title at ${r.titlePx} px, over 40`);
+    // Beside the thread, the cover takes the height left: no band of empty paper above it.
+    if (r.split && r.spaceAbove > 8) fails.push(`${r.spaceAbove} px empty above the player`);
     if (r.overlaps.length) fails.push(`overlap ${r.overlaps.join(', ')}`);
     if (r.sideScroll) fails.push('sideways scroll');
-    if (!r.glowUnderActions) fails.push('dawn under the actions');
     if (r.titleLines > 3) fails.push(`title on ${r.titleLines} lines, cut at 3`);
+    if (width >= 1280 && height >= 720 && r.threadInView < 8)
+      fails.push(`${r.threadInView} of the thread's 8 tracks in the first screen`);
+    if (width < 640 && height > width && r.threadInView < 3)
+      fails.push(`${r.threadInView} of the thread's tracks in the first screen, under 3`);
     let scroll = '';
     if (title === TITLES[1]) {
       // The player scrolled away, then back.
@@ -391,15 +438,15 @@ for (const [width, height] of VIEWPORTS) {
     }
     failures += fails.length;
     rows.push(
-      `| ${width}×${height} | ${title.length} | ${r.cover} | ${r.spaceAbove} | ${r.titlePx}/${r.titleLines} | ${r.discPx} | ${r.iconsOnly ? 'icons' : 'words'} | ${r.heroHeight} | ${scroll} | ${fails.length ? fails.join('; ') : 'ok'} |`
+      `| ${width}×${height} | ${title.length} | ${r.split ? 'split' : 'stacked'} | ${r.cover} | ${r.spaceAbove} | ${r.titlePx}/${r.titleLines} | ${r.threadInView} | ${r.discPx} | ${r.iconsOnly ? 'icons' : 'words'} | ${r.heroHeight} | ${scroll} | ${fails.length ? fails.join('; ') : 'ok'} |`
     );
   }
 }
 
 console.log(
-  '| screen | title chars | cover px | empty above px | title px/lines | disc px | actions | hero px | bar follows scroll | checks |'
+  '| screen | title chars | layout | cover px | empty above px | title px/lines | thread lines seen | disc px | actions | hero px | bar follows scroll | checks |'
 );
-console.log('|---|---|---|---|---|---|---|---|---|---|');
+console.log('|---|---|---|---|---|---|---|---|---|---|---|---|');
 console.log(rows.join('\n'));
 browser.close();
 process.exit(failures ? 1 : 0);

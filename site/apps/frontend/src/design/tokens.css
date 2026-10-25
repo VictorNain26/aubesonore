@@ -44,6 +44,21 @@
   /* The calm rule between rows: a tile of the line, drawn by ruleMask() in design/wave.ts (its test
      holds this value to it), used as a mask in the rule's colour (wave-rule). */
   --wave-rule: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22640%22%20height%3D%226%22%20viewBox%3D%220%200%20640%206%22%3E%3Cpath%20d%3D%22M0%203.9%20L5.98%203.87%20L11.96%203.75%20L17.94%203.56%20L23.93%203.36%20L29.91%203.2%20L35.89%203.14%20L41.87%203.19%20L47.85%203.33%20L53.83%203.5%20L59.81%203.66%20L65.79%203.74%20L71.78%203.74%20L77.76%203.67%20L83.74%203.58%20L89.72%203.5%20L95.7%203.47%20L101.68%203.48%20L107.66%203.5%20L113.64%203.49%20L119.63%203.4%20L125.61%203.2%20L131.59%202.91%20L137.57%202.57%20L143.55%202.26%20L149.53%202.02%20L155.51%201.89%20L161.5%201.88%20L167.48%201.95%20L173.46%202.05%20L179.44%202.13%20L185.42%202.17%20L191.4%202.17%20L197.38%202.16%20L203.36%202.18%20L209.35%202.27%20L215.33%202.44%20L221.31%202.66%20L227.29%202.88%20L233.27%203.04%20L239.25%203.1%20L245.23%203.06%20L251.21%202.93%20L257.2%202.76%20L263.18%202.63%20L269.16%202.58%20L275.14%202.62%20L281.12%202.75%20L287.1%202.91%20L293.08%203.05%20L299.07%203.16%20L305.05%203.21%20L311.03%203.23%20L317.01%203.27%20L322.99%203.36%20L328.97%203.53%20L334.95%203.77%20L340.93%204.03%20L346.92%204.25%20L352.9%204.38%20L358.88%204.38%20L364.86%204.25%20L370.84%204.04%20L376.82%203.8%20L382.8%203.6%20L388.79%203.45%20L394.77%203.36%20L400.75%203.31%20L406.73%203.25%20L412.71%203.15%20L418.69%202.99%20L424.67%202.79%20L430.65%202.6%20L436.64%202.47%20L442.62%202.43%20L448.6%202.51%20L454.58%202.66%20L460.56%202.83%20L466.54%202.96%20L472.52%203.01%20L478.5%202.95%20L484.49%202.81%20L490.47%202.62%20L496.45%202.45%20L502.43%202.34%20L508.41%202.3%20L514.39%202.3%20L520.37%202.31%20L526.36%202.29%20L532.34%202.21%20L538.32%202.09%20L544.3%201.95%20L550.28%201.86%20L556.26%201.87%20L562.24%202%20L568.22%202.25%20L574.21%202.57%20L580.19%202.89%20L586.17%203.17%20L592.15%203.35%20L598.13%203.44%20L604.11%203.47%20L610.09%203.49%20L616.07%203.53%20L622.06%203.61%20L628.04%203.73%20L634.02%203.84%20L640%203.9%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221%22%2F%3E%3C%2Fsvg%3E');
+  /* The light of the hero (home/CoverLight.tsx): the cover on air, blurred, its tones pressed
+     into a band by --light-contrast and --light-brightness (by day the light half, by night the
+     dark one) and their colour brought back (--light-saturate), at --light-opacity, under a veil
+     of the paper, --light-veil-top at the top, --light-veil-mid halfway, the paper itself at the
+     horizon. The text keeps AA over a black cover by day and a white one by night
+     (scripts/check-contrast.mjs). */
+  --light-contrast: 0.25;
+  --light-brightness: 1.7;
+  --light-saturate: 2.5;
+  --light-opacity: 0.9;
+  --light-veil-top: oklch(0.93 0.018 60 / 0.4);
+  --light-veil-mid: oklch(0.93 0.018 60 / 0.55);
+  /* « En direct » on the cover: a dark tag that holds AA over the lightest cover. */
+  --tag: oklch(0.15 0.03 268 / 0.62);
+  --on-tag: oklch(0.96 0.015 70);
   /* The player bar, by day the ink (as the accent); by night the sky one step up, not a slab of
      paper at the foot of the screen. Its words keep AA (scripts/check-contrast.mjs). */
   --bar: var(--accent);
@@ -75,6 +90,11 @@
     --bar: var(--surface-raised);
     --on-bar: var(--text);
     --on-bar-muted: var(--text-muted);
+    --light-contrast: 0.5;
+    --light-brightness: 0.6;
+    --light-saturate: 2.2;
+    --light-veil-top: oklch(0.18 0.04 268 / 0.4);
+    --light-veil-mid: oklch(0.2 0.045 268 / 0.55);
   }
 }
 
@@ -91,6 +111,8 @@
   --color-on-accent-muted: var(--on-accent-muted);
   --color-dawn: var(--dawn);
   --color-scrim: var(--scrim);
+  --color-tag: var(--tag);
+  --color-on-tag: var(--on-tag);
 
   --font-*: initial;
   --font-sans: var(--p-font-text);
@@ -107,14 +129,12 @@
   --text-title--line-height: 1.15;
   --text-title--font-weight: 600;
   /* The type scale. */
-  /* The title on air (home/NowPlaying.tsx): one size for every title, set by its own column
-     (cqi, the hero's meta block is a container) and held by the screen's height (svh), so a
-     52-character title keeps to three lines and the cover stays the largest thing: 31 px on a
-     360 px phone, 30 on a phone on its side, 58 at 1280×720, 86 at 1920×1080. */
-  --text-hero: clamp(1.75rem, min(10cqi, 8svh), 8rem);
-  --text-hero--line-height: 0.98;
-  --text-hero--font-weight: 460;
-  --text-hero--letter-spacing: -0.032em;
+  /* The title on air (home/NowPlaying.tsx), at a human size: 30 px on a phone, 40 on a computer.
+     The cover is the light, not the words. */
+  --text-track: clamp(1.875rem, 1.5rem + 1.2vw, 2.5rem);
+  --text-track--line-height: 1.08;
+  --text-track--font-weight: 500;
+  --text-track--letter-spacing: -0.02em;
   /* A page's title (Musilogy, Mes titres, sign-in, legal, a page's message): one size for all,
      40 px on a phone, about 60 at 1280, 72 on a large screen. */
   --text-page: clamp(2.5rem, 1.75rem + 2.6vw, 4.5rem);
@@ -251,10 +271,23 @@
     }
   }
 
-  @keyframes thread-in {
+  @keyframes thread-open {
+    from {
+      grid-template-rows: 0fr;
+      opacity: 0;
+    }
+  }
+
+  @keyframes thread-close {
+    to {
+      grid-template-rows: 0fr;
+      opacity: 0;
+    }
+  }
+
+  @keyframes light-in {
     from {
       opacity: 0;
-      transform: translateY(-0.5rem);
     }
   }
 
@@ -517,73 +550,156 @@
     var(--surface-raised);
 }
 
-/* The opening screen (home/Hero.tsx) is the first screen, whole, with no budget of height: a grid
-   whose one elastic row is the player's; the header, the welcome line and the horizon take what
-   they need. The player bar stays away while the hero's player shows (stores/heroPlayerStore.ts),
-   so no room is kept for it. A minimum, not a height: content taller than the screen (a phone on
-   its side with a long title) grows the hero rather than overlap.
+/* The opening screen (home/Hero.tsx): the header, then the player and the thread of the last
+   tracks, then the horizon, where the light of the cover on air ends. Beside each other
+   (hero-split) they hold in the first screen whole, with no budget of height: the one elastic row
+   is theirs. Stacked (a phone, an upright tablet), the player and the first lines of the thread
+   are the first screen and the rest of the thread follows. The player bar stays away while the
+   hero's player shows (stores/heroPlayerStore.ts), so no room is kept for it. A minimum, not a
+   height: content taller than the screen grows the hero rather than overlap.
    svh, not dvh: the dynamic height follows the address bar as it folds on scroll, so the cover
-   grew and shrank under the finger and moved the page (MDN, CSS <length>, viewport units).
-   The dawn's light keeps to the horizon's row (home/Horizon.tsx): never under the actions, the
-   dawn is never under text. */
+   grew and shrank under the finger and moved the page (MDN, CSS <length>, viewport units). */
 @utility hero {
   --horizon-height: clamp(4rem, 12svh, 9rem);
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto 1fr auto;
   row-gap: clamp(0.75rem, 3svh, 2.5rem);
   min-height: 100svh;
 }
 
-/* The hero side by side: a large screen, a landscape one from md, and a phone on its side, whose
-   height holds no stacked cover. */
-@custom-variant hero-wide {
-  @media (width >= 64rem),
-    (width >= 48rem) and (orientation: landscape),
-    (orientation: landscape) and (height < 30rem) {
+/* The player and the thread side by side: a large screen, or a landscape one from md, high
+   enough for the thread's eight lines beside the cover. */
+@custom-variant hero-split {
+  @media (width >= 64rem) and (height >= 30rem),
+    (width >= 48rem) and (orientation: landscape) and (height >= 30rem) {
     @slot;
   }
 }
 
-/* The player's room in the hero (home/Hero.tsx): side by side, a size container, so the cover's
-   column is as wide as the room is high (hero-player), never a band of empty paper above it. Its
-   height is what the hero's rows leave it, at least 8rem. */
-@utility player-room {
-  display: grid;
-
-  @variant hero-wide {
-    container-type: size;
-    min-height: 8rem;
+/* A phone on its side: too low for a cover above its title, the title stands beside it. */
+@custom-variant hero-low {
+  @media (orientation: landscape) and (height < 30rem) {
+    @slot;
   }
 }
 
-/* The hero's player: the cover takes what the rows leave, the title and the actions under it. Side
-   by side, the cover's column is the room's height, up to half its width, and the title and the
-   actions stand at its foot beside it. */
+/* The player, then the thread; side by side, the player's column as wide as its cover would be
+   under a title of one line, what the hero leaves of the screen's height (77svh - 14.5rem,
+   measured from 700 to 1080 px high), up to 42% of the screen, and never under 26rem, so a long
+   title keeps to three lines. */
+@utility hero-main {
+  display: grid;
+  row-gap: clamp(2rem, 4svh, 3rem);
+
+  @variant hero-split {
+    grid-template-columns: clamp(26rem, 77svh - 14.5rem, 42vw) minmax(0, 1fr);
+    column-gap: clamp(2.5rem, 6vw, 6rem);
+  }
+}
+
+/* The player's room in the hero, a size container, so the cover takes the height the title and
+   the actions leave it (cover-room), whatever the title's lines. Side by side, its height is the
+   row's, never its content's: the thread alone may grow the row. Stacked, the first screen less
+   the header and the thread's title and first three lines (22rem). On a phone on its side, the
+   cover is sized on the screen (cover-fit). */
+@utility player-room {
+  display: grid;
+  container-type: size;
+  height: calc(100svh - 22rem);
+  min-height: 16rem;
+
+  @variant hero-split {
+    height: auto;
+    min-height: 8rem;
+  }
+  @variant hero-low {
+    container-type: normal;
+    height: auto;
+    min-height: 0;
+  }
+}
+
+/* The hero's player: the cover, then the title and the actions under it; on a phone on its side,
+   the title and the actions at the cover's foot, beside it. */
 @utility hero-player {
   display: grid;
   grid-template-rows: 1fr auto auto;
   grid-template-areas: 'cover' 'meta' 'actions';
   row-gap: clamp(0.75rem, 2.5svh, 1.5rem);
 
-  @variant hero-wide {
-    grid-template-columns: min(100cqh, 50cqw) minmax(0, 1fr);
+  @variant hero-low {
+    grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas: 'cover .' 'cover meta' 'cover actions';
     column-gap: clamp(1.5rem, 4vw, 4rem);
   }
 }
 
-/* The cover's room in the hero: what the grid leaves it, never under 8rem; the cover is the largest
+/* The cover's room: what the player's rows leave it, never under 8rem, the cover the largest
    square it holds (cover-fit), at its foot, against the title. */
 @utility cover-room {
-  container-type: size;
-  min-height: 8rem;
   display: flex;
   align-items: flex-end;
+  container-type: size;
+  min-height: 8rem;
+
+  @variant hero-low {
+    container-type: normal;
+    min-height: 0;
+  }
 }
 
+/* The cover on air, square: the largest its room holds; on a phone on its side, the screen's
+   height less the header's. */
 @utility cover-fit {
-  width: min(100cqw, 100cqh);
   aspect-ratio: 1;
+  width: min(100cqw, 100cqh);
+
+  @variant hero-low {
+    width: clamp(8rem, 100svh - 7rem, 40vw);
+  }
+}
+
+/* The light of the cover on air behind the hero (home/CoverLight.tsx). Cheap to paint: the cover
+   is a 96 px file, blurred in a box a tenth of the hero's size on its own layer, which the
+   compositor scales up to 130% × 150% of the hero; only its opacity is ever animated, never the
+   blur. A veil of the paper over it, faded to the paper at the horizon, keeps the text's AA. */
+@utility cover-light {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+
+  & > img {
+    position: absolute;
+    left: 45%;
+    top: 45%;
+    width: 10%;
+    height: 10%;
+    object-fit: cover;
+    opacity: var(--light-opacity);
+    filter: blur(7px) contrast(var(--light-contrast)) brightness(var(--light-brightness))
+      saturate(var(--light-saturate));
+    transform: scale(13, 15);
+    will-change: transform;
+  }
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      var(--light-veil-top),
+      var(--light-veil-mid) 55%,
+      var(--surface)
+    );
+  }
+}
+
+/* The next cover's light, once its file has come: 1.4 s over the last. */
+@utility light-in {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: light-in 1.4s ease-in-out both;
+  }
 }
 
 /* The hero's actions, on one line: Écouter, Garder, Partager, Diffuser and the volume. Under 30rem
@@ -817,17 +933,45 @@
   }
 }
 
-/* A track joining the thread: it drops into place; the first ones follow each other. */
-@utility thread-in {
-  @media (prefers-reduced-motion: no-preference) {
-    animation: thread-in 0.5s var(--ease-out-soft) both;
+/* A line of the thread (home/SinceDawn.tsx): 62 px on a phone; beside the player, an eighth of
+   what the hero leaves (10svh - 1.25rem), so the eight lines hold in the first screen from 720 px
+   high, at most 68 px. Its cover follows, never under 44 px. */
+@utility thread-row {
+  min-height: 3.875rem;
 
-    &:nth-child(2) {
-      animation-delay: 0.08s;
-    }
-    &:nth-child(3) {
-      animation-delay: 0.16s;
-    }
+  @variant hero-split {
+    min-height: clamp(2.75rem, 10svh - 1.25rem, 4.25rem);
+  }
+}
+@utility thread-cover {
+  width: 2.75rem;
+  height: 2.75rem;
+
+  @variant hero-split {
+    width: clamp(2.75rem, 10svh - 1.5rem, 3.5rem);
+    height: clamp(2.75rem, 10svh - 1.5rem, 3.5rem);
+  }
+}
+
+/* When the track on air changes, the line of the one that played opens at the thread's head, and
+   the oldest's closes at its foot: their height, through grid rows from 0fr to 1fr, so the motion
+   stays bounded (eight lines, once every three or four minutes). Under reduced motion, the line
+   just comes, and the closing one goes at once. */
+@utility thread-line {
+  display: grid;
+  grid-template-rows: 1fr;
+}
+@utility thread-enter {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: thread-open 0.52s var(--ease-out-soft) 0.18s both;
+  }
+}
+@utility thread-leave {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: thread-close 0.42s var(--ease-out-quart) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    display: none;
   }
 }
 

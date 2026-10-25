@@ -47,7 +47,7 @@ beforeEach(() => {
     http.get(`${API}/api/radio/history`, () => HttpResponse.json([])),
     http.get(`${API}/api/trends`, () =>
       HttpResponse.json({
-        week: [{ title: 'Oh No', artist: 'Foxygen', artworkUrl: null, likes: 2, artistPage: null }],
+        week: [{ title: 'Oh No', artist: 'Foxygen', artworkUrl: null, likes: 3, artistPage: null }],
         allTime: [],
       })
     )
@@ -69,7 +69,7 @@ describe('HomePage', { timeout: PAGE_TEST_TIMEOUT }, () => {
     expect(screen.getAllByText('Nüchtern').length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', { name: 'Depuis l’aube' })).toBeInTheDocument();
     expect(screen.getByText('Oh No')).toBeInTheDocument();
-    expect(screen.getByText('gardé 2 fois')).toBeInTheDocument();
+    expect(screen.getByText('gardé 3 fois')).toBeInTheDocument();
   });
 
   it('switches the page to English from the footer', async () => {

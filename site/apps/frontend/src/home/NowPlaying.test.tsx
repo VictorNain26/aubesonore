@@ -113,7 +113,7 @@ describe('NowPlayingView', () => {
     expect(onToggleMute).toHaveBeenCalledOnce();
   });
 
-  it('names Garder, Partager and Diffuser for screen readers, also when they show as icons alone', () => {
+  it('shows Garder as a heart alone, named and with its tooltip, beside Partager and Diffuser', () => {
     const diffusion = {
       kind: 'chromecast' as const,
       found: true,
@@ -123,14 +123,26 @@ describe('NowPlayingView', () => {
     };
     render(<NowPlayingView {...props({ diffusion })} />);
 
-    // Under 30rem of row the words are visually hidden (design/tokens.css, action-label), never
+    const keep = screen.getByRole('button', { name: 'Garder' });
+    expect(keep).toHaveAttribute('title', 'Garder');
+    expect(keep).toHaveTextContent('');
+    // Under 30rem of row the words are visually hidden (design/tokens.css, hero-actions), never
     // taken out of the accessibility tree.
-    for (const name of ['Garder', 'Partager', 'Diffuser sur un appareil']) {
+    for (const name of ['Partager', 'Diffuser sur un appareil']) {
       expect(screen.getByRole('button', { name })).toBeInTheDocument();
     }
-    for (const word of ['Garder', 'Partager', 'Diffuser']) {
+    for (const word of ['Partager', 'Diffuser']) {
       expect(screen.getByText(word)).not.toHaveAttribute('aria-hidden');
     }
+  });
+
+  it('says « En direct » on the cover while on air, and not off air', () => {
+    // Where it stands, in the cover's corner, is measured by scripts/hero-layout-check.mjs.
+    const { rerender } = render(<NowPlayingView {...props()} />);
+    expect(screen.getByText('En direct')).toBeInTheDocument();
+
+    rerender(<NowPlayingView {...props({ isOnline: false })} />);
+    expect(screen.queryByText('En direct')).not.toBeInTheDocument();
   });
 
   it('says radio silence when the station is off air', () => {
@@ -160,16 +172,16 @@ describe('NowPlayingView', () => {
       .getByRole('img', { name: 'Pochette de Mimoun, Mickey 3D' })
       .getAttribute('sizes');
 
-    // Side by side (hero-wide), the room's height or half its width, whichever is shorter; then,
-    // stacked, the line or the height the rows leave, from md and on a phone.
-    const wide = 'min(79vh - 6.5rem, min(100vw - 5rem, 100rem) / 2)';
+    // Beside the thread (hero-split), the player's column; on a phone on its side, beside the
+    // title; then stacked, the line or the height the first lines of the thread leave.
+    const split = 'clamp(26rem, 77vh - 14.5rem, 42vw)';
     expect(sizes).toBe(
       [
-        `(min-width: 64rem) ${wide}`,
-        `(min-width: 48rem) and (orientation: landscape) ${wide}`,
-        `(orientation: landscape) and (max-height: 30rem) ${wide}`,
-        '(min-width: 48rem) min(100vw - 5rem, 75vh - 18rem)',
-        'min(100vw - 3rem, 74vh - 13.75rem)',
+        `(min-width: 64rem) and (min-height: 30rem) ${split}`,
+        `(min-width: 48rem) and (orientation: landscape) and (min-height: 30rem) ${split}`,
+        '(orientation: landscape) and (max-height: 30rem) min(100vh - 7rem, 40vw)',
+        '(min-width: 48rem) min(100vw - 5rem, 100vh - 32rem)',
+        'min(100vw - 3rem, 100vh - 30rem)',
       ].join(', ')
     );
   });

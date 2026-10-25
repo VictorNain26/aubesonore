@@ -31,9 +31,9 @@ afterEach(() => {
 });
 
 describe("the home page's loader", () => {
-  it('brings the whole day, 400 rows, and the ranking', async () => {
+  it('brings the last nine plays, the thread and the track on air, and the ranking', async () => {
     expect(await load()).toEqual({ history: [], trends: TRENDS });
-    expect(requested).toContain('rows=400');
+    expect(new URL(requested).searchParams.get('rows')).toBe('9');
   });
 
   it('says a list that did not answer failed, the other drawn all the same', async () => {

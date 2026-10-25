@@ -10,7 +10,7 @@ const twMerge = extendTailwindMerge({
         'title',
         'body',
         'caption',
-        'hero',
+        'track',
         'page',
         'now',
         'mark',

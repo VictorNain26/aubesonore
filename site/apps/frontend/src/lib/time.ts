@@ -8,13 +8,3 @@ export function formatClock(unixSeconds: number): string {
     hourCycle: 'h23',
   }).format(unixSeconds * 1000);
 }
-
-/** Whether a Unix timestamp in seconds falls on the same local day as `now`. */
-export function isToday(unixSeconds: number, now: Date = new Date()): boolean {
-  const date = new Date(unixSeconds * 1000);
-  return (
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate()
-  );
-}

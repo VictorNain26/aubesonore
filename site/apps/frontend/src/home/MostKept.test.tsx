@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import type { TrendEntry } from '@aubesonore/shared-types/client';
-import { MostKeptView } from './MostKept';
+import { MostKept, MostKeptView } from './MostKept';
 
 const entry = (title: string, likes: number, values: Partial<TrendEntry> = {}): TrendEntry => ({
   title,
@@ -25,7 +25,6 @@ describe('MostKeptView', () => {
           week: [entry('Nüchtern', 3), entry('Oh No', 1)],
           allTime: [entry('Sleep Apnea', 9)],
         }}
-        status="ready"
       />,
       { wrapper }
     );
@@ -48,7 +47,7 @@ describe('MostKeptView', () => {
       }),
       entry('Nightcall', 2, { artist: 'Kavinsky' }),
     ];
-    render(<MostKeptView trends={{ week, allTime: [] }} status="ready" />, { wrapper });
+    render(<MostKeptView trends={{ week, allTime: [] }} />, { wrapper });
 
     expect(screen.getByRole('link', { name: 'Daft Punk' })).toHaveAttribute(
       'href',
@@ -61,19 +60,31 @@ describe('MostKeptView', () => {
 
   it('shows at most five tracks', () => {
     const week = Array.from({ length: 8 }, (_, i) => entry(`Titre ${i}`, 8 - i));
-    render(<MostKeptView trends={{ week, allTime: [] }} status="ready" />, { wrapper });
+    render(<MostKeptView trends={{ week, allTime: [] }} />, { wrapper });
     expect(screen.getAllByRole('listitem')).toHaveLength(5);
   });
+});
 
-  it('invites to keep the first track of an empty week', () => {
-    render(<MostKeptView trends={{ week: [], allTime: [] }} status="ready" />, { wrapper });
-    expect(
-      screen.getByText('Rien de gardé cette semaine. Le premier, ce sera peut-être vous.')
-    ).toBeInTheDocument();
+describe('MostKept', () => {
+  const ranking = (likes: number[]) => ({
+    week: likes.map((n, i) => entry(`Titre ${i}`, n)),
+    allTime: likes.map((n, i) => entry(`Titre ${i}`, n + 1)),
   });
 
-  it('says the ranking is unavailable on error', () => {
-    render(<MostKeptView trends={null} status="error" />, { wrapper });
-    expect(screen.getByText('Le classement est indisponible pour l’instant.')).toBeInTheDocument();
+  it('stays off the page while no track of the week was kept three times: it would rank nothing', () => {
+    const { container } = render(<MostKept trends={ranking([2, 1, 1])} />, { wrapper });
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('shows the ranking once a track of the week was kept three times', () => {
+    render(<MostKept trends={ranking([3, 1])} />, { wrapper });
+    expect(screen.getByRole('heading', { name: 'Les plus gardés' })).toBeInTheDocument();
+  });
+
+  it('stays off the page while the ranking has not come, or did not answer', () => {
+    const view = render(<MostKept trends={null} />, { wrapper });
+    expect(view.container).toBeEmptyDOMElement();
+    view.rerender(<MostKept trends="failed" />);
+    expect(view.container).toBeEmptyDOMElement();
   });
 });

@@ -38,7 +38,9 @@ describe('entry-server', () => {
       expect.stringMatching(/>A dawn with every track\.<\/h1>$/),
     ]);
     expect(html).not.toContain('Sounds you don’t have a name for yet.');
-    expect(html).toContain('Most kept');
+    expect(html).toContain('Since dawn');
+    // The ranking comes with its data, and only when it ranks something (home/MostKept.tsx).
+    expect(html).not.toContain('Most kept');
   });
 
   it('marks the language of the page as the current one, not the language of the first render', async () => {

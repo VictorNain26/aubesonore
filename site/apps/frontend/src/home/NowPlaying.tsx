@@ -53,14 +53,14 @@ export interface NowPlayingViewProps {
   volume: Omit<VolumeControlProps, 'className'>;
 }
 
-/** The hero cover's width in each layout of hero-wide (design/tokens.css), repeated per media. */
-const HERO_WIDE_COVER = 'min(79vh - 6.5rem, min(100vw - 5rem, 100rem) / 2)';
+/** The hero cover's width in each layout of the hero (design/tokens.css, hero-main and cover-fit). */
+const HERO_SPLIT_COVER = 'clamp(26rem, 77vh - 14.5rem, 42vw)';
 const HERO_COVER_SIZES = [
-  `(min-width: 64rem) ${HERO_WIDE_COVER}`,
-  `(min-width: 48rem) and (orientation: landscape) ${HERO_WIDE_COVER}`,
-  `(orientation: landscape) and (max-height: 30rem) ${HERO_WIDE_COVER}`,
-  '(min-width: 48rem) min(100vw - 5rem, 75vh - 18rem)',
-  'min(100vw - 3rem, 74vh - 13.75rem)',
+  `(min-width: 64rem) and (min-height: 30rem) ${HERO_SPLIT_COVER}`,
+  `(min-width: 48rem) and (orientation: landscape) and (min-height: 30rem) ${HERO_SPLIT_COVER}`,
+  '(orientation: landscape) and (max-height: 30rem) min(100vh - 7rem, 40vw)',
+  '(min-width: 48rem) min(100vw - 5rem, 100vh - 32rem)',
+  'min(100vw - 3rem, 100vh - 30rem)',
 ].join(', ');
 
 /** Écouter, the one round thing of the page: an ink disc, larger from md. */
@@ -70,11 +70,11 @@ const LISTEN_DISC =
 const DISC_SIZE = 'size-16 md:size-20 phone:size-13';
 
 /**
- * What plays now, the biggest thing on the page: the cover, the title, the artist (a link to their
- * page once it exists) and its album, and the round Écouter right under them, beside Garder,
- * Partager, Diffuser and the volume, on one line. The cover takes the room the hero leaves it
- * (design/tokens.css, hero-player); the title is sized on its own column and holds on three lines.
- * What played before is the thread below.
+ * What plays now, the biggest thing on the page: the cover, « En direct » in its corner while on
+ * air, the title, the artist (a link to their page once it exists) and its album, and the round
+ * Écouter right under them, beside Garder (a heart), Partager, Diffuser and the volume, on one
+ * line. The cover takes the room the hero leaves it (design/tokens.css, hero-player); the title, at
+ * a human size, holds on three lines. What played before is the thread beside or below.
  */
 export function NowPlayingView({
   track,
@@ -97,31 +97,38 @@ export function NowPlayingView({
     <div className="hero-player">
       <div className="lift-in cover-room [grid-area:cover]">
         {track ? (
-          <CoverOpenLarge
-            src={track.art}
-            alt={m.now_cover_alt({ title: track.title, artist: track.artist })}
-            seed={`${track.artist}|${track.title}`}
-            label={m.cover_open({ title: track.title })}
-            title={track.title}
-            largeAlt={m.now_cover_alt({ title: track.title, artist: track.artist })}
-            caption={m.track_caption({ title: track.title, artist: track.artist })}
-            priority
-            // cover-fit (design/tokens.css): the room's width or height, whichever is shorter. Side
-            // by side (hero-wide), the height the hero's rows leave (79vh - 6.5rem, measured from
-            // 700 to 1080 px high) or half the page less its gutters; stacked, the line less the
-            // gutters or the height left under a short title, from md and on a phone. Measured
-            // within 3% of the drawn cover where the height decides (#619).
-            sizes={HERO_COVER_SIZES}
-            triggerClassName="cover-fit"
-            className={cn('shadow-cover size-full', hasChanged && 'swap-in')}
-          />
+          <div className="cover-fit relative">
+            <CoverOpenLarge
+              src={track.art}
+              alt={m.now_cover_alt({ title: track.title, artist: track.artist })}
+              seed={`${track.artist}|${track.title}`}
+              label={m.cover_open({ title: track.title })}
+              title={track.title}
+              largeAlt={m.now_cover_alt({ title: track.title, artist: track.artist })}
+              caption={m.track_caption({ title: track.title, artist: track.artist })}
+              priority
+              // cover-fit (design/tokens.css): beside the thread, the player's column (the height
+              // the hero leaves, 77vh - 14.5rem, from 26rem to 42% of the screen); on a phone on
+              // its side, the screen's height less the header's; stacked, the line less the
+              // gutters or what the title, the actions and the thread's first lines leave of the
+              // screen's height (player-room).
+              sizes={HERO_COVER_SIZES}
+              triggerClassName="size-full"
+              className={cn('shadow-cover size-full', hasChanged && 'swap-in')}
+            />
+            {isOnline ? (
+              <span className="bg-tag text-on-tag text-caption pointer-events-none absolute top-2.5 left-2.5 flex items-center gap-1.5 py-1.5 pr-2.5 pl-2 leading-none font-normal md:top-3 md:left-3">
+                <span aria-hidden="true" className="bg-dawn size-1.5 rounded-full" />
+                {m.now_live()}
+              </span>
+            ) : null}
+          </div>
         ) : (
           <div aria-hidden="true" className="cover-fit bg-surface-raised" />
         )}
       </div>
 
-      {/* A container: the title's size follows this column (text-hero, cqi). */}
-      <div className="lift-in-late @container flex min-w-0 flex-col [grid-area:meta]">
+      <div className="lift-in-late flex min-w-0 flex-col [grid-area:meta]">
         {!isOnline ? (
           <p className="text-intro text-text-muted m-0" aria-live="polite">
             {m.off_air()}
@@ -129,7 +136,7 @@ export function NowPlayingView({
         ) : track ? (
           <div key={trackKey} className={cn('flex flex-col gap-2', hasChanged && 'swap-in-late')}>
             {/* Three lines at most: the whole title stays in the page for screen readers. */}
-            <h2 className="font-display text-hero m-0 line-clamp-3 text-balance">{track.title}</h2>
+            <h2 className="font-display text-track m-0 line-clamp-3 text-balance">{track.title}</h2>
             <p className="text-headline m-0 font-normal">
               {/* Inline padding grows the tap target to 44px without moving the line. */}
               {artistHref ? (
@@ -177,10 +184,11 @@ export function NowPlayingView({
                 onClick={onToggleKeep}
                 disabled={isKeeping}
                 aria-pressed={isKept}
+                aria-label={m.track_keep()}
+                title={m.track_keep()}
                 className={TEXT_ACTION}
               >
-                <KeepHeart isKept={isKept} className="size-4" />
-                <span data-label>{m.track_keep()}</span>
+                <KeepHeart isKept={isKept} className="size-5.5" />
               </button>
               <button type="button" onClick={onShare} className={TEXT_ACTION}>
                 <ShareIcon className="size-4" />

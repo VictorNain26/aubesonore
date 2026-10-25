@@ -4,11 +4,20 @@ import type { LikeTrackRequest } from './api';
 // kept for them once they are back (also after the Google redirect).
 const KEY = 'aubesonore-pending-keep';
 
+/**
+ * A YouTube search for a track: the link a kept track is stored with, and the thread's « Écouter
+ * sur YouTube ». A search, not a video: finding the video takes a search.list call, whose daily
+ * quota is small. The station's metadata is not trusted: it stays inside the query.
+ */
+export function youtubeSearchUrl(title: string, artist: string): string {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${title} ${artist}`)}`;
+}
+
 export function keepRequest(title: string, artist: string, artworkUrl?: string): LikeTrackRequest {
   return {
     title,
     artist,
-    youtubeUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${title} ${artist}`)}`,
+    youtubeUrl: youtubeSearchUrl(title, artist),
     ...(artworkUrl ? { artworkUrl } : {}),
   };
 }

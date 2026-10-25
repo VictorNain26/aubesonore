@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { getLocale } from '@/paraglide/runtime.js';
 import { CoverOpenLarge } from '../design/CoverOpenLarge';
 import { KeepHeart } from '../design/KeepHeart';
-import { ARTIST_LINK, OUTLINE_ACTION, TEXT_ACTION } from '../design/classes';
+import { ARTIST_LINK, ICON_ACTION, OUTLINE_ACTION, TEXT_ACTION } from '../design/classes';
 import { SearchField } from '../design/SearchField';
 import { artistPath } from '../lib/artistProfile';
 import type { LikedTrack } from '../lib/api';
@@ -19,9 +19,6 @@ export type MyTracksState =
   | { status: 'error'; onRetry: () => void }
   /** `tracks` are those the search lets through, out of `total` kept. */
   | { status: 'ready'; tracks: readonly LikedTrack[]; total: number };
-
-const ICON_ACTION =
-  'ease-out-quart focus-visible:outline-accent flex size-11 items-center justify-center transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90';
 
 // One formatter per locale and form: a library holds up to 500 rows.
 const keptOnFormats = new Map<string, Intl.DateTimeFormat>();

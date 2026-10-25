@@ -7,27 +7,20 @@ import { artistPath } from '../lib/artistProfile';
 import { CoverOpenLarge } from '../design/CoverOpenLarge';
 import { ARTIST_LINK } from '../design/classes';
 import * as m from '@/paraglide/messages.js';
-import { LineLoader } from '../design/LineLoader';
 
 type Period = 'week' | 'allTime';
 
 const TAB =
   'text-body text-text-muted data-[active]:text-text ease-out-quart focus-visible:outline-accent min-h-11 font-medium transition-[color,scale] duration-150 active:scale-97 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-4 data-[active]:font-semibold data-[active]:wave-underline';
 
+/** Under three keeps for the week's first track, the ranking would rank nothing. */
+const MIN_WEEK_KEEPS = 3;
+
 export interface MostKeptViewProps {
-  trends: Record<Period, TrendEntry[]> | null;
-  status: 'loading' | 'error' | 'ready';
+  trends: Record<Period, TrendEntry[]>;
 }
 
-function Ranking({ entries, period }: { entries: TrendEntry[]; period: Period }) {
-  if (entries.length === 0) {
-    return (
-      <p className="text-text-muted m-0">
-        {period === 'week' ? m.most_kept_empty_week() : m.most_kept_empty_all_time()}
-      </p>
-    );
-  }
-
+function Ranking({ entries }: { entries: TrendEntry[] }) {
   return (
     <ol className="m-0 -mx-6 -my-2 flex scrollbar-none list-none gap-3.5 overflow-x-auto px-6 py-2 md:mx-0 md:my-0 md:grid md:grid-cols-5 md:gap-6 md:overflow-visible md:px-0 md:py-0">
       {entries.slice(0, 5).map((entry, i) => (
@@ -81,9 +74,13 @@ function Ranking({ entries, period }: { entries: TrendEntry[]; period: Period })
   );
 }
 
-export function MostKeptView({ trends, status }: MostKeptViewProps) {
+export function MostKeptView({ trends }: MostKeptViewProps) {
   return (
-    <section id="plus-gardes" aria-labelledby="most-kept-title" className="scroll-mt-10">
+    <section
+      id="plus-gardes"
+      aria-labelledby="most-kept-title"
+      className="px-page scroll-mt-10 py-16 md:py-28"
+    >
       <Tabs.Root defaultValue="week" className="flex flex-col gap-6 md:gap-10">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div className="reveal flex flex-col gap-2 md:gap-3">
@@ -104,13 +101,7 @@ export function MostKeptView({ trends, status }: MostKeptViewProps) {
 
         {(['week', 'allTime'] as const).map((period) => (
           <Tabs.Panel key={period} value={period} className="panel-in">
-            {trends ? (
-              <Ranking entries={trends[period]} period={period} />
-            ) : status === 'error' ? (
-              <p className="text-text-muted m-0">{m.most_kept_error()}</p>
-            ) : (
-              <LineLoader className="h-38 md:h-48" />
-            )}
+            <Ranking entries={trends[period]} />
           </Tabs.Panel>
         ))}
       </Tabs.Root>
@@ -118,11 +109,12 @@ export function MostKeptView({ trends, status }: MostKeptViewProps) {
   );
 }
 
+/**
+ * The ranking, once a track of the week was kept three times: before, it ranks nothing, so it
+ * stays off the page, as while it has not come or did not answer (it is below the fold).
+ */
 export function MostKept({ trends }: { trends: Loaded<TrendsResult> | null }) {
-  return (
-    <MostKeptView
-      trends={trends === null || trends === 'failed' ? null : trends}
-      status={trends === null ? 'loading' : trends === 'failed' ? 'error' : 'ready'}
-    />
-  );
+  if (trends === null || trends === 'failed') return null;
+  if (!trends.week.some((entry) => entry.likes >= MIN_WEEK_KEEPS)) return null;
+  return <MostKeptView trends={trends} />;
 }

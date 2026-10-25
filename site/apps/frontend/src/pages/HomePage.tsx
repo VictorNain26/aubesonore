@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useLoaderData, useRevalidator } from 'react-router';
 import { Hero } from '../home/Hero';
-import { SinceDawn } from '../home/SinceDawn';
 import { MostKept } from '../home/MostKept';
 import { SiteFooter } from '../shell/SiteFooter';
 import type { HomeData } from '../lib/homeData';
@@ -23,11 +22,8 @@ export function HomePage() {
   return (
     <>
       <main id="main">
-        <Hero />
-        <div className="px-page flex flex-col gap-16 py-16 md:gap-28 md:py-28">
-          <SinceDawn history={data?.history ?? null} />
-          <MostKept trends={data?.trends ?? null} />
-        </div>
+        <Hero history={data?.history ?? null} />
+        <MostKept trends={data?.trends ?? null} />
       </main>
       <SiteFooter />
     </>

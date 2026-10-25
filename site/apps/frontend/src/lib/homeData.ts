@@ -5,8 +5,8 @@ import { getJson } from './api';
 
 const HistoryResponseSchema = array(SongEntrySchema);
 
-// 400 rows cover about 25 hours of antenna, so the whole day is always there.
-const HISTORY_ROWS = 400;
+// The thread's eight tracks and the one on air, which the history may already hold.
+const HISTORY_ROWS = 9;
 
 /** A list the home page shows, or 'failed' when its request did not answer. */
 export type Loaded<T> = T | 'failed';
@@ -17,7 +17,7 @@ export interface HomeData {
   trends: Loaded<TrendsResult>;
 }
 
-// The backend caches the ranking 5 minutes, and the live payload keeps the day's top fresh: a home
+// The backend caches the ranking 5 minutes, and the live payload keeps the thread fresh: a home
 // page loaded since is drawn at once, at its full height, when the reader comes back to it.
 const FRESH_MS = 5 * 60 * 1000;
 let last: { data: HomeData; at: number } | null = null;
@@ -37,7 +37,7 @@ async function fetchTrends(signal: AbortSignal): Promise<TrendsResult> {
 }
 
 /**
- * The home page's lists, before it is drawn (React Router's loader): the day's history and the
+ * The home page's lists, before it is drawn (React Router's loader): the last tracks played and the
  * ranking, so the page comes at its height and ScrollRestoration puts the reader back on it. What
  * this tab loaded in the last five minutes is drawn at once (a client cache,
  * reactrouter.com/how-to/client-data); a list that fails is drawn as failing, and asked again next time.
