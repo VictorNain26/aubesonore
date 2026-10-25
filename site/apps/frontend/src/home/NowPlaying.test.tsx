@@ -137,7 +137,6 @@ describe('NowPlayingView', () => {
   });
 
   it('says « En direct » on the cover while on air, and not off air', () => {
-    // Where it stands, in the cover's corner, is measured by scripts/hero-layout-check.mjs.
     const { rerender } = render(<NowPlayingView {...props()} />);
     expect(screen.getByText('En direct')).toBeInTheDocument();
 
