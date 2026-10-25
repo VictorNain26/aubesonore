@@ -54,7 +54,7 @@ export interface NowPlayingViewProps {
 }
 
 /** The hero cover's width in each layout of the hero (design/tokens.css, hero-main and cover-fit). */
-const HERO_SPLIT_COVER = 'clamp(20rem, 97vh - 17.5rem, min(32.5rem, 42vw))';
+const HERO_SPLIT_COVER = 'clamp(20rem, 97vh - 16rem, min(32.5rem, 42vw))';
 const HERO_COVER_SIZES = [
   `(min-width: 64rem) and (min-height: 30rem) ${HERO_SPLIT_COVER}`,
   `(min-width: 48rem) and (orientation: landscape) and (min-height: 30rem) ${HERO_SPLIT_COVER}`,
@@ -134,13 +134,13 @@ export function NowPlayingView({
             {m.off_air()}
           </p>
         ) : track ? (
-          <div key={trackKey} className={cn('flex flex-col gap-2', hasChanged && 'swap-in-late')}>
+          <div key={trackKey} className={cn('flex flex-col gap-1.5', hasChanged && 'swap-in-late')}>
             {/* Three lines at most: the whole title stays in the page for screen readers. */}
             <h2 className="font-display text-track m-0 line-clamp-3 text-balance">{track.title}</h2>
-            <p className="text-headline m-0 font-normal">
+            <p className="text-lead m-0">
               {/* Inline padding grows the tap target to 44px without moving the line. */}
               {artistHref ? (
-                <Link to={artistHref} className={cn(ARTIST_LINK, 'py-3 underline-offset-6')}>
+                <Link to={artistHref} className={cn(ARTIST_LINK, 'py-3 underline-offset-5')}>
                   {track.artist}
                 </Link>
               ) : (

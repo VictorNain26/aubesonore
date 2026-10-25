@@ -129,6 +129,23 @@
   --text-track--line-height: 1.08;
   --text-track--font-weight: 500;
   --text-track--letter-spacing: -0.02em;
+  /* Its artist and album under it: 17 px on a phone, 19 on a computer. */
+  --text-lead: clamp(1.0625rem, 0.95rem + 0.4vw, 1.1875rem);
+  --text-lead--line-height: 1.3;
+  --text-lead--font-weight: 400;
+  /* The thread's title beside it, « Depuis l'aube »: 24 px on a phone, 30 on a computer. */
+  --text-heading: clamp(1.5rem, 1.2rem + 0.9vw, 1.875rem);
+  --text-heading--line-height: 1.1;
+  --text-heading--font-weight: 500;
+  --text-heading--letter-spacing: -0.015em;
+  /* A line of the thread (home/SinceDawn.tsx): its title, 16 px on a phone, 17 on a computer, and
+     its time and artist, 14 and 15. */
+  --text-thread: clamp(1rem, 0.94rem + 0.25vw, 1.0625rem);
+  --text-thread--line-height: 1.3;
+  --text-thread--font-weight: 600;
+  --text-thread-sub: clamp(0.875rem, 0.82rem + 0.25vw, 0.9375rem);
+  --text-thread-sub--line-height: 1.35;
+  --text-thread-sub--font-weight: 400;
   /* A page's title (Musilogy, Mes titres, sign-in, legal, a page's message): one size for all,
      40 px on a phone, about 60 at 1280, 72 on a large screen. */
   --text-page: clamp(2.5rem, 1.75rem + 2.6vw, 4.5rem);
@@ -582,15 +599,16 @@
 /* The player, then the thread. Side by side, the cover as large as the first screen allows, up to
    the mockup's 520 px: the row is the screen less the header (4.5rem), the hero's gap and 2rem of
    air, so the title, the artist and the actions end in the first screen while the horizon waits
-   below it; the column is as wide as the cover under a title of one line (the row less 11rem),
-   up to 42% of the screen, and never under 20rem, so a long title keeps to three lines. The
-   thread beside it may run past the first screen on a short one. */
+   below it; the column at least as wide as the cover under a title of one line (the row less
+   about 10rem: the stack under the cover measures 159 to 175 px from 700 to 900 px high), so the
+   height, not the width, sizes it; up to 42% of the screen, and never under 20rem, so a long
+   title keeps to three lines. The thread beside it may run past the first screen on a short one. */
 @utility hero-main {
   display: grid;
   row-gap: clamp(2rem, 4svh, 3rem);
 
   @variant hero-split {
-    grid-template-columns: clamp(20rem, 97svh - 17.5rem, min(32.5rem, 42vw)) minmax(0, 1fr);
+    grid-template-columns: clamp(20rem, 97svh - 16rem, min(32.5rem, 42vw)) minmax(0, 1fr);
     column-gap: clamp(2.5rem, 6vw, 6rem);
     min-height: calc(100svh - 4.5rem - clamp(0.75rem, 3svh, 2.5rem) - 2rem);
   }
@@ -598,7 +616,9 @@
 
 /* The player's room in the hero, a size container, so the cover takes the height the title and
    the actions leave it (cover-room), whatever the title's lines. Side by side, its height is the
-   row's, never its content's: the thread alone may grow the row. Stacked, the first screen less
+   row's, never its content's: the thread alone may grow the row; it stops at the mockup's 520 px
+   cover and the 11.25rem under it, so on a tall screen the player stands at the top with the air
+   under it, and the player bar comes as soon as the actions leave. Stacked, the first screen less
    the header and the thread's title and first three lines (22rem). On a phone on its side, the
    cover is sized on the screen (cover-fit). */
 @utility player-room {
@@ -610,6 +630,7 @@
   @variant hero-split {
     height: auto;
     min-height: 8rem;
+    max-height: calc(32.5rem + 11.25rem);
   }
   @variant hero-low {
     container-type: normal;

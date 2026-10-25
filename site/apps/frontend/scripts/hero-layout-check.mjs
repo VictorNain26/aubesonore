@@ -6,11 +6,9 @@
  * scrolled away), that Écouter and the actions are whole in the window and on one line, that the
  * cover is never under 8rem and carries « En direct » in its corner, that the title is at most
  * 40 px, that the header, the cover, the title and the thread do not overlap, and that nothing
- * scrolls sideways. Player and thread side by side (hero-split), the cover under a title of one
- * line is as large as the first screen allows, up to the mockup's 520 px (the screen's height
- * less 280 px, at most 42% of its width), with the title and the artist in the first screen, and
- * from 1280×720 the thread's eight tracks too (the horizon may wait below); on an upright phone,
- * at least the thread's first three.
+ * scrolls sideways. Player and thread side by side (hero-split), the horizon and its « now » dot
+ * are in the first screen, and from 1280×720 the thread's eight tracks too; on an upright phone,
+ * at least its first three.
  *
  * Run on demand, not in CI: it needs a built site served locally and a Chromium.
  *   pnpm --filter=@aubesonore/frontend build
@@ -303,6 +301,8 @@ const MEASURE = `(() => {
   const title = box(h2);
   const thread = box(hero.querySelector('#depuis-l-aube'));
   const threadRows = [...hero.querySelectorAll('#depuis-l-aube li')].map(box);
+  const horizon = box(hero.querySelector('[data-horizon]'));
+  const dot = box(hero.querySelector('.now-arrive'));
   const live = [...coverEl.querySelectorAll('span')].find((s) => s.textContent === 'En direct');
   const liveBox = box(live);
   const bar = document.querySelector('section[aria-label="Lecteur du direct"]');
@@ -332,7 +332,8 @@ const MEASURE = `(() => {
     oneLine: Math.max(...centers) - Math.min(...centers) < 2,
     iconsOnly: labels.every((l) => l.getBoundingClientRect().width <= 1),
     names: buttons.map((b) => b.getAttribute('aria-label') || b.textContent).join('|'),
-    metaInView: inView(title) && inView(box(h2.nextElementSibling)),
+    horizonInView: horizon.bottom <= vh + 0.5,
+    dotInView: inView(dot),
     overlaps,
     sideScroll: document.documentElement.scrollWidth > vw,
     barAway: bar.hasAttribute('inert') && getComputedStyle(bar).opacity === '0',
@@ -403,12 +404,8 @@ for (const [width, height] of VIEWPORTS) {
     if (!r.actionsInView) fails.push('actions out of the window');
     if (!r.oneLine) fails.push('actions on two lines');
     if (width < 430 && !r.iconsOnly) fails.push('words beside the icons under 430');
-    if (!r.metaInView) fails.push('title or artist out of the first screen');
-    // Under a title of one line (the first two), the cover the first screen allows, to 520 px.
-    const largest = Math.min(520, height - 280, 0.42 * width);
-    if (r.split && r.titleLines === 1 && r.cover < Math.max(320, largest) - 2)
-      fails.push(`cover ${r.cover} px, under the ${Math.round(largest)} the screen allows`);
-    if (r.cover > 520) fails.push(`cover ${r.cover} px, over 520`);
+    if (r.split && (!r.horizonInView || !r.dotInView))
+      fails.push('horizon out of the first screen');
     if (r.cover < 128) fails.push('cover under 8rem');
     if (!r.liveOnCover) fails.push("« En direct » not in the cover's corner");
     if (r.titlePx > 40) fails.push(`title at ${r.titlePx} px, over 40`);

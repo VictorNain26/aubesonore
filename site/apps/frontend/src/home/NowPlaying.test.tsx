@@ -176,7 +176,7 @@ describe('NowPlayingView', () => {
     // the title, the actions and some air, up to the mockup's 520 px and 42% of the width; on a
     // phone on its side, beside the title; then stacked, the line or the height the first lines of
     // the thread leave.
-    const split = 'clamp(20rem, 97vh - 17.5rem, min(32.5rem, 42vw))';
+    const split = 'clamp(20rem, 97vh - 16rem, min(32.5rem, 42vw))';
     expect(sizes).toBe(
       [
         `(min-width: 64rem) and (min-height: 30rem) ${split}`,

@@ -85,7 +85,7 @@ export function SinceDawnView({
     >
       <h2
         id="since-dawn-title"
-        className="font-display text-title border-text m-0 border-b pb-3 font-medium"
+        className="font-display text-heading border-text m-0 border-b pb-2.5 md:pb-3.5"
       >
         {m.since_dawn_title()}
       </h2>
@@ -141,8 +141,8 @@ function Line({
       inert={leaves}
     >
       <div className="min-h-0 overflow-hidden">
-        <div className="thread-row wave-rule ease-out-soft hover:bg-accent/3 grid grid-cols-[2.5rem_auto_minmax(0,1fr)_auto_auto] items-center gap-x-2 py-1 transition-colors duration-300 md:grid-cols-[3.25rem_auto_minmax(0,1fr)_auto_auto] md:gap-x-3">
-          <span className="text-ui text-text-muted font-normal whitespace-nowrap tabular-nums">
+        <div className="thread-row border-border ease-out-soft hover:bg-accent/3 grid grid-cols-[2.5rem_auto_minmax(0,1fr)_auto_auto] items-center gap-x-2 border-b py-1 transition-colors duration-300 md:grid-cols-[3.25rem_auto_minmax(0,1fr)_auto_auto] md:gap-x-3">
+          <span className="text-thread-sub text-text-muted whitespace-nowrap tabular-nums">
             {formatClock(row.playedAt)}
           </span>
           <CoverOpenLarge
@@ -159,20 +159,20 @@ function Line({
             className="size-full"
           />
           <span className="flex min-w-0 flex-col">
-            <span className="text-row truncate">{row.title}</span>
+            <span className="text-thread truncate">{row.title}</span>
             {row.artistHref ? (
               // Negative margins grow the tap target to 44px without moving the row.
               <Link
                 to={row.artistHref}
                 className={cn(
                   ARTIST_LINK,
-                  'text-sub text-text-muted -my-3 self-start truncate py-3 underline-offset-4'
+                  'text-thread-sub text-text-muted decoration-border -my-3 self-start truncate py-3 underline-offset-4'
                 )}
               >
                 {row.artist}
               </Link>
             ) : (
-              <span className="text-sub text-text-muted truncate">{row.artist}</span>
+              <span className="text-thread-sub text-text-muted truncate">{row.artist}</span>
             )}
           </span>
           <a
