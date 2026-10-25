@@ -105,21 +105,12 @@ const checkScheme = (scheme, vars) => {
     if (!m) throw new Error(`--${key} has no alpha`);
     return Number(m[1]);
   };
-  const number = (key) => {
-    const value = Number(vars[key]);
-    if (vars[key] === undefined || Number.isNaN(value)) throw new Error(`missing --${key}`);
-    return value;
-  };
   // The hero's light at its top, where its veil is thinnest, over the cover the text reads worst
   // on: a black one by day (dark ink), a white one by night (paper ink): the antenna plays both.
-  // Its filter's contrast() and brightness() map each channel.
+  // The tone, then the veil, over it.
   const worstCover = scheme === 'day' ? BLACK : WHITE;
-  const filtered = worstCover.map((channel) => {
-    const g = (encode(channel) - 0.5) * number('light-contrast') + 0.5;
-    return decode(Math.min(1, Math.max(0, g * number('light-brightness'))));
-  });
-  const light = over(filtered, number('light-opacity'), c('surface'));
-  const lit = over(c('light-veil-top'), alpha('light-veil-top'), light);
+  const toned = over(c('light-tone'), alpha('light-tone'), worstCover);
+  const lit = over(c('light-veil-top'), alpha('light-veil-top'), toned);
   // « En direct » over the lightest cover.
   const tag = over(c('tag'), alpha('tag'), WHITE);
   const pairs = [
