@@ -957,7 +957,8 @@
     animation: thread-close 0.42s var(--ease-out-quart) both;
   }
   @media (prefers-reduced-motion: reduce) {
-    display: none;
+    /* Over thread-line's grid, whatever the order of the two utilities. */
+    display: none !important;
   }
 }
 
