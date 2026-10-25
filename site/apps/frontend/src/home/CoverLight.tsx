@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { isDefaultArtwork, useNowPlayingStore } from '../lib/azuracast';
 import { artworkAt } from '../lib/artwork';
+import { readInks } from './lightInks';
+import { lightOpacity } from './lightStrength';
 
 /** The light is the cover at its smallest: 2.4 KB for the station's art. */
 const LIGHT_PIXELS = 96;
@@ -8,8 +10,17 @@ const LIGHT_PIXELS = 96;
 export const LIGHT_FADE_MS = 1400;
 /** The canvas the light is painted into, then drawn at the hero's size as an image. */
 const CANVAS_PIXELS = 32;
-/** At 32 px, 1.5 px of blur: about 90 px once drawn over a large screen. */
-const PAINT_FILTER = 'blur(1.5px) saturate(2.5)';
+/** At 32 px, 1.5 px of blur: about 90 px once drawn over a large screen; the mockup's colours. */
+const PAINT_FILTER = 'blur(1.5px) saturate(1.35)';
+/**
+ * The canvas's part the hero shows (it is drawn at 130% × 150% from -15%, -25%: tokens.css,
+ * cover-light), the words' ground.
+ */
+const SHOWN = { x: 4, y: 5, width: 24, height: 22 } as const;
+/** A cover as dark and as light as any: what a cover whose pixels cannot be read is dimmed for. */
+const WORST_PIXELS = new Uint8ClampedArray([0, 0, 0, 255, 255, 255, 255, 255]);
+/** Apple's CDN answers CORS (`Access-Control-Allow-Origin: *`): its pixels can be read. */
+const READABLE_ELSEWHERE = /^https:\/\/is\d+-ssl\.mzstatic\.com\//;
 
 interface Layers {
   /** The light shown. */
@@ -20,8 +31,8 @@ interface Layers {
 }
 
 /**
- * The cover on air as the hero's light, blurred behind it under a tone and a veil of the paper
- * (design/tokens.css, cover-light). When the track changes, the next light fades in over the last
+ * The cover on air as the hero's light, blurred behind it under a veil of the paper
+ * (design/tokens.css, cover-light), dimmed for a cover its words would not read on. When the track changes, the next light fades in over the last
  * once its file has come, then the last goes: two at most, the one shown and the newest. The first
  * comes without a fade. Decoration: hidden from screen readers.
  */
@@ -64,11 +75,29 @@ export function CoverLightView({ art }: { art: string | null | undefined }) {
 
 /** The cover, blurred and its colours raised, into the canvas, past its edges so none fades. */
 function paint(canvas: HTMLCanvasElement | null, image: HTMLImageElement) {
-  const context = canvas?.getContext('2d');
-  if (!context) return;
+  const context = canvas?.getContext('2d', { willReadFrequently: true });
+  if (!canvas || !context) return;
   // Where the canvas knows no filter (Safari before 18), the 32 px cover drawn large is soft.
   context.filter = PAINT_FILTER;
   context.drawImage(image, -4, -4, CANVAS_PIXELS + 8, CANVAS_PIXELS + 8);
+  weigh(canvas, context);
+}
+
+/**
+ * The light's opacity for its cover: the whole light, unless the words over it would fall under
+ * AA, then just enough less (home/lightStrength.ts). A cover of another origin that does not
+ * answer CORS cannot be read: it is dimmed as the worst cover would be.
+ */
+function weigh(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
+  const inks = readInks(canvas);
+  if (!inks) return;
+  let pixels: Uint8ClampedArray;
+  try {
+    pixels = context.getImageData(SHOWN.x, SHOWN.y, SHOWN.width, SHOWN.height).data;
+  } catch {
+    pixels = WORST_PIXELS;
+  }
+  canvas.style.opacity = String(lightOpacity(pixels, inks));
 }
 
 /**
@@ -89,6 +118,15 @@ function Light({
   useEffect(() => {
     const image = file.current;
     if (image?.complete && image.naturalWidth > 0) paint(canvas.current, image);
+    // The words change ink from day to night: the light is weighed again for them.
+    const scheme = window.matchMedia?.('(prefers-color-scheme: dark)');
+    const reweigh = () => {
+      const element = canvas.current;
+      const context = element?.getContext('2d', { willReadFrequently: true });
+      if (element && context && file.current?.naturalWidth) weigh(element, context);
+    };
+    scheme?.addEventListener('change', reweigh);
+    return () => scheme?.removeEventListener('change', reweigh);
   }, []);
   return (
     <>
@@ -97,6 +135,7 @@ function Light({
         src={src}
         alt=""
         hidden
+        crossOrigin={READABLE_ELSEWHERE.test(src) ? 'anonymous' : undefined}
         referrerPolicy="no-referrer"
         decoding="async"
         fetchPriority="low"

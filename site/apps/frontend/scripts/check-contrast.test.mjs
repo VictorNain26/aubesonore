@@ -19,8 +19,7 @@ const day = {
   'on-bar-muted': 'var(--on-accent-muted)',
   dawn: 'oklch(0.82 0.11 55)',
   'dawn-ink': 'oklch(0.6 0.13 45)',
-  'light-tone': 'oklch(1 0 0 / 0.64)',
-  'light-veil-top': 'oklch(0.93 0.018 60 / 0.4)',
+  'light-veil-top': 'oklch(0.93 0.018 60 / 0.55)',
   tag: 'oklch(0.15 0.03 268 / 0.62)',
   'on-tag': 'oklch(0.96 0.015 70)',
 };
@@ -36,8 +35,7 @@ const night = {
   'on-bar-muted': 'var(--text-muted)',
   dawn: 'oklch(0.62 0.12 45)',
   'dawn-ink': 'var(--dawn)',
-  'light-tone': 'oklch(0.2 0.04 268 / 0.6)',
-  'light-veil-top': 'oklch(0.18 0.04 268 / 0.4)',
+  'light-veil-top': 'oklch(0.18 0.04 268 / 0.38)',
 };
 const decls = (vars) =>
   Object.entries(vars)
@@ -99,18 +97,13 @@ describe('checkTokens', () => {
     expect(failures(rows)).toEqual(['day dawn-ink/surface']);
   });
 
-  it("fails a light too dark for the hero's text over a black cover by day", () => {
-    // A tone too thin to lift the black into the light half.
-    const rows = checkTokens(css({ ...day, 'light-tone': 'oklch(1 0 0 / 0.3)' }, night));
-    expect(failures(rows)).toEqual(['day text-muted/light over the worst cover']);
-  });
-
-  it("fails a light too bright for the hero's text over a white cover by night", () => {
-    const rows = checkTokens(css(day, { ...night, 'light-tone': 'oklch(0.2 0.04 268 / 0.2)' }));
-    expect(failures(rows)).toEqual([
-      'night text/light over the worst cover',
-      'night text-muted/light over the worst cover',
-    ]);
+  it("fails a veil the hero's words do not read on, the light dimmed to nothing", () => {
+    // The light is dimmed per cover down to the veil over the paper (home/lightStrength.ts): that
+    // floor must hold the words. A veil of the ink by day sinks them.
+    const rows = checkTokens(
+      css({ ...day, 'light-veil-top': 'oklch(0.45 0.05 270 / 0.55)' }, night)
+    );
+    expect(failures(rows)).toEqual(['day text-muted/veil over the paper']);
   });
 
   it('fails a tag too clear for « En direct » over a white cover', () => {
