@@ -12,21 +12,24 @@ export function listenState(isPlaying: boolean, isConnecting: boolean): ListenSt
   return isPlaying ? 'playing' : 'idle';
 }
 
-/** The action the button does now: from the click on it pauses, the ring tells the waiting. */
+/**
+ * The action the button does now: from the click on it stops the live (the player has no pause:
+ * a press after rejoins the live where it is), the ring tells the waiting.
+ */
 export function listenLabel(state: ListenState): string {
-  return state === 'idle' ? m.player_listen() : m.player_listening();
+  return state === 'idle' ? m.player_listen() : m.player_stop();
 }
 
 export function listenAria(state: ListenState): string {
-  return state === 'idle' ? m.player_listen_aria() : m.player_pause_aria();
+  return state === 'idle' ? m.player_listen_aria() : m.player_stop_aria();
 }
 
-// A third of the disc: 16 px in the bar's, about 27 in the hero's.
+// Two fifths of the disc: 22 px in the hero's 56, as the mockup draws it.
 const GLYPH =
-  'ease-out-quart absolute inset-0 m-auto size-1/3 transition-[opacity,scale] duration-200';
+  'ease-out-quart absolute inset-0 m-auto size-2/5 transition-[opacity,scale] duration-200';
 const SHOWN = 'scale-100 opacity-100';
 const HIDDEN = 'scale-50 opacity-0';
-// While the live plays, the bars give way to the pause glyph under the pointer or the focus:
+// While the live plays, the bars give way to the stop glyph under the pointer or the focus:
 // the button shows what is happening, then what a press does.
 const ON_PRESS_HIDE =
   'group-hover:scale-50 group-hover:opacity-0 group-focus-visible:scale-50 group-focus-visible:opacity-0';
@@ -34,16 +37,21 @@ const ON_PRESS_SHOW =
   'group-hover:scale-100 group-hover:opacity-100 group-focus-visible:scale-100 group-focus-visible:opacity-100';
 
 const TONE = {
-  // On an accent ground (the bar, the sheet's pill): the accent's own ink, whatever the ground.
+  // On an accent ground (the bar, the sheet's pill): a disc of the accent's own ink, whatever the
+  // ground, the glyphs drawn in the accent.
   paper: { disc: 'bg-on-accent text-accent', ring: 'border-accent/15 border-t-accent' },
-  ink: { disc: 'bg-accent text-on-accent', ring: 'border-on-accent/15 border-t-on-accent' },
+  // On the paper (the hero): a circle drawn in the text's line, nothing filled.
+  line: {
+    disc: 'listen-line text-text ease-out-quart group-hover:bg-text/6 transition-colors duration-150',
+    ring: 'border-text/15 border-t-text',
+  },
 };
 
 /**
- * The disc of Écouter, paper on the ink bar and in the sheet's pill, ink on the hero's paper, with
- * the play glyph; three live bars while the stream plays, the pause glyph when the pointer or the
- * focus is on its button (which carries `group`); a thin ring turns while the stream connects. The
- * glyphs cross-fade instead of swapping.
+ * The disc of Écouter: a circle in a line on the hero's paper, filled with the accent's ink on the
+ * bar and in the sheet's pill; the play glyph drawn in a line, three live bars while the stream
+ * plays, the stop square when the pointer or the focus is on its button (which carries `group`);
+ * a thin ring turns while the stream connects. The glyphs cross-fade instead of swapping.
  */
 export function ListenDisc({
   state,
@@ -73,8 +81,11 @@ export function ListenDisc({
       ) : null}
       <svg viewBox="0 0 20 20" className={cn(GLYPH, state === 'idle' ? SHOWN : HIDDEN)}>
         <path
-          d="M6 3.5v13a.6.6 0 0 0 .9.5l10.4-6.5a.6.6 0 0 0 0-1L6.9 3a.6.6 0 0 0-.9.5Z"
-          fill="currentColor"
+          d="M7 5.2 L15.5 10 L7 14.8 Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinejoin="round"
         />
       </svg>
       <span
@@ -95,8 +106,17 @@ export function ListenDisc({
           state === 'connecting' ? SHOWN : state === 'playing' ? cn(HIDDEN, ON_PRESS_SHOW) : HIDDEN
         )}
       >
-        <rect x="4.5" y="3" width="3.6" height="14" rx="1" fill="currentColor" />
-        <rect x="11.9" y="3" width="3.6" height="14" rx="1" fill="currentColor" />
+        <rect
+          x="5.5"
+          y="5.5"
+          width="9"
+          height="9"
+          rx="0.6"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinejoin="round"
+        />
       </svg>
     </span>
   );

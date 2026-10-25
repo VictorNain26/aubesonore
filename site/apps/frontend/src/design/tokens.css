@@ -577,17 +577,20 @@
   }
 }
 
-/* The player, then the thread; side by side, the player's column as wide as its cover would be
-   under a title of one line, what the hero leaves of the screen's height (77svh - 14.5rem,
-   measured from 700 to 1080 px high), up to 42% of the screen, and never under 26rem, so a long
-   title keeps to three lines. */
+/* The player, then the thread. Side by side, the cover as large as the first screen allows, up to
+   the mockup's 520 px: the row is the screen less the header (4.5rem), the hero's gap and 2rem of
+   air, so the title, the artist and the actions end in the first screen while the horizon waits
+   below it; the column is as wide as the cover under a title of one line (the row less 11rem),
+   up to 42% of the screen, and never under 20rem, so a long title keeps to three lines. The
+   thread beside it may run past the first screen on a short one. */
 @utility hero-main {
   display: grid;
   row-gap: clamp(2rem, 4svh, 3rem);
 
   @variant hero-split {
-    grid-template-columns: clamp(26rem, 77svh - 14.5rem, 42vw) minmax(0, 1fr);
+    grid-template-columns: clamp(20rem, 97svh - 17.5rem, min(32.5rem, 42vw)) minmax(0, 1fr);
     column-gap: clamp(2.5rem, 6vw, 6rem);
+    min-height: calc(100svh - 4.5rem - clamp(0.75rem, 3svh, 2.5rem) - 2rem);
   }
 }
 
@@ -923,14 +926,14 @@
   }
 }
 
-/* A line of the thread (home/SinceDawn.tsx): 62 px on a phone; beside the player, an eighth of
-   what the hero leaves (10svh - 1.25rem), so the eight lines hold in the first screen from 720 px
-   high, at most 68 px. Its cover follows, never under 44 px. */
+/* A line of the thread (home/SinceDawn.tsx), as the mockup draws it: 62 px and a 44 px cover on a
+   phone, 68 px and a 56 px cover beside the player. The cover on air comes first: on a short
+   screen the thread runs past the first one rather than squeeze its lines. */
 @utility thread-row {
   min-height: 3.875rem;
 
   @variant hero-split {
-    min-height: clamp(2.75rem, 10svh - 1.25rem, 4.25rem);
+    min-height: 4.25rem;
   }
 }
 @utility thread-cover {
@@ -938,8 +941,8 @@
   height: 2.75rem;
 
   @variant hero-split {
-    width: clamp(2.75rem, 10svh - 1.5rem, 3.5rem);
-    height: clamp(2.75rem, 10svh - 1.5rem, 3.5rem);
+    width: 3.5rem;
+    height: 3.5rem;
   }
 }
 
@@ -964,6 +967,12 @@
     /* Over thread-line's grid, whatever the order of the two utilities. */
     display: none !important;
   }
+}
+
+/* Écouter on the paper (home/listen.tsx): a circle in the text's line, the weight of the mockup's
+   glyphs. */
+@utility listen-line {
+  border: 1.4px solid currentColor;
 }
 
 /* The live moves to the next track: the cover comes into focus, the title rises. */

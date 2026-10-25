@@ -60,13 +60,13 @@ describe('NowPlayingView', () => {
 
     // The ring alone tells the waiting: the button already names what a press does.
     rerender(<NowPlayingView {...props({ listen: 'connecting' })} />);
-    expect(screen.getByRole('button', { name: 'Mettre en pause' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Arrêter le direct' })).toHaveAttribute(
       'aria-busy',
       'true'
     );
 
     rerender(<NowPlayingView {...props({ listen: 'playing' })} />);
-    expect(screen.getByRole('button', { name: 'Mettre en pause' })).not.toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Arrêter le direct' })).not.toHaveAttribute(
       'aria-busy',
       'true'
     );
@@ -172,9 +172,11 @@ describe('NowPlayingView', () => {
       .getByRole('img', { name: 'Pochette de Mimoun, Mickey 3D' })
       .getAttribute('sizes');
 
-    // Beside the thread (hero-split), the player's column; on a phone on its side, beside the
-    // title; then stacked, the line or the height the first lines of the thread leave.
-    const split = 'clamp(26rem, 77vh - 14.5rem, 42vw)';
+    // Beside the thread (hero-split), the player's column: the screen's height less the header,
+    // the title, the actions and some air, up to the mockup's 520 px and 42% of the width; on a
+    // phone on its side, beside the title; then stacked, the line or the height the first lines of
+    // the thread leave.
+    const split = 'clamp(20rem, 97vh - 17.5rem, min(32.5rem, 42vw))';
     expect(sizes).toBe(
       [
         `(min-width: 64rem) and (min-height: 30rem) ${split}`,

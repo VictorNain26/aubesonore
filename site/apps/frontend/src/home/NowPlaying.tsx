@@ -54,7 +54,7 @@ export interface NowPlayingViewProps {
 }
 
 /** The hero cover's width in each layout of the hero (design/tokens.css, hero-main and cover-fit). */
-const HERO_SPLIT_COVER = 'clamp(26rem, 77vh - 14.5rem, 42vw)';
+const HERO_SPLIT_COVER = 'clamp(20rem, 97vh - 17.5rem, min(32.5rem, 42vw))';
 const HERO_COVER_SIZES = [
   `(min-width: 64rem) and (min-height: 30rem) ${HERO_SPLIT_COVER}`,
   `(min-width: 48rem) and (orientation: landscape) and (min-height: 30rem) ${HERO_SPLIT_COVER}`,
@@ -63,11 +63,11 @@ const HERO_COVER_SIZES = [
   'min(100vw - 3rem, 100vh - 30rem)',
 ].join(', ');
 
-/** Écouter, the one round thing of the page: an ink disc, larger from md. */
+/** Écouter, the one round thing of the page: a circle in a line. */
 const LISTEN_DISC =
   'group ease-spring focus-visible:outline-accent shrink-0 rounded-full transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-95';
-/** 52 px on a phone (upright or on its side), 64, then 80 from md. */
-const DISC_SIZE = 'size-16 md:size-20 phone:size-13';
+/** 52 px on a phone (upright or on its side), 56 elsewhere, as the mockup draws it. */
+const DISC_SIZE = 'size-14 phone:size-13';
 
 /**
  * What plays now, the biggest thing on the page: the cover, « En direct » in its corner while on
@@ -108,7 +108,7 @@ export function NowPlayingView({
               caption={m.track_caption({ title: track.title, artist: track.artist })}
               priority
               // cover-fit (design/tokens.css): beside the thread, the player's column (the height
-              // the hero leaves, 77vh - 14.5rem, from 26rem to 42% of the screen); on a phone on
+              // the header, the title and the actions leave, up to 520 px); on a phone on
               // its side, the screen's height less the header's; stacked, the line less the
               // gutters or what the title, the actions and the thread's first lines leave of the
               // screen's height (player-room).
@@ -175,7 +175,7 @@ export function NowPlayingView({
             aria-busy={listen === 'connecting'}
             className={LISTEN_DISC}
           >
-            <ListenDisc state={listen} tone="ink" className={DISC_SIZE} />
+            <ListenDisc state={listen} tone="line" className={DISC_SIZE} />
           </button>
           {track && isOnline ? (
             <>
@@ -282,7 +282,7 @@ export function NowPlayingFallback({ resetErrorBoundary }: FallbackProps) {
             aria-busy={listen === 'connecting'}
             className={LISTEN_DISC}
           >
-            <ListenDisc state={listen} tone="ink" className={DISC_SIZE} />
+            <ListenDisc state={listen} tone="line" className={DISC_SIZE} />
           </button>
           <button type="button" onClick={resetErrorBoundary} className={TEXT_ACTION}>
             {m.error_retry()}
