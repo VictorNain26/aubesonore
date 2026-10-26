@@ -1,10 +1,15 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactElement } from 'react';
 import { render as rtlRender, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { JustBeforeView, type JustBeforeViewProps } from './JustBefore';
+import { http, HttpResponse } from 'msw';
+import { server } from '../mocks/server';
+import { makeNowPlaying } from '../mocks/handlers';
+import { useNowPlayingStore, type NowPlaying } from '../lib/azuracast';
+import { __resetNowPlayingStore } from '../lib/azuracast/store';
+import { JustBefore, JustBeforeView, type JustBeforeViewProps } from './JustBefore';
 
 const render = (ui: ReactElement) => rtlRender(ui, { wrapper: MemoryRouter });
 
@@ -76,5 +81,40 @@ describe('JustBeforeView', () => {
   it('shows nothing while no track played before', () => {
     const { container } = render(<JustBeforeView {...props({ track: null })} />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe('JustBefore', () => {
+  let batchRequests = 0;
+  beforeEach(() => {
+    batchRequests = 0;
+    server.use(
+      http.post('*/api/artist/pages', () => {
+        batchRequests++;
+        return HttpResponse.json({});
+      })
+    );
+    const now = Math.floor(Date.now() / 1000);
+    const np = makeNowPlaying() as unknown as NowPlaying;
+    np.now_playing = { ...np.now_playing, sh_id: 2, played_at: now - 30 };
+    np.song_history = [
+      {
+        ...np.now_playing,
+        sh_id: 1,
+        played_at: now - 300,
+        song: { ...np.now_playing.song, title: 'Really Doe', artist: 'Danny Brown' },
+      },
+    ];
+    useNowPlayingStore.setState({ data: np, isConnected: true, error: null });
+  });
+  afterEach(() => __resetNowPlayingStore());
+
+  it("finds the artist's page through the shared resolver, as the track on air does", async () => {
+    render(<JustBefore />);
+    expect(await screen.findByRole('link', { name: 'Danny Brown' })).toHaveAttribute(
+      'href',
+      '/artiste/danny-brown'
+    );
+    expect(batchRequests).toBe(0);
   });
 });

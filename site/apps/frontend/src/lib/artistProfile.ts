@@ -1,5 +1,4 @@
 import type { ArtistPageRef, ArtistProfile } from '@aubesonore/shared-types/client';
-import { object, record, safeParse, string } from 'valibot';
 import { getLocale, localizeHref, type Locale } from '@/paraglide/runtime.js';
 import { getJson, HttpError, readKnown } from './api';
 
@@ -64,25 +63,4 @@ export function resolveArtistPage(name: string): Promise<ArtistPageRef | null> {
     () => resolving.delete(trimmed)
   );
   return request;
-}
-
-const ArtistPagesSchema = record(string(), object({ id: string(), slug: string() }));
-
-/**
- * The pages of artists the antenna already played, from raw AzuraCast strings, in one
- * request. A name without a page is left out of the map.
- */
-export async function fetchArtistPages(
-  names: readonly string[],
-  signal?: AbortSignal
-): Promise<Map<string, ArtistPageRef>> {
-  const payload = await getJson<unknown>('/api/artist/pages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ names }),
-    signal: signal ?? null,
-  });
-  const parsed = safeParse(ArtistPagesSchema, payload);
-  if (!parsed.success) throw new Error('invalid payload');
-  return new Map(Object.entries(parsed.output));
 }

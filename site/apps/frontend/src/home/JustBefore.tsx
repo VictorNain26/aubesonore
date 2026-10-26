@@ -6,7 +6,7 @@ import { ARTIST_LINK } from '../design/classes';
 import { useLikeAction } from '../hooks/useLikeAction';
 import { artistPath } from '../lib/artistProfile';
 import { useLikedTracksStore, isTrackLiked, trackKey } from '../stores/likedTracksStore';
-import { useArtistPages } from './useArtistPages';
+import { useArtistPage } from '../hooks/useArtistPage';
 import { usePreviousTrack } from './usePreviousTrack';
 import * as m from '@/paraglide/messages.js';
 
@@ -86,8 +86,8 @@ export function JustBefore() {
   const entry = usePreviousTrack();
   const tracks = useLikedTracksStore((s) => s.tracks);
   const { likingTrackId, toggleLike } = useLikeAction();
-  const pages = useArtistPages(entry ? [entry.song.artist] : []);
-  const page = entry ? pages.get(entry.song.artist) : undefined;
+  // The same resolver as the track on air: the page it found then is reused, from its cache.
+  const page = useArtistPage(entry?.song.artist);
 
   return (
     <JustBeforeView
