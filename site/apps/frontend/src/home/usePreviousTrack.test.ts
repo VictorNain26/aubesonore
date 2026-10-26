@@ -75,4 +75,20 @@ describe('usePreviousTrack', () => {
     onAir(historyEntry(1, now), [historyEntry(1, now)]);
     expect(renderHook(() => usePreviousTrack()).result.current).toBeNull();
   });
+
+  it('is none off air: an hours-old track is not « just before » anything', () => {
+    const now = Math.floor(Date.now() / 1000);
+    onAir(historyEntry(5, now - 10), [historyEntry(4, now - 300)]);
+    useNowPlayingStore.setState((s) => ({ data: s.data && { ...s.data, is_online: false } }));
+    expect(renderHook(() => usePreviousTrack()).result.current).toBeNull();
+  });
+
+  it('is none while no track is on air', () => {
+    const now = Math.floor(Date.now() / 1000);
+    onAir(historyEntry(5, now - 10), [historyEntry(4, now - 300)]);
+    useNowPlayingStore.setState((s) => ({
+      data: s.data && { ...s.data, now_playing: undefined as unknown as NowPlaying['now_playing'] },
+    }));
+    expect(renderHook(() => usePreviousTrack()).result.current).toBeNull();
+  });
 });
