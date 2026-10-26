@@ -75,9 +75,6 @@ export const handlers = [
   http.get(`${AZURA}/api/nowplaying_static/aubesonore.json`, () =>
     HttpResponse.json(makeNowPlaying())
   ),
-
-  // Radio history (proxied through the backend — AzuraCast key stays server-side)
-  http.get(`${API}/api/radio/history`, () => HttpResponse.json([])),
 ];
 
 export function makeNowPlaying() {

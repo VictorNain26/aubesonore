@@ -39,16 +39,21 @@ beforeEach(() => {
   const np = makeNowPlaying() as unknown as NowPlaying;
   np.now_playing = { ...np.now_playing, sh_id: 7, played_at: now - 60 };
   np.now_playing.song = { ...np.now_playing.song, title: 'Nüchtern', artist: 'Die Sterne' };
-  np.song_history = [];
+  np.song_history = [
+    {
+      ...np.now_playing,
+      sh_id: 6,
+      played_at: now - 300,
+      song: { ...np.now_playing.song, title: 'Mimoun', artist: 'Mickey 3D' },
+    },
+  ];
   useNowPlayingStore.setState({ data: np, isConnected: true, error: null });
   server.use(
     // The app's poller asks the live too: the same track.
     http.get('*/api/nowplaying_static/aubesonore.json', () => HttpResponse.json(np)),
-    http.get(`${API}/api/radio/history`, () => HttpResponse.json([])),
     http.get(`${API}/api/trends`, () =>
       HttpResponse.json({
         week: [{ title: 'Oh No', artist: 'Foxygen', artworkUrl: null, likes: 2, artistPage: null }],
-        allTime: [],
       })
     )
   );
@@ -61,15 +66,17 @@ afterEach(() => {
 });
 
 describe('HomePage', { timeout: PAGE_TEST_TIMEOUT }, () => {
-  it('puts the promise, the track on air, the thread and the ranking on one page', async () => {
+  it('puts the promise, the track on air, the one before it and the week on one page', async () => {
     await openHome();
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Une aube à chaque titre.');
     expect(screen.queryByText(/pas encore de nom/)).not.toBeInTheDocument();
     expect(screen.getAllByText('Nüchtern').length).toBeGreaterThan(0);
-    expect(screen.getByRole('heading', { name: 'Depuis l’aube' })).toBeInTheDocument();
-    expect(screen.getByText('Oh No')).toBeInTheDocument();
-    expect(screen.getByText('gardé 2 fois')).toBeInTheDocument();
+    const before = screen.getByRole('region', { name: 'Juste avant' });
+    expect(before).toHaveTextContent('Mimoun');
+    expect(before).not.toHaveTextContent('Nüchtern');
+    expect(screen.queryByRole('heading', { name: 'Depuis l’aube' })).not.toBeInTheDocument();
+    expect(screen.getAllByText('Oh No').length).toBeGreaterThan(0);
   });
 
   it('switches the page to English from the footer', async () => {

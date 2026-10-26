@@ -69,6 +69,13 @@ describe('PlayerBarView', () => {
     expect(screen.getByText('Écouter')).toBeInTheDocument();
   });
 
+  it('offers to stop the live while it plays, never to pause it: a press rejoins the live', () => {
+    render(<PlayerBarView {...props({ track: null, listen: 'playing' })} />);
+    expect(screen.getByRole('button', { name: 'Arrêter le direct' })).toBeInTheDocument();
+    expect(screen.getByText('Arrêter')).toBeInTheDocument();
+    expect(screen.queryByText('Pause')).not.toBeInTheDocument();
+  });
+
   it('is inert while hidden, so nothing in it can be focused', () => {
     render(<PlayerBarView {...props({ isHidden: true })} />);
     expect(screen.getByRole('region', { hidden: true })).toHaveAttribute('inert');

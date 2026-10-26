@@ -29,7 +29,8 @@ describe('entry-server', () => {
     ]);
     // The welcome is its one sentence: no line under it.
     expect(html).not.toContain('Des sons qui n’ont pas encore de nom pour vous.');
-    expect(html).toContain('Depuis l’aube');
+    // The track before the one on air comes with the live payload, after the page is drawn.
+    expect(html).not.toContain('Depuis l’aube');
   });
 
   it('renders the English home page as static HTML, its one heading the welcome line', async () => {
@@ -38,7 +39,8 @@ describe('entry-server', () => {
       expect.stringMatching(/>A dawn with every track\.<\/h1>$/),
     ]);
     expect(html).not.toContain('Sounds you don’t have a name for yet.');
-    expect(html).toContain('Most kept');
+    // The week comes with its data, and only when it holds a kept track (home/MostKept.tsx).
+    expect(html).not.toContain('Most kept');
   });
 
   it('marks the language of the page as the current one, not the language of the first render', async () => {

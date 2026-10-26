@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import * as m from '@/paraglide/messages.js';
 
-/** The ink pill that starts the live in the phone's track sheet. */
+/** The ink pill that starts the live, its disc and its word: the hero's, and the phone's sheet's. */
 export const LISTEN_PILL =
   'group bg-accent text-on-accent ease-spring focus-visible:outline-accent flex h-14 w-full items-center gap-3 rounded-full py-1.5 pr-6 pl-1.5 transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95 md:w-auto';
 
@@ -12,13 +12,16 @@ export function listenState(isPlaying: boolean, isConnecting: boolean): ListenSt
   return isPlaying ? 'playing' : 'idle';
 }
 
-/** The action the button does now: from the click on it pauses, the ring tells the waiting. */
+/**
+ * The action the button does now: from the click on it stops the live (the player has no pause:
+ * a press after rejoins the live where it is), the ring tells the waiting.
+ */
 export function listenLabel(state: ListenState): string {
-  return state === 'idle' ? m.player_listen() : m.player_listening();
+  return state === 'idle' ? m.player_listen() : m.player_stop();
 }
 
 export function listenAria(state: ListenState): string {
-  return state === 'idle' ? m.player_listen_aria() : m.player_pause_aria();
+  return state === 'idle' ? m.player_listen_aria() : m.player_stop_aria();
 }
 
 // A third of the disc: 16 px in the bar's, about 27 in the hero's.
@@ -26,7 +29,7 @@ const GLYPH =
   'ease-out-quart absolute inset-0 m-auto size-1/3 transition-[opacity,scale] duration-200';
 const SHOWN = 'scale-100 opacity-100';
 const HIDDEN = 'scale-50 opacity-0';
-// While the live plays, the bars give way to the pause glyph under the pointer or the focus:
+// While the live plays, the bars give way to the stop glyph under the pointer or the focus:
 // the button shows what is happening, then what a press does.
 const ON_PRESS_HIDE =
   'group-hover:scale-50 group-hover:opacity-0 group-focus-visible:scale-50 group-focus-visible:opacity-0';
@@ -41,7 +44,7 @@ const TONE = {
 
 /**
  * The disc of Écouter, paper on the ink bar and in the sheet's pill, ink on the hero's paper, with
- * the play glyph; three live bars while the stream plays, the pause glyph when the pointer or the
+ * the play glyph; three live bars while the stream plays, the stop square when the pointer or the
  * focus is on its button (which carries `group`); a thin ring turns while the stream connects. The
  * glyphs cross-fade instead of swapping.
  */
@@ -95,8 +98,7 @@ export function ListenDisc({
           state === 'connecting' ? SHOWN : state === 'playing' ? cn(HIDDEN, ON_PRESS_SHOW) : HIDDEN
         )}
       >
-        <rect x="4.5" y="3" width="3.6" height="14" rx="1" fill="currentColor" />
-        <rect x="11.9" y="3" width="3.6" height="14" rx="1" fill="currentColor" />
+        <rect x="4" y="4" width="12" height="12" rx="1.5" fill="currentColor" />
       </svg>
     </span>
   );

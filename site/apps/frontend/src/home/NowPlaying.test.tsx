@@ -25,7 +25,6 @@ function props(overrides: Partial<NowPlayingViewProps> = {}): NowPlayingViewProp
     isKept: false,
     isKeeping: false,
     onToggleKeep: vi.fn(),
-    onShare: vi.fn(),
     artistHref: null,
     ...overrides,
   };
@@ -51,36 +50,58 @@ describe('NowPlayingView', () => {
     expect(screen.getAllByText(/four to the floor/i)).toHaveLength(1);
   });
 
-  it('puts Écouter under the title and names the action, not the waiting', async () => {
+  it('says « En direct » above the title while the station is on air, and not off air', () => {
+    const { rerender } = render(<NowPlayingView {...props()} />);
+    const live = screen.getByText('En direct');
+    const title = screen.getByRole('heading', { name: 'Mimoun' });
+    expect(live.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    rerender(<NowPlayingView {...props({ isOnline: false })} />);
+    expect(screen.queryByText('En direct')).not.toBeInTheDocument();
+  });
+
+  it('draws Écouter as a pill that says its word, and Arrêter while the live plays', async () => {
     const onToggleListen = vi.fn();
     const { rerender } = render(<NowPlayingView {...props({ onToggleListen })} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Écouter le direct' }));
+    const listen = screen.getByRole('button', { name: 'Écouter le direct' });
+    expect(listen).toHaveTextContent('Écouter');
+    await userEvent.click(listen);
     expect(onToggleListen).toHaveBeenCalledOnce();
 
     // The ring alone tells the waiting: the button already names what a press does.
     rerender(<NowPlayingView {...props({ listen: 'connecting' })} />);
-    expect(screen.getByRole('button', { name: 'Mettre en pause' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Arrêter le direct' })).toHaveAttribute(
       'aria-busy',
       'true'
     );
 
+    // The player has no pause, only a stop: a press after rejoins the live where it is.
     rerender(<NowPlayingView {...props({ listen: 'playing' })} />);
-    expect(screen.getByRole('button', { name: 'Mettre en pause' })).not.toHaveAttribute(
-      'aria-busy',
+    const stop = screen.getByRole('button', { name: 'Arrêter le direct' });
+    expect(stop).not.toHaveAttribute('aria-busy', 'true');
+    expect(stop).toHaveTextContent('Arrêter');
+    expect(screen.queryByText('Pause')).not.toBeInTheDocument();
+  });
+
+  it('keeps the track with a heart named for its title, the kept state in aria-pressed', async () => {
+    const onToggleKeep = vi.fn();
+    const { rerender } = render(<NowPlayingView {...props({ onToggleKeep })} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Garder «\u00a0Mimoun\u00a0»' }));
+    expect(onToggleKeep).toHaveBeenCalledOnce();
+
+    rerender(<NowPlayingView {...props({ isKept: true })} />);
+    expect(screen.getByRole('button', { name: 'Garder «\u00a0Mimoun\u00a0»' })).toHaveAttribute(
+      'aria-pressed',
       'true'
     );
   });
 
-  it('keeps a constant label and carries the kept state in aria-pressed', async () => {
-    const onToggleKeep = vi.fn();
-    const { rerender } = render(<NowPlayingView {...props({ onToggleKeep })} />);
-
-    await userEvent.click(screen.getByRole('button', { name: 'Garder' }));
-    expect(onToggleKeep).toHaveBeenCalledOnce();
-
-    rerender(<NowPlayingView {...props({ isKept: true })} />);
-    expect(screen.getByRole('button', { name: 'Garder' })).toHaveAttribute('aria-pressed', 'true');
+  it('offers neither Partager nor Diffuser: the hero holds Écouter, Garder and the volume', () => {
+    render(<NowPlayingView {...props()} />);
+    expect(screen.queryByRole('button', { name: 'Partager' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Diffuser/ })).not.toBeInTheDocument();
   });
 
   it("links the artist's name to their page only once it exists", () => {
@@ -113,26 +134,6 @@ describe('NowPlayingView', () => {
     expect(onToggleMute).toHaveBeenCalledOnce();
   });
 
-  it('names Garder, Partager and Diffuser for screen readers, also when they show as icons alone', () => {
-    const diffusion = {
-      kind: 'chromecast' as const,
-      found: true,
-      device: null,
-      connecting: false,
-      onOpen: vi.fn(),
-    };
-    render(<NowPlayingView {...props({ diffusion })} />);
-
-    // Under 30rem of row the words are visually hidden (design/tokens.css, action-label), never
-    // taken out of the accessibility tree.
-    for (const name of ['Garder', 'Partager', 'Diffuser sur un appareil']) {
-      expect(screen.getByRole('button', { name })).toBeInTheDocument();
-    }
-    for (const word of ['Garder', 'Partager', 'Diffuser']) {
-      expect(screen.getByText(word)).not.toHaveAttribute('aria-hidden');
-    }
-  });
-
   it('says radio silence when the station is off air', () => {
     render(<NowPlayingView {...props({ isOnline: false })} />);
     expect(screen.getByText('Silence radio. Retour dans un instant.')).toBeInTheDocument();
@@ -145,7 +146,7 @@ describe('NowPlayingView', () => {
 
   it('beats the heart when a track is kept, not when it loads kept', () => {
     const { rerender } = render(<NowPlayingView {...props({ isKept: true })} />);
-    const keep = () => screen.getByRole('button', { name: 'Garder' });
+    const keep = () => screen.getByRole('button', { name: 'Garder «\u00a0Mimoun\u00a0»' });
     expect(keep()).not.toContainHTML('keep-pop');
 
     rerender(<NowPlayingView {...props({ isKept: false })} />);
@@ -153,25 +154,21 @@ describe('NowPlayingView', () => {
     expect(keep()).toContainHTML('keep-pop');
   });
 
-  it('fetches the cover at the width the hero gives it, side by side or stacked', () => {
+  it('fetches the cover at the width the hero gives it, beside the column or above it', () => {
     const art = 'https://is1-ssl.mzstatic.com/image/thumb/Music/aa/bb/x.jpg/600x600bb.jpg';
     render(<NowPlayingView {...props({ track: { ...props().track!, art } })} />);
-    const sizes = screen
-      .getByRole('img', { name: 'Pochette de Mimoun, Mickey 3D' })
-      .getAttribute('sizes');
+    const img = screen.getByRole('img', { name: 'Pochette de Mimoun, Mickey 3D' });
 
-    // Side by side (hero-wide), the room's height or half its width, whichever is shorter; then,
-    // stacked, the line or the height the rows leave, from md and on a phone.
-    const wide = 'min(79vh - 6.5rem, min(100vw - 5rem, 100rem) / 2)';
-    expect(sizes).toBe(
+    // Beside the column (hero-split), the screen's height under the header, or the width the
+    // column leaves; above it, the screen's width, held under the height the words need.
+    expect(img.getAttribute('sizes')).toBe(
       [
-        `(min-width: 64rem) ${wide}`,
-        `(min-width: 48rem) and (orientation: landscape) ${wide}`,
-        `(orientation: landscape) and (max-height: 30rem) ${wide}`,
-        '(min-width: 48rem) min(100vw - 5rem, 75vh - 18rem)',
-        'min(100vw - 3rem, 74vh - 13.75rem)',
+        '(min-width: 48rem) and (orientation: landscape) min(100vh - 4.5rem, 100vw - 32rem)',
+        'min(100vw, max(16rem, 100vh - 27rem))',
       ].join(', ')
     );
+    // The page's largest image: fetched first.
+    expect(img).toHaveAttribute('fetchpriority', 'high');
   });
 
   it('keeps the large cover open into the next track, showing the new one', async () => {

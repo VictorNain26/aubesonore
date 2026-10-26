@@ -57,20 +57,16 @@ export function CastControl({
             }
           >
             {icon}
-            {/* The bar shows the word once there is room for it, the device always; the hero's
-                actions hide it to the eye on a phone (data-label, hero-actions). */}
-            <span
-              data-label
-              className={cn(variant === 'bar' && !connected && 'sr-only md:not-sr-only')}
-            >
+            {/* The bar shows the word once there is room for it, the device always. */}
+            <span className={cn(variant === 'bar' && !connected && 'sr-only md:not-sr-only')}>
               {label}
             </span>
           </button>
         }
       />
       <Popover.Portal>
-        {/* 16 px from the screen's edges, the page's gutter (Base UI's default is 5). In the hero
-            and the sheet it opens under the button, off the title; the bar sits at the bottom. */}
+        {/* 16 px from the screen's edges, the page's gutter (Base UI's default is 5). In the sheet
+            it opens under the button, off the title; the bar sits at the bottom. */}
         <Popover.Positioner
           side={variant === 'bar' ? 'top' : 'bottom'}
           sideOffset={8}

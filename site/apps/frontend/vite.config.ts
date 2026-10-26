@@ -14,16 +14,10 @@ const { meta_description: description } = JSON.parse(
   readFileSync(new URL('./messages/fr.json', import.meta.url), 'utf8')
 ) as { meta_description: string };
 
-// What a fresh database has no answer to: Musilogy, the artist pages, today's plays and the
-// trends, and the covers stored with plays. A listener's own data (session, kept tracks) and the
+// What a fresh database has no answer to: Musilogy, the artist pages, the trends, and the covers
+// stored with plays. A listener's own data (session, kept tracks) and the
 // artist links of the thread stay on the local backend.
-const PUBLIC_READS = [
-  '^/api/musilogy/',
-  '^/api/artist/page/',
-  '^/api/radio/history',
-  '^/api/trends',
-  '^/api/covers/',
-];
+const PUBLIC_READS = ['^/api/musilogy/', '^/api/artist/page/', '^/api/trends', '^/api/covers/'];
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');

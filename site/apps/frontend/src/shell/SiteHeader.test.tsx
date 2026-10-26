@@ -147,4 +147,15 @@ describe('SiteHeader', () => {
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'AubeSonore' })).toHaveAttribute('href', '/');
   });
+
+  it("says the station's line beside the name on the home page, as the page's one heading", () => {
+    const { unmount } = render(<SiteHeader tagline />, { wrapper: MemoryRouter });
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Une aube à chaque titre.');
+    // Beside the link, not in it: the link keeps the site's name alone.
+    expect(screen.getByRole('link', { name: 'AubeSonore' })).not.toHaveTextContent(/aube à/);
+    unmount();
+
+    render(<SiteHeader />, { wrapper: MemoryRouter });
+    expect(screen.queryByText('Une aube à chaque titre.')).not.toBeInTheDocument();
+  });
 });

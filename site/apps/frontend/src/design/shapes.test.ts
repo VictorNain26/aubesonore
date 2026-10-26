@@ -11,10 +11,8 @@ import { describe, expect, it } from 'vitest';
  */
 const DISCS: Record<string, string> = {
   'home/listen.tsx': 'the Écouter pill, its disc and the live bars',
-  'home/NowPlaying.tsx': 'the play disc on air',
+  'home/NowPlaying.tsx': 'the live dot above the title, and the ring of Garder beside Écouter',
   'home/Horizon.tsx': 'the now dot on the horizon',
-  'home/DayLine.tsx': 'the now dot on the day line',
-  'home/SinceDawn.tsx': 'the keep button of a track heard',
   'shell/PlayerBar.tsx': "the player bar's disc and controls",
   'shell/NowPlayingSheet.tsx': "the player sheet's controls and handle",
   'shell/VolumeControl.tsx': "the player's volume button",
