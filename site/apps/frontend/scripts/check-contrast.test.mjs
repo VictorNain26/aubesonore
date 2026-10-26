@@ -19,6 +19,7 @@ const day = {
   'on-bar-muted': 'var(--on-accent-muted)',
   dawn: 'oklch(0.82 0.11 55)',
   'dawn-ink': 'oklch(0.6 0.13 45)',
+  'light-veil-top': 'oklch(0.93 0.018 60 / 0.55)',
 };
 const night = {
   surface: 'oklch(0.235 0.045 268)',
@@ -32,6 +33,7 @@ const night = {
   'on-bar-muted': 'var(--text-muted)',
   dawn: 'oklch(0.62 0.12 45)',
   'dawn-ink': 'var(--dawn)',
+  'light-veil-top': 'oklch(0.18 0.04 268 / 0.38)',
 };
 const decls = (vars) =>
   Object.entries(vars)
@@ -91,6 +93,15 @@ describe('checkTokens', () => {
     // The mockup's ink, 2.3:1 on the paper: the wave alone says which page is open (WCAG 1.4.11).
     const rows = checkTokens(css({ ...day, 'dawn-ink': 'oklch(0.7 0.13 50)' }, night));
     expect(failures(rows)).toEqual(['day dawn-ink/surface']);
+  });
+
+  it("fails a veil the hero's words do not read on, the light dimmed to nothing", () => {
+    // The light is dimmed per cover down to the veil over the paper (home/lightStrength.ts): that
+    // floor must hold the words. A veil of the ink by day sinks them.
+    const rows = checkTokens(
+      css({ ...day, 'light-veil-top': 'oklch(0.45 0.05 270 / 0.55)' }, night)
+    );
+    expect(failures(rows)).toEqual(['day text-muted/veil over the paper']);
   });
 
   it('refuses tokens without a night block', () => {

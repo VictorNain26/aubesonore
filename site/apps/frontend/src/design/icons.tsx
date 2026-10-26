@@ -73,11 +73,11 @@ export function SearchIcon(props: IconProps) {
   );
 }
 
-/** Écouter: the filled triangle of the listen disc, its corners rounded by the stroke. */
+/** Écouter sur YouTube: a triangle in the line, as Écouter's own (home/listen.tsx). */
 export function PlayIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M5.5 3.5 L16 10 L5.5 16.5 Z" fill="currentColor" />
+      <path d="M6 4 L16 10 L6 16 Z" />
     </Icon>
   );
 }

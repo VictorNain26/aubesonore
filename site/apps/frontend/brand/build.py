@@ -48,7 +48,7 @@ ROSE, LILAC = "#EDA3AF", "#A894C2"
 
 # The wordmark: Fraunces at its display size, weight 560, softness 60, without its wonky letters,
 # tracking −2 %.
-WORD, TRACKING = "aubesonore", -0.02
+WORD, TRACKING = "AubeSonore", -0.02
 AXES = {"opsz": 144, "wght": 560, "SOFT": 60, "WONK": 0}
 # The line's weight on the 512 grid: the « e »'s crossbar of the first wordmark (Bricolage
 # Grotesque, 62 units under a 702.2-unit « b »), kept so the symbol stays the same drawing whatever
@@ -308,7 +308,7 @@ def main() -> None:
     px16 = Pixel16()
 
     # The lockup, in font units: the horizon on the baseline, the sun up to the « b »'s ascender,
-    # half an x-height between the line's end and the « a ».
+    # half an x-height between the line's end and the « A ».
     sx, sy, sw, sh = master.box()
     space = metrics["xheight"] / 2
     to_word = Map(scale=unit, dx=-space - sw * unit - sx * unit, dy=-master.y * unit)
