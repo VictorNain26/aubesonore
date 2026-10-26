@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { SiteHeader } from './SiteHeader';
@@ -157,5 +157,29 @@ describe('SiteHeader', () => {
 
     render(<SiteHeader />, { wrapper: MemoryRouter });
     expect(screen.queryByText('Une aube à chaque titre.')).not.toBeInTheDocument();
+  });
+
+  it('keeps the line for the page at rest only: the header back over the page stays compact', async () => {
+    render(<SiteHeader tagline />, { wrapper: MemoryRouter });
+    const line = screen.getByRole('heading', { level: 1 });
+    expect(line).not.toHaveClass('sr-only');
+
+    // Down the page, then back up: the header comes back over it, fixed.
+    const scrollTo = async (y: number) => {
+      await act(async () => {
+        Object.defineProperty(window, 'scrollY', { value: y, configurable: true });
+        window.dispatchEvent(new Event('scroll'));
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      });
+    };
+    await scrollTo(400);
+    await scrollTo(300);
+    expect(screen.getByRole('banner')).toHaveClass('fixed');
+    // Still the page's heading for screen readers, out of the eye's way.
+    expect(line).toHaveClass('sr-only');
+    expect(line).toHaveTextContent('Une aube à chaque titre.');
+
+    await scrollTo(0);
+    expect(line).not.toHaveClass('sr-only');
   });
 });

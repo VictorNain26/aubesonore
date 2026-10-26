@@ -62,7 +62,14 @@ export function SiteHeader({ tagline = false }: { tagline?: boolean }) {
   const brand = tagline ? (
     <span className="flex min-w-0 flex-col gap-0.75 md:flex-row md:items-baseline md:gap-3.5">
       {link}
-      <h1 className="font-display text-tagline text-text-muted m-0 font-normal italic">
+      {/* At rest only: the header back over the page stays one compact row. The page's heading
+          all the same, for screen readers. */}
+      <h1
+        className={cn(
+          'font-display text-tagline text-text-muted m-0 font-normal italic',
+          !atRest && 'sr-only'
+        )}
+      >
         {m.hero_title()}
       </h1>
     </span>
