@@ -12,6 +12,8 @@ import { artistPath } from '../lib/artistProfile';
 import { CoverOpenLarge } from '../design/CoverOpenLarge';
 import { ARTIST_LINK, TEXT_ACTION } from '../design/classes';
 import { VolumeControl, type VolumeControlProps } from '../shell/VolumeControl';
+import { CastControl } from '../shell/CastControl';
+import { useDiffusion, type Diffusion } from '../hooks/useDiffusion';
 import {
   LISTEN_PILL,
   ListenDisc,
@@ -52,6 +54,11 @@ export interface NowPlayingViewProps {
   hasChanged?: boolean;
   /** The hero's own volume: the player bar stays away while the hero shows. */
   volume: Omit<VolumeControlProps, 'className' | 'showLevel'>;
+  /**
+   * AirPlay or Chromecast, wherever the browser can cast, as Google's checklist asks: with no
+   * device found, its help says what to check (shell/CastControl.tsx).
+   */
+  diffusion?: Diffusion | null;
   /** The block of the words and Écouter, which the hero watches for the player bar. */
   liveRef?: Ref<HTMLDivElement> | undefined;
 }
@@ -89,8 +96,8 @@ function ListenPill({ listen, onToggle }: { listen: ListenState; onToggle: () =>
 /**
  * What plays now: the cover, square, the largest thing on the page and nothing ever written over
  * it; then, in the column beside it (under it on a phone), « En direct », the title, the artist (a
- * link to their page once it exists) and its album, and the ink Écouter pill with Garder and the
- * volume. Two blocks of the hero's grid (design/tokens.css, hero-cover and hero-live).
+ * link to their page once it exists) and its album, and the ink Écouter pill with Garder, the
+ * volume and Diffuser. Two blocks of the hero's grid (design/tokens.css, hero-cover and hero-live).
  */
 export function NowPlayingView({
   track,
@@ -104,6 +111,7 @@ export function NowPlayingView({
   artistHref,
   hasChanged = false,
   volume,
+  diffusion = null,
   liveRef,
 }: NowPlayingViewProps) {
   const trackKey = track ? `${track.artist}|${track.title}` : 'none';
@@ -188,6 +196,7 @@ export function NowPlayingView({
           ) : null}
           {/* A phone sets the level with its own buttons (and iOS ignores it from a page). */}
           <VolumeControl {...volume} showLevel className="phone:hidden ml-1.5" />
+          {diffusion ? <CastControl diffusion={diffusion} variant="hero" /> : null}
         </div>
       </div>
     </>
@@ -211,6 +220,7 @@ export function NowPlaying({ liveRef }: { liveRef?: Ref<HTMLDivElement> }) {
   );
   const volume = useVolume();
   const { isLiked, isLiking, handleToggleLike } = useTrackActions();
+  const diffusion = useDiffusion();
   const artistPage = useArtistPage(artist);
   const trackKey = title && artist ? `${artist}|${title}` : null;
   const [firstTrackKey, setFirstTrackKey] = useState<string | null>(null);
@@ -229,6 +239,7 @@ export function NowPlaying({ liveRef }: { liveRef?: Ref<HTMLDivElement> }) {
       artistHref={artistPage ? artistPath(artistPage) : null}
       hasChanged={firstTrackKey !== null && trackKey !== firstTrackKey}
       volume={volume}
+      diffusion={diffusion}
       liveRef={liveRef}
     />
   );

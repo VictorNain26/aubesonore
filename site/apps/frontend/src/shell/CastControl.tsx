@@ -21,8 +21,11 @@ export function CastControl({
   variant,
 }: {
   diffusion: Diffusion;
-  /** `bar`: the dark player bar, icon first. `text`: a text action on the page or the sheet. */
-  variant: 'bar' | 'text';
+  /**
+   * `bar`: the dark player bar, icon first. `text`: a text action in the sheet. `hero`: a text
+   * action beside the hero's volume, its word on a computer, the icon alone on a phone.
+   */
+  variant: 'bar' | 'text' | 'hero';
 }) {
   const [helpOpen, setHelpOpen] = useState(false);
   const { kind, found, device, connecting, onOpen } = diffusion;
@@ -57,8 +60,14 @@ export function CastControl({
             }
           >
             {icon}
-            {/* The bar shows the word once there is room for it, the device always. */}
-            <span className={cn(variant === 'bar' && !connected && 'sr-only md:not-sr-only')}>
+            {/* The bar shows the word once there is room for it, the device always; the hero, on a
+                computer. */}
+            <span
+              className={cn(
+                variant === 'bar' && !connected && 'sr-only md:not-sr-only',
+                variant === 'hero' && 'phone:sr-only'
+              )}
+            >
               {label}
             </span>
           </button>

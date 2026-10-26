@@ -98,10 +98,34 @@ describe('NowPlayingView', () => {
     );
   });
 
-  it('offers neither Partager nor Diffuser: the hero holds Écouter, Garder and the volume', () => {
+  it('offers no Partager: the hero holds Écouter, Garder, the volume and Diffuser', () => {
     render(<NowPlayingView {...props()} />);
     expect(screen.queryByRole('button', { name: 'Partager' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Diffuser/ })).not.toBeInTheDocument();
+  });
+
+  it('offers Diffuser, with its word, wherever the browser can cast, a device found or not', () => {
+    const diffusion = (found: boolean, device: string | null = null) => ({
+      kind: 'chromecast' as const,
+      found,
+      device,
+      connecting: false,
+      onOpen: vi.fn(),
+    });
+    // A browser that cannot cast: no button.
+    const { rerender } = render(<NowPlayingView {...props({ diffusion: null })} />);
+    expect(screen.queryByRole('button', { name: /Diffuser|Sur / })).not.toBeInTheDocument();
+
+    // No device on the network yet: the button is there, its help says what to check.
+    rerender(<NowPlayingView {...props({ diffusion: diffusion(false) })} />);
+    expect(screen.getByRole('button', { name: 'Diffuser sur un appareil' })).toHaveTextContent(
+      'Diffuser'
+    );
+
+    rerender(<NowPlayingView {...props({ diffusion: diffusion(true) })} />);
+    expect(screen.getByRole('button', { name: 'Diffuser sur un appareil' })).toBeInTheDocument();
+
+    rerender(<NowPlayingView {...props({ diffusion: diffusion(false, 'Salon') })} />);
+    expect(screen.getByRole('button', { name: /Salon/ })).toBeInTheDocument();
   });
 
   it("links the artist's name to their page only once it exists", () => {
