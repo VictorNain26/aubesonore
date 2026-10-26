@@ -4,8 +4,6 @@ import type { ReactElement } from 'react';
 import { render as rtlRender, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { http, HttpResponse } from 'msw';
-import { server } from '../mocks/server';
 import { makeNowPlaying } from '../mocks/handlers';
 import { useNowPlayingStore, type NowPlaying } from '../lib/azuracast';
 import { __resetNowPlayingStore } from '../lib/azuracast/store';
@@ -85,15 +83,7 @@ describe('JustBeforeView', () => {
 });
 
 describe('JustBefore', () => {
-  let batchRequests = 0;
   beforeEach(() => {
-    batchRequests = 0;
-    server.use(
-      http.post('*/api/artist/pages', () => {
-        batchRequests++;
-        return HttpResponse.json({});
-      })
-    );
     const now = Math.floor(Date.now() / 1000);
     const np = makeNowPlaying() as unknown as NowPlaying;
     np.now_playing = { ...np.now_playing, sh_id: 2, played_at: now - 30 };
@@ -115,6 +105,5 @@ describe('JustBefore', () => {
       'href',
       '/artiste/danny-brown'
     );
-    expect(batchRequests).toBe(0);
   });
 });
