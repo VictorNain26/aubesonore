@@ -4,24 +4,17 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import { forgetHomeData, homeLoader } from './homeData';
 
-const HISTORY_URL = 'http://localhost:3000/api/radio/history';
 const TRENDS_URL = 'http://localhost:3000/api/trends';
 const TRENDS = { week: [] };
 
 const load = () => homeLoader({ request: new Request('http://localhost/') });
 
-let historyCalls = 0;
 let trendsCalls = 0;
 
 beforeEach(() => {
   forgetHomeData();
-  historyCalls = 0;
   trendsCalls = 0;
   server.use(
-    http.get(HISTORY_URL, () => {
-      historyCalls++;
-      return HttpResponse.json([]);
-    }),
     http.get(TRENDS_URL, () => {
       trendsCalls++;
       return HttpResponse.json(TRENDS);
@@ -34,9 +27,9 @@ afterEach(() => {
 });
 
 describe("the home page's loader", () => {
-  it("brings the week's ranking, and no history: the live payload says the track before", async () => {
+  it("brings the week's ranking alone: the live payload says the track before", async () => {
     expect(await load()).toEqual({ trends: TRENDS });
-    expect(historyCalls).toBe(0);
+    expect(trendsCalls).toBe(1);
   });
 
   it('says the ranking failed when it did not answer, and asks again at the next visit', async () => {
