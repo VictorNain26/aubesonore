@@ -16,8 +16,10 @@ const MIN_INTERVAL_MS = 1_000;
 let intervalMs = MIN_INTERVAL_MS;
 
 /**
- * A batch run beside the backend (`artists:resolve`, another process behind the same address)
- * takes every other second, so the two together stay within MusicBrainz's one request a second.
+ * A batch run beside the backend (`artists:resolve`, another process behind the same address) asks
+ * once every two seconds. No pacing is shared across processes: while the backend's own jobs ask
+ * at their full rate (the kept-cover pass), the address goes past one a second and MusicBrainz
+ * declines, which the retries below absorb. The pass is run once that job is done.
  */
 export function shareRateWithBackend(): void {
   intervalMs = 2 * MIN_INTERVAL_MS;
@@ -29,6 +31,8 @@ const flight = createSingleFlight<Lookup<unknown>>();
 // one, and without a bound a burst of cold pages (a crawler) delays them all.
 const MAX_QUEUE_MS = 3_000;
 let nextSlotAt = 0;
+const realSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+let sleep = realSleep;
 
 /**
  * The wait before this request's slot, or null when the queue is already full. Timed on the
@@ -43,32 +47,52 @@ function takeSlot(): number | null {
   return scheduledAt - now;
 }
 
+// Above its rate, MusicBrainz declines every request from the address with a 503 « until the rate
+// drops again » (Rate_Limiting, above). The rate is per address, shared with any other process
+// behind it (artists:resolve, a Musilogy build), which this throttle cannot see: a declined request
+// is asked again after 2, 4 then 8 s, each try still through the throttle, then fails. The page
+// names no Retry-After nor 429; either is honoured if it ever comes, the wait capped.
+const MAX_TRIES = 4;
+const FIRST_BACKOFF_MS = 2_000;
+const MAX_BACKOFF_MS = 16_000;
+
+/** The wait before the next try: the server's Retry-After in seconds, else the doubling backoff. */
+function backoffMs(response: Response, retry: number): number {
+  const asked = response.headers.get('retry-after')?.trim() ?? '';
+  const wait = /^\d+$/.test(asked) ? Number(asked) * 1000 : FIRST_BACKOFF_MS * 2 ** retry;
+  return Math.min(wait, MAX_BACKOFF_MS);
+}
+
 /** A 404 is a definitive miss; any other failure is retried on the next call. */
 async function fetchJson<T>(path: string): Promise<Lookup<T>> {
-  const delay = takeSlot();
-  if (delay === null) {
-    logger.warn('musicbrainz.queue_full', { path });
-    return { status: 'failed' };
-  }
-  if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+  for (let attempt = 1; ; attempt++) {
+    const delay = takeSlot();
+    if (delay === null) {
+      logger.warn('musicbrainz.queue_full', { path });
+      return { status: 'failed' };
+    }
+    if (delay > 0) await sleep(delay);
 
-  let response: Response;
-  try {
-    response = await fetch(`${MUSICBRAINZ_API}${path}`, {
-      headers: { 'User-Agent': env.OUTBOUND_USER_AGENT },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-  } catch (err) {
-    logger.warn('musicbrainz.network_error', { path, message: (err as Error).message });
-    return { status: 'failed' };
-  }
+    let response: Response;
+    try {
+      response = await fetch(`${MUSICBRAINZ_API}${path}`, {
+        headers: { 'User-Agent': env.OUTBOUND_USER_AGENT },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+    } catch (err) {
+      logger.warn('musicbrainz.network_error', { path, message: (err as Error).message });
+      return { status: 'failed' };
+    }
 
-  if (response.status === 404) return { status: 'none' };
-  if (!response.ok) {
-    logger.warn('musicbrainz.upstream_error', { path, status: response.status });
-    return { status: 'failed' };
+    if (response.status === 404) return { status: 'none' };
+    if (response.ok) return { status: 'found', value: (await response.json()) as T };
+    const declined = response.status === 503 || response.status === 429;
+    if (!declined || attempt === MAX_TRIES) {
+      logger.warn('musicbrainz.upstream_error', { path, status: response.status, attempt });
+      return { status: 'failed' };
+    }
+    await sleep(backoffMs(response, attempt - 1));
   }
-  return { status: 'found', value: (await response.json()) as T };
 }
 
 async function cached<V>(key: string, load: () => Promise<Lookup<V>>): Promise<Lookup<V>> {
@@ -269,4 +293,9 @@ export function findDeezerIdByMbid(mbid: string): Promise<Lookup<string>> {
 /** Test seam: the throttle is module state and would slow every later test. */
 export function __resetMusicbrainzThrottle(): void {
   nextSlotAt = 0;
+}
+
+/** Test seam: records the waits instead of sleeping them; null puts the timer back. */
+export function __useMusicbrainzSleep(fake: ((ms: number) => Promise<void>) | null): void {
+  sleep = fake ?? realSleep;
 }
