@@ -9,7 +9,9 @@ import { findTrackByIsrc, searchTrack, type DeezerTrackLink } from './deezerServ
 //
 // Odesli (song.link) closed its keyless API on 2026-07-31 (every call answers
 // 401 PUBLIC_API_ACCESS_DEPRECATED) and no longer issues keys. So:
-// - Apple Music: iTunes Search, which also gives the cover;
+// - Apple Music: iTunes Search, for the link only: its terms keep the album art for store
+//   promotion beside a store badge (performance-partners.apple.com/search-api), so a kept track's
+//   cover comes from the Cover Art Archive (keptTrackCovers.ts);
 // - Deezer: the track of the kept track's ISRC when it is known, an exact
 //   recording (the pipeline acquires every track from its Deezer page and
 //   writes that page's ISRC); else its public search, then that track's ISRC.
@@ -22,8 +24,6 @@ export const itunesCache = new TtlCache<ItunesResult | null>(SEVEN_DAYS_MS);
 
 export interface TrackLinks {
   platformLinks: PlatformLinks;
-  /** Cover of the artist-verified iTunes candidate (600px). */
-  artworkUrl?: string;
 }
 
 /** A lookup failed for a reason that may pass: the result must not be cached. */
@@ -52,27 +52,19 @@ interface ItunesSearchResponse {
     trackViewUrl: string;
     trackName: string;
     artistName: string;
-    artworkUrl100?: string;
   }>;
 }
 
 interface ItunesResult {
   trackViewUrl: string;
-  artworkUrl: string | null;
   /** The pick also matches the queried title, not just the artist. */
   exactSong: boolean;
 }
 
 /**
- * The artist is the only reason to reject a candidate (another song of the
- * same artist still gives a fitting cover); the title picks among them and
- * decides whether the Apple Music link points to this very song.
+ * The artist rejects a candidate; the title picks among the rest and decides
+ * whether the Apple Music link points to this very song.
  */
-/** The cover of the artist-verified iTunes candidate (600 px), what a kept track shows. */
-export async function findItunesCover(title: string, artist: string): Promise<string | null> {
-  return (await searchItunes(title, artist))?.artworkUrl ?? null;
-}
-
 async function searchItunes(title: string, artist: string): Promise<ItunesResult | null> {
   const cacheKey = `${title.toLowerCase()}|${artist.toLowerCase()}`;
   const cached = itunesCache.get(cacheKey);
@@ -94,8 +86,6 @@ async function searchItunes(title: string, artist: string): Promise<ItunesResult
   );
   const result: ItunesResult = {
     trackViewUrl: pick.trackViewUrl,
-    // Same CDN URL in 600px instead of the 100px thumbnail.
-    artworkUrl: pick.artworkUrl100 ? pick.artworkUrl100.replace('100x100bb', '600x600bb') : null,
     exactSong: songMatch({ title, artist }, { title: pick.trackName, artist: pick.artistName }),
   };
   itunesCache.set(cacheKey, result);
@@ -141,7 +131,7 @@ async function settle<T>(
 }
 
 /**
- * The links and cover of a track. With its ISRC (the play's, stored on the
+ * The links of a track. With its ISRC (the play's, stored on the
  * kept track), Deezer links that very recording. A complete answer
  * (found or not) is cached 7 days; one with a failed lookup is not, so the
  * next call retries it.
@@ -168,12 +158,7 @@ export async function findTrackLinks(
   if (deezer.value) platformLinks.deezer = deezer.value.link;
 
   const result: TrackLinks | null =
-    platformLinks.appleMusic || platformLinks.deezer || itunes.value?.artworkUrl
-      ? {
-          platformLinks,
-          ...(itunes.value?.artworkUrl ? { artworkUrl: itunes.value.artworkUrl } : {}),
-        }
-      : null;
+    platformLinks.appleMusic || platformLinks.deezer ? { platformLinks } : null;
 
   if (!itunes.transient && !deezer.transient) {
     linksCache.set(cacheKey, result);

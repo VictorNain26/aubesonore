@@ -200,7 +200,7 @@ describe('NowPlayingView', () => {
   });
 
   it('fetches the cover at the width the hero gives it, beside the column or above it', () => {
-    const art = 'https://is1-ssl.mzstatic.com/image/thumb/Music/aa/bb/x.jpg/600x600bb.jpg';
+    const art = 'https://radio.aubesonore.fr/api/station/aubesonore/art/abc-1.jpg';
     render(<NowPlayingView {...props({ track: { ...props().track!, art } })} />);
     const img = screen.getByRole('img', { name: 'Pochette de Mimoun, Mickey 3D' });
 

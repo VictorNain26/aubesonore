@@ -12,21 +12,10 @@ const youtubeUrl = pipe(
   check((value) => YOUTUBE_HOST_RE.test(value), 'Doit être une URL YouTube')
 );
 
-// Artworks are rendered as <img> in the client. https-only blocks data:
-// and javascript: smuggling; we also reject the localhost / private-IP
-// schemes that an attacker could use to probe internal services on a
-// future proxy endpoint.
-const httpsImageUrl = pipe(
-  string(),
-  url('Artwork doit être une URL valide'),
-  check((value) => value.startsWith('https://'), 'Artwork doit utiliser HTTPS')
-);
-
 export const likeTrackSchema = object({
   title: pipe(string(), minLength(1, 'Titre requis')),
   artist: pipe(string(), minLength(1, 'Artiste requis')),
   album: optional(string()),
-  artworkUrl: optional(httpsImageUrl),
   youtubeUrl,
   // Sent to Deezer for its links, kept to tie the track to its artist: ISO 3901 or nothing.
   isrc: optional(

@@ -1,5 +1,4 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
-import { createHash } from 'crypto';
 import { mkdtemp, readdir, readFile, rm, stat, writeFile, mkdir } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -70,7 +69,6 @@ beforeEach(async () => {
     userAgent: 'AubeSonore/test (https://example.test)',
     azuracastBaseUrl: 'http://azuracast.test',
     stationId: 'aubesonore',
-    publicBaseUrl: 'https://aubesonore.fr',
   });
 });
 
@@ -79,15 +77,13 @@ afterEach(async () => {
 });
 
 describe('parseCoverKey', () => {
-  it('reads the three kinds of cover at their own sizes', () => {
+  it('reads the two kinds of cover at their own sizes', () => {
     expect(parseCoverKey('caa', RG, '500.webp')).toEqual({ kind: 'caa', id: RG, size: 500 });
     expect(parseCoverKey('station', ART_ID, '96.webp')).toEqual({
       kind: 'station',
       id: ART_ID,
       size: 96,
     });
-    const sha = 'a'.repeat(64);
-    expect(parseCoverKey('kept', sha, '768.webp')).toEqual({ kind: 'kept', id: sha, size: 768 });
   });
 
   it.each([
@@ -100,8 +96,8 @@ describe('parseCoverKey', () => {
     ['station', ART_ID, '250.webp'],
     ['station', 'abc', '96.webp'],
     ['station', '../x-1', '96.webp'],
-    ['kept', 'a'.repeat(63), '96.webp'],
-    ['kept', 'g'.repeat(64), '96.webp'],
+    // The kept tracks' copies of the antenna's art are gone (keptTrackCovers.ts).
+    ['kept', 'a'.repeat(64), '768.webp'],
     ['photo', RG, '500.webp'],
     ['caa', RG, '0500.webp'],
   ])('refuses %s/%s/%s', (kind, id, file) => {
@@ -280,54 +276,20 @@ describe("the station's covers", () => {
   });
 });
 
-describe('a kept track’s cover', () => {
-  const ART = `https://radio.aubesonore.fr/api/station/aubesonore/art/${ART_ID}.jpg`;
+describe("the kept tracks' old copies of the antenna's art", () => {
+  it('leave the volume, originals with them, and nothing else, as many times as it runs', async () => {
+    const sha = 'a'.repeat(64);
+    const files = [`covers/kept/${sha}/768.webp`, `originals/${sha}`, `covers/caa/${RG}/500.webp`];
+    for (const file of files) {
+      await mkdir(join(root, file, '..'), { recursive: true });
+      await writeFile(join(root, file), jpeg100);
+    }
 
-  it("copies the station's art, keeps its bytes and answers the store's address", async () => {
-    answers.set(`http://azuracast.test/api/station/aubesonore/art/${ART_ID}.jpg`, image(jpeg1000));
-    const sha = createHash('sha256').update(jpeg1000).digest('hex');
+    expect(await store.removeKeptCopies()).toBe(true);
+    expect(await store.removeKeptCopies()).toBe(false);
 
-    const url = await store.keepStationArt(ART);
-
-    expect(url).toEqual({ url: `https://aubesonore.fr/covers/kept/${sha}/768.webp` });
-    expect((await readFile(join(root, 'originals', sha))).equals(jpeg1000)).toBe(true);
-    expect(await sizeOf(join(root, 'covers/kept', sha, '96.webp'))).toMatchObject({ width: 96 });
-  });
-
-  it('never fetches what is not AzuraCast art', async () => {
-    expect(
-      await store.keepStationArt('https://is1-ssl.mzstatic.com/image/thumb/a/600x600bb.jpg')
-    ).toBeNull();
-    expect(await store.keepStationArt('not a url')).toBeNull();
-    expect(seen).toEqual([]);
-  });
-
-  it('keeps nothing AzuraCast does not answer with an image under 2 MB', async () => {
-    const at = `http://azuracast.test/api/station/aubesonore/art/${ART_ID}.jpg`;
-    answers.set(at, redirect('/static/generic_song.jpg', 302));
-    expect(await store.keepStationArt(ART)).toBeNull();
-
-    answers.set(at, image(Buffer.alloc(2 * 1024 * 1024 + 1), 'image/png'));
-    expect(await store.keepStationArt(ART)).toBeNull();
-
-    answers.set(at, image(Buffer.from('not an image')));
-    expect(await store.keepStationArt(ART)).toBeNull();
-    expect(await readdir(root)).toEqual([]);
-  });
-
-  it('remakes a size from the kept original', async () => {
-    const sha = createHash('sha256').update(jpeg1000).digest('hex');
-    await mkdir(join(root, 'originals'), { recursive: true });
-    await writeFile(join(root, 'originals', sha), jpeg1000);
-
-    const cover = await store.get({ kind: 'kept', id: sha, size: 384 });
-
-    expect(cover).toBeInstanceOf(Buffer);
-    expect(await sizeOf(join(root, 'covers/kept', sha, '384.webp'))).toMatchObject({
-      width: 384,
-    });
-    expect(seen).toEqual([]);
-    expect(await store.get({ kind: 'kept', id: 'b'.repeat(64), size: 96 })).toBe('missing');
+    expect(await readdir(root)).toEqual(['covers']);
+    expect(await readdir(join(root, 'covers'))).toEqual(['caa']);
   });
 });
 
@@ -376,23 +338,16 @@ describe('GET /api/cover-store/:kind/:id/:file', () => {
 });
 
 describe('the block list', () => {
-  const SHA = 'c'.repeat(64);
-
   it('reads one cover a line, with who asked and when, between comments and blank lines', () => {
     const text = [
       '# Covers taken down on request.',
       '',
       `caa ${RG}  # removal request from the label, 2026-10-27`,
       `station ${ART_ID} # artist's request 2026-10-28`,
-      `kept ${SHA}\t# listener's request 2026-10-29`,
       '',
     ].join('\n');
 
-    expect([...parseCoverBlocklist(text)]).toEqual([
-      `caa/${RG}`,
-      `station/${ART_ID}`,
-      `kept/${SHA}`,
-    ]);
+    expect([...parseCoverBlocklist(text)]).toEqual([`caa/${RG}`, `station/${ART_ID}`]);
   });
 
   it.each([
@@ -402,6 +357,7 @@ describe('the block list', () => {
     [`caa ${RG}/500.webp # request 2026-10-27`, 'a file, not a cover'],
     [`station ${RG} # request 2026-10-27`, 'an id of another kind'],
     [`photo ${RG} # request 2026-10-27`, 'an unknown kind'],
+    [`kept ${'c'.repeat(64)} # request 2026-10-27`, 'a kind no longer stored'],
     [`caa ${RG} extra # request 2026-10-27`, 'a third word'],
     [`https://coverartarchive.org/release-group/${RG} # request`, 'a URL'],
   ])('refuses %s (%s), naming its line', (line) => {
@@ -415,19 +371,16 @@ describe('the block list', () => {
 
 describe('a blocked cover', () => {
   const ART = `http://azuracast.test/api/station/aubesonore/art/${ART_ID}.jpg`;
-  let SHA: string;
   let blocked: CoverStore;
 
   beforeEach(() => {
-    SHA = createHash('sha256').update(jpeg1000).digest('hex');
     blocked = createCoverStore({
       root,
       fetch: fakeFetch,
       userAgent: 'AubeSonore/test (https://example.test)',
       azuracastBaseUrl: 'http://azuracast.test',
       stationId: 'aubesonore',
-      publicBaseUrl: 'https://aubesonore.fr',
-      blocked: new Set([`caa/${RG}`, `station/${ART_ID}`, `kept/${SHA}`]),
+      blocked: new Set([`caa/${RG}`, `station/${ART_ID}`]),
     });
   });
 
@@ -458,25 +411,12 @@ describe('a blocked cover', () => {
     expect(await readdir(root)).toEqual([]);
   });
 
-  it('is not copied for a kept track, which is told it is blocked', async () => {
-    answers.set(ART, image(jpeg1000));
-
-    expect(
-      await blocked.keepStationArt(
-        `https://radio.aubesonore.fr/api/station/aubesonore/art/${ART_ID}.jpg`
-      )
-    ).toBe('blocked');
-    expect(await readdir(root)).toEqual([]);
-  });
-
   it('has its files removed from the volume, and only its own, as many times as it runs', async () => {
     const other = '11111111-2222-3333-4444-555555555555';
     const files = [
       `covers/caa/${RG}/250.webp`,
       `covers/caa/${RG}/500.webp`,
       `covers/station/${ART_ID}/96.webp`,
-      `covers/kept/${SHA}/768.webp`,
-      `originals/${SHA}`,
       `covers/caa/${other}/500.webp`,
     ];
     for (const file of files) {
@@ -484,12 +424,10 @@ describe('a blocked cover', () => {
       await writeFile(join(root, file), jpeg100);
     }
 
-    expect(await blocked.removeBlocked()).toBe(3);
+    expect(await blocked.removeBlocked()).toBe(2);
     expect(await blocked.removeBlocked()).toBe(0);
 
     expect(await readdir(join(root, 'covers/caa'))).toEqual([other]);
     expect(await readdir(join(root, 'covers/station'))).toEqual([]);
-    expect(await readdir(join(root, 'covers/kept'))).toEqual([]);
-    expect(await readdir(join(root, 'originals'))).toEqual([]);
   });
 });

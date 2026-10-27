@@ -29,11 +29,10 @@ const depthOfRow = (row: number) => ((SHOWN.y + row + 0.5) / CANVAS_PIXELS) * 1.
 /** A cover as dark and as light as any: what a cover whose pixels cannot be read is dimmed for. */
 const WORST_PIXELS = new Uint8ClampedArray([0, 0, 0, 255, 255, 255, 255, 255]);
 /**
- * Apple's CDN and Wikimedia's image hosts answer CORS (`Access-Control-Allow-Origin: *`, Commons
- * measured 2026-10-27): their pixels can be read.
+ * Wikimedia's image hosts answer CORS (`Access-Control-Allow-Origin: *`, measured 2026-10-27):
+ * their pixels can be read.
  */
-const READABLE_ELSEWHERE =
-  /^https:\/\/(?:is\d+-ssl\.mzstatic\.com|(?:upload|thumb)\.wikimedia\.org)\//;
+const READABLE_ELSEWHERE = /^https:\/\/(?:upload|thumb)\.wikimedia\.org\//;
 
 interface Layers {
   /** The light shown. */

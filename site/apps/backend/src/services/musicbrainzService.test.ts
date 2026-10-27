@@ -4,11 +4,14 @@ import group from './__fixtures__/musicbrainz-artist-group.json';
 import isrcAnswer from './__fixtures__/musicbrainz-isrc.json';
 // A real search answer (2026-10-12), trimmed to the fields the service reads.
 import searchAnswer from './__fixtures__/musicbrainz-search-recording.json';
+// A real search answer (2026-10-27): Hania Rani's « F Major » on its single, a single and an album.
+import releasesAnswer from './__fixtures__/musicbrainz-search-releases.json';
 
 const {
   findRecordingsByIsrc,
   findRecordingsByTitle,
   findDeezerIdByMbid,
+  findRecordingReleases,
   musicbrainzCache,
   __resetMusicbrainzThrottle,
 } = await import('./musicbrainzService');
@@ -159,5 +162,72 @@ describe('findRecordingsByTitle', () => {
 
     const [url] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(decodeURIComponent(url)).toContain('recording:"Say \\"Hi\\"" AND artist:"A\\\\B"');
+  });
+});
+
+describe('findRecordingReleases', () => {
+  it('searches an ISRC and reads each recording with the records it is on', async () => {
+    const fetchSpy = spyOn(globalThis, 'fetch').mockResolvedValueOnce(json(releasesAnswer));
+
+    const found = await findRecordingReleases({ isrc: 'GBVTB2037007' });
+
+    const [url] = fetchSpy.mock.calls[0] as [string];
+    expect(url).toBe(
+      'https://musicbrainz.org/ws/2/recording/?query=isrc%3AGBVTB2037007&limit=100&fmt=json'
+    );
+    if (found.status !== 'found') throw new Error(`expected recordings, got ${found.status}`);
+    expect(found.value).toHaveLength(3);
+    expect(found.value[1]).toEqual({
+      title: 'F Major',
+      credits: [
+        { mbid: '59be490d-21e4-44d4-8cf2-939c8fbca25f', names: ['Hania Rani', 'Hania Rani'] },
+      ],
+      releases: [
+        {
+          releaseGroup: '37b5994e-d560-480d-b013-e84d9a427b2a',
+          official: true,
+          secondaryTypes: [],
+          date: '2020-04-03',
+        },
+      ],
+    });
+  });
+
+  it('searches a title and a name as phrases', async () => {
+    const fetchSpy = spyOn(globalThis, 'fetch').mockResolvedValueOnce(json(releasesAnswer));
+
+    await findRecordingReleases({ name: 'Hania Rani', title: 'F Major' });
+
+    const [url] = fetchSpy.mock.calls[0] as [string];
+    expect(decodeURIComponent(url)).toContain(
+      '/recording/?query=recording:"F Major" AND artist:"Hania Rani"&limit=100'
+    );
+  });
+
+  it('reads a record without a status or a date as unofficial and undated', async () => {
+    spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      json({
+        recordings: [
+          {
+            title: 'Song',
+            'artist-credit': [],
+            releases: [{ 'release-group': { id: 'rg', 'secondary-types': ['Live'] } }],
+          },
+        ],
+      })
+    );
+
+    const found = await findRecordingReleases({ isrc: 'ZZZ000000001' });
+
+    if (found.status !== 'found') throw new Error(`expected recordings, got ${found.status}`);
+    expect(found.value[0]?.releases).toEqual([
+      { releaseGroup: 'rg', official: false, secondaryTypes: ['Live'], date: null },
+    ]);
+  });
+
+  it('reads an answer without recordings as a definitive miss', async () => {
+    spyOn(globalThis, 'fetch').mockResolvedValueOnce(json({ recordings: [] }));
+
+    expect(await findRecordingReleases({ isrc: 'ZZZ000000002' })).toEqual({ status: 'none' });
   });
 });
