@@ -46,6 +46,11 @@ async function sizeOf(path: string): Promise<{ width?: number; height?: number; 
   return { width, height, format };
 }
 
+async function widthOf(cover: unknown): Promise<number | undefined> {
+  if (!Buffer.isBuffer(cover)) throw new Error(`no cover: ${String(cover)}`);
+  return (await sharp(cover).metadata()).width;
+}
+
 beforeAll(async () => {
   const make = (width: number, height: number) =>
     sharp({ create: { width, height, channels: 3, background: '#c86432' } })
@@ -193,17 +198,17 @@ describe('a Cover Art Archive cover', () => {
     expect(await readdir(root)).toEqual([]);
   });
 
-  it('fetches once for two listeners asking at the same moment', async () => {
+  it('fetches once for two listeners asking at the same moment, each given the size it asked for', async () => {
     answers.set(CAA_500, image(jpeg1000));
 
-    const [a, b] = await Promise.all([
+    const [small, large] = await Promise.all([
       store.get({ kind: 'caa', id: RG, size: 250 }),
       store.get({ kind: 'caa', id: RG, size: 500 }),
     ]);
 
     expect(seen).toEqual([CAA_500]);
-    expect(a).toBeInstanceOf(Buffer);
-    expect(b).toBeInstanceOf(Buffer);
+    expect(await widthOf(small)).toBe(250);
+    expect(await widthOf(large)).toBe(500);
   });
 
   it('writes each file whole: no temporary file is left, and a reader never sees half a file', async () => {
@@ -251,6 +256,22 @@ describe("the station's covers", () => {
     ]);
   });
 
+  it('gives each size asked at a track change its own size, from one fetch', async () => {
+    answers.set(ART, image(jpeg1000));
+
+    const [, light, hero, large] = await Promise.all([
+      store.prepareStation(ART_ID),
+      store.get({ kind: 'station', id: ART_ID, size: 96 }),
+      store.get({ kind: 'station', id: ART_ID, size: 384 }),
+      store.get({ kind: 'station', id: ART_ID, size: 768 }),
+    ]);
+
+    expect(seen).toEqual([ART]);
+    expect(await widthOf(light)).toBe(96);
+    expect(await widthOf(hero)).toBe(384);
+    expect(await widthOf(large)).toBe(768);
+  });
+
   it("counts AzuraCast's redirect to its generic image as no cover", async () => {
     answers.set(ART, redirect('/static/img/generic_song.jpg', 302));
 
@@ -268,7 +289,7 @@ describe('a kept track’s cover', () => {
 
     const url = await store.keepStationArt(ART);
 
-    expect(url).toBe(`https://aubesonore.fr/covers/kept/${sha}/768.webp`);
+    expect(url).toEqual({ url: `https://aubesonore.fr/covers/kept/${sha}/768.webp` });
     expect((await readFile(join(root, 'originals', sha))).equals(jpeg1000)).toBe(true);
     expect(await sizeOf(join(root, 'covers/kept', sha, '96.webp'))).toMatchObject({ width: 96 });
   });
@@ -437,14 +458,14 @@ describe('a blocked cover', () => {
     expect(await readdir(root)).toEqual([]);
   });
 
-  it('is not copied for a kept track', async () => {
+  it('is not copied for a kept track, which is told it is blocked', async () => {
     answers.set(ART, image(jpeg1000));
 
     expect(
       await blocked.keepStationArt(
         `https://radio.aubesonore.fr/api/station/aubesonore/art/${ART_ID}.jpg`
       )
-    ).toBeNull();
+    ).toBe('blocked');
     expect(await readdir(root)).toEqual([]);
   });
 

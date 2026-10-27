@@ -122,7 +122,7 @@ describe('likeTrack → background enrichment', () => {
     const art = 'https://radio.aubesonore.fr/api/station/aubesonore/art/abc-1790856695.jpg';
     const kept = `https://aubesonore.fr/covers/kept/${'c'.repeat(64)}/768.webp`;
     findItunesCoverMock.mockResolvedValueOnce(null);
-    keepStationArtMock.mockResolvedValueOnce(kept);
+    keepStationArtMock.mockResolvedValueOnce({ url: kept });
 
     await likeTrack({
       user: fakeUser,
@@ -154,6 +154,25 @@ describe('likeTrack → background enrichment', () => {
     await flushBackgroundWork();
 
     expect(rows[0]?.artworkUrl).toBe('https://azuracast.example.com/art/abc.jpg');
+  });
+
+  it('stores no artwork when the AzuraCast art is a blocked cover', async () => {
+    const art = 'https://radio.aubesonore.fr/api/station/aubesonore/art/abc-1790856695.jpg';
+    findItunesCoverMock.mockResolvedValueOnce(null);
+    keepStationArtMock.mockResolvedValueOnce('blocked');
+
+    await likeTrack({
+      user: fakeUser,
+      body: {
+        title: 'Taken Down',
+        artist: 'Artist',
+        youtubeUrl: 'https://youtube.example.com/watch?v=jkl',
+        artworkUrl: art,
+      },
+    });
+    await flushBackgroundWork();
+
+    expect(rows[0]?.artworkUrl).toBeNull();
   });
 
   it('uses the verified iTunes artwork directly when there is one', async () => {
