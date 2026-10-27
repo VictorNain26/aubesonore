@@ -71,11 +71,16 @@ export function reportGoogleOutcome(search: string): void {
   channel.close();
 }
 
-/** What the return page shows if the browser keeps it open, in the sign-in page's language. */
-export function googleReturnText(search: string): string {
+/**
+ * What the return page shows if the browser keeps it open, in the sign-in page's language, and
+ * that language, for <html lang>.
+ */
+export function googleReturnPage(search: string): { lang: string; text: string } {
   const lang = new URLSearchParams(search).get('lang');
   const locale = lang && isLocale(lang) ? lang : baseLocale;
-  return outcomeOf(search) === 'signed-in'
-    ? m.auth_google_return_done({}, { locale })
-    : m.auth_google_return_failed({}, { locale });
+  const text =
+    outcomeOf(search) === 'signed-in'
+      ? m.auth_google_return_done({}, { locale })
+      : m.auth_google_return_failed({}, { locale });
+  return { lang: locale, text };
 }

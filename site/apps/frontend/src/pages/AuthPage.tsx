@@ -202,7 +202,7 @@ export function AuthPage() {
         // The popup set the session cookie: read it, and the page goes back to backTo.
         void useAuthStore
           .getState()
-          .init()
+          .refreshSession()
           .then(() => {
             if (useAuthStore.getState().isAuthenticated) toast.success(m.toast_signin_success());
           });
