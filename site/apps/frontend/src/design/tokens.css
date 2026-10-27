@@ -645,9 +645,12 @@
 /* The cover on air: 16 px under the header, edge to edge, held under the height the words below
    it need (28rem) so they end in the first screen; narrower than the screen, it stands on the
    page's gutter, in line with the words. Beside the column, --hero-cover on the gutter, at the
-   foot of its rows, 3.5rem over the hero's foot: it rests on the horizon. Nothing is written over it. It fades in at the page's load (the server drew it: its
-   paint is not held back); a change of track lets it go, then brings the next in
-   (home/useTrackSwap.ts); off air it stays, dimmed. */
+   foot of its rows, 3.5rem over the hero's foot: it rests on the horizon. On a screen too low
+   for the column (a phone on its side), the hero grows past the screen: the cover stays level
+   with the column's top, in the first screen, not at the hero's foot. Nothing is written over
+   it. It fades in at the page's load (the server drew it: its paint is not held back); a change
+   of track lets it go, then brings the next in (home/useTrackSwap.ts); off air it stays,
+   dimmed. */
 @utility hero-cover {
   --cover-side: min(100%, max(13rem, 100svh - 28rem));
   grid-area: cover;
@@ -686,6 +689,10 @@
     margin-top: 1.5rem;
     margin-bottom: 3.5rem;
     margin-inline-start: var(--hero-gutter);
+
+    @media (height < 42rem) {
+      align-self: start;
+    }
   }
 }
 
