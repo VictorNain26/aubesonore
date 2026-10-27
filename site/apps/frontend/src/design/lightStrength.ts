@@ -1,15 +1,15 @@
 /** An sRGB colour, as a canvas holds it: three bytes. */
 export type Rgb = readonly [number, number, number];
 
-/** What the hero's light is laid on and read through (design/tokens.css, cover-light). */
+/** What a light is laid on and read through (design/tokens.css, cover-light and player-bar). */
 export interface LightInks {
-  /** The paper under the light. */
+  /** The ground under the light: the paper, or the player bar. */
   surface: Rgb;
-  /** The veil over it at the top of the hero, where it is thinnest, and its alpha. */
+  /** The veil over it at the top, where it is thinnest, and its alpha. */
   veil: readonly [number, number, number, number];
-  /** The veil halfway down (55 %), thicker; past it the veil only thickens toward the paper. */
+  /** The veil halfway down (55 %), as thick or thicker; past it the veil never thins. */
   veilMid: readonly [number, number, number, number];
-  /** The colours of the words over the light: the text and its muted ink. */
+  /** The colours of the words over the light: its surface's ink and muted ink. */
   inks: readonly Rgb[];
   /** The light's opacity when no word needs it lower. */
   opacity: number;

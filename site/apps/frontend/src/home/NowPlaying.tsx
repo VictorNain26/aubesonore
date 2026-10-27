@@ -1,8 +1,6 @@
 import type { Ref } from 'react';
 import type { FallbackProps } from 'react-error-boundary';
-import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
-import { cn } from '@/lib/utils';
 import { KeepButton } from '../design/KeepButton';
 import { isDefaultArtwork, useNowPlayingStore, type SongEntry } from '../lib/azuracast';
 import { usePlayer } from '../lib/player';
@@ -13,27 +11,13 @@ import type { Swap } from './useTrackSwap';
 import { useArtistPage } from '../hooks/useArtistPage';
 import { artistPath } from '../lib/artistProfile';
 import { CoverOpenLarge } from '../design/CoverOpenLarge';
-import { ARTIST_LINK, TEXT_ACTION } from '../design/classes';
+import { KEEP_RING, TEXT_ACTION } from '../design/classes';
+import { LiveMark, TrackCredit } from '../design/onAir';
 import { VolumeControl, type VolumeControlProps } from '../shell/VolumeControl';
 import { CastControl } from '../shell/CastControl';
 import { useDiffusion, type Diffusion } from '../hooks/useDiffusion';
-import {
-  LISTEN_PILL,
-  ListenDisc,
-  listenAria,
-  listenLabel,
-  listenState,
-  type ListenState,
-} from './listen';
+import { ListenPill, listenState, type ListenState } from './listen';
 import * as m from '@/paraglide/messages.js';
-
-// A single's album is its own title: saying it twice tells nothing.
-function shownAlbum(album: string, title: string): string | null {
-  const name = album.trim();
-  return name && name.localeCompare(title.trim(), undefined, { sensitivity: 'accent' }) !== 0
-    ? name
-    : null;
-}
 
 export interface NowPlayingViewProps {
   track: {
@@ -56,7 +40,7 @@ export interface NowPlayingViewProps {
   /** Where the hero is in a change of track (home/useTrackSwap.ts): the blocks animate by it. */
   swap?: Swap;
   /** The hero's own volume: the player bar stays away while the hero shows. */
-  volume: Omit<VolumeControlProps, 'className' | 'showLevel'>;
+  volume: Omit<VolumeControlProps, 'className'>;
   /**
    * AirPlay or Chromecast, wherever the browser can cast, as Google's checklist asks: with no
    * device found, its help says what to check (shell/CastControl.tsx).
@@ -94,26 +78,8 @@ export function preloadCover(art: string | undefined): Promise<void> {
   return image.decode();
 }
 
-/** Garder beside Écouter: the heart in a ring as tall as the pill, named for the track. */
-const KEEP_RING =
-  'group ease-out-quart focus-visible:outline-accent border-border hover:bg-surface-raised flex size-13 shrink-0 items-center justify-center rounded-full border transition-[background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90 disabled:opacity-50';
-
-/** Écouter: the ink pill, its disc and its word, as in the phone's sheet; the line's width there. */
-function ListenPill({ listen, onToggle }: { listen: ListenState; onToggle: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-label={listenAria(listen)}
-      aria-busy={listen === 'connecting'}
-      // The line's width on a phone, its own from 40rem.
-      className={cn(LISTEN_PILL, 'w-auto flex-1 sm:flex-none')}
-    >
-      <ListenDisc state={listen} className="size-11" />
-      <span className="text-ui font-semibold">{listenLabel(listen)}</span>
-    </button>
-  );
-}
+/** Écouter in the hero: the line's width on a phone, its own from 40rem. */
+const HERO_PILL = 'flex-1 sm:flex-none';
 
 /**
  * What plays now: the cover, square, the largest thing on the page and nothing ever written over
@@ -137,7 +103,6 @@ export function NowPlayingView({
   liveRef,
 }: NowPlayingViewProps) {
   const trackKey = track ? `${track.artist}|${track.title}` : 'none';
-  const album = track ? shownAlbum(track.album, track.title) : null;
   return (
     <>
       <div
@@ -179,33 +144,20 @@ export function NowPlayingView({
             data-swap={swap}
             className="hero-words flex flex-col"
           >
-            <p className="text-ui m-0 mb-3 flex items-center gap-2 font-semibold">
-              {/* The station is live: a still dot, the one that beats is the horizon's. */}
-              <span aria-hidden="true" className="bg-dawn-ink size-1.75 shrink-0 rounded-full" />
-              {m.now_live()}
-            </p>
+            <LiveMark className="mb-3" />
             {/* Two lines at most on a phone, three beside the cover, where a longer title raises
                 « En direct » (the column stands on the cover's foot); the whole title stays in the
                 page for screen readers. */}
             <h2 className="font-display text-track hero-split:line-clamp-3 m-0 line-clamp-2 text-balance">
               {track.title}
             </h2>
-            <p className="text-intro m-0 mt-2 line-clamp-2">
-              {/* Inline padding grows the tap target to 44px without moving the line. */}
-              {artistHref ? (
-                <Link to={artistHref} className={cn(ARTIST_LINK, 'py-3 underline-offset-5')}>
-                  {track.artist}
-                </Link>
-              ) : (
-                track.artist
-              )}
-              {album ? (
-                <span className="text-text-muted">
-                  {' · '}
-                  <cite className="not-italic">{album}</cite>
-                </span>
-              ) : null}
-            </p>
+            <TrackCredit
+              artist={track.artist}
+              album={track.album}
+              title={track.title}
+              artistHref={artistHref}
+              className="mt-2 line-clamp-2"
+            />
           </div>
         ) : isUnreachable ? (
           <p className="text-intro text-text-muted m-0" aria-live="polite">
@@ -219,7 +171,7 @@ export function NowPlayingView({
         )}
 
         <div className="mt-6 flex items-center gap-3">
-          <ListenPill listen={listen} onToggle={onToggleListen} />
+          <ListenPill listen={listen} onToggle={onToggleListen} className={HERO_PILL} />
           {track && isOnline ? (
             <KeepButton
               title={track.title}
@@ -232,7 +184,7 @@ export function NowPlayingView({
           ) : null}
           {/* Where a mouse sets it: a phone sets the level with its own buttons (and iOS ignores
               it from a page). */}
-          <VolumeControl {...volume} showLevel className="fine-pointer:flex ml-1.5 hidden" />
+          <VolumeControl {...volume} className="fine-pointer:flex ml-1.5 hidden" />
           {diffusion ? <CastControl diffusion={diffusion} variant="hero" /> : null}
         </div>
       </div>
@@ -326,11 +278,11 @@ export function NowPlayingFallback({
       <p className="font-display text-section m-0">{m.error_track_title()}</p>
       <p className="text-intro text-text-muted m-0">{m.error_track_body()}</p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <ListenPill listen={listen} onToggle={toggle} />
+        <ListenPill listen={listen} onToggle={toggle} className={HERO_PILL} />
         <button type="button" onClick={resetErrorBoundary} className={TEXT_ACTION}>
           {m.error_retry()}
         </button>
-        <VolumeControl {...volume} showLevel className="fine-pointer:flex hidden" />
+        <VolumeControl {...volume} className="fine-pointer:flex hidden" />
       </div>
     </div>
   );

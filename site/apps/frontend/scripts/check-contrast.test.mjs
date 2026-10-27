@@ -20,6 +20,10 @@ const day = {
   dawn: 'oklch(0.82 0.11 55)',
   'dawn-ink': 'oklch(0.6 0.13 45)',
   'light-veil-top': 'oklch(0.93 0.018 60 / 0.55)',
+  'light-ground': 'var(--surface)',
+  'light-ink': 'var(--text)',
+  'light-ink-muted': 'var(--text-muted)',
+  'bar-veil': 'oklch(0.22 0.045 270 / 0.62)',
 };
 const night = {
   surface: 'oklch(0.235 0.045 268)',
@@ -34,16 +38,25 @@ const night = {
   dawn: 'oklch(0.62 0.12 45)',
   'dawn-ink': 'var(--dawn)',
   'light-veil-top': 'oklch(0.18 0.04 268 / 0.38)',
+  'bar-veil': 'oklch(0.2 0.045 268 / 0.55)',
+};
+// The light under the player bar: its ground, its veil and the inks it is weighed for.
+const barLight = {
+  'light-ground': 'var(--bar)',
+  'light-veil-top': 'var(--bar-veil)',
+  'light-ink': 'var(--on-bar)',
+  'light-ink-muted': 'var(--on-bar-muted)',
 };
 const decls = (vars) =>
   Object.entries(vars)
     .map(([name, value]) => `  --${name}: ${value};`)
     .join('\n');
-const css = (dayVars, nightVars) =>
+const css = (dayVars, nightVars, bar = barLight) =>
   `:root {\n${decls(dayVars)}\n}\n\n@theme inline {\n  --color-text: var(--text);\n}\n` +
   (nightVars
     ? `\n@media (prefers-color-scheme: dark) {\n  :root {\n${decls(nightVars)}\n  }\n}\n`
-    : '');
+    : '') +
+  `\n@utility player-bar {\n  --accent: var(--bar);\n${decls(bar)}\n}\n`;
 const failures = (rows) =>
   rows.filter((row) => !row.pass).map((row) => `${row.scheme} ${row.label}`);
 
@@ -60,7 +73,12 @@ describe('checkTokens', () => {
 
   it('fails a night bar whose words do not hold on it, as a slab of paper under paper ink would', () => {
     const rows = checkTokens(css(day, { ...night, bar: 'var(--text)' }));
-    expect(failures(rows)).toEqual(['night on-bar/bar', 'night on-bar-muted/bar']);
+    expect(failures(rows)).toEqual([
+      'night on-bar/bar',
+      'night on-bar-muted/bar',
+      'night light-ink/veil over the bar',
+      'night light-ink-muted/veil over the bar',
+    ]);
   });
 
   it('checks the night block with the same pairs', () => {
@@ -101,7 +119,37 @@ describe('checkTokens', () => {
     const rows = checkTokens(
       css({ ...day, 'light-veil-top': 'oklch(0.45 0.05 270 / 0.55)' }, night)
     );
-    expect(failures(rows)).toEqual(['day text-muted/veil over the paper']);
+    expect(failures(rows)).toEqual(['day light-ink-muted/veil over the paper']);
+  });
+
+  it("fails a bar veil the bar's words do not read on, the light dimmed to nothing", () => {
+    // A veil of the paper by day over the ink bar: its paper words sink.
+    const rows = checkTokens(css({ ...day, 'bar-veil': 'oklch(0.93 0.018 60 / 0.8)' }, night));
+    expect(failures(rows)).toEqual([
+      'day light-ink/veil over the bar',
+      'day light-ink-muted/veil over the bar',
+    ]);
+  });
+
+  it("fails a bar whose light is weighed for the paper's text, not for the bar's own inks", () => {
+    // By night the bar's inks are the text's; by day the paper's ink on the ink bar fails.
+    const rows = checkTokens(
+      css(day, night, {
+        ...barLight,
+        'light-ink': 'var(--text)',
+        'light-ink-muted': 'var(--text-muted)',
+      })
+    );
+    expect(failures(rows)).toEqual([
+      'day light-ink/veil over the bar',
+      'day light-ink-muted/veil over the bar',
+    ]);
+  });
+
+  it('refuses tokens without the bar’s light', () => {
+    expect(() => checkTokens(css(day, night).replace(/@utility player-bar[^}]*}/, ''))).toThrow(
+      /player-bar/
+    );
   });
 
   it('refuses tokens without a night block', () => {

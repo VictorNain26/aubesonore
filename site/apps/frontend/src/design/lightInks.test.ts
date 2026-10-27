@@ -27,12 +27,14 @@ function fakeCanvas() {
   };
 }
 
+// The light's own tokens: the paper and the text's inks in the hero and the sheet, the bar and
+// its inks in the player bar (design/tokens.css, player-bar).
 const tokens = {
-  '--surface': 'rgb(26, 32, 61)',
+  '--light-ground': 'rgb(26, 32, 61)',
   '--light-veil-top': 'rgba(14, 20, 44, 0.38)',
   '--light-veil-mid': 'rgba(16, 23, 50, 0.62)',
-  '--text': 'rgb(238, 230, 220)',
-  '--text-muted': 'rgb(194, 194, 214)',
+  '--light-ink': 'rgb(238, 230, 220)',
+  '--light-ink-muted': 'rgb(194, 194, 214)',
   '--light-opacity': '0.9',
 };
 
@@ -65,8 +67,21 @@ describe('readInks', () => {
   });
 
   it('tells nothing of a colour the browser cannot parse, rather than read the last one', () => {
-    element.style.setProperty('--text-muted', 'colour(nowhere)');
+    element.style.setProperty('--light-ink-muted', 'colour(nowhere)');
     expect(readInks(element)).toBeNull();
+  });
+
+  it('reads the inks of the surface the light lies on, never the page text over another', () => {
+    // A bar inside the page: the paper's text ink is set, the bar's own inks are the light's.
+    element.style.setProperty('--text', 'rgb(1, 2, 3)');
+    element.style.setProperty('--surface', 'rgb(4, 5, 6)');
+    expect(readInks(element)).toMatchObject({
+      surface: [26, 32, 61],
+      inks: [
+        [238, 230, 220],
+        [194, 194, 214],
+      ],
+    });
   });
 
   it('tells nothing without the opacity token', () => {

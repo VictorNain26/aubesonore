@@ -19,6 +19,7 @@ vi.mock('../lib/player', async (importOriginal) => ({
 const render = (ui: ReactElement) => rtlRender(ui, { wrapper: MemoryRouter });
 
 const playedAt = Math.floor(new Date(2026, 9, 1, 17, 1).getTime() / 1000);
+const art = 'https://radio.aubesonore.fr/api/station/aubesonore/art/a1-1.jpg';
 
 function props(overrides: Partial<PlayerBarViewProps> = {}): PlayerBarViewProps {
   return {
@@ -60,19 +61,101 @@ describe('PlayerBarView', () => {
     expect(screen.getAllByText('Mimoun')).toHaveLength(2);
     expect(screen.getAllByText('Mickey 3D')).toHaveLength(2);
     expect(screen.queryByText(/à l’antenne/)).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Écouter le direct' }));
+    await userEvent.click(screen.getAllByRole('button', { name: 'Écouter le direct' })[0]!);
     expect(onToggleListen).toHaveBeenCalledOnce();
+  });
+
+  // jsdom applies no CSS: both layouts are in the page, each hidden on the other's screens.
+  const listenButtons = () => screen.getAllByRole('button', { name: /le direct$/ });
+  const keepButton = () => screen.getByRole('button', { name: 'Garder «\u00a0Mimoun\u00a0»' });
+  const follows = (later: Element, earlier: Element) =>
+    Boolean(earlier.compareDocumentPosition(later) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+  it.each([
+    ['idle', 'Écouter', 'Écouter le direct'],
+    ['playing', 'Arrêter', 'Arrêter le direct'],
+  ] as const)(
+    'says its word on a computer while %s, as the hero does: Écouter, then Arrêter',
+    (listen, word, name) => {
+      render(<PlayerBarView {...props({ listen })} />);
+      const pill = screen.getAllByRole('button', { name }).find((b) => b.textContent === word);
+      expect(pill).toBeDefined();
+      expect(pill).toHaveClass('hidden', 'md:flex');
+    }
+  );
+
+  it('puts the heart right after the track on a computer, before the volume', () => {
+    render(<PlayerBarView {...props({ artistHref: '/artist/a-1/mickey-3d' })} />);
+    const link = screen.getByRole('link', { name: /Mimoun/ });
+    const slider = screen.getByRole('slider', { name: 'Volume' });
+    expect(follows(keepButton(), link)).toBe(true);
+    expect(follows(slider, keepButton())).toBe(true);
+  });
+
+  it('leaves the volume to the phone’s own buttons: none in the bar under md', () => {
+    render(<PlayerBarView {...props()} />);
+    expect(screen.getByTestId('volume')).toHaveClass('hidden', 'md:fine-pointer:flex');
+  });
+
+  it('puts Écouter under the thumb on a phone: the disc alone, after the heart', () => {
+    render(<PlayerBarView {...props()} />);
+    const disc = listenButtons().find((b) => b.textContent === '');
+    expect(disc).toBeDefined();
+    expect(disc).toHaveClass('md:hidden');
+    expect(follows(disc!, keepButton())).toBe(true);
+    const trigger = screen.getByRole('button', { name: /Ouvrir «\u00a0Mimoun\u00a0»/ });
+    expect(follows(keepButton(), trigger)).toBe(true);
+  });
+
+  it('marks the live and names the album beside the artist on a computer', () => {
+    render(
+      <PlayerBarView
+        {...props({
+          track: {
+            title: 'Mimoun',
+            artist: 'Mickey 3D',
+            album: 'Tu vas pas mourir',
+            art,
+            playedAt,
+          },
+        })}
+      />
+    );
+    expect(screen.getByText('Mickey 3D · Tu vas pas mourir')).toBeInTheDocument();
+  });
+
+  it("leaves out a single's album, which only repeats the title", () => {
+    render(
+      <PlayerBarView
+        {...props({
+          track: { title: 'Mimoun', artist: 'Mickey 3D', album: 'Mimoun', art, playedAt },
+        })}
+      />
+    );
+    expect(screen.queryByText(/·/)).not.toBeInTheDocument();
+  });
+
+  it('is lit by the cover on air, as the hero is; no light off air', () => {
+    const { rerender } = render(
+      <PlayerBarView {...props({ track: { ...props().track!, art } })} />
+    );
+    expect(within(screen.getByRole('region')).getAllByTestId('cover-light')).toHaveLength(1);
+
+    rerender(<PlayerBarView {...props({ track: { ...props().track!, art }, isOnline: false })} />);
+    expect(screen.queryByTestId('cover-light')).not.toBeInTheDocument();
   });
 
   it('says Écouter while nothing is known of the live', () => {
     render(<PlayerBarView {...props({ track: null })} />);
-    expect(screen.getByText('Écouter')).toBeInTheDocument();
+    // The phone's word beside its disc; a computer's pill says it already.
+    expect(screen.getAllByText('Écouter')).toHaveLength(2);
+    expect(screen.getByText('Écouter', { ignore: 'button *' })).toHaveClass('md:hidden');
   });
 
   it('offers to stop the live while it plays, never to pause it: a press rejoins the live', () => {
     render(<PlayerBarView {...props({ track: null, listen: 'playing' })} />);
-    expect(screen.getByRole('button', { name: 'Arrêter le direct' })).toBeInTheDocument();
-    expect(screen.getByText('Arrêter')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Arrêter le direct' })).toHaveLength(2);
+    expect(screen.getAllByText('Arrêter')).toHaveLength(2);
     expect(screen.queryByText('Pause')).not.toBeInTheDocument();
   });
 
@@ -95,7 +178,7 @@ describe('PlayerBarView', () => {
   it('leaves for the hero after a click, which focuses a button too', async () => {
     const { rerender } = render(<PlayerBarView {...props()} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Écouter le direct' }));
+    await userEvent.click(screen.getAllByRole('button', { name: 'Écouter le direct' })[0]!);
     rerender(<PlayerBarView {...props({ isHidden: true })} />);
     expect(screen.getByRole('region', { hidden: true })).toHaveAttribute('inert');
   });
@@ -224,13 +307,34 @@ describe('PlayerBarView', () => {
     );
 
     const sheet = await screen.findByRole('dialog', { name: 'Mimoun' });
-    expect(sheet).toHaveTextContent('extrait de Tu vas pas mourir de rire');
+    expect(sheet).toHaveTextContent('Mickey 3D · Tu vas pas mourir de rire');
     // Modal: the page behind, the bar included, leaves the accessibility tree.
     expect(within(sheet).getByRole('button', { name: 'Écouter le direct' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Écouter le direct' })).toHaveLength(1);
 
     await userEvent.click(screen.getByRole('button', { name: 'Fermer' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('shows the track in the sheet as the hero does: « En direct », then the pill and its heart', async () => {
+    const onToggleKeep = vi.fn();
+    render(<PlayerBarView {...props({ onToggleKeep, track: { ...props().track!, art } })} />);
+    await userEvent.click(screen.getByRole('button', { name: /Ouvrir «\u00a0Mimoun\u00a0»/ }));
+    const sheet = await screen.findByRole('dialog', { name: 'Mimoun' });
+
+    const live = within(sheet).getByText('En direct');
+    const title = within(sheet).getByRole('heading', { name: 'Mimoun' });
+    expect(follows(title, live)).toBe(true);
+    // The heart right after the pill, before Partager, as the hero's actions.
+    const pill = within(sheet).getByRole('button', { name: 'Écouter le direct' });
+    const keep = within(sheet).getByRole('button', { name: 'Garder «\u00a0Mimoun\u00a0»' });
+    expect(follows(keep, pill)).toBe(true);
+    expect(follows(within(sheet).getByRole('button', { name: 'Partager' }), keep)).toBe(true);
+    expect(pill).toHaveTextContent('Écouter');
+    await userEvent.click(keep);
+    expect(onToggleKeep).toHaveBeenCalledOnce();
+    // The hero's light, under the paper's veil.
+    expect(within(sheet).getAllByTestId('cover-light')).toHaveLength(1);
   });
 });
 

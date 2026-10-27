@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 // would hold for a colour no screen shows.
 
 const NIGHT = '@media (prefers-color-scheme: dark)';
+/** The player bar, whose light is read through the bar's own veil and inks. */
+const BAR = '@utility player-bar';
 
 /** The declarations between the brace that follows `from` and the brace that closes it. */
 const blockAfter = (css, from) => {
@@ -34,7 +36,13 @@ const readSchemes = (css) => {
   if (nightRoot === -1) throw new Error(`selector not found: ${NIGHT} :root`);
   const day = declarations(blockAfter(css, root));
   const night = { ...day, ...declarations(blockAfter(blockAfter(css, media), nightRoot)) };
-  return { day, night };
+  const bar = css.indexOf(BAR);
+  if (bar === -1) throw new Error(`block not found: ${BAR}`);
+  // Only the light's tokens: the bar's other declarations name tokens it redefines itself.
+  const barLight = Object.fromEntries(
+    Object.entries(declarations(blockAfter(css, bar))).filter(([key]) => key.startsWith('light-'))
+  );
+  return { day, night, barLight };
 };
 
 /** The token as [L, C, H], following var() references to another token. */
@@ -80,7 +88,38 @@ const encode = (c) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.0
 const decode = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
 const over = (top, alpha, under) => mix(top.map(encode), under.map(encode), alpha).map(decode);
 
-const checkScheme = (scheme, vars) => {
+/** The colours of a scope of tokens, as linear sRGB, and their alpha. */
+const colours = (vars) => {
+  const c = (key) => {
+    const lch = resolve(vars, key);
+    if (!lch) throw new Error(`--${key} is not an oklch colour`);
+    return clip(oklchToLinearSrgb(lch));
+  };
+  const alpha = (key) => {
+    const ref = vars[key]?.match(/^var\(--([\w-]+)\)$/);
+    if (ref) return alpha(ref[1]);
+    const m = vars[key]?.match(/\/\s*([\d.]+)\)$/);
+    if (!m) throw new Error(`--${key} has no alpha`);
+    return Number(m[1]);
+  };
+  return { c, alpha };
+};
+
+/**
+ * The light is dimmed per cover until the words over it hold (design/lightStrength.ts), weighed
+ * for the inks of the surface it lies on, down to none: then the veil, where it is thinnest, over
+ * the ground alone. That floor must hold them, or no light would: over the paper in the hero and
+ * the sheet, over the bar in the player bar.
+ */
+const lightFloor = (where, { c, alpha }) => {
+  const veiled = over(c('light-veil-top'), alpha('light-veil-top'), c('light-ground'));
+  return [
+    [`light-ink/veil over the ${where}`, c('light-ink'), veiled, 4.5],
+    [`light-ink-muted/veil over the ${where}`, c('light-ink-muted'), veiled, 4.5],
+  ];
+};
+
+const checkScheme = (scheme, vars, barLight) => {
   const rows = [];
   for (const key of Object.keys(vars)) {
     const lch = resolve(vars, key);
@@ -92,21 +131,9 @@ const checkScheme = (scheme, vars) => {
         pass: inGamut(oklchToLinearSrgb(lch)),
       });
   }
-  const c = (key) => {
-    const lch = resolve(vars, key);
-    if (!lch) throw new Error(`--${key} is not an oklch colour`);
-    return clip(oklchToLinearSrgb(lch));
-  };
+  const page = colours(vars);
+  const { c } = page;
   const glow = mix(c('dawn'), c('surface'), 0.3);
-  const alpha = (key) => {
-    const m = vars[key]?.match(/\/\s*([\d.]+)\)$/);
-    if (!m) throw new Error(`--${key} has no alpha`);
-    return Number(m[1]);
-  };
-  // The hero's light is dimmed per cover until its words hold (design/lightStrength.ts), down to
-  // none: then the veil at the top of the hero, where it is thinnest, over the paper alone. That
-  // floor must hold them, or no light would.
-  const veiled = over(c('light-veil-top'), alpha('light-veil-top'), c('surface'));
   const pairs = [
     ['text/surface', c('text'), c('surface'), 4.5],
     ['text-muted/surface', c('text-muted'), c('surface'), 4.5],
@@ -120,8 +147,8 @@ const checkScheme = (scheme, vars) => {
     ['on-bar/bar', c('on-bar'), c('bar'), 4.5],
     ['on-bar-muted/bar', c('on-bar-muted'), c('bar'), 4.5],
     ['text/dawn-glow', c('text'), glow, 4.5],
-    ['text/veil over the paper', c('text'), veiled, 4.5],
-    ['text-muted/veil over the paper', c('text-muted'), veiled, 4.5],
+    ...lightFloor('paper', page),
+    ...lightFloor('bar', colours({ ...vars, ...barLight })),
     // The wave under the current page and the selected tab: a mark, beside text that holds AA.
     ['dawn-ink/surface', c('dawn-ink'), c('surface'), 3.0],
   ];
@@ -134,8 +161,8 @@ const checkScheme = (scheme, vars) => {
 
 /** One row per contrast pair and per oklch token, by day then by night. */
 export const checkTokens = (css) => {
-  const { day, night } = readSchemes(css);
-  return [...checkScheme('day', day), ...checkScheme('night', night)];
+  const { day, night, barLight } = readSchemes(css);
+  return [...checkScheme('day', day, barLight), ...checkScheme('night', night, barLight)];
 };
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
