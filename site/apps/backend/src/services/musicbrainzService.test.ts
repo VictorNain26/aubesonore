@@ -14,6 +14,7 @@ const {
   findRecordingReleases,
   musicbrainzCache,
   __resetMusicbrainzThrottle,
+  __useMusicbrainzSleep,
 } = await import('./musicbrainzService');
 
 beforeEach(() => {
@@ -59,7 +60,7 @@ describe('findDeezerIdByMbid', () => {
   it('caches an unknown artist, retries after a failure', async () => {
     const fetchSpy = spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(json({ error: 'Not Found' }, 404))
-      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockResolvedValueOnce(new Response(null, { status: 500 }))
       .mockResolvedValueOnce(json(single));
 
     expect(await findDeezerIdByMbid('1')).toEqual({ status: 'none' });
@@ -102,6 +103,97 @@ describe('findDeezerIdByMbid', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+});
+
+// MusicBrainz declines every request from an address above its rate with a 503
+// (https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting): the same request is asked again
+// after a wait that grows. The waits are recorded and move a fake monotonic clock, never slept.
+describe('a declined request', () => {
+  let waits: number[];
+  let clock: { mockRestore: () => void };
+
+  beforeEach(() => {
+    waits = [];
+    let now = 1_000_000;
+    clock = spyOn(performance, 'now').mockImplementation(() => now);
+    __useMusicbrainzSleep((ms) => {
+      waits.push(ms);
+      now += ms;
+      return Promise.resolve();
+    });
+  });
+
+  afterEach(() => {
+    __useMusicbrainzSleep(null);
+    clock.mockRestore();
+  });
+
+  const declined = (headers: Record<string, string> = {}) =>
+    new Response(null, { status: 503, headers });
+
+  it('is asked again after a wait, and its answer read', async () => {
+    const fetchSpy = spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(declined())
+      .mockResolvedValueOnce(json({ recordings: [] }));
+
+    expect(await findRecordingReleases({ isrc: 'ZZZ000000010' })).toEqual({ status: 'none' });
+    expect(fetchSpy.mock.calls.length).toBe(2);
+    expect(fetchSpy.mock.calls[1]?.[0]).toBe(fetchSpy.mock.calls[0]?.[0]);
+    expect(waits).toEqual([2_000]);
+  });
+
+  it('gives up after four tries with the failure, never a miss, and is not cached', async () => {
+    const fetchSpy = spyOn(globalThis, 'fetch');
+    for (let i = 0; i < 4; i++) fetchSpy.mockResolvedValueOnce(declined());
+    fetchSpy.mockResolvedValueOnce(json({ recordings: [] }));
+
+    expect(await findRecordingReleases({ isrc: 'ZZZ000000011' })).toEqual({ status: 'failed' });
+    expect(fetchSpy.mock.calls.length).toBe(4);
+    expect(waits).toEqual([2_000, 4_000, 8_000]);
+
+    expect(await findRecordingReleases({ isrc: 'ZZZ000000011' })).toEqual({ status: 'none' });
+  });
+
+  it('retries a 429 the same way', async () => {
+    spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(null, { status: 429 }))
+      .mockResolvedValueOnce(json({ recordings: [] }));
+
+    expect(await findRecordingReleases({ isrc: 'ZZZ000000012' })).toEqual({ status: 'none' });
+    expect(waits[0]).toBe(2_000);
+  });
+
+  it('waits what a Retry-After asks, within the cap', async () => {
+    spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(declined({ 'retry-after': '5' }))
+      .mockResolvedValueOnce(declined({ 'retry-after': '120' }))
+      .mockResolvedValueOnce(declined({ 'retry-after': 'soon' }))
+      .mockResolvedValueOnce(json({ recordings: [] }));
+
+    expect(await findRecordingReleases({ isrc: 'ZZZ000000013' })).toEqual({ status: 'none' });
+    expect(waits).toEqual([5_000, 16_000, 8_000]);
+  });
+
+  it('does not retry another failure', async () => {
+    const fetchSpy = spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(null, { status: 500 })
+    );
+
+    expect(await findRecordingReleases({ isrc: 'ZZZ000000014' })).toEqual({ status: 'failed' });
+    expect(fetchSpy.mock.calls.length).toBe(1);
+    expect(waits).toEqual([]);
+  });
+
+  it('still keeps a second between requests', async () => {
+    spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(json({ recordings: [] }))
+      .mockResolvedValueOnce(json({ recordings: [] }));
+
+    await findRecordingReleases({ isrc: 'ZZZ000000015' });
+    await findRecordingReleases({ isrc: 'ZZZ000000016' });
+
+    expect(waits).toEqual([1_000]);
   });
 });
 
