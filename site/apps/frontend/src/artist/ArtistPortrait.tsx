@@ -88,19 +88,17 @@ function shapeOf({ width, height }: Size): CSSProperties {
 }
 
 /**
- * How wide it is drawn, by `portrait-room`'s caps: beside the text, the title column (4 parts of
- * 12 of the page less its gutters, up to 100 rem, less the 4 rem gap), no taller than 5:4 of it;
- * above the name, the line less the gutters, or the cap times its ratio.
+ * How wide it is drawn in its square room (`portrait-room`, `artist-stage`): beside the column,
+ * the screen's height less the header and the horizon, 42% of its width or 36 rem, whichever is
+ * least; stacked, the line less the gutters. A tall image takes its ratio of that.
  */
 function sizesOf({ width, height }: Size): string {
   const ratio = `${width} / ${height}`;
-  const column = '(min(100vw - 5rem, 100rem) - 4rem) / 3';
-  const beside = `min(${column}, ${column} * 1.25 * ${ratio})`;
+  const fit = (room: string) => `min(${room}, ${room} * ${ratio})`;
   return [
-    `(min-width: 64rem) ${beside}`,
-    `(min-width: 48rem) and (orientation: landscape) ${beside}`,
-    `(min-width: 48rem) min(100vw - 5rem, 20rem * ${ratio})`,
-    `min(100vw - 3rem, 13.75rem * ${ratio})`,
+    `(min-width: 40rem) and (orientation: landscape) ${fit('min(100vh - 10rem, 42vw, 36rem)')}`,
+    `(min-width: 48rem) ${fit('(100vw - 5rem)')}`,
+    fit('(100vw - 3rem)'),
   ].join(', ');
 }
 

@@ -73,11 +73,11 @@ export function SearchIcon(props: IconProps) {
   );
 }
 
-/** Écouter sur YouTube: a triangle in the line, as Écouter's own (home/listen.tsx). */
-export function PlayIcon(props: IconProps) {
+/** The week's most kept: a line climbing. */
+export function RisingIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M6 4 L16 10 L6 16 Z" />
+      <path d="M3 15 L8 9 L11 12 L17 5" />
     </Icon>
   );
 }

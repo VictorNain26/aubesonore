@@ -164,7 +164,6 @@ describe('ArtistPageView', () => {
     );
 
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
-      'Écouter ailleurs',
       'Vos titres gardés',
       'Albums et EP',
       'Artistes proches',
@@ -175,12 +174,37 @@ describe('ArtistPageView', () => {
         .filter((link) => link.getAttribute('href')?.startsWith('#'))
         .map((link) => link.textContent)
     ).toEqual(['Vos titres gardés', 'Albums et EP', 'Artistes proches']);
-    expect(screen.getByRole('list', { name: 'Écouter ailleurs' })).toContainElement(
+    // « Écouter sur », said once before the platforms, names their list.
+    expect(screen.getByRole('list', { name: 'Écouter sur' })).toContainElement(
       screen.getByRole('link', { name: 'Bandcamp' })
     );
     // The first three styles, in lower case as the close artists' terms read.
     expect(screen.getByText('glam · rock & roll · boogie')).toBeInTheDocument();
     expect(screen.getByText('Record 1')).toBeInTheDocument();
+  });
+
+  it("lights the page's opening with the artist's image, and leaves it unlit without one", () => {
+    const photo =
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Rani.jpg/1280px-Rani.jpg';
+    const { unmount } = show({
+      status: 'ready',
+      profile: makeArtistProfile({
+        images: [
+          {
+            kind: 'photo',
+            url: photo,
+            width: 1280,
+            height: 960,
+            credit: { author: 'Jane', licence: 'CC BY-SA 4.0', licenceUrl: null, source: photo },
+          },
+        ],
+      }),
+    });
+    expect(screen.getByTestId('cover-light')).toBeInTheDocument();
+    unmount();
+
+    show({ status: 'ready', profile: makeArtistProfile({ images: [] }) });
+    expect(screen.queryByTestId('cover-light')).not.toBeInTheDocument();
   });
 
   it('says the facts in a sentence when Wikipedia has no article', () => {
@@ -232,7 +256,8 @@ describe('ArtistPageView', () => {
 
     expect(screen.queryByRole('blockquote')).not.toBeInTheDocument();
     expect(screen.queryByText(/Artiste ·/)).not.toBeInTheDocument();
-    expect(screen.queryByRole('list', { name: 'Écouter ailleurs' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Écouter sur' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Écouter sur')).not.toBeInTheDocument();
   });
 
   it('opens outside links in a new tab, named by platform', () => {

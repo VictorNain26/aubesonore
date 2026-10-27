@@ -55,11 +55,22 @@ describe('AuthPage', () => {
   it('says what an account brings under the title, unless the title already says why', () => {
     const promise = () =>
       screen.getByRole('heading', { level: 1 }).parentElement?.textContent ?? '';
+    const LIBRARY = 'Vos titres gardés, à retrouver dans «\u00a0Mes titres\u00a0».';
+    const RANKING = 'Vos choix comptent dans «\u00a0Les plus gardés de la semaine\u00a0».';
     const { unmount } = open('/connexion');
     expect(promise()).toContain('Gardez ce qui vous arrête.');
+    expect(promise()).toContain(LIBRARY);
+    expect(promise()).toContain(RANKING);
+    // Said once: the lines are not repeated under the form on a phone.
+    expect(
+      screen.getAllByText(
+        (_, element) => element?.tagName === 'LI' && element.textContent === LIBRARY
+      )
+    ).toHaveLength(1);
     unmount();
     open({ pathname: '/connexion', state: { keepTitle: 'Mimoun' } });
     expect(promise()).not.toContain('Gardez ce qui vous arrête.');
+    expect(promise()).toContain(LIBRARY);
   });
 
   it('switches to sign-up', async () => {

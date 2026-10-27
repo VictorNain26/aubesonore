@@ -201,7 +201,7 @@ describe('MusilogySections', () => {
     expect(screen.getByText('1 disque')).toBeInTheDocument();
   });
 
-  it('shows the albums, then the EPs folded past the first eight, with their covers', async () => {
+  it('shows the albums, then the EPs folded past the first six, how many there are and how many remain', async () => {
     const record = (n: number, type: 'album' | 'ep', extra = {}) => ({
       mbid: `rg-${n}`,
       title: `Record ${n}`,
@@ -214,19 +214,44 @@ describe('MusilogySections', () => {
     const eps = Array.from({ length: 10 }, (_, i) => record(10 + i, 'ep'));
     show(artist({ releases: [record(1, 'album', { soundtrack: true }), ...eps] }));
 
-    expect(screen.getByRole('heading', { name: 'Albums et EP' })).toBeInTheDocument();
+    const records = screen.getByRole('region', { name: 'Albums et EP' });
+    // The count beside the title: every album and EP.
+    expect(within(records).getByText('11')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Albums' })).toBeInTheDocument();
     expect(screen.getByText('1961 · bande originale')).toBeInTheDocument();
     expect(coverOf(record(1, 'album'))).toBe(
       'https://coverartarchive.org/release-group/rg-1/front-250'
     );
-    expect(screen.queryByText('Record 19')).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Voir 2 de plus' }));
+    expect(screen.getByText('Record 15')).toBeInTheDocument();
+    expect(screen.queryByText('Record 16')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Voir les 4 autres' }));
     expect(screen.getByText('Record 19')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Voir (les|l’)/ })).not.toBeInTheDocument();
   });
 
-  it("shows a composer's thousands of albums a step at a time", async () => {
-    const albums = Array.from({ length: 50 }, (_, i) => ({
+  it('says the one record left, and shows the rest at once up to sixty', async () => {
+    const albums = (count: number) =>
+      Array.from({ length: count }, (_, i) => ({
+        mbid: `rg-a${i}`,
+        title: `Album ${i}`,
+        type: 'album' as const,
+        soundtrack: false,
+        remix: false,
+        year: 2000 - i,
+      }));
+    const { unmount } = show(artist({ releases: albums(13) }));
+    await userEvent.click(screen.getByRole('button', { name: 'Voir l’autre' }));
+    expect(screen.getByText('Album 12')).toBeInTheDocument();
+    unmount();
+
+    show(artist({ releases: albums(72) }));
+    expect(screen.queryByText('Album 12')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Voir les 60 autres' }));
+    expect(screen.getByText('Album 71')).toBeInTheDocument();
+  });
+
+  it("shows a composer's thousands of albums a step at a time, saying how many remain", async () => {
+    const albums = Array.from({ length: 200 }, (_, i) => ({
       mbid: `rg-a${i}`,
       title: `Album ${i}`,
       type: 'album' as const,
@@ -236,13 +261,15 @@ describe('MusilogySections', () => {
     }));
     show(artist({ releases: albums }));
 
-    expect(screen.getByText('Album 23')).toBeInTheDocument();
-    expect(screen.queryByText('Album 24')).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Voir 24 de plus' }));
-    expect(screen.getByText('Album 47')).toBeInTheDocument();
-    expect(screen.queryByText('Album 48')).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Voir 2 de plus' }));
-    expect(screen.getByText('Album 49')).toBeInTheDocument();
+    expect(screen.getByText('Album 11')).toBeInTheDocument();
+    expect(screen.queryByText('Album 12')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Voir les 60 suivants sur 188' }));
+    expect(screen.getByText('Album 71')).toBeInTheDocument();
+    expect(screen.queryByText('Album 72')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Voir les 60 suivants sur 128' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Voir les 60 suivants sur 68' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Voir les 8 autres' }));
+    expect(screen.getByText('Album 199')).toBeInTheDocument();
   });
 
   it("calls a person's groups its bands, and a group's its joint projects", () => {
