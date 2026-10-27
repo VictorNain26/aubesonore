@@ -469,19 +469,6 @@
   }
 }
 
-/* The light behind an artist's own horizon: the dawn's rose and lilac, rising where its sun is
-   (--sun, from its id). Centred above the box's foot and faded out toward it, so the light
-   never ends on a straight edge. */
-@utility horizon-glow {
-  background: radial-gradient(
-    45% 70% at var(--sun, 22%) 72%,
-    color-mix(in oklab, var(--dawn-rose) 45%, transparent) 0%,
-    color-mix(in oklab, var(--dawn-lilac) 25%, transparent) 45%,
-    transparent 75%
-  );
-  mask-image: linear-gradient(to top, transparent, black 45%);
-}
-
 /* Page gutters: 1.5rem, 2.5rem from md, and wider past --container-page so the content stays
    centred on large screens while backgrounds still run edge to edge. */
 @utility px-page {
@@ -492,21 +479,16 @@
   }
 }
 
-/* The room of the artist's portrait (ArtistPortrait), which keeps its own shape, never cut: as wide
-   as the room and no taller than --portrait-cap, so a tall photo comes narrower and a panorama
-   shorter, as Wikipedia sizes its infobox images (MOS:IMAGES, « upright »). Above the name on a
-   phone or an upright tablet, then 5:4 of the title column beside it. */
+/* The room of the artist's portrait (ArtistPortrait), square, the portrait at its own shape inside
+   it, never cut, resting on its foot: as wide as the room and no taller than it (--portrait-cap),
+   so a tall photo comes narrower and a panorama shorter, as Wikipedia sizes its infobox images
+   (MOS:IMAGES, « upright »). */
 @utility portrait-room {
   container-type: inline-size;
-  --portrait-cap: 13.75rem;
-
-  @media (width >= 48rem) {
-    --portrait-cap: 20rem;
-  }
-
-  @media (width >= 64rem), (width >= 48rem) and (orientation: landscape) {
-    --portrait-cap: 125cqi;
-  }
+  --portrait-cap: 100cqi;
+  display: flex;
+  align-items: flex-end;
+  aspect-ratio: 1;
 }
 
 /* Inside a centred block, runs out to the left edge of the screen (the overflow past it,
@@ -814,6 +796,57 @@
   }
 }
 
+/* The artist page's opening (artist/ArtistPageView.tsx), the home's stage (hero) for an artist,
+   written for a phone first. Stacked: the header, the portrait 16 px under it between the gutters,
+   the column, the artist's horizon. Beside each other (hero-split, as the home): the header
+   across; the portrait on the page's gutter, square, no taller than the screen less the header and
+   the horizon, resting on the horizon; the column beside it standing on its foot (end), 3.5rem
+   from it as the home's. The portrait's light lies behind it all (cover-light). */
+@utility artist-stage {
+  --stage-gutter: max(1.5rem, (100vw - var(--container-page)) / 2);
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'header' 'portrait' 'column' 'horizon';
+
+  @media (width >= 48rem) {
+    --stage-gutter: max(2.5rem, (100vw - var(--container-page)) / 2);
+  }
+
+  @variant hero-split {
+    --stage-portrait: min(100svh - 10rem, 42vw, 36rem);
+    grid-template-columns: calc(var(--stage-gutter) + var(--stage-portrait)) minmax(0, 1fr);
+    grid-template-areas: 'header header' 'portrait column' 'horizon horizon';
+    align-items: end;
+  }
+}
+
+@utility artist-stage-portrait {
+  grid-area: portrait;
+  position: relative;
+  margin: 1rem var(--stage-gutter) 0;
+
+  @variant hero-split {
+    margin: 1.5rem 0 0 var(--stage-gutter);
+  }
+}
+
+@utility artist-stage-column {
+  grid-area: column;
+  position: relative;
+  min-width: 0;
+  padding: 1.5rem var(--stage-gutter) 0;
+
+  @variant hero-split {
+    padding: 1.5rem var(--stage-gutter) 0 3.5rem;
+  }
+}
+
+@utility artist-stage-horizon {
+  grid-area: horizon;
+}
+
 /* The week's row (home/MostKept.tsx): it scrolls sideways, each cover snapping to its start, the
    next one peeking past the edge and fading there, so the row says it goes on. 120 px covers on a
    phone, the row running to the screen's edge; 104 px beside the cover on air. The fade is as
@@ -1030,14 +1063,6 @@
   }
 }
 
-/* Room for the 4/12 title column beside the content: a large screen, or a landscape one from md. A
-   tablet held upright stacks them, as a phone does, rather than squeeze a 208 px cover. */
-@custom-variant wide {
-  @media (width >= 64rem), (width >= 48rem) and (orientation: landscape) {
-    @slot;
-  }
-}
-
 /* The logo (design/atoms/Logo.tsx): ink in the text colour, the sun in the dawn. */
 @utility logo-sun {
   fill: var(--dawn);
@@ -1240,15 +1265,6 @@
 /* Sticky at the top, moving down under the header while the header is back over the page. */
 @utility top-header {
   top: var(--header-offset, 0px);
-  @media (prefers-reduced-motion: no-preference) {
-    transition: top 0.3s var(--ease-out-quart);
-  }
-}
-
-/* A sticky title 2.5rem from the top, moving down under the header while the header is back over
-   the page (--header-offset, set by useHeaderOnScroll), so the header never covers it. */
-@utility top-below-header {
-  top: calc(2.5rem + var(--header-offset, 0px));
   @media (prefers-reduced-motion: no-preference) {
     transition: top 0.3s var(--ease-out-quart);
   }

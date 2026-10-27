@@ -375,7 +375,7 @@ export function MusilogySections({
   const shown = tabs.find((tab) => tab.id === chosen) ?? tabs[0];
   if (!shown) return null;
   return (
-    <Section id="close" title={m.musilogy_close_title()} sticky>
+    <Section id="close" title={m.musilogy_close_title()}>
       <Tabs label={m.musilogy_close_title()} tabs={tabs} selected={shown.id} onSelect={setChosen} />
     </Section>
   );

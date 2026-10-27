@@ -24,8 +24,8 @@ import { ReleasesSection } from '../musilogy/Releases';
 import { termOf } from '../musilogy/MusilogyTimeline';
 import { Wave } from '../design/Wave';
 import { LineLoader } from '../design/LineLoader';
-import { hashOf, seedOf } from '../design/wave';
-import type { CSSProperties } from 'react';
+import { seedOf } from '../design/wave';
+import { CoverLight } from '../design/CoverLight';
 
 export type ArtistPageState =
   | { status: 'loading' }
@@ -126,34 +126,34 @@ function Summary({ summary }: { summary: ArtistSummary }) {
   );
 }
 
-// An action that leaves the site: a raised block at a right angle, so it reads apart from the text
-// and the page's anchors (the disc is for Écouter only).
-const PLATFORM_LINK =
-  'text-ui bg-surface-raised ease-out-quart hover:bg-accent/10 focus-visible:outline-accent inline-flex min-h-11 items-center gap-1.5 px-4 transition-[background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
-
-/** Where else to hear the artist: one link per platform, each opening outside. */
+/**
+ * Where else to hear the artist: « Écouter sur », then each platform as a written link, opening
+ * outside (↗), as the home writes its links rather than boxing them.
+ */
 function ListenLinks({ links }: { links: ArtistProfile['links'] }) {
   return (
-    <>
-      {/* Named for those who move by headings; the links say it to the eye. */}
-      <h2 id="listen-title" className="sr-only">
+    <div className="flex flex-wrap items-center gap-x-5">
+      <span id="listen-title" className="text-ui text-text-muted font-normal">
         {m.artist_listen_title()}
-      </h2>
-      {/* One row on phones, scrolling sideways past the gutter like PageNav; wraps from md. */}
-      <ul
-        aria-labelledby="listen-title"
-        className="m-0 -mx-6 flex scrollbar-none list-none gap-2 overflow-x-auto p-0 px-6 md:mx-0 md:flex-wrap md:overflow-visible md:px-0"
-      >
+      </span>
+      <ul aria-labelledby="listen-title" className="m-0 flex list-none flex-wrap gap-x-5 p-0">
         {links.map((link) => (
-          <li key={link.url} className="shrink-0">
-            <a href={link.url} {...OUTSIDE_LINK} className={PLATFORM_LINK}>
+          <li key={link.url}>
+            <a
+              href={link.url}
+              {...OUTSIDE_LINK}
+              className={cn(
+                ARTIST_LINK,
+                'text-ui inline-flex min-h-11 items-center gap-1 font-semibold underline-offset-5'
+              )}
+            >
               {PLATFORM_LABELS[link.platform]()}
-              <ExternalIcon className="text-text-muted size-4" />
+              <ExternalIcon className="size-3.5" />
             </a>
           </li>
         ))}
       </ul>
-    </>
+    </div>
   );
 }
 
@@ -165,26 +165,24 @@ function Portrait({ text }: { text: string }) {
 }
 
 /**
- * The artist's own horizon, between who they are and the sections: the site's line, still, drawn
- * by their MBID (else the page's id), so the same artist always gets the same one; the dawn's
- * light rises behind it where their sun is.
+ * The artist's own horizon, at the foot of the opening, the portrait resting on it: the site's
+ * line, still, drawn by their MBID (else the page's id), so the same artist always gets the same
+ * one.
  */
 function ArtistHorizon({ seed }: { seed: string }) {
   return (
     <div
       aria-hidden="true"
       data-testid="artist-horizon"
-      className="relative mt-8 h-32 md:mt-12 md:h-40"
-      style={{ '--sun': `${15 + (hashOf(seed) % 71)}%` } as CSSProperties}
+      className="artist-stage-horizon relative h-14 md:h-16"
     >
-      <div className="horizon-glow absolute inset-x-0 bottom-6 h-full" />
       <Wave
         width={1440}
-        height={110}
-        amplitude={22}
+        height={40}
+        amplitude={6}
         seed={seedOf(seed)}
         traces={2}
-        className="text-text absolute inset-x-0 bottom-6 h-24 w-full md:h-28"
+        className="text-text absolute inset-x-0 bottom-3.5 h-10 w-full"
       />
     </div>
   );
@@ -219,47 +217,47 @@ function Profile({
 
   return (
     <>
-      {/* The sections' 4/8 grid: the portrait in the title column, who they are beside it. */}
-      <div className="px-page wide:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] wide:gap-16 grid gap-6 pt-10 md:pt-16">
-        {/* Its entrance on a wrapper, apart from the image's own hover and press.
-            Beside the text, its foot on the text's foot, whatever its shape. */}
-        <div className="lift-in portrait-room wide:self-end">
+      {/* The home's stage for an artist (design/tokens.css, artist-stage): the header, the portrait
+          on the gutter resting on the artist's horizon, the column beside it standing on its foot,
+          the portrait's light behind them all. */}
+      <div className="artist-stage">
+        <CoverLight art={profile.images[0]?.url} />
+        <div className="hero-header">
+          <SiteHeader />
+        </div>
+        {/* Its entrance on a wrapper, apart from the image's own hover and press. */}
+        <div className="lift-in artist-stage-portrait portrait-room">
           <ArtistPortrait
             images={profile.images}
             name={profile.name}
             seed={profile.mbid ?? profile.name}
           />
         </div>
-        {/* Who first, in three lines: what they are, their name, their music; then a few words,
-            where to hear them, and the way down the page. */}
-        <div className="lift-in-late wide:justify-end flex min-w-0 flex-col">
+        {/* Who first: what they are, their name, their music; then a few words and where to hear
+            them. */}
+        <div className="lift-in-late artist-stage-column flex flex-col">
           <DiscoveryTrail steps={trail} />
           {facts ? <p className="text-sub text-text-muted m-0">{facts}</p> : null}
           {/* The page's largest words, above every page's title: the name, as the title on air. */}
           <h1 className="font-display text-now m-0 mt-3 break-words">{profile.name}</h1>
           {styles.length > 0 ? <p className="text-sub m-0 mt-4">{styles.join(' · ')}</p> : null}
           {profile.summary || portrait ? (
-            <div className="mt-6">
+            <div className="mt-5 md:mt-6">
               {profile.summary ? <Summary summary={profile.summary} /> : null}
               {portrait ? <Portrait text={portrait} /> : null}
             </div>
           ) : null}
           {profile.links.length > 0 ? (
-            <div className="mt-6">
+            <div className="mt-2 md:mt-3">
               <ListenLinks links={profile.links} />
             </div>
           ) : null}
-          {sections.length > 1 ? (
-            <div className="wave-rule-top mt-8 pt-2">
-              <PageNav items={sections} />
-            </div>
-          ) : null}
         </div>
+        <ArtistHorizon seed={profile.mbid ?? profile.id} />
       </div>
 
-      <ArtistHorizon seed={profile.mbid ?? profile.id} />
-
-      <div className="px-page flex flex-col gap-16 pt-6 pb-16 md:gap-28 md:pt-10 md:pb-28">
+      <div className="px-page flex flex-col gap-12 pt-8 pb-16 md:gap-18 md:pt-14 md:pb-24">
+        <PageNav items={sections} />
         {kept.length > 0 ? (
           <Section id="kept" title={m.artist_kept_title()}>
             <ol className="m-0 list-none p-0">
@@ -325,7 +323,7 @@ export function ArtistPageView({
         (state.status === 'missing' || state.status === 'error') && 'flex flex-col'
       )}
     >
-      <SiteHeader />
+      {state.status === 'ready' ? null : <SiteHeader />}
       {state.status === 'loading' ? (
         <LineLoader className="px-page min-h-60 pt-10 md:pt-16" />
       ) : state.status === 'missing' ? (
