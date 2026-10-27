@@ -20,13 +20,15 @@ const { meta_description: description } = JSON.parse(
 // own data (session, kept tracks) and the artist links of the thread stay on the local backend.
 const PUBLIC_READS = ['^/api/musilogy/', '^/api/artist/page/', '^/api/trends'];
 
+/** The pages that are not the app: the Cast receiver, and the page the Google sign-in popup ends on. */
+const NOT_THE_APP = ['/cast/receiver.html', '/auth/google.html'];
+
 /**
  * The listener's theme on the page before its first paint (src/design/theme.ts): a script in
  * <head>, after the theme-color tags it turns and ahead of the styles, which the browser runs
- * before drawing anything (scripts/theme-before-paint.test.mjs). A file of its own,
+ * before drawing anything (scripts/vite-config.test.mjs). A file of its own,
  * since the CSP allows no inline script, named by its content under /assets/ so nginx and the
- * service worker keep it for a year. The home page only: not the Cast receiver nor the page the
- * Google sign-in popup ends on.
+ * service worker keep it for a year. The app's pages only.
  */
 function themeBeforePaint(): Plugin {
   const source = themeHeadScript();
@@ -50,7 +52,7 @@ function themeBeforePaint(): Plugin {
     transformIndexHtml: {
       order: 'pre',
       handler(_html, { path: page }) {
-        if (page === '/cast/receiver.html' || page === '/auth/google.html') return;
+        if (NOT_THE_APP.includes(page)) return;
         return [{ tag: 'script', attrs: { src: `/${fileName}` }, injectTo: 'head' }];
       },
     },
@@ -129,15 +131,15 @@ export default defineConfig(({ mode }) => {
       }),
       // vite-plugin-pwa injects its manifest and service worker into every page (BuildPlugin's
       // transformIndexHtml, v1.3.0): a TV opening the Cast receiver would install the site's
-      // worker and precache all of it. The receiver page goes without them.
+      // worker and precache all of it, and so would the Google popup. Those pages go without them.
       {
-        name: 'cast-receiver-without-pwa',
+        name: 'pages-without-pwa',
         apply: 'build',
         enforce: 'post',
         transformIndexHtml: {
           order: 'post',
           handler(html, { path: page }) {
-            if (page !== '/cast/receiver.html') return html;
+            if (!NOT_THE_APP.includes(page)) return html;
             return html
               .replace(/<link rel="manifest"[^>]*>/, '')
               .replace(/<script id="vite-plugin-pwa:register-sw"[^>]*><\/script>/, '');
