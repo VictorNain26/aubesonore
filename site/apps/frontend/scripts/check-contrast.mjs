@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-// Proves AA on the colour tokens of src/design/tokens.css, by day (the top-level :root) and by
-// night (the :root under prefers-color-scheme: dark, over the day's), and that every oklch token
-// lies in the sRGB gamut: out of it, a browser maps the colour back and the ratio computed here
-// would hold for a colour no screen shows.
+// Proves AA on the colour tokens of src/design/tokens.css, by day and by night (the top-level
+// :root, a token that changes written `var(--by-day, …) var(--by-night, …)`), and that every
+// oklch token lies in the sRGB gamut: out of it, a browser maps the colour back and the ratio
+// computed here would hold for a colour no screen shows.
 
-const NIGHT = '@media (prefers-color-scheme: dark)';
+const DAY_AND_NIGHT = /^var\(--by-day,\s*(.+)\)\s+var\(--by-night,\s*(.+)\)$/;
 /** The player bar, whose light is read through the bar's own veil and inks. */
 const BAR = '@utility player-bar';
 
@@ -27,15 +27,25 @@ const declarations = (text) => {
   return vars;
 };
 
+/** The tokens of one scheme: each one's value, or its value by day or by night. */
+const scheme = (vars, index) =>
+  Object.fromEntries(
+    Object.entries(vars).map(([key, value]) => {
+      if (!/--by-(day|night)\b/.test(value)) return [key, value];
+      const both = value.match(DAY_AND_NIGHT);
+      if (!both) throw new Error(`--${key} must read var(--by-day, …) var(--by-night, …)`);
+      return [key, both[index].trim()];
+    })
+  );
+
 const readSchemes = (css) => {
   const root = css.search(/^:root\s*\{/m);
   if (root === -1) throw new Error('selector not found: :root');
-  const media = css.indexOf(NIGHT);
-  if (media === -1) throw new Error(`block not found: ${NIGHT}`);
-  const nightRoot = blockAfter(css, media).indexOf(':root');
-  if (nightRoot === -1) throw new Error(`selector not found: ${NIGHT} :root`);
-  const day = declarations(blockAfter(css, root));
-  const night = { ...day, ...declarations(blockAfter(blockAfter(css, media), nightRoot)) };
+  const tokens = declarations(blockAfter(css, root));
+  if (!Object.values(tokens).some((value) => DAY_AND_NIGHT.test(value)))
+    throw new Error('no token has a night value: var(--by-day, …) var(--by-night, …)');
+  const day = scheme(tokens, 1);
+  const night = scheme(tokens, 2);
   const bar = css.indexOf(BAR);
   if (bar === -1) throw new Error(`block not found: ${BAR}`);
   // Only the light's tokens: the bar's other declarations name tokens it redefines itself.

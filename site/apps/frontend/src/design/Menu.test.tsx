@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { userEvent } from '@testing-library/user-event';
 import { Button } from './Button';
 import { Menu } from './Menu';
@@ -44,26 +44,38 @@ describe('Menu', () => {
     expect(onDelete).not.toHaveBeenCalled();
   });
 
-  it('exposes selected items as checked radio items', () => {
-    const onSelectDeezer = vi.fn();
+  it('offers a choice beside the actions, as checked radio items under its name', () => {
+    const onChange = vi.fn();
+    const onSignOut = vi.fn();
     render(
       <Menu
-        trigger={<button type="button">Plateforme</button>}
-        items={[
-          { label: 'Spotify', onSelect: () => {}, selected: true },
-          { label: 'Deezer', onSelect: onSelectDeezer, selected: false },
-        ]}
+        trigger={<button type="button">Compte</button>}
+        choice={{
+          label: 'Thème',
+          value: 'light',
+          options: [
+            { value: 'system', label: 'Système' },
+            { value: 'light', label: 'Clair' },
+            { value: 'dark', label: 'Sombre' },
+          ],
+          onChange,
+        }}
+        items={[{ label: 'Se déconnecter', onSelect: onSignOut }]}
       />
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Plateforme' }));
-    expect(screen.getByRole('menuitemradio', { name: 'Spotify' })).toHaveAttribute(
+    fireEvent.click(screen.getByRole('button', { name: 'Compte' }));
+    const group = screen.getByRole('group', { name: 'Thème' });
+    expect(within(group).getByRole('menuitemradio', { name: 'Clair' })).toHaveAttribute(
       'aria-checked',
       'true'
     );
-    const deezer = screen.getByRole('menuitemradio', { name: 'Deezer' });
-    expect(deezer).toHaveAttribute('aria-checked', 'false');
-    fireEvent.click(deezer);
-    expect(onSelectDeezer).toHaveBeenCalledOnce();
+    const dark = within(group).getByRole('menuitemradio', { name: 'Sombre' });
+    expect(dark).toHaveAttribute('aria-checked', 'false');
+    fireEvent.click(dark);
+    expect(onChange).toHaveBeenCalledWith('dark');
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Se déconnecter' }));
+    expect(onSignOut).toHaveBeenCalledOnce();
   });
 
   it('affiche le header non interactif au-dessus des items', async () => {

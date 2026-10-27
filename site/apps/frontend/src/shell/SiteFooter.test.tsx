@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { render as renderInDom, screen } from '@testing-library/react';
+import { render as renderInDom, screen, within } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
@@ -18,6 +18,8 @@ describe('SiteFooterView', () => {
         locale="fr"
         languageHrefs={HREFS}
         onLocaleChange={onLocaleChange}
+        theme="system"
+        onThemeChange={vi.fn()}
         onInstall={null}
       />
     );
@@ -40,10 +42,35 @@ describe('SiteFooterView', () => {
     expect(screen.getByRole('link', { name: 'fr' })).toHaveAttribute('href', '/mentions-legales/');
   });
 
+  it('offers the theme beside the language, to everyone', async () => {
+    const onThemeChange = vi.fn();
+    render(
+      <SiteFooterView
+        locale="fr"
+        languageHrefs={HREFS}
+        onLocaleChange={vi.fn()}
+        theme="dark"
+        onThemeChange={onThemeChange}
+        onInstall={null}
+      />
+    );
+    const theme = screen.getByRole('radiogroup', { name: 'Thème' });
+    expect(within(theme).getByRole('radio', { name: 'Sombre' })).toBeChecked();
+    await userEvent.click(within(theme).getByRole('radio', { name: 'Système' }));
+    expect(onThemeChange).toHaveBeenCalledWith('system');
+  });
+
   it('offers installation only when the browser allows it', async () => {
     const onInstall = vi.fn();
     const { rerender } = render(
-      <SiteFooterView locale="fr" languageHrefs={HREFS} onLocaleChange={vi.fn()} onInstall={null} />
+      <SiteFooterView
+        locale="fr"
+        languageHrefs={HREFS}
+        onLocaleChange={vi.fn()}
+        theme="system"
+        onThemeChange={vi.fn()}
+        onInstall={null}
+      />
     );
     expect(
       screen.queryByRole('button', { name: 'Ajouter à l’écran d’accueil' })
@@ -54,6 +81,8 @@ describe('SiteFooterView', () => {
         locale="fr"
         languageHrefs={HREFS}
         onLocaleChange={vi.fn()}
+        theme="system"
+        onThemeChange={vi.fn()}
         onInstall={onInstall}
       />
     );

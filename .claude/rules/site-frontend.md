@@ -20,6 +20,7 @@ Paths below are relative to `site/apps/frontend/`.
 ## Tokens
 
 - Colors, text sizes and radii come only from the tokens of `src/design/tokens.css`. No hex/hsl/oklch value outside that file, no arbitrary value for color, spacing or typography (`bg-[#fff]`, `p-[13px]`, `text-[17px]`).
+- A token that changes by night is written once, on the day and night switch of `tokens.css` (`--by-day`, `--by-night`): no second palette, no `dark:` variant. The night is the device's or the listener's (`src/design/theme.ts`); code that draws with a token follows it through `onColorSchemeChange` (`src/stores/themeStore.ts`), never its own `matchMedia`.
 - The apricot `dawn` light is decoration only, never under text.
 - Fonts are self-hosted with Fontsource: the CSP allows `font-src 'self'` only.
 - A new text size goes in `tokens.css` and in the `extendTailwindMerge` list of `src/lib/utils.ts`, or `cn()` drops it next to a text color.

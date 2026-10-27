@@ -6,7 +6,14 @@ interface MenuAction {
   label: string;
   onSelect: () => void;
   disabled?: boolean;
-  selected?: boolean;
+}
+
+/** Une option parmi plusieurs (ex. le thème), au-dessus des actions. */
+interface MenuChoice {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
 }
 
 export interface MenuProps {
@@ -14,7 +21,9 @@ export interface MenuProps {
   trigger: ReactElement;
   /** Contenu optionnel affiché en tête du menu (ex. infos utilisateur). */
   header?: ReactNode;
-  /** Actions listées ; si une entrée a `selected` défini, le menu devient un groupe radio. */
+  /** Un choix exposé en groupe radio nommé, au-dessus des actions. */
+  choice?: MenuChoice;
+  /** Actions listées. */
   items: MenuAction[];
 }
 
@@ -22,12 +31,10 @@ const itemClassName =
   'flex h-11 items-center px-4 outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-surface';
 
 /**
- * Menu contextuel basé sur Base UI. Bascule automatiquement en groupe radio dès qu'une
- * entrée porte `selected`, sinon reste une liste d'actions simples.
+ * Menu contextuel basé sur Base UI : un en-tête, un choix éventuel (groupe radio, le menu reste
+ * ouvert pour qu'on en voie l'effet), puis des actions simples.
  */
-export function Menu({ trigger, header, items }: MenuProps) {
-  const isRadio = items.some((item) => item.selected !== undefined);
-  const selectedValue = items.find((item) => item.selected === true)?.label;
+export function Menu({ trigger, header, choice, items }: MenuProps) {
   return (
     <BaseMenu.Root>
       <BaseMenu.Trigger render={trigger} />
@@ -39,40 +46,36 @@ export function Menu({ trigger, header, items }: MenuProps) {
                 <BaseMenu.GroupLabel>{header}</BaseMenu.GroupLabel>
               </BaseMenu.Group>
             ) : null}
-            {isRadio ? (
+            {choice ? (
               <BaseMenu.RadioGroup
-                value={selectedValue}
-                onValueChange={(value) => {
-                  items.find((item) => item.label === value)?.onSelect();
-                }}
+                value={choice.value}
+                onValueChange={(value: string) => choice.onChange(value)}
+                className="border-border border-b py-1"
               >
-                {items.map((item) => (
+                <BaseMenu.GroupLabel className="text-caption text-text-muted px-4 py-1">
+                  {choice.label}
+                </BaseMenu.GroupLabel>
+                {choice.options.map((option) => (
                   <BaseMenu.RadioItem
-                    key={item.label}
-                    value={item.label}
-                    disabled={item.disabled}
-                    closeOnClick
-                    className={cn(
-                      itemClassName,
-                      'data-[checked]:bg-surface data-[checked]:font-medium'
-                    )}
+                    key={option.value}
+                    value={option.value}
+                    className={cn(itemClassName, 'data-[checked]:font-bold')}
                   >
-                    {item.label}
+                    {option.label}
                   </BaseMenu.RadioItem>
                 ))}
               </BaseMenu.RadioGroup>
-            ) : (
-              items.map((item) => (
-                <BaseMenu.Item
-                  key={item.label}
-                  disabled={item.disabled}
-                  onClick={item.onSelect}
-                  className={itemClassName}
-                >
-                  {item.label}
-                </BaseMenu.Item>
-              ))
-            )}
+            ) : null}
+            {items.map((item) => (
+              <BaseMenu.Item
+                key={item.label}
+                disabled={item.disabled}
+                onClick={item.onSelect}
+                className={itemClassName}
+              >
+                {item.label}
+              </BaseMenu.Item>
+            ))}
           </BaseMenu.Popup>
         </BaseMenu.Positioner>
       </BaseMenu.Portal>

@@ -9,6 +9,9 @@ import { cn } from '@/lib/utils';
 import * as m from '@/paraglide/messages.js';
 import { useHeaderOnScroll } from '../lib/headerOnScroll';
 import { OUTLINE_ACTION } from '../design/classes';
+import { THEME_CHOICES } from '../design/theme';
+import { chooseTheme, useThemeChoice } from '../stores/themeStore';
+import { themeOptions } from './ThemeSwitch';
 
 const NAV_LINK =
   'text-ui ease-out-quart focus-visible:outline-accent hidden min-h-11 items-center transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-97 md:inline-flex';
@@ -39,6 +42,7 @@ export function SiteHeader({ tagline = false }: { tagline?: boolean }) {
       signOut: s.signOut,
     }))
   );
+  const theme = useThemeChoice();
   const { pathname } = useLocation();
   // The sign-in page is where Se connecter leads: the header does not offer it twice.
   const isSignInPage = [localizeHref('/connexion'), '/reset-password'].includes(pathname);
@@ -126,6 +130,16 @@ export function SiteHeader({ tagline = false }: { tagline?: boolean }) {
                     <span className="text-caption text-text-muted">{user.email}</span>
                   </span>
                 }
+                // The footer's theme switch, here as the menu's own radio items.
+                choice={{
+                  label: m.theme_label(),
+                  value: theme,
+                  options: themeOptions(),
+                  onChange: (value) => {
+                    const choice = THEME_CHOICES.find((c) => c === value);
+                    if (choice) chooseTheme(choice);
+                  },
+                }}
                 items={[{ label: m.library_sign_out(), onSelect: () => void signOut() }]}
               />
             </span>
