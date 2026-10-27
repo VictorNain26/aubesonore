@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { ErrorBoundary } from 'react-error-boundary';
 import type { TrendsResult } from '@aubesonore/shared-types/client';
 import { SiteHeader } from '../shell/SiteHeader';
-import { NowPlaying, NowPlayingFallback } from './NowPlaying';
+import { NowPlaying, NowPlayingFallback, preloadCover } from './NowPlaying';
+import { useTrackSwap } from './useTrackSwap';
+import { useNowPlayingStore, type SongEntry } from '../lib/azuracast';
 import { JustBefore } from './JustBefore';
 import { MostKept } from './MostKept';
 import { Horizon } from './Horizon';
@@ -24,6 +27,12 @@ export function Hero({ trends }: { trends: Loaded<TrendsResult> | null }) {
   // Écouter's block, the track's or the fallback's: watched again when one replaces the other.
   const [player, setPlayer] = useState<HTMLDivElement | null>(null);
   const setInView = useHeroPlayerStore((s) => s.setInView);
+  const { onAir, isOnline } = useNowPlayingStore(
+    useShallow((s) => ({ onAir: s.data?.now_playing ?? null, isOnline: s.data?.is_online ?? true }))
+  );
+  // The track shown, one change at a time: the last leaves, the next comes once its cover is
+  // ready; the cover, its words, « Juste avant » and the light follow it together.
+  const { shown, swap } = useTrackSwap(onAir, preloadTrackCover);
 
   useEffect(() => {
     const element = player;
@@ -42,7 +51,8 @@ export function Hero({ trends }: { trends: Loaded<TrendsResult> | null }) {
   return (
     <div className="hero">
       <div className="hero-screen">
-        <CoverLight />
+        {/* Off air, no light: the cover stays, dimmed (design/tokens.css, hero-cover). */}
+        <CoverLight art={isOnline ? shown?.song.art : null} />
         <svg
           aria-hidden="true"
           className="grain-fade pointer-events-none absolute inset-0 size-full opacity-13 mix-blend-multiply"
@@ -67,10 +77,10 @@ export function Hero({ trends }: { trends: Loaded<TrendsResult> | null }) {
         <ErrorBoundary
           fallbackRender={(props) => <NowPlayingFallback {...props} liveRef={setPlayer} />}
         >
-          <NowPlaying liveRef={setPlayer} />
+          <NowPlaying shown={shown} swap={swap} liveRef={setPlayer} />
         </ErrorBoundary>
 
-        <JustBefore />
+        <JustBefore shown={shown} swap={swap} />
 
         <div className="hero-horizon">
           <Horizon />
@@ -81,3 +91,5 @@ export function Hero({ trends }: { trends: Loaded<TrendsResult> | null }) {
     </div>
   );
 }
+
+const preloadTrackCover = (track: SongEntry) => preloadCover(track.song.art);

@@ -23,7 +23,7 @@ export function CastControl({
   diffusion: Diffusion;
   /**
    * `bar`: the dark player bar, icon first. `text`: a text action in the sheet. `hero`: a text
-   * action beside the hero's volume, its word on a computer, the icon alone on a phone.
+   * action beside the hero's volume, the icon alone on a phone, its word from 40rem.
    */
   variant: 'bar' | 'text' | 'hero';
 }) {
@@ -56,7 +56,12 @@ export function CastControl({
             className={
               variant === 'bar'
                 ? cn(BAR, connected && 'bg-on-accent text-accent hover:opacity-90')
-                : cn(TEXT_ACTION, connected && 'font-semibold')
+                : cn(
+                    TEXT_ACTION,
+                    // The icon alone on a phone: still a 44 px target.
+                    variant === 'hero' && 'min-w-11 justify-center',
+                    connected && 'font-semibold'
+                  )
             }
           >
             {icon}
@@ -65,7 +70,7 @@ export function CastControl({
             <span
               className={cn(
                 variant === 'bar' && !connected && 'sr-only md:not-sr-only',
-                variant === 'hero' && 'phone:sr-only'
+                variant === 'hero' && 'sr-only sm:not-sr-only'
               )}
             >
               {label}

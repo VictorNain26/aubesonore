@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { isDefaultArtwork, useNowPlayingStore } from '../lib/azuracast';
+import { isDefaultArtwork } from '../lib/azuracast';
 import { artworkAt } from '../lib/artwork';
 import { readInks } from './lightInks';
 import { lightOpacity } from './lightStrength';
 
 /** The light is the cover at its smallest: 2.4 KB for the station's art. */
 const LIGHT_PIXELS = 96;
-/** The next light's fade (design/tokens.css, light-in), after which the last one goes. */
-export const LIGHT_FADE_MS = 1400;
+/**
+ * The cross-fade of two lights (design/tokens.css, light-in and light-out): the next fades in as
+ * the last fades out, then the last goes, already gone from view.
+ */
+export const LIGHT_FADE_MS = 1000;
 /** The canvas the light is painted into, then drawn at the hero's size as an image. */
 const CANVAS_PIXELS = 32;
 /** At 32 px, 1.5 px of blur: about 90 px once drawn over a large screen; the mockup's colours. */
@@ -34,13 +37,16 @@ interface Layers {
 
 /**
  * The cover on air as the hero's light, blurred behind it under a veil of the paper
- * (design/tokens.css, cover-light), dimmed for a cover its words would not read on. When the track changes, the next light fades in over the last
- * once its file has come, then the last goes: two at most, the one shown and the newest. The first
- * comes without a fade. Decoration: hidden from screen readers.
+ * (design/tokens.css, cover-light), dimmed for a cover its words would not read on. When the
+ * track changes, the next light fades in as the last fades out, once its file has come, then the
+ * last goes: two at most, the one shown and the newest. The first fades in with the cover.
+ * Decoration: hidden from screen readers.
  */
 export function CoverLightView({ art }: { art: string | null | undefined }) {
   const src = art && !isDefaultArtwork(art) ? artworkAt(art, LIGHT_PIXELS) : null;
   const [layers, setLayers] = useState<Layers>({ shown: src, next: null, nextLoaded: false });
+  // The page's first light fades in with the cover (light-first); the next ones cross-fade.
+  const [firstSrc] = useState(src);
   const newest = layers.next ?? layers.shown;
   if (src !== newest) {
     setLayers((prev) =>
@@ -62,7 +68,15 @@ export function CoverLightView({ art }: { art: string | null | undefined }) {
 
   return (
     <div aria-hidden="true" className="cover-light">
-      {layers.shown ? <Light key={layers.shown} src={layers.shown} /> : null}
+      {layers.shown ? (
+        <Light
+          key={layers.shown}
+          src={layers.shown}
+          className={
+            layers.nextLoaded ? 'light-out' : layers.shown === firstSrc ? 'light-first' : undefined
+          }
+        />
+      ) : null}
       {layers.next ? (
         <Light
           key={layers.next}
@@ -113,7 +127,7 @@ function Light({
   onLoad,
 }: {
   src: string;
-  className?: string;
+  className?: string | undefined;
   onLoad?: () => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -158,7 +172,7 @@ function Light({
   );
 }
 
-export function CoverLight() {
-  const art = useNowPlayingStore((s) => s.data?.now_playing?.song.art);
+/** The light of the cover the hero shows; none off air (home/Hero.tsx). */
+export function CoverLight({ art }: { art: string | null | undefined }) {
   return <CoverLightView art={art} />;
 }

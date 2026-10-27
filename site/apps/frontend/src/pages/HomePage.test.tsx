@@ -79,6 +79,18 @@ describe('HomePage', { timeout: PAGE_TEST_TIMEOUT }, () => {
     expect(screen.getAllByText('Oh No').length).toBeGreaterThan(0);
   });
 
+  it('keeps the last cover dimmed off air, without its light', async () => {
+    const np = useNowPlayingStore.getState().data!;
+    np.now_playing.song.art = 'https://radio.aubesonore.fr/api/station/aubesonore/art/a1-1.jpg';
+    useNowPlayingStore.setState({ data: { ...np, is_online: true } });
+    await openHome();
+    expect(screen.getAllByTestId('cover-light').length).toBeGreaterThan(0);
+
+    act(() => useNowPlayingStore.setState({ data: { ...np, is_online: false } }));
+    expect(screen.queryAllByTestId('cover-light')).toHaveLength(0);
+    expect(screen.getByTestId('hero-cover')).toHaveAttribute('data-off-air');
+  });
+
   it('switches the page to English from the footer', async () => {
     const router = await openHome();
 

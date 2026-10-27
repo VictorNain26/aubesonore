@@ -72,8 +72,18 @@ describe('JustBeforeView', () => {
     // 56 px beside the cover on air, 44 px on a phone: the 96 or 192 px file.
     expect(img).toHaveAttribute(
       'sizes',
-      '(min-width: 48rem) and (orientation: landscape) 3.5rem, 2.75rem'
+      '(min-width: 40rem) and (orientation: landscape) 3.5rem, 2.75rem'
     );
+  });
+
+  it('marks its track leaving and arriving with the hero', () => {
+    const { rerender } = render(<JustBeforeView {...props()} />);
+    const region = () => screen.getByRole('region', { name: 'Juste avant' });
+    expect(region()).toHaveAttribute('data-swap', 'idle');
+    rerender(<JustBeforeView {...props({ swap: 'out' })} />);
+    expect(region()).toHaveAttribute('data-swap', 'out');
+    rerender(<JustBeforeView {...props({ swap: 'in' })} />);
+    expect(region()).toHaveAttribute('data-swap', 'in');
   });
 
   it('shows nothing while no track played before', () => {
@@ -100,7 +110,7 @@ describe('JustBefore', () => {
   afterEach(() => __resetNowPlayingStore());
 
   it("finds the artist's page through the shared resolver, as the track on air does", async () => {
-    render(<JustBefore />);
+    render(<JustBefore shown={null} swap="idle" />);
     expect(await screen.findByRole('link', { name: 'Danny Brown' })).toHaveAttribute(
       'href',
       '/artiste/danny-brown'

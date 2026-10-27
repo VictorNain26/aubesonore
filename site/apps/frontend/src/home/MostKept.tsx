@@ -11,7 +11,11 @@ export interface MostKeptViewProps {
   status: 'loading' | 'error' | 'ready';
 }
 
-/** A cover and its title; with the artist's page, a link there, named for both. */
+/**
+ * A cover, its title and its artist; with the artist's page, a link there, named for both. Under
+ * the pointer the cover grows a little (design/tokens.css, kept-link): a dimmed one read as
+ * disabled.
+ */
 function Kept({ entry }: { entry: TrendEntry }) {
   const body = (
     <>
@@ -20,12 +24,20 @@ function Kept({ entry }: { entry: TrendEntry }) {
         alt=""
         seed={`${entry.artist}|${entry.title}`}
         lowPriority
+        // Ten small covers at most: fetched with the page, so the row never scrolls onto empty
+        // squares.
+        eager
         // 104 px beside the cover on air (hero-split, design/tokens.css), 120 on a phone.
-        sizes="(min-width: 48rem) and (orientation: landscape) 6.5rem, 7.5rem"
+        sizes="(min-width: 40rem) and (orientation: landscape) 6.5rem, 7.5rem"
         className="aspect-square w-full"
       />
-      <span className="text-label truncate font-semibold" title={entry.title}>
-        {entry.title}
+      <span className="flex min-w-0 flex-col">
+        <span className="text-label truncate font-semibold" title={entry.title}>
+          {entry.title}
+        </span>
+        <span className="text-caption text-text-muted truncate font-normal">
+          {entry.artistPage?.name ?? entry.artist}
+        </span>
       </span>
     </>
   );
@@ -33,7 +45,7 @@ function Kept({ entry }: { entry: TrendEntry }) {
     <Link
       to={artistPath(entry.artistPage)}
       aria-label={`${entry.title}, ${entry.artistPage.name}`}
-      className="ease-out-quart focus-visible:outline-accent flex flex-col gap-1.5 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70"
+      className="kept-link focus-visible:outline-accent flex flex-col gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2"
     >
       {body}
     </Link>
@@ -54,7 +66,7 @@ export function MostKeptView({ week, status }: MostKeptViewProps) {
   if (status === 'loading' || week?.length === 0) return null;
   return (
     <section aria-labelledby="most-kept-title" className="hero-kept">
-      <h2 id="most-kept-title" className="text-label text-text-muted m-0 mb-2.5 font-normal">
+      <h2 id="most-kept-title" className="text-label text-text-muted m-0 mb-2 font-normal">
         {m.most_kept_title()}
       </h2>
       {week ? (

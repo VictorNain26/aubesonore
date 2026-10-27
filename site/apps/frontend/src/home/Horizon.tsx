@@ -15,7 +15,7 @@ export function HorizonView({ isPlaying }: HorizonViewProps) {
   return (
     <div data-horizon className="px-page relative h-(--horizon-height)">
       <div className="relative size-full">
-        <div className="draw-in bleed-left absolute right-3 bottom-0 h-5/6 mask-r-from-75% md:right-14 md:mask-r-from-80%">
+        <div className="horizon-draw bleed-left absolute right-3 bottom-0 h-5/6 mask-r-from-75% md:right-14 md:mask-r-from-80%">
           <HorizonLine isPlaying={isPlaying} className="size-full" />
         </div>
         <span

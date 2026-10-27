@@ -158,9 +158,30 @@ describe('NowPlayingView', () => {
     expect(onToggleMute).toHaveBeenCalledOnce();
   });
 
-  it('says radio silence when the station is off air', () => {
-    render(<NowPlayingView {...props({ isOnline: false })} />);
+  it('says radio silence when the station is off air, the last cover kept but dimmed', () => {
+    const art = 'https://radio.aubesonore.fr/api/station/aubesonore/art/a1-1.jpg';
+    const { rerender } = render(
+      <NowPlayingView {...props({ track: { ...props().track!, art } })} />
+    );
+    expect(screen.getByTestId('hero-cover')).not.toHaveAttribute('data-off-air');
+
+    rerender(<NowPlayingView {...props({ isOnline: false, track: { ...props().track!, art } })} />);
     expect(screen.getByText('Silence radio. Retour dans un instant.')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Pochette de Mimoun, Mickey 3D' })).toBeInTheDocument();
+    expect(screen.getByTestId('hero-cover')).toHaveAttribute('data-off-air');
+  });
+
+  it('marks the track leaving, then the one arriving, for the hero to animate them', () => {
+    const { rerender } = render(<NowPlayingView {...props()} />);
+    const marks = () =>
+      ['hero-cover', 'hero-words'].map((id) => screen.getByTestId(id).getAttribute('data-swap'));
+    expect(marks()).toEqual(['idle', 'idle']);
+
+    rerender(<NowPlayingView {...props({ swap: 'out' })} />);
+    expect(marks()).toEqual(['out', 'out']);
+
+    rerender(<NowPlayingView {...props({ swap: 'in' })} />);
+    expect(marks()).toEqual(['in', 'in']);
   });
 
   it('says the live is not answering, rather than load forever, when the station is unreachable', () => {
@@ -183,12 +204,13 @@ describe('NowPlayingView', () => {
     render(<NowPlayingView {...props({ track: { ...props().track!, art } })} />);
     const img = screen.getByRole('img', { name: 'Pochette de Mimoun, Mickey 3D' });
 
-    // Beside the column (hero-split), the screen's height under the header, or the width the
-    // column leaves; above it, the screen's width, held under the height the words need.
+    // Beside the column (hero-split), the screen's height less the header and its 24 px and the
+    // horizon it rests on, or the width the column leaves; above it, the screen's width, held
+    // under the height the header's 16 px and the words need.
     expect(img.getAttribute('sizes')).toBe(
       [
-        '(min-width: 48rem) and (orientation: landscape) min(100vh - 4.5rem, 100vw - 32rem)',
-        'min(100vw, max(16rem, 100vh - 27rem))',
+        '(min-width: 40rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 32rem)',
+        'min(100vw, max(13rem, 100vh - 28rem))',
       ].join(', ')
     );
     // The page's largest image: fetched first.
@@ -206,7 +228,7 @@ describe('NowPlayingView', () => {
     );
     await screen.findByRole('dialog', { name: 'Mimoun' });
 
-    rerender(<NowPlayingView {...props({ track: next, hasChanged: true })} />);
+    rerender(<NowPlayingView {...props({ track: next, swap: 'in' })} />);
     const dialog = screen.getByRole('dialog', { name: 'Respire' });
     expect(within(dialog).getByRole('img')).toHaveProperty('src', art('b'));
   });

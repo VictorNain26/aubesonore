@@ -91,4 +91,12 @@ describe('usePreviousTrack', () => {
     }));
     expect(renderHook(() => usePreviousTrack()).result.current).toBeNull();
   });
+
+  it('is the track before the one the hero shows, while the last one is still leaving', () => {
+    const now = Math.floor(Date.now() / 1000);
+    // The live has moved on to 6; the hero still shows 5 for a moment.
+    onAir(historyEntry(6, now), [historyEntry(5, now - 200), historyEntry(4, now - 400)]);
+    const shown = historyEntry(5, now - 200);
+    expect(renderHook(() => usePreviousTrack(shown)).result.current?.sh_id).toBe(4);
+  });
 });

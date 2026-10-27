@@ -8,6 +8,8 @@ import { artistPath } from '../lib/artistProfile';
 import { useLikedTracksStore, isTrackLiked, trackKey } from '../stores/likedTracksStore';
 import { useArtistPage } from '../hooks/useArtistPage';
 import { usePreviousTrack } from './usePreviousTrack';
+import type { Swap } from './useTrackSwap';
+import type { SongEntry } from '../lib/azuracast';
 import * as m from '@/paraglide/messages.js';
 
 /** Garder beside a track of the hero: the heart alone, a 44 px target named for its title. */
@@ -25,6 +27,8 @@ export interface JustBeforeViewProps {
     isKeeping: boolean;
   } | null;
   onToggleKeep: () => void;
+  /** Where the hero is in a change of track: it leaves and comes back with it. */
+  swap?: Swap;
 }
 
 /**
@@ -33,10 +37,10 @@ export interface JustBeforeViewProps {
  * page) and Garder; nothing to play, the live is the one thing that plays. Nothing before the
  * first track has played.
  */
-export function JustBeforeView({ track, onToggleKeep }: JustBeforeViewProps) {
+export function JustBeforeView({ track, onToggleKeep, swap = 'idle' }: JustBeforeViewProps) {
   if (!track) return null;
   return (
-    <section aria-labelledby="just-before-title" className="hero-before">
+    <section aria-labelledby="just-before-title" data-swap={swap} className="hero-before">
       <h2 id="just-before-title" className="text-label text-text-muted m-0 mb-2 font-normal">
         {m.just_before_title()}
       </h2>
@@ -47,7 +51,7 @@ export function JustBeforeView({ track, onToggleKeep }: JustBeforeViewProps) {
           seed={`${track.artist}|${track.title}`}
           lowPriority
           // 44 px on a phone, 56 beside the cover on air (hero-split, design/tokens.css).
-          sizes="(min-width: 48rem) and (orientation: landscape) 3.5rem, 2.75rem"
+          sizes="(min-width: 40rem) and (orientation: landscape) 3.5rem, 2.75rem"
           className="hero-split:size-14 size-11 shrink-0"
         />
         <span className="flex min-w-0 flex-col">
@@ -82,8 +86,9 @@ export function JustBeforeView({ track, onToggleKeep }: JustBeforeViewProps) {
   );
 }
 
-export function JustBefore() {
-  const entry = usePreviousTrack();
+/** « Juste avant » for the track the hero shows (`shown`, the one on air when null). */
+export function JustBefore({ shown, swap }: { shown: SongEntry | null; swap: Swap }) {
+  const entry = usePreviousTrack(shown);
   const tracks = useLikedTracksStore((s) => s.tracks);
   const { likingTrackId, toggleLike } = useLikeAction();
   // The same resolver as the track on air: the page it found then is reused, from its cache.
@@ -103,6 +108,7 @@ export function JustBefore() {
             }
           : null
       }
+      swap={swap}
       onToggleKeep={() => {
         if (entry) void toggleLike(entry.song.title, entry.song.artist, entry.song.art);
       }}

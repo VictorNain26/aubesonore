@@ -72,11 +72,27 @@ describe('MostKeptView', () => {
     });
     const img = screen.getByRole('presentation');
     expect(img).toHaveAttribute('fetchpriority', 'low');
+    // Fetched with the page, not as it scrolls in: a lazy row showed empty squares while scrolled.
+    expect(img).toHaveAttribute('loading', 'eager');
     // 104 px beside the cover on air, 120 px on a phone: the 192 px file at most on a dense screen.
     expect(img).toHaveAttribute(
       'sizes',
-      '(min-width: 48rem) and (orientation: landscape) 6.5rem, 7.5rem'
+      '(min-width: 40rem) and (orientation: landscape) 6.5rem, 7.5rem'
     );
+  });
+
+  it('says the artist under each title, linked to their page when it has one', () => {
+    const week = [
+      entry('Get Lucky', 4, {
+        artist: 'Daft Punk feat. Pharrell Williams',
+        artistPage: { slug: 'daft-punk', name: 'Daft Punk' },
+      }),
+      entry('Nightcall', 2, { artist: 'Kavinsky' }),
+    ];
+    render(<MostKeptView week={week} status="ready" />, { wrapper });
+    const [first, second] = screen.getAllByRole('listitem');
+    expect(first).toHaveTextContent('Get LuckyDaft Punk');
+    expect(second).toHaveTextContent('NightcallKavinsky');
   });
 
   it('shows nothing for an empty week', () => {

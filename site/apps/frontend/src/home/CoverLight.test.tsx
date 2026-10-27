@@ -200,11 +200,18 @@ describe('CoverLightView', () => {
 
     fireEvent.load(files()[1]!);
     expect(next()).toHaveClass('light-in');
+    // The last fades out as the next fades in: no jump of tint when it goes.
+    expect(lights()[0]).toHaveClass('light-out');
 
     act(() => {
       vi.advanceTimersByTime(LIGHT_FADE_MS);
     });
     expect(srcs()).toEqual(['/covers/96/b2-1.jpg']);
+    expect(lights()[0]).not.toHaveClass('light-out');
+  });
+
+  it('cross-fades in one second', () => {
+    expect(LIGHT_FADE_MS).toBe(1000);
   });
 
   it('holds two lights at most, the one shown and the newest, however fast the titles change', () => {

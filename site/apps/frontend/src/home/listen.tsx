@@ -1,9 +1,12 @@
 import { cn } from '@/lib/utils';
 import * as m from '@/paraglide/messages.js';
 
-/** The ink pill that starts the live, its disc and its word: the hero's, and the phone's sheet's. */
+/**
+ * The ink pill that starts the live, its disc and its word: the hero's, and the phone's sheet's.
+ * Under the pointer it lifts 2 px on its shadow (the shadow alone under reduced motion).
+ */
 export const LISTEN_PILL =
-  'group bg-accent text-on-accent ease-spring focus-visible:outline-accent flex h-14 w-full items-center gap-3 rounded-full py-1.5 pr-6 pl-1.5 transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95 md:w-auto';
+  'group bg-accent text-on-accent ease-spring focus-visible:outline-accent hover:shadow-cover flex h-14 w-full items-center gap-3 rounded-full py-1.5 pr-6 pl-1.5 transition-[translate,scale,box-shadow] duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95 motion-safe:hover:-translate-y-0.5 md:w-auto';
 
 export type ListenState = 'idle' | 'connecting' | 'playing';
 

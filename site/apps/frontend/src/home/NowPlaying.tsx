@@ -1,12 +1,15 @@
-import { useState, type Ref } from 'react';
+import type { Ref } from 'react';
 import type { FallbackProps } from 'react-error-boundary';
 import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
 import { cn } from '@/lib/utils';
 import { KeepHeart } from '../design/KeepHeart';
-import { useNowPlayingStore } from '../lib/azuracast';
+import { isDefaultArtwork, useNowPlayingStore, type SongEntry } from '../lib/azuracast';
 import { usePlayer } from '../lib/player';
-import { useTrackActions } from '../hooks/useTrackActions';
+import { useLikeAction } from '../hooks/useLikeAction';
+import { useLikedTracksStore, isTrackLiked, trackKey } from '../stores/likedTracksStore';
+import { artworkSrc, artworkSrcSet } from '../lib/artwork';
+import type { Swap } from './useTrackSwap';
 import { useArtistPage } from '../hooks/useArtistPage';
 import { artistPath } from '../lib/artistProfile';
 import { CoverOpenLarge } from '../design/CoverOpenLarge';
@@ -50,8 +53,8 @@ export interface NowPlayingViewProps {
   onToggleKeep: () => void;
   /** The artist's page, once it exists: no link rather than a dead one. */
   artistHref: string | null;
-  /** True once the live has moved past the track shown at load: changes then animate. */
-  hasChanged?: boolean;
+  /** Where the hero is in a change of track (home/useTrackSwap.ts): the blocks animate by it. */
+  swap?: Swap;
   /** The hero's own volume: the player bar stays away while the hero shows. */
   volume: Omit<VolumeControlProps, 'className' | 'showLevel'>;
   /**
@@ -65,13 +68,29 @@ export interface NowPlayingViewProps {
 
 /**
  * The cover's width in each layout of the hero (design/tokens.css, hero-cover): beside the column,
- * the screen's height under the 4.5rem header, or what the column's 32rem leaves; above it, the
- * screen's width, held under the height the words below it need.
+ * the screen's height less the header and its 24 px (6rem) and the horizon it rests on (3.5rem),
+ * or what the column's 32rem leaves; above it, the screen's width, held under the height the
+ * header's 16 px and the words below it need (28rem).
  */
 const HERO_COVER_SIZES = [
-  '(min-width: 48rem) and (orientation: landscape) min(100vh - 4.5rem, 100vw - 32rem)',
-  'min(100vw, max(16rem, 100vh - 27rem))',
+  '(min-width: 40rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 32rem)',
+  'min(100vw, max(13rem, 100vh - 28rem))',
 ].join(', ');
+
+/**
+ * The next cover, fetched and decoded as the hero will draw it (same files, same sizes), so it
+ * comes in whole rather than as an empty square (home/useTrackSwap.ts).
+ */
+export function preloadCover(art: string | undefined): Promise<void> {
+  if (!art || isDefaultArtwork(art)) return Promise.resolve();
+  const image = new Image();
+  image.referrerPolicy = 'no-referrer';
+  image.sizes = HERO_COVER_SIZES;
+  const set = artworkSrcSet(art);
+  if (set) image.srcset = set;
+  image.src = artworkSrc(art);
+  return image.decode();
+}
 
 /** Garder beside Écouter: the heart in a ring as tall as the pill, named for the track. */
 const KEEP_RING =
@@ -85,7 +104,8 @@ function ListenPill({ listen, onToggle }: { listen: ListenState; onToggle: () =>
       onClick={onToggle}
       aria-label={listenAria(listen)}
       aria-busy={listen === 'connecting'}
-      className={cn(LISTEN_PILL, 'phone:flex-1 w-auto')}
+      // The line's width on a phone, its own from 40rem.
+      className={cn(LISTEN_PILL, 'w-auto flex-1 sm:flex-none')}
     >
       <ListenDisc state={listen} className="size-11" />
       <span className="text-ui font-semibold">{listenLabel(listen)}</span>
@@ -109,7 +129,7 @@ export function NowPlayingView({
   isKeeping,
   onToggleKeep,
   artistHref,
-  hasChanged = false,
+  swap = 'idle',
   volume,
   diffusion = null,
   liveRef,
@@ -118,7 +138,12 @@ export function NowPlayingView({
   const album = track ? shownAlbum(track.album, track.title) : null;
   return (
     <>
-      <div className="hero-cover lift-in">
+      <div
+        data-testid="hero-cover"
+        data-swap={swap}
+        data-off-air={isOnline ? undefined : true}
+        className="hero-cover"
+      >
         {track ? (
           <CoverOpenLarge
             src={track.art}
@@ -130,29 +155,40 @@ export function NowPlayingView({
             caption={m.track_caption({ title: track.title, artist: track.artist })}
             priority
             sizes={HERO_COVER_SIZES}
-            triggerClassName="size-full"
-            className={cn('size-full', hasChanged && 'swap-in')}
+            // Under the pointer the cover grows a little (a dimmed one read as disabled); its focus
+            // ring inside it, clear of the hero's edge.
+            triggerClassName="size-full hover:opacity-100 motion-safe:hover:scale-102 focus-visible:-outline-offset-4"
+            className="size-full"
           />
         ) : (
           <div aria-hidden="true" className="bg-surface-raised size-full" />
         )}
       </div>
 
-      <div ref={liveRef} className="hero-live lift-in-late">
+      <div ref={liveRef} className="hero-live">
         {!isOnline ? (
           <p className="text-intro text-text-muted m-0" aria-live="polite">
             {m.off_air()}
           </p>
         ) : track ? (
-          <div key={trackKey} className={cn('flex flex-col', hasChanged && 'swap-in-late')}>
-            <p className="text-ui hero-split:mb-3.5 m-0 mb-1 flex items-center gap-2 font-semibold">
+          <div
+            key={trackKey}
+            data-testid="hero-words"
+            data-swap={swap}
+            className="hero-words flex flex-col"
+          >
+            <p className="text-ui m-0 mb-3 flex items-center gap-2 font-semibold">
               {/* The station is live: a still dot, the one that beats is the horizon's. */}
               <span aria-hidden="true" className="bg-dawn-ink size-1.75 shrink-0 rounded-full" />
               {m.now_live()}
             </p>
-            {/* Three lines at most: the whole title stays in the page for screen readers. */}
-            <h2 className="font-display text-track m-0 line-clamp-3 text-balance">{track.title}</h2>
-            <p className="text-intro m-0 mt-2">
+            {/* Two lines at most on a phone, three beside the cover, two kept for it there so a
+                title change does not move the column (title-room); the whole title stays in the
+                page for screen readers. */}
+            <h2 className="font-display text-track title-room hero-split:line-clamp-3 m-0 line-clamp-2 text-balance">
+              {track.title}
+            </h2>
+            <p className="text-intro m-0 mt-2 line-clamp-2">
               {/* Inline padding grows the tap target to 44px without moving the line. */}
               {artistHref ? (
                 <Link to={artistHref} className={cn(ARTIST_LINK, 'py-3 underline-offset-5')}>
@@ -180,7 +216,7 @@ export function NowPlayingView({
           </div>
         )}
 
-        <div className="hero-split:mt-7 mt-3 flex items-center gap-3">
+        <div className="mt-6 flex items-center gap-3">
           <ListenPill listen={listen} onToggle={onToggleListen} />
           {track && isOnline ? (
             <button
@@ -194,8 +230,9 @@ export function NowPlayingView({
               <KeepHeart isKept={isKept} className="size-6" />
             </button>
           ) : null}
-          {/* A phone sets the level with its own buttons (and iOS ignores it from a page). */}
-          <VolumeControl {...volume} showLevel className="phone:hidden ml-1.5" />
+          {/* Where a mouse sets it: a phone sets the level with its own buttons (and iOS ignores
+              it from a page). */}
+          <VolumeControl {...volume} showLevel className="fine-pointer:flex ml-1.5 hidden" />
           {diffusion ? <CastControl diffusion={diffusion} variant="hero" /> : null}
         </div>
       </div>
@@ -203,13 +240,21 @@ export function NowPlayingView({
   );
 }
 
-export function NowPlaying({ liveRef }: { liveRef?: Ref<HTMLDivElement> }) {
-  const { title, artist, album, art, isOnline, isUnreachable } = useNowPlayingStore(
+/**
+ * The track the hero shows (`shown`, home/useTrackSwap.ts: the one on air, or the last one while
+ * the next comes in), with its own Garder, so a press keeps the track in view.
+ */
+export function NowPlaying({
+  shown,
+  swap,
+  liveRef,
+}: {
+  shown: SongEntry | null;
+  swap: Swap;
+  liveRef?: Ref<HTMLDivElement>;
+}) {
+  const { isOnline, isUnreachable } = useNowPlayingStore(
     useShallow((s) => ({
-      title: s.data?.now_playing?.song.title,
-      artist: s.data?.now_playing?.song.artist,
-      album: s.data?.now_playing?.song.album,
-      art: s.data?.now_playing?.song.art,
       isOnline: s.data?.is_online ?? true,
       // The store keeps polling, with backoff: the track replaces this once it answers.
       isUnreachable: !s.data && s.error !== null,
@@ -219,25 +264,30 @@ export function NowPlaying({ liveRef }: { liveRef?: Ref<HTMLDivElement> }) {
     useShallow((s) => ({ isPlaying: s.isPlaying, isConnecting: s.isConnecting, toggle: s.toggle }))
   );
   const volume = useVolume();
-  const { isLiked, isLiking, handleToggleLike } = useTrackActions();
+  const tracks = useLikedTracksStore((s) => s.tracks);
+  const { likingTrackId, toggleLike } = useLikeAction();
   const diffusion = useDiffusion();
-  const artistPage = useArtistPage(artist);
-  const trackKey = title && artist ? `${artist}|${title}` : null;
-  const [firstTrackKey, setFirstTrackKey] = useState<string | null>(null);
-  if (firstTrackKey === null && trackKey !== null) setFirstTrackKey(trackKey);
+  const song = shown?.song;
+  const artistPage = useArtistPage(song?.artist);
 
   return (
     <NowPlayingView
-      track={title && artist ? { title, artist, album: album ?? '', art } : null}
+      track={
+        song?.title && song.artist
+          ? { title: song.title, artist: song.artist, album: song.album, art: song.art }
+          : null
+      }
       isOnline={isOnline}
       isUnreachable={isUnreachable}
       listen={listenState(isPlaying, isConnecting)}
       onToggleListen={toggle}
-      isKept={isLiked}
-      isKeeping={isLiking}
-      onToggleKeep={handleToggleLike}
+      isKept={song ? isTrackLiked(tracks, song.title, song.artist) : false}
+      isKeeping={song ? likingTrackId === trackKey(song.title, song.artist) : false}
+      onToggleKeep={() => {
+        if (song) void toggleLike(song.title, song.artist, song.art);
+      }}
       artistHref={artistPage ? artistPath(artistPage) : null}
-      hasChanged={firstTrackKey !== null && trackKey !== firstTrackKey}
+      swap={swap}
       volume={volume}
       diffusion={diffusion}
       liveRef={liveRef}
@@ -280,7 +330,7 @@ export function NowPlayingFallback({
         <button type="button" onClick={resetErrorBoundary} className={TEXT_ACTION}>
           {m.error_retry()}
         </button>
-        <VolumeControl {...volume} showLevel className="phone:hidden" />
+        <VolumeControl {...volume} showLevel className="fine-pointer:flex hidden" />
       </div>
     </div>
   );

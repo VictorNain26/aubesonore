@@ -13,6 +13,8 @@ export interface CoverProps {
   priority?: boolean;
   /** Fetched after the page's other images: a cover that is not what the page is about. */
   lowPriority?: boolean;
+  /** Fetched with the page rather than as it scrolls in: a short row that scrolls sideways. */
+  eager?: boolean;
   /**
    * The width the cover is laid out at, as the `sizes` attribute: where its host resizes, the
    * browser downloads the smallest file that fills it on this screen.
@@ -29,6 +31,7 @@ export function Cover({
   className,
   priority = false,
   lowPriority = false,
+  eager = false,
   sizes,
   onError,
 }: CoverProps) {
@@ -52,7 +55,7 @@ export function Cover({
           alt={alt}
           referrerPolicy="no-referrer"
           decoding="async"
-          loading={priority ? 'eager' : 'lazy'}
+          loading={priority || eager ? 'eager' : 'lazy'}
           fetchPriority={priority ? 'high' : lowPriority ? 'low' : 'auto'}
           className={cn('size-full object-cover', fadeClass)}
           onLoad={onLoad}
