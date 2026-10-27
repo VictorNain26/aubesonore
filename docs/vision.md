@@ -439,9 +439,10 @@ Risques acceptés tant que leur déclencheur ne s'est pas produit :
 2. **Statut officiel incomplet** : la page écarte les disques que MusicBrainz ne montre pas
    comme l'œuvre de l'artiste (476 des 4 980 disques des artistes joués, 2026-10-06) ; seuls les
    artistes d'au moins 500 auditeurs sont interrogés.
-3. **Identité incomplète** : 22 des 568 artistes joués n'ont pas de MBID (2026-10-13), ce qui se
-   corrige à la source (MusicBrainz) ; 20 des 109 titres gardés ne sont reliés à aucun artiste,
-   faute d'avoir retrouvé leur passage ou leur titre exact chez Deezer.
+3. **Identité incomplète** : identifiés par MusicBrainz seul, 26 des 678 artistes joués d'une copie
+   de la base n'ont pas de MBID (2026-10-27 ; 21 quand l'API Deezer y aidait), ce qui se corrige à
+   la source (MusicBrainz) ; 20 des 109 titres gardés ne sont reliés à aucun artiste (2026-10-13),
+   faute d'avoir retrouvé leur passage.
 4. **Les featurings ne relient que l'artiste principal** (§4.4).
 5. **Licences à régulariser** : les pochettes Deezer des titres (§2.5).
 6. **Aucune copie hors de la maison** (§4.7).
