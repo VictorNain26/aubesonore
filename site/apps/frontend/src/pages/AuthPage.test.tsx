@@ -188,6 +188,49 @@ describe('AuthPage', () => {
     }
   });
 
+  it('keeps the pending track and loads the library once signed in with Google', async () => {
+    let signedIn = false;
+    const kept: unknown[] = [];
+    let libraryLoads = 0;
+    server.use(
+      http.post('http://localhost:3000/api/auth/sign-in/social', () =>
+        HttpResponse.json({ url: 'https://accounts.google.com/o/oauth2/auth?client_id=x' })
+      ),
+      http.get('http://localhost:3000/api/auth/get-session', () =>
+        signedIn
+          ? HttpResponse.json({ user: { id: 'u1', email: 'a@b.c', name: 'A' } })
+          : HttpResponse.json(null)
+      ),
+      http.get('http://localhost:3000/api/track/like', () => {
+        libraryLoads += 1;
+        return HttpResponse.json([]);
+      }),
+      http.post('http://localhost:3000/api/track/like', async ({ request }) => {
+        kept.push(await request.json());
+        return HttpResponse.json({ id: 'l1', title: 'Mimoun', artist: 'Rachid Taha' });
+      })
+    );
+    const popup = { location: { href: 'about:blank' }, close: vi.fn() };
+    const openSpy = vi.spyOn(window, 'open').mockReturnValue(popup as unknown as Window);
+    try {
+      savePendingKeep(keepRequest('Mimoun', 'Rachid Taha'));
+      open({ pathname: '/connexion', state: { keepTitle: 'Mimoun' } });
+      await vi.waitFor(() => expect(useAuthStore.getState().isLoading).toBe(false));
+
+      await userEvent.click(screen.getByRole('button', { name: 'Continuer avec Google' }));
+      await vi.waitFor(() => expect(popup.location.href).toContain('accounts.google.com'));
+      signedIn = true;
+      reportGoogleOutcome('?lang=fr');
+
+      await vi.waitFor(() =>
+        expect(kept).toEqual([expect.objectContaining({ title: 'Mimoun', artist: 'Rachid Taha' })])
+      );
+      expect(libraryLoads).toBeGreaterThan(0);
+    } finally {
+      openSpy.mockRestore();
+    }
+  });
+
   it('opens on the new password from the reset link, and flags mismatched passwords', async () => {
     open({ pathname: '/reset-password', search: '?token=some-token' });
 

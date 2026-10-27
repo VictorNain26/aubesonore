@@ -16,6 +16,11 @@ interface AuthState {
 
 interface AuthActions {
   init: () => Promise<void>;
+  /**
+   * Reads the session again without a loading window (after the Google popup set the cookie), so
+   * <AuthInit /> sees the sign-in and keeps the pending track.
+   */
+  refreshSession: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -25,7 +30,7 @@ interface AuthActions {
 
 export type AuthStore = AuthState & AuthActions;
 
-export const useAuthStore = create<AuthStore>((set) => ({
+export const useAuthStore = create<AuthStore>((set, get) => ({
   user: null,
   isLoading: true,
   isAuthenticated: false,
@@ -33,6 +38,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   init: async () => {
     set({ isLoading: true, authError: null });
+    await get().refreshSession();
+  },
+
+  refreshSession: async () => {
     try {
       const session = await authApi.getSession();
       set({
