@@ -111,6 +111,16 @@ describe('CoverLightView', () => {
     expect(files()[0]).toHaveAttribute('crossorigin', 'anonymous');
   });
 
+  it('asks Commons for a standard width, through CORS so its pixels can be read', () => {
+    const commons =
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Stereolab.jpg/1280px-Stereolab.jpg';
+    render(<CoverLightView art={commons} />);
+    expect(srcs()).toEqual([
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Stereolab.jpg/120px-Stereolab.jpg',
+    ]);
+    expect(files()[0]).toHaveAttribute('crossorigin', 'anonymous');
+  });
+
   it("asks the site's own covers without CORS: they are of the page's origin", () => {
     render(<CoverLightView art={art('a1')} />);
     expect(files()[0]).not.toHaveAttribute('crossorigin');

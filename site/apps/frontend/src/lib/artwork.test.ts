@@ -124,6 +124,7 @@ describe('artworkSrcSet', () => {
       '1280px-Stereolab_%281994%29.jpg?utm_source=commons.wikimedia.org';
     const srcset = artworkSrcSet(url);
     expect(srcset?.split(', ').map((candidate) => candidate.split(' ')[1])).toEqual([
+      '120w',
       '330w',
       '500w',
       '960w',
@@ -136,6 +137,16 @@ describe('artworkSrcSet', () => {
     expect(
       artworkSrcSet('https://upload.wikimedia.org/wikipedia/commons/6/61/Can_1972.jpg')
     ).toBeUndefined();
+  });
+
+  it('takes the next standard width for a Commons thumbnail at another size', () => {
+    // Wikimedia refuses a hotlink at any other width: 96px- answered 400 (2026-10-27).
+    const url =
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Stereolab.jpg/1280px-Stereolab.jpg';
+    const at = (pixels: number) => artworkAt(url, pixels).split('/').pop();
+    expect(at(96)).toBe('120px-Stereolab.jpg');
+    expect(at(400)).toBe('500px-Stereolab.jpg');
+    expect(at(2000)).toBe('1280px-Stereolab.jpg');
   });
 
   it('offers nothing for a host that cannot resize', () => {
