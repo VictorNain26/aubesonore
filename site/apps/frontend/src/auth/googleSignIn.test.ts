@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import {
-  googleReturnText,
+  googleReturnPage,
   reportGoogleOutcome,
   signInWithGoogle,
   type GoogleOutcome,
@@ -153,27 +153,31 @@ describe('signInWithGoogle', () => {
   });
 });
 
-describe('googleReturnText', () => {
+describe('googleReturnPage', () => {
   it("says, in the listener's language, that they are signed in and the window can close", () => {
-    expect(googleReturnText('?lang=en')).toBe('You’re signed in. You can close this window.');
-    expect(googleReturnText('?lang=fr')).toBe(
-      'Vous êtes connecté. Vous pouvez fermer cette fenêtre.'
-    );
+    expect(googleReturnPage('?lang=en')).toEqual({
+      lang: 'en',
+      text: 'You’re signed in. You can close this window.',
+    });
+    expect(googleReturnPage('?lang=fr')).toEqual({
+      lang: 'fr',
+      text: 'Vous êtes connecté. Vous pouvez fermer cette fenêtre.',
+    });
   });
 
   it('says the sign-in did not go through when Better Auth reports an error', () => {
-    expect(googleReturnText('?lang=fr&error=access_denied')).toBe(
+    expect(googleReturnPage('?lang=fr&error=access_denied').text).toBe(
       'La connexion n’a pas abouti. Vous pouvez fermer cette fenêtre.'
     );
-    expect(googleReturnText('?lang=en&error=access_denied')).toBe(
-      'Signing in didn’t go through. You can close this window.'
-    );
+    expect(googleReturnPage('?lang=en&error=access_denied')).toEqual({
+      lang: 'en',
+      text: 'Signing in didn’t go through. You can close this window.',
+    });
   });
 
   it('speaks French when the language is missing or unknown', () => {
-    expect(googleReturnText('')).toBe('Vous êtes connecté. Vous pouvez fermer cette fenêtre.');
-    expect(googleReturnText('?lang=de')).toBe(
-      'Vous êtes connecté. Vous pouvez fermer cette fenêtre.'
-    );
+    const french = { lang: 'fr', text: 'Vous êtes connecté. Vous pouvez fermer cette fenêtre.' };
+    expect(googleReturnPage('')).toEqual(french);
+    expect(googleReturnPage('?lang=de')).toEqual(french);
   });
 });
