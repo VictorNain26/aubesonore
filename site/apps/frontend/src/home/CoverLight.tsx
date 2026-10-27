@@ -33,38 +33,59 @@ interface Layers {
   /** The next track's, fading in over it once its file has come. */
   next: string | null;
   nextLoaded: boolean;
+  /** A next light whose file could not be had: never asked again, the one shown fading out. */
+  missing: string | null;
 }
 
 /**
  * The cover on air as the hero's light, blurred behind it under a veil of the paper
  * (design/tokens.css, cover-light), dimmed for a cover its words would not read on. When the
  * track changes, the next light fades in as the last fades out, once its file has come, then the
- * last goes: two at most, the one shown and the newest. The first fades in with the cover.
+ * last goes: two at most, the one shown and the newest. The first fades in with the cover. A next
+ * light whose file cannot be had leaves none: the last fades out, it is not this track's.
  * Decoration: hidden from screen readers.
  */
 export function CoverLightView({ art }: { art: string | null | undefined }) {
   const src = art && !isDefaultArtwork(art) ? artworkAt(art, LIGHT_PIXELS) : null;
-  const [layers, setLayers] = useState<Layers>({ shown: src, next: null, nextLoaded: false });
+  const [layers, setLayers] = useState<Layers>({
+    shown: src,
+    next: null,
+    nextLoaded: false,
+    missing: null,
+  });
   // The page's first light fades in with the cover (light-first); the next ones cross-fade.
   const [firstSrc] = useState(src);
-  const newest = layers.next ?? layers.shown;
+  const newest = layers.next ?? layers.missing ?? layers.shown;
   if (src !== newest) {
     setLayers((prev) =>
       src === null
-        ? { shown: null, next: null, nextLoaded: false }
-        : // A next light still loading gives way to the newer: the one shown holds meanwhile.
-          { shown: prev.nextLoaded ? prev.next : prev.shown, next: src, nextLoaded: false }
+        ? { shown: null, next: null, nextLoaded: false, missing: null }
+        : // A next light still loading gives way to the newer: the one shown holds meanwhile
+          // (unless it was already fading out for a missing one).
+          {
+            shown: prev.nextLoaded ? prev.next : prev.missing ? null : prev.shown,
+            next: src,
+            nextLoaded: false,
+            missing: null,
+          }
     );
   }
 
   useEffect(() => {
     if (!layers.nextLoaded) return;
     const timer = setTimeout(
-      () => setLayers((prev) => ({ shown: prev.next, next: null, nextLoaded: false })),
+      () => setLayers((prev) => ({ ...prev, shown: prev.next, next: null, nextLoaded: false })),
       LIGHT_FADE_MS
     );
     return () => clearTimeout(timer);
   }, [layers.nextLoaded, layers.next]);
+
+  const fading = layers.missing !== null && layers.shown !== null;
+  useEffect(() => {
+    if (!fading) return;
+    const timer = setTimeout(() => setLayers((prev) => ({ ...prev, shown: null })), LIGHT_FADE_MS);
+    return () => clearTimeout(timer);
+  }, [fading]);
 
   return (
     <div aria-hidden="true" className="cover-light">
@@ -73,7 +94,11 @@ export function CoverLightView({ art }: { art: string | null | undefined }) {
           key={layers.shown}
           src={layers.shown}
           className={
-            layers.nextLoaded ? 'light-out' : layers.shown === firstSrc ? 'light-first' : undefined
+            layers.nextLoaded || layers.missing
+              ? 'light-out'
+              : layers.shown === firstSrc
+                ? 'light-first'
+                : undefined
           }
         />
       ) : null}
@@ -83,6 +108,9 @@ export function CoverLightView({ art }: { art: string | null | undefined }) {
           src={layers.next}
           className={layers.nextLoaded ? 'light-in' : 'invisible'}
           onLoad={() => setLayers((prev) => ({ ...prev, nextLoaded: true }))}
+          onError={() =>
+            setLayers((prev) => ({ ...prev, next: null, nextLoaded: false, missing: prev.next }))
+          }
         />
       ) : null}
     </div>
@@ -125,10 +153,12 @@ function Light({
   src,
   className,
   onLoad,
+  onError,
 }: {
   src: string;
   className?: string | undefined;
   onLoad?: () => void;
+  onError?: () => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const file = useRef<HTMLImageElement>(null);
@@ -160,6 +190,7 @@ function Light({
           paint(canvas.current, event.currentTarget);
           onLoad?.();
         }}
+        onError={onError}
       />
       <canvas
         ref={canvas}

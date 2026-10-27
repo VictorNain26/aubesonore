@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 /**
  * A section of a page: its title and intro in the title column (4 parts of 12 where the screen is wide, tokens.css; stacked on phones and upright tablets), its
  * content in the other 8. Its id is an anchor (PageNav). `sticky` keeps the title in view beside
- * long content, as « Depuis l'aube » does on the home page.
+ * long content, as the artist page's records and close artists do.
  */
 export function Section({
   id,

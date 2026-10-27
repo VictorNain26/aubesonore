@@ -5,6 +5,12 @@ export type Swap = 'idle' | 'out' | 'in';
 
 /** The last track's leave: its words, its cover and « Juste avant » fade out. */
 export const OUT_MS = 150;
+/**
+ * The next track's arrival, its longest block included (design/tokens.css, hero-words: the third
+ * line starts at 240 ms and lasts 300): past it the hero settles, so a block that mounts again
+ * later (the same track's corrected title, the station back on air) does not arrive again.
+ */
+export const IN_MS = 540;
 /** The longest the next track waits for its cover: past it, it shows, its cover coming after. */
 export const PRELOAD_MAX_MS = 2000;
 
@@ -47,6 +53,16 @@ export function useTrackSwap<T extends { sh_id: number }>(
     // The track's id starts a change; its details alone do not.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nextId]);
+
+  const arriving = !changing && state.swap === 'in';
+  useEffect(() => {
+    if (!arriving) return;
+    const timer = setTimeout(
+      () => setState((prev) => (prev.swap === 'in' ? { ...prev, swap: 'idle' } : prev)),
+      IN_MS
+    );
+    return () => clearTimeout(timer);
+  }, [arriving, state.shown?.sh_id]);
 
   return changing ? { shown: state.shown, swap: 'out' } : state;
 }

@@ -116,4 +116,17 @@ describe('JustBefore', () => {
       '/artiste/danny-brown'
     );
   });
+
+  it('leaves the rest of the page standing when the station sends a malformed track', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const np = useNowPlayingStore.getState().data!;
+    useNowPlayingStore.setState({
+      data: {
+        ...np,
+        song_history: [{ ...np.song_history[0]!, song: undefined as never }],
+      },
+    });
+    const { container } = render(<JustBefore shown={null} swap="idle" />);
+    expect(container).toBeEmptyDOMElement();
+  });
 });

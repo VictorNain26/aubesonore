@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
-import { OUT_MS, PRELOAD_MAX_MS, useTrackSwap } from './useTrackSwap';
+import { IN_MS, OUT_MS, PRELOAD_MAX_MS, useTrackSwap } from './useTrackSwap';
 
 const track = (sh_id: number) => ({ sh_id, title: `Track ${sh_id}` });
 type Track = ReturnType<typeof track>;
@@ -88,6 +88,26 @@ describe('useTrackSwap', () => {
     await act(() => vi.advanceTimersByTimeAsync(0));
     await act(() => vi.advanceTimersByTimeAsync(OUT_MS));
     expect(result.current).toEqual({ shown: track(3), swap: 'in' });
+  });
+
+  it('settles once the arrival is over, so a later remount does not play it again', async () => {
+    const { preload, settle } = preloads();
+    const { result, rerender } = renderHook(({ next }) => useTrackSwap(next, preload), {
+      initialProps: { next: track(1) },
+    });
+    rerender({ next: track(2) });
+    settle(2);
+    await act(() => vi.advanceTimersByTimeAsync(OUT_MS));
+    expect(result.current.swap).toBe('in');
+
+    await act(() => vi.advanceTimersByTimeAsync(IN_MS - 1));
+    expect(result.current.swap).toBe('in');
+    await act(() => vi.advanceTimersByTimeAsync(1));
+    expect(result.current).toEqual({ shown: track(2), swap: 'idle' });
+
+    // Its title corrected, the same track stays still.
+    rerender({ next: { sh_id: 2, title: 'Track 2 (live)' } });
+    expect(result.current.swap).toBe('idle');
   });
 
   it('follows the same track at once when only its details change', () => {

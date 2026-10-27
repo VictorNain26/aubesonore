@@ -3,7 +3,7 @@ import type { FallbackProps } from 'react-error-boundary';
 import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
 import { cn } from '@/lib/utils';
-import { KeepHeart } from '../design/KeepHeart';
+import { KeepButton } from '../design/KeepButton';
 import { isDefaultArtwork, useNowPlayingStore, type SongEntry } from '../lib/azuracast';
 import { usePlayer } from '../lib/player';
 import { useLikeAction } from '../hooks/useLikeAction';
@@ -219,16 +219,14 @@ export function NowPlayingView({
         <div className="mt-6 flex items-center gap-3">
           <ListenPill listen={listen} onToggle={onToggleListen} />
           {track && isOnline ? (
-            <button
-              type="button"
-              onClick={onToggleKeep}
-              disabled={isKeeping}
-              aria-pressed={isKept}
-              aria-label={m.track_keep_aria({ title: track.title })}
+            <KeepButton
+              title={track.title}
+              isKept={isKept}
+              isKeeping={isKeeping}
+              onToggle={onToggleKeep}
               className={KEEP_RING}
-            >
-              <KeepHeart isKept={isKept} className="size-6" />
-            </button>
+              heartClassName="size-6"
+            />
           ) : null}
           {/* Where a mouse sets it: a phone sets the level with its own buttons (and iOS ignores
               it from a page). */}

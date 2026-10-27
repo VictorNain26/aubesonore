@@ -227,4 +227,27 @@ describe('CoverLightView', () => {
     rerender(<CoverLightView art={art('d4')} />);
     expect(srcs()).toEqual(['/covers/96/c3-1.jpg', '/covers/96/d4-1.jpg']);
   });
+
+  it('lets the last light go when the next cover cannot be had, and never asks it again', () => {
+    vi.useFakeTimers();
+    const { rerender } = render(<CoverLightView art={art('a1')} />);
+    rerender(<CoverLightView art={art('b2')} />);
+
+    fireEvent.error(files()[1]!);
+    // The last track's light is not this track's: it fades out rather than stay all along.
+    expect(srcs()).toEqual(['/covers/96/a1-1.jpg']);
+    expect(lights()[0]).toHaveClass('light-out');
+    act(() => {
+      vi.advanceTimersByTime(LIGHT_FADE_MS);
+    });
+    expect(srcs()).toEqual([]);
+
+    rerender(<CoverLightView art={art('b2')} />);
+    expect(srcs()).toEqual([]);
+    // The next track's light comes as any.
+    rerender(<CoverLightView art={art('c3')} />);
+    expect(srcs()).toEqual(['/covers/96/c3-1.jpg']);
+    fireEvent.load(files()[0]!);
+    expect(lights()[0]).toHaveClass('light-in');
+  });
 });

@@ -1,7 +1,8 @@
 import { Link } from 'react-router';
+import { ErrorBoundary } from 'react-error-boundary';
 import { cn } from '@/lib/utils';
 import { Cover } from '../design/Cover';
-import { KeepHeart } from '../design/KeepHeart';
+import { KeepButton } from '../design/KeepButton';
 import { ARTIST_LINK } from '../design/classes';
 import { useLikeAction } from '../hooks/useLikeAction';
 import { artistPath } from '../lib/artistProfile';
@@ -71,23 +72,33 @@ export function JustBeforeView({ track, onToggleKeep, swap = 'idle' }: JustBefor
             <span className="text-label text-text-muted truncate">{track.artist}</span>
           )}
         </span>
-        <button
-          type="button"
-          onClick={onToggleKeep}
-          disabled={track.isKeeping}
-          aria-pressed={track.isKept}
-          aria-label={m.track_keep_aria({ title: track.title })}
+        <KeepButton
+          title={track.title}
+          isKept={track.isKept}
+          isKeeping={track.isKeeping}
+          onToggle={onToggleKeep}
           className={KEEP_ICON}
-        >
-          <KeepHeart isKept={track.isKept} className="size-5" />
-        </button>
+          heartClassName="size-5"
+        />
       </div>
     </section>
   );
 }
 
-/** « Juste avant » for the track the hero shows (`shown`, the one on air when null). */
+/**
+ * « Juste avant » for the track the hero shows (`shown`, the one on air when null). A track it
+ * cannot show leaves nothing, the rest of the page standing, until the next track (as the track on
+ * air does, home/NowPlaying.tsx: NowPlayingFallback).
+ */
 export function JustBefore({ shown, swap }: { shown: SongEntry | null; swap: Swap }) {
+  return (
+    <ErrorBoundary fallback={null} resetKeys={[shown?.sh_id]}>
+      <JustBeforeTrack shown={shown} swap={swap} />
+    </ErrorBoundary>
+  );
+}
+
+function JustBeforeTrack({ shown, swap }: { shown: SongEntry | null; swap: Swap }) {
   const entry = usePreviousTrack(shown);
   const tracks = useLikedTracksStore((s) => s.tracks);
   const { likingTrackId, toggleLike } = useLikeAction();

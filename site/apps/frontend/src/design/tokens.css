@@ -371,9 +371,9 @@
       transparent 72%
     );
   filter: blur(8px);
-  /* The band overhangs the hero by --sink, and the horizon line sits --sink above the hero's
-     foot: the light is full on the line and dies out at the foot, never cut straight. The
-     extra 0.5rem covers the 8px the band sinks while it breathes. */
+  /* The 404 page's dawn (pages/NotFoundPage.tsx). The band overhangs the page by --sink, and the
+     horizon line sits --sink above its foot: the light is full on the line and dies out at the
+     foot, never cut straight. The extra 0.5rem covers the 8px the band sinks while it breathes. */
   --sink: 2.5rem;
   mask-image: linear-gradient(
     to top,
