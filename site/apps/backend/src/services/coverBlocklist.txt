@@ -1,0 +1,5 @@
+# Covers taken down on request (the legal page offers it): never served, fetched nor stored
+# again, their files removed from the volume at boot (coverStore.ts). One cover a line, its kind
+# and id as in its address /covers/<kind>/<id>/<size>.webp, then who asked and when:
+#   caa 1b022e01-4da6-387b-8658-8678046e4cef  # removal request from the label, 2026-10-27
+# Procedure: site/README.md « Retirer une pochette ».

@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from 'crypto';
+import { readFileSync } from 'fs';
 import { access, mkdir, readFile, rename, rm, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
 import sharp from 'sharp';
@@ -20,6 +21,8 @@ import { createSingleFlight } from '../lib/singleFlight';
  *   the track's stay on the antenna. Its original bytes stay in `originals/<sha256>`, out of
  *   nginx's reach, so any size can be made again.
  * WebP at quality 80, never enlarged: 250 + 500 weigh about 37 KB a record (measured 2026-10-27).
+ * A cover taken down on request is on the block list (coverBlocklist.txt): never served, fetched
+ * nor stored again, its files removed at boot.
  */
 
 export const CAA_SIZES = [250, 500, 1200] as const;
@@ -37,22 +40,56 @@ const STATION_ART_ID = /^[0-9a-f]+-[0-9]+$/;
 const SHA256 = /^[0-9a-f]{64}$/;
 const FILE = /^([1-9][0-9]*)\.webp$/;
 
+const ID_OF: Record<CoverKey['kind'], RegExp> = {
+  caa: RELEASE_GROUP,
+  station: STATION_ART_ID,
+  kept: SHA256,
+};
+
+function isCover(kind: string, id: string): kind is CoverKey['kind'] {
+  return Object.hasOwn(ID_OF, kind) && ID_OF[kind as CoverKey['kind']].test(id);
+}
+
 /** The cover an address names, or null for anything but one of the store's own keys. */
 export function parseCoverKey(kind: string, id: string, file: string): CoverKey | null {
+  if (!isCover(kind, id)) return null;
   const size = Number(FILE.exec(file)?.[1]);
-  if (kind === 'caa' && RELEASE_GROUP.test(id) && CAA_SIZES.includes(size as CaaSize))
-    return { kind, id, size: size as CaaSize };
-  const sized = STATION_SIZES.includes(size as StationSize);
-  if (kind === 'station' && STATION_ART_ID.test(id) && sized)
-    return { kind, id, size: size as StationSize };
-  if (kind === 'kept' && SHA256.test(id) && sized) return { kind, id, size: size as StationSize };
-  return null;
+  if (kind === 'caa')
+    return CAA_SIZES.includes(size as CaaSize) ? { kind, id, size: size as CaaSize } : null;
+  return STATION_SIZES.includes(size as StationSize)
+    ? { kind, id, size: size as StationSize }
+    : null;
+}
+
+// `<kind> <id>  # who asked, and when`: the comment is required.
+const BLOCKLIST_LINE = /^(\S+)\s+(\S+)\s+#\s*\S.*$/;
+
+/**
+ * The covers taken down on request, as `<kind>/<id>`. A line that is not a cover of the store
+ * with its comment throws, naming the line: the boot stops rather than serve a cover by mistake.
+ */
+export function parseCoverBlocklist(text: string): Set<string> {
+  const blocked = new Set<string>();
+  text.split('\n').forEach((raw, index) => {
+    const line = raw.trim();
+    if (line === '' || line.startsWith('#')) return;
+    const [, kind = '', id = ''] = BLOCKLIST_LINE.exec(line) ?? [];
+    if (!isCover(kind, id))
+      throw new Error(`coverBlocklist.txt line ${index + 1}: expected "<kind> <id>  # who, when"`);
+    blocked.add(`${kind}/${id}`);
+  });
+  return blocked;
+}
+
+/** The committed block list, read once at boot. */
+export function readCoverBlocklist(): Set<string> {
+  return parseCoverBlocklist(readFileSync(join(import.meta.dir, 'coverBlocklist.txt'), 'utf8'));
 }
 
 /** A cover, or why there is none: `missing` upstream (kept in mind a day), or `failed` for now. */
 export type Made = Buffer | 'missing' | 'failed';
 
-export type FillOutcome = 'present' | 'known-missing' | 'stored' | 'missing' | 'failed';
+export type FillOutcome = 'present' | 'known-missing' | 'stored' | 'missing' | 'failed' | 'blocked';
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>;
 
@@ -66,6 +103,8 @@ export interface CoverStoreOptions {
   stationId: string;
   /** The site's origin, which a kept track's cover is addressed from. */
   publicBaseUrl: string;
+  /** Covers taken down on request, as `<kind>/<id>` (parseCoverBlocklist). */
+  blocked?: ReadonlySet<string>;
 }
 
 // The archive's redirects only, over https: never a host this server's network reaches.
@@ -84,6 +123,8 @@ const ART_PATH = /^\/api\/station\/[\w-]+\/art\/[\w.-]+$/;
 
 export function createCoverStore(options: CoverStoreOptions) {
   const { root, userAgent, azuracastBaseUrl, stationId, publicBaseUrl } = options;
+  const blocked = options.blocked ?? new Set<string>();
+  const isBlocked = (kind: CoverKey['kind'], id: string) => blocked.has(`${kind}/${id}`);
   // Read at call time: tests stub the global.
   const fetchImpl: Fetch = options.fetch ?? ((input, init) => fetch(input, init));
   const missing = new TtlCache<true>(MISSING_FOR_MS);
@@ -264,6 +305,7 @@ export function createCoverStore(options: CoverStoreOptions) {
 
     /** The stored file, else the cover made, written and handed back. */
     async get(key: CoverKey): Promise<Made> {
+      if (isBlocked(key.kind, key.id)) return 'missing';
       try {
         return await readFile(fileOf(key));
       } catch {
@@ -273,6 +315,7 @@ export function createCoverStore(options: CoverStoreOptions) {
 
     /** A record's 250 and 500, ahead of the page that shows them (coverFill). */
     async fillReleaseGroup(id: string): Promise<FillOutcome> {
+      if (isBlocked('caa', id)) return 'blocked';
       const small = { kind: 'caa', id, size: 250 } as const;
       if ((await exists(fileOf(small))) && (await exists(fileOf({ ...small, size: 500 }))))
         return 'present';
@@ -283,7 +326,7 @@ export function createCoverStore(options: CoverStoreOptions) {
 
     /** The antenna's new track: its four sizes made before a listener asks. */
     async prepareStation(artId: string): Promise<void> {
-      if (!STATION_ART_ID.test(artId)) return;
+      if (!STATION_ART_ID.test(artId) || isBlocked('station', artId)) return;
       const key = { kind: 'station', id: artId, size: 768 } as const;
       if (!(await exists(fileOf(key)))) await makeCover(key);
     },
@@ -317,6 +360,7 @@ export function createCoverStore(options: CoverStoreOptions) {
         return null;
       }
       const sha = createHash('sha256').update(original).digest('hex');
+      if (isBlocked('kept', sha)) return null;
       try {
         await store(
           original,
@@ -330,6 +374,24 @@ export function createCoverStore(options: CoverStoreOptions) {
         return null;
       }
       return this.keptUrl(sha);
+    },
+
+    /**
+     * Deletes the blocked covers' files, a kept one's original with them; run at boot, as often
+     * as it likes. nginx serves the volume, so a file gone is a cover it no longer serves. How
+     * many covers had files.
+     */
+    async removeBlocked(): Promise<number> {
+      let removed = 0;
+      for (const entry of blocked) {
+        const [kind, id] = entry.split('/') as [CoverKey['kind'], string];
+        const paths = [join(root, 'covers', kind, id)];
+        if (kind === 'kept') paths.push(originalOf(id));
+        const present = (await Promise.all(paths.map(exists))).some(Boolean);
+        await Promise.all(paths.map((path) => rm(path, { recursive: true, force: true })));
+        if (present) removed++;
+      }
+      return removed;
     },
 
     keptUrl(sha: string): string {
@@ -364,4 +426,5 @@ export const coverStore = createCoverStore({
   azuracastBaseUrl: env.AZURACAST_BASE_URL,
   stationId: env.AZURACAST_STATION_ID,
   publicBaseUrl: env.FRONTEND_BASE_URL,
+  blocked: readCoverBlocklist(),
 });

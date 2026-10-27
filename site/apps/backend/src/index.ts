@@ -37,6 +37,14 @@ try {
   logger.error('keptCovers.move_failed', { err: (err as Error).message });
 }
 
+// A cover taken down on request (services/coverBlocklist.txt) leaves the volume nginx serves.
+try {
+  const removed = await coverStore.removeBlocked();
+  if (removed > 0) logger.info('coverStore.blocked_removed', { removed });
+} catch (err) {
+  logger.error('coverStore.blocked_not_removed', { err: (err as Error).message });
+}
+
 // Apply pending DB migrations BEFORE serving traffic. The runner tracks
 // applied migrations in __app_migrations and is idempotent across restarts.
 // Refusing to start with a stale schema is safer than serving 500s.

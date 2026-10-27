@@ -55,6 +55,7 @@ export function createCoverFill(deps: FillDeps) {
         stored: 0,
         missing: 0,
         failed: 0,
+        blocked: 0,
       };
       for (const releaseGroup of await deps.releaseGroups()) {
         while (!isDaytime(deps.now())) await deps.sleep(NIGHT_CHECK_MS);
