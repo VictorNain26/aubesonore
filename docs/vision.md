@@ -246,7 +246,7 @@ Revue du 2026-10-06, textes lus ce jour-là ; ce n'est pas un avis juridique.
 | Wikipédia (faits écrits, ouverture de l'article) | CC BY-SA | la page renvoie à l'article et les Mentions légales créditent la licence ; on n'en garde que des liens entre artistes, jamais le texte |
 | MLHD+ (historiques Last.fm, 583 000 utilisateurs) | exclu | aucune licence affichée (wiki MusicBrainz, 2026-10-09) ; tiré de données Last.fm réservées au non-commercial |
 | API Discogs | pas pour ce qui est publié | ses conditions imposent fraîcheur et mention de Discogs : tout ce que la page montre vient des dumps |
-| API Deezer | usage privé seulement | developers.deezer.com/termsofuse §IV : « The use of the Content is limited to a strictly private use within a family scope », pas de « data » générée, pas d'association à une marque. Les extraits ne servent donc pas au son publié ; le portrait Deezer a été remplacé par une photo Commons ou une pochette (§2.4, 2026-10-11) ; les pochettes des titres que le site affiche restent à régulariser par un accord écrit (§IX) ou à remplacer par des images sous licence connue |
+| API Deezer | usage privé seulement | developers.deezer.com/termsofuse §IV : « The use of the Content is limited to a strictly private use within a family scope », pas de « data » générée, pas d'association à une marque. Les extraits ne servent donc pas au son publié ; le portrait Deezer a été remplacé par une photo Commons ou une pochette (§2.4, 2026-10-11) ; l'identité des artistes joués ne la consulte plus (§4.4) ; les pochettes des titres que le site affiche restent à régulariser par un accord écrit (§IX) ou à remplacer par des images sous licence connue |
 | pochettes du Cover Art Archive | copiées et gardées par le site dans sa réserve de pochettes (décisions du propriétaire, 2026-10-12 et 2026-10-27) | coverartarchive.org : « All images are copyrighted by their respective copyright owners » ; ni le Cover Art Archive ni Internet Archive n'autorisent ou n'interdisent le cache ; une copie n'est pas un lien (CJUE C-161/17, Renckhoff) : les Mentions légales créditent l'archive et la copie est retirée sur demande |
 | photos Wikimedia Commons | libres sous leur licence (CC BY-SA, CC BY…) | creativecommons.org/licenses/by-sa/4.0 §2(a)(1), §3(a) : copie permise, l'auteur, la licence et la page nommés quand la photo s'ouvre en grand |
 | Spotify, Apple, YouTube, SoundCloud | exclus | analyse ou copie du contenu interdites par leurs conditions |
@@ -315,7 +315,7 @@ ligne.
 |---|---|---|---|
 | `azuracast/` | diffuser | l'antenne : médias et leurs métadonnées, playlists, historique de diffusion | — |
 | `pipeline/` | choisir ce qui passe | le goût (modèle, votes, candidats) et la bibliothèque d'antenne, qu'il publie par l'API d'AzuraCast avec l'ISRC de chaque titre | Plex (lecture seule), Deezer, Last.fm, Hype Machine, Soulseek |
-| `site/` | l'expérience de l'auditeur | comptes, titres gardés, identité des artistes joués, ce que les sources en direct disent d'un artiste (portrait, ouverture de Wikipédia), journal de diffusion | AzuraCast (lecture seule), Deezer, MusicBrainz (identifier un titre joué), Wikipédia, Wikimedia Commons, le schéma `musilogy` |
+| `site/` | l'expérience de l'auditeur | comptes, titres gardés, identité des artistes joués, ce que les sources en direct disent d'un artiste (portrait, ouverture de Wikipédia), journal de diffusion | AzuraCast (lecture seule), Deezer (liens d'écoute de la page de partage), MusicBrainz (identifier un titre joué), Wikipédia, Wikimedia Commons, le schéma `musilogy` |
 | `musilogy/` | ce qui se sait d'un artiste, hors ligne | ses tables, produites depuis des sources épinglées et datées, et le schéma `musilogy` de la base du site, qu'il remplace en bloc à chaque `musilogy load` | dumps MusicBrainz et Discogs, relevés MusicBrainz, ListenBrainz et Wikidata |
 
 ### 4.2 Les flux
@@ -350,19 +350,23 @@ ligne.
 
 ### 4.4 L'identité d'un titre et d'un artiste
 
-Le titre se reconnaît par son **ISRC**, l'artiste par son **MBID** (le pivot vers musilogy) et par
-son **identifiant Deezer** (liens d'écoute). Le pipeline connaît l'identifiant Deezer de
-chaque titre qu'il publie ; il en tire l'ISRC et l'écrit dans le fichier, où AzuraCast le lit. Le
-site résout ensuite, dans cet ordre :
+Le titre se reconnaît par son **ISRC**, l'artiste par son **MBID** (le pivot vers musilogy). Le
+pipeline écrit l'ISRC de chaque titre qu'il publie dans le fichier, où AzuraCast le lit. Le site
+identifie l'artiste dans MusicBrainz seul, dans cet ordre :
 
 1. **ISRC → MusicBrainz** (`/ws/2/isrc/{isrc}?inc=artist-credits`) : l'artiste crédité qui porte le
    nom joué, sur un enregistrement du titre joué. 32 des 40 titres de l'antenne tirés au hasard y
    sont reconnus (2026-10-04).
-2. **ISRC → Deezer** : l'artiste Deezer du titre portant cet ISRC, sous les mêmes conditions.
-3. **Le lien Deezer déclaré dans MusicBrainz**, pour compléter l'une des deux identités par l'autre.
-4. **Le nom, en dernier recours**, seulement lié à un titre joué et sans homonyme exact.
-5. **Rien d'autre.** Un artiste non identifié a sa page avec ce que l'antenne en sait ; l'absence se
+2. **Le titre joué, exactement, crédité au nom joué** : la recherche d'enregistrements de
+   MusicBrainz, retenue seulement quand un seul artiste de ce nom a enregistré ce titre. Jamais le
+   nom seul : sans titre, pas de recherche.
+3. **Rien d'autre.** Un artiste non identifié a sa page avec ce que l'antenne en sait ; l'absence se
    corrige à la source (MusicBrainz), pas par une devinette.
+
+L'API Deezer n'identifie plus personne (décision du 2026-10-27) : ses conditions ne permettent qu'un
+usage privé et interdisent d'en tirer des « data » (§2.5). L'**identifiant Deezer** d'un artiste, qui
+donne le lien « Écouter sur Deezer » de sa page, est le lien Deezer que sa page MusicBrainz déclare
+(CC0), quand elle en déclare un seul.
 
 **Un ISRC ne suffit pas seul** : un code peut être déposé sur un autre enregistrement ou crédité à
 un autre artiste (en production, le 2026-10-04 : Paul McCartney crédité à Wings, Daniel Avery

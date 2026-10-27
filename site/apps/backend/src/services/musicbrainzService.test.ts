@@ -1,13 +1,11 @@
 import { describe, it, expect, spyOn, afterEach, beforeEach, jest } from 'bun:test';
 // Real MusicBrainz answers (2026-10-02), relations trimmed to the types the service reads.
 import group from './__fixtures__/musicbrainz-artist-group.json';
-import deezerUrl from './__fixtures__/musicbrainz-url-deezer.json';
 import isrcAnswer from './__fixtures__/musicbrainz-isrc.json';
 // A real search answer (2026-10-12), trimmed to the fields the service reads.
 import searchAnswer from './__fixtures__/musicbrainz-search-recording.json';
 
 const {
-  findMbidByDeezerId,
   findRecordingsByIsrc,
   findRecordingsByTitle,
   findDeezerIdByMbid,
@@ -31,55 +29,54 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-describe('findMbidByDeezerId', () => {
-  it('returns the artist whose page declares the Deezer link', async () => {
-    const fetchSpy = spyOn(globalThis, 'fetch').mockResolvedValueOnce(json(deezerUrl));
+describe('findDeezerIdByMbid', () => {
+  // Daft Punk's page with a single Deezer link (it declares two, 2026-10-02).
+  const single = {
+    ...group,
+    relations: group.relations.filter(
+      (relation) => relation.url.resource !== 'https://www.deezer.com/artist/1477045'
+    ),
+  };
 
-    expect(await findMbidByDeezerId('27')).toEqual({
-      status: 'found',
-      value: '056e4f3e-d505-4dad-8ec1-d04f521cbb56',
-    });
+  it('reads the Deezer artist the page declares when it declares one', async () => {
+    const fetchSpy = spyOn(globalThis, 'fetch').mockResolvedValueOnce(json(single));
+
+    expect(await findDeezerIdByMbid(group.id)).toEqual({ status: 'found', value: '27' });
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain(encodeURIComponent('https://www.deezer.com/artist/27'));
+    expect(url).toContain(`/artist/${group.id}?inc=url-rels`);
     expect(new Headers(init.headers).get('user-agent')).toContain('AubeSonore');
   });
 
-  it('binds no artist when two of them share the Deezer page', async () => {
-    const [relation] = deezerUrl.relations;
-    spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      json({
-        ...deezerUrl,
-        relations: [relation, { ...relation, artist: { ...relation?.artist, id: 'other' } }],
-      })
-    );
+  it('binds none when the page declares two Deezer artists', async () => {
+    spyOn(globalThis, 'fetch').mockResolvedValueOnce(json(group));
 
-    expect(await findMbidByDeezerId('27')).toEqual({ status: 'none' });
+    expect(await findDeezerIdByMbid(group.id)).toEqual({ status: 'none' });
   });
 
-  it('caches an unknown link, retries after a failure', async () => {
+  it('caches an unknown artist, retries after a failure', async () => {
     const fetchSpy = spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(json({ error: 'Not Found' }, 404))
       .mockResolvedValueOnce(new Response(null, { status: 503 }))
-      .mockResolvedValueOnce(json(deezerUrl));
+      .mockResolvedValueOnce(json(single));
 
-    expect(await findMbidByDeezerId('1')).toEqual({ status: 'none' });
-    expect(await findMbidByDeezerId('1')).toEqual({ status: 'none' });
+    expect(await findDeezerIdByMbid('1')).toEqual({ status: 'none' });
+    expect(await findDeezerIdByMbid('1')).toEqual({ status: 'none' });
     expect(fetchSpy.mock.calls.length).toBe(1);
 
-    expect(await findMbidByDeezerId('2')).toEqual({ status: 'failed' });
-    expect((await findMbidByDeezerId('2')).status).toBe('found');
+    expect(await findDeezerIdByMbid('2')).toEqual({ status: 'failed' });
+    expect((await findDeezerIdByMbid('2')).status).toBe('found');
   });
 
   it('keeps its pace when the system clock is set back', async () => {
     spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(json(deezerUrl))
-      .mockResolvedValueOnce(json(deezerUrl));
+      .mockResolvedValueOnce(json(single))
+      .mockResolvedValueOnce(json(single));
     const now = Date.now();
     const wallClock = spyOn(Date, 'now').mockReturnValue(now);
     try {
-      expect((await findMbidByDeezerId('1')).status).toBe('found');
+      expect((await findDeezerIdByMbid('1')).status).toBe('found');
       wallClock.mockReturnValue(now - 5_000);
-      expect((await findMbidByDeezerId('2')).status).toBe('found');
+      expect((await findDeezerIdByMbid('2')).status).toBe('found');
     } finally {
       wallClock.mockRestore();
     }
@@ -89,11 +86,11 @@ describe('findMbidByDeezerId', () => {
     jest.useFakeTimers();
     try {
       const fetchSpy = spyOn(globalThis, 'fetch');
-      for (let i = 0; i < 4; i++) fetchSpy.mockResolvedValueOnce(json(deezerUrl));
+      for (let i = 0; i < 4; i++) fetchSpy.mockResolvedValueOnce(json(single));
 
       // One slot a second: the fifth would wait 4 s, past the 3 s bound.
-      const queued = ['1', '2', '3', '4'].map((id) => findMbidByDeezerId(id));
-      expect(await findMbidByDeezerId('5')).toEqual({ status: 'failed' });
+      const queued = ['1', '2', '3', '4'].map((id) => findDeezerIdByMbid(id));
+      expect(await findDeezerIdByMbid('5')).toEqual({ status: 'failed' });
 
       jest.advanceTimersByTime(3_000);
       const results = await Promise.all(queued);
@@ -102,29 +99,6 @@ describe('findMbidByDeezerId', () => {
     } finally {
       jest.useRealTimers();
     }
-  });
-});
-
-describe('findDeezerIdByMbid', () => {
-  it('reads the Deezer artist the page declares when it declares one', async () => {
-    const fetchSpy = spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-      json({
-        ...group,
-        relations: group.relations.filter(
-          (relation) => relation.url.resource !== 'https://www.deezer.com/artist/1477045'
-        ),
-      })
-    );
-
-    expect(await findDeezerIdByMbid(group.id)).toEqual({ status: 'found', value: '27' });
-    expect(fetchSpy.mock.calls[0]?.[0]).toContain(`/artist/${group.id}?inc=url-rels`);
-  });
-
-  it('binds none when the page declares two Deezer artists', async () => {
-    // Daft Punk's page links 27 and 1477045 (2026-10-02).
-    spyOn(globalThis, 'fetch').mockResolvedValueOnce(json(group));
-
-    expect(await findDeezerIdByMbid(group.id)).toEqual({ status: 'none' });
   });
 });
 

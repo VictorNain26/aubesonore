@@ -8,7 +8,6 @@ import { createSingleFlight } from '../lib/singleFlight';
 import { getPhoto } from './commonsService';
 import { deezerArtistUrl } from './deezerService';
 import { ownerOfSlug, slugOfArtistPage, slugsFor } from './artistSlugs';
-import { ensureMbid } from './artistResolver';
 import { getArtistIdentity, type ArtistIdentity } from './musilogyService';
 import { getSummary } from './wikipediaService';
 import { parseMbid } from '../validators/musilogyValidator';
@@ -182,8 +181,7 @@ export async function getArtistProfile(
 
   // The dump is local: read on every view, cached by musilogyService. The
   // first view waits for the live sources; later ones never do.
-  const identity = await identityOf(await ensureMbid(row));
-  // After ensureMbid: an MBID found names the page.
+  const identity = await identityOf(row.mbid);
   const slug = (await slugOfArtistPage(id)) ?? key;
   let stored = found.artist_profile;
   if (!stored) {

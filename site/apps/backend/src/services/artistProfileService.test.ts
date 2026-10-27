@@ -9,7 +9,7 @@ const baseRow: ArtistRow = {
   displayName: 'Daft Punk',
   normalizedName: 'daft punk',
   deezerId: '27',
-  mbid: null,
+  mbid: 'mb-1',
   identifiedBy: 'isrc',
   firstSeenAt: new Date('2026-10-01T00:00:00Z'),
 };
@@ -60,7 +60,6 @@ let rows: Array<{ artist: ArtistRow; artist_profile: StoredProfile | null }> = [
 // The slugs of MBID pages; a played artist's row is at 'daft-punk' (artistSlugs).
 let slugRows: Array<{ slug: string; mbid: string }> = [];
 let stored: StoredProfile[] = [];
-let mbidWrites: Array<Record<string, unknown>> = [];
 
 const realSchema = await import('../db/schema');
 
@@ -80,33 +79,18 @@ void mock.module('../db', () => ({
         },
       }),
     }),
-    update: () => ({
-      set: (values: Record<string, unknown>) => ({
-        where: () => ({
-          returning: () => {
-            mbidWrites.push(values);
-            return Promise.resolve([{ id: 'artist-1' }]);
-          },
-        }),
-      }),
-    }),
   },
 }));
 
 // spyOn on the real exports, restored after this file: mock.module would
 // replace these modules for every other test file of the run (Bun 1.3).
 const commons = await import('./commonsService');
-const musicbrainz = await import('./musicbrainzService');
 const musilogy = await import('./musilogyService');
 const wikipedia = await import('./wikipediaService');
 const slugs = await import('./artistSlugs');
 
 const spies = {
   photo: spyOn(commons, 'getPhoto').mockResolvedValue({ status: 'found', value: PHOTO }),
-  mbid: spyOn(musicbrainz, 'findMbidByDeezerId').mockResolvedValue({
-    status: 'found',
-    value: 'mb-1',
-  }),
   identity: spyOn(musilogy, 'getArtistIdentity').mockResolvedValue({
     name: 'Daft Punk',
     deezerId: '27',
@@ -155,7 +139,6 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 beforeEach(() => {
   rows = [{ artist: baseRow, artist_profile: null }];
   stored = [];
-  mbidWrites = [];
   slugRows = [];
   for (const spy of Object.values(spies)) spy.mockClear();
 });
@@ -168,7 +151,7 @@ describe('getArtistProfile', () => {
       id: 'artist-1',
       name: 'Daft Punk',
       slug: 'daft-punk',
-      mbid: null,
+      mbid: 'mb-1',
       played: true,
       images: [
         { kind: 'photo', ...PHOTO },
@@ -189,10 +172,15 @@ describe('getArtistProfile', () => {
     expect(stored[0]!.refreshedAt.getTime()).toBeGreaterThan(LONG_AGO.getTime());
   });
 
-  it('keeps the MBID it found, the bridge to Musilogy', async () => {
-    await getArtistProfile('daft-punk', 'fr');
+  it("asks no source for the MBID of a row without one: identity is the resolver's", async () => {
+    rows = [{ artist: { ...baseRow, mbid: null }, artist_profile: null }];
 
-    expect(mbidWrites).toEqual([{ mbid: 'mb-1' }]);
+    const profile = await getArtistProfile('daft-punk', 'fr');
+
+    expect(spies.identity).not.toHaveBeenCalled();
+    expect(profile?.links).toEqual([
+      { platform: 'deezer', url: 'https://www.deezer.com/artist/27' },
+    ]);
   });
 
   it('serves a fresh stored profile without asking any live source', async () => {
@@ -275,7 +263,7 @@ describe('getArtistProfile', () => {
   });
 
   it('clears a section its source no longer knows', async () => {
-    spies.mbid.mockResolvedValueOnce({ status: 'none' });
+    spies.identity.mockResolvedValueOnce(null);
 
     const profile = await getArtistProfile('daft-punk', 'fr');
 
@@ -296,7 +284,7 @@ describe('getArtistProfile', () => {
   });
 
   it('still answers when the artist matched no upstream', async () => {
-    rows = [{ artist: { ...baseRow, deezerId: null }, artist_profile: null }];
+    rows = [{ artist: { ...baseRow, deezerId: null, mbid: null }, artist_profile: null }];
 
     const profile = await getArtistProfile('daft-punk', 'fr');
 

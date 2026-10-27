@@ -1,5 +1,4 @@
 import { env } from '../config/env';
-import { deezerArtistUrl } from './deezerService';
 import type { Lookup } from '../lib/lookup';
 import { TtlCache } from '../lib/cache/ttlCache';
 import { createSingleFlight } from '../lib/singleFlight';
@@ -85,29 +84,6 @@ async function cached<V>(key: string, load: () => Promise<Lookup<V>>): Promise<L
   })) as Lookup<V>;
 }
 
-/**
- * The MusicBrainz artist whose page declares this Deezer artist. Bound by that
- * link, never by name: homonyms are common (nine artists are called Cassius).
- */
-export function findMbidByDeezerId(deezerId: string): Promise<Lookup<string>> {
-  return cached(`deezer:${deezerId}`, async () => {
-    const resource = deezerArtistUrl(deezerId);
-    const fetched = await fetchJson<{ relations?: Array<{ artist?: { id?: string } }> }>(
-      `/url?resource=${encodeURIComponent(resource)}&inc=artist-rels&fmt=json`
-    );
-    if (fetched.status !== 'found') return fetched;
-
-    const ids = new Set(
-      (fetched.value.relations ?? []).flatMap((relation) =>
-        relation.artist?.id ? [relation.artist.id] : []
-      )
-    );
-    const [only] = ids;
-    // Two artists sharing one Deezer page: none of them is the artist for sure.
-    return ids.size === 1 && only ? { status: 'found', value: only } : { status: 'none' };
-  });
-}
-
 interface RawIsrc {
   recordings?: Array<{
     title?: string;
@@ -144,7 +120,7 @@ function phrase(text: string): string {
 
 /**
  * The recordings MusicBrainz's search finds under a title credited to a name: the last way to the
- * MBID of an artist no ISRC nor Deezer link identifies (Talulah Gosh, played without either). A
+ * MBID of an artist no ISRC identifies (Talulah Gosh, played without one). A
  * candidate only, like an ISRC's answer: the resolver keeps an artist credited under the played
  * name on a recording of the played title, and only when exactly one is. Measured on the 65
  * played artists without an MBID on 2026-10-12: 38 found exactly one, each checked by hand.

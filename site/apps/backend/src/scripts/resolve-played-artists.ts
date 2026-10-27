@@ -4,20 +4,18 @@ import { db, pool } from '../db/index';
 import { artist, likedTracks, radioPlay } from '../db/schema';
 import { toIsrc } from '../lib/isrc';
 import { artistKey, normalizeArtistName } from '../lib/artistName';
-import { resolveArtist, resolveKeptArtist, reverifyArtist } from '../services/artistResolver';
+import { resolveArtist, reverifyArtist } from '../services/artistResolver';
 import { findPlay } from '../services/radioPlayService';
-import { searchTrack } from '../services/deezerService';
 import { shareRateWithBackend } from '../services/musicbrainzService';
 
 // One-off catch-up (docs/vision.md §4.4). Plays recorded before AzuraCast
 // reported ISRCs get theirs from the station's media, matched on artist and
 // title once normalised; then every played artist is resolved again, which
 // identifies new ones and re-identifies those only their name had bound.
-// Last, each kept track not yet tied to its artist is tied through its play,
-// or, kept before plays were recorded, through its exact Deezer match (title
-// and artist), whose ISRC stands for the play. New plays and new kept tracks
-// are handled as they come. Sequential on purpose: MusicBrainz allows one
-// request per second.
+// Last, each kept track not yet tied to its artist is tied through its play;
+// one kept before plays were recorded stays untied. New plays and new kept
+// tracks are handled as they come. Sequential on purpose: MusicBrainz allows
+// one request per second.
 const key = (artistName: string, title: string): string =>
   `${artistKey(artistName)}|${normalizeArtistName(title)}`;
 
@@ -85,19 +83,11 @@ let tied = 0;
 for (const kept of untied) {
   try {
     const play = await findPlay(kept.title, kept.artist);
-    const search = play ? null : await searchTrack(kept.title, kept.artist);
-    if (search?.status === 'failed') throw new Error('Deezer failed');
-    const match = search?.status === 'found' ? search.value : null;
-    const isrc = play?.isrc ?? toIsrc(match?.isrc);
-    const resolved = play
-      ? await resolveArtist(kept.artist)
-      : match
-        ? await resolveKeptArtist(kept.artist, { title: kept.title, isrc })
-        : null;
-    if (!resolved) continue;
+    const resolved = play ? await resolveArtist(kept.artist) : null;
+    if (!play || !resolved) continue;
     await db
       .update(likedTracks)
-      .set({ artistId: resolved.id, ...(isrc ? { isrc } : {}) })
+      .set({ artistId: resolved.id, ...(play.isrc ? { isrc: play.isrc } : {}) })
       .where(eq(likedTracks.id, kept.id));
     tied += 1;
   } catch (err) {
