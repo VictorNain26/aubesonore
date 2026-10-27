@@ -3,6 +3,7 @@ import { isDefaultArtwork } from '../lib/azuracast';
 import { artworkAt } from '../lib/artwork';
 import { readInks } from './lightInks';
 import { lightOpacity } from './lightStrength';
+import { onColorSchemeChange } from '../stores/themeStore';
 
 /** The light is the cover at its smallest: 2.4 KB for the station's art. */
 const LIGHT_PIXELS = 96;
@@ -169,15 +170,13 @@ function Light({
   useEffect(() => {
     const image = file.current;
     if (image?.complete && image.naturalWidth > 0) paint(canvas.current, image);
-    // The words change ink from day to night: the light is weighed again for them.
-    const scheme = window.matchMedia?.('(prefers-color-scheme: dark)');
-    const reweigh = () => {
+    // The words change ink from day to night, the device's or the listener's: the light is
+    // weighed again for them.
+    return onColorSchemeChange(() => {
       const element = canvas.current;
       const context = element?.getContext('2d', { willReadFrequently: true });
       if (element && context && file.current?.naturalWidth) weigh(element, context);
-    };
-    scheme?.addEventListener('change', reweigh);
-    return () => scheme?.removeEventListener('change', reweigh);
+    });
   }, []);
   return (
     <>

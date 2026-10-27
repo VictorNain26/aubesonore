@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { SiteHeader } from './SiteHeader';
 import { useAuthStore } from '../stores/authStore';
+import { chooseTheme } from '../stores/themeStore';
+import { SiteFooter } from './SiteFooter';
 
 const mockMatchMedia = () => {
   window.matchMedia = vi.fn().mockReturnValue({
@@ -116,6 +118,29 @@ describe('SiteHeader', () => {
     expect(await screen.findByText('jane@example.com')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('menuitem', { name: 'Se déconnecter' }));
     expect(signOut).toHaveBeenCalled();
+  });
+
+  it('offers the theme in the account menu, one choice with the footer’s', async () => {
+    signIn();
+    render(
+      <MemoryRouter>
+        <SiteHeader />
+        <SiteFooter />
+      </MemoryRouter>
+    );
+    const footer = screen.getByRole('radiogroup', { name: 'Thème' });
+    await userEvent.click(within(footer).getByRole('radio', { name: 'Sombre' }));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mon compte' }));
+    const menu = await screen.findByRole('group', { name: 'Thème' });
+    expect(within(menu).getByRole('menuitemradio', { name: 'Sombre' })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
+    await userEvent.click(within(menu).getByRole('menuitemradio', { name: 'Clair' }));
+    expect(document.documentElement.dataset.theme).toBe('light');
+    expect(within(footer).getByRole('radio', { name: 'Clair' })).toBeChecked();
+    act(() => chooseTheme('system'));
   });
 
   it('shows neither sign-in nor user menu while loading', () => {

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { getAnalyser } from '../lib/player';
 import { AMPLITUDE, LAYERS, QUIET, waveY, type Bands } from '../design/wave';
+import { onColorSchemeChange } from '../stores/themeStore';
 
 // ─────────────────────────────────────────────
 // The horizon line: two traces drifting against each other, each a sum of
@@ -151,10 +152,9 @@ export function HorizonLine({
     if (!canvas || !ctx) return;
 
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    // The ink follows the device's day or night: read again, and drawn at once, when it turns.
-    // The semantic token itself (--text, --dawn): the theme emits a --color-* only where a
-    // stylesheet reads it.
-    const dark = window.matchMedia('(prefers-color-scheme: dark)');
+    // The ink follows the day or the night, the device's or the listener's: read again, and drawn
+    // at once, when it turns. The semantic token itself (--text, --dawn): the theme emits a
+    // --color-* only where a stylesheet reads it.
     const readInk = () =>
       getComputedStyle(document.documentElement).getPropertyValue(`--${inkToken}`).trim();
     let ink = readInk();
@@ -275,11 +275,10 @@ export function HorizonLine({
     intersectionObserver.observe(canvas);
     document.addEventListener('visibilitychange', sync);
     reducedMotion.addEventListener('change', sync);
-    const turn = (): void => {
+    const stopTurning = onColorSchemeChange(() => {
       ink = readInk();
       paint(performance.now());
-    };
-    dark.addEventListener('change', turn);
+    });
     sync();
     // The entrance reveals the line from 0.3 s (draw-in, tokens.css), while the first frame can
     // come long after, once the page has hydrated: drawn now, the reveal never uncovers an
@@ -292,7 +291,7 @@ export function HorizonLine({
       intersectionObserver.disconnect();
       document.removeEventListener('visibilitychange', sync);
       reducedMotion.removeEventListener('change', sync);
-      dark.removeEventListener('change', turn);
+      stopTurning();
     };
   }, [traces, inkToken, amplitude]);
 

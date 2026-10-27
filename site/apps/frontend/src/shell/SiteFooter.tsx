@@ -3,6 +3,9 @@ import { Link, useLocation } from 'react-router';
 import { localizeHref } from '@/paraglide/runtime.js';
 import { cn } from '@/lib/utils';
 import { useLocale, useSwitchLocale } from '../stores/localeStore';
+import { chooseTheme, useThemeChoice } from '../stores/themeStore';
+import type { ThemeChoice } from '../design/theme';
+import { ThemeSwitchView } from './ThemeSwitch';
 import * as m from '@/paraglide/messages.js';
 
 const LINK =
@@ -32,6 +35,8 @@ export interface SiteFooterViewProps {
   /** This page in each language: a link crawlers follow, a new tab on a modified click. */
   languageHrefs: Record<'fr' | 'en', string>;
   onLocaleChange: (locale: 'fr' | 'en') => void;
+  theme: ThemeChoice;
+  onThemeChange: (theme: ThemeChoice) => void;
   onInstall: (() => void) | null;
 }
 
@@ -39,6 +44,8 @@ export function SiteFooterView({
   locale,
   languageHrefs,
   onLocaleChange,
+  theme,
+  onThemeChange,
   onInstall,
 }: SiteFooterViewProps) {
   return (
@@ -96,6 +103,7 @@ export function SiteFooterView({
             </span>
           ))}
         </span>
+        <ThemeSwitchView choice={theme} onChange={onThemeChange} />
       </div>
     </footer>
   );
@@ -116,6 +124,8 @@ export function SiteFooter() {
       locale={locale}
       languageHrefs={languageHrefs}
       onLocaleChange={setLocale}
+      theme={useThemeChoice()}
+      onThemeChange={chooseTheme}
       onInstall={onInstall}
     />
   );

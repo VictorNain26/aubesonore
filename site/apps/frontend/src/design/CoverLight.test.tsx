@@ -3,7 +3,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { CoverLightView, LIGHT_FADE_MS } from './CoverLight';
 import { lightOpacity, type LightInks } from './lightStrength';
+import { chooseTheme } from '../stores/themeStore';
 
+// The day's paper and inks, and the night's, as a browser reads them from the tokens
+// (design/lightInks.ts).
+const DAY: LightInks = {
+  surface: [240, 231, 222],
+  veil: [240, 231, 222, 0.55],
+  veilMid: [240, 231, 222, 0.72],
+  inks: [
+    [41, 45, 74],
+    [77, 81, 113],
+  ],
+  opacity: 0.75,
+};
 // The night's paper and inks, as a browser reads them from the tokens (design/lightInks.ts).
 const NIGHT: LightInks = {
   surface: [26, 32, 61],
@@ -24,6 +37,11 @@ const art = (id: string) => `https://radio.aubesonore.fr/api/station/aubesonore/
 const files = () => screen.queryAllByRole('presentation', { hidden: true });
 const lights = () => screen.queryAllByTestId('cover-light');
 const srcs = () => files().map((img) => img.getAttribute('src'));
+/** The file come, with the size jsdom never gives an image, and the canvas painted from it. */
+const come = (file: HTMLElement) => {
+  Object.defineProperty(file, 'naturalWidth', { value: 96 });
+  fireEvent.load(file);
+};
 
 let drawn: { filter: string; image: unknown }[];
 /** The cover's pixels as the canvas gives them back, or what it throws for a cover of another origin. */
@@ -150,35 +168,42 @@ describe('CoverLightView', () => {
 
   it('weighs the light again when the device turns from day to night', () => {
     let onChange: (() => void) | undefined;
+    const device = {
+      matches: false,
+      addEventListener: (_: string, fn: () => void) => (onChange = fn),
+      removeEventListener: vi.fn(),
+    };
     vi.stubGlobal(
       'matchMedia',
-      vi.fn(() => ({
-        matches: false,
-        addEventListener: (_: string, fn: () => void) => (onChange = fn),
-        removeEventListener: vi.fn(),
-      }))
+      vi.fn(() => device)
     );
     pixels = flat([255, 255, 255]);
-    inks = {
-      ...NIGHT,
-      surface: [240, 231, 222],
-      veil: [240, 231, 222, 0.55],
-      veilMid: [240, 231, 222, 0.72],
-      inks: [
-        [41, 45, 74],
-        [77, 81, 113],
-      ],
-      opacity: 0.75,
-    };
+    inks = DAY;
     render(<CoverLightView art={art('a1')} />);
-    fireEvent.load(files()[0]!);
+    come(files()[0]!);
     // A white cover by day: the dark words read on it, the light is whole.
     expect(lights()[0]!.style.opacity).toBe('0.75');
 
     inks = NIGHT;
+    device.matches = true;
     act(() => onChange?.());
-    expect(Number(lights()[0]!.style.opacity)).toBeLessThan(0.9);
+    // The paper-coloured words of the night do not read on a white cover: the light is dimmed.
+    expect(Number(lights()[0]!.style.opacity)).toBeLessThan(0.75);
     vi.unstubAllGlobals();
+  });
+
+  it('weighs the light again when the listener chooses the night', () => {
+    pixels = flat([255, 255, 255]);
+    inks = DAY;
+    render(<CoverLightView art={art('a1')} />);
+    come(files()[0]!);
+    expect(lights()[0]!.style.opacity).toBe('0.75');
+
+    inks = NIGHT;
+    act(() => chooseTheme('dark'));
+    // The paper-coloured words of the night do not read on a white cover: the light is dimmed.
+    expect(Number(lights()[0]!.style.opacity)).toBeLessThan(0.75);
+    act(() => chooseTheme('system'));
   });
 
   it('has no light without a real cover', () => {

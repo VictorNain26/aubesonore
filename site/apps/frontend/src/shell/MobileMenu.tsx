@@ -7,6 +7,7 @@ import { Logo } from '../design/Logo';
 import { localizeHref } from '@/paraglide/runtime.js';
 import { useAuthStore } from '../stores/authStore';
 import { useLocale, useSwitchLocale } from '../stores/localeStore';
+import { ThemeSwitch } from './ThemeSwitch';
 import { CLOSE_BUTTON, OUTLINE_ACTION, TEXT_ACTION } from '../design/classes';
 import * as m from '@/paraglide/messages.js';
 
@@ -90,23 +91,26 @@ export function MobileMenu() {
                 </button>
               </div>
             ) : null}
-            <div role="group" aria-label={m.footer_language()} className="flex gap-2">
-              {(['fr', 'en'] as const).map((code) => (
-                <button
-                  key={code}
-                  type="button"
-                  lang={code}
-                  onClick={() => setLocale(code)}
-                  aria-pressed={locale === code}
-                  className={cn(
-                    TEXT_ACTION,
-                    'min-w-11 justify-center',
-                    locale === code ? 'font-bold' : 'text-text-muted'
-                  )}
-                >
-                  {code}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center justify-between gap-x-6">
+              <div role="group" aria-label={m.footer_language()} className="flex gap-2">
+                {(['fr', 'en'] as const).map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    lang={code}
+                    onClick={() => setLocale(code)}
+                    aria-pressed={locale === code}
+                    className={cn(
+                      TEXT_ACTION,
+                      'min-w-11 justify-center',
+                      locale === code ? 'font-bold' : 'text-text-muted'
+                    )}
+                  >
+                    {code}
+                  </button>
+                ))}
+              </div>
+              <ThemeSwitch className="text-ui" />
             </div>
           </div>
         </Dialog.Popup>

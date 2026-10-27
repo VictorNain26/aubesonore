@@ -5,9 +5,11 @@ import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import { paraglideOptions } from './scripts/paraglide-options.mjs';
 import { VitePWA } from 'vite-plugin-pwa';
 import { visualizer } from 'rollup-plugin-visualizer';
-import type { PluginOption } from 'vite';
+import type { Plugin, PluginOption } from 'vite';
 import path from 'path';
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { themeHeadScript } from './src/design/theme';
 
 // The installed app describes itself as the home page does (messages/fr.json, meta_description).
 const { meta_description: description } = JSON.parse(
@@ -18,6 +20,42 @@ const { meta_description: description } = JSON.parse(
 // stored with plays. A listener's own data (session, kept tracks) and the
 // artist links of the thread stay on the local backend.
 const PUBLIC_READS = ['^/api/musilogy/', '^/api/artist/page/', '^/api/trends', '^/api/covers/'];
+
+/**
+ * The listener's theme on the page before its first paint (src/design/theme.ts): a script in
+ * <head>, ahead of the styles, which the browser runs before drawing anything. A file of its own,
+ * since the CSP allows no inline script, named by its content under /assets/ so nginx and the
+ * service worker keep it for a year. The home page only: not the Cast receiver nor the page the
+ * Google sign-in popup ends on.
+ */
+function themeBeforePaint(): Plugin {
+  const source = themeHeadScript();
+  const hash = createHash('sha256').update(source).digest('hex').slice(0, 8);
+  const fileName = `assets/theme-${hash}.js`;
+  let emits = false;
+  return {
+    name: 'theme-before-paint',
+    configResolved(config) {
+      emits = config.command === 'build' && !config.build.ssr;
+    },
+    buildStart() {
+      if (emits) this.emitFile({ type: 'asset', fileName, source });
+    },
+    configureServer(server) {
+      server.middlewares.use(`/${fileName}`, (_request, response) => {
+        response.setHeader('Content-Type', 'text/javascript');
+        response.end(source);
+      });
+    },
+    transformIndexHtml: {
+      order: 'pre',
+      handler(_html, { path: page }) {
+        if (page === '/cast/receiver.html' || page === '/auth/google.html') return;
+        return [{ tag: 'script', attrs: { src: `/${fileName}` }, injectTo: 'head-prepend' }];
+      },
+    },
+  };
+}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -38,6 +76,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      themeBeforePaint(),
       tailwindcss(),
       paraglideVitePlugin(paraglideOptions),
       VitePWA({

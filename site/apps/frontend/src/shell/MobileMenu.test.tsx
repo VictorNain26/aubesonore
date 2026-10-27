@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { useAuthStore } from '../stores/authStore';
 import { MobileMenu } from './MobileMenu';
+import { chooseTheme } from '../stores/themeStore';
 
 function open(path = '/') {
   render(
@@ -59,6 +60,16 @@ describe('MobileMenu', () => {
     expect(within(menu).getByText('jane@example.com')).toBeInTheDocument();
     await userEvent.click(within(menu).getByRole('button', { name: 'Se déconnecter' }));
     expect(signOut).toHaveBeenCalledOnce();
+  });
+
+  it('offers the theme beside the language, to everyone', async () => {
+    await open();
+
+    const theme = within(screen.getByRole('dialog')).getByRole('radiogroup', { name: 'Thème' });
+    expect(within(theme).getByRole('radio', { name: 'Système' })).toBeChecked();
+    await userEvent.click(within(theme).getByRole('radio', { name: 'Sombre' }));
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    chooseTheme('system');
   });
 
   it('closes once a page is chosen', async () => {

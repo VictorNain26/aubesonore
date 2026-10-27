@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { HorizonLine, autoGain, bandsOf, type Gain, stepMotion } from './HorizonLine';
 import { LAYERS, QUIET, traceOffset, type Bands } from '../design/wave';
+import { chooseTheme } from '../stores/themeStore';
 
 const analyser = { current: null as unknown };
 vi.mock('../lib/player', () => ({ getAnalyser: () => analyser.current }));
@@ -339,8 +340,11 @@ describe('HorizonLine', () => {
 
   it("takes the night's ink as soon as the device turns dark, at rest or moving", () => {
     let turned: () => void = () => undefined;
+    let dark = false;
     window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-      matches: false,
+      get matches() {
+        return query === '(prefers-color-scheme: dark)' && dark;
+      },
       addEventListener: (_: string, listener: () => void) => {
         if (query === '(prefers-color-scheme: dark)') turned = listener;
       },
@@ -358,11 +362,32 @@ describe('HorizonLine', () => {
     ctx.stroke.mockClear();
 
     root.style.setProperty('--text', 'rgb(9, 8, 7)');
+    dark = true;
     turned();
 
     // Drawn again at once: a line at rest has no next frame to repaint it.
     expect(ctx.stroke).toHaveBeenCalledTimes(LAYERS.length);
     expect(ctx.strokeStyle).toContain('rgb(9, 8, 7)');
+    root.style.removeProperty('--text');
+  });
+
+  it("takes the night's ink as soon as the listener chooses the night", () => {
+    const ctx = fakeContext();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      ctx as unknown as CanvasRenderingContext2D
+    );
+    const root = document.documentElement;
+    root.style.setProperty('--text', 'rgb(1, 2, 3)');
+
+    render(<HorizonLine isPlaying={false} />);
+    ctx.stroke.mockClear();
+
+    root.style.setProperty('--text', 'rgb(9, 8, 7)');
+    act(() => chooseTheme('dark'));
+
+    expect(ctx.stroke).toHaveBeenCalledTimes(LAYERS.length);
+    expect(ctx.strokeStyle).toContain('rgb(9, 8, 7)');
+    act(() => chooseTheme('system'));
     root.style.removeProperty('--text');
   });
 
