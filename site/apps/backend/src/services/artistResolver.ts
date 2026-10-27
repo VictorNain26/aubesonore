@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { and, desc, eq, isNull, or, sql } from 'drizzle-orm';
+import { desc, eq, or, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { isUniqueViolation } from '../db/errors';
 import { artist, artistProfile, likedTracks, radioPlay } from '../db/schema';
@@ -13,10 +13,8 @@ import {
 } from '../lib/artistName';
 import { logger } from '../lib/logger';
 import type { Lookup } from '../lib/lookup';
-import { findTrackByIsrc, searchArtist } from './deezerService';
 import {
   findDeezerIdByMbid,
-  findMbidByDeezerId,
   findRecordingsByIsrc,
   findRecordingsByTitle,
   type IsrcRecording,
@@ -33,9 +31,15 @@ import {
 } from './artistSlugs';
 
 type Resolved = { id: string; slug: string };
-type Identity = { id: string; displayName: string; deezerId: string | null; mbid: string | null };
 // The row's page slug, null only while it has none: see pageOfRow.
-type Row = Identity & { slug: string | null; identifiedBy: 'isrc' | 'name' };
+type Row = {
+  id: string;
+  displayName: string;
+  deezerId: string | null;
+  mbid: string | null;
+  slug: string | null;
+  identifiedBy: 'isrc' | 'name';
+};
 
 const ROW = {
   id: artist.id,
@@ -57,40 +61,7 @@ async function findBy(normalizedName: string): Promise<Row | null> {
   return rows[0] ?? null;
 }
 
-/**
- * The artist's MBID, the pivot to Musilogy (docs/vision.md
- * §4.4), found through the Deezer link MusicBrainz declares and written once
- * found. Nothing found, or MusicBrainz failing, writes nothing: the next call
- * tries again.
- */
-export async function ensureMbid(row: Identity): Promise<string | null> {
-  if (row.mbid || !row.deezerId) return row.mbid;
-  const found = await findMbidByDeezerId(row.deezerId);
-  if (found.status !== 'found') return null;
-  try {
-    const written = await db
-      .update(artist)
-      .set({ mbid: found.value })
-      .where(and(eq(artist.id, row.id), isNull(artist.mbid)))
-      .returning({ id: artist.id });
-    // Only the MBID written here moves the row's slug: another written meanwhile (a play's
-    // ISRC) is that identity's, bound where it was written.
-    if (written[0]) await bindArtistSlug(db, row.id, found.value, row.displayName);
-  } catch (err) {
-    // artist_mbid_unique: another row already holds it, two spellings of one
-    // artist. The page still shows the MusicBrainz facts; only the write is
-    // lost. Any other failure is not this case and propagates.
-    if (!isUniqueViolation(err)) throw err;
-    logger.warn('artist.mbid_not_written', {
-      id: row.id,
-      mbid: found.value,
-      message: (err as Error).message,
-    });
-  }
-  return found.value;
-}
-
-export type Played = { title: string; isrc: string | null };
+type Played = { title: string; isrc: string | null };
 
 /**
  * A track the antenna played by this artist, one with an ISRC when there is
@@ -114,8 +85,12 @@ async function playedTrack(normalizedName: string): Promise<Played | null> {
     : null;
 }
 
-type Identified = { deezerId: string | null; mbid: string | null };
-type Identification = Identified & { identifiedBy: 'isrc' | 'name'; displayName: string };
+type Identification = {
+  deezerId: string | null;
+  mbid: string | null;
+  identifiedBy: 'isrc' | 'name';
+  displayName: string;
+};
 
 /**
  * The one artist credited under the played name on a recording of the played title, whatever
@@ -149,118 +124,71 @@ function exactTitle(played: string, other: string): boolean {
 }
 
 /**
- * The identity a played track's ISRC gives (docs/vision.md §4.4), once the
- * answer is shown to be that track: an ISRC can be filed on another
- * recording, or credit another artist (measured 2026-10-04: Paul McCartney's
- * track credited to Wings, Daniel Avery's to ANNA, The Pirouettes' answered
- * by another Deezer track). MusicBrainz must name a recording of the played
- * title crediting the played name; Deezer, the same. Each identity then
- * completes the other through the link MusicBrainz declares. Null when no
- * answer is the played track; 'failed' when a source could not answer.
+ * The MBID a played track's ISRC gives (docs/vision.md §4.4), once the answer is shown to be
+ * that track: an ISRC can be filed on another recording, or credit another artist (measured
+ * 2026-10-04: Paul McCartney's track credited to Wings, Daniel Avery's to ANNA). MusicBrainz
+ * must name a recording of the played title crediting the played name.
  */
 async function identifyByIsrc(
   isrc: string,
   played: Played,
   primary: string
-): Promise<Identified | null | 'failed'> {
-  const playedName = comparableName(primary);
-  const credited = (names: string[]) => names.some((name) => comparableName(name) === playedName);
-
+): Promise<Lookup<string>> {
   const recordings = await findRecordingsByIsrc(isrc);
-  if (recordings.status === 'failed') return 'failed';
-  let mbid = creditedArtist(recordings.status === 'found' ? recordings.value : [], played, primary);
-
-  let deezerId: string | null = null;
-  if (mbid) {
-    const declared = await findDeezerIdByMbid(mbid);
-    if (declared.status === 'failed') return 'failed';
-    deezerId = declared.status === 'found' ? declared.value : null;
-  }
-  if (!deezerId) {
-    const track = await findTrackByIsrc(isrc);
-    if (track.status === 'failed') return 'failed';
-    if (track.status === 'found' && sameTitle(played.title, track.value.title)) {
-      deezerId = track.value.artists.find((a) => credited([a.name]))?.id ?? null;
-    }
-  }
-  if (!mbid && deezerId) {
-    const linked = await findMbidByDeezerId(deezerId);
-    if (linked.status === 'failed') return 'failed';
-    mbid = linked.status === 'found' ? linked.value : null;
-  }
-  return mbid || deezerId ? { deezerId, mbid } : null;
+  if (recordings.status !== 'found') return recordings;
+  const mbid = creditedArtist(recordings.value, played, primary);
+  return mbid ? { status: 'found', value: mbid } : { status: 'none' };
 }
 
 /**
  * The MBID of the one artist credited under the played name on a recording of exactly the played
- * title, from MusicBrainz's search; refused when that artist declares another Deezer artist than
- * the one the name was bound to (two homonyms).
+ * title, from MusicBrainz's search. Never the name alone: without a title, no search.
  */
-async function identifyByTitle(
-  primary: string,
-  played: Played,
-  deezerId: string | null
-): Promise<Lookup<string>> {
+async function identifyByTitle(primary: string, played: Played): Promise<Lookup<string>> {
+  if (bareTitle(played.title) === '') return { status: 'none' };
   const found = await findRecordingsByTitle(primary, bareTitle(played.title));
-  if (found.status === 'failed') return found;
-  const mbid =
-    found.status === 'found' ? creditedArtist(found.value, played, primary, exactTitle) : null;
-  if (!mbid) return { status: 'none' };
-  if (!deezerId) return { status: 'found', value: mbid };
-  const declared = await findDeezerIdByMbid(mbid);
-  if (declared.status === 'failed') return declared;
-  return declared.status === 'found' && declared.value !== deezerId
-    ? { status: 'none' }
-    : { status: 'found', value: mbid };
+  if (found.status !== 'found') return found;
+  const mbid = creditedArtist(found.value, played, primary, exactTitle);
+  return mbid ? { status: 'found', value: mbid } : { status: 'none' };
 }
 
 /**
- * Who played a track: its ISRC when the answer proves to be that track, then
- * the name bound to the played title for what the ISRC left unknown (Deezer
- * through `searchArtist`, MusicBrainz through the Deezer link it declares, else
- * through a recording of that title credited to that name).
- * 'failed' when a source could not answer: nothing is written, the next play
- * retries.
+ * Who played a track, from MusicBrainz alone: its ISRC when the answer proves to be that track,
+ * else a recording of exactly the played title credited under the played name. The Deezer artist
+ * is the one the MBID's MusicBrainz page declares (CC0), never Deezer's API, whose terms allow
+ * only private use (docs/vision.md §2.5). 'failed' when a source could not answer: nothing is
+ * written, the next play retries.
  */
 async function identify(primary: string, played: Played): Promise<Identification | 'failed'> {
   const byIsrc = played.isrc ? await identifyByIsrc(played.isrc, played, primary) : null;
-  if (byIsrc === 'failed') return 'failed';
+  if (byIsrc?.status === 'failed') return 'failed';
+  const byTitle = byIsrc?.status === 'found' ? null : await identifyByTitle(primary, played);
+  if (byTitle?.status === 'failed') return 'failed';
 
-  let deezerId = byIsrc?.deezerId ?? null;
-  let mbid = byIsrc?.mbid ?? null;
-  let displayName = primary;
-  if (!deezerId) {
-    const search = await searchArtist(primary, played.title, normalizeArtistName);
-    if (search.status === 'failed') return 'failed';
-    if (search.status === 'match') {
-      deezerId = search.artist.id;
-      if (!byIsrc) displayName = search.artist.name;
-    }
-  }
-  if (!mbid && deezerId) {
-    const linked = await findMbidByDeezerId(deezerId);
-    if (linked.status === 'failed') return 'failed';
-    mbid = linked.status === 'found' ? linked.value : null;
-  }
-  // Still no MBID: a recording of the played title credited to the name. After an ISRC too, which
-  // most often leaves just that (62 of the 65 played artists without an MBID had a Deezer artist
-  // its ISRC checked, 2026-10-12): the artist found must then declare no other Deezer page.
-  if (!mbid && bareTitle(played.title) !== '') {
-    const found = await identifyByTitle(primary, played, deezerId);
-    if (found.status === 'failed') return 'failed';
-    mbid = found.status === 'found' ? found.value : null;
-  }
-  return { deezerId, mbid, identifiedBy: byIsrc ? 'isrc' : 'name', displayName };
+  const found = byIsrc?.status === 'found' ? byIsrc : byTitle;
+  const mbid = found?.status === 'found' ? found.value : null;
+  const declared = mbid ? await findDeezerIdByMbid(mbid) : null;
+  if (declared?.status === 'failed') return 'failed';
+  return {
+    deezerId: declared?.status === 'found' ? declared.value : null,
+    mbid,
+    identifiedBy: byIsrc?.status === 'found' ? 'isrc' : 'name',
+    displayName: primary,
+  };
 }
 
 /**
  * Writes an identity as found, nothing kept from the one it replaces, and
- * drops the stored profile when the identity changed: its portrait and facts
- * were another artist's. Another row holding that identity (two spellings of
- * one artist) leaves this one as it was, logged.
+ * drops the stored profile when the MBID changed: its portrait and facts
+ * were another artist's. The Deezer id is only the link the MBID's page
+ * declares, not an identity. Another row holding that MBID (two spellings of
+ * one artist) leaves this one as it was, logged: 'held'.
  */
-async function writeIdentity(row: Row, identity: Identification): Promise<boolean> {
-  const changed = identity.deezerId !== row.deezerId || identity.mbid !== row.mbid;
+async function writeIdentity(
+  row: Row,
+  identity: Identification
+): Promise<'changed' | 'unchanged' | 'held'> {
+  const changed = identity.mbid !== row.mbid;
   try {
     await db
       .update(artist)
@@ -278,14 +206,14 @@ async function writeIdentity(row: Row, identity: Identification): Promise<boolea
       mbid: identity.mbid,
       message: (err as Error).message,
     });
-    return false;
+    return 'held';
   }
-  if (changed) await db.delete(artistProfile).where(eq(artistProfile.artistId, row.id));
+  if (!changed) return 'unchanged';
+  await db.delete(artistProfile).where(eq(artistProfile.artistId, row.id));
   // The page is the new MBID's; without one, the row's own again, the slug it kept or a new one.
-  if (changed && identity.mbid)
-    await bindArtistSlug(db, row.id, identity.mbid, identity.displayName);
-  else if (changed) await claimSlug(db, { artistId: row.id }, identity.displayName);
-  return changed;
+  if (identity.mbid) await bindArtistSlug(db, row.id, identity.mbid, identity.displayName);
+  else await claimSlug(db, { artistId: row.id }, identity.displayName);
+  return 'changed';
 }
 
 /** A track kept of this artist, the evidence of an artist known only from a like. */
@@ -298,41 +226,79 @@ async function keptTrack(artistId: string): Promise<Played | null> {
   return rows[0] ?? null;
 }
 
+/** What identifying a known artist again did to its MBID. */
+export type Reidentified =
+  | 'same'
+  | 'changed'
+  | 'cleared'
+  | 'gained'
+  | 'none'
+  | 'held'
+  | 'unplayed'
+  | 'failed';
+
 /**
  * Identifies a known artist again from scratch, from its latest play, else a
- * track kept of it (`artists:resolve`): repairs identities taken from an ISRC
- * before answers were checked. 'unplayed' when neither exists.
+ * track kept of it: an MBID found again is left as it was (only its Deezer
+ * link read again), another one replaces it, none clears it; the row and its
+ * page stay. 'unplayed' when neither a play nor a kept track exists.
  */
 export async function reverifyArtist(
   normalizedName: string,
   displayName: string
-): Promise<'changed' | 'kept' | 'unplayed' | 'failed'> {
+): Promise<Reidentified> {
   const row = await findBy(normalizedName);
   if (!row) return 'unplayed';
   const played = (await playedTrack(normalizedName)) ?? (await keptTrack(row.id));
   if (!played) return 'unplayed';
   const identity = await identify(displayName, played);
   if (identity === 'failed') return 'failed';
-  return (await writeIdentity(row, identity)) ? 'changed' : 'kept';
-}
-
-export function resolveArtist(rawName: string): Promise<Resolved | null> {
-  return resolveOn(rawName, playedTrack);
+  if ((await writeIdentity(row, identity)) === 'held') return 'held';
+  if (identity.mbid === row.mbid) return identity.mbid ? 'same' : 'none';
+  if (!row.mbid) return 'gained';
+  return identity.mbid ? 'changed' : 'cleared';
 }
 
 /**
- * For a track a listener kept before plays were recorded (`artists:resolve`):
- * the kept track, whose ISRC comes from its exact Deezer match, stands for the
- * play. Never reachable from a route, where any name could be typed.
+ * Every known artist identified again by MusicBrainz alone (`artists:resolve`), one after the
+ * other at MusicBrainz's pace: the MBIDs the Deezer API once led to are read again (docs/vision.md
+ * §2.5). Running it again changes nothing.
  */
-export function resolveKeptArtist(rawName: string, kept: Played): Promise<Resolved | null> {
-  return resolveOn(rawName, () => Promise.resolve(kept));
+export async function reidentifyArtists(): Promise<Record<Reidentified, number>> {
+  const known = await db
+    .select({ normalizedName: artist.normalizedName, displayName: artist.displayName })
+    .from(artist)
+    .orderBy(artist.normalizedName);
+  const outcomes: Record<Reidentified, number> = {
+    same: 0,
+    changed: 0,
+    cleared: 0,
+    gained: 0,
+    none: 0,
+    held: 0,
+    unplayed: 0,
+    failed: 0,
+  };
+  for (const row of known) {
+    let outcome: Reidentified;
+    try {
+      outcome = await reverifyArtist(row.normalizedName, row.displayName);
+    } catch (err) {
+      outcome = 'failed';
+      logger.warn('artist.reidentify_failed', {
+        name: row.displayName,
+        message: (err as Error).message,
+      });
+    }
+    outcomes[outcome] += 1;
+    if (outcome === 'changed' || outcome === 'cleared' || outcome === 'gained') {
+      logger.info('artist.reidentified', { name: row.displayName, outcome });
+    }
+  }
+  return outcomes;
 }
 
-async function resolveOn(
-  rawName: string,
-  evidence: (normalizedName: string) => Promise<Played | null>
-): Promise<Resolved | null> {
+export async function resolveArtist(rawName: string): Promise<Resolved | null> {
   const primary = primaryArtistName(rawName);
   const normalizedName = normalizeArtistName(primary);
   if (!normalizedName) return null;
@@ -340,19 +306,24 @@ async function resolveOn(
   const existing = await findBy(normalizedName);
   if (existing) {
     // A row bound by its name takes the identity a checked ISRC gives: the
-    // code designates the recording, a name can be a homonym's.
-    const played = existing.identifiedBy === 'name' ? await evidence(normalizedName) : null;
-    const identity = played?.isrc ? await identify(primary, played) : null;
+    // code designates the recording, a name can be a homonym's. A row still
+    // without an MBID, the bridge to Musilogy, takes one found since.
+    const retry = existing.identifiedBy === 'name' || existing.mbid === null;
+    const played = retry ? await playedTrack(normalizedName) : null;
+    const identity =
+      played && (played.isrc || existing.mbid === null) ? await identify(primary, played) : null;
     const moved =
-      identity && identity !== 'failed' && identity.identifiedBy === 'isrc'
-        ? await writeIdentity(existing, identity)
-        : existing.mbid === null && (await ensureMbid(existing)) !== null;
+      identity &&
+      identity !== 'failed' &&
+      (identity.identifiedBy === 'isrc' || (existing.mbid === null && identity.mbid !== null))
+        ? (await writeIdentity(existing, identity)) === 'changed'
+        : false;
     // A new MBID can give the page another address: its MBID's slug.
     const slug = moved ? await slugOfArtistPage(existing.id) : existing.slug;
     return pageOfRow({ ...existing, slug });
   }
 
-  const played = await evidence(normalizedName);
+  const played = await playedTrack(normalizedName);
   if (played === null) return null;
 
   const identity = await identify(primary, played);

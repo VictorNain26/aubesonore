@@ -70,87 +70,12 @@ async function getJson<T>(path: string): Promise<Fetched<T>> {
   return { status: 'ok', body };
 }
 
-export type ArtistSearch =
-  | { status: 'match'; artist: DeezerArtist }
-  | { status: 'none' }
-  | { status: 'failed' };
-
 interface RawTrack {
   title?: string;
   artist?: RawArtist;
 }
 
 const SEARCH_LIMIT = 10;
-
-/** The artists named exactly `name`, once each. */
-function namedExactly(
-  raws: Array<RawArtist | undefined>,
-  name: string,
-  normalizeName: (value: string) => string
-): DeezerArtist[] {
-  const found = new Map<string, DeezerArtist>();
-  for (const raw of raws) {
-    const artist = raw ? toArtist(raw) : null;
-    if (artist && normalizeName(artist.name) === normalizeName(name)) found.set(artist.id, artist);
-  }
-  return [...found.values()];
-}
-
-/**
- * The Deezer artist behind a track the antenna played. A name is not an
- * identity: of the 145 artists played by 2026-10-02, 47 shared their exact name
- * with another Deezer artist, and a name search ranked a homonym first for 11 of
- * them (Cassius, De La Soul, M.I.A., James…). The played title settles it; the
- * name alone binds only an artist with no homonym. A failure is reported as
- * such, never as "no match", so a Deezer outage cannot mark an artist unknown
- * for good.
- */
-export async function searchArtist(
-  name: string,
-  title: string,
-  normalizeName: (value: string) => string
-): Promise<ArtistSearch> {
-  const key = `search:${normalizeName(name)}:${normalizeName(title)}`;
-  const cached = deezerCache.get(key);
-  if (cached !== undefined) return cached as ArtistSearch;
-
-  return (await flight(key, async () => {
-    const tracks = await getJson<{ data?: RawTrack[] }>(
-      `/search/track?limit=${SEARCH_LIMIT}&q=${encodeURIComponent(`${name} ${title}`)}`
-    );
-    if (tracks.status === 'failed') return { status: 'failed' };
-
-    // Deezer titles carry versions the tags drop: "1999 (Radio Edit)".
-    const played = normalizeName(title);
-    const sameTitle = (value = '') =>
-      normalizeName(value) === played || normalizeName(value).startsWith(`${played} `);
-    let candidates = namedExactly(
-      tracks.status === 'ok'
-        ? (tracks.body.data ?? []).filter((t) => sameTitle(t.title)).map((t) => t.artist)
-        : [],
-      name,
-      normalizeName
-    );
-
-    if (candidates.length !== 1) {
-      const artists = await getJson<{ data?: RawArtist[] }>(
-        `/search/artist?limit=${SEARCH_LIMIT}&q=${encodeURIComponent(name)}`
-      );
-      if (artists.status === 'failed') return { status: 'failed' };
-      candidates = namedExactly(
-        artists.status === 'ok' ? (artists.body.data ?? []) : [],
-        name,
-        normalizeName
-      );
-    }
-
-    const [only] = candidates;
-    const result: ArtistSearch =
-      candidates.length === 1 && only ? { status: 'match', artist: only } : { status: 'none' };
-    deezerCache.set(key, result, result.status === 'none' ? NEGATIVE_TTL_MS : undefined);
-    return result;
-  })) as ArtistSearch;
-}
 
 export interface DeezerIsrcTrack {
   title: string;

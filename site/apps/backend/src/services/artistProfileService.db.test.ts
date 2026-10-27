@@ -5,11 +5,9 @@ import { artist, artistProfile, artistSlug } from '../db/schema';
 import type { Lookup } from '../lib/lookup';
 import { assertTestDatabase, emptyArtistTables, installMusilogyRanks, setRanks } from '../test/pg';
 import * as commons from './commonsService';
-import * as musicbrainz from './musicbrainzService';
 import * as musilogy from './musilogyService';
 import * as wikipedia from './wikipediaService';
 import { getArtistProfile } from './artistProfileService';
-import { ownerOfSlug } from './artistSlugs';
 
 const MBID = '00000000-0000-4000-8000-000000000001';
 const UNPLAYED = '00000000-0000-4000-8000-000000000002';
@@ -55,7 +53,6 @@ const spies = {
   summary: spyOn(wikipedia, 'getSummary').mockImplementation((_id, locale) =>
     Promise.resolve({ status: 'found', value: summary(locale) })
   ),
-  mbid: spyOn(musicbrainz, 'findMbidByDeezerId').mockResolvedValue({ status: 'none' }),
 };
 
 beforeAll(async () => {
@@ -200,20 +197,6 @@ describe("a played artist's page", () => {
     expect(profile).toMatchObject({ name: 'Air', facts: null, summary: summary('fr') });
     // Its opening is the stored one: no live source was asked.
     expect(spies.summary).not.toHaveBeenCalled();
-  });
-
-  it('is named by the MBID a view finds for it, through the slug its row held', async () => {
-    // Bound by its Deezer artist only: the view finds its MBID, whose page takes the row's slug.
-    await db
-      .insert(artist)
-      .values({ id: 'a-air', normalizedName: 'air', displayName: 'Air', deezerId: '27' });
-    await db.insert(artistSlug).values({ slug: 'air', artistId: 'a-air' });
-    spies.mbid.mockResolvedValueOnce({ status: 'found', value: MBID });
-
-    const profile = await getArtistProfile('air', 'fr');
-
-    expect(profile).toMatchObject({ slug: 'air', summary: summary('fr') });
-    expect(await ownerOfSlug('air')).toEqual({ mbid: MBID });
   });
 });
 
