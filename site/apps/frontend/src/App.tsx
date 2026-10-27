@@ -51,9 +51,11 @@ export function App() {
       <AuthInit />
       <NowPlayingPoller />
       <Layout>
-        <Outlet />
-        {/* Outside the pages: navigating between them keeps the bar mounted. */}
+        {/* Outside the pages: navigating between them keeps the bar mounted. Before them in the
+            document, though fixed at the bottom: the keyboard reaches the player right after the
+            skip link, not after every row of the page (it is skipped while away, inert). */}
         <PlayerBar />
+        <Outlet />
         <PlayerSideEffects />
       </Layout>
       <ScrollRestoration getKey={scrollKey} />

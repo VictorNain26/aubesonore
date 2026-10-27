@@ -255,6 +255,19 @@ describe('MusilogySections', () => {
     expect(screen.getByRole('heading', { name: 'Groupes' })).toBeInTheDocument();
   });
 
+  it("says a person's filiation starts with its bands, a group's with its members", () => {
+    const { rerender } = showFiliation(artist());
+    expect(
+      screen.getByText('Ses membres, ses autres noms, ceux qui partagent ses disques.')
+    ).toBeInTheDocument();
+
+    const person = artist();
+    rerender(<Sections artist={{ ...person, card: { ...person.card, kind: 'person' } }} />);
+    expect(
+      screen.getByText('Ses groupes, ses autres noms, ceux qui partagent ses disques.')
+    ).toBeInTheDocument();
+  });
+
   it('puts the other groups under the member who leads there, and says what each other name is', () => {
     const took = { ...neighbour(52, { name: 'Steve Peregrine Took' }), yBegin: 1967, yEnd: 1969 };
     showFiliation(
@@ -316,7 +329,8 @@ describe('MusilogySections', () => {
         .getAllByRole('listitem')
         .find((row) => within(row).queryByRole('link', { name })) as HTMLElement;
     expect(within(rowOf('Ann')).getByRole('link', { name: 'Project 0' })).toBeTruthy();
-    expect(within(rowOf('Ann')).getByText('drummer')).toBeTruthy();
+    // MusicBrainz writes it in English: marked so, on a French page (WCAG 3.1.2).
+    expect(within(rowOf('Ann')).getByText('drummer')).toHaveAttribute('lang', 'en');
     expect(within(rowOf('Ann')).getByText('aussi dans')).toBeTruthy();
     expect(within(rowOf('Bob')).getByRole('link', { name: 'Project 0' })).toBeTruthy();
     expect(within(rowOf('Bob')).queryByRole('link', { name: 'Project 9' })).toBeNull();
@@ -392,7 +406,7 @@ describe('linkYears', () => {
     const link = { ...neighbour(1), yBegin: 1971, yEnd: 1975 };
     expect(linkYears(link)).toBe('de 1971 à 1975');
     expect(linkYears({ ...link, yEnd: null })).toBe('depuis 1971');
-    expect(linkYears({ ...link, yBegin: null })).toBe("jusqu'en 1975");
+    expect(linkYears({ ...link, yBegin: null })).toBe('jusqu’en 1975');
     expect(linkYears({ ...link, yEnd: 1971 })).toBe('1971');
     expect(linkYears({ ...link, yBegin: null, yEnd: null })).toBeNull();
   });

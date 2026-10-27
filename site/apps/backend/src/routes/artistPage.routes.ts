@@ -7,7 +7,7 @@ import { getMusilogyArtist, MusilogyUnavailable } from '../services/musilogyServ
 import { listArtistSlugs } from '../services/artistPages';
 import { slugOfArtistPage } from '../services/artistSlugs';
 import { isDiscovered, listDiscoveredPages } from '../services/discoveredArtists';
-import { renderArtistShell } from '../services/templates/artistShell';
+import { renderArtistShell, renderMissingShell } from '../services/templates/artistShell';
 import { artistPagePath, artistSitemap, loadShell, renderPage } from '../services/artistPageRender';
 import { isValidArtistId, isValidArtistSlug } from '../validators/artistValidator';
 
@@ -59,7 +59,7 @@ async function handle(
   // still boots and renders its own not-found state.
   if (!profile) {
     set.status = 404;
-    return html;
+    return renderMissingShell(html, locale);
   }
   // A page has one address: its slug, played on the antenna or not, its MBID while it has none.
   // Its MBID, or a row's older slug, leads there.

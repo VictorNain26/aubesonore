@@ -155,11 +155,11 @@ const ROW = cn('grid', COLUMNS);
 // the bar under them.
 const TRACK =
   'pointer-events-none relative col-start-2 h-9 @min-[44rem]:col-start-3 @min-[44rem]:row-start-1';
-const BAR = 'absolute top-6 rounded-full';
+const BAR = 'absolute top-6';
 // On the page's colour, so no line runs through a year: a label's halo, its padding taken back by a
 // margin so the year itself starts or ends where the bar does.
 const LABEL =
-  'text-label @min-[44rem]:text-ui bg-surface shrink-0 px-1 font-mono leading-4 whitespace-nowrap tabular-nums';
+  'text-caption @min-[44rem]:text-ui bg-surface shrink-0 px-1 leading-4 whitespace-nowrap tabular-nums';
 // The decades: very light lines (Few, « Grid Lines in Graphs are Rarely Useful »: useful where the
 // rows run far from the scale). The artist's own start and end: darker, over them (Datawrapper,
 // « Range highlights and lines »; Wikipedia's band-member timelines draw their marks so).
@@ -282,7 +282,7 @@ export function MusilogyTimeline({
                 key={year}
                 // Centred on its year; the first one may reach into the empty rank column.
                 className={cn(
-                  'text-label text-text-muted absolute -translate-x-1/2 font-mono leading-4 tabular-nums',
+                  'text-caption text-text-muted absolute -translate-x-1/2 leading-4 tabular-nums',
                   tickClass(axis, index)
                 )}
                 style={{ left: `${at(year, axis)}%` }}
@@ -290,7 +290,7 @@ export function MusilogyTimeline({
                 {year}
               </span>
             ))}
-            <span className="text-label text-text-muted absolute right-0 font-mono leading-4">
+            <span className="text-caption text-text-muted absolute right-0 leading-4">
               {m.musilogy_today()}
             </span>
           </span>
@@ -311,10 +311,7 @@ export function MusilogyTimeline({
         ) : null}
         {own && axis ? (
           // A reference drawn for the eye: the page's header already says the artist's years.
-          <div
-            aria-hidden="true"
-            className={cn(ROW, 'border-border relative items-center border-b py-3')}
-          >
+          <div aria-hidden="true" className={cn(ROW, 'wave-rule items-center py-3')}>
             <span />
             <span className="text-row min-w-0 font-semibold">{card.name}</span>
             <Drawing
@@ -337,14 +334,11 @@ export function MusilogyTimeline({
             return (
               <li
                 key={neighbour.mbid}
-                className={cn(
-                  ROW,
-                  'group border-border reveal-early relative items-center border-b py-3'
-                )}
+                className={cn(ROW, 'group reveal-early wave-rule items-center py-3')}
               >
                 <span
                   aria-hidden="true"
-                  className="text-ui text-text-muted self-start pt-0.5 font-mono tabular-nums"
+                  className="text-ui text-text-muted self-start pt-0.5 tabular-nums"
                 >
                   {neighbour.rank}
                 </span>

@@ -4,7 +4,7 @@ Application React/Vite de la webradio **AubeSonore** : écoute du flux AzuraCast
 
 ## Fonctionnalités
 
-- Le direct d'AzuraCast, le titre en cours, ce qui est passé depuis l'aube et les plus gardés
+- Le direct d'AzuraCast, le titre en cours, celui « Juste avant » et « Les plus gardés de la semaine »
 - Les pages artistes et Musilogy, dessinées par le serveur puis hydratées (data mode de React Router)
 - Mes titres : les titres gardés, à écouter sur YouTube
 - Authentification (inscription, connexion, réinitialisation) via `better-auth`
@@ -12,7 +12,7 @@ Application React/Vite de la webradio **AubeSonore** : écoute du flux AzuraCast
 
 ## Design system
 
-Un seul style, sans thème sombre : papier clair, encre, une lumière abricot. Tokens Tailwind v4 dans `src/design/tokens.css`, seule source des couleurs, tailles et polices (Bricolage Grotesque via Fontsource, auto-hébergée). Contraste AA vérifié en CI (`scripts/check-contrast.mjs`). Conventions dans [`.claude/rules/site-frontend.md`](../../../.claude/rules/site-frontend.md).
+Un seul style, de jour et de nuit (la nuit suit le réglage sombre de l'appareil). Tokens Tailwind v4 dans `src/design/tokens.css`, seule source des couleurs, tailles et polices (auto-hébergées via Fontsource). Contraste AA et gamut sRGB vérifiés en CI, de jour et de nuit (`scripts/check-contrast.mjs`). Conventions dans [`.claude/rules/site-frontend.md`](../../../.claude/rules/site-frontend.md).
 
 ## Installation
 

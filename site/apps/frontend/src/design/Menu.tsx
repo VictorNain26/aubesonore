@@ -33,7 +33,7 @@ export function Menu({ trigger, header, items }: MenuProps) {
       <BaseMenu.Trigger render={trigger} />
       <BaseMenu.Portal>
         <BaseMenu.Positioner sideOffset={4} className="z-60">
-          <BaseMenu.Popup className="border-border bg-surface-raised text-body text-text ease-out-quart max-h-72 min-w-44 origin-(--transform-origin) overflow-y-auto rounded-md border py-1 transition-[opacity,scale] duration-150 focus:outline-none data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
+          <BaseMenu.Popup className="border-border bg-surface-raised text-body text-text ease-out-quart max-h-72 min-w-44 origin-(--transform-origin) overflow-y-auto border py-1 transition-[opacity,scale] duration-150 focus:outline-none data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
             {header ? (
               <BaseMenu.Group className="border-border border-b px-4 py-2">
                 <BaseMenu.GroupLabel>{header}</BaseMenu.GroupLabel>

@@ -124,7 +124,7 @@ describe('signInWithGoogle', () => {
     stubWindow(popup);
 
     await expect(signInWithGoogle('/', 'fr', () => {})).rejects.toThrow(
-      "La connexion avec Google n'a pas pu démarrer. Réessayez."
+      'La connexion avec Google n’a pas pu démarrer. Réessayez.'
     );
     expect(popup.close).toHaveBeenCalledOnce();
   });
@@ -155,7 +155,7 @@ describe('signInWithGoogle', () => {
 
 describe('googleReturnText', () => {
   it("says, in the listener's language, that they are signed in and the window can close", () => {
-    expect(googleReturnText('?lang=en')).toBe("You're signed in. You can close this window.");
+    expect(googleReturnText('?lang=en')).toBe('You’re signed in. You can close this window.');
     expect(googleReturnText('?lang=fr')).toBe(
       'Vous êtes connecté. Vous pouvez fermer cette fenêtre.'
     );
@@ -163,10 +163,10 @@ describe('googleReturnText', () => {
 
   it('says the sign-in did not go through when Better Auth reports an error', () => {
     expect(googleReturnText('?lang=fr&error=access_denied')).toBe(
-      "La connexion n'a pas abouti. Vous pouvez fermer cette fenêtre."
+      'La connexion n’a pas abouti. Vous pouvez fermer cette fenêtre.'
     );
     expect(googleReturnText('?lang=en&error=access_denied')).toBe(
-      "Signing in didn't go through. You can close this window."
+      'Signing in didn’t go through. You can close this window.'
     );
   });
 

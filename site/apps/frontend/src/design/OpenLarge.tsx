@@ -1,6 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
-import { X } from 'lucide-react';
+import { CloseIcon } from './icons';
 import * as m from '@/paraglide/messages.js';
 import { cn } from '@/lib/utils';
 import { CLOSE_BUTTON } from './classes';
@@ -29,7 +29,7 @@ function Large({ image }: { image: LargeImage }) {
       alt={image.alt}
       referrerPolicy="no-referrer"
       onError={() => setFailed(true)}
-      className="h-auto max-h-[calc(100dvh-9rem)] w-auto max-w-full min-w-0 rounded-sm object-contain"
+      className="h-auto max-h-[calc(100dvh-9rem)] w-auto max-w-full min-w-0 object-contain"
     />
   );
 }
@@ -70,8 +70,9 @@ export function OpenLarge({
         aria-label={label}
         style={style}
         className={cn(
-          // The covers' hover, one for every image that opens: it lifts, and gives way under the press.
-          'ease-out-soft hover:shadow-lift focus-visible:outline-accent block cursor-zoom-in rounded-sm p-0 transition-[translate,box-shadow,scale] duration-500 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-98 motion-safe:hover:-translate-y-1.5',
+          // The covers' hover, one for every image that opens: it dims a little, and gives way under
+          // the press. Flat, as the page is: no lift, no shadow.
+          'ease-out-quart focus-visible:outline-accent block cursor-zoom-in p-0 transition-[opacity,scale] duration-200 hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-98',
           className
         )}
       >
@@ -79,13 +80,13 @@ export function OpenLarge({
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Backdrop className="bg-scrim ease-out-quart fixed inset-0 z-50 transition-opacity duration-300 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0" />
-        <Dialog.Popup className="bg-surface border-border ease-out-soft fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-3 rounded-md border p-3 transition-[opacity,scale] duration-300 focus-visible:outline-none data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 md:p-4">
+        <Dialog.Popup className="bg-surface border-border ease-out-soft fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col gap-3 border p-3 transition-[opacity,scale] duration-300 focus-visible:outline-none data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0 md:p-4">
           <Dialog.Title className="sr-only">{title}</Dialog.Title>
           <Large key={large.src} image={large} />
           <div className="flex items-center justify-between gap-4 pl-1">
             <div className="text-ui text-text-muted">{caption}</div>
             <Dialog.Close aria-label={m.close()} className={CLOSE_BUTTON}>
-              <X className="size-4.5" strokeWidth={1.8} aria-hidden="true" />
+              <CloseIcon className="size-4.5" />
             </Dialog.Close>
           </div>
         </Dialog.Popup>

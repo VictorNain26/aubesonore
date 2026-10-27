@@ -4,7 +4,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 type AudioListener = (e?: Event) => void;
 
 class MockAudio {
-  src = '';
+  private srcAttribute: string | null = null;
+  // As a browser does: an empty src resolves to the page's own address, which fails to load as
+  // media, and the element reports it in a later task (HTML, resource selection algorithm).
+  get src(): string {
+    return this.srcAttribute ?? '';
+  }
+  set src(value: string) {
+    this.srcAttribute = value;
+    if (value === '') setTimeout(() => this.emit('error'), 0);
+  }
+  removeAttribute = vi.fn((name: string) => {
+    if (name === 'src') this.srcAttribute = null;
+  });
   paused = true;
   volume = 1;
   preload = 'none';
@@ -108,7 +120,7 @@ describe('player store', () => {
   it('play() never routes audio through Web Audio on iOS (keeps lock-screen playback alive)', async () => {
     // Regression guard for the locked-screen silence bug: routing the stream
     // through createMediaElementSource makes the AudioContext the sole output,
-    // and iOS suspends it seconds after lock (WebKit #231105). On iOS the
+    // and iOS suspends it seconds after lock (WebKit #237878). On iOS the
     // player must stay on the bare <audio> element.
     vi.stubGlobal('navigator', {
       userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15',
@@ -218,6 +230,22 @@ describe('player store', () => {
     vi.advanceTimersByTime(400);
     expect(mockAudioInstance.pause).toHaveBeenCalledOnce();
     expect(mockAudioInstance.src).toBe('');
+  });
+
+  it('cuts the stream on stop without the element reporting an error', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.useFakeTimers();
+    const { usePlayer } = await import('./player');
+    await usePlayer.getState().play();
+
+    usePlayer.getState().stop();
+    // Async: microtasks run between the timers, as between a browser's tasks.
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(mockAudioInstance.pause).toHaveBeenCalledOnce();
+    expect(mockAudioInstance.src).toBe('');
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 
   it('keeps the stream when play comes back during the fade-out', async () => {

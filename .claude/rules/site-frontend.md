@@ -16,7 +16,6 @@ Paths below are relative to `site/apps/frontend/`.
 
 - No `tailwind.config.js`, no `@tailwind base/components/utilities`, no `theme.extend`.
 - Tokens live in `src/design/tokens.css` (`@theme inline`). New utilities via `@utility`, new variants via `@custom-variant`, in that file only.
-- One style only: no dark theme, no `dark:` variant, no palette that changes with the time of day.
 
 ## Tokens
 
@@ -24,7 +23,7 @@ Paths below are relative to `site/apps/frontend/`.
 - The apricot `dawn` light is decoration only, never under text.
 - Fonts are self-hosted with Fontsource: the CSP allows `font-src 'self'` only.
 - A new text size goes in `tokens.css` and in the `extendTailwindMerge` list of `src/lib/utils.ts`, or `cn()` drops it next to a text color.
-- A new color token gets its pair in `scripts/check-contrast.mjs`, and the script passes (wired in CI Quality).
+- A new color token gets its pair in `scripts/check-contrast.mjs`, and the script passes by day and by night (wired in CI Quality).
 
 ## Non-negotiables
 

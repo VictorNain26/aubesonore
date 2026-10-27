@@ -24,8 +24,8 @@ describe('Cover', () => {
     const image = screen.getByRole('img', { name: 'Pochette' });
 
     expect(image).toHaveAttribute('sizes', '2.75rem');
-    expect(image.getAttribute('srcset')).toContain('/160x160bb.jpg 160w');
-    expect(image).toHaveAttribute('src', APPLE);
+    expect(image.getAttribute('srcset')).toContain('/160x160bb.webp 160w');
+    expect(image).toHaveAttribute('src', APPLE.replace(/\.jpg$/, '.webp'));
   });
 
   it('keeps one file for a host that cannot resize', () => {

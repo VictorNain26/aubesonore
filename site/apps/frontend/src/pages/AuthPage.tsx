@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
 import { getLocale, localizeHref } from '@/paraglide/runtime.js';
-import { useHeroListenVisible } from '../home/listen';
 import type { SignInState } from '../lib/signIn';
 import { takePendingKeep } from '../lib/pendingKeep';
 import { SiteHeader } from '../shell/SiteHeader';
@@ -42,6 +41,8 @@ const TITLES: Record<AuthMode, () => string> = {
   'verification-sent': m.auth_verification_title,
 };
 
+let forgetPendingKeep: ReturnType<typeof setTimeout> | undefined;
+
 /**
  * Sign in, sign up, a forgotten password and a new one, on a page of the site (/connexion,
  * /en/sign-in, and Better Auth's /reset-password?token= link). Opened with a SignInState: its first
@@ -58,10 +59,6 @@ export function AuthPage() {
   const keepTitle = opened.keepTitle;
   const backTo = opened.from ?? localizeHref('/');
   const [mode, setMode] = useState<AuthMode>(resetToken ? 'reset-password' : defaultMode);
-  const setListenVisible = useHeroListenVisible((s) => s.setVisible);
-
-  // No hero here: the player bar is the only way to listen.
-  useEffect(() => setListenVisible(false), [setListenVisible]);
 
   useEffect(() => {
     if (resetLinkInvalid) toastError(m.toast_reset_link_invalid());
@@ -76,13 +73,16 @@ export function AuthPage() {
   }, [isAuthenticated, mode, backTo, navigate]);
 
   // Left without signing in: forget the track they wanted to keep. The redirect to Google (when
-  // the popup is blocked) unloads the page without unmounting it, so the track survives it.
-  useEffect(
-    () => () => {
-      if (!useAuthStore.getState().isAuthenticated) takePendingKeep();
-    },
-    []
-  );
+  // the popup is blocked) unloads the page without unmounting it, so the track survives it. The
+  // forgetting waits a task: a page mounted again at once (StrictMode, a page React keeps) cancels it.
+  useEffect(() => {
+    clearTimeout(forgetPendingKeep);
+    return () => {
+      forgetPendingKeep = setTimeout(() => {
+        if (!useAuthStore.getState().isAuthenticated) takePendingKeep();
+      }, 0);
+    };
+  }, []);
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -110,8 +110,8 @@ export function AuthPage() {
     });
   };
 
-  const resetForm = () => {
-    setEmail('');
+  const resetForm = ({ keepEmail = false } = {}) => {
+    if (!keepEmail) setEmail('');
     setPassword('');
     setPasswordConfirm('');
     setName('');
@@ -217,7 +217,8 @@ export function AuthPage() {
 
   const switchTo = (next: AuthMode) => {
     setMode(next);
-    resetForm();
+    // The address typed stays: the next form asks for it too.
+    resetForm({ keepEmail: true });
   };
 
   return (

@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
+import { StrictMode } from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { AuthInit } from '../shell/AuthInit';
 import { useAuthStore } from '../stores/authStore';
+import { keepRequest, savePendingKeep } from '../lib/pendingKeep';
 import { AuthPage } from './AuthPage';
 import { toast } from 'sonner';
 import { reportGoogleOutcome } from '../auth/googleSignIn';
@@ -43,7 +45,10 @@ describe('AuthPage', () => {
   it('names the track the listener wanted to keep', () => {
     open({ pathname: '/connexion', state: { keepTitle: 'Mimoun' } });
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Pour garder « Mimoun », connectez-vous.' })
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'Pour garder «\u00a0Mimoun\u00a0», connectez-vous.',
+      })
     ).toBeInTheDocument();
   });
 
@@ -84,6 +89,34 @@ describe('AuthPage', () => {
 
     await userEvent.type(passwordInput, '5');
     expect(screen.queryByText(tooShort)).not.toBeInTheDocument();
+  });
+
+  it("keeps the typed address on a switch, the focus on the new form's title", async () => {
+    open('/connexion');
+
+    await userEvent.type(screen.getByLabelText('Adresse e-mail'), 'jane@example.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Mot de passe oublié\u00a0?' }));
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Mot de passe oublié' })).toHaveFocus();
+    expect(screen.getByLabelText('Adresse e-mail')).toHaveValue('jane@example.com');
+  });
+
+  it('keeps the track to keep while the page is shown, forgets it once left unsigned', async () => {
+    savePendingKeep(keepRequest('Mimoun', 'Rachid Taha'));
+    useAuthStore.setState({ user: null, isLoading: false, isAuthenticated: false });
+    // StrictMode mounts, unmounts and mounts again, as React may do with any page it keeps.
+    const { unmount } = render(
+      <StrictMode>
+        <MemoryRouter initialEntries={['/connexion']}>
+          <AuthPage />
+        </MemoryRouter>
+      </StrictMode>
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(sessionStorage.getItem('aubesonore-pending-keep')).not.toBeNull();
+
+    unmount();
+    await waitFor(() => expect(sessionStorage.getItem('aubesonore-pending-keep')).toBeNull());
   });
 
   it('goes back to the page the listener came from once signed in', async () => {
@@ -172,7 +205,7 @@ describe('AuthPage', () => {
     );
     open('/connexion');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Mot de passe oublié ?' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Mot de passe oublié\u00a0?' }));
     await userEvent.type(screen.getByLabelText('Adresse e-mail'), 'jane@example.com');
     await userEvent.click(screen.getByRole('button', { name: 'Envoyer le lien' }));
 
@@ -203,13 +236,13 @@ describe('AuthPage', () => {
     );
     open('/connexion');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Mot de passe oublié ?' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Mot de passe oublié\u00a0?' }));
     await userEvent.type(screen.getByLabelText('Adresse e-mail'), 'jane@example.com');
     await userEvent.click(screen.getByRole('button', { name: 'Envoyer le lien' }));
 
     await vi.waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
-        "La demande n'a pas abouti. Réessayez dans un instant.",
+        'La demande n’a pas abouti. Réessayez dans un instant.',
         expect.anything()
       )
     );

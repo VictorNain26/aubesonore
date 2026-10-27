@@ -7,7 +7,7 @@ import type {
   MusilogyArtist,
 } from '@aubesonore/shared-types/client';
 import { getLocale } from '@/paraglide/runtime.js';
-import { ArrowUpRight } from 'lucide-react';
+import { ExternalIcon } from '../design/icons';
 import { cn } from '@/lib/utils';
 import { ArtistPortrait } from './ArtistPortrait';
 import { ARTIST_LINK } from '../design/classes';
@@ -22,6 +22,10 @@ import { PageMessage } from '../shell/PageMessage';
 import type { TrailStep } from '../lib/discoveryTrail';
 import { ReleasesSection } from '../musilogy/Releases';
 import { termOf } from '../musilogy/MusilogyTimeline';
+import { Wave } from '../design/Wave';
+import { LineLoader } from '../design/LineLoader';
+import { hashOf, seedOf } from '../design/wave';
+import type { CSSProperties } from 'react';
 
 export type ArtistPageState =
   | { status: 'loading' }
@@ -122,15 +126,16 @@ function Summary({ summary }: { summary: ArtistSummary }) {
   );
 }
 
-// An action that leaves the site: a pill, so it reads apart from the text and the page's anchors.
-const LISTEN_PILL =
-  'text-ui bg-surface-raised ease-out-quart hover:bg-accent/10 focus-visible:outline-accent inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 transition-[background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
+// An action that leaves the site: a raised block at a right angle, so it reads apart from the text
+// and the page's anchors (the disc is for Écouter only).
+const PLATFORM_LINK =
+  'text-ui bg-surface-raised ease-out-quart hover:bg-accent/10 focus-visible:outline-accent inline-flex min-h-11 items-center gap-1.5 px-4 transition-[background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
 
-/** Where else to hear the artist: one pill per platform, each opening outside. */
+/** Where else to hear the artist: one link per platform, each opening outside. */
 function ListenLinks({ links }: { links: ArtistProfile['links'] }) {
   return (
     <>
-      {/* Named for those who move by headings; the pills say it to the eye. */}
+      {/* Named for those who move by headings; the links say it to the eye. */}
       <h2 id="listen-title" className="sr-only">
         {m.artist_listen_title()}
       </h2>
@@ -141,9 +146,9 @@ function ListenLinks({ links }: { links: ArtistProfile['links'] }) {
       >
         {links.map((link) => (
           <li key={link.url} className="shrink-0">
-            <a href={link.url} {...OUTSIDE_LINK} className={LISTEN_PILL}>
+            <a href={link.url} {...OUTSIDE_LINK} className={PLATFORM_LINK}>
               {PLATFORM_LABELS[link.platform]()}
-              <ArrowUpRight aria-hidden="true" className="text-text-muted size-4" />
+              <ExternalIcon className="text-text-muted size-4" />
             </a>
           </li>
         ))}
@@ -157,6 +162,32 @@ const STYLES_SHOWN = 3;
 
 function Portrait({ text }: { text: string }) {
   return <p className="text-intro m-0 max-w-prose">{text}</p>;
+}
+
+/**
+ * The artist's own horizon, between who they are and the sections: the site's line, still, drawn
+ * by their MBID (else the page's id), so the same artist always gets the same one; the dawn's
+ * light rises behind it where their sun is.
+ */
+function ArtistHorizon({ seed }: { seed: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      data-testid="artist-horizon"
+      className="relative mt-8 h-32 md:mt-12 md:h-40"
+      style={{ '--sun': `${15 + (hashOf(seed) % 71)}%` } as CSSProperties}
+    >
+      <div className="horizon-glow absolute inset-x-0 bottom-6 h-full" />
+      <Wave
+        width={1440}
+        height={110}
+        amplitude={22}
+        seed={seedOf(seed)}
+        traces={2}
+        className="text-text absolute inset-x-0 bottom-6 h-24 w-full md:h-28"
+      />
+    </div>
+  );
 }
 
 type KeptTrack = Pick<ClientLikedTrack, 'id' | 'title' | 'album' | 'createdAt'>;
@@ -190,7 +221,7 @@ function Profile({
     <>
       {/* The sections' 4/8 grid: the portrait in the title column, who they are beside it. */}
       <div className="px-page wide:grid-cols-[minmax(0,4fr)_minmax(0,8fr)] wide:gap-16 grid gap-6 pt-10 md:pt-16">
-        {/* Its entrance on a wrapper: an animation filled forward would hold the hover's lift.
+        {/* Its entrance on a wrapper, apart from the image's own hover and press.
             Beside the text, its foot on the text's foot, whatever its shape. */}
         <div className="lift-in portrait-room wide:self-end">
           <ArtistPortrait
@@ -203,11 +234,10 @@ function Profile({
             where to hear them, and the way down the page. */}
         <div className="lift-in-late wide:justify-end flex min-w-0 flex-col">
           <DiscoveryTrail steps={trail} />
-          {facts ? (
-            <p className="text-label text-text-muted m-0 font-mono uppercase">{facts}</p>
-          ) : null}
-          <h1 className="text-hero m-0 mt-2 break-words">{profile.name}</h1>
-          {styles.length > 0 ? <p className="text-sub m-0 mt-3">{styles.join(' · ')}</p> : null}
+          {facts ? <p className="text-sub text-text-muted m-0">{facts}</p> : null}
+          {/* The page's largest words, above every page's title: the name, as the title on air. */}
+          <h1 className="font-display text-now m-0 mt-3 break-words">{profile.name}</h1>
+          {styles.length > 0 ? <p className="text-sub m-0 mt-4">{styles.join(' · ')}</p> : null}
           {profile.summary || portrait ? (
             <div className="mt-6">
               {profile.summary ? <Summary summary={profile.summary} /> : null}
@@ -220,21 +250,23 @@ function Profile({
             </div>
           ) : null}
           {sections.length > 1 ? (
-            <div className="border-border mt-8 border-t pt-2">
+            <div className="wave-rule-top mt-8 pt-2">
               <PageNav items={sections} />
             </div>
           ) : null}
         </div>
       </div>
 
-      <div className="px-page flex flex-col gap-16 py-16 md:gap-28 md:py-28">
+      <ArtistHorizon seed={profile.mbid ?? profile.id} />
+
+      <div className="px-page flex flex-col gap-16 pt-6 pb-16 md:gap-28 md:pt-10 md:pb-28">
         {kept.length > 0 ? (
           <Section id="kept" title={m.artist_kept_title()}>
             <ol className="m-0 list-none p-0">
               {kept.map((track) => (
                 <li
                   key={track.id}
-                  className="border-border reveal grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 border-b py-2 md:px-1"
+                  className="reveal wave-rule grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 py-2 md:px-1"
                 >
                   <span className="flex min-w-0 flex-col">
                     <span className="text-row truncate">{track.title}</span>
@@ -242,7 +274,7 @@ function Profile({
                       <span className="text-ui text-text-muted truncate">{track.album}</span>
                     ) : null}
                   </span>
-                  <span className="text-ui text-text-muted font-mono whitespace-nowrap tabular-nums">
+                  <span className="text-ui text-text-muted whitespace-nowrap tabular-nums">
                     {formatKeptAt(track.createdAt)}
                   </span>
                 </li>
@@ -295,10 +327,7 @@ export function ArtistPageView({
     >
       <SiteHeader />
       {state.status === 'loading' ? (
-        <div aria-busy="true" className="px-page flex flex-col gap-6 pt-10 md:pt-16">
-          <span className="bg-surface-raised aspect-square w-40 rounded-sm md:w-60" />
-          <span className="bg-surface-raised h-12 w-2/3 rounded-sm" />
-        </div>
+        <LineLoader className="px-page min-h-60 pt-10 md:pt-16" />
       ) : state.status === 'missing' ? (
         <PageMessage title={m.artist_missing_title()} body={m.artist_missing_body()} />
       ) : state.status === 'error' ? (

@@ -13,8 +13,8 @@ const CACHE_KEY = 'trends';
 export const trendsCache = new TtlCache<TrendsResult>(FIVE_MINUTES_MS);
 const flight = createSingleFlight<TrendsResult>();
 
-async function topLikedTracks(since?: Date): Promise<TrendEntry[]> {
-  let query = db
+async function topLikedTracks(since: Date): Promise<TrendEntry[]> {
+  const rows = await db
     .select({
       title: schema.likedTracks.title,
       artist: schema.likedTracks.artist,
@@ -30,13 +30,7 @@ async function topLikedTracks(since?: Date): Promise<TrendEntry[]> {
     .leftJoin(schema.artist, eq(schema.artist.id, schema.likedTracks.artistId))
     .leftJoin(mbidSlug, eq(mbidSlug.mbid, schema.artist.mbid))
     .leftJoin(ownSlug, eq(ownSlug.artistId, schema.artist.id))
-    .$dynamic();
-
-  if (since) {
-    query = query.where(gt(schema.likedTracks.createdAt, since));
-  }
-
-  const rows = await query
+    .where(gt(schema.likedTracks.createdAt, since))
     .groupBy(schema.likedTracks.title, schema.likedTracks.artist)
     .orderBy(desc(count()), desc(max(schema.likedTracks.createdAt)))
     .limit(TOP_LIMIT);
@@ -52,8 +46,8 @@ export async function getTrends(): Promise<TrendsResult> {
 
   return flight(CACHE_KEY, async () => {
     const sevenDaysAgo = new Date(Date.now() - WEEK_MS);
-    const [week, allTime] = await Promise.all([topLikedTracks(sevenDaysAgo), topLikedTracks()]);
-    const result: TrendsResult = { week, allTime };
+    // The week's ranking alone: the home page shows no other (home/MostKept.tsx).
+    const result: TrendsResult = { week: await topLikedTracks(sevenDaysAgo) };
     trendsCache.set(CACHE_KEY, result);
     return result;
   });

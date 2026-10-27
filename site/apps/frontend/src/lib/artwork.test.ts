@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { artworkAt, artworkSrc, artworkSrcSet } from './artwork';
 
 describe('artworkAt', () => {
-  it("asks Apple's CDN for the size the cover is shown at", () => {
+  it("asks Apple's CDN for the size the cover is shown at, as WebP", () => {
     expect(
       artworkAt(
         'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/25/94/a12594ce/00077778777656.jpg/600x600bb.jpg',
         160
       )
     ).toBe(
-      'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/25/94/a12594ce/00077778777656.jpg/160x160bb.jpg'
+      'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/25/94/a12594ce/00077778777656.jpg/160x160bb.webp'
     );
     expect(
       artworkAt(
@@ -17,7 +17,24 @@ describe('artworkAt', () => {
         480
       )
     ).toBe(
-      'https://is3-ssl.mzstatic.com/image/thumb/Music/4e/45/54/mzi.yzadbjif.jpg/480x480bb.jpg'
+      'https://is3-ssl.mzstatic.com/image/thumb/Music/4e/45/54/mzi.yzadbjif.jpg/480x480bb.webp'
+    );
+  });
+
+  it('resizes an Apple cover already asked for as WebP', () => {
+    expect(
+      artworkAt(
+        'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/cover.jpg/600x600bb.webp',
+        320
+      )
+    ).toBe('https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/cover.jpg/320x320bb.webp');
+  });
+
+  it('serves an Apple cover as WebP at the size its URL names, even where nothing resizes it', () => {
+    const url =
+      'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/25/94/a12594ce/00077778777656.jpg/600x600bb.jpg';
+    expect(artworkSrc(url)).toBe(
+      'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/25/94/a12594ce/00077778777656.jpg/600x600bb.webp'
     );
   });
 
@@ -25,6 +42,9 @@ describe('artworkAt', () => {
     'https://radio.aubesonore.fr/api/station/1/art/abc-1691234.jpg',
     'https://api.aubesonore.fr/api/covers/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
     'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/cover.png',
+    // Not Apple's CDN, though shaped like it.
+    'https://example.com/image/thumb/Music6/v4/a1/cover.jpg/600x600bb.jpg',
+    'http://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/cover.jpg/600x600bb.jpg',
   ])('leaves a host that cannot resize as it is: %s', (url) => {
     expect(artworkAt(url, 160)).toBe(url);
   });
@@ -60,7 +80,7 @@ describe('artworkSrcSet', () => {
       '480w',
       '600w',
     ]);
-    expect(srcset).toContain('/320x320bb.jpg 320w');
+    expect(srcset).toContain('/320x320bb.webp 320w');
   });
 
   it('offers only the sizes Deezer keeps ready', () => {

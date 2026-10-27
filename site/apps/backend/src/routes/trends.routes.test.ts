@@ -7,10 +7,7 @@ import type { TrendEntry, TrendsResult } from '@aubesonore/shared-types/client';
 const weekRows: TrendEntry[] = [
   { title: 'Week Hit', artist: 'Artist A', artworkUrl: null, likes: 3, artistPage: null },
 ];
-const allTimeRows: TrendEntry[] = [
-  { title: 'All-Time Hit', artist: 'Artist B', artworkUrl: null, likes: 42, artistPage: null },
-];
-const payload: TrendsResult = { week: weekRows, allTime: allTimeRows };
+const payload: TrendsResult = { week: weekRows };
 // The aggregate's rows: the service turns slug and name into artistPage.
 const row = ({ artistPage: _page, ...entry }: TrendEntry) => ({ ...entry, slug: null, name: null });
 
@@ -19,18 +16,13 @@ const row = ({ artistPage: _page, ...entry }: TrendEntry) => ({ ...entry, slug: 
 // service would strip `trendsCache` from every test file loaded afterwards.
 const fakeDb = {
   select: () => {
-    let filtered = false;
     const builder = {
       from: () => builder,
       leftJoin: () => builder,
-      $dynamic: () => builder,
-      where: () => {
-        filtered = true;
-        return builder;
-      },
+      where: () => builder,
       groupBy: () => builder,
       orderBy: () => builder,
-      limit: () => Promise.resolve((filtered ? weekRows : allTimeRows).map(row)),
+      limit: () => Promise.resolve(weekRows.map(row)),
     };
     return builder;
   },
@@ -47,7 +39,7 @@ beforeEach(() => {
 });
 
 describe('GET /api/trends', () => {
-  it('returns the community trends payload', async () => {
+  it("returns the week's ranking, and no other", async () => {
     const res = await trendsRoutes.handle(new Request('http://localhost/api/trends'));
 
     expect(res.status).toBe(200);

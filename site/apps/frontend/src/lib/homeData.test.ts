@@ -4,25 +4,21 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import { forgetHomeData, homeLoader } from './homeData';
 
-const HISTORY_URL = 'http://localhost:3000/api/radio/history';
 const TRENDS_URL = 'http://localhost:3000/api/trends';
-const TRENDS = { week: [], allTime: [] };
+const TRENDS = { week: [] };
 
 const load = () => homeLoader({ request: new Request('http://localhost/') });
 
-let historyCalls = 0;
-let requested = '';
+let trendsCalls = 0;
 
 beforeEach(() => {
   forgetHomeData();
-  historyCalls = 0;
+  trendsCalls = 0;
   server.use(
-    http.get(HISTORY_URL, ({ request }) => {
-      historyCalls++;
-      requested = request.url;
-      return HttpResponse.json([]);
-    }),
-    http.get(TRENDS_URL, () => HttpResponse.json(TRENDS))
+    http.get(TRENDS_URL, () => {
+      trendsCalls++;
+      return HttpResponse.json(TRENDS);
+    })
   );
 });
 
@@ -31,34 +27,26 @@ afterEach(() => {
 });
 
 describe("the home page's loader", () => {
-  it('brings the whole day, 400 rows, and the ranking', async () => {
-    expect(await load()).toEqual({ history: [], trends: TRENDS });
-    expect(requested).toContain('rows=400');
+  it("brings the week's ranking alone: the live payload says the track before", async () => {
+    expect(await load()).toEqual({ trends: TRENDS });
+    expect(trendsCalls).toBe(1);
   });
 
-  it('says a list that did not answer failed, the other drawn all the same', async () => {
-    server.use(http.get(HISTORY_URL, () => new HttpResponse(null, { status: 500 })));
+  it('says the ranking failed when it did not answer, and asks again at the next visit', async () => {
+    server.use(http.get(TRENDS_URL, () => new HttpResponse(null, { status: 500 }), { once: true }));
 
-    expect(await load()).toEqual({ history: 'failed', trends: TRENDS });
-  });
-
-  it('asks again at the next visit for lists of which one failed', async () => {
-    server.use(
-      http.get(HISTORY_URL, () => new HttpResponse(null, { status: 500 }), { once: true })
-    );
-    await load();
-
-    expect(await load()).toEqual({ history: [], trends: TRENDS });
+    expect(await load()).toEqual({ trends: 'failed' });
+    expect(await load()).toEqual({ trends: TRENDS });
   });
 
   it('draws what it loaded in the last five minutes at once, and asks again after', async () => {
     vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 9, 2, 12, 0) });
     await load();
     await load();
-    expect(historyCalls).toBe(1);
+    expect(trendsCalls).toBe(1);
 
     vi.setSystemTime(new Date(2026, 9, 2, 12, 6));
     await load();
-    expect(historyCalls).toBe(2);
+    expect(trendsCalls).toBe(2);
   });
 });

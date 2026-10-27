@@ -98,7 +98,7 @@ function MemberRow({
   // With a line under it, the name sits at the foot of its 44 px target, close to that line.
   const below = member.disambiguation || projects.length > 0;
   return (
-    <li className="border-border reveal flex min-h-14 flex-col justify-center border-b py-1 md:px-1">
+    <li className="reveal wave-rule flex min-h-14 flex-col justify-center py-1 md:px-1">
       <span className={cn('flex justify-between gap-6', below ? 'items-end' : 'items-center')}>
         <Link
           to={pagePathOf(member)}
@@ -112,13 +112,14 @@ function MemberRow({
           {member.name}
         </Link>
         {years ? (
-          <span className="text-ui text-text-muted font-mono whitespace-nowrap tabular-nums">
-            {years}
-          </span>
+          <span className="text-ui text-text-muted whitespace-nowrap tabular-nums">{years}</span>
         ) : null}
       </span>
       {member.disambiguation ? (
-        <span className="text-ui text-text-muted truncate">{member.disambiguation}</span>
+        // MusicBrainz writes its disambiguations in English, whatever the page's language.
+        <span lang="en" className="text-ui text-text-muted truncate">
+          {member.disambiguation}
+        </span>
       ) : null}
       {projects.length > 0 ? <AlsoIn projects={projects} /> : null}
     </li>
@@ -332,7 +333,14 @@ function closeTabs(artist: MusilogyArtist, thisYear: number): Tab[] {
           id: 'filiation',
           label: m.musilogy_tab_filiation(),
           panel: (
-            <Panel note={m.musilogy_filiation_note()}>
+            <Panel
+              note={
+                // As the rubrics go: a person's bands, a group's members (Filiation).
+                card.kind === 'person'
+                  ? m.musilogy_filiation_note()
+                  : m.musilogy_filiation_note_group()
+              }
+            >
               <Filiation artist={artist} />
             </Panel>
           ),

@@ -22,16 +22,25 @@ const PROFILE: ArtistProfile = {
 // Runs without window, document or localStorage, like the build-time
 // pre-render: any browser API touched at import or render time fails here.
 describe('entry-server', () => {
-  it('renders the French home page as static HTML', async () => {
+  it('renders the French home page as static HTML, its one heading the welcome line', async () => {
     const html = await pageHtml('fr');
-    expect(html).toContain('Des titres à l&#x27;aube de vous plaire.');
-    expect(html).toContain('Depuis l&#x27;aube');
+    expect(html.match(/<h1[^>]*>.*?<\/h1>/g)).toEqual([
+      expect.stringMatching(/>Une aube à chaque titre\.<\/h1>$/),
+    ]);
+    // The welcome is its one sentence: no line under it.
+    expect(html).not.toContain('Des sons qui n’ont pas encore de nom pour vous.');
+    // The track before the one on air comes with the live payload, after the page is drawn.
+    expect(html).not.toContain('Depuis l’aube');
   });
 
-  it('renders the English home page as static HTML', async () => {
+  it('renders the English home page as static HTML, its one heading the welcome line', async () => {
     const html = await pageHtml('en');
-    expect(html).toContain('The first light of your next favourite songs.');
-    expect(html).toContain('Most kept');
+    expect(html.match(/<h1[^>]*>.*?<\/h1>/g)).toEqual([
+      expect.stringMatching(/>A dawn with every track\.<\/h1>$/),
+    ]);
+    expect(html).not.toContain('Sounds you don’t have a name for yet.');
+    // The week comes with its data, and only when it holds a kept track (home/MostKept.tsx).
+    expect(html).not.toContain('Most kept');
   });
 
   it('marks the language of the page as the current one, not the language of the first render', async () => {
@@ -44,6 +53,12 @@ describe('entry-server', () => {
     );
   });
 
+  it("draws the home page's player bar out of the way, the hero holding the player, and every other page's in view", async () => {
+    const bar = /<section aria-label="Lecteur du direct"[^>]*>/;
+    expect((await pageHtml('fr')).match(bar)?.[0]).toContain('inert');
+    expect((await pageHtml('fr', '/mentions-legales/')).match(bar)?.[0]).not.toContain('inert');
+  });
+
   it('renders the legal page with the publisher and the data controller, under the header', async () => {
     const fr = await pageHtml('fr', '/mentions-legales/');
     expect(fr).toContain('Mentions légales et confidentialité');
@@ -53,9 +68,15 @@ describe('entry-server', () => {
     expect(await pageHtml('en', '/en/legal/')).toContain('Legal notice and privacy');
   });
 
+  it("links every outside page of the legal page over https, Google's privacy policy included", async () => {
+    const fr = await pageHtml('fr', '/mentions-legales/');
+    expect(fr).toContain('href="https://www.google.com/policies/privacy"');
+    expect(fr).not.toContain('href="http://');
+  });
+
   it('renders the 404 in the language of its path, leading back to the live', async () => {
     const fr = await pageHtml('fr', '/404');
-    expect(fr).toContain('Un blanc à l&#x27;antenne.');
+    expect(fr).toContain('Un blanc à l’antenne.');
     expect(fr).not.toContain('Dead air');
     const en = await pageHtml('en', '/en/404');
     expect(en).toContain('Dead air.');
@@ -70,7 +91,7 @@ describe('entry-server', () => {
     expect(fr).toMatch(/<h1[^>]*>Кино<\/h1>/);
     expect(fr).toContain('Groupe de rock soviétique.');
     expect(fr).toContain('<footer');
-    expect(fr).not.toContain('aria-busy="true"');
+    expect(fr).not.toContain('role="progressbar"');
 
     const en = await artistPageHtml(
       { locale: 'en', profile: PROFILE, musilogy: null },
@@ -101,7 +122,7 @@ describe('entry-server', () => {
   it('gives each language its own title and description', () => {
     expect(meta('fr').title).toBe('AubeSonore · Radio de découverte indé, électro, hip-hop');
     expect(meta('en').title).toBe('AubeSonore · Discovery radio: indie, electronic, hip-hop');
-    expect(meta('en').description).toMatch(/^Free, ad-free web radio/);
+    expect(meta('en').description).toMatch(/^A free, ad-free discovery web radio/);
     expect(meta('fr', 'legal').description).not.toBe(meta('fr', 'legal').title);
   });
 });

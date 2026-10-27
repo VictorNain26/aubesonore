@@ -9,7 +9,7 @@ vi.mock('../lib/cast/chromecast', () => ({
 const toastError = vi.fn<(message: string) => void>();
 vi.mock('../lib/appToast', () => ({ toastError: (message: string) => toastError(message) }));
 
-type Listener = (event: { sessionState?: string }) => void;
+type Listener = (event: { sessionState?: string; errorCode?: string }) => void;
 
 // A stand-in for the Cast sender framework, with only what the store uses.
 function fakeCast() {
@@ -112,12 +112,21 @@ function fakeCast() {
     sessionChanges: (sessionState: string) =>
       emit(contextListeners, 'sessionstatechanged', { sessionState }),
     playerEvent: (type: string) => emit(playerListeners, type),
-    // The SDK rejects with the error code itself, a string (chrome.cast.ErrorCode), not an Error.
+    // As cast_framework.js 1.0.15 does when chrome.cast.requestSession fails: from NOT_CONNECTED
+    // it first says SESSION_START_FAILED with the code, then rejects with the code itself, a
+    // string (chrome.cast.ErrorCode), not an Error. Closing the picker is one such failure.
     requestSessionRejects: (code: string) => {
-      requestSession = () =>
-        Promise.resolve({
+      requestSession = () => {
+        if (castState === 'NOT_CONNECTED') {
+          emit(contextListeners, 'sessionstatechanged', {
+            sessionState: 'SESSION_START_FAILED',
+            errorCode: code,
+          });
+        }
+        return Promise.resolve({
           then: (_resolve: unknown, reject: (reason: string) => void) => reject(code),
         });
+      };
     },
   };
 }
@@ -220,24 +229,40 @@ describe('castStore', () => {
     expect(fake.session.loadMedia).not.toHaveBeenCalled();
   });
 
-  it('says so when the device cannot start the session', async () => {
-    const { fake } = await setUp();
-
-    fake.sessionChanges('SESSION_START_FAILED');
-
-    expect(toastError).toHaveBeenCalledOnce();
-  });
-
-  it('stays quiet when the listener closes the picker, but says any other refusal', async () => {
-    const { fake, useCastStore } = await setUp();
+  it('stays quiet when the listener closes the picker without choosing a device', async () => {
+    const { fake, useCastStore, usePlayer } = await setUp();
+    fake.castStateIs('NOT_CONNECTED');
+    usePlayer.setState({ isPlaying: true });
 
     fake.requestSessionRejects('cancel');
     useCastStore.getState().openPicker();
-    await Promise.resolve();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
     expect(toastError).not.toHaveBeenCalled();
+    expect(usePlayer.getState().isPlaying).toBe(true);
+  });
+
+  it.each(['timeout', 'receiver_unavailable', 'session_error'])(
+    'says once that casting failed when the session cannot start (%s)',
+    async (code) => {
+      const { fake, useCastStore } = await setUp();
+      fake.castStateIs('NOT_CONNECTED');
+
+      fake.requestSessionRejects(code);
+      useCastStore.getState().openPicker();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(toastError).toHaveBeenCalledOnce();
+    }
+  );
+
+  it('says a refusal from the dialog of a device already cast to', async () => {
+    const { fake, useCastStore } = await setUp();
+    fake.castStateIs('CONNECTED');
 
     fake.requestSessionRejects('session_error');
     useCastStore.getState().openPicker();
+
     await vi.waitFor(() => expect(toastError).toHaveBeenCalledOnce());
   });
 

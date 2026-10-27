@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Popover } from '@base-ui/react/popover';
-import { Cast } from 'lucide-react';
+import { CastIcon } from '../design/icons';
 import { cn } from '@/lib/utils';
 import type { Diffusion } from '../hooks/useDiffusion';
 import { TEXT_ACTION } from '../design/classes';
@@ -21,21 +21,18 @@ export function CastControl({
   variant,
 }: {
   diffusion: Diffusion;
-  /** `bar`: the dark player bar, icon first. `text`: a text action on the page or the sheet. */
-  variant: 'bar' | 'text';
+  /**
+   * `bar`: the dark player bar, icon first. `text`: a text action in the sheet. `hero`: a text
+   * action beside the hero's volume, the icon alone on a phone, its word from 40rem.
+   */
+  variant: 'bar' | 'text' | 'hero';
 }) {
   const [helpOpen, setHelpOpen] = useState(false);
   const { kind, found, device, connecting, onOpen } = diffusion;
   const connected = device !== null;
   const label = connected ? m.cast_on({ device }) : m.cast_label();
 
-  const icon = (
-    <Cast
-      className={cn('size-4', connecting && 'motion-safe:animate-pulse')}
-      strokeWidth={1.8}
-      aria-hidden="true"
-    />
-  );
+  const icon = <CastIcon className={cn('size-4', connecting && 'motion-safe:animate-pulse')} />;
 
   return (
     <Popover.Root
@@ -59,27 +56,38 @@ export function CastControl({
             className={
               variant === 'bar'
                 ? cn(BAR, connected && 'bg-on-accent text-accent hover:opacity-90')
-                : cn(TEXT_ACTION, connected && 'font-semibold')
+                : cn(
+                    TEXT_ACTION,
+                    // The icon alone on a phone: still a 44 px target.
+                    variant === 'hero' && 'min-w-11 justify-center',
+                    connected && 'font-semibold'
+                  )
             }
           >
             {icon}
-            {/* The bar shows the word once there is room for it, the device always. */}
-            <span className={cn(variant === 'bar' && !connected && 'sr-only md:not-sr-only')}>
+            {/* The bar shows the word once there is room for it, the device always; the hero, on a
+                computer. */}
+            <span
+              className={cn(
+                variant === 'bar' && !connected && 'sr-only md:not-sr-only',
+                variant === 'hero' && 'sr-only sm:not-sr-only'
+              )}
+            >
               {label}
             </span>
           </button>
         }
       />
       <Popover.Portal>
-        {/* 16 px from the screen's edges, the page's gutter (Base UI's default is 5). In the hero
-            and the sheet it opens under the button, off the title; the bar sits at the bottom. */}
+        {/* 16 px from the screen's edges, the page's gutter (Base UI's default is 5). In the sheet
+            it opens under the button, off the title; the bar sits at the bottom. */}
         <Popover.Positioner
           side={variant === 'bar' ? 'top' : 'bottom'}
           sideOffset={8}
           collisionPadding={16}
           className="z-60"
         >
-          <Popover.Popup className="border-border bg-surface-raised text-text ease-out-quart flex w-[min(20rem,calc(100vw-2rem))] origin-(--transform-origin) flex-col gap-2 rounded-md border p-4 transition-[opacity,scale] duration-150 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
+          <Popover.Popup className="border-border bg-surface-raised text-text ease-out-quart flex w-[min(20rem,calc(100vw-2rem))] origin-(--transform-origin) flex-col gap-2 border p-4 transition-[opacity,scale] duration-150 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
             <Popover.Title className="text-ui m-0 font-semibold">
               {m.cast_none_title()}
             </Popover.Title>

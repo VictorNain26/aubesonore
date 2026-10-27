@@ -5,21 +5,16 @@ import { cn } from '@/lib/utils';
 import { artworkSrc, artworkSrcSet } from '../lib/artwork';
 import { ARTIST_LINK } from '../design/classes';
 import { OpenLarge } from '../design/OpenLarge';
+import { hashOf } from '../design/wave';
 
 const OUTSIDE_LINK = { rel: 'noopener noreferrer', target: '_blank' } as const;
-
-function hash(seed: string): number {
-  let h = 5381;
-  for (let i = 0; i < seed.length; i += 1) h = (h * 33) ^ seed.charCodeAt(i);
-  return Math.abs(h);
-}
 
 /**
  * Where an artist's dawn rises (`artist-dawn`, tokens.css): placed by its id,
  * so the same artist always gets the same one and two artists rarely the same.
  */
 export function dawnOf(seed: string): CSSProperties {
-  const h = hash(seed);
+  const h = hashOf(seed);
   return {
     '--sun': `${30 + (h % 41)}%`,
     '--rose': `${12 + ((h >> 6) % 30)}%`,
@@ -93,12 +88,14 @@ function shapeOf({ width, height }: Size): CSSProperties {
 }
 
 /**
- * How wide it is drawn, by `portrait-room`'s caps: a third of the screen beside the text, 5:4 of
- * it at most; above the name, the line less the gutters, or the cap times its ratio.
+ * How wide it is drawn, by `portrait-room`'s caps: beside the text, the title column (4 parts of
+ * 12 of the page less its gutters, up to 100 rem, less the 4 rem gap), no taller than 5:4 of it;
+ * above the name, the line less the gutters, or the cap times its ratio.
  */
 function sizesOf({ width, height }: Size): string {
   const ratio = `${width} / ${height}`;
-  const beside = `min(33vw, 41vw * ${ratio})`;
+  const column = '(min(100vw - 5rem, 100rem) - 4rem) / 3';
+  const beside = `min(${column}, ${column} * 1.25 * ${ratio})`;
   return [
     `(min-width: 64rem) ${beside}`,
     `(min-width: 48rem) and (orientation: landscape) ${beside}`,
@@ -129,7 +126,7 @@ export function ArtistPortrait({ images, name, seed }: ArtistPortraitProps) {
       <div
         aria-hidden="true"
         data-testid="artist-dawn"
-        className="artist-dawn rounded-sm"
+        className="artist-dawn"
         style={{ ...shapeOf(SQUARE), ...dawnOf(seed) }}
       />
     );
@@ -168,7 +165,7 @@ export function ArtistPortrait({ images, name, seed }: ArtistPortraitProps) {
       {usable.kind === 'photo' ? (
         <span
           aria-hidden="true"
-          className="bg-surface text-text-muted text-label absolute right-2 bottom-2 inline-flex size-6 items-center justify-center rounded-full font-mono"
+          className="bg-surface text-text-muted text-caption absolute right-2 bottom-2 inline-flex size-6 items-center justify-center"
         >
           ©
         </span>

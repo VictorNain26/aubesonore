@@ -84,7 +84,7 @@ describe('authApi.googleSignInUrl', () => {
     );
     await expect(
       authApi.googleSignInUrl({ callbackURL: 'http://localhost:3000/' })
-    ).rejects.toThrow("La connexion avec Google n'a pas pu démarrer. Réessayez.");
+    ).rejects.toThrow('La connexion avec Google n’a pas pu démarrer. Réessayez.');
   });
 
   it("never shows the server's English message, only the page's own words", async () => {
@@ -130,7 +130,7 @@ describe('authApi errors', () => {
   it('tells an unconfirmed address and an address already registered apart', async () => {
     answer('sign-in/email', 403, { message: 'Email not verified', code: 'EMAIL_NOT_VERIFIED' });
     await expect(authApi.signIn('a@b.fr', 'secret-pass')).rejects.toThrow(
-      'Adresse e-mail pas encore confirmée : ouvrez le lien reçu par e-mail.'
+      'Adresse e-mail pas encore confirmée\u00a0: ouvrez le lien reçu par e-mail.'
     );
 
     answer('sign-up/email', 422, {

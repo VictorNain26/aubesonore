@@ -1,15 +1,17 @@
 import { memo } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown, Play, Search, X } from 'lucide-react';
+import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, PlayIcon } from '../design/icons';
 import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
 import { getLocale } from '@/paraglide/runtime.js';
 import { CoverOpenLarge } from '../design/CoverOpenLarge';
 import { KeepHeart } from '../design/KeepHeart';
-import { ARTIST_LINK, TEXT_ACTION } from '../design/classes';
+import { ARTIST_LINK, OUTLINE_ACTION, TEXT_ACTION } from '../design/classes';
+import { SearchField } from '../design/SearchField';
 import { artistPath } from '../lib/artistProfile';
 import type { LikedTrack } from '../lib/api';
 import { artistNameOf, nextSort, type KeptSort, type SortKey } from './order';
 import * as m from '@/paraglide/messages.js';
+import { LineLoader } from '../design/LineLoader';
 
 export type MyTracksState =
   | { status: 'signed-out'; signInHref: string; from: string }
@@ -19,10 +21,7 @@ export type MyTracksState =
   | { status: 'ready'; tracks: readonly LikedTrack[]; total: number };
 
 const ICON_ACTION =
-  'ease-out-quart focus-visible:outline-accent flex size-11 items-center justify-center rounded-full transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90';
-
-const PILL =
-  'text-ui border-accent ease-out-quart hover:bg-accent hover:text-on-accent focus-visible:outline-accent inline-flex min-h-11 items-center self-start rounded-full border px-4.5 transition-[color,background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-97';
+  'ease-out-quart focus-visible:outline-accent flex size-11 items-center justify-center transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90';
 
 // One formatter per locale and form: a library holds up to 500 rows.
 const keptOnFormats = new Map<string, Intl.DateTimeFormat>();
@@ -90,14 +89,22 @@ function ArtistName({ track, className }: { track: LikedTrack; className?: strin
   );
 }
 
+/**
+ * The focus a removed row leaves goes to the next row's heart, else the one before, else the
+ * page's title: the row leaves the page, and with it the focus, to the body.
+ */
+function focusAfterRemoval(button: HTMLElement): void {
+  const row = button.closest('li');
+  const neighbour = row?.nextElementSibling ?? row?.previousElementSibling;
+  const target =
+    neighbour?.querySelector<HTMLElement>('[data-remove]') ??
+    button.closest('main')?.querySelector<HTMLElement>('h1');
+  target?.focus();
+}
+
 const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
   return (
-    <li
-      className={cn(
-        ROW,
-        'border-border reveal min-h-18 gap-y-0.5 border-b py-2.5 focus-within:animate-none'
-      )}
-    >
+    <li className={cn(ROW, 'reveal wave-rule min-h-18 gap-y-0.5 py-2.5 focus-within:animate-none')}>
       <CoverOpenLarge
         src={track.artworkUrl}
         alt=""
@@ -131,11 +138,15 @@ const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
           title={m.library_listen({ title: track.title })}
           className={ICON_ACTION}
         >
-          <Play className="size-4.5" strokeWidth={1.6} aria-hidden="true" />
+          <PlayIcon className="size-4.5" />
         </a>
         <button
           type="button"
-          onClick={() => onRemove(track.id, track.title)}
+          data-remove
+          onClick={(event) => {
+            focusAfterRemoval(event.currentTarget);
+            onRemove(track.id, track.title);
+          }}
           aria-label={m.track_unkeep_aria({ title: track.title })}
           title={m.track_unkeep_aria({ title: track.title })}
           className={ICON_ACTION}
@@ -147,64 +158,8 @@ const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
   );
 }, sameRow);
 
-function Skeleton() {
-  return (
-    <ol aria-busy="true" className="m-0 list-none p-0">
-      {Array.from({ length: 6 }, (_, i) => (
-        <li key={i} className="border-border flex min-h-18 items-center gap-3 border-b py-2.5">
-          <span className="bg-surface-raised size-11 shrink-0 rounded-sm" />
-          <span className="bg-surface-raised h-4 w-1/2 rounded-sm" />
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-/** Search the kept tracks by title or artist; Échap clears it. */
-function SearchField({
-  query,
-  onQueryChange,
-}: {
-  query: string;
-  onQueryChange: (query: string) => void;
-}) {
-  return (
-    <div role="search" className="relative w-full sm:max-w-md">
-      <label>
-        <span className="sr-only">{m.library_search_label()}</span>
-        <Search
-          className="text-text-muted pointer-events-none absolute top-1/2 left-4 size-4.5 -translate-y-1/2"
-          strokeWidth={1.8}
-          aria-hidden="true"
-        />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') onQueryChange('');
-          }}
-          placeholder={m.library_search_placeholder()}
-          autoComplete="off"
-          className="text-ui border-accent ease-out-quart placeholder:text-text-faint hover:bg-surface-raised focus-visible:outline-accent h-11 w-full rounded-full border bg-transparent pr-12 pl-11 transition-colors duration-150 focus-visible:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-2 [&::-webkit-search-cancel-button]:hidden"
-        />
-      </label>
-      {query ? (
-        <button
-          type="button"
-          onClick={() => onQueryChange('')}
-          aria-label={m.library_search_clear()}
-          className={cn(ICON_ACTION, 'absolute top-0 right-0')}
-        >
-          <X className="size-4" strokeWidth={1.8} aria-hidden="true" />
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
 const SORT_BUTTON =
-  'group text-label text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -mx-1 inline-flex min-h-11 items-center gap-1.5 justify-self-start rounded-sm px-1 font-mono uppercase transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
+  'group text-caption text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -mx-1 inline-flex min-h-11 items-center gap-1.5 justify-self-start px-1 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
 
 /**
  * The columns' names, each a sort: a click orders the list by it, a second click reverses it. On a
@@ -226,12 +181,12 @@ function SortHeader({
     <div
       role="group"
       aria-label={m.library_order_label()}
-      className={cn('border-border flex items-center gap-x-6 border-b pb-1 md:grid', WIDE_COLUMNS)}
+      className={cn('wave-rule flex items-center gap-x-6 pb-1 md:grid', WIDE_COLUMNS)}
     >
       <span className="hidden md:block" />
       {columns.map(({ key, label }) => {
         const active = sort.key === key;
-        const Arrow = !active ? ArrowUpDown : sort.dir === 'asc' ? ArrowUp : ArrowDown;
+        const Arrow = !active ? ArrowUpDownIcon : sort.dir === 'asc' ? ArrowUpIcon : ArrowDownIcon;
         return (
           <button
             key={key}
@@ -250,8 +205,6 @@ function SortHeader({
                 'size-3.5',
                 !active && 'opacity-0 group-hover:opacity-60 group-focus-visible:opacity-60'
               )}
-              strokeWidth={2}
-              aria-hidden="true"
             />
           </button>
         );
@@ -292,7 +245,7 @@ export function MyTracksView({
     >
       <div className="flex flex-col gap-3">
         {total > 0 ? (
-          <span className="text-label text-text-muted font-mono uppercase" aria-live="polite">
+          <span className="text-caption text-text-muted" aria-live="polite">
             {query.trim()
               ? m.library_count_filtered({ shown, count: total })
               : total > 1
@@ -300,19 +253,26 @@ export function MyTracksView({
                 : m.library_count_one()}
           </span>
         ) : null}
-        <h1 className="text-section m-0">{m.library_title()}</h1>
+        {/* Focusable by script only: it takes the focus a last removed row leaves. */}
+        <h1 tabIndex={-1} className="font-display text-page m-0 outline-none">
+          {m.library_title()}
+        </h1>
         <p className="text-intro text-text-muted max-w-blurb m-0">{m.library_body()}</p>
       </div>
 
       {state.status === 'signed-out' ? (
         <div className="flex flex-col gap-5">
           <p className="text-row m-0">{m.library_signed_out()}</p>
-          <Link to={state.signInHref} state={{ from: state.from }} className={PILL}>
+          <Link
+            to={state.signInHref}
+            state={{ from: state.from }}
+            className={cn(OUTLINE_ACTION, 'self-start')}
+          >
             {m.nav_sign_in()}
           </Link>
         </div>
       ) : state.status === 'loading' ? (
-        <Skeleton />
+        <LineLoader className="min-h-108" />
       ) : state.status === 'error' ? (
         <div className="flex flex-col gap-3">
           <p className="text-row m-0">{m.library_error()}</p>
@@ -327,9 +287,15 @@ export function MyTracksView({
         </div>
       ) : (
         <div className="flex flex-col gap-6">
-          <SearchField query={query} onQueryChange={onQueryChange} />
+          <SearchField
+            label={m.library_search_label()}
+            placeholder={m.library_search_placeholder()}
+            query={query}
+            onQueryChange={onQueryChange}
+            className="sm:max-w-md"
+          />
           {state.tracks.length === 0 ? (
-            <div className="border-border flex flex-col items-start gap-3 border-t pt-8">
+            <div className="wave-rule-top flex flex-col items-start gap-3 pt-8">
               <p className="text-row m-0">{m.library_search_empty({ query: query.trim() })}</p>
               <button type="button" onClick={() => onQueryChange('')} className={TEXT_ACTION}>
                 {m.library_search_clear()}

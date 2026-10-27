@@ -46,7 +46,7 @@ describe('SiteFooterView', () => {
       <SiteFooterView locale="fr" languageHrefs={HREFS} onLocaleChange={vi.fn()} onInstall={null} />
     );
     expect(
-      screen.queryByRole('button', { name: "Ajouter à l'écran d'accueil" })
+      screen.queryByRole('button', { name: 'Ajouter à l’écran d’accueil' })
     ).not.toBeInTheDocument();
 
     rerender(
@@ -57,7 +57,7 @@ describe('SiteFooterView', () => {
         onInstall={onInstall}
       />
     );
-    await userEvent.click(screen.getByRole('button', { name: "Ajouter à l'écran d'accueil" }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ajouter à l’écran d’accueil' }));
     expect(onInstall).toHaveBeenCalledOnce();
   });
 });

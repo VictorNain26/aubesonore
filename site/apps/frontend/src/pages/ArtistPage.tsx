@@ -2,7 +2,6 @@ import { useEffect, useMemo } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { Navigate, useLoaderData, useLocation, useParams } from 'react-router';
 import { ArtistPageView } from '../artist/ArtistPageView';
-import { useHeroListenVisible } from '../home/listen';
 import { SiteFooter } from '../shell/SiteFooter';
 import { artistPath } from '../lib/artistProfile';
 import type { artistLoader } from '../lib/artistPageData';
@@ -17,7 +16,6 @@ import { useLikedTracksStore } from '../stores/likedTracksStore';
 export function ArtistPage() {
   const { slug } = useParams<{ slug: string }>();
   const { state, musilogy } = useLoaderData<typeof artistLoader>();
-  const setListenVisible = useHeroListenVisible((s) => s.setVisible);
   // The listener's kept tracks: this artist's, newest first. Loaded again on
   // each page, since a track kept a moment ago is tied to its artist after the
   // like answered.
@@ -26,9 +24,6 @@ export function ArtistPage() {
   useEffect(() => {
     if (signedIn) void useLikedTracksStore.getState().refresh();
   }, [slug, signedIn]);
-
-  // No hero here: the player bar is the only way to listen.
-  useEffect(() => setListenVisible(false), [setListenVisible]);
 
   // Kept tracks are tied to the artist's id, which the profile gives.
   const id = state.status === 'ready' ? state.profile.id : null;

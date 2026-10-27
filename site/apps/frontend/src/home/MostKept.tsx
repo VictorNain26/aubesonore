@@ -1,125 +1,92 @@
-import { Tabs } from '@base-ui/react/tabs';
 import { Link } from 'react-router';
-import { cn } from '@/lib/utils';
 import type { TrendEntry, TrendsResult } from '@aubesonore/shared-types/client';
 import type { Loaded } from '../lib/homeData';
 import { artistPath } from '../lib/artistProfile';
-import { CoverOpenLarge } from '../design/CoverOpenLarge';
-import { ARTIST_LINK } from '../design/classes';
+import { Cover } from '../design/Cover';
 import * as m from '@/paraglide/messages.js';
 
-type Period = 'week' | 'allTime';
-
-const TAB =
-  'text-body text-text-muted data-[active]:text-text ease-out-quart focus-visible:outline-accent min-h-11 font-medium transition-[color,scale] duration-150 active:scale-97 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-4 data-[active]:font-semibold';
-
 export interface MostKeptViewProps {
-  trends: Record<Period, TrendEntry[]> | null;
+  /** The tracks kept this week, the most kept first, as /api/trends ranks them. */
+  week: TrendEntry[] | null;
   status: 'loading' | 'error' | 'ready';
 }
 
-function Ranking({ entries, period }: { entries: TrendEntry[]; period: Period }) {
-  if (entries.length === 0) {
-    return (
-      <p className="text-text-muted m-0">
-        {period === 'week' ? m.most_kept_empty_week() : m.most_kept_empty_all_time()}
-      </p>
-    );
-  }
-
-  return (
-    <ol className="m-0 -mx-6 -my-2 flex scrollbar-none list-none gap-3.5 overflow-x-auto px-6 py-2 md:mx-0 md:my-0 md:grid md:grid-cols-5 md:gap-6 md:overflow-visible md:px-0 md:py-0">
-      {entries.slice(0, 5).map((entry, i) => (
-        <li
-          key={`${entry.artist}|${entry.title}`}
-          className="reveal flex w-38 shrink-0 flex-col gap-2 md:w-auto md:gap-3"
-        >
-          <CoverOpenLarge
-            src={entry.artworkUrl}
-            alt=""
-            seed={`${entry.artist}|${entry.title}`}
-            label={m.cover_open({ title: entry.title })}
-            title={entry.title}
-            largeAlt={m.now_cover_alt({ title: entry.title, artist: entry.artist })}
-            caption={m.track_caption({ title: entry.title, artist: entry.artist })}
-            // w-38 on phones; one of five columns of the page from md.
-            sizes="(min-width: 48rem) 20vw, 9.5rem"
-            triggerClassName="w-full"
-            className="aspect-square w-full"
-          />
-          <span className="text-label text-text-muted flex justify-between font-mono">
-            <span>{String(i + 1).padStart(2, '0')}</span>
-            {/* Under two, a count shows how quiet it is rather than what people like. */}
-            {entry.likes >= 2 ? (
-              <span>{m.most_kept_count_other({ count: entry.likes })}</span>
-            ) : null}
-          </span>
-          <span className="flex min-w-0 flex-col">
-            <span className="text-row truncate" title={entry.title}>
-              {entry.title}
-            </span>
-            {entry.artistPage ? (
-              // Negative margins grow the tap target to 44px without moving the card.
-              <Link
-                to={artistPath(entry.artistPage)}
-                className={cn(
-                  ARTIST_LINK,
-                  'text-sub text-text-muted -my-3 max-w-full self-start truncate py-3 underline-offset-4'
-                )}
-              >
-                {entry.artistPage.name}
-              </Link>
-            ) : (
-              <span className="text-sub text-text-muted truncate">{entry.artist}</span>
-            )}
-          </span>
-        </li>
-      ))}
-    </ol>
+/**
+ * A cover, its title and its artist; with the artist's page, a link there, named for both. Under
+ * the pointer the cover grows a little (design/tokens.css, kept-link): a dimmed one read as
+ * disabled.
+ */
+function Kept({ entry }: { entry: TrendEntry }) {
+  const body = (
+    <>
+      <Cover
+        src={entry.artworkUrl}
+        alt=""
+        seed={`${entry.artist}|${entry.title}`}
+        lowPriority
+        // Ten small covers at most: fetched with the page, so the row never scrolls onto empty
+        // squares.
+        eager
+        // 104 px beside the cover on air (hero-split, design/tokens.css), 120 on a phone.
+        sizes="(min-width: 40rem) and (orientation: landscape) 6.5rem, 7.5rem"
+        className="aspect-square w-full"
+      />
+      <span className="flex min-w-0 flex-col">
+        <span className="text-label truncate font-semibold" title={entry.title}>
+          {entry.title}
+        </span>
+        <span className="text-caption text-text-muted truncate font-normal">
+          {entry.artistPage?.name ?? entry.artist}
+        </span>
+      </span>
+    </>
+  );
+  return entry.artistPage ? (
+    <Link
+      to={artistPath(entry.artistPage)}
+      aria-label={`${entry.title}, ${entry.artistPage.name}`}
+      className="kept-link focus-visible:outline-accent flex flex-col gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2"
+    >
+      {body}
+    </Link>
+  ) : (
+    <div className="flex flex-col gap-1.5">{body}</div>
   );
 }
 
-export function MostKeptView({ trends, status }: MostKeptViewProps) {
+/**
+ * « Les plus gardés de la semaine »: every track kept in the last seven days, the most kept first,
+ * as one row that scrolls sideways, each cover snapping to its start and the next peeking past
+ * the edge (design/tokens.css, kept-rail). The row is a stop of the keyboard, whose arrows scroll
+ * it. In the hero beside the cover on air; on a phone, under the hero. Nothing while it loads, nor
+ * for an empty week.
+ */
+export function MostKeptView({ week, status }: MostKeptViewProps) {
+  // Nothing while it loads or for an empty week: no title over an absence.
+  if (status === 'loading' || week?.length === 0) return null;
   return (
-    <section id="plus-gardes" aria-labelledby="most-kept-title" className="scroll-mt-10">
-      <Tabs.Root defaultValue="week" className="flex flex-col gap-6 md:gap-10">
-        <div className="flex flex-wrap items-end justify-between gap-6">
-          <div className="reveal flex flex-col gap-2 md:gap-3">
-            <h2 id="most-kept-title" className="text-section m-0">
-              {m.most_kept_title()}
-            </h2>
-            <p className="text-intro text-text-muted m-0">{m.most_kept_body()}</p>
-          </div>
-          <Tabs.List aria-label={m.most_kept_period()} className="relative flex gap-6">
-            <Tabs.Tab value="week" className={TAB}>
-              {m.trends_tab_week()}
-            </Tabs.Tab>
-            <Tabs.Tab value="allTime" className={TAB}>
-              {m.trends_tab_all_time()}
-            </Tabs.Tab>
-            <Tabs.Indicator className="bg-accent ease-out-soft absolute bottom-0 left-(--active-tab-left) h-0.5 w-(--active-tab-width) transition-[left,width] duration-300" />
-          </Tabs.List>
-        </div>
-
-        {(['week', 'allTime'] as const).map((period) => (
-          <Tabs.Panel key={period} value={period} className="panel-in">
-            {trends ? (
-              <Ranking entries={trends[period]} period={period} />
-            ) : status === 'error' ? (
-              <p className="text-text-muted m-0">{m.most_kept_error()}</p>
-            ) : (
-              <div aria-busy="true" className="flex gap-3.5 md:grid md:grid-cols-5 md:gap-6">
-                {Array.from({ length: 5 }, (_, i) => (
-                  <div
-                    key={i}
-                    className="bg-surface-raised aspect-square w-38 shrink-0 rounded-sm md:w-auto"
-                  />
-                ))}
-              </div>
-            )}
-          </Tabs.Panel>
-        ))}
-      </Tabs.Root>
+    <section aria-labelledby="most-kept-title" className="hero-kept">
+      <h2 id="most-kept-title" className="text-label text-text-muted m-0 mb-2 font-normal">
+        {m.most_kept_title()}
+      </h2>
+      {week ? (
+        <ol
+          // A keyboard stop of its own: the row scrolls under the arrows (WCAG 2.1.1), with or
+          // without a link in it.
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+          tabIndex={0}
+          aria-labelledby="most-kept-title"
+          className="kept-rail focus-visible:outline-accent m-0 list-none p-0 focus-visible:outline-2 focus-visible:-outline-offset-2"
+        >
+          {week.map((entry) => (
+            <li key={`${entry.artist}|${entry.title}`}>
+              <Kept entry={entry} />
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="text-label text-text-muted m-0">{m.most_kept_error()}</p>
+      )}
     </section>
   );
 }
@@ -127,7 +94,7 @@ export function MostKeptView({ trends, status }: MostKeptViewProps) {
 export function MostKept({ trends }: { trends: Loaded<TrendsResult> | null }) {
   return (
     <MostKeptView
-      trends={trends === null || trends === 'failed' ? null : trends}
+      week={trends === null || trends === 'failed' ? null : trends.week}
       status={trends === null ? 'loading' : trends === 'failed' ? 'error' : 'ready'}
     />
   );

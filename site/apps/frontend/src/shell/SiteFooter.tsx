@@ -6,7 +6,7 @@ import { useLocale, useSwitchLocale } from '../stores/localeStore';
 import * as m from '@/paraglide/messages.js';
 
 const LINK =
-  'ease-out-quart focus-visible:outline-accent inline-flex min-h-11 items-center rounded-sm underline decoration-1 underline-offset-4 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-4';
+  'ease-out-quart focus-visible:outline-accent inline-flex min-h-11 items-center underline decoration-1 underline-offset-4 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-4';
 
 /** The browser's install prompt, kept until the listener asks for it. */
 function useInstallPrompt(): (() => void) | null {
@@ -42,7 +42,7 @@ export function SiteFooterView({
   onInstall,
 }: SiteFooterViewProps) {
   return (
-    <footer className="border-border text-ui mx-page flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t pt-5 pb-5 font-normal md:gap-y-6 md:pt-7 md:pb-7">
+    <footer className="text-ui mx-page wave-rule-top flex flex-wrap items-center justify-between gap-x-6 gap-y-2 pt-5 pb-5 font-normal md:gap-y-6 md:pt-7 md:pb-7">
       <span className="text-text-muted">
         © {new Date().getFullYear()} AubeSonore · {m.footer_free()}
       </span>
@@ -61,7 +61,7 @@ export function SiteFooterView({
         <span
           role="group"
           aria-label={m.footer_language()}
-          className="text-caption flex items-center gap-1 font-mono"
+          className="text-caption flex items-center gap-1"
         >
           {(['fr', 'en'] as const).map((code, i) => (
             <span key={code} className="flex items-center gap-1">
@@ -85,7 +85,7 @@ export function SiteFooterView({
                 }}
                 aria-current={locale === code ? 'true' : undefined}
                 className={cn(
-                  'ease-out-quart focus-visible:outline-accent inline-flex min-h-11 min-w-11 items-center justify-center rounded-sm uppercase focus-visible:outline-2 md:min-w-8',
+                  'ease-out-quart focus-visible:outline-accent inline-flex min-h-11 min-w-11 items-center justify-center focus-visible:outline-2 md:min-w-8',
                   locale === code
                     ? 'font-bold'
                     : 'underline decoration-1 underline-offset-4 hover:decoration-2'

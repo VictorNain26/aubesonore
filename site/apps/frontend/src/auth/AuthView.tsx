@@ -1,6 +1,6 @@
-import type { RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { localizeHref } from '@/paraglide/runtime.js';
-import { ArrowLeft, Eye, EyeOff, Heart, ListOrdered } from 'lucide-react';
+import { ArrowLeftIcon, EyeClosedIcon, EyeIcon } from '../design/icons';
 import { cn } from '@/lib/utils';
 import { Button } from '../design/Button';
 import { TextField } from '../design/TextField';
@@ -81,37 +81,26 @@ function GoogleLogo({ className }: { className?: string }) {
 }
 
 const TEXT_LINK_CLASSES =
-  'ease-out-quart focus-visible:outline-accent inline-flex min-h-11 items-center rounded-sm underline decoration-1 underline-offset-4 transition-opacity duration-150 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
+  'ease-out-quart focus-visible:outline-accent inline-flex min-h-11 items-center underline decoration-1 underline-offset-4 transition-opacity duration-150 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
 
 const BACK_LINK_CLASSES =
-  'text-ui text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -ml-1 inline-flex min-h-11 items-center gap-2 self-start rounded-sm px-1 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
+  'text-ui text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -ml-1 inline-flex min-h-11 items-center gap-2 self-start px-1 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
 
 /**
- * What an account brings: beside the form on wide screens, under it on a phone. A phone that
- * already shows the promise under the form's title gets the list alone.
+ * What an account brings, in the site's voice: the promise in the display face, then two plain
+ * lines, as the charter sets a line and its sentence. Beside the form on wide screens, under it on
+ * a phone. A phone that already shows the promise under the form's title gets the lines alone.
  */
 function AuthPitch({ className, withTitle = true }: { className?: string; withTitle?: boolean }) {
   return (
-    <div className={cn('flex flex-col gap-6 md:gap-8', className)}>
+    <div className={cn('max-w-aside flex flex-col gap-5 md:gap-6', className)}>
       {withTitle ? (
-        <p className="text-section md:text-hero max-w-hero m-0 text-balance">
-          {m.auth_aside_title()}
-        </p>
+        <p className="font-display text-section m-0 text-balance">{m.auth_aside_title()}</p>
       ) : null}
-      <ul className="text-intro text-text-muted max-w-aside m-0 flex list-none flex-col gap-4 p-0">
-        <li className="flex items-start gap-3.5">
-          <Heart className="text-text mt-1 size-5 shrink-0" strokeWidth={1.6} aria-hidden="true" />
-          {m.auth_aside_library()}
-        </li>
-        <li className="flex items-start gap-3.5">
-          <ListOrdered
-            className="text-text mt-1 size-5 shrink-0"
-            strokeWidth={1.6}
-            aria-hidden="true"
-          />
-          {m.auth_aside_ranking()}
-        </li>
-      </ul>
+      <div className="text-intro m-0 flex flex-col gap-2">
+        <p className="m-0">{m.auth_aside_library()}</p>
+        <p className="m-0">{m.auth_aside_ranking()}</p>
+      </div>
     </div>
   );
 }
@@ -193,6 +182,15 @@ export function AuthView({
     'verification-sent': { title: m.auth_verification_title(), desc: null },
     'reset-password': { title: m.auth_new_password(), desc: null },
   }[mode];
+  // A new form replaces the one the focus was in: its title takes the focus, which would else fall
+  // to the body. Not on the first one, opened with the page.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const shownMode = useRef(mode);
+  useEffect(() => {
+    if (shownMode.current === mode) return;
+    shownMode.current = mode;
+    headingRef.current?.focus();
+  }, [mode]);
   const withAccountChoice = mode === 'signin' || mode === 'signup';
   const withBack = mode === 'forgot' || mode === 'reset-password';
   // A title that already says why (« Pour garder … ») needs no promise under it.
@@ -206,7 +204,7 @@ export function AuthView({
       aria-label={showPassword ? m.auth_password_hide() : m.auth_password_show()}
       aria-pressed={showPassword}
     >
-      {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      {showPassword ? <EyeClosedIcon className="size-4" /> : <EyeIcon className="size-4" />}
     </Button>
   );
 
@@ -215,7 +213,7 @@ export function AuthView({
       <div className="grid w-full gap-14 md:grid-cols-2 md:items-center md:gap-0">
         <AuthPitch className="hidden md:flex md:pr-16 lg:pr-24" />
 
-        <div className="md:border-border md:border-l md:pl-16 lg:pl-24">
+        <div className="md:pl-16 lg:pl-24">
           <div key={mode} className="panel-in flex flex-col gap-8">
             <div className="max-w-aside flex flex-col gap-3">
               {withBack ? (
@@ -224,11 +222,17 @@ export function AuthView({
                   onClick={() => onSwitchMode('signin')}
                   className={BACK_LINK_CLASSES}
                 >
-                  <ArrowLeft className="size-4" strokeWidth={1.8} aria-hidden="true" />
+                  <ArrowLeftIcon className="size-4" />
                   {m.auth_back_to_signin()}
                 </button>
               ) : null}
-              <h1 className="text-section m-0 text-balance">{headerCopy.title}</h1>
+              <h1
+                ref={headingRef}
+                tabIndex={-1}
+                className="font-display text-page m-0 text-balance wrap-break-word outline-none"
+              >
+                {headerCopy.title}
+              </h1>
               {headerCopy.desc ? (
                 <p className="text-intro text-text-muted m-0">{headerCopy.desc}</p>
               ) : null}
@@ -272,9 +276,9 @@ export function AuthView({
                       {m.auth_oauth_google()}
                     </Button>
                     <div className="text-ui text-text-muted flex items-center gap-4 font-normal">
-                      <span className="border-border flex-1 border-t" />
+                      <span aria-hidden="true" className="wave-rule h-1.5 flex-1" />
                       {m.auth_or()}
-                      <span className="border-border flex-1 border-t" />
+                      <span aria-hidden="true" className="wave-rule h-1.5 flex-1" />
                     </div>
                   </div>
                 ) : null}
@@ -362,7 +366,7 @@ export function AuthView({
                 <div className="flex flex-col gap-4">
                   <Button type="submit" loading={isLoading} className="h-14 w-full justify-center">
                     {isLoading
-                      ? m.auth_loading()
+                      ? m.loading()
                       : mode === 'signin'
                         ? m.auth_submit_signin()
                         : mode === 'signup'
@@ -386,7 +390,7 @@ export function AuthView({
                 </div>
 
                 {withAccountChoice ? (
-                  <p className="border-border text-ui text-text-muted m-0 border-t pt-5 font-normal">
+                  <p className="wave-rule-top text-ui text-text-muted m-0 pt-5 font-normal">
                     {mode === 'signin' ? m.auth_no_account() : m.auth_have_account()}{' '}
                     <button
                       type="button"
@@ -403,10 +407,7 @@ export function AuthView({
         </div>
 
         {withAccountChoice ? (
-          <AuthPitch
-            className="border-border border-t pt-10 md:hidden"
-            withTitle={!promiseOnPhone}
-          />
+          <AuthPitch className="wave-rule-top pt-10 md:hidden" withTitle={!promiseOnPhone} />
         ) : null}
       </div>
     </main>

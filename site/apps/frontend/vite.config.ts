@@ -7,17 +7,17 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { visualizer } from 'rollup-plugin-visualizer';
 import type { PluginOption } from 'vite';
 import path from 'path';
+import { readFileSync } from 'node:fs';
 
-// What a fresh database has no answer to: Musilogy, the artist pages, today's plays and the
-// trends, and the covers stored with plays. A listener's own data (session, kept tracks) and the
+// The installed app describes itself as the home page does (messages/fr.json, meta_description).
+const { meta_description: description } = JSON.parse(
+  readFileSync(new URL('./messages/fr.json', import.meta.url), 'utf8')
+) as { meta_description: string };
+
+// What a fresh database has no answer to: Musilogy, the artist pages, the trends, and the covers
+// stored with plays. A listener's own data (session, kept tracks) and the
 // artist links of the thread stay on the local backend.
-const PUBLIC_READS = [
-  '^/api/musilogy/',
-  '^/api/artist/page/',
-  '^/api/radio/history',
-  '^/api/trends',
-  '^/api/covers/',
-];
+const PUBLIC_READS = ['^/api/musilogy/', '^/api/artist/page/', '^/api/trends', '^/api/covers/'];
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -59,12 +59,11 @@ export default defineConfig(({ mode }) => {
         manifest: {
           name: 'AubeSonore',
           short_name: 'AubeSonore',
-          description:
-            "Webradio de découverte : rock et pop indé, électronique, hip-hop, des années 60 à aujourd'hui. Gratuite, sans publicité.",
+          description,
           lang: 'fr',
           categories: ['music'],
-          theme_color: '#e8e0d7',
-          background_color: '#e8e0d7',
+          theme_color: '#f1e5dc',
+          background_color: '#f1e5dc',
           display: 'standalone',
           scope: '/',
           start_url: '/',

@@ -72,9 +72,7 @@ describe('artistTitle', () => {
     expect(artistTitle(KRAFTWERK, heard, 'en')).toBe(
       'Kraftwerk (band, Düsseldorf): similar artists · AubeSonore'
     );
-    expect(artistDescription(KRAFTWERK, heard, 'en')).toContain(
-      'Similar artists: Tangerine Dream.'
-    );
+    expect(artistDescription(KRAFTWERK, heard, 'en')).toContain('Same sound: Tangerine Dream.');
   });
 
   it('falls back on the country, then on the name alone', () => {
@@ -87,10 +85,10 @@ describe('artistTitle', () => {
 describe('artistDescription', () => {
   it('says the facts, four similar artists by name and what else the page holds', () => {
     expect(artistDescription(KRAFTWERK, MUSILOGY, 'fr')).toBe(
-      'Groupe · Düsseldorf, Allemagne · depuis 1970. Artistes similaires : Neu!, Can, Depeche Mode, New Order. Ses albums et EP, ses groupes et projets.'
+      'Groupe · Düsseldorf, Allemagne · depuis 1970. Même son\u00a0: Neu!, Can, Depeche Mode, New Order. Ses albums et EP, ses groupes et projets.'
     );
     expect(artistDescription(KRAFTWERK, MUSILOGY, 'en')).toBe(
-      'Band · Düsseldorf, Germany · since 1970. Similar artists: Neu!, Can, Depeche Mode, New Order. Their albums and EPs, their bands and projects.'
+      'Band · Düsseldorf, Germany · since 1970. Same sound: Neu!, Can, Depeche Mode, New Order. Their albums and EPs, their bands and projects.'
     );
   });
 

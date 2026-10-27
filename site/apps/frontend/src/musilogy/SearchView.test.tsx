@@ -63,14 +63,16 @@ describe('MusilogyHomeView', () => {
       <MusilogyHomeView query="t. r" onQueryChange={vi.fn()} search={search} />
     );
     const { rerender } = render(view({ status: 'idle' }), { wrapper: MemoryRouter });
-    expect(screen.getByText("Tapez au moins deux lettres d'un nom.")).toBeInTheDocument();
+    expect(screen.getByText('Tapez au moins deux lettres d’un nom.')).toBeInTheDocument();
 
     rerender(view({ status: 'searching', hits: [] }));
-    expect(screen.getByRole('list', { busy: true })).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Chargement…' })).toBeInTheDocument();
 
     rerender(view({ status: 'searching', hits: [hit] }));
     expect(screen.getByRole('link', { name: 'T. Rex' })).toBeInTheDocument();
     expect(screen.getByText('1967')).toBeInTheDocument();
+    // MusicBrainz writes it in English: marked so, on a French page (WCAG 3.1.2).
+    expect(screen.getByText('glam rock band')).toHaveAttribute('lang', 'en');
 
     rerender(view({ status: 'done', hits: [] }));
     expect(screen.getByText('Aucun artiste de ce nom.')).toBeInTheDocument();

@@ -17,39 +17,26 @@ const weekRows: Row[] = [
     name: 'Daft Punk',
   },
 ];
-const allTimeRows: Row[] = [
-  {
-    title: 'All-Time Hit',
-    artist: 'Artist B',
-    artworkUrl: null,
-    likes: 42,
-    slug: null,
-    name: null,
-  },
-];
 
 let selectCalls = 0;
 let whereCalls = 0;
 
 // Chainable fake matching the exact query shape trendsService builds:
-// select().from().leftJoin().leftJoin().$dynamic()[.where()].groupBy().orderBy().limit().
-// Rows with a `where` clause stand in for the week query, rows without for all-time.
+// select().from().leftJoin().leftJoin().leftJoin().where().groupBy().orderBy().limit().
+// The week's query is the only one: it has a `where` clause.
 const fakeDb = {
   select: () => {
     selectCalls++;
-    let filtered = false;
     const builder = {
       from: () => builder,
       leftJoin: () => builder,
-      $dynamic: () => builder,
       where: () => {
         whereCalls++;
-        filtered = true;
         return builder;
       },
       groupBy: () => builder,
       orderBy: () => builder,
-      limit: (): Promise<Row[]> => Promise.resolve(filtered ? weekRows : allTimeRows),
+      limit: (): Promise<Row[]> => Promise.resolve(weekRows),
     };
     return builder;
   },
@@ -66,7 +53,7 @@ beforeEach(() => {
 });
 
 describe('getTrends', () => {
-  it('returns week and all-time rankings from two aggregate queries', async () => {
+  it("returns the week's ranking alone, from one aggregate query over the last seven days", async () => {
     const result = await getTrends();
 
     expect(result.week).toEqual([
@@ -78,10 +65,8 @@ describe('getTrends', () => {
         artistPage: { slug: 'daft-punk', name: 'Daft Punk' },
       },
     ]);
-    expect(result.allTime).toEqual([
-      { title: 'All-Time Hit', artist: 'Artist B', artworkUrl: null, likes: 42, artistPage: null },
-    ]);
-    expect(selectCalls).toBe(2);
+    expect(Object.keys(result)).toEqual(['week']);
+    expect(selectCalls).toBe(1);
     expect(whereCalls).toBe(1);
   });
 
@@ -89,14 +74,14 @@ describe('getTrends', () => {
     await getTrends();
     const second = await getTrends();
 
-    expect(selectCalls).toBe(2);
+    expect(selectCalls).toBe(1);
     expect(second.week[0]?.artistPage).toEqual({ slug: 'daft-punk', name: 'Daft Punk' });
   });
 
-  it('runs the two queries once for concurrent calls on a cold cache', async () => {
+  it('runs the query once for concurrent calls on a cold cache', async () => {
     const [a, b, c] = await Promise.all([getTrends(), getTrends(), getTrends()]);
 
-    expect(selectCalls).toBe(2);
+    expect(selectCalls).toBe(1);
     expect(b).toBe(a);
     expect(c).toBe(a);
   });
@@ -107,6 +92,6 @@ describe('getTrends', () => {
 
     await getTrends();
 
-    expect(selectCalls).toBe(4);
+    expect(selectCalls).toBe(2);
   });
 });

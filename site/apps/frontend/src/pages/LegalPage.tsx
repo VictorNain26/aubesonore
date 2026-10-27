@@ -1,9 +1,8 @@
-import { useEffect, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import * as m from '@/paraglide/messages.js';
 import { SiteHeader } from '../shell/SiteHeader';
 import { SiteFooter } from '../shell/SiteFooter';
-import { useHeroListenVisible } from '../home/listen';
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -19,11 +18,6 @@ const LINK = 'text-text underline decoration-1 underline-offset-4';
 
 /** Legal notice and privacy policy, pre-rendered in each language and hydrated like any page. */
 export function LegalPage() {
-  const setListenVisible = useHeroListenVisible((s) => s.setVisible);
-
-  // No hero here: the player bar is the only way to listen.
-  useEffect(() => setListenVisible(false), [setListenVisible]);
-
   // Reached inside the app, the tab says where the listener is; pre-rendered, the head already does.
   usePageTitle(m.legal_title());
   const mail = (
@@ -36,7 +30,7 @@ export function LegalPage() {
       <SiteHeader />
       <main id="main" className="px-page flex flex-1 flex-col gap-12 py-16 md:py-28">
         <div className="flex flex-col gap-3">
-          <h1 className="text-section m-0">{m.legal_title()}</h1>
+          <h1 className="font-display text-page m-0">{m.legal_title()}</h1>
           <p className="text-text-muted m-0">{m.legal_updated()}</p>
         </div>
         <Section title={m.legal_publisher_title()}>
@@ -54,14 +48,14 @@ export function LegalPage() {
           <p className="m-0">{m.legal_data_purpose()}</p>
           <p className="m-0">{m.legal_data_processors()}</p>
           {/* YouTube API Services Developer Policies III.A.1-2: a link to YouTube's Terms of
-              Service, and the Google Privacy Policy at the address they give. */}
+              Service, and the Google Privacy Policy at the address they give, over https. */}
           <p className="m-0">
             {m.legal_youtube_intro()}{' '}
             <a href="https://www.youtube.com/t/terms" className={LINK}>
               {m.legal_youtube_terms()}
             </a>
             {m.legal_youtube_privacy_intro()}{' '}
-            <a href="http://www.google.com/policies/privacy" className={LINK}>
+            <a href="https://www.google.com/policies/privacy" className={LINK}>
               {m.legal_youtube_privacy()}
             </a>
             .

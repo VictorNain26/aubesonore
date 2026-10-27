@@ -1,41 +1,101 @@
 /*
   AubeSonore's design system: the one source of its tokens.
-  One style, easy by day and by night: rose-greige paper (less glaring than white at night),
-  softened ink, one apricot light (the dawn).
+  One style, by day and by night: by day, warm paper and a night-blue ink; by night (the device's
+  dark setting), a blue night sky and paper-coloured ink, the dawn still an ember below the
+  horizon. One apricot light, the dawn, and the sky's scale, for decoration.
   The semantic tokens are the only API, exposed to Tailwind through @theme inline; the --p-*
   primitives hold the font stacks they read.
-  AA is proven by scripts/check-contrast.mjs.
+  AA and the sRGB gamut, by day and by night, are proven by scripts/check-contrast.mjs.
 */
 
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
 
-  --p-font-stack: 'Bricolage Grotesque Variable', system-ui, sans-serif;
-  --p-font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+  --p-font-text: 'Atkinson Hyperlegible Next Variable', system-ui, sans-serif;
+  --p-font-display: 'Fraunces Variable', Georgia, serif;
 
-  --surface: oklch(0.91 0.015 72);
-  --surface-raised: oklch(0.875 0.018 70);
-  --text: oklch(0.245 0.014 300);
-  --text-muted: oklch(0.395 0.02 302);
-  --text-faint: oklch(0.455 0.02 306);
-  --border: oklch(0.82 0.022 68);
-  --accent: oklch(0.245 0.014 300);
-  --on-accent: oklch(0.91 0.015 72);
-  --on-accent-muted: oklch(0.79 0.014 310);
-  /* The dawn: one light, apricot, fringed with rose and lilac. Decoration only, never under text. */
-  --dawn: oklch(0.8 0.1 52);
-  --dawn-rose: oklch(0.83 0.05 352);
-  --dawn-lilac: oklch(0.85 0.03 290);
-  /* The veil behind a large image (OpenLarge): no text on it, so no AA pair. */
-  --scrim: oklch(0.245 0.014 300 / 0.5);
-  /* The missing cover's tints: the dawn's three lights and the rule. */
-  --glyph-1: var(--dawn);
-  --glyph-2: var(--dawn-rose);
-  --glyph-3: var(--dawn-lilac);
-  --glyph-4: var(--border);
+  /* The sky, from the astronomical night to the golden hour. Decoration only, never under text. */
+  --sky-night: oklch(0.24 0.06 272);
+  --sky-blue: oklch(0.42 0.1 268);
+  --sky-lilac: oklch(0.7 0.07 305);
+  --sky-rose: oklch(0.79 0.09 8);
+  --sky-apricot: oklch(0.82 0.11 55);
+  --sky-gold: oklch(0.9 0.11 88);
+
+  --surface: oklch(0.93 0.018 60);
+  --surface-raised: oklch(0.895 0.022 58);
+  --text: oklch(0.26 0.045 270);
+  --text-muted: oklch(0.42 0.05 275);
+  --text-faint: oklch(0.47 0.045 280);
+  --border: oklch(0.83 0.025 60);
+  --accent: var(--text);
+  --on-accent: var(--surface);
+  --on-accent-muted: oklch(0.8 0.03 275);
+  /* The dawn: one light, apricot, fringed with the sky's rose and lilac. Decoration only, never
+     under text. */
+  --dawn: var(--sky-apricot);
+  --dawn-rose: var(--sky-rose);
+  --dawn-lilac: var(--sky-lilac);
+  /* The veil behind a large image (OpenLarge): the night sky. No text on it, so no AA pair. */
+  --scrim: color-mix(in oklab, var(--sky-night) 50%, transparent);
+  /* The dawn as an ink: the wave under the current page and the selected tab, beside text that
+     holds AA on its own. Darker than the light so the mark itself holds 3:1 (WCAG 1.4.11). */
+  --dawn-ink: oklch(0.6 0.13 45);
+  /* The calm rule between rows: a tile of the line, drawn by ruleMask() in design/wave.ts (its test
+     holds this value to it), used as a mask in the rule's colour (wave-rule). */
+  --wave-rule: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22640%22%20height%3D%226%22%20viewBox%3D%220%200%20640%206%22%3E%3Cpath%20d%3D%22M0%203.9%20L5.98%203.87%20L11.96%203.75%20L17.94%203.56%20L23.93%203.36%20L29.91%203.2%20L35.89%203.14%20L41.87%203.19%20L47.85%203.33%20L53.83%203.5%20L59.81%203.66%20L65.79%203.74%20L71.78%203.74%20L77.76%203.67%20L83.74%203.58%20L89.72%203.5%20L95.7%203.47%20L101.68%203.48%20L107.66%203.5%20L113.64%203.49%20L119.63%203.4%20L125.61%203.2%20L131.59%202.91%20L137.57%202.57%20L143.55%202.26%20L149.53%202.02%20L155.51%201.89%20L161.5%201.88%20L167.48%201.95%20L173.46%202.05%20L179.44%202.13%20L185.42%202.17%20L191.4%202.17%20L197.38%202.16%20L203.36%202.18%20L209.35%202.27%20L215.33%202.44%20L221.31%202.66%20L227.29%202.88%20L233.27%203.04%20L239.25%203.1%20L245.23%203.06%20L251.21%202.93%20L257.2%202.76%20L263.18%202.63%20L269.16%202.58%20L275.14%202.62%20L281.12%202.75%20L287.1%202.91%20L293.08%203.05%20L299.07%203.16%20L305.05%203.21%20L311.03%203.23%20L317.01%203.27%20L322.99%203.36%20L328.97%203.53%20L334.95%203.77%20L340.93%204.03%20L346.92%204.25%20L352.9%204.38%20L358.88%204.38%20L364.86%204.25%20L370.84%204.04%20L376.82%203.8%20L382.8%203.6%20L388.79%203.45%20L394.77%203.36%20L400.75%203.31%20L406.73%203.25%20L412.71%203.15%20L418.69%202.99%20L424.67%202.79%20L430.65%202.6%20L436.64%202.47%20L442.62%202.43%20L448.6%202.51%20L454.58%202.66%20L460.56%202.83%20L466.54%202.96%20L472.52%203.01%20L478.5%202.95%20L484.49%202.81%20L490.47%202.62%20L496.45%202.45%20L502.43%202.34%20L508.41%202.3%20L514.39%202.3%20L520.37%202.31%20L526.36%202.29%20L532.34%202.21%20L538.32%202.09%20L544.3%201.95%20L550.28%201.86%20L556.26%201.87%20L562.24%202%20L568.22%202.25%20L574.21%202.57%20L580.19%202.89%20L586.17%203.17%20L592.15%203.35%20L598.13%203.44%20L604.11%203.47%20L610.09%203.49%20L616.07%203.53%20L622.06%203.61%20L628.04%203.73%20L634.02%203.84%20L640%203.9%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221%22%2F%3E%3C%2Fsvg%3E');
+  /* The light of the cover on air (design/CoverLight.tsx), in the hero and the phone's sheet: the
+     cover, blurred and its colours raised, at --light-opacity over its ground, the paper, under a
+     veil, --light-veil-top at the top, --light-veil-mid halfway, --light-veil-foot (the paper
+     itself) at the foot. A cover the words would not read on is dimmed until they do, weighed for
+     --light-ink and --light-ink-muted (design/lightStrength.ts), down to the veil over the ground
+     alone, which holds them (scripts/check-contrast.mjs). The player bar lays it on its own
+     ground, veil and inks (player-bar). */
+  --light-opacity: 0.75;
+  --light-ground: var(--surface);
+  --light-veil-top: oklch(0.93 0.018 60 / 0.55);
+  --light-veil-mid: oklch(0.93 0.018 60 / 0.72);
+  --light-veil-foot: var(--light-ground);
+  --light-ink: var(--text);
+  --light-ink-muted: var(--text-muted);
+  /* The player bar, by day the ink (as the accent); by night the sky one step up, not a slab of
+     paper at the foot of the screen. Its words keep AA (scripts/check-contrast.mjs). The veil of
+     its light: its own colour, a little deeper. */
+  --bar: var(--accent);
+  --on-bar: var(--on-accent);
+  --on-bar-muted: var(--on-accent-muted);
+  --bar-veil: oklch(0.22 0.045 270 / 0.62);
+  /* The room every page keeps at its foot for the player bar: its 4.75rem on a computer (the
+     phone's is 0.5rem less), 1rem of air, and the iPhone's gesture area under it. */
   --bar-space: calc(5.75rem + env(safe-area-inset-bottom));
   /* The header back over the page when it scrolls up: py-3 around a 44 px row, and its rule. */
   --header-space: 4.5rem;
+}
+
+/* The night, while the device asks for dark: a blue sky, not a black. The dawn has not risen yet:
+   an ember (a dawn as light as by day fails the text over its glow), fringed with the sky one step
+   lower. What it does not redefine (accent, on-accent, the sky) follows from the day's block. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: oklch(0.235 0.045 268);
+    --surface-raised: oklch(0.285 0.05 268);
+    --text: oklch(0.93 0.018 70);
+    --text-muted: oklch(0.8 0.03 280);
+    --text-faint: oklch(0.74 0.035 285);
+    --border: oklch(0.36 0.05 270);
+    --on-accent-muted: oklch(0.42 0.05 275);
+    --dawn: oklch(0.62 0.12 45);
+    --dawn-ink: var(--dawn);
+    --dawn-rose: var(--sky-lilac);
+    --dawn-lilac: var(--sky-blue);
+    --bar: var(--surface-raised);
+    --on-bar: var(--text);
+    --on-bar-muted: var(--text-muted);
+    --light-opacity: 0.9;
+    --light-veil-top: oklch(0.18 0.04 268 / 0.38);
+    --light-veil-mid: oklch(0.2 0.045 268 / 0.62);
+    --bar-veil: oklch(0.2 0.045 268 / 0.55);
+  }
 }
 
 @theme inline {
@@ -50,16 +110,12 @@
   --color-on-accent: var(--on-accent);
   --color-on-accent-muted: var(--on-accent-muted);
   --color-dawn: var(--dawn);
+  --color-dawn-ink: var(--dawn-ink);
   --color-scrim: var(--scrim);
-  --color-glyph-1: var(--glyph-1);
-  --color-glyph-2: var(--glyph-2);
-  --color-glyph-3: var(--glyph-3);
-  --color-glyph-4: var(--glyph-4);
 
   --font-*: initial;
-  --font-sans: var(--p-font-stack);
-  --font-display: var(--p-font-stack);
-  --font-mono: var(--p-font-mono);
+  --font-sans: var(--p-font-text);
+  --font-display: var(--p-font-display);
 
   --font-weight-*: initial;
   --font-weight-normal: 400;
@@ -72,17 +128,41 @@
   --text-title--line-height: 1.15;
   --text-title--font-weight: 600;
   /* The type scale. */
-  --text-hero: clamp(2.375rem, 1.5rem + 3.6vw, 6.25rem);
-  --text-hero--line-height: 0.98;
-  --text-hero--font-weight: 520;
-  --text-hero--letter-spacing: -0.032em;
-  --text-mark: clamp(1.625rem, 1.4rem + 0.8vw, 2rem);
+  /* The title on air (home/NowPlaying.tsx), the mockup's: 30 px on a 390 px phone, 49 at 1280,
+     52 from 1440. The cover stays the largest thing. */
+  --text-track: clamp(1.875rem, 1.364rem + 2.095vw, 3.25rem);
+  --text-track--line-height: 1.03;
+  --text-track--font-weight: 500;
+  --text-track--letter-spacing: -0.025em;
+  /* The station's line beside the name (shell/SiteHeader.tsx), in Fraunces italic: 14 px on a
+     phone, under the name, 18 on a computer, beside it. */
+  --text-tagline: clamp(0.875rem, 0.7rem + 0.5vw, 1.125rem);
+  --text-tagline--line-height: 1.1;
+  /* The hero's small words: « Juste avant », « Les plus gardés de la semaine », their artists
+     and titles. */
+  --text-label: 0.875rem;
+  --text-label--line-height: 1.35;
+  /* A page's title (Musilogy, Mes titres, sign-in, legal, a page's message): one size for all,
+     40 px on a phone, about 60 at 1280, 72 on a large screen. */
+  --text-page: clamp(2.5rem, 1.75rem + 2.6vw, 4.5rem);
+  --text-page--line-height: 1;
+  --text-page--font-weight: 460;
+  --text-page--letter-spacing: -0.032em;
+  /* A page's largest words, above the page's title: an artist's name. 46 px on a phone, about 100
+     at 1280, 128 on a large screen. */
+  --text-now: clamp(2.875rem, 8vw, 8rem);
+  --text-now--line-height: 0.92;
+  --text-now--font-weight: 460;
+  --text-now--letter-spacing: -0.04em;
+  /* The wordmark's size (design/Logo.tsx draws the word at 1em): 22 px on a phone, 26 from about
+     1024, the mockup's. */
+  --text-mark: clamp(1.375rem, 1.2rem + 0.65vw, 1.625rem);
   --text-mark--line-height: 1;
   --text-mark--font-weight: 700;
   --text-mark--letter-spacing: -0.04em;
   --text-section: clamp(2.125rem, 1.6rem + 2vw, 3rem);
   --text-section--line-height: 1;
-  --text-section--font-weight: 560;
+  --text-section--font-weight: 460;
   --text-section--letter-spacing: -0.03em;
   --text-headline: clamp(1.25rem, 1rem + 1vw, 1.5rem);
   --text-headline--line-height: 1.15;
@@ -99,9 +179,6 @@
   --text-ui: 0.9375rem;
   --text-ui--line-height: 1.4;
   --text-ui--font-weight: 500;
-  --text-label: 0.8125rem;
-  --text-label--line-height: 1.3;
-  --text-label--letter-spacing: 0.08em;
   --text-body: 1rem;
   --text-body--line-height: 1.55;
   --text-body--font-weight: 450;
@@ -111,25 +188,25 @@
   --text-caption--letter-spacing: 0.01em;
 
   --radius-*: initial;
-  --radius-sm: 0.1875rem;
-  --radius-md: 0.5rem;
+  /* Two shapes: the disc (Écouter, the live) and the right angle, Tailwind's default, for the
+     rest. design/shapes.test.ts holds the files allowed a disc. */
   --radius-full: 9999px;
 
   --ease-out-quart: cubic-bezier(0.2, 0, 0, 1);
   --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+  /* The hero's arrivals and departures (Material 3, emphasized decelerate and accelerate). */
+  --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
   --ease-spring: cubic-bezier(0.3, 1.6, 0.5, 1);
 
   --shadow-*: initial;
+  /* One shadow, under the cover on air: the rest of the page is flat. */
   --shadow-cover: 0 24px 60px -26px oklch(0.3 0.04 330 / 0.45);
-  --shadow-lift: 0 22px 40px -22px oklch(0.3 0.04 330 / 0.55);
-  --shadow-bar: 0 16px 40px -12px oklch(0.204 0.012 293 / 0.5);
 
-  /* Reading measures: the hero line holds on three lines, a caption on two. */
-  --container-hero: 13ch;
+  /* Reading measures: a caption holds on two lines. */
   --container-blurb: 28ch;
   --container-form: 24rem;
   --container-aside: 34rem;
-  --container-bar: 42rem;
   /* The content's width: the same up to 1680 px, centred beyond. */
   --container-page: 100rem;
 
@@ -206,13 +283,6 @@
     }
   }
 
-  @keyframes thread-in {
-    from {
-      opacity: 0;
-      transform: translateY(-0.5rem);
-    }
-  }
-
   @keyframes cover-in {
     from {
       opacity: 0;
@@ -225,6 +295,42 @@
     from {
       opacity: 0;
       translate: 0 0.75rem;
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+
+  /* The hero's column at the page's load: it rises 12 px as it comes. */
+  @keyframes hero-rise {
+    from {
+      opacity: 0;
+      translate: 0 0.75rem;
+    }
+  }
+
+  /* The next cover: it comes into its place from just under its size. */
+  @keyframes cover-arrive {
+    from {
+      opacity: 0;
+      scale: 0.98;
+    }
+  }
+
+  /* The next track's words, each 8 px under its place. */
+  @keyframes words-arrive {
+    from {
+      opacity: 0;
+      translate: 0 0.5rem;
     }
   }
 
@@ -274,9 +380,9 @@
       transparent 72%
     );
   filter: blur(8px);
-  /* The band overhangs the hero by --sink, and the horizon line sits --sink above the hero's
-     foot: the light is full on the line and dies out at the foot, never cut straight. The
-     extra 0.5rem covers the 8px the band sinks while it breathes. */
+  /* The 404 page's dawn (pages/NotFoundPage.tsx). The band overhangs the page by --sink, and the
+     horizon line sits --sink above its foot: the light is full on the line and dies out at the
+     foot, never cut straight. The extra 0.5rem covers the 8px the band sinks while it breathes. */
   --sink: 2.5rem;
   mask-image: linear-gradient(
     to top,
@@ -296,6 +402,83 @@
    does not start on a step. */
 @utility grain-fade {
   mask-image: linear-gradient(to top, transparent, black 8rem);
+}
+
+/* The calm rule, in place of a straight border: under a row (wave-rule) or above a block
+   (wave-rule-top), the line's tile repeated in the rule's colour. A pseudo-element, so a list
+   adds no node per row, and a vector mask, so it stays crisp on dense screens; it takes no room,
+   so a row keeps its height. */
+@utility wave-rule {
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0;
+    height: 6px;
+    background-color: var(--border);
+    mask: var(--wave-rule) repeat-x left center / 640px 6px;
+    pointer-events: none;
+  }
+}
+
+@utility wave-rule-top {
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 6px;
+    background-color: var(--border);
+    mask: var(--wave-rule) repeat-x left center / 640px 6px;
+    pointer-events: none;
+  }
+}
+
+/* The current page and the selected tab: underlined with a wave, in the dawn's ink. */
+@utility wave-underline {
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: var(--dawn-ink);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 7px;
+  text-decoration-skip-ink: none;
+}
+
+/* The loader (LineLoader): a short segment of the line travels along it (a dash a quarter of the
+   path, pathLength 1, one dash per period). Under reduced motion it stays, still, in the middle. */
+@utility line-travel {
+  stroke-dasharray: 0.25 1;
+  stroke-dashoffset: -0.375;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: line-travel 1.6s linear infinite;
+  }
+}
+
+@keyframes line-travel {
+  from {
+    stroke-dashoffset: 0.25;
+  }
+  to {
+    stroke-dashoffset: -1;
+  }
+}
+
+/* The light behind an artist's own horizon: the dawn's rose and lilac, rising where its sun is
+   (--sun, from its id). Centred above the box's foot and faded out toward it, so the light
+   never ends on a straight edge. */
+@utility horizon-glow {
+  background: radial-gradient(
+    45% 70% at var(--sun, 22%) 72%,
+    color-mix(in oklab, var(--dawn-rose) 45%, transparent) 0%,
+    color-mix(in oklab, var(--dawn-lilac) 25%, transparent) 45%,
+    transparent 75%
+  );
+  mask-image: linear-gradient(to top, transparent, black 45%);
 }
 
 /* Page gutters: 1.5rem, 2.5rem from md, and wider past --container-page so the content stays
@@ -356,8 +539,15 @@
 @utility now-arrive {
   @media (prefers-reduced-motion: no-preference) {
     animation:
-      pop 0.5s var(--ease-spring) 1.6s both,
-      pulse-now 2.4s ease-out 2.1s infinite;
+      pop 0.5s var(--ease-spring) 1.2s both,
+      pulse-now 2.4s ease-out 1.7s infinite;
+  }
+}
+
+/* The hero's horizon is drawn as the column settles: 200 to 1200 ms. */
+@utility horizon-draw {
+  @media (prefers-reduced-motion: no-preference) {
+    animation: draw 1s var(--ease-enter) 0.2s both;
   }
 }
 
@@ -371,22 +561,6 @@
   @media (prefers-reduced-motion: no-preference) {
     animation: settle 0.9s var(--ease-out-soft) 0.12s both;
   }
-}
-
-/* The same dawn, seen from the foot of a panel (sign-in, kept tracks). */
-@utility dawn-rise {
-  background:
-    radial-gradient(
-      70% 34% at 50% 100%,
-      color-mix(in oklab, var(--dawn) 75%, transparent) 0%,
-      transparent 72%
-    ),
-    radial-gradient(
-      40% 24% at 25% 96%,
-      color-mix(in oklab, var(--dawn-rose) 55%, transparent) 0%,
-      transparent 72%
-    ),
-    var(--surface);
 }
 
 /* The dawn of an artist without an image: the same light, placed by its id (--sun, --rose,
@@ -411,17 +585,363 @@
     var(--surface-raised);
 }
 
-/* The opening screen fills the window: what follows starts below the fold, never cut at the
-   foot of the first screen. On a tablet in portrait, it follows its content. */
-@utility hero-height {
-  @media (width >= 64rem) {
+/* The opening screen, « la colonne » (home/Hero.tsx), the mockup's (Proposition 1), written for
+   a phone first. Stacked (a phone, an upright tablet), the first screen is the header, the cover
+   16 px under it, the track on air and « Juste avant », down to the horizon (hero-screen); the
+   week follows under it. Beside each other (hero-split), one grid the screen's height at least:
+   the header across; the cover on the left, square, on the page's gutter in line with the logo,
+   24 px under the header at least and resting on the horizon (--hero-cover); the column on the
+   right, its blocks --hero-gap apart, standing on the cover's foot (the room left above it), so
+   the week's last line ends level with the cover. The player bar stays away while Écouter shows
+   (stores/heroPlayerStore.ts), so no room is kept for it. A minimum, not a height: content taller
+   than the screen grows the hero rather than overlap.
+   svh, not dvh: the dynamic height follows the address bar as it folds on scroll, so the cover
+   grew and shrank under the finger and moved the page (MDN, CSS <length>, viewport units). */
+@utility hero {
+  --horizon-height: 2.5rem;
+  /* The page's edge, the header's gutter (px-page). */
+  --hero-gutter: max(1.5rem, (100vw - var(--container-page)) / 2);
+  position: relative;
+  overflow: hidden;
+
+  @media (width >= 48rem) {
+    --hero-gutter: max(2.5rem, (100vw - var(--container-page)) / 2);
+  }
+
+  @variant hero-split {
+    /* The screen's height less the header and its 24 px (6rem) and the horizon the cover rests
+       on (3.5rem), or what the gutter and the column's 32rem leave on a screen too narrow for
+       its height: the cover stays square (home/NowPlaying.tsx, HERO_COVER_SIZES). */
+    --hero-cover: min(100svh - 9.5rem, 100vw - 32rem - var(--hero-gutter));
+    /* Between the column's blocks: 20 px at 720 high, 28 at 900, 35 at 1080. */
+    --hero-gap: clamp(1.25rem, 4svh - 0.5rem, 2.5rem);
+    display: grid;
+    grid-template-columns: calc(var(--hero-gutter) + var(--hero-cover)) minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto auto auto;
+    grid-template-areas: 'header header' 'cover .' 'cover live' 'cover before' 'cover kept';
     min-height: 100svh;
   }
 }
 
-/* The player bar: above the phone's gesture area (iPhone). */
-@utility bottom-safe {
-  bottom: calc(1rem + env(safe-area-inset-bottom));
+/* Beside each other: a screen lying down, 640 px wide or more (a computer, a tablet on its side,
+   a phone on its side, its cover sized by the screen's height, the column running past it):
+   stacked, a phone on its side showed only the header and the cover in its first screen. */
+@custom-variant hero-split {
+  @media (width >= 40rem) and (orientation: landscape) {
+    @slot;
+  }
+}
+
+/* The first screen of a stacked hero, down to the horizon. Beside each other, its blocks are the
+   hero's own (display: contents). */
+@utility hero-screen {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto 1fr auto;
+  grid-template-areas: 'header' 'cover' 'live' 'before' '.' 'horizon';
+  min-height: 100svh;
+
+  @variant hero-split {
+    display: contents;
+  }
+}
+
+@utility hero-header {
+  grid-area: header;
+}
+
+/* The cover on air: 16 px under the header, edge to edge, held under the height the words below
+   it need (28rem) so they end in the first screen; narrower than the screen, it stands on the
+   page's gutter, in line with the words. Beside the column, --hero-cover on the gutter, at the
+   foot of its rows, 3.5rem over the hero's foot: it rests on the horizon. On a screen too low
+   for the column (a phone on its side), the hero grows past the screen: the cover stays level
+   with the column's top, in the first screen, not at the hero's foot. Nothing is written over
+   it. It fades in at the page's load (the server drew it: its paint is not held back); a change
+   of track lets it go, then brings the next in (home/useTrackSwap.ts); off air it stays,
+   dimmed. */
+@utility hero-cover {
+  --cover-side: min(100%, max(13rem, 100svh - 28rem));
+  grid-area: cover;
+  position: relative;
+  justify-self: start;
+  width: var(--cover-side);
+  margin-top: 1rem;
+  margin-inline-start: clamp(0px, 100% - var(--cover-side), var(--hero-gutter));
+  aspect-ratio: 1;
+  animation: fade-in 500ms var(--ease-enter) both;
+
+  & > * {
+    transition: opacity 400ms var(--ease-out-quart);
+  }
+  &[data-off-air] > * {
+    opacity: 0.4;
+  }
+  &[data-swap='out'] {
+    animation: fade-out 150ms var(--ease-exit) both;
+  }
+  &[data-swap='in'] {
+    animation: cover-arrive 400ms var(--ease-enter) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 200ms;
+
+    &[data-swap='in'] {
+      animation: fade-in 200ms var(--ease-enter) both;
+    }
+  }
+
+  @variant hero-split {
+    align-self: end;
+    width: var(--hero-cover);
+    margin-top: 1.5rem;
+    margin-bottom: 3.5rem;
+    margin-inline-start: var(--hero-gutter);
+
+    @media (height < 42rem) {
+      align-self: start;
+    }
+  }
+}
+
+/* The column's blocks, between the gutters on a phone; beside the cover, 3.5rem of air after it
+   and the gutter on the right,
+   rising 12 px into place 120 ms after the cover at the page's load. */
+@utility hero-live {
+  grid-area: live;
+  position: relative;
+  min-width: 0;
+  padding: 1.125rem var(--hero-gutter) 0;
+  animation: hero-rise 500ms var(--ease-enter) 120ms both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: fade-in;
+    animation-duration: 200ms;
+  }
+
+  @variant hero-split {
+    /* 24 px under the header at least, as the cover, when the column fills the screen. */
+    padding: 1.5rem var(--hero-gutter) 0 3.5rem;
+  }
+}
+
+/* The track's words in a change: they go with the cover, then come one after the other. */
+@utility hero-words {
+  &[data-swap='out'] {
+    animation: fade-out 150ms var(--ease-exit) both;
+  }
+  &[data-swap='in'] > * {
+    animation: words-arrive 300ms var(--ease-enter) both;
+  }
+  &[data-swap='in'] > :nth-child(1) {
+    animation-delay: 80ms;
+  }
+  &[data-swap='in'] > :nth-child(2) {
+    animation-delay: 160ms;
+  }
+  &[data-swap='in'] > :nth-child(3) {
+    animation-delay: 240ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &[data-swap='in'] > * {
+      animation-name: fade-in;
+      animation-duration: 200ms;
+    }
+  }
+}
+
+/* « Juste avant »: 16 px from its rule to its label; it leaves with the track, then comes back
+   after the words. */
+@utility hero-before {
+  grid-area: before;
+  position: relative;
+  min-width: 0;
+  margin: 1.375rem var(--hero-gutter) 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  animation: hero-rise 500ms var(--ease-enter) 120ms both;
+
+  &[data-swap='out'] {
+    animation: fade-out 150ms var(--ease-exit) both;
+  }
+  &[data-swap='in'] {
+    animation: fade-in 300ms var(--ease-enter) 160ms both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: fade-in;
+    animation-duration: 200ms;
+  }
+
+  @variant hero-split {
+    margin: var(--hero-gap) var(--hero-gutter) 0 3.5rem;
+  }
+}
+
+/* The week: under the hero on a phone; beside the cover, under « Juste avant », its last line
+   level with the cover's foot (hero-cover's 3.5rem), clear of the horizon. */
+@utility hero-kept {
+  grid-area: kept;
+  position: relative;
+  min-width: 0;
+  padding: 1.5rem var(--hero-gutter) 2.5rem;
+  animation: hero-rise 500ms var(--ease-enter) 120ms both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-name: fade-in;
+    animation-duration: 200ms;
+  }
+
+  @variant hero-split {
+    margin-top: var(--hero-gap);
+    padding: 0 var(--hero-gutter) 3.5rem 3.5rem;
+  }
+}
+
+/* The horizon at the hero's foot: the last row of the first screen on a phone; beside each other,
+   over the hero's foot, the cover resting on it. */
+@utility hero-horizon {
+  grid-area: horizon;
+  position: relative;
+
+  @variant hero-split {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 0.875rem;
+  }
+}
+
+/* The week's row (home/MostKept.tsx): it scrolls sideways, each cover snapping to its start, the
+   next one peeking past the edge and fading there, so the row says it goes on. 120 px covers on a
+   phone, the row running to the screen's edge; 104 px beside the cover on air. The fade is as
+   wide as the padding at the row's end, so the last cover comes clear of it. */
+@utility kept-rail {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  margin-inline-end: calc(-1 * var(--hero-gutter, 1.5rem));
+  padding-inline-end: 3.5rem;
+  mask-image: linear-gradient(to left, transparent, black 3.5rem);
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  & > * {
+    flex: none;
+    width: 7.5rem;
+    scroll-snap-align: start;
+  }
+
+  @variant hero-split {
+    gap: 0.875rem;
+    margin-inline-end: 0;
+
+    & > * {
+      width: 6.5rem;
+    }
+  }
+}
+
+/* A cover of the week that leads to its artist: under the pointer the cover grows a little (a dimmed
+   one read as disabled), still under reduced motion it only answers the press. */
+@utility kept-link {
+  @media (prefers-reduced-motion: no-preference) {
+    & > :first-child {
+      transition: scale 200ms var(--ease-out-quart);
+    }
+    &:hover > :first-child {
+      scale: 1.02;
+    }
+  }
+  &:active {
+    opacity: 0.8;
+  }
+}
+
+/* The light of the cover on air behind the whole hero (design/CoverLight.tsx), the header's words
+   included: the cover lies over it. Cheap to paint: the cover is a 96 px file, blurred once
+   into a canvas of 32 px, which is drawn at 130% × 150% of the hero as an image; no filter runs
+   at the hero's size, and only the canvas's opacity is ever animated. The veil over it fades to
+   the paper at the horizon; the canvas's opacity, lowered for a cover the words would not read
+   on, keeps them at AA. */
+@utility cover-light {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+
+  & > canvas {
+    position: absolute;
+    left: -15%;
+    top: -25%;
+    width: 130%;
+    height: 150%;
+    opacity: var(--light-opacity);
+  }
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      var(--light-veil-top),
+      var(--light-veil-mid) 55%,
+      var(--light-veil-foot)
+    );
+  }
+}
+
+/* The page's first light, with the cover (600 ms); the next one, once its file has come, over
+   the last as the last fades out (1 s each, design/CoverLight.tsx LIGHT_FADE_MS). Opacity alone,
+   not motion: 200 ms under reduced motion. */
+@utility light-first {
+  animation: fade-in 600ms var(--ease-enter) both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 200ms;
+  }
+}
+@utility light-in {
+  animation: fade-in 1s ease-in-out both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 200ms;
+  }
+}
+@utility light-out {
+  animation: fade-out 1s ease-in-out both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 200ms;
+  }
+}
+
+/* The player bar (shell/PlayerBar.tsx), edge to edge on the screen's foot, its words clear of the
+   iPhone's gesture area. Inside it the accent is the bar's (--bar): what reads the accent there
+   (Écouter's disc, the focus rings) follows it, by day and by night. */
+@utility player-bar {
+  --accent: var(--bar);
+  --on-accent: var(--on-bar);
+  --on-accent-muted: var(--on-bar-muted);
+  /* Its light (design/CoverLight.tsx) lies on the bar, under one even veil of its colour, and is
+     weighed for the bar's own inks; the band of the cover it shows is its middle, stretched. */
+  --light-ground: var(--bar);
+  --light-veil-top: var(--bar-veil);
+  --light-veil-mid: var(--bar-veil);
+  --light-veil-foot: var(--bar-veil);
+  --light-ink: var(--on-bar);
+  --light-ink-muted: var(--on-bar-muted);
+  padding-bottom: env(safe-area-inset-bottom);
+
+  & .cover-light > canvas {
+    top: -300%;
+    height: 700%;
+  }
 }
 
 /* The track-on-air sheet of a phone, after Base UI's bottom-sheet example: it follows the finger
@@ -471,8 +991,8 @@
   }
 }
 
-/* The room every page keeps free at its foot for the player bar (3.75rem high, 1rem off the
-   bottom, plus 1rem of air and the iPhone's gesture area), so the bar never covers content. */
+/* The room every page keeps free at its foot for the player bar (--bar-space), so the bar never
+   covers content. */
 @utility pb-bar {
   padding-bottom: var(--bar-space);
 }
@@ -492,6 +1012,21 @@
    a short page does not scroll. */
 @utility min-h-page {
   min-height: calc(100dvh - var(--bar-space));
+}
+
+/* A mouse or a trackpad, where the hero's volume shows: a phone or a tablet sets the level with
+   its own buttons (and iOS ignores it from a page). */
+@custom-variant fine-pointer {
+  @media (hover: hover) and (pointer: fine) {
+    @slot;
+  }
+}
+
+/* A phone, upright or on its side: Écouter is 52 px there. */
+@custom-variant phone {
+  @media (width < 40rem), (height < 30rem) {
+    @slot;
+  }
 }
 
 /* Room for the 4/12 title column beside the content: a large screen, or a landscape one from md. A
@@ -518,20 +1053,20 @@
 
 /* Its intro, once per page load: the horizon is drawn left to right (a dash the length of the
    line, pathLength 1, pushed just past its start so no round cap shows), the sun rises from
-   behind it, the letters rise from the baseline one after another. 1.6 s in all. */
+   behind it, the letters rise from the baseline one after another. 900 ms in all. */
 @utility logo-intro {
   @media (prefers-reduced-motion: no-preference) {
     & .logo-line {
       stroke-dasharray: 1 3;
-      animation: logo-draw 0.9s var(--ease-out-soft) both;
+      animation: logo-draw 0.5s var(--ease-out-soft) both;
     }
     & .logo-sun {
       transform-box: fill-box;
-      animation: logo-rise 1.1s var(--ease-out-soft) 0.35s both;
+      animation: logo-rise 0.6s var(--ease-out-soft) 0.2s both;
     }
     & .logo-letter {
       transform-box: fill-box;
-      animation: logo-letter 0.7s var(--ease-out-soft) calc(0.55s + var(--i) * 45ms) both;
+      animation: logo-letter 0.35s var(--ease-out-soft) calc(0.28s + var(--i) * 30ms) both;
     }
   }
 }
@@ -601,20 +1136,6 @@
       &:focus-within {
         animation: none;
       }
-    }
-  }
-}
-
-/* A track joining the thread: it drops into place; the first ones follow each other. */
-@utility thread-in {
-  @media (prefers-reduced-motion: no-preference) {
-    animation: thread-in 0.5s var(--ease-out-soft) both;
-
-    &:nth-child(2) {
-      animation-delay: 0.08s;
-    }
-    &:nth-child(3) {
-      animation-delay: 0.16s;
     }
   }
 }
@@ -689,18 +1210,6 @@
   }
 }
 
-/* The cover fills its column, the same 4 parts of 12 as a section's title column, as long as
-   the first screen still holds the title and the horizon. */
-/* svh, not dvh: the dynamic height follows the address bar as it folds on scroll, so the cover
-   grew and shrank under the finger and moved the page (MDN, CSS <length>, viewport units). */
-@utility artwork-size {
-  width: min(100%, 46svh);
-
-  @media (width >= 64rem) {
-    width: min(100%, 60svh);
-  }
-}
-
 @utility skip-link {
   position: absolute;
   width: 1px;
@@ -723,7 +1232,6 @@
     clip-path: none;
     background: var(--color-surface-raised);
     color: var(--color-text);
-    border-radius: var(--radius-md);
     z-index: 50;
   }
 }

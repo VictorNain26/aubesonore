@@ -4,7 +4,7 @@
 // Pre-rendering pattern: https://vite.dev/guide/ssr#pre-rendering-ssg
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { replaceOrFail, rewriteHead, SITE } from './head.mjs';
+import { replaceOrFail, rewriteHead } from './head.mjs';
 
 const { pageHtml, meta } = await import('../dist-ssr/entry-server.js');
 const template = await readFile('dist/index.html', 'utf8');
@@ -22,7 +22,7 @@ const css = (
   await Promise.all(stylesheets.map(([, href]) => readFile(`dist${href}`, 'utf8')))
 ).join('\n');
 const titleFont = (await readdir('dist/assets')).find((f) =>
-  f.startsWith('bricolage-grotesque-latin-wght-normal-')
+  f.startsWith('fraunces-latin-opsz-normal-')
 );
 if (!titleFont) throw new Error('prerender: title font not found in dist/assets');
 const head = `<link rel="preload" href="/assets/${titleFont}" as="font" type="font/woff2" crossorigin />
@@ -87,14 +87,22 @@ await writeFile('dist/app.html', inlineStyles(template));
 console.log('wrote dist/app.html');
 
 // The pages kept out of search (sign-in, kept tracks, Musilogy's search; nginx.conf): the same
-// shell without the home's canonical, which would declare each of them a copy of the home page.
-await writeFile(
-  'dist/noindex.html',
-  replaceOrFail(
-    inlineStyles(template),
-    `<link rel="canonical" href="${SITE}/" />`,
-    '<meta name="robots" content="noindex" />'
-  )
-);
-console.log('wrote dist/noindex.html');
+// shell without the home's canonical, which would declare each of them a copy of the home page,
+// one per language, so an English page is served in English (nginx serves /en/noindex.html).
+const noindex = [
+  { ...home[0], file: 'dist/noindex.html' },
+  { ...home[1], file: 'dist/en/noindex.html' },
+];
+for (const page of noindex) {
+  const { title, description } = meta(page.locale);
+  const html = rewriteHead(
+    template,
+    base,
+    { ...page, title, description, site: description },
+    { siblings: home, noindex: true }
+  );
+  await mkdir(dirname(page.file), { recursive: true });
+  await writeFile(page.file, inlineStyles(html));
+  console.log(`wrote ${page.file}`);
+}
 

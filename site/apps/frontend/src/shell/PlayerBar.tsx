@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
 import { cn } from '@/lib/utils';
-import { KeepHeart } from '../design/KeepHeart';
+import { KeepButton } from '../design/KeepButton';
 import { useNowPlayingStore } from '../lib/azuracast';
+import { useHasHeroPlayer, useHeroPlayerStore } from '../stores/heroPlayerStore';
 import { usePlayer } from '../lib/player';
 import { useAirPlayStore } from '../stores/airplayStore';
 import { useCastStore } from '../stores/castStore';
@@ -15,21 +16,24 @@ import { artistPath } from '../lib/artistProfile';
 import { Cover } from '../design/Cover';
 import { VolumeControl } from './VolumeControl';
 import { NowPlayingSheet } from './NowPlayingSheet';
+import { HorizonLine } from '../home/HorizonLine';
+import { CoverLight } from '../design/CoverLight';
+import { shownAlbum } from '../design/onAir';
 import {
   ListenDisc,
+  ListenPill,
   listenAria,
   listenLabel,
   listenState,
-  useHeroListenVisible,
   type ListenState,
 } from '../home/listen';
 import * as m from '@/paraglide/messages.js';
 
 const ICON_BUTTON =
-  'ease-out-quart focus-visible:outline-on-accent flex size-11 shrink-0 items-center justify-center rounded-full transition-opacity duration-150 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2';
+  'ease-out-quart focus-visible:outline-on-accent flex size-11 shrink-0 items-center justify-center rounded-full transition-[opacity,scale] duration-150 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90 disabled:opacity-50';
 
 export interface PlayerBarViewProps {
-  /** Hidden while the hero's own Écouter button is on screen. */
+  /** Away while the page's own player, the hero's, is on screen: one player at a time. */
   isHidden: boolean;
   listen: ListenState;
   onToggleListen: () => void;
@@ -56,16 +60,24 @@ export interface PlayerBarViewProps {
   hasChanged?: boolean;
 }
 
+/** The edge line's rest swell, as a share of its 24 px: a pixel and a quarter; seven and a half
+ *  while the live is heard. */
+const BAR_LINE_AMPLITUDE = 1.25 / 24;
+
 const TRACK_LINK =
-  'ease-out-quart focus-visible:outline-on-accent flex min-w-0 flex-1 items-center gap-3 rounded-full py-1 pr-2 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-60';
+  'ease-out-quart focus-visible:outline-on-accent flex min-w-0 items-center gap-3.5 rounded-full py-1 pr-2 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-60';
 
 /**
- * The live player, one bar for every screen: pinned to the bottom, it springs in
- * once the hero's Écouter button has scrolled away, so there is never two of
- * them on screen. Every page keeps its height free at the bottom (`pb-bar`), so it
- * hides nothing. The track leads to the artist's page; when the live moves on, the
- * cover comes into focus and the words fade in. Volume sits in it with a mouse;
- * phones use their buttons.
+ * The live player, pinned to the bottom of every page, laid out as the hero: lit by the cover on
+ * air under a veil of its own colour, the light changing with the track as the hero's does. On a
+ * computer: Écouter with its word on the page's gutter, the track (its cover, its title, the live
+ * dot, its artist and album, leading to the artist's page) and Garder right after it, then the
+ * volume and Diffuser at the far end. On a phone: the track, which opens its sheet, Garder, and
+ * Écouter's disc at the right, under the thumb; no volume, the phone's own buttons set it, as on
+ * the hero. On the home page it springs in once the hero's player has scrolled away and leaves
+ * when it comes back, so there is never two players on screen. Every page keeps its height free at
+ * the bottom (`pb-bar`), so it hides nothing. When the live moves on, the cover comes into focus
+ * and the words fade in. The site's line runs along its top edge, alive while the live is heard.
  */
 export function PlayerBarView({
   isHidden,
@@ -85,10 +97,11 @@ export function PlayerBarView({
   hasChanged = false,
 }: PlayerBarViewProps) {
   const [hasFocus, setHasFocus] = useState(false);
-  // Never hide the bar while it holds the keyboard focus (WCAG 2.4.11). Only the
-  // keyboard's: a mouse click focuses a button too (Chrome), and the bar must
-  // still leave when the listener scrolls back to the hero.
+  // Never hide the bar while it holds the keyboard focus (WCAG 2.4.11). Only the keyboard's: a
+  // mouse click focuses a button too (Chrome), and the bar must still leave when the listener
+  // scrolls back to the hero.
   const hidden = isHidden && !hasFocus;
+  const onAir = track && isOnline ? track : null;
 
   return (
     <section
@@ -99,97 +112,136 @@ export function PlayerBarView({
         if (!e.currentTarget.contains(e.relatedTarget)) setHasFocus(false);
       }}
       className={cn(
-        // On phones the gaps tighten (the 44 px targets stay) so the title keeps a few more letters.
-        'bg-accent text-on-accent shadow-bar bottom-safe max-w-bar fixed inset-x-3 z-40 mx-auto flex items-center gap-2 rounded-full py-1.5 pr-1.5 pl-1.5 md:gap-3 md:pr-3',
-        'ease-spring transition-[translate,opacity] duration-500',
-        hidden && 'pointer-events-none translate-y-24 opacity-0'
+        // Edge to edge, on the screen's foot (the mockups); its content keeps the page's gutters.
+        'player-bar bg-accent text-on-accent fixed inset-x-0 bottom-0 z-40',
+        'ease-spring motion-safe:transition-[translate,opacity] motion-safe:duration-500',
+        hidden && 'pointer-events-none translate-y-full opacity-0'
       )}
     >
-      <button
-        type="button"
-        onClick={onToggleListen}
-        aria-label={listenAria(listen)}
-        aria-busy={listen === 'connecting'}
-        className="group ease-spring focus-visible:outline-on-accent shrink-0 rounded-full transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95"
-      >
-        <ListenDisc state={listen} className="size-12" />
-      </button>
+      {/* Off air, no light. */}
+      <CoverLight art={onAir?.art ?? null} />
+      {/* The line along its top edge, in the dawn: calm at rest, listening while the live is
+          heard. Out of the flow, over the edge: the bar keeps its height. */}
+      <HorizonLine
+        isPlaying={listen === 'playing'}
+        traces={1}
+        ink="dawn"
+        amplitude={BAR_LINE_AMPLITUDE}
+        className="pointer-events-none absolute inset-x-0 -top-3 h-6 w-full"
+      />
+      {/* On phones the gaps tighten (the 44 px targets stay) so the title keeps a few more
+          letters. */}
+      <div className="px-page relative flex items-center gap-2 py-2.5 md:gap-0 md:py-3.5">
+        <ListenPill
+          listen={listen}
+          onToggle={onToggleListen}
+          place="bar"
+          className="mr-7 hidden shrink-0 md:flex"
+        />
 
-      {track && isOnline ? (
-        <>
-          {/* A phone opens the whole track in a sheet; a larger screen goes to the artist's page. */}
-          <span className="flex min-w-0 flex-1 md:hidden">
-            <NowPlayingSheet
-              track={track}
-              artistHref={artistHref}
-              listen={listen}
-              onToggleListen={onToggleListen}
+        {onAir ? (
+          <>
+            {/* A phone opens the whole track in a sheet; a larger screen goes to the artist's page. */}
+            <span className="flex min-w-0 flex-1 md:hidden">
+              <NowPlayingSheet
+                track={onAir}
+                artistHref={artistHref}
+                listen={listen}
+                onToggleListen={onToggleListen}
+                isKept={isKept}
+                onToggleKeep={onToggleKeep}
+                onShare={onShare}
+                diffusion={diffusion}
+              >
+                <TrackLine track={onAir} hasChanged={hasChanged} />
+              </NowPlayingSheet>
+            </span>
+            <span className="hidden min-w-0 md:flex">
+              {artistHref ? (
+                <Link
+                  to={artistHref}
+                  title={`${onAir.title}, ${onAir.artist}`}
+                  className={TRACK_LINK}
+                >
+                  <TrackLine track={onAir} hasChanged={hasChanged} withAlbum />
+                </Link>
+              ) : (
+                <span
+                  title={`${onAir.title}, ${onAir.artist}`}
+                  className="flex min-w-0 items-center gap-3.5"
+                >
+                  <TrackLine track={onAir} hasChanged={hasChanged} withAlbum />
+                </span>
+              )}
+            </span>
+            <KeepButton
+              title={onAir.title}
               isKept={isKept}
-              onToggleKeep={onToggleKeep}
-              onShare={onShare}
-              diffusion={diffusion}
-            >
-              <TrackLine track={track} hasChanged={hasChanged} />
-            </NowPlayingSheet>
-          </span>
-          <span className="hidden min-w-0 flex-1 md:flex">
-            {artistHref ? (
-              <Link
-                to={artistHref}
-                title={`${track.title}, ${track.artist}`}
-                className={TRACK_LINK}
-              >
-                <TrackLine track={track} hasChanged={hasChanged} />
-              </Link>
-            ) : (
-              <span
-                title={`${track.title}, ${track.artist}`}
-                className="flex min-w-0 flex-1 items-center gap-3"
-              >
-                <TrackLine track={track} hasChanged={hasChanged} />
-              </span>
+              onToggle={onToggleKeep}
+              className={cn(ICON_BUTTON, 'md:ml-1.5')}
+              heartClassName="size-5"
+            />
+          </>
+        ) : (
+          // Écouter's word, which the computer's pill already says; off air, the silence.
+          <span
+            className={cn(
+              'text-ui min-w-0 flex-1 truncate font-semibold md:flex-none',
+              isOnline && 'md:hidden'
             )}
+          >
+            {isOnline ? listenLabel(listen) : m.off_air()}
           </span>
-        </>
-      ) : (
-        <span className="text-ui min-w-0 flex-1 truncate font-semibold">
-          {isOnline ? listenLabel(listen) : m.off_air()}
-        </span>
-      )}
+        )}
 
-      {track && isOnline ? (
+        <span aria-hidden="true" className="hidden flex-1 md:block" />
+
+        {/* Where a mouse sets it, as on the hero: a phone or a tablet has its own buttons. */}
+        <VolumeControl
+          volume={volume}
+          isMuted={isMuted}
+          onVolumeChange={onVolumeChange}
+          onToggleMute={onToggleMute}
+          className="md:fine-pointer:flex hidden"
+        />
+
+        {/* Diffuser is in the track's sheet on a phone. */}
+        {diffusion ? (
+          <span className="hidden md:ml-6 md:flex">
+            <CastControl diffusion={diffusion} variant="bar" />
+          </span>
+        ) : null}
+
+        {/* Écouter under the thumb on a phone: the disc alone, at the right. */}
         <button
           type="button"
-          onClick={onToggleKeep}
-          aria-pressed={isKept}
-          aria-label={m.track_keep_aria({ title: track.title })}
-          className={ICON_BUTTON}
+          onClick={onToggleListen}
+          aria-label={listenAria(listen)}
+          aria-busy={listen === 'connecting'}
+          className="group ease-spring focus-visible:outline-on-accent shrink-0 rounded-full transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95 md:hidden"
         >
-          <KeepHeart isKept={isKept} className="size-4" />
+          <ListenDisc state={listen} className="size-12" />
         </button>
-      ) : null}
-
-      <VolumeControl
-        volume={volume}
-        isMuted={isMuted}
-        onVolumeChange={onVolumeChange}
-        onToggleMute={onToggleMute}
-        tone="accent"
-      />
-
-      {diffusion ? <CastControl diffusion={diffusion} variant="bar" /> : null}
+      </div>
     </section>
   );
 }
 
+/**
+ * The track's cover and words: its title, then the live dot and its artist, with its album on a
+ * computer (not a single's, which repeats the title).
+ */
 function TrackLine({
   track,
   hasChanged,
+  withAlbum = false,
 }: {
   track: NonNullable<PlayerBarViewProps['track']>;
   hasChanged: boolean;
+  withAlbum?: boolean;
 }) {
   const key = `${track.artist}|${track.title}`;
+  const album = withAlbum ? shownAlbum(track.album, track.title) : null;
   return (
     <>
       <Cover
@@ -197,15 +249,19 @@ function TrackLine({
         src={track.art}
         alt=""
         seed={key}
-        sizes="2.5rem"
-        className={cn('size-10 shrink-0', hasChanged && 'swap-in')}
+        sizes="3rem"
+        className={cn('size-11 shrink-0 md:size-12', hasChanged && 'swap-in')}
       />
       <span
         key={`${key}:words`}
         className={cn('flex min-w-0 flex-col', hasChanged && 'swap-in-late')}
       >
         <span className="text-ui truncate font-semibold">{track.title}</span>
-        <span className="text-caption text-on-accent-muted truncate">{track.artist}</span>
+        <span className="text-caption text-on-accent-muted flex min-w-0 items-center gap-1.5">
+          {/* The station is live: the dawn's still dot, as « En direct » on the hero. */}
+          <span aria-hidden="true" className="bg-dawn size-1.5 shrink-0 rounded-full" />
+          <span className="truncate">{album ? `${track.artist} · ${album}` : track.artist}</span>
+        </span>
       </span>
     </>
   );
@@ -242,7 +298,8 @@ export function PlayerBar() {
   const initializeCast = useCastStore((s) => s.initialize);
   const diffusion = useDiffusion();
   const { isLiked, handleToggleLike, handleShare } = useTrackActions();
-  const heroListenVisible = useHeroListenVisible((s) => s.visible);
+  const heroPlayerInView = useHeroPlayerStore((s) => s.inView);
+  const hasHeroPlayer = useHasHeroPlayer();
   const { restoreVolume } = player;
   useEffect(() => {
     restoreVolume();
@@ -252,7 +309,7 @@ export function PlayerBar() {
 
   return (
     <PlayerBarView
-      isHidden={heroListenVisible}
+      isHidden={hasHeroPlayer && heroPlayerInView}
       listen={listenState(player.isPlaying, player.isConnecting)}
       onToggleListen={player.toggle}
       track={

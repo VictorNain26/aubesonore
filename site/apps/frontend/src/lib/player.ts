@@ -40,7 +40,8 @@ type PlayerStore = PlayerState & PlayerActions;
 // The stream plays through a bare native <audio> element on iOS only, where
 // createMediaElementSource() would make the AudioContext the audio's sole
 // output path — and iOS suspends that context a few seconds after the screen
-// locks, silencing background playback (WebKit bug #231105). Everywhere else
+// locks, silencing background playback (WebKit bug #237878; #231105 was fixed
+// on macOS only). Everywhere else
 // the stream is routed through Web Audio so the antenna waveform can read
 // real frequency data; on iOS it falls back to its procedural motion.
 // Lock-screen controls come from Media Session either way.
@@ -249,7 +250,11 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
       stopTimer = null;
       isStopping = true;
       audio.pause();
-      audio.src = '';
+      // Removed, not emptied: an empty src is the page's own address, which the element fails to
+      // load and reports as an error in a later task, past the guard below. With no source,
+      // load() only drops the stream (HTML, the media element load algorithm).
+      audio.removeAttribute('src');
+      audio.load();
       queueMicrotask(() => {
         isStopping = false;
       });
