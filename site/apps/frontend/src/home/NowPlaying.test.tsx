@@ -212,7 +212,7 @@ describe('NowPlayingView', () => {
       [
         '(min-width: 48rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 34.5rem, 50vw + 18rem)',
         '(min-width: 40rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 33.5rem)',
-        'min(100vw, max(13rem, 100vh - 28rem))',
+        'min(100vw, max(9rem, 100vh - 28rem))',
       ].join(', ')
     );
     // The page's largest image: fetched first.
