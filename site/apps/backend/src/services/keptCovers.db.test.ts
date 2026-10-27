@@ -122,22 +122,26 @@ describe('moveKeptCovers', () => {
     expect(await artworkOf('t1')).toBe(`https://aubesonore.fr/covers/kept/${A}/768.webp`);
   });
 
-  it('leaves a row, and its tracks, as they were when its file could not be written', async () => {
+  it('changes nothing in the database when one file could not be written, even after another was', async () => {
     await createCoversTable([
       [A, BYTES_A],
       [B, BYTES_B],
     ]);
     await keep('t1', `https://api.aubesonore.fr/api/covers/${A}`);
+    await keep('t2', `https://api.aubesonore.fr/api/covers/${B}`);
+    // A is written first, B fails: a rollback to the previous version must still find every
+    // track at an address it serves.
     const failing: CoverStore = {
       ...store,
       keepOriginal: (sha, bytes) =>
-        sha === A ? Promise.reject(new Error('EACCES')) : store.keepOriginal(sha, bytes),
+        sha === B ? Promise.reject(new Error('EACCES')) : store.keepOriginal(sha, bytes),
     };
 
-    expect(await moveKeptCovers(failing)).toEqual({ moved: 1, failed: 1 });
+    expect(await moveKeptCovers(failing)).toEqual({ moved: 0, failed: 1 });
 
-    expect(await coversLeft()).toEqual([A]);
+    expect(await coversLeft()).toEqual([A, B]);
     expect(await artworkOf('t1')).toBe(`https://api.aubesonore.fr/api/covers/${A}`);
+    expect(await artworkOf('t2')).toBe(`https://api.aubesonore.fr/api/covers/${B}`);
   });
 
   it('does nothing once the table is gone', async () => {

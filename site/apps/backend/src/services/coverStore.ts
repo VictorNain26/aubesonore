@@ -128,7 +128,9 @@ export function createCoverStore(options: CoverStoreOptions) {
   // Read at call time: tests stub the global.
   const fetchImpl: Fetch = options.fetch ?? ((input, init) => fetch(input, init));
   const missing = new TtlCache<true>(MISSING_FOR_MS);
-  const flight = createSingleFlight<Made>();
+  // A flight hands every size it made to each caller, who takes its own: callers asking for
+  // different sizes of one source share it.
+  const flight = createSingleFlight<Map<number, Buffer> | 'missing' | 'failed'>();
 
   const fileOf = (key: CoverKey) => join(root, 'covers', key.kind, key.id, `${key.size}.webp`);
   const originalOf = (sha: string) => join(root, 'originals', sha);
@@ -162,16 +164,24 @@ export function createCoverStore(options: CoverStoreOptions) {
       .toBuffer();
   }
 
-  /** Each size made from one image and written; the one asked for is handed back. */
+  /** Each size made from one image and written, handed back by size. */
   async function store(
     image: Buffer,
     sizes: readonly number[],
-    keyOf: (size: number) => CoverKey,
-    wanted: number
-  ): Promise<Buffer> {
+    keyOf: (size: number) => CoverKey
+  ): Promise<Map<number, Buffer>> {
     const made = await Promise.all(sizes.map((size) => toWebp(image, size)));
     await Promise.all(sizes.map((size, i) => writeWhole(fileOf(keyOf(size)), made[i]!)));
-    return made[sizes.indexOf(wanted)]!;
+    return new Map(sizes.map((size, i) => [size, made[i]!]));
+  }
+
+  /** The size a caller asked for, out of what its flight made. */
+  async function pick(
+    made: Promise<Map<number, Buffer> | 'missing' | 'failed'>,
+    wanted: number
+  ): Promise<Made> {
+    const sizes = await made;
+    return typeof sizes === 'string' ? sizes : (sizes.get(wanted) ?? 'failed');
   }
 
   async function readImage(response: Response, limit: number): Promise<Buffer | null> {
@@ -221,7 +231,10 @@ export function createCoverStore(options: CoverStoreOptions) {
   }
 
   /** Our own AzuraCast's art: a redirect is its generic image, which is no cover. */
-  async function fetchStationArt(path: string): Promise<Buffer | 'missing' | 'failed'> {
+  async function fetchStationArt(
+    path: string,
+    limit = MAX_UPSTREAM_BYTES
+  ): Promise<Buffer | 'missing' | 'failed'> {
     try {
       const response = await fetchImpl(`${azuracastBaseUrl}${path}`, {
         redirect: 'manual',
@@ -230,7 +243,7 @@ export function createCoverStore(options: CoverStoreOptions) {
       if ((response.status >= 300 && response.status < 400) || response.status === 404)
         return 'missing';
       if (response.status !== 200) return 'failed';
-      return (await readImage(response, MAX_UPSTREAM_BYTES)) ?? 'failed';
+      return (await readImage(response, limit)) ?? 'failed';
     } catch (error) {
       logger.warn('coverStore.station_failed', { path, message: (error as Error).message });
       return 'failed';
@@ -246,17 +259,18 @@ export function createCoverStore(options: CoverStoreOptions) {
     wanted: number
   ): Promise<Made> {
     if (missing.get(source)) return Promise.resolve('missing');
-    return flight(source, async () => {
+    const made = flight(source, async () => {
       const image = await fetchSource();
       if (image === 'missing') missing.set(source, true);
       if (!Buffer.isBuffer(image)) return image;
       try {
-        return await store(image, sizes, keyOf, wanted);
+        return await store(image, sizes, keyOf);
       } catch (error) {
         logger.warn('coverStore.not_made', { source, message: (error as Error).message });
         return 'failed';
       }
     });
+    return pick(made, wanted);
   }
 
   function makeCover(key: CoverKey): Promise<Made> {
@@ -281,7 +295,7 @@ export function createCoverStore(options: CoverStoreOptions) {
         key.size
       );
     }
-    return flight(`kept/${key.id}/${key.size}`, async () => {
+    const made = flight(`kept/${key.id}/${key.size}`, async () => {
       let original: Buffer;
       try {
         original = await readFile(originalOf(key.id));
@@ -289,14 +303,13 @@ export function createCoverStore(options: CoverStoreOptions) {
         return 'missing';
       }
       try {
-        const cover = await toWebp(original, key.size);
-        await writeWhole(fileOf(key), cover);
-        return cover;
+        return await store(original, [key.size], () => key);
       } catch (error) {
         logger.warn('coverStore.not_made', { kept: key.id, message: (error as Error).message });
         return 'failed';
       }
     });
+    return pick(made, key.size);
   }
 
   return {
@@ -333,10 +346,11 @@ export function createCoverStore(options: CoverStoreOptions) {
 
     /**
      * A kept track's own copy of the antenna's art, which dies with its media: the original kept
-     * by the SHA-256 of its bytes, its sizes made. The store's address, or null when the URL is not
-     * our AzuraCast's art or the copy failed.
+     * by the SHA-256 of its bytes, its sizes made. The store's address; `blocked` when those bytes
+     * are a cover taken down, which the track must not show; null when the URL is not our
+     * AzuraCast's art or the copy failed.
      */
-    async keepStationArt(artworkUrl: string): Promise<string | null> {
+    async keepStationArt(artworkUrl: string): Promise<{ url: string } | 'blocked' | null> {
       let path: string;
       try {
         path = new URL(artworkUrl).pathname;
@@ -344,36 +358,25 @@ export function createCoverStore(options: CoverStoreOptions) {
         return null;
       }
       if (!ART_PATH.test(path)) return null;
-      let response: Response;
-      try {
-        response = await fetchImpl(`${azuracastBaseUrl}${path}`, {
-          redirect: 'manual',
-          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-        });
-      } catch (error) {
-        logger.warn('cover.not_kept', { path, message: (error as Error).message });
-        return null;
-      }
-      const original = response.status === 200 ? await readImage(response, MAX_KEPT_BYTES) : null;
-      if (!original) {
-        logger.warn('cover.not_kept', { path, status: response.status });
+      const original = await fetchStationArt(path, MAX_KEPT_BYTES);
+      if (!Buffer.isBuffer(original)) {
+        logger.warn('cover.not_kept', { path, outcome: original });
         return null;
       }
       const sha = createHash('sha256').update(original).digest('hex');
-      if (isBlocked('kept', sha)) return null;
+      if (isBlocked('kept', sha)) return 'blocked';
       try {
-        await store(
-          original,
-          STATION_SIZES,
-          (size) => ({ kind: 'kept', id: sha, size: size as StationSize }),
-          768
-        );
+        await store(original, STATION_SIZES, (size) => ({
+          kind: 'kept',
+          id: sha,
+          size: size as StationSize,
+        }));
         await writeWhole(originalOf(sha), original);
       } catch (error) {
         logger.warn('cover.not_kept', { path, message: (error as Error).message });
         return null;
       }
-      return this.keptUrl(sha);
+      return { url: this.keptUrl(sha) };
     },
 
     /**

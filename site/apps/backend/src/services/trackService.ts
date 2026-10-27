@@ -125,8 +125,10 @@ async function enrichTrackInBackground(
     !verifiedArt && existingAzuracastUrl
       ? await coverStore.keepStationArt(existingAzuracastUrl)
       : null;
-  const nextArt = verifiedArt ?? keptArt ?? existingAzuracastUrl ?? null;
-  if (!nextArt) return;
+  // A cover taken down is never shown: the track keeps no artwork, its glyph stands in.
+  const nextArt =
+    keptArt === 'blocked' ? null : (verifiedArt ?? keptArt?.url ?? existingAzuracastUrl ?? null);
+  if (!nextArt && keptArt !== 'blocked') return;
 
   await db
     .update(schema.likedTracks)
