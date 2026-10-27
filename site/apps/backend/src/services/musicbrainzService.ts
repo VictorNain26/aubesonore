@@ -164,29 +164,101 @@ export function findRecordingsByTitle(
   });
 }
 
+type RawRecording = NonNullable<RawIsrc['recordings']>[number];
+
+/** A recording and every artist credited on it; null without a title. */
+function recordingOf(recording: RawRecording): IsrcRecording | null {
+  if (!recording.title) return null;
+  return {
+    title: recording.title,
+    credits: (recording['artist-credit'] ?? []).flatMap((credit) =>
+      credit.artist?.id
+        ? [
+            {
+              mbid: credit.artist.id,
+              names: [credit.name, credit.artist.name].filter((name): name is string =>
+                Boolean(name)
+              ),
+            },
+          ]
+        : []
+    ),
+  };
+}
+
 function recordingsOf(raw: RawIsrc): Lookup<IsrcRecording[]> {
-  const recordings = (raw.recordings ?? []).flatMap((recording) =>
-    recording.title
-      ? [
-          {
-            title: recording.title,
-            credits: (recording['artist-credit'] ?? []).flatMap((credit) =>
-              credit.artist?.id
-                ? [
-                    {
-                      mbid: credit.artist.id,
-                      names: [credit.name, credit.artist.name].filter((name): name is string =>
-                        Boolean(name)
-                      ),
-                    },
-                  ]
-                : []
-            ),
-          },
-        ]
-      : []
-  );
+  const recordings = (raw.recordings ?? []).flatMap((recording) => {
+    const read = recordingOf(recording);
+    return read ? [read] : [];
+  });
   return recordings.length > 0 ? { status: 'found', value: recordings } : { status: 'none' };
+}
+
+interface RawRecordings {
+  recordings?: Array<
+    RawRecording & {
+      releases?: Array<{
+        status?: string;
+        date?: string;
+        'release-group'?: { id?: string; 'secondary-types'?: string[] };
+      }>;
+    }
+  >;
+}
+
+/** A record a recording is on: its release group, whose front cover is the record's. */
+export interface RecordingRelease {
+  releaseGroup: string;
+  official: boolean;
+  /** Compilation, Live, Soundtrack…: none for a record of the artist's own. */
+  secondaryTypes: string[];
+  date: string | null;
+}
+
+export interface RecordingOnReleases extends IsrcRecording {
+  releases: RecordingRelease[];
+}
+
+/**
+ * The recordings MusicBrainz's search finds under an ISRC, or under a title credited to a name,
+ * each with the records it is on: one request, where the ISRC lookup names no record. Candidates
+ * only, like the resolver's: the caller checks title and credited name.
+ * https://musicbrainz.org/doc/MusicBrainz_API/Search#Recording
+ */
+export function findRecordingReleases(
+  of: { isrc: string } | { name: string; title: string }
+): Promise<Lookup<RecordingOnReleases[]>> {
+  const query =
+    'isrc' in of
+      ? `isrc:${of.isrc}`
+      : `recording:${phrase(of.title)} AND artist:${phrase(of.name)}`;
+  return cached(`releases:${query}`, async () => {
+    const fetched = await fetchJson<RawRecordings>(
+      `/recording/?query=${encodeURIComponent(query)}&limit=100&fmt=json`
+    );
+    if (fetched.status !== 'found') return fetched;
+    const recordings = (fetched.value.recordings ?? []).flatMap((raw) => {
+      const recording = recordingOf(raw);
+      if (!recording) return [];
+      const releases = (raw.releases ?? []).flatMap((release) => {
+        const group = release['release-group'];
+        return group?.id
+          ? [
+              {
+                releaseGroup: group.id,
+                official: release.status === 'Official',
+                secondaryTypes: group['secondary-types'] ?? [],
+                date: release.date ?? null,
+              },
+            ]
+          : [];
+      });
+      return [{ ...recording, releases }];
+    });
+    return recordings.length > 0
+      ? { status: 'found' as const, value: recordings }
+      : { status: 'none' as const };
+  });
 }
 
 interface RawArtist {

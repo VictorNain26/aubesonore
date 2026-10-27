@@ -1,0 +1,85 @@
+{
+  "recordings": [
+    {
+      "id": "d82ceb22-d68a-4501-b4f0-7a0cea906f73",
+      "title": "F Major",
+      "artist-credit": [
+        {
+          "name": "Hania Rani",
+          "artist": {
+            "id": "59be490d-21e4-44d4-8cf2-939c8fbca25f",
+            "name": "Hania Rani"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "status": "Official",
+          "date": "2020-05-01",
+          "release-group": {
+            "id": "71c4af15-f1ad-4187-b499-9a30d39bc4cd",
+            "title": "Home",
+            "primary-type": "Single"
+          }
+        }
+      ]
+    },
+    {
+      "id": "35c22eca-886d-4a07-bf17-08809ec84dd3",
+      "title": "F Major",
+      "artist-credit": [
+        {
+          "name": "Hania Rani",
+          "artist": {
+            "id": "59be490d-21e4-44d4-8cf2-939c8fbca25f",
+            "name": "Hania Rani"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "status": "Official",
+          "date": "2020-04-03",
+          "release-group": {
+            "id": "37b5994e-d560-480d-b013-e84d9a427b2a",
+            "title": "F Major",
+            "primary-type": "Single"
+          }
+        }
+      ]
+    },
+    {
+      "id": "051bfc8f-ea9f-406a-ab0a-734b3273481f",
+      "title": "F Major",
+      "artist-credit": [
+        {
+          "name": "Hania Rani",
+          "artist": {
+            "id": "59be490d-21e4-44d4-8cf2-939c8fbca25f",
+            "name": "Hania Rani"
+          }
+        }
+      ],
+      "releases": [
+        {
+          "status": "Official",
+          "date": "2020-05-29",
+          "release-group": {
+            "id": "ba385009-ffe0-4360-becf-44564d44a0a3",
+            "title": "Home",
+            "primary-type": "Album"
+          }
+        },
+        {
+          "status": "Official",
+          "date": "2020-05-29",
+          "release-group": {
+            "id": "ba385009-ffe0-4360-becf-44564d44a0a3",
+            "title": "Home",
+            "primary-type": "Album"
+          }
+        }
+      ]
+    }
+  ]
+}

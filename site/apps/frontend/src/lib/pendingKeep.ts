@@ -4,12 +4,11 @@ import type { LikeTrackRequest } from './api';
 // kept for them once they are back (also after the Google redirect).
 const KEY = 'aubesonore-pending-keep';
 
-export function keepRequest(title: string, artist: string, artworkUrl?: string): LikeTrackRequest {
+export function keepRequest(title: string, artist: string): LikeTrackRequest {
   return {
     title,
     artist,
     youtubeUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${title} ${artist}`)}`,
-    ...(artworkUrl ? { artworkUrl } : {}),
   };
 }
 

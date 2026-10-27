@@ -19,7 +19,7 @@ import * as m from '@/paraglide/messages.js';
 
 interface UseLikeAction {
   likingTrackId: string | null;
-  toggleLike: (title: string, artist: string, artworkUrl?: string) => Promise<void>;
+  toggleLike: (title: string, artist: string) => Promise<void>;
 }
 
 export function useLikeAction(): UseLikeAction {
@@ -34,8 +34,8 @@ export function useLikeAction(): UseLikeAction {
   const navigate = useNavigate();
 
   const toggleLike = useCallback(
-    async (title: string, artist: string, artworkUrl?: string): Promise<void> => {
-      const request = keepRequest(title, artist, artworkUrl);
+    async (title: string, artist: string): Promise<void> => {
+      const request = keepRequest(title, artist);
       if (!isAuthenticated) {
         savePendingKeep(request);
         openSignIn({ keepTitle: title });

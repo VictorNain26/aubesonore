@@ -2,101 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { artworkAt, artworkSrc, artworkSrcSet } from './artwork';
 
 describe('artworkAt', () => {
-  it("asks Apple's CDN for the size the cover is shown at, as WebP", () => {
-    expect(
-      artworkAt(
-        'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/25/94/a12594ce/00077778777656.jpg/600x600bb.jpg',
-        160
-      )
-    ).toBe(
-      'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/25/94/a12594ce/00077778777656.jpg/160x160bb.webp'
-    );
-    expect(
-      artworkAt(
-        'https://is3-ssl.mzstatic.com/image/thumb/Music/4e/45/54/mzi.yzadbjif.jpg/512x512bb.jpg',
-        480
-      )
-    ).toBe(
-      'https://is3-ssl.mzstatic.com/image/thumb/Music/4e/45/54/mzi.yzadbjif.jpg/480x480bb.webp'
-    );
-  });
-
-  it('resizes an Apple cover already asked for as WebP', () => {
-    expect(
-      artworkAt(
-        'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/cover.jpg/600x600bb.webp',
-        320
-      )
-    ).toBe('https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/cover.jpg/320x320bb.webp');
-  });
-
-  it('serves an Apple cover as WebP at the size its URL names, even where nothing resizes it', () => {
-    const url =
-      'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/25/94/a12594ce/00077778777656.jpg/600x600bb.jpg';
-    expect(artworkSrc(url)).toBe(
-      'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/25/94/a12594ce/00077778777656.jpg/600x600bb.webp'
-    );
-  });
-
   it.each([
     'https://radio.aubesonore.fr/api/station/1/art/abc-1691234.jpg',
-    'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/cover.png',
-    // Not Apple's CDN, though shaped like it.
-    'https://example.com/image/thumb/Music6/v4/a1/cover.jpg/600x600bb.jpg',
-    'http://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/cover.jpg/600x600bb.jpg',
+    // Apple's and Deezer's CDNs: the site shows neither's art any more, nor sizes it.
+    'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/cover.jpg/600x600bb.jpg',
+    'https://cdn-images.dzcdn.net/images/cover/5718f7c81c27e0b2417e2a4c45224f8a/1000x1000-000000-80-0-0.jpg',
   ])('leaves a host that cannot resize as it is: %s', (url) => {
     expect(artworkAt(url, 160)).toBe(url);
-  });
-
-  it("asks Deezer's CDN for a portrait or an album cover at the size it is shown", () => {
-    expect(
-      artworkAt(
-        'https://cdn-images.dzcdn.net/images/artist/7ed91fa11a9785a82e63fd9058821d8a/1000x1000-000000-80-0-0.jpg',
-        320
-      )
-    ).toBe(
-      'https://cdn-images.dzcdn.net/images/artist/7ed91fa11a9785a82e63fd9058821d8a/320x320-000000-80-0-0.jpg'
-    );
-    expect(
-      artworkAt(
-        'https://cdn-images.dzcdn.net/images/cover/5718f7c81c27e0b2417e2a4c45224f8a/1000x1000-000000-80-0-0.jpg',
-        160
-      )
-    ).toBe(
-      'https://cdn-images.dzcdn.net/images/cover/5718f7c81c27e0b2417e2a4c45224f8a/160x160-000000-80-0-0.jpg'
-    );
+    expect(artworkSrc(url)).toBe(url);
+    expect(artworkSrcSet(url)).toBeUndefined();
   });
 });
 
 describe('artworkSrcSet', () => {
-  it('offers the browser every size a resizing host serves', () => {
-    const srcset = artworkSrcSet(
-      'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/25/94/a12594ce/00077778777656.jpg/600x600bb.jpg'
-    );
-    expect(srcset?.split(', ').map((candidate) => candidate.split(' ')[1])).toEqual([
-      '160w',
-      '320w',
-      '480w',
-      '600w',
-    ]);
-    expect(srcset).toContain('/320x320bb.webp 320w');
-  });
-
-  it('offers only the sizes Deezer keeps ready', () => {
-    expect(
-      artworkSrcSet(
-        'https://cdn-images.dzcdn.net/images/artist/7ed91fa11a9785a82e63fd9058821d8a/1000x1000-000000-80-0-0.jpg'
-      )
-    ).toBe(
-      [250, 500, 1000]
-        .map(
-          (w) =>
-            `https://cdn-images.dzcdn.net/images/artist/7ed91fa11a9785a82e63fd9058821d8a/${w}x${w}-000000-80-0-0.jpg ${w}w`
-        )
-        .join(', ')
-    );
-  });
-
   it("offers the station's covers at the widths the store keeps, then the original", () => {
     const original =
       'https://radio.aubesonore.fr/api/station/aubesonore/art/27d87a8584e8ebe4e670e5e7-1791145643.jpg';
@@ -181,25 +99,12 @@ describe('the Cover Art Archive, from the cover store', () => {
   });
 });
 
-describe("a kept track's own copy, from the cover store", () => {
-  const SHA = '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08';
-  const kept = `https://aubesonore.fr/covers/kept/${SHA}/768.webp`;
-
-  it('is fetched from this site at the size its URL names', () => {
-    expect(artworkSrc(kept)).toBe(`/covers/kept/${SHA}/768.webp`);
-  });
-
-  it('offers the sizes the store keeps', () => {
-    expect(artworkSrcSet(kept)).toBe(
-      [96, 192, 384, 768].map((w) => `/covers/kept/${SHA}/${w}.webp ${w}w`).join(', ')
-    );
-    expect(artworkAt(kept, 160)).toBe(`/covers/kept/${SHA}/192.webp`);
-    expect(artworkAt(kept, 1000)).toBe(`/covers/kept/${SHA}/768.webp`);
-  });
-
-  it('leaves anything shaped otherwise as given', () => {
-    const odd = `https://aubesonore.fr/covers/kept/${SHA}/500.webp`;
-    expect(artworkSrc(odd)).toBe(odd);
-    expect(artworkSrcSet(odd)).toBeUndefined();
+describe("a kept track's old copy of the antenna's art", () => {
+  it('is no cover of the store any more: left as given', () => {
+    const SHA = '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08';
+    const kept = `https://aubesonore.fr/covers/kept/${SHA}/768.webp`;
+    expect(artworkSrc(kept)).toBe(kept);
+    expect(artworkSrcSet(kept)).toBeUndefined();
+    expect(artworkAt(kept, 160)).toBe(kept);
   });
 });

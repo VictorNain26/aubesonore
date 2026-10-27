@@ -102,15 +102,6 @@ describe('CoverLight', () => {
     expect(canvas).not.toHaveClass('light-in');
   });
 
-  it('asks Apple for the small WebP, through CORS so its pixels can be read', () => {
-    const apple = 'https://is1-ssl.mzstatic.com/image/thumb/Music/aa/bb/x.jpg/600x600bb.jpg';
-    render(<CoverLight art={apple} />);
-    expect(srcs()).toEqual([
-      'https://is1-ssl.mzstatic.com/image/thumb/Music/aa/bb/x.jpg/96x96bb.webp',
-    ]);
-    expect(files()[0]).toHaveAttribute('crossorigin', 'anonymous');
-  });
-
   it('asks Commons for a standard width, through CORS so its pixels can be read', () => {
     const commons =
       'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Stereolab.jpg/1280px-Stereolab.jpg';

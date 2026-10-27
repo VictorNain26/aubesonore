@@ -236,7 +236,7 @@ export function NowPlaying({
       isKept={song ? isTrackLiked(tracks, song.title, song.artist) : false}
       isKeeping={song ? likingTrackId === trackKey(song.title, song.artist) : false}
       onToggleKeep={() => {
-        if (song) void toggleLike(song.title, song.artist, song.art);
+        if (song) void toggleLike(song.title, song.artist);
       }}
       artistHref={artistPage ? artistPath(artistPage) : null}
       swap={swap}

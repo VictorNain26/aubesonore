@@ -68,7 +68,6 @@ export interface LikeTrackRequest {
   title: string;
   artist: string;
   album?: string;
-  artworkUrl?: string;
   youtubeUrl: string;
   isrc?: string;
 }

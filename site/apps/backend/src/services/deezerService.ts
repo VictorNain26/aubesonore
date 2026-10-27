@@ -157,14 +157,11 @@ export interface DeezerIsrcTrack {
   /** The track's main artist, then its other contributors. */
   artists: DeezerArtist[];
   link: string | null;
-  /** The album cover, hotlinked from Deezer's CDN. */
-  cover: string | null;
 }
 
 interface RawIsrcTrack extends RawTrack {
   contributors?: RawArtist[];
   link?: string;
-  album?: { cover_medium?: string };
 }
 
 /**
@@ -197,7 +194,6 @@ export async function findTrackByIsrc(isrc: string): Promise<Lookup<DeezerIsrcTr
               title: body.title,
               artists: [...artists.values()],
               link: body.link ?? null,
-              cover: body.album?.cover_medium ?? null,
             },
           }
         : { status: 'none' };

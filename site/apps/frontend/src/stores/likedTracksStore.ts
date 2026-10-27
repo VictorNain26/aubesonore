@@ -104,7 +104,8 @@ export const useLikedTracksStore = create<LikedTracksStore>((set, get) => ({
       title: data.title,
       artist: data.artist,
       album: null,
-      artworkUrl: data.artworkUrl || null,
+      // Its record's cover comes later, found by the server (keptTrackCovers.ts).
+      artworkUrl: null,
       youtubeUrl: data.youtubeUrl,
       isrc: null,
       artistId: null,
