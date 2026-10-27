@@ -51,10 +51,10 @@ interface Layers {
  * words would not read on, weighed for their own inks (design/lightInks.ts). When the
  * track changes, the next light fades in as the last fades out, once its file has come, then the
  * last goes: two at most, the one shown and the newest. The first fades in with the cover. A next
- * light whose file cannot be had leaves none: the last fades out, it is not this track's.
- * Decoration: hidden from screen readers.
+ * light whose file cannot be had leaves none: the last fades out, it is not this track's. None
+ * without a cover (off air). Decoration: hidden from screen readers.
  */
-export function CoverLightView({ art }: { art: string | null | undefined }) {
+export function CoverLight({ art }: { art: string | null | undefined }) {
   const src = art && !isDefaultArtwork(art) ? artworkAt(art, LIGHT_PIXELS) : null;
   const [layers, setLayers] = useState<Layers>({
     shown: src,
@@ -208,9 +208,4 @@ function Light({
       />
     </>
   );
-}
-
-/** The light of the cover on air; none off air (home/Hero.tsx, shell/PlayerBar.tsx). */
-export function CoverLight({ art }: { art: string | null | undefined }) {
-  return <CoverLightView art={art} />;
 }

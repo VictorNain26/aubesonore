@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { CoverLightView, LIGHT_FADE_MS } from './CoverLight';
+import { CoverLight, LIGHT_FADE_MS } from './CoverLight';
 import { lightOpacity, type LightInks } from './lightStrength';
 import { chooseTheme } from '../stores/themeStore';
 
@@ -73,9 +73,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('CoverLightView', () => {
+describe('CoverLight', () => {
   it('fetches the cover at its smallest size, in low priority, without a referrer', () => {
-    render(<CoverLightView art={art('a1')} />);
+    render(<CoverLight art={art('a1')} />);
     const [img] = files();
 
     expect(img).toHaveAttribute('src', '/covers/station/a1-1/96.webp');
@@ -87,7 +87,7 @@ describe('CoverLightView', () => {
   });
 
   it('paints the cover blurred into a small canvas once it has come, never blurring at the hero’s size', () => {
-    render(<CoverLightView art={art('a1')} />);
+    render(<CoverLight art={art('a1')} />);
     const [img] = files();
     const [canvas] = lights();
 
@@ -104,7 +104,7 @@ describe('CoverLightView', () => {
 
   it('asks Apple for the small WebP, through CORS so its pixels can be read', () => {
     const apple = 'https://is1-ssl.mzstatic.com/image/thumb/Music/aa/bb/x.jpg/600x600bb.jpg';
-    render(<CoverLightView art={apple} />);
+    render(<CoverLight art={apple} />);
     expect(srcs()).toEqual([
       'https://is1-ssl.mzstatic.com/image/thumb/Music/aa/bb/x.jpg/96x96bb.webp',
     ]);
@@ -114,7 +114,7 @@ describe('CoverLightView', () => {
   it('asks Commons for a standard width, through CORS so its pixels can be read', () => {
     const commons =
       'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Stereolab.jpg/1280px-Stereolab.jpg';
-    render(<CoverLightView art={commons} />);
+    render(<CoverLight art={commons} />);
     expect(srcs()).toEqual([
       'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Stereolab.jpg/120px-Stereolab.jpg',
     ]);
@@ -122,19 +122,19 @@ describe('CoverLightView', () => {
   });
 
   it("asks the site's own covers without CORS: they are of the page's origin", () => {
-    render(<CoverLightView art={art('a1')} />);
+    render(<CoverLight art={art('a1')} />);
     expect(files()[0]).not.toHaveAttribute('crossorigin');
   });
 
   it('keeps the whole light of a cover the words read well on', () => {
-    render(<CoverLightView art={art('a1')} />);
+    render(<CoverLight art={art('a1')} />);
     fireEvent.load(files()[0]!);
     expect(lights()[0]!.style.opacity).toBe('0.9');
   });
 
   it('dims the light of a cover the words would not read on, just enough', () => {
     pixels = flat([255, 255, 255]);
-    render(<CoverLightView art={art('a1')} />);
+    render(<CoverLight art={art('a1')} />);
     fireEvent.load(files()[0]!);
     const opacity = Number(lights()[0]!.style.opacity);
     expect(opacity).toBeGreaterThan(0);
@@ -151,7 +151,7 @@ describe('CoverLightView', () => {
       );
     const weigh = (white: (row: number) => boolean) => {
       pixels = region(white);
-      const { unmount } = render(<CoverLightView art={art('a1')} />);
+      const { unmount } = render(<CoverLight art={art('a1')} />);
       fireEvent.load(files()[0]!);
       const opacity = Number(lights()[0]!.style.opacity);
       unmount();
@@ -163,7 +163,7 @@ describe('CoverLightView', () => {
   it('dims a cover whose pixels cannot be read as much as the worst cover would need', () => {
     // What a canvas tainted by a cover of another origin throws on getImageData.
     pixels = Object.assign(new Error('The canvas has been tainted'), { name: 'SecurityError' });
-    render(<CoverLightView art={art('a1')} />);
+    render(<CoverLight art={art('a1')} />);
     fireEvent.load(files()[0]!);
     const worst = new Uint8ClampedArray([0, 0, 0, 255, 255, 255, 255, 255]);
     expect(Number(lights()[0]!.style.opacity)).toBe(lightOpacity(worst, NIGHT));
@@ -171,7 +171,7 @@ describe('CoverLightView', () => {
 
   it('leaves the light at its style where the browser cannot read the inks', () => {
     inks = null;
-    render(<CoverLightView art={art('a1')} />);
+    render(<CoverLight art={art('a1')} />);
     fireEvent.load(files()[0]!);
     expect(lights()[0]!.style.opacity).toBe('');
   });
@@ -189,7 +189,7 @@ describe('CoverLightView', () => {
     );
     pixels = flat([255, 255, 255]);
     inks = DAY;
-    render(<CoverLightView art={art('a1')} />);
+    render(<CoverLight art={art('a1')} />);
     come(files()[0]!);
     // A white cover by day: the dark words read on it, the light is whole.
     expect(lights()[0]!.style.opacity).toBe('0.75');
@@ -205,7 +205,7 @@ describe('CoverLightView', () => {
   it('weighs the light again when the listener chooses the night', () => {
     pixels = flat([255, 255, 255]);
     inks = DAY;
-    render(<CoverLightView art={art('a1')} />);
+    render(<CoverLight art={art('a1')} />);
     come(files()[0]!);
     expect(lights()[0]!.style.opacity).toBe('0.75');
 
@@ -217,16 +217,16 @@ describe('CoverLightView', () => {
   });
 
   it('has no light without a real cover', () => {
-    render(<CoverLightView art="https://radio.aubesonore.fr/static/img/generic_song.jpg" />);
+    render(<CoverLight art="https://radio.aubesonore.fr/static/img/generic_song.jpg" />);
     expect(files()).toHaveLength(0);
     expect(lights()).toHaveLength(0);
   });
 
   it('fades the next cover in over the last once it has come, then lets the last go', () => {
     vi.useFakeTimers();
-    const { rerender } = render(<CoverLightView art={art('a1')} />);
+    const { rerender } = render(<CoverLight art={art('a1')} />);
 
-    rerender(<CoverLightView art={art('b2')} />);
+    rerender(<CoverLight art={art('b2')} />);
     expect(srcs()).toEqual(['/covers/station/a1-1/96.webp', '/covers/station/b2-1/96.webp']);
     const next = () => lights()[1]!;
     // Still loading: the last light holds, the next waits unseen.
@@ -250,23 +250,23 @@ describe('CoverLightView', () => {
   });
 
   it('holds two lights at most, the one shown and the newest, however fast the titles change', () => {
-    const { rerender } = render(<CoverLightView art={art('a1')} />);
+    const { rerender } = render(<CoverLight art={art('a1')} />);
 
     // b2 never came: a1 is still what shows.
-    rerender(<CoverLightView art={art('b2')} />);
-    rerender(<CoverLightView art={art('c3')} />);
+    rerender(<CoverLight art={art('b2')} />);
+    rerender(<CoverLight art={art('c3')} />);
     expect(srcs()).toEqual(['/covers/station/a1-1/96.webp', '/covers/station/c3-1/96.webp']);
 
     // c3 came and is fading in: it is the one shown when d4 comes.
     fireEvent.load(files()[1]!);
-    rerender(<CoverLightView art={art('d4')} />);
+    rerender(<CoverLight art={art('d4')} />);
     expect(srcs()).toEqual(['/covers/station/c3-1/96.webp', '/covers/station/d4-1/96.webp']);
   });
 
   it('lets the last light go when the next cover cannot be had, and never asks it again', () => {
     vi.useFakeTimers();
-    const { rerender } = render(<CoverLightView art={art('a1')} />);
-    rerender(<CoverLightView art={art('b2')} />);
+    const { rerender } = render(<CoverLight art={art('a1')} />);
+    rerender(<CoverLight art={art('b2')} />);
 
     fireEvent.error(files()[1]!);
     // The last track's light is not this track's: it fades out rather than stay all along.
@@ -277,10 +277,10 @@ describe('CoverLightView', () => {
     });
     expect(srcs()).toEqual([]);
 
-    rerender(<CoverLightView art={art('b2')} />);
+    rerender(<CoverLight art={art('b2')} />);
     expect(srcs()).toEqual([]);
     // The next track's light comes as any.
-    rerender(<CoverLightView art={art('c3')} />);
+    rerender(<CoverLight art={art('c3')} />);
     expect(srcs()).toEqual(['/covers/station/c3-1/96.webp']);
     fireEvent.load(files()[0]!);
     expect(lights()[0]).toHaveClass('light-in');
