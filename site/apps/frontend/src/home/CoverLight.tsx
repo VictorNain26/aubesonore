@@ -17,7 +17,8 @@ const CANVAS_PIXELS = 32;
 const PAINT_FILTER = 'blur(1.5px) saturate(1.35)';
 /**
  * The canvas's part the hero shows (it is drawn at 130% × 150% from -15%, -25%: tokens.css,
- * cover-light), the words' ground.
+ * cover-light), the words' ground: the hero from 1.25% to 98.75% of its width, inside its gutters,
+ * and from its top to its foot, the header's name, line and links included.
  */
 const SHOWN = { x: 4, y: 5, width: 24, height: 22 } as const;
 /** The depth in the hero (0 at its top, 1 at its foot) of the centre of a row of SHOWN. */

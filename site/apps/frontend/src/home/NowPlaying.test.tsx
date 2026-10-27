@@ -205,11 +205,13 @@ describe('NowPlayingView', () => {
     const img = screen.getByRole('img', { name: 'Pochette de Mimoun, Mickey 3D' });
 
     // Beside the column (hero-split), the screen's height less the header and its 24 px and the
-    // horizon it rests on, or the width the column leaves; above it, the screen's width, held
-    // under the height the header's 16 px and the words need.
+    // horizon it rests on, or the width the gutter and the column's 32rem leave (the gutter is
+    // 2.5rem from 48rem, or half of what passes 100rem; 1.5rem below); above it, the screen's
+    // width, held under the height the header's 16 px and the words need.
     expect(img.getAttribute('sizes')).toBe(
       [
-        '(min-width: 40rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 32rem)',
+        '(min-width: 48rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 34.5rem, 50vw + 18rem)',
+        '(min-width: 40rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 33.5rem)',
         'min(100vw, max(13rem, 100vh - 28rem))',
       ].join(', ')
     );

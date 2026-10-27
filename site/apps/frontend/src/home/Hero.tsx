@@ -14,14 +14,14 @@ import type { Loaded } from '../lib/homeData';
 import { useHeroPlayerStore } from '../stores/heroPlayerStore';
 
 /**
- * The opening screen, « la colonne » (design/tokens.css, hero): the header on the paper, with the
- * station's line beside the name as the page's one heading; the cover on air, square, from under
- * the header to the foot of the screen on a computer, edge to edge on a phone, nothing ever
- * written over it; beside it, a column spread over the height: the track on air with Écouter, the
- * track just before, the week's most kept; the horizon, the line of the live sound, at the foot.
- * On a phone the hero ends at the horizon after « Juste avant », the week right under it. The
- * column is lit by the cover on air (CoverLight). While Écouter is on screen the player bar stays
- * away (stores/heroPlayerStore.ts).
+ * The opening screen, « la colonne » (design/tokens.css, hero): the header, with the station's
+ * line beside the name as the page's one heading; the cover on air, square, on the page's gutter
+ * from under the header to the foot of the screen on a computer, edge to edge on a phone, nothing
+ * ever written over it; beside it, a column standing on the cover's foot: the track on air with
+ * Écouter, the track just before, the week's most kept; the horizon, the line of the live sound,
+ * at the foot. On a phone the hero ends at the horizon after « Juste avant », the week right under
+ * it. The whole hero, the header with it, is lit by the cover on air (CoverLight). While Écouter
+ * is on screen the player bar stays away (stores/heroPlayerStore.ts).
  */
 export function Hero({ trends }: { trends: Loaded<TrendsResult> | null }) {
   // Écouter's block, the track's or the fallback's: watched again when one replaces the other.
