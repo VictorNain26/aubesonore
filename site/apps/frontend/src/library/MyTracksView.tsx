@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, PlayIcon } from '../design/icons';
+import { ArrowDownIcon, ArrowUpDownIcon, ArrowUpIcon, ExternalIcon } from '../design/icons';
 import { Link } from 'react-router';
 import { cn } from '@/lib/utils';
 import { getLocale } from '@/paraglide/runtime.js';
@@ -70,9 +70,9 @@ function sameRow(a: RowProps, b: RowProps): boolean {
 }
 
 // On a wide screen: cover, title, artist, date added, actions, each in its column.
-const WIDE_COLUMNS = 'md:grid-cols-[2.75rem_minmax(0,5fr)_minmax(0,4fr)_7rem_5.5rem] md:gap-x-6';
+const WIDE_COLUMNS = 'md:grid-cols-[3.5rem_minmax(0,5fr)_minmax(0,4fr)_7rem_9rem] md:gap-x-6';
 
-const ROW = `grid grid-cols-[2.75rem_minmax(0,1fr)_auto] items-center gap-x-3 ${WIDE_COLUMNS}`;
+const ROW = `grid grid-cols-[3rem_minmax(0,1fr)_auto] items-center gap-x-3 ${WIDE_COLUMNS}`;
 
 function ArtistName({ track, className }: { track: LikedTrack; className?: string }) {
   const artist = artistNameOf(track);
@@ -113,9 +113,9 @@ const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
         title={track.title}
         largeAlt={m.now_cover_alt({ title: track.title, artist: track.artist })}
         caption={m.track_caption({ title: track.title, artist: track.artist })}
-        triggerClassName="row-span-2 size-11 md:row-span-1"
-        className="size-11"
-        sizes="2.75rem"
+        triggerClassName="row-span-2 size-12 md:row-span-1 md:size-14"
+        className="size-full"
+        sizes="(min-width: 48rem) 3.5rem, 3rem"
       />
       <span className="text-row self-end truncate md:self-center">{track.title}</span>
       {/* Under the title, the artist, then from `sm` the date: a phone's line is too short for both.
@@ -129,16 +129,20 @@ const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
           {keptOn(track.createdAt, thisYear)}
         </time>
       </span>
-      <span className="col-start-3 row-span-2 row-start-1 flex items-center md:col-start-5 md:row-span-1">
+      <span className="col-start-3 row-span-2 row-start-1 flex items-center justify-end md:col-start-5 md:row-span-1">
+        {/* Written: a ▷ read as the live's Écouter. */}
         <a
           href={track.youtubeUrl}
           target="_blank"
           rel="noopener noreferrer"
           aria-label={m.library_listen({ title: track.title })}
-          title={m.library_listen({ title: track.title })}
-          className={ICON_ACTION}
+          className={cn(
+            ARTIST_LINK,
+            'text-ui inline-flex min-h-11 items-center gap-1 px-2 font-semibold underline-offset-4'
+          )}
         >
-          <PlayIcon className="size-4.5" />
+          YouTube
+          <ExternalIcon className="size-3.5" />
         </a>
         <button
           type="button"
@@ -243,21 +247,39 @@ export function MyTracksView({
       id="main"
       className="lift-in px-page flex flex-1 flex-col gap-10 pt-10 pb-16 md:gap-12 md:pt-16 md:pb-24"
     >
-      <div className="flex flex-col gap-3">
-        {total > 0 ? (
-          <span className="text-caption text-text-muted" aria-live="polite">
-            {query.trim()
-              ? m.library_count_filtered({ shown, count: total })
-              : total > 1
-                ? m.library_count_other({ count: total })
-                : m.library_count_one()}
-          </span>
+      {/* The title and what the page holds; the search beside them (under them on a phone), on
+          their foot, once there is something to search. */}
+      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between md:gap-16">
+        <div className="flex min-w-0 flex-col gap-3">
+          {/* Focusable by script only: it takes the focus a last removed row leaves. */}
+          <h1 tabIndex={-1} className="font-display text-page m-0 outline-none">
+            {m.library_title()}
+          </h1>
+          <p className="text-intro text-text-muted m-0">
+            {m.library_body()}
+            {total > 0 ? (
+              <>
+                {' · '}
+                <span aria-live="polite" className="tabular-nums">
+                  {query.trim()
+                    ? m.library_count_filtered({ shown, count: total })
+                    : total > 1
+                      ? m.library_count_other({ count: total })
+                      : m.library_count_one()}
+                </span>
+              </>
+            ) : null}
+          </p>
+        </div>
+        {state.status === 'ready' && state.total > 0 ? (
+          <SearchField
+            label={m.library_search_label()}
+            placeholder={m.library_search_placeholder()}
+            query={query}
+            onQueryChange={onQueryChange}
+            className="md:max-w-md md:shrink-0 md:basis-md"
+          />
         ) : null}
-        {/* Focusable by script only: it takes the focus a last removed row leaves. */}
-        <h1 tabIndex={-1} className="font-display text-page m-0 outline-none">
-          {m.library_title()}
-        </h1>
-        <p className="text-intro text-text-muted max-w-blurb m-0">{m.library_body()}</p>
       </div>
 
       {state.status === 'signed-out' ? (
@@ -286,14 +308,7 @@ export function MyTracksView({
           <p className="text-text-muted m-0">{m.library_empty_body()}</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-6">
-          <SearchField
-            label={m.library_search_label()}
-            placeholder={m.library_search_placeholder()}
-            query={query}
-            onQueryChange={onQueryChange}
-            className="sm:max-w-md"
-          />
+        <div className="flex flex-col">
           {state.tracks.length === 0 ? (
             <div className="wave-rule-top flex flex-col items-start gap-3 pt-8">
               <p className="text-row m-0">{m.library_search_empty({ query: query.trim() })}</p>

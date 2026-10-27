@@ -123,7 +123,14 @@ describe('MyTracksPage', () => {
     // An artist the antenna is not known to have played has no page: its name is not a link.
     expect(screen.getByText('Kavinsky')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Kavinsky' })).not.toBeInTheDocument();
-    expect(screen.getByText('3 titres gardés')).toBeInTheDocument();
+    // What the page is and how many, on one line under the title.
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === 'P' &&
+          element.textContent === 'Ce que vous avez gardé de la radio · 3 titres'
+      )
+    ).toBeInTheDocument();
     await waitFor(() => expect(document.title).toBe('Mes titres · AubeSonore'));
   });
 
@@ -186,9 +193,12 @@ describe('MyTracksPage', () => {
     signIn();
     open();
 
-    expect(
-      await screen.findByRole('link', { name: 'Écouter «\u00a0Nightcall\u00a0» sur YouTube' })
-    ).toHaveAttribute('href', 'https://www.youtube.com/results?search_query=3');
+    const youtube = await screen.findByRole('link', {
+      name: 'Écouter «\u00a0Nightcall\u00a0» sur YouTube',
+    });
+    expect(youtube).toHaveAttribute('href', 'https://www.youtube.com/results?search_query=3');
+    // Written, not a ▷ that reads as the live's Écouter.
+    expect(youtube).toHaveTextContent('YouTube');
     expect(screen.getByText('2 oct.')).toHaveAttribute('datetime', `${YEAR}-10-02T10:00:00.000Z`);
   });
 
@@ -207,7 +217,7 @@ describe('MyTracksPage', () => {
       await screen.findByRole('button', { name: 'Ne plus garder «\u00a0Nightcall\u00a0»' })
     );
     expect(screen.queryByText('Nightcall')).not.toBeInTheDocument();
-    expect(screen.getByText('2 titres gardés')).toBeInTheDocument();
+    expect(screen.getByText('2 titres')).toBeInTheDocument();
 
     await userEvent.click(await screen.findByRole('button', { name: 'Annuler' }));
     expect(screen.getByText('Nightcall')).toBeInTheDocument();

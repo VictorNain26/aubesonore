@@ -16,6 +16,7 @@ export function SearchField({
   onType,
   onFocus,
   ref,
+  large = false,
   className,
 }: {
   label: string;
@@ -27,6 +28,8 @@ export function SearchField({
   onFocus?: () => void;
   /** The search landmark around the field. */
   ref?: Ref<HTMLDivElement>;
+  /** The page's one action (Musilogy): the words larger, the field taller. */
+  large?: boolean;
   className?: string;
 }) {
   const field = useRef<HTMLInputElement>(null);
@@ -34,7 +37,12 @@ export function SearchField({
     <div ref={ref} role="search" className={cn('relative w-full', className)}>
       <label>
         <span className="sr-only">{label}</span>
-        <SearchIcon className="text-text-muted pointer-events-none absolute top-1/2 left-0 size-5 -translate-y-1/2" />
+        <SearchIcon
+          className={cn(
+            'text-text-muted pointer-events-none absolute top-1/2 left-0 -translate-y-1/2',
+            large ? 'size-6' : 'size-5'
+          )}
+        />
         <input
           ref={field}
           type="search"
@@ -50,7 +58,8 @@ export function SearchField({
           placeholder={placeholder}
           autoComplete="off"
           className={cn(
-            'text-row border-accent ease-out-quart placeholder:text-text-faint autofill-paper h-14 w-full rounded-none border-0 border-b bg-transparent pl-8 font-normal transition-[border-width,background-color] duration-150 hover:border-b-2 focus-visible:border-b-2 focus-visible:outline-none [&::-webkit-search-cancel-button]:hidden',
+            'border-accent ease-out-quart placeholder:text-text-faint autofill-paper w-full rounded-none border-0 border-b bg-transparent font-normal transition-[border-width,background-color] duration-150 hover:border-b-2 focus-visible:border-b-2 focus-visible:outline-none [&::-webkit-search-cancel-button]:hidden',
+            large ? 'text-headline h-16 pl-10' : 'text-row h-14 pl-8',
             // The clear button's room is kept only while it shows: a phone needs it for the placeholder.
             query ? 'pr-12' : 'pr-0'
           )}
@@ -65,7 +74,7 @@ export function SearchField({
             field.current?.focus();
           }}
           aria-label={m.library_search_clear()}
-          className="ease-out-quart focus-visible:outline-accent absolute top-1.5 right-0 flex size-11 items-center justify-center transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90"
+          className="ease-out-quart focus-visible:outline-accent absolute top-1/2 right-0 flex size-11 -translate-y-1/2 items-center justify-center transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90"
         >
           <CloseIcon className="size-4.5" />
         </button>

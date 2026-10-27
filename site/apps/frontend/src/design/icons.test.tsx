@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { CloseIcon, PlayIcon, SearchIcon } from './icons';
+import { CloseIcon, SearchIcon } from './icons';
 
 // A decorative icon is hidden from the accessibility tree, so the tests read its wrapper's markup.
 const markup = (testId: string) => screen.getByTestId(testId).innerHTML;
@@ -28,16 +28,5 @@ describe('icons', () => {
     const icon = screen.getByRole('img', { name: 'Chercher' });
     expect(icon).toHaveAttribute('stroke', 'currentColor');
     expect(icon).toHaveClass('size-4');
-  });
-});
-
-describe('PlayIcon', () => {
-  it('draws Écouter sur YouTube as a triangle in the line, as the mockup does, not filled', () => {
-    render(
-      <span data-testid="play">
-        <PlayIcon />
-      </span>
-    );
-    expect(markup('play')).toContain('<path d="M6 4 L16 10 L6 16 Z"></path>');
   });
 });
