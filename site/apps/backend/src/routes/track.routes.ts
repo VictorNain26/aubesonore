@@ -59,7 +59,6 @@ export const trackRoutes = new Elysia({ prefix: '/api/track' })
       artist: data.artist,
       youtubeUrl: data.youtubeUrl,
       ...(data.album !== undefined && { album: data.album }),
-      ...(data.artworkUrl !== undefined && { artworkUrl: data.artworkUrl }),
       ...(data.isrc !== undefined && { isrc: data.isrc }),
     };
     const { status, ...answer } = await trackService.likeTrack({ user, body: requestBody });

@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'crypto';
+import { randomUUID } from 'crypto';
 import { readFileSync } from 'fs';
 import { access, mkdir, readFile, rename, rm, writeFile } from 'fs/promises';
 import { dirname, join } from 'path';
@@ -17,9 +17,10 @@ import { createSingleFlight } from '../lib/singleFlight';
  *   the first time the large view opens. The legal page credits the archive (docs/vision.md §2.5).
  * - `station/<art id>/<96|192|384|768>.webp`: the antenna's art of a track, from our own AzuraCast,
  *   made when the track starts (antennaWatcher) so the hero never waits.
- * - `kept/<sha256>/<96|192|384|768>.webp`: a kept track's own copy of that art, which outlives
- *   the track's stay on the antenna. Its original bytes stay in `originals/<sha256>`, out of
- *   nginx's reach, so any size can be made again.
+ * - `kept/<sha256>/<96|192|384|768>.webp`: the copies of that art kept tracks were given until a
+ *   kept track's cover became its record's (keptTrackCovers.ts); none is made any more, those
+ *   made stay served. Their original bytes stay in `originals/<sha256>`, out of nginx's reach, so
+ *   any size can be made again.
  * WebP at quality 80, never enlarged: 250 + 500 weigh about 37 KB a record (measured 2026-10-27).
  * A cover taken down on request is on the block list (coverBlocklist.txt): never served, fetched
  * nor stored again, its files removed at boot.
@@ -113,13 +114,9 @@ const MAX_REDIRECTS = 5;
 // A slow archive.org node gives way to the retry well before Cloudflare's 100 s.
 const FETCH_TIMEOUT_MS = 15_000;
 const MAX_UPSTREAM_BYTES = 10 * 1024 * 1024;
-// The art a kept track copies, as the covers table took it.
-const MAX_KEPT_BYTES = 2 * 1024 * 1024;
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const MISSING_FOR_MS = 24 * 60 * 60 * 1000;
 const WEBP_QUALITY = 80;
-// Only the art path is taken from a liked track: the bytes always come from our own AzuraCast.
-const ART_PATH = /^\/api\/station\/[\w-]+\/art\/[\w.-]+$/;
 
 export function createCoverStore(options: CoverStoreOptions) {
   const { root, userAgent, azuracastBaseUrl, stationId, publicBaseUrl } = options;
@@ -231,10 +228,7 @@ export function createCoverStore(options: CoverStoreOptions) {
   }
 
   /** Our own AzuraCast's art: a redirect is its generic image, which is no cover. */
-  async function fetchStationArt(
-    path: string,
-    limit = MAX_UPSTREAM_BYTES
-  ): Promise<Buffer | 'missing' | 'failed'> {
+  async function fetchStationArt(path: string): Promise<Buffer | 'missing' | 'failed'> {
     try {
       const response = await fetchImpl(`${azuracastBaseUrl}${path}`, {
         redirect: 'manual',
@@ -243,7 +237,7 @@ export function createCoverStore(options: CoverStoreOptions) {
       if ((response.status >= 300 && response.status < 400) || response.status === 404)
         return 'missing';
       if (response.status !== 200) return 'failed';
-      return (await readImage(response, limit)) ?? 'failed';
+      return (await readImage(response, MAX_UPSTREAM_BYTES)) ?? 'failed';
     } catch (error) {
       logger.warn('coverStore.station_failed', { path, message: (error as Error).message });
       return 'failed';
@@ -342,41 +336,6 @@ export function createCoverStore(options: CoverStoreOptions) {
       if (!STATION_ART_ID.test(artId) || isBlocked('station', artId)) return;
       const key = { kind: 'station', id: artId, size: 768 } as const;
       if (!(await exists(fileOf(key)))) await makeCover(key);
-    },
-
-    /**
-     * A kept track's own copy of the antenna's art, which dies with its media: the original kept
-     * by the SHA-256 of its bytes, its sizes made. The store's address; `blocked` when those bytes
-     * are a cover taken down, which the track must not show; null when the URL is not our
-     * AzuraCast's art or the copy failed.
-     */
-    async keepStationArt(artworkUrl: string): Promise<{ url: string } | 'blocked' | null> {
-      let path: string;
-      try {
-        path = new URL(artworkUrl).pathname;
-      } catch {
-        return null;
-      }
-      if (!ART_PATH.test(path)) return null;
-      const original = await fetchStationArt(path, MAX_KEPT_BYTES);
-      if (!Buffer.isBuffer(original)) {
-        logger.warn('cover.not_kept', { path, outcome: original });
-        return null;
-      }
-      const sha = createHash('sha256').update(original).digest('hex');
-      if (isBlocked('kept', sha)) return 'blocked';
-      try {
-        await store(original, STATION_SIZES, (size) => ({
-          kind: 'kept',
-          id: sha,
-          size: size as StationSize,
-        }));
-        await writeWhole(originalOf(sha), original);
-      } catch (error) {
-        logger.warn('cover.not_kept', { path, message: (error as Error).message });
-        return null;
-      }
-      return { url: this.keptUrl(sha) };
     },
 
     /**

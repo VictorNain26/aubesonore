@@ -28,6 +28,7 @@ import { startDiscoveredArtists } from './services/discoveredArtists';
 import { coverStore } from './services/coverStore';
 import { startCoverFill } from './services/coverFill';
 import { moveKeptCovers } from './services/keptCovers';
+import { startKeptCoverFill } from './services/keptTrackCovers';
 
 // The kept tracks' covers leave the covers table for the cover store before migration 0023 drops
 // it; a cover not moved keeps its row, and the migration then stops the boot (keptCovers.ts).
@@ -92,6 +93,7 @@ if (typeof purgeTimer === 'object' && purgeTimer !== null && 'unref' in purgeTim
 if (env.RECORD_ANTENNA) {
   startAntennaWatcher();
   startCoverFill();
+  startKeptCoverFill();
 }
 startYouTubeLinks();
 startDiscoveredArtists();

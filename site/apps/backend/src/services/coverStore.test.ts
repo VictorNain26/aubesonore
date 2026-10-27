@@ -281,40 +281,6 @@ describe("the station's covers", () => {
 });
 
 describe('a kept track’s cover', () => {
-  const ART = `https://radio.aubesonore.fr/api/station/aubesonore/art/${ART_ID}.jpg`;
-
-  it("copies the station's art, keeps its bytes and answers the store's address", async () => {
-    answers.set(`http://azuracast.test/api/station/aubesonore/art/${ART_ID}.jpg`, image(jpeg1000));
-    const sha = createHash('sha256').update(jpeg1000).digest('hex');
-
-    const url = await store.keepStationArt(ART);
-
-    expect(url).toEqual({ url: `https://aubesonore.fr/covers/kept/${sha}/768.webp` });
-    expect((await readFile(join(root, 'originals', sha))).equals(jpeg1000)).toBe(true);
-    expect(await sizeOf(join(root, 'covers/kept', sha, '96.webp'))).toMatchObject({ width: 96 });
-  });
-
-  it('never fetches what is not AzuraCast art', async () => {
-    expect(
-      await store.keepStationArt('https://is1-ssl.mzstatic.com/image/thumb/a/600x600bb.jpg')
-    ).toBeNull();
-    expect(await store.keepStationArt('not a url')).toBeNull();
-    expect(seen).toEqual([]);
-  });
-
-  it('keeps nothing AzuraCast does not answer with an image under 2 MB', async () => {
-    const at = `http://azuracast.test/api/station/aubesonore/art/${ART_ID}.jpg`;
-    answers.set(at, redirect('/static/generic_song.jpg', 302));
-    expect(await store.keepStationArt(ART)).toBeNull();
-
-    answers.set(at, image(Buffer.alloc(2 * 1024 * 1024 + 1), 'image/png'));
-    expect(await store.keepStationArt(ART)).toBeNull();
-
-    answers.set(at, image(Buffer.from('not an image')));
-    expect(await store.keepStationArt(ART)).toBeNull();
-    expect(await readdir(root)).toEqual([]);
-  });
-
   it('remakes a size from the kept original', async () => {
     const sha = createHash('sha256').update(jpeg1000).digest('hex');
     await mkdir(join(root, 'originals'), { recursive: true });
@@ -455,17 +421,6 @@ describe('a blocked cover', () => {
     await blocked.prepareStation(ART_ID);
 
     expect(seen).toEqual([]);
-    expect(await readdir(root)).toEqual([]);
-  });
-
-  it('is not copied for a kept track, which is told it is blocked', async () => {
-    answers.set(ART, image(jpeg1000));
-
-    expect(
-      await blocked.keepStationArt(
-        `https://radio.aubesonore.fr/api/station/aubesonore/art/${ART_ID}.jpg`
-      )
-    ).toBe('blocked');
     expect(await readdir(root)).toEqual([]);
   });
 

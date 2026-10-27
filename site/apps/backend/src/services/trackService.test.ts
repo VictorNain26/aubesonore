@@ -67,13 +67,11 @@ const fakeDb = {
 void mock.module('../db/index', () => ({ db: fakeDb, schema: realSchema }));
 
 // spyOn, not mock.module: Bun leaks a mocked module into the other test files
-// even with --isolate, and trackLinksService.test needs the real one.
-const trackLinks = await import('./trackLinksService');
-const findItunesCoverMock = spyOn(trackLinks, 'findItunesCover').mockResolvedValue(null);
+// even with --isolate, and keptTrackCovers.test needs the real one.
+const keptTrackCovers = await import('./keptTrackCovers');
+const coverKeptTrackMock = spyOn(keptTrackCovers, 'coverKeptTrack').mockResolvedValue();
 const radioPlays = await import('./radioPlayService');
 const findPlayMock = spyOn(radioPlays, 'findPlay').mockResolvedValue(null);
-const { coverStore } = await import('./coverStore');
-const keepStationArtMock = spyOn(coverStore, 'keepStationArt').mockResolvedValue(null);
 const resolver = await import('./artistResolver');
 const resolveArtistMock = spyOn(resolver, 'resolveArtist').mockResolvedValue({
   id: 'artist-1',
@@ -81,7 +79,9 @@ const resolveArtistMock = spyOn(resolver, 'resolveArtist').mockResolvedValue({
 });
 
 const originalFetch = globalThis.fetch;
-const fetchMock = mock((): Promise<Response> => Promise.reject(new Error('no network in tests')));
+const fetchMock = mock(
+  (_input: unknown): Promise<Response> => Promise.reject(new Error('no network in tests'))
+);
 globalThis.fetch = fetchMock as unknown as typeof fetch;
 
 const { likeTrack, linkKeptTrack } = await import('./trackService');
@@ -105,108 +105,90 @@ async function flushBackgroundWork(): Promise<void> {
 
 beforeEach(() => {
   rows = [];
-  findItunesCoverMock.mockClear();
+  coverKeptTrackMock.mockClear();
+  findPlayMock.mockClear();
   fetchMock.mockClear();
 });
 
 afterAll(() => {
-  findItunesCoverMock.mockRestore();
+  coverKeptTrackMock.mockRestore();
   findPlayMock.mockRestore();
-  keepStationArtMock.mockRestore();
   resolveArtistMock.mockRestore();
   globalThis.fetch = originalFetch;
 });
 
-describe('likeTrack → background enrichment', () => {
-  it('swaps the AzuraCast artwork for our own copy when iTunes has no verified cover', async () => {
-    const art = 'https://radio.aubesonore.fr/api/station/aubesonore/art/abc-1790856695.jpg';
-    const kept = `https://aubesonore.fr/covers/kept/${'c'.repeat(64)}/768.webp`;
-    findItunesCoverMock.mockResolvedValueOnce(null);
-    keepStationArtMock.mockResolvedValueOnce({ url: kept });
+describe('likeTrack → its cover', () => {
+  it("asks no platform for a cover: the track starts without one, Apple's never stored", async () => {
+    // Were Apple asked, it would answer its art: the like must never reach it.
+    fetchMock.mockImplementation((input: unknown) =>
+      String(input).startsWith('https://itunes.apple.com/')
+        ? Promise.resolve(
+            Response.json({
+              results: [
+                {
+                  trackViewUrl: 'https://music.apple.com/fr/song/1',
+                  trackName: 'Song',
+                  artistName: 'Artist',
+                  artworkUrl100: 'https://is1-ssl.mzstatic.com/image/thumb/a/100x100bb.jpg',
+                },
+              ],
+            })
+          )
+        : Promise.reject(new Error('no network in tests'))
+    );
 
-    await likeTrack({
+    const answer = await likeTrack({
       user: fakeUser,
       body: {
-        title: 'Unknown Song',
-        artist: 'Emerging Artist',
-        youtubeUrl: 'https://youtube.example.com/watch?v=abc',
-        artworkUrl: art,
-      },
-    });
-    await flushBackgroundWork();
-
-    expect(keepStationArtMock).toHaveBeenCalledWith(art);
-    expect(rows[0]?.artworkUrl).toBe(kept);
-  });
-
-  it('keeps the AzuraCast artwork when neither iTunes nor the copy succeeds', async () => {
-    findItunesCoverMock.mockResolvedValueOnce(null);
-
-    await likeTrack({
-      user: fakeUser,
-      body: {
-        title: 'Unknown Song',
-        artist: 'Emerging Artist',
-        youtubeUrl: 'https://youtube.example.com/watch?v=abc',
-        artworkUrl: 'https://azuracast.example.com/art/abc.jpg',
-      },
-    });
-    await flushBackgroundWork();
-
-    expect(rows[0]?.artworkUrl).toBe('https://azuracast.example.com/art/abc.jpg');
-  });
-
-  it('stores no artwork when the AzuraCast art is a blocked cover', async () => {
-    const art = 'https://radio.aubesonore.fr/api/station/aubesonore/art/abc-1790856695.jpg';
-    findItunesCoverMock.mockResolvedValueOnce(null);
-    keepStationArtMock.mockResolvedValueOnce('blocked');
-
-    await likeTrack({
-      user: fakeUser,
-      body: {
-        title: 'Taken Down',
+        title: 'Song',
         artist: 'Artist',
-        youtubeUrl: 'https://youtube.example.com/watch?v=jkl',
-        artworkUrl: art,
+        youtubeUrl: 'https://youtube.example.com/watch?v=a',
       },
     });
     await flushBackgroundWork();
 
+    expect(answer.track?.artworkUrl).toBeNull();
     expect(rows[0]?.artworkUrl).toBeNull();
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).not.toContainEqual(
+      expect.stringContaining('itunes.apple.com')
+    );
+    fetchMock.mockImplementation(() => Promise.reject(new Error('no network in tests')));
   });
 
-  it('uses the verified iTunes artwork directly when there is one', async () => {
-    findItunesCoverMock.mockResolvedValueOnce('https://apple-cdn.example.com/art/hd.jpg');
+  it('looks the cover up once the track is tied to its play, whose ISRC it reads', async () => {
+    findPlayMock.mockResolvedValueOnce({ title: 'F Major', isrc: 'DEN271800071' });
 
     await likeTrack({
       user: fakeUser,
       body: {
-        title: 'Known Song',
-        artist: 'Known Artist',
-        youtubeUrl: 'https://youtube.example.com/watch?v=def',
-        artworkUrl: 'https://azuracast.example.com/art/def.jpg',
+        title: 'F Major',
+        artist: 'Hania Rani',
+        youtubeUrl: 'https://youtube.example.com/watch?v=b',
       },
     });
     await flushBackgroundWork();
 
-    expect(rows[0]?.artworkUrl).toBe('https://apple-cdn.example.com/art/hd.jpg');
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(coverKeptTrackMock.mock.calls).toEqual([[rows[0]!.id]]);
+    expect(rows[0]?.isrc).toBe('DEN271800071');
+    expect(findPlayMock.mock.invocationCallOrder[0]!).toBeLessThan(
+      coverKeptTrackMock.mock.invocationCallOrder[0]!
+    );
   });
 
-  it('leaves artwork_url untouched when there is no AzuraCast art and no iTunes cover', async () => {
-    findItunesCoverMock.mockResolvedValueOnce(null);
+  it('still looks the cover up when tying the track to its play failed', async () => {
+    findPlayMock.mockRejectedValueOnce(new Error('db down'));
 
     await likeTrack({
       user: fakeUser,
       body: {
         title: 'Song',
         artist: 'Artist',
-        youtubeUrl: 'https://youtube.example.com/watch?v=ghi',
+        youtubeUrl: 'https://youtube.example.com/watch?v=c',
       },
     });
     await flushBackgroundWork();
 
-    expect(rows[0]?.artworkUrl).toBeNull();
+    expect(coverKeptTrackMock).toHaveBeenCalledTimes(1);
   });
 });
 

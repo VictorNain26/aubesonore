@@ -1,14 +1,5 @@
 // Covers whose host serves them at the size their URL names, so a cover shown small costs a small
-// file. Measured on 2026-10-05:
-// - Apple's artwork CDN (`…/600x600bb.jpg`): all 85 Apple covers kept in production load at
-//   160 px, 81 exactly 160×160 and 4 non-square originals within a pixel or a crop, at 5 to 12
-//   times fewer bytes. It serves the same cover as WebP when the URL ends in `.webp` instead of
-//   `.jpg`: the 10 covers of « Les plus gardés » at 160, 320, 480, 600 and 1000 px all answered
-//   image/webp, 27 to 70 % lighter (480 px: 672 KB of JPEG, 228 KB of WebP for the ten,
-//   2026-10-24). Every browser the site supports decodes WebP.
-// - Deezer's image CDN (`…/1000x1000-000000-80-0-0.jpg`), artist portraits and album covers: 17 of
-//   18 portraits of artists the antenna played and 4 of 4 album covers load at 320×320, a fifth
-//   of the bytes; the 18th redirects at its own size as well.
+// file:
 // - The station's covers: AzuraCast serves one 1000 px art (~95 KB); this site's cover store keeps
 //   it as WebP at 96, 192, 384 and 768 px (/covers/station/, made when the track starts). The
 //   original stays the largest choice, for the now-playing cover on dense screens.
@@ -19,11 +10,10 @@
 //   site's cover store as WebP at /covers/caa/<id>/<size>.webp, the archive's three sizes, 250, 500
 //   and 1200 px. Asked directly, a thumbnail took 2.6 s at the median behind two redirects, and 1
 //   in 15 failed (2026-10-12).
-// - A kept track's own copy of the station's art (/covers/kept/<sha256>/<size>.webp), from the
-//   cover store at the station's sizes.
+//   A kept track's cover is its record's, from the archive too.
+// - The copies of the station's art kept tracks were given before (/covers/kept/<sha256>/), from
+//   the cover store at the station's sizes.
 // Other hosts keep their URL.
-const APPLE_SIZED =
-  /^(https:\/\/is\d+-ssl\.mzstatic\.com\/image\/thumb\/.+)\/(\d+x\d+)bb\.(?:jpg|webp)$/;
 // Only this station's art: the cover store fetches it from our own AzuraCast.
 const STATION_ART =
   /^https:\/\/radio\.aubesonore\.fr\/api\/station\/aubesonore\/art\/([0-9a-f]+-\d+)\.jpg$/;
@@ -39,15 +29,10 @@ const CAA =
 const CAA_WIDTHS = [250, 500, 1200] as const;
 // The store's address of a kept track's cover, on whichever origin the backend wrote it with.
 const KEPT = /^(?:https?:\/\/[^/]+)?\/covers\/kept\/([0-9a-f]{64})\/(96|192|384|768)\.webp$/;
-const DEEZER_SIZED =
-  /^(https:\/\/cdn-images\.dzcdn\.net\/images\/(?:artist|cover)\/[0-9a-f]+)\/\d+x\d+(-[^/]+\.jpg)$/;
 
 interface Sizer {
   at: (pixels: number) => string;
-  /**
-   * The sizes the host keeps ready. Another size is made on demand and can weigh more: Deezer's
-   * 960 px portrait of Cassius is 46 KB where its 1000 px one is 26 KB (2026-10-05).
-   */
+  /** The sizes the host keeps ready. */
   widths: readonly number[];
 }
 
@@ -55,21 +40,6 @@ const caaAt = (releaseGroup: string, size: number | string) =>
   `/covers/caa/${releaseGroup}/${size}.webp`;
 
 function sizer(url: string): Sizer | null {
-  const apple = APPLE_SIZED.exec(url);
-  if (apple) {
-    return {
-      at: (pixels) => `${apple[1]}/${pixels}x${pixels}bb.webp`,
-      widths: [160, 320, 480, 600],
-    };
-  }
-  const deezer = DEEZER_SIZED.exec(url);
-  if (deezer) {
-    // The API's picture_medium, _big and _xl.
-    return {
-      at: (pixels) => `${deezer[1]}/${pixels}x${pixels}${deezer[2]}`,
-      widths: [250, 500, 1000],
-    };
-  }
   const commons = COMMONS_THUMB.exec(url);
   if (commons) {
     return {
@@ -110,16 +80,14 @@ function sizer(url: string): Sizer | null {
 
 /**
  * The address a cover is fetched at, at the size its URL names: the Cover Art Archive's and a
- * kept track's from this site's cover store (the archive's largest, 1200, when it names none),
- * Apple's as WebP; any other as given.
+ * kept track's from this site's cover store (the archive's largest, 1200, when it names none);
+ * any other as given.
  */
 export function artworkSrc(url: string): string {
   const caa = CAA.exec(url);
   if (caa) return caaAt(caa[1]!, caa[2] ?? '1200');
   const kept = KEPT.exec(url);
-  if (kept) return `/covers/kept/${kept[1]}/${kept[2]}.webp`;
-  const apple = APPLE_SIZED.exec(url);
-  return apple ? `${apple[1]}/${apple[2]}bb.webp` : url;
+  return kept ? `/covers/kept/${kept[1]}/${kept[2]}.webp` : url;
 }
 
 /** The cover at `pixels` on its longer side where its host can serve that size, else as given. */

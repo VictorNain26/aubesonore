@@ -24,7 +24,6 @@ const ITUNES = {
       trackViewUrl: 'https://music.apple.com/fr/song/in-flight/1',
       trackName: 'In Flight',
       artistName: 'Sunflower Bean',
-      artworkUrl100: 'https://is1-ssl.mzstatic.com/image/thumb/a/100x100bb.jpg',
     },
   ],
 };
@@ -51,7 +50,7 @@ function platforms(): void {
 }
 
 describe('findTrackLinks', () => {
-  it('links the track on Apple Music and Deezer, with its cover', async () => {
+  it("links the track on Apple Music and Deezer, never with Apple's cover", async () => {
     platforms();
 
     const links = await findTrackLinks('In Flight', 'Sunflower Bean');
@@ -61,7 +60,6 @@ describe('findTrackLinks', () => {
         appleMusic: 'https://music.apple.com/fr/song/in-flight/1',
         deezer: 'https://www.deezer.com/track/1616626132',
       },
-      artworkUrl: 'https://is1-ssl.mzstatic.com/image/thumb/a/600x600bb.jpg',
     });
   });
 

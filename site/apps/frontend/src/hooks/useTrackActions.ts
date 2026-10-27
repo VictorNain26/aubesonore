@@ -15,9 +15,8 @@ interface UseTrackActions {
 }
 
 export function useTrackActions(): UseTrackActions {
-  const { artUrl, title, artist } = useNowPlayingStore(
+  const { title, artist } = useNowPlayingStore(
     useShallow((s) => ({
-      artUrl: s.data?.now_playing?.song.art,
       title: s.data?.now_playing?.song.title,
       artist: s.data?.now_playing?.song.artist,
     }))
@@ -30,9 +29,9 @@ export function useTrackActions(): UseTrackActions {
 
   const handleToggleLike = useCallback(() => {
     if (title && artist) {
-      void toggleLike(title, artist, artUrl);
+      void toggleLike(title, artist);
     }
-  }, [title, artist, artUrl, toggleLike]);
+  }, [title, artist, toggleLike]);
 
   const handleShare = useCallback(() => {
     if (!title || !artist) return;

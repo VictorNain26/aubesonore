@@ -3,8 +3,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import type { User, LikedTrack } from '../db/schema';
 import type { KeptArtistPage } from '@aubesonore/shared-types/client';
-import { findItunesCover } from './trackLinksService';
-import { coverStore } from './coverStore';
+import { coverKeptTrack } from './keptTrackCovers';
 import { resolveArtist } from './artistResolver';
 import { mbidSlug, ownSlug, pageSlug } from './artistSlugs';
 import { findPlay } from './radioPlayService';
@@ -24,7 +23,6 @@ interface LikeTrackBody {
   title: string;
   artist: string;
   album?: string;
-  artworkUrl?: string;
   youtubeUrl: string;
   isrc?: string;
 }
@@ -48,7 +46,7 @@ export async function likeTrack({
   user: User;
   body: LikeTrackBody;
 }): Promise<ServiceResponse> {
-  const { title, artist, album, artworkUrl, youtubeUrl, isrc } = body;
+  const { title, artist, album, youtubeUrl, isrc } = body;
   const trackId = randomUUID();
 
   // Atomic insert relying on the unique index (user_id, title, artist).
@@ -61,7 +59,6 @@ export async function likeTrack({
       title,
       artist,
       album: album || null,
-      artworkUrl: artworkUrl || null,
       youtubeUrl,
       isrc: isrc || null,
     })
@@ -74,12 +71,15 @@ export async function likeTrack({
     return { status: 400, error: 'Morceau déjà liké' };
   }
 
-  // Background enrichment: the verified cover.
-  void enrichTrackInBackground(trackId, title, artist).catch((err: unknown) => {
-    logger.warn('track.enrich_failed', { trackId, message: (err as Error).message });
-  });
-  void linkKeptTrack(trackId, title, artist).catch((err: unknown) => {
-    logger.warn('keptTrack.link_failed', { trackId, message: (err as Error).message });
+  // In the background: the play it was kept from, then the cover of its record, found through
+  // that play's ISRC when it has one (keptTrackCovers.ts). Until then, and without one, no cover.
+  void (async () => {
+    await linkKeptTrack(trackId, title, artist).catch((err: unknown) => {
+      logger.warn('keptTrack.link_failed', { trackId, message: (err as Error).message });
+    });
+    await coverKeptTrack(trackId);
+  })().catch((err: unknown) => {
+    logger.warn('keptTrack.cover_failed', { trackId, message: (err as Error).message });
   });
   void resolveSong(title, artist).catch((err: unknown) => {
     logger.warn('youtube.resolve_failed', { trackId, message: (err as Error).message });
@@ -103,36 +103,6 @@ export async function linkKeptTrack(trackId: string, title: string, artist: stri
   await db
     .update(schema.likedTracks)
     .set({ artistId: resolved?.id ?? null, ...(play.isrc ? { isrc: play.isrc } : {}) })
-    .where(eq(schema.likedTracks.id, trackId));
-}
-
-async function enrichTrackInBackground(
-  trackId: string,
-  title: string,
-  artist: string
-): Promise<void> {
-  const [track] = await db
-    .select({ artworkUrl: schema.likedTracks.artworkUrl })
-    .from(schema.likedTracks)
-    .where(eq(schema.likedTracks.id, trackId))
-    .limit(1);
-
-  // The artist-verified iTunes cover, else our own copy of the AzuraCast art, which dies with its
-  // media: kept in the cover store.
-  const verifiedArt = await findItunesCover(title, artist);
-  const existingAzuracastUrl = track?.artworkUrl ?? null;
-  const keptArt =
-    !verifiedArt && existingAzuracastUrl
-      ? await coverStore.keepStationArt(existingAzuracastUrl)
-      : null;
-  // A cover taken down is never shown: the track keeps no artwork, its glyph stands in.
-  const nextArt =
-    keptArt === 'blocked' ? null : (verifiedArt ?? keptArt?.url ?? existingAzuracastUrl ?? null);
-  if (!nextArt && keptArt !== 'blocked') return;
-
-  await db
-    .update(schema.likedTracks)
-    .set({ artworkUrl: nextArt })
     .where(eq(schema.likedTracks.id, trackId));
 }
 

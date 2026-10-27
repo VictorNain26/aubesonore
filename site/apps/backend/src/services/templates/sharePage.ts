@@ -1,4 +1,5 @@
 import {
+  coverArtUrl,
   PLATFORM_NAMES,
   type PlatformLinks,
   type SiteLocale,
@@ -52,6 +53,8 @@ interface SharePageInput {
   /** Canonical URL of this share page, used for og:url. */
   shareUrl: string;
   links: TrackLinks | null;
+  /** The record whose Cover Art Archive cover a kept copy of the track has. */
+  releaseGroup: string | null;
   locale?: SiteLocale;
 }
 
@@ -63,21 +66,23 @@ export function renderSharePage({
   artist,
   shareUrl,
   links,
+  releaseGroup,
   locale = 'fr',
 }: SharePageInput): string {
   const copy = COPY[locale];
-  const artworkUrl = links?.artworkUrl?.startsWith('https://') ? links.artworkUrl : undefined;
   const platformLinks = links
     ? (Object.entries(links.platformLinks) as Array<[keyof PlatformLinks, string]>).filter(
         ([, url]) => url.startsWith('https://')
       )
     : [];
 
-  const ogImage = artworkUrl
-    ? `\n    <meta property="og:image" content="${escapeHtml(artworkUrl)}" />`
+  // Link previews take the archive's JPEG, like the artist page's og:image; the page shows the
+  // cover store's WebP.
+  const ogImage = releaseGroup
+    ? `\n    <meta property="og:image" content="${escapeHtml(coverArtUrl(releaseGroup, 500))}" />`
     : '';
-  const cover = artworkUrl
-    ? `\n      <img class="cover" src="${escapeHtml(artworkUrl)}" alt="${escapeHtml(copy.coverAlt(title))}" width="240" height="240" />`
+  const cover = releaseGroup
+    ? `\n      <img class="cover" src="${escapeHtml(`${env.FRONTEND_BASE_URL}/covers/caa/${releaseGroup}/500.webp`)}" alt="${escapeHtml(copy.coverAlt(title))}" width="240" height="240" />`
     : '';
   const platforms =
     platformLinks.length > 0
@@ -104,7 +109,7 @@ export function renderSharePage({
     <meta property="og:url" content="${escapeHtml(shareUrl)}" />
     <meta property="og:site_name" content="AubeSonore" />
     <meta property="og:locale" content="${locale === 'en' ? 'en_GB' : 'fr_FR'}" />
-    <meta name="twitter:card" content="${artworkUrl ? 'summary_large_image' : 'summary'}" />${ogImage}
+    <meta name="twitter:card" content="${releaseGroup ? 'summary_large_image' : 'summary'}" />${ogImage}
     <style>
       * { margin: 0; box-sizing: border-box; }
       body {

@@ -1,11 +1,16 @@
-import { describe, it, expect, afterEach } from 'bun:test';
+import { describe, it, expect, afterEach, afterAll, spyOn } from 'bun:test';
 import { Elysia } from 'elysia';
 import { securityHeaders } from '../lib/security/securityHeaders';
 import { artistRoutes } from './artist.routes';
+import { env } from '../config/env';
 
 const { shareRoutes } = await import('./share.routes');
 const { linksCache, itunesCache } = await import('../services/trackLinksService');
 const { deezerCache, __resetDeezerCircuit } = await import('../services/deezerService');
+// The cover a kept copy of the track has: spied, the database is not there.
+const keptTrackCovers = await import('../services/keptTrackCovers');
+const storedReleaseGroupMock = spyOn(keptTrackCovers, 'storedReleaseGroup').mockResolvedValue(null);
+const RELEASE_GROUP = '37b5994e-d560-480d-b013-e84d9a427b2a';
 
 // Composed like index.ts so the global securityHeaders hook runs: the share
 // page must keep its own CSP while JSON routes keep `default-src 'none'`.
@@ -21,6 +26,12 @@ afterEach(() => {
   itunesCache.dispose();
   deezerCache.dispose();
   __resetDeezerCircuit();
+  storedReleaseGroupMock.mockReset();
+  storedReleaseGroupMock.mockResolvedValue(null);
+});
+
+afterAll(() => {
+  storedReleaseGroupMock.mockRestore();
 });
 
 function mockPlatforms(): void {
@@ -74,8 +85,37 @@ describe('GET /t', () => {
     expect(html).toContain('<h1>Balance Act</h1>');
     expect(html).toContain('Psychic Lines');
     expect(html).toContain('content="« Balance Act », Psychic Lines"');
-    expect(html).toContain('https://is1-ssl.mzstatic.com/image/thumb/600x600bb.jpg');
     expect(html).toContain('Écouter sur Deezer');
+  });
+
+  it("never shows Apple's art, even when iTunes answers some", async () => {
+    mockPlatforms();
+
+    const html = await (
+      await app.handle(new Request('http://localhost/t?title=Balance%20Act&artist=Psychic%20Lines'))
+    ).text();
+
+    expect(html).not.toContain('mzstatic');
+    expect(html).not.toContain('<img');
+    expect(html).not.toContain('og:image');
+  });
+
+  it("shows the Cover Art Archive cover a kept copy of the track has: the store's WebP, the archive's JPEG for link previews", async () => {
+    mockPlatforms();
+    storedReleaseGroupMock.mockResolvedValueOnce(RELEASE_GROUP);
+
+    const html = await (
+      await app.handle(new Request('http://localhost/t?title=Balance%20Act&artist=Psychic%20Lines'))
+    ).text();
+
+    expect(storedReleaseGroupMock).toHaveBeenCalledWith('Balance Act', 'Psychic Lines');
+    expect(html).toContain(
+      `<meta property="og:image" content="https://coverartarchive.org/release-group/${RELEASE_GROUP}/front-500" />`
+    );
+    expect(html).toContain(
+      `<img class="cover" src="${env.FRONTEND_BASE_URL}/covers/caa/${RELEASE_GROUP}/500.webp"`
+    );
+    expect(html).toContain('<meta name="twitter:card" content="summary_large_image" />');
   });
 
   it('escapes HTML in title and artist', async () => {
@@ -92,7 +132,8 @@ describe('GET /t', () => {
     expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
   });
 
-  it('still renders the page when the upstream fetch rejects', async () => {
+  it('still renders the page when the upstream fetch and the database fail', async () => {
+    storedReleaseGroupMock.mockRejectedValueOnce(new Error('db down'));
     globalThis.fetch = (() => {
       throw new Error('connect ECONNREFUSED');
     }) as unknown as typeof fetch;

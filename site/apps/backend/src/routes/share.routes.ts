@@ -2,13 +2,14 @@ import { Elysia } from 'elysia';
 import { checkRate, getClientIp, tooManyRequests } from '../lib/rateLimit';
 import { logger } from '../lib/logger';
 import { findTrackLinks } from '../services/trackLinksService';
+import { storedReleaseGroup } from '../services/keptTrackCovers';
 import { renderSharePage } from '../services/templates/sharePage';
 import { requestLocale } from '../lib/locale';
 
 const SHARE_LIMIT = 30;
 const SHARE_WINDOW_MS = 60_000;
 
-// The page ships an inline <style> and remote https covers but no JS.
+// The page ships an inline <style> and an https cover but no JS.
 const SHARE_PAGE_CSP = "default-src 'self'; img-src https:; style-src 'unsafe-inline'";
 
 // Public track share page (no /api prefix): the URL is what listeners paste
@@ -26,17 +27,21 @@ export const shareRoutes = new Elysia().get('/t', async ({ request, query, set }
     return { error: 'Paramètres "artist" et "title" requis' };
   }
 
-  let links = null;
-  try {
-    links = await findTrackLinks(title, artist);
-  } catch (error) {
-    // A platform failing: the page renders without its cover or links.
-    logger.warn('share.links_failed', {
+  const failed = (event: string) => (error: unknown) => {
+    // A platform or the database failing: the page renders without its links or its cover.
+    logger.warn(event, {
       title,
       artist,
       message: error instanceof Error ? error.message : String(error),
     });
-  }
+    return null;
+  };
+  // The cover is a kept copy's, from the Cover Art Archive (keptTrackCovers.ts): a page anyone
+  // can open asks MusicBrainz nothing.
+  const [links, releaseGroup] = await Promise.all([
+    findTrackLinks(title, artist).catch(failed('share.links_failed')),
+    storedReleaseGroup(title, artist).catch(failed('share.cover_failed')),
+  ]);
 
   // The sharer's language, carried by the link (lang=); an older link without it, the reader's.
   const locale =
@@ -51,5 +56,5 @@ export const shareRoutes = new Elysia().get('/t', async ({ request, query, set }
   // Same casing as applySecurityHeaders: its `??=` guard matches this exact
   // key, a different one would ship two merged CSP values.
   set.headers['Content-Security-Policy'] = SHARE_PAGE_CSP;
-  return renderSharePage({ title, artist, shareUrl, links, locale });
+  return renderSharePage({ title, artist, shareUrl, links, releaseGroup, locale });
 });

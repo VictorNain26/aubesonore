@@ -121,7 +121,7 @@ function JustBeforeTrack({ shown, swap }: { shown: SongEntry | null; swap: Swap 
       }
       swap={swap}
       onToggleKeep={() => {
-        if (entry) void toggleLike(entry.song.title, entry.song.artist, entry.song.art);
+        if (entry) void toggleLike(entry.song.title, entry.song.artist);
       }}
     />
   );
