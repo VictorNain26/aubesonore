@@ -15,5 +15,5 @@ clientsClaim();
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 
-// No runtime cache for the covers: AzuraCast serves them with max-age=31536000, which the
-// browser's HTTP cache keeps.
+// No runtime cache for the covers: the cover store and AzuraCast serve them with
+// max-age=31536000, which the browser's HTTP cache keeps.

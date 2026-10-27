@@ -13,6 +13,7 @@ describe('playOnAir', () => {
       title: 'F Major',
       artist: 'Hania Rani feat. Dobrawa Czocher',
       isrc: 'DEN271800071',
+      artId: null,
     });
 
     expect(await playOnAir('F major', 'Hania Rani')).toEqual({
@@ -22,7 +23,13 @@ describe('playOnAir', () => {
   });
 
   it('is no play for another track on air, or with AzuraCast down', async () => {
-    onAir.mockResolvedValueOnce({ sh_id: 2, title: 'Other', artist: 'Hania Rani', isrc: null });
+    onAir.mockResolvedValueOnce({
+      sh_id: 2,
+      title: 'Other',
+      artist: 'Hania Rani',
+      isrc: null,
+      artId: null,
+    });
     expect(await playOnAir('F Major', 'Hania Rani')).toBeNull();
 
     onAir.mockRejectedValueOnce(new Error('ECONNREFUSED'));

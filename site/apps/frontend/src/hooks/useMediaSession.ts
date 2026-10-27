@@ -1,5 +1,24 @@
 import { useEffect } from 'react';
 import { usePlayer } from '../lib/player';
+import { artworkAt, artworkSrcSet } from '../lib/artwork';
+
+const MEDIA_SIZES = [96, 192, 384, 768] as const;
+
+/**
+ * The cover the lock screen picks from: the station's at each size the cover store keeps, as WebP;
+ * a cover no host resizes, once, as it is.
+ */
+export function mediaArtwork(url: string): MediaImage[] {
+  if (!artworkSrcSet(url)) return [{ src: url }];
+  return MEDIA_SIZES.map((size) => {
+    const src = artworkAt(url, size);
+    return {
+      src,
+      sizes: `${size}x${size}`,
+      type: src.endsWith('.webp') ? 'image/webp' : 'image/jpeg',
+    };
+  });
+}
 
 // Wires the Media Session API so the OS can display the current track in
 // lock-screen / hardware-key controls (Android, macOS Now Playing, Chrome
@@ -26,13 +45,7 @@ export function useMediaSession(data: MediaSessionData, isPlaying: boolean): voi
         title: data.title,
         artist: data.artist,
         album: data.album ?? '',
-        artwork: data.artworkUrl
-          ? [
-              { src: data.artworkUrl, sizes: '96x96', type: 'image/jpeg' },
-              { src: data.artworkUrl, sizes: '192x192', type: 'image/jpeg' },
-              { src: data.artworkUrl, sizes: '512x512', type: 'image/jpeg' },
-            ]
-          : [],
+        artwork: data.artworkUrl ? mediaArtwork(data.artworkUrl) : [],
       });
     } else {
       navigator.mediaSession.metadata = null;

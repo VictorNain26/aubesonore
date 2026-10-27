@@ -13,7 +13,7 @@ import { musilogyRoutes } from './routes/musilogy.routes';
 import { artistPageRoutes } from './routes/artistPage.routes';
 import { trendsRoutes } from './routes/trends.routes';
 import { shareRoutes } from './routes/share.routes';
-import { coversRoutes } from './routes/covers.routes';
+import { coverStoreRoutes } from './routes/coverStore.routes';
 import { linksCache, itunesCache } from './services/trackLinksService';
 import { deezerCache } from './services/deezerService';
 import { musicbrainzCache } from './services/musicbrainzService';
@@ -25,6 +25,17 @@ import { purgeExpiredAuthRows } from './lib/auth/purgeExpiredRows';
 import { startAntennaWatcher } from './services/antennaWatcher';
 import { startYouTubeLinks } from './services/youtubeLinks';
 import { startDiscoveredArtists } from './services/discoveredArtists';
+import { coverStore } from './services/coverStore';
+import { startCoverFill } from './services/coverFill';
+import { moveKeptCovers } from './services/keptCovers';
+
+// The kept tracks' covers leave the covers table for the cover store before migration 0023 drops
+// it; a cover not moved keeps its row, and the migration then stops the boot (keptCovers.ts).
+try {
+  await moveKeptCovers(coverStore);
+} catch (err) {
+  logger.error('keptCovers.move_failed', { err: (err as Error).message });
+}
 
 // Apply pending DB migrations BEFORE serving traffic. The runner tracks
 // applied migrations in __app_migrations and is idempotent across restarts.
@@ -48,6 +59,7 @@ commonsCache.startSweep();
 musilogyCache.startSweep();
 identityCache.startSweep();
 coreCache.startSweep();
+coverStore.missing.startSweep();
 
 // Periodic purge of Better Auth's expired session/verification rows.
 // Without this they accumulate indefinitely — Better Auth does not self-clean.
@@ -68,7 +80,11 @@ if (typeof purgeTimer === 'object' && purgeTimer !== null && 'unref' in purgeTim
   (purgeTimer as { unref: () => void }).unref();
 }
 
-if (env.RECORD_ANTENNA) startAntennaWatcher();
+// Production's jobs only (env.ts, RECORD_ANTENNA): a workstation leaves the archive to it.
+if (env.RECORD_ANTENNA) {
+  startAntennaWatcher();
+  startCoverFill();
+}
 startYouTubeLinks();
 startDiscoveredArtists();
 
@@ -93,7 +109,7 @@ const app = new Elysia()
   .use(artistPageRoutes)
   .use(trendsRoutes)
   .use(shareRoutes)
-  .use(coversRoutes)
+  .use(coverStoreRoutes(coverStore))
   .get('/health', () => ({ status: 'ok', uptime: process.uptime() }))
   .get('/', () => ({ message: 'AubeSonore API' }))
   .onError(({ error, set, request }) => {

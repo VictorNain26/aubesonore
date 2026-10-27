@@ -61,6 +61,17 @@ services:
              chown 70:70 /dst/server.crt /dst/server.key /dst/ca.crt /dst/pg_hba.conf &&
              chmod 600 /dst/server.key && chmod 640 /dst/server.crt /dst/pg_hba.conf && chmod 644 /dst/ca.crt"
 
+  # The cover store's volume belongs to the backend (uid 1001, Dockerfile), which writes it; nginx
+  # reads it. A new named volume's owner depends on which container mounts it first: this sets it,
+  # whatever the order.
+  cover-store-init:
+    image: alpine:3@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+    container_name: aubesonore-cover-store-init
+    restart: 'no'
+    volumes:
+      - cover_store:/store
+    command: sh -c "chown 1001:1001 /store && chmod 755 /store"
+
   postgres:
     image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
     container_name: aubesonore-db
@@ -130,11 +141,15 @@ services:
       dev-init:
         condition: service_completed_successfully
         required: false
+      cover-store-init:
+        condition: service_completed_successfully
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     environment: *backend-environment
     volumes:
       - pg_certs:/certs:ro
+      # Every cover the site serves (services/coverStore.ts), kept across deploys.
+      - cover_store:/srv/cover-store
     ports:
       - '127.0.0.1:3001:3000'
     cpus: 2.0
@@ -183,10 +198,9 @@ services:
     restart: unless-stopped
     ports:
       - '127.0.0.1:3002:80'
-    # The Cover Art Archive's thumbnails nginx keeps (nginx.conf, /caa/): kept across deploys, so
-    # archive.org is asked once per cover rather than after every rebuild.
+    # The cover store's files, which nginx serves at /covers/ (nginx.conf); the backend writes them.
     volumes:
-      - caa_cache:/var/cache/nginx/caa
+      - cover_store:/srv/cover-store:ro
     cpus: 0.5
     mem_limit: 128m
     pids_limit: 128
@@ -285,7 +299,7 @@ services:
       - '127.0.0.1:5173:5173'
 
 volumes:
-  caa_cache:
+  cover_store:
   postgres_data:
   pg_certs:
   pnpm_store:

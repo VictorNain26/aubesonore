@@ -1,5 +1,4 @@
 import { afterAll, beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
-import { createHash } from 'crypto';
 
 import type { LikedTrack, User } from '../db/schema';
 import * as realSchema from '../db/schema';
@@ -73,6 +72,8 @@ const trackLinks = await import('./trackLinksService');
 const findItunesCoverMock = spyOn(trackLinks, 'findItunesCover').mockResolvedValue(null);
 const radioPlays = await import('./radioPlayService');
 const findPlayMock = spyOn(radioPlays, 'findPlay').mockResolvedValue(null);
+const { coverStore } = await import('./coverStore');
+const keepStationArtMock = spyOn(coverStore, 'keepStationArt').mockResolvedValue(null);
 const resolver = await import('./artistResolver');
 const resolveArtistMock = spyOn(resolver, 'resolveArtist').mockResolvedValue({
   id: 'artist-1',
@@ -111,17 +112,17 @@ beforeEach(() => {
 afterAll(() => {
   findItunesCoverMock.mockRestore();
   findPlayMock.mockRestore();
+  keepStationArtMock.mockRestore();
   resolveArtistMock.mockRestore();
   globalThis.fetch = originalFetch;
 });
 
 describe('likeTrack → background enrichment', () => {
   it('swaps the AzuraCast artwork for our own copy when iTunes has no verified cover', async () => {
-    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0]);
+    const art = 'https://radio.aubesonore.fr/api/station/aubesonore/art/abc-1790856695.jpg';
+    const kept = `https://aubesonore.fr/covers/kept/${'c'.repeat(64)}/768.webp`;
     findItunesCoverMock.mockResolvedValueOnce(null);
-    fetchMock.mockResolvedValueOnce(
-      new Response(jpeg, { headers: { 'content-type': 'image/jpeg' } })
-    );
+    keepStationArtMock.mockResolvedValueOnce(kept);
 
     await likeTrack({
       user: fakeUser,
@@ -129,13 +130,13 @@ describe('likeTrack → background enrichment', () => {
         title: 'Unknown Song',
         artist: 'Emerging Artist',
         youtubeUrl: 'https://youtube.example.com/watch?v=abc',
-        artworkUrl: 'https://radio.aubesonore.fr/api/station/aubesonore/art/abc-1790856695.jpg',
+        artworkUrl: art,
       },
     });
     await flushBackgroundWork();
 
-    const sha256 = createHash('sha256').update(jpeg).digest('hex');
-    expect(rows[0]?.artworkUrl).toBe(`http://localhost:3000/api/covers/${sha256}`);
+    expect(keepStationArtMock).toHaveBeenCalledWith(art);
+    expect(rows[0]?.artworkUrl).toBe(kept);
   });
 
   it('keeps the AzuraCast artwork when neither iTunes nor the copy succeeds', async () => {

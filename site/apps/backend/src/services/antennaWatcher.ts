@@ -1,5 +1,6 @@
 import { logger } from '../lib/logger';
 import { resolveArtist } from './artistResolver';
+import { coverStore } from './coverStore';
 import { recordPlay } from './radioPlayService';
 import { fetchNowPlaying, type NowPlayingTrack } from './nowPlaying';
 
@@ -7,6 +8,7 @@ export interface WatcherDeps {
   fetchNowPlaying: () => Promise<NowPlayingTrack | null>;
   recordPlay: (shId: number, title: string, artist: string, isrc: string | null) => Promise<void>;
   resolveArtist: (artist: string) => Promise<{ id: string } | null>;
+  prepareCover: (artId: string) => Promise<void>;
 }
 
 export function createAntennaWatcher(deps: WatcherDeps): () => Promise<void> {
@@ -17,7 +19,17 @@ export function createAntennaWatcher(deps: WatcherDeps): () => Promise<void> {
     if (!track || track.sh_id === lastShId) return;
     lastShId = track.sh_id;
 
-    if (!track.artist.trim()) return;
+    // The hero shows the new track's cover at once: its sizes are made now, beside the rest.
+    const cover = track.artId
+      ? deps.prepareCover(track.artId).catch((err: unknown) => {
+          logger.warn('cover.not_prepared', {
+            artId: track.artId,
+            message: err instanceof Error ? err.message : String(err),
+          });
+        })
+      : Promise.resolve();
+
+    if (!track.artist.trim()) return cover;
 
     // The artist page's floor: no external source knows what this radio played.
     // A write failure must not keep the artist from being identified.
@@ -42,11 +54,17 @@ export function createAntennaWatcher(deps: WatcherDeps): () => Promise<void> {
         message: err instanceof Error ? err.message : String(err),
       });
     }
+    await cover;
   };
 }
 
 export function startAntennaWatcher(intervalMs = 60_000): () => void {
-  const check = createAntennaWatcher({ fetchNowPlaying, recordPlay, resolveArtist });
+  const check = createAntennaWatcher({
+    fetchNowPlaying,
+    recordPlay,
+    resolveArtist,
+    prepareCover: (artId) => coverStore.prepareStation(artId),
+  });
 
   const timer = setInterval(() => {
     check().catch((err: unknown) => {

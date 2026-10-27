@@ -78,7 +78,7 @@ describe('CoverLightView', () => {
     render(<CoverLightView art={art('a1')} />);
     const [img] = files();
 
-    expect(img).toHaveAttribute('src', '/covers/96/a1-1.jpg');
+    expect(img).toHaveAttribute('src', '/covers/station/a1-1/96.webp');
     expect(img).toHaveAttribute('fetchpriority', 'low');
     expect(img).toHaveAttribute('referrerpolicy', 'no-referrer');
     expect(img).not.toBeVisible();
@@ -217,7 +217,7 @@ describe('CoverLightView', () => {
     const { rerender } = render(<CoverLightView art={art('a1')} />);
 
     rerender(<CoverLightView art={art('b2')} />);
-    expect(srcs()).toEqual(['/covers/96/a1-1.jpg', '/covers/96/b2-1.jpg']);
+    expect(srcs()).toEqual(['/covers/station/a1-1/96.webp', '/covers/station/b2-1/96.webp']);
     const next = () => lights()[1]!;
     // Still loading: the last light holds, the next waits unseen.
     expect(next()).toHaveClass('invisible');
@@ -231,7 +231,7 @@ describe('CoverLightView', () => {
     act(() => {
       vi.advanceTimersByTime(LIGHT_FADE_MS);
     });
-    expect(srcs()).toEqual(['/covers/96/b2-1.jpg']);
+    expect(srcs()).toEqual(['/covers/station/b2-1/96.webp']);
     expect(lights()[0]).not.toHaveClass('light-out');
   });
 
@@ -245,12 +245,12 @@ describe('CoverLightView', () => {
     // b2 never came: a1 is still what shows.
     rerender(<CoverLightView art={art('b2')} />);
     rerender(<CoverLightView art={art('c3')} />);
-    expect(srcs()).toEqual(['/covers/96/a1-1.jpg', '/covers/96/c3-1.jpg']);
+    expect(srcs()).toEqual(['/covers/station/a1-1/96.webp', '/covers/station/c3-1/96.webp']);
 
     // c3 came and is fading in: it is the one shown when d4 comes.
     fireEvent.load(files()[1]!);
     rerender(<CoverLightView art={art('d4')} />);
-    expect(srcs()).toEqual(['/covers/96/c3-1.jpg', '/covers/96/d4-1.jpg']);
+    expect(srcs()).toEqual(['/covers/station/c3-1/96.webp', '/covers/station/d4-1/96.webp']);
   });
 
   it('lets the last light go when the next cover cannot be had, and never asks it again', () => {
@@ -260,7 +260,7 @@ describe('CoverLightView', () => {
 
     fireEvent.error(files()[1]!);
     // The last track's light is not this track's: it fades out rather than stay all along.
-    expect(srcs()).toEqual(['/covers/96/a1-1.jpg']);
+    expect(srcs()).toEqual(['/covers/station/a1-1/96.webp']);
     expect(lights()[0]).toHaveClass('light-out');
     act(() => {
       vi.advanceTimersByTime(LIGHT_FADE_MS);
@@ -271,7 +271,7 @@ describe('CoverLightView', () => {
     expect(srcs()).toEqual([]);
     // The next track's light comes as any.
     rerender(<CoverLightView art={art('c3')} />);
-    expect(srcs()).toEqual(['/covers/96/c3-1.jpg']);
+    expect(srcs()).toEqual(['/covers/station/c3-1/96.webp']);
     fireEvent.load(files()[0]!);
     expect(lights()[0]).toHaveClass('light-in');
   });

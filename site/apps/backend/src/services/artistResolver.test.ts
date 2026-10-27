@@ -196,7 +196,7 @@ describe('resolveArtist', () => {
   });
 
   it('creates no page for a name the antenna never played', async () => {
-    nowPlaying = { sh_id: 1, title: 'X', artist: 'Someone Else', isrc: null };
+    nowPlaying = { sh_id: 1, title: 'X', artist: 'Someone Else', isrc: null, artId: null };
 
     expect(await resolveArtist('Buy Cheap Pills')).toBeNull();
     expect(searches).toBe(0);
@@ -209,6 +209,7 @@ describe('resolveArtist', () => {
       title: 'Kelly Watch the Stars',
       artist: 'Air feat. Someone',
       isrc: null,
+      artId: null,
     };
 
     expect(await resolveArtist('Air')).not.toBeNull();

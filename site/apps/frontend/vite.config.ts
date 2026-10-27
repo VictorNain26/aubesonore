@@ -16,10 +16,9 @@ const { meta_description: description } = JSON.parse(
   readFileSync(new URL('./messages/fr.json', import.meta.url), 'utf8')
 ) as { meta_description: string };
 
-// What a fresh database has no answer to: Musilogy, the artist pages, the trends, and the covers
-// stored with plays. A listener's own data (session, kept tracks) and the
-// artist links of the thread stay on the local backend.
-const PUBLIC_READS = ['^/api/musilogy/', '^/api/artist/page/', '^/api/trends', '^/api/covers/'];
+// What a fresh database has no answer to: Musilogy, the artist pages and the trends. A listener's
+// own data (session, kept tracks) and the artist links of the thread stay on the local backend.
+const PUBLIC_READS = ['^/api/musilogy/', '^/api/artist/page/', '^/api/trends'];
 
 /**
  * The listener's theme on the page before its first paint (src/design/theme.ts): a script in
@@ -65,6 +64,7 @@ export default defineConfig(({ mode }) => {
   // (production's, read only) instead of the local database.
   const apiTarget = env.API_PROXY_TARGET || apiBaseUrl;
   const publicApi = env.PUBLIC_API_PROXY_TARGET;
+  const coverTarget = publicApi || apiTarget;
   const analyze = env.ANALYZE === 'true';
 
   return {
@@ -165,21 +165,19 @@ export default defineConfig(({ mode }) => {
             )
           : {}),
         ...(apiTarget ? { '/api': { target: apiTarget, changeOrigin: true } } : {}),
-        // nginx shrinks the station's covers at /covers/ (nginx.conf); here they come full size.
-        // preview.proxy defaults to this one (https://vite.dev/config/preview-options#preview-proxy).
-        '/covers': {
-          target: 'https://radio.aubesonore.fr',
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/covers\/\d+\//, '/api/station/aubesonore/art/'),
-        },
-        // nginx keeps the Cover Art Archive's covers at /caa/ (nginx.conf); here the archive answers
-        // with its own redirects, which the browser follows.
-        '/caa': {
-          target: 'https://coverartarchive.org',
-          changeOrigin: true,
-          rewrite: (path) =>
-            path.replace(/^\/caa\/(\d+)\/([0-9a-f-]+)\.jpg$/, '/release-group/$2/front-$1'),
-        },
+        // nginx serves the cover store's files at /covers/ (nginx.conf); here every cover comes
+        // from the backend route that makes them, the public API's when set (its store holds the
+        // kept tracks' copies). preview.proxy defaults to this one
+        // (https://vite.dev/config/preview-options#preview-proxy).
+        ...(coverTarget
+          ? {
+              '/covers': {
+                target: coverTarget,
+                changeOrigin: true,
+                rewrite: (path: string) => path.replace(/^\/covers\//, '/api/cover-store/'),
+              },
+            }
+          : {}),
       },
       cors: {
         origin: true,

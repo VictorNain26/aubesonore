@@ -25,7 +25,23 @@ describe('fetchNowPlaying', () => {
       title: 'F Major',
       artist: 'Hania Rani',
       isrc: null,
+      artId: null,
     });
+  });
+
+  it("reads the id of the track's art, never a generic image's", async () => {
+    const onAir = (art: string) =>
+      json({ now_playing: { sh_id: 1, song: { title: 'T', artist: 'A', art } } });
+    spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        onAir(
+          'https://radio.aubesonore.fr/api/station/aubesonore/art/27d87a8584e8ebe4e670e5e7-1791145643.jpg'
+        )
+      )
+      .mockResolvedValueOnce(onAir('https://radio.aubesonore.fr/static/img/generic_song.jpg'));
+
+    expect((await fetchNowPlaying())?.artId).toBe('27d87a8584e8ebe4e670e5e7-1791145643');
+    expect((await fetchNowPlaying())?.artId).toBeNull();
   });
 
   it('keeps a well-formed ISRC and drops a malformed one', async () => {
