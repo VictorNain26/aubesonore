@@ -130,7 +130,7 @@ function paint(canvas: HTMLCanvasElement | null, image: HTMLImageElement) {
 
 /**
  * The light's opacity for its cover: the whole light, unless the words over it would fall under
- * AA, then just enough less (home/lightStrength.ts). A cover of another origin that does not
+ * AA, then just enough less (design/lightStrength.ts). A cover of another origin that does not
  * answer CORS cannot be read: it is dimmed as the worst cover would be.
  */
 function weigh(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {

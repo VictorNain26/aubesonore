@@ -96,7 +96,7 @@ describe('checkTokens', () => {
   });
 
   it("fails a veil the hero's words do not read on, the light dimmed to nothing", () => {
-    // The light is dimmed per cover down to the veil over the paper (home/lightStrength.ts): that
+    // The light is dimmed per cover down to the veil over the paper (design/lightStrength.ts): that
     // floor must hold the words. A veil of the ink by day sinks them.
     const rows = checkTokens(
       css({ ...day, 'light-veil-top': 'oklch(0.45 0.05 270 / 0.55)' }, night)

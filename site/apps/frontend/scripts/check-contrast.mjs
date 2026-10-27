@@ -103,7 +103,7 @@ const checkScheme = (scheme, vars) => {
     if (!m) throw new Error(`--${key} has no alpha`);
     return Number(m[1]);
   };
-  // The hero's light is dimmed per cover until its words hold (home/lightStrength.ts), down to
+  // The hero's light is dimmed per cover until its words hold (design/lightStrength.ts), down to
   // none: then the veil at the top of the hero, where it is thinnest, over the paper alone. That
   // floor must hold them, or no light would.
   const veiled = over(c('light-veil-top'), alpha('light-veil-top'), c('surface'));
