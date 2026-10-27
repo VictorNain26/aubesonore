@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'bun:test';
-import { normalizeArtistName, primaryArtistName, sameTitle, slugify } from './artistName';
+import {
+  artistKey,
+  normalizeArtistName,
+  primaryArtistName,
+  sameTitle,
+  slugify,
+} from './artistName';
 
 describe('primaryArtistName', () => {
   it('strips explicit featuring markers', () => {
@@ -63,5 +69,16 @@ describe('sameTitle', () => {
     expect(sameTitle('Un mec en or', 'Lirik Banzay')).toBe(false);
     // The Drums, measured 2026-10-04: an apostrophe typed on one side only.
     expect(sameTitle('Lets Go Surfing', 'Let’s Go Surfing')).toBe(true);
+  });
+});
+
+describe('artistKey', () => {
+  it('keys a raw name the way the resolver stores it', () => {
+    expect(artistKey('Étienne Daho')).toBe('etienne daho');
+    expect(artistKey('Cassius feat. Pharrell Williams')).toBe('cassius');
+  });
+
+  it('never splits a name on & or a comma', () => {
+    expect(artistKey('Earth, Wind & Fire')).toBe('earth wind fire');
   });
 });

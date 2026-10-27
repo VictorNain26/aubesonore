@@ -335,7 +335,7 @@ ligne.
 | Entre | Contrat | Où il est écrit |
 |---|---|---|
 | pipeline → AzuraCast | API AzuraCast, dossier `antenne/` ; l'ISRC de chaque titre écrit dans le fichier (trame ID3 `TSRC`), qu'AzuraCast range dans le champ `isrc` du média ; jamais de `PUT /file/{id}`, qui réécrit et supprime les balises | `pipeline/docs/conception.md` §6 et §7.2 |
-| site ← AzuraCast | now-playing et historique en lecture, dont `song.isrc` | `site/apps/backend/src/services/nowPlaying.ts`, `site/apps/backend/src/services/radioService.ts` |
+| site ← AzuraCast | now-playing en lecture, dont `song.isrc` | `site/apps/backend/src/services/nowPlaying.ts` |
 | site ← musilogy | les fonctions SQL de `musilogy/src/musilogy/pg/90_*.sql` : le site n'appelle qu'elles, jamais les tables | `musilogy/docs/conception.md` §4 |
 | site ← Deezer, Wikipédia, Wikimedia Commons | chacun isolé, autorisé à tomber seul, son dernier résultat gardé en base (§4.6) ; MusicBrainz n'est appelé en direct que pour identifier un titre joué (§4.4) | `site/apps/backend/src/services/deezerService.ts`, `wikipediaService.ts`, `commonsService.ts`, `artistResolver.ts` |
 

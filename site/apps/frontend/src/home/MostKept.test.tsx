@@ -18,26 +18,25 @@ const entry = (title: string, likes: number, values: Partial<TrendEntry> = {}): 
 const wrapper = MemoryRouter;
 
 describe('MostKeptView', () => {
-  it('ranks the week, then switches to all time', async () => {
-    render(
-      <MostKeptView
-        trends={{
-          week: [entry('Nüchtern', 3), entry('Oh No', 1)],
-          allTime: [entry('Sleep Apnea', 9)],
-        }}
-        status="ready"
-      />,
-      { wrapper }
-    );
+  it("shows the week's kept tracks in the order the ranking gives, without tabs", () => {
+    render(<MostKeptView week={[entry('Nüchtern', 3), entry('Oh No', 1)]} status="ready" />, {
+      wrapper,
+    });
 
-    expect(screen.getByText('Nüchtern')).toBeInTheDocument();
-    expect(screen.getByText('01')).toBeInTheDocument();
-    expect(screen.getByText('gardé 3 fois')).toBeInTheDocument();
-    // A single keep is not shown: it says how quiet it is, not what people like.
-    expect(screen.queryByText(/gardé 1 fois/)).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Les plus gardés de la semaine' })).toBeVisible();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      expect.stringContaining('Nüchtern'),
+      expect.stringContaining('Oh No'),
+    ]);
+  });
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Depuis le début' }));
-    expect(await screen.findByText('Sleep Apnea')).toBeInTheDocument();
+  it('keeps every track of the week, however few times it was kept, and every one sent', () => {
+    const week = Array.from({ length: 10 }, (_, i) => entry(`Titre ${i}`, 1));
+    render(<MostKeptView week={week} status="ready" />, { wrapper });
+    expect(screen.getAllByRole('listitem')).toHaveLength(10);
+    // No count: a row of covers, not a scoreboard.
+    expect(screen.queryByText(/gardé \d+ fois/)).not.toBeInTheDocument();
   });
 
   it("leads to the page of a track's artist, under that page's name", () => {
@@ -48,32 +47,61 @@ describe('MostKeptView', () => {
       }),
       entry('Nightcall', 2, { artist: 'Kavinsky' }),
     ];
-    render(<MostKeptView trends={{ week, allTime: [] }} status="ready" />, { wrapper });
+    render(<MostKeptView week={week} status="ready" />, { wrapper });
 
-    expect(screen.getByRole('link', { name: 'Daft Punk' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Get Lucky, Daft Punk' })).toHaveAttribute(
       'href',
       '/artiste/daft-punk'
     );
     // An artist without a page stays text: no link rather than a dead one.
-    expect(screen.getByText('Kavinsky')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Kavinsky' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Nightcall/ })).not.toBeInTheDocument();
   });
 
-  it('shows at most five tracks', () => {
-    const week = Array.from({ length: 8 }, (_, i) => entry(`Titre ${i}`, 8 - i));
-    render(<MostKeptView trends={{ week, allTime: [] }} status="ready" />, { wrapper });
-    expect(screen.getAllByRole('listitem')).toHaveLength(5);
+  it('lets the keyboard reach the row and scroll it', async () => {
+    render(<MostKeptView week={[entry('Nüchtern', 3)]} status="ready" />, { wrapper });
+    const row = screen.getByRole('list');
+    await userEvent.tab();
+    expect(row).toHaveFocus();
+    expect(row).toHaveAccessibleName('Les plus gardés de la semaine');
   });
 
-  it('invites to keep the first track of an empty week', () => {
-    render(<MostKeptView trends={{ week: [], allTime: [] }} status="ready" />, { wrapper });
-    expect(
-      screen.getByText('Rien de gardé cette semaine. Le premier, ce sera peut-être vous.')
-    ).toBeInTheDocument();
+  it("fetches its covers after the page's other images", () => {
+    const artworkUrl = 'https://radio.aubesonore.fr/api/station/aubesonore/art/b2-1.jpg';
+    render(<MostKeptView week={[entry('Nüchtern', 3, { artworkUrl })]} status="ready" />, {
+      wrapper,
+    });
+    const img = screen.getByRole('presentation');
+    expect(img).toHaveAttribute('fetchpriority', 'low');
+    // Fetched with the page, not as it scrolls in: a lazy row showed empty squares while scrolled.
+    expect(img).toHaveAttribute('loading', 'eager');
+    // 104 px beside the cover on air, 120 px on a phone: the 192 px file at most on a dense screen.
+    expect(img).toHaveAttribute(
+      'sizes',
+      '(min-width: 40rem) and (orientation: landscape) 6.5rem, 7.5rem'
+    );
+  });
+
+  it('says the artist under each title, linked to their page when it has one', () => {
+    const week = [
+      entry('Get Lucky', 4, {
+        artist: 'Daft Punk feat. Pharrell Williams',
+        artistPage: { slug: 'daft-punk', name: 'Daft Punk' },
+      }),
+      entry('Nightcall', 2, { artist: 'Kavinsky' }),
+    ];
+    render(<MostKeptView week={week} status="ready" />, { wrapper });
+    const [first, second] = screen.getAllByRole('listitem');
+    expect(first).toHaveTextContent('Get LuckyDaft Punk');
+    expect(second).toHaveTextContent('NightcallKavinsky');
+  });
+
+  it('shows nothing for an empty week', () => {
+    const { container } = render(<MostKeptView week={[]} status="ready" />, { wrapper });
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('says the ranking is unavailable on error', () => {
-    render(<MostKeptView trends={null} status="error" />, { wrapper });
+    render(<MostKeptView week={null} status="error" />, { wrapper });
     expect(screen.getByText('Le classement est indisponible pour l’instant.')).toBeInTheDocument();
   });
 });

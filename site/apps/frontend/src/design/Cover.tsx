@@ -11,6 +11,10 @@ export interface CoverProps {
   seed: string;
   className?: string;
   priority?: boolean;
+  /** Fetched after the page's other images: a cover that is not what the page is about. */
+  lowPriority?: boolean;
+  /** Fetched with the page rather than as it scrolls in: a short row that scrolls sideways. */
+  eager?: boolean;
   /**
    * The width the cover is laid out at, as the `sizes` attribute: where its host resizes, the
    * browser downloads the smallest file that fills it on this screen.
@@ -20,7 +24,17 @@ export interface CoverProps {
   onError?: () => void;
 }
 
-export function Cover({ src, alt, seed, className, priority = false, sizes, onError }: CoverProps) {
+export function Cover({
+  src,
+  alt,
+  seed,
+  className,
+  priority = false,
+  lowPriority = false,
+  eager = false,
+  sizes,
+  onError,
+}: CoverProps) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   const usable = !isDefaultArtwork(src) && src !== failedSrc;
   const { watch, fadeClass, onLoad } = useFadeIn(!priority);
@@ -41,8 +55,8 @@ export function Cover({ src, alt, seed, className, priority = false, sizes, onEr
           alt={alt}
           referrerPolicy="no-referrer"
           decoding="async"
-          loading={priority ? 'eager' : 'lazy'}
-          fetchPriority={priority ? 'high' : 'auto'}
+          loading={priority || eager ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : lowPriority ? 'low' : 'auto'}
           className={cn('size-full object-cover', fadeClass)}
           onLoad={onLoad}
           onError={() => {

@@ -59,9 +59,9 @@ export interface TrendEntry {
   artistPage: KeptArtistPage | null;
 }
 
+/** The tracks kept in the last seven days, the most kept first (/api/trends). */
 export interface TrendsResult {
   week: TrendEntry[];
-  allTime: TrendEntry[];
 }
 
 export interface LikeTrackRequest {

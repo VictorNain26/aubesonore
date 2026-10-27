@@ -12,7 +12,6 @@ import { artistRoutes } from './routes/artist.routes';
 import { musilogyRoutes } from './routes/musilogy.routes';
 import { artistPageRoutes } from './routes/artistPage.routes';
 import { trendsRoutes } from './routes/trends.routes';
-import { radioRoutes } from './routes/radio.routes';
 import { shareRoutes } from './routes/share.routes';
 import { coversRoutes } from './routes/covers.routes';
 import { linksCache, itunesCache } from './services/trackLinksService';
@@ -21,7 +20,6 @@ import { musicbrainzCache } from './services/musicbrainzService';
 import { titlesCache, wikipediaCache } from './services/wikipediaService';
 import { commonsCache } from './services/commonsService';
 import { coreCache, identityCache, musilogyCache } from './services/musilogyService';
-import { radioHistoryCache } from './services/radioService';
 import { trendsCache } from './services/trendsService';
 import { purgeExpiredAuthRows } from './lib/auth/purgeExpiredRows';
 import { startAntennaWatcher } from './services/antennaWatcher';
@@ -41,7 +39,6 @@ try {
 // Start TTL cache sweeps (every minute, unref'd so process can exit)
 linksCache.startSweep();
 itunesCache.startSweep();
-radioHistoryCache.startSweep();
 trendsCache.startSweep();
 deezerCache.startSweep();
 musicbrainzCache.startSweep();
@@ -95,7 +92,6 @@ const app = new Elysia()
   .use(musilogyRoutes)
   .use(artistPageRoutes)
   .use(trendsRoutes)
-  .use(radioRoutes)
   .use(shareRoutes)
   .use(coversRoutes)
   .get('/health', () => ({ status: 'ok', uptime: process.uptime() }))
@@ -118,12 +114,6 @@ logger.info('listening', { port: env.PORT, env: env.NODE_ENV });
 if (env.IS_PROD && env.DISABLE_EMAILS) {
   logger.error('email.disabled_in_production', {
     impact: 'verification and password-reset mails are dropped, so only OAuth sign-up works',
-  });
-}
-
-if (!env.AZURACAST_BASE_URL || !env.AZURACAST_API_KEY) {
-  logger.warn('radio.history_unconfigured', {
-    impact: '/api/radio/history answers 502 until AZURACAST_BASE_URL and AZURACAST_API_KEY are set',
   });
 }
 

@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { localizeHref } from '@/paraglide/runtime.js';
 import { server } from '../mocks/server';
 import { useLocaleStore } from '../stores/localeStore';
-import { artistPath } from './artistProfile';
+import { artistPath, MISS_KEPT_MS } from './artistProfile';
 
 afterEach(() => {
   window.history.replaceState(null, '', '/');
@@ -35,6 +35,7 @@ describe('resolveArtistPage', () => {
         const name = new URL(request.url).searchParams.get('name') ?? '';
         asked.push(name);
         if (name === 'Unknown') return new HttpResponse(null, { status: 404 });
+        if (name === 'Busy') return new HttpResponse(null, { status: 429 });
         return HttpResponse.json({ id: 'a-1', slug: 'hania-rani' });
       })
     );
@@ -57,12 +58,30 @@ describe('resolveArtistPage', () => {
     expect(asked).toEqual(['Hania Rani']);
   });
 
-  it('asks again for an artist that had no page yet', async () => {
+  it('asks again, a few minutes later, for an artist that had no page yet', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      const { asked, resolveArtistPage } = await counting();
+
+      expect(await resolveArtistPage('Unknown')).toBeNull();
+      expect(await resolveArtistPage('Unknown')).toBeNull();
+      expect(asked).toEqual(['Unknown']);
+
+      vi.advanceTimersByTime(MISS_KEPT_MS);
+      expect(await resolveArtistPage('Unknown')).toBeNull();
+      expect(asked).toEqual(['Unknown', 'Unknown']);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps a refused answer (the limit reached) as no page, never asking again in a loop', async () => {
     const { asked, resolveArtistPage } = await counting();
 
-    expect(await resolveArtistPage('Unknown')).toBeNull();
-    expect(await resolveArtistPage('Unknown')).toBeNull();
+    expect(await resolveArtistPage('Busy')).toBeNull();
+    expect(await resolveArtistPage('Busy')).toBeNull();
+    expect(await resolveArtistPage('Busy')).toBeNull();
 
-    expect(asked).toEqual(['Unknown', 'Unknown']);
+    expect(asked).toEqual(['Busy']);
   });
 });

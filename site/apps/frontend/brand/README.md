@@ -1,7 +1,7 @@
 # AubeSonore's mark
 
 A horizon line that becomes a sound wave where the sun rises through it, beside the word
-**aubesonore**. Every file of the mark is made by `build.py` from the rules below: change a rule,
+**AubeSonore**. Every file of the mark is made by `build.py` from the rules below: change a rule,
 run the script, never edit an output by hand.
 
 ```bash
@@ -33,7 +33,7 @@ without its wonky letters: `AXES` and `TRACKING` in `build.py`; outlined with Ha
 
 - the horizon is the word's baseline;
 - the sun rises to the « b »'s ascender, so R is the ascender's height;
-- half an x-height separates the end of the line from the « a »;
+- half an x-height separates the end of the line from the « A »;
 - clear space all around: one x-height.
 
 ## Sizes

@@ -4,7 +4,7 @@ Application React/Vite de la webradio **AubeSonore** : écoute du flux AzuraCast
 
 ## Fonctionnalités
 
-- Le direct d'AzuraCast, le titre en cours, ce qui est passé depuis l'aube et les plus gardés
+- Le direct d'AzuraCast, le titre en cours, celui « Juste avant » et « Les plus gardés de la semaine »
 - Les pages artistes et Musilogy, dessinées par le serveur puis hydratées (data mode de React Router)
 - Mes titres : les titres gardés, à écouter sur YouTube
 - Authentification (inscription, connexion, réinitialisation) via `better-auth`

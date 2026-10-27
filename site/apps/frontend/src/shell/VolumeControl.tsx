@@ -8,20 +8,24 @@ export interface VolumeControlProps {
   isMuted: boolean;
   onVolumeChange: (value: number) => void;
   onToggleMute: () => void;
+  /** Shows the level whatever the room around: the hero's, beside Écouter on a computer. */
+  showLevel?: boolean;
   className?: string;
 }
 
 /**
  * The volume: the speaker mutes, and the level beside it is a slider drawn with the line. Where it
  * sits (the player bar, the hero's actions) is a container: under 38rem of it there is no room for
- * the slider and the speaker stays alone; a phone sets the level with its own buttons (and iOS
- * ignores it from a page). The level reads 0–100, so a screen reader says "60", not "0.6".
+ * the slider and the speaker stays alone, unless its host asks for the level (`showLevel`); a phone
+ * sets the level with its own buttons (and iOS ignores it from a page). The level reads 0–100, so
+ * a screen reader says "60", not "0.6".
  */
 export function VolumeControl({
   volume,
   isMuted,
   onVolumeChange,
   onToggleMute,
+  showLevel = false,
   className,
 }: VolumeControlProps) {
   const level = isMuted ? 0 : volume;
@@ -37,7 +41,10 @@ export function VolumeControl({
       >
         <Icon className="size-4" />
       </button>
-      <span className="hidden w-28 @min-[38rem]:flex @min-[40rem]:w-35">
+      <span
+        data-testid="volume-level"
+        className={cn('w-28', showLevel ? 'flex' : 'hidden @min-[38rem]:flex @min-[40rem]:w-35')}
+      >
         <Slider
           label={m.volume_slider()}
           value={Math.round(level * 100)}

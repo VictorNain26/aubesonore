@@ -1,21 +1,30 @@
-import { useState } from 'react';
+import type { Ref } from 'react';
 import type { FallbackProps } from 'react-error-boundary';
 import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
-import { ShareIcon } from '../design/icons';
 import { cn } from '@/lib/utils';
-import { KeepHeart } from '../design/KeepHeart';
-import { useNowPlayingStore } from '../lib/azuracast';
+import { KeepButton } from '../design/KeepButton';
+import { isDefaultArtwork, useNowPlayingStore, type SongEntry } from '../lib/azuracast';
 import { usePlayer } from '../lib/player';
-import { useTrackActions } from '../hooks/useTrackActions';
+import { useLikeAction } from '../hooks/useLikeAction';
+import { useLikedTracksStore, isTrackLiked, trackKey } from '../stores/likedTracksStore';
+import { artworkSrc, artworkSrcSet } from '../lib/artwork';
+import type { Swap } from './useTrackSwap';
 import { useArtistPage } from '../hooks/useArtistPage';
 import { artistPath } from '../lib/artistProfile';
 import { CoverOpenLarge } from '../design/CoverOpenLarge';
 import { ARTIST_LINK, TEXT_ACTION } from '../design/classes';
+import { VolumeControl, type VolumeControlProps } from '../shell/VolumeControl';
 import { CastControl } from '../shell/CastControl';
 import { useDiffusion, type Diffusion } from '../hooks/useDiffusion';
-import { VolumeControl, type VolumeControlProps } from '../shell/VolumeControl';
-import { ListenDisc, listenAria, listenState, type ListenState } from './listen';
+import {
+  LISTEN_PILL,
+  ListenDisc,
+  listenAria,
+  listenLabel,
+  listenState,
+  type ListenState,
+} from './listen';
 import * as m from '@/paraglide/messages.js';
 
 // A single's album is its own title: saying it twice tells nothing.
@@ -42,39 +51,75 @@ export interface NowPlayingViewProps {
   isKept: boolean;
   isKeeping: boolean;
   onToggleKeep: () => void;
-  onShare: () => void;
-  /** AirPlay or Chromecast, where the browser can cast. */
-  diffusion?: Diffusion | null;
   /** The artist's page, once it exists: no link rather than a dead one. */
   artistHref: string | null;
-  /** True once the live has moved past the track shown at load: changes then animate. */
-  hasChanged?: boolean;
+  /** Where the hero is in a change of track (home/useTrackSwap.ts): the blocks animate by it. */
+  swap?: Swap;
   /** The hero's own volume: the player bar stays away while the hero shows. */
-  volume: Omit<VolumeControlProps, 'className'>;
+  volume: Omit<VolumeControlProps, 'className' | 'showLevel'>;
+  /**
+   * AirPlay or Chromecast, wherever the browser can cast, as Google's checklist asks: with no
+   * device found, its help says what to check (shell/CastControl.tsx).
+   */
+  diffusion?: Diffusion | null;
+  /** The block of the words and Écouter, which the hero watches for the player bar. */
+  liveRef?: Ref<HTMLDivElement> | undefined;
 }
 
-/** The hero cover's width in each layout of hero-wide (design/tokens.css), repeated per media. */
-const HERO_WIDE_COVER = 'min(79vh - 6.5rem, min(100vw - 5rem, 100rem) / 2)';
+/**
+ * The cover's width in each layout of the hero (design/tokens.css, hero, --hero-cover): beside
+ * the column, the screen's height less the header and its 24 px (6rem) and the horizon it rests on
+ * (3.5rem), or what the gutter and the column's 32rem leave, the gutter written out (--hero-gutter:
+ * 2.5rem from 48rem, or half of what passes 100rem; 1.5rem below); above it, the screen's width,
+ * held under the height the header's 16 px and the words below it need (28rem).
+ */
 const HERO_COVER_SIZES = [
-  `(min-width: 64rem) ${HERO_WIDE_COVER}`,
-  `(min-width: 48rem) and (orientation: landscape) ${HERO_WIDE_COVER}`,
-  `(orientation: landscape) and (max-height: 30rem) ${HERO_WIDE_COVER}`,
-  '(min-width: 48rem) min(100vw - 5rem, 75vh - 18rem)',
-  'min(100vw - 3rem, 74vh - 13.75rem)',
+  '(min-width: 48rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 34.5rem, 50vw + 18rem)',
+  '(min-width: 40rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 33.5rem)',
+  'min(100vw, max(13rem, 100vh - 28rem))',
 ].join(', ');
 
-/** Écouter, the one round thing of the page: an ink disc, larger from md. */
-const LISTEN_DISC =
-  'group ease-spring focus-visible:outline-accent shrink-0 rounded-full transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-95';
-/** 52 px on a phone (upright or on its side), 64, then 80 from md. */
-const DISC_SIZE = 'size-16 md:size-20 phone:size-13';
+/**
+ * The next cover, fetched and decoded as the hero will draw it (same files, same sizes), so it
+ * comes in whole rather than as an empty square (home/useTrackSwap.ts).
+ */
+export function preloadCover(art: string | undefined): Promise<void> {
+  if (!art || isDefaultArtwork(art)) return Promise.resolve();
+  const image = new Image();
+  image.referrerPolicy = 'no-referrer';
+  image.sizes = HERO_COVER_SIZES;
+  const set = artworkSrcSet(art);
+  if (set) image.srcset = set;
+  image.src = artworkSrc(art);
+  return image.decode();
+}
+
+/** Garder beside Écouter: the heart in a ring as tall as the pill, named for the track. */
+const KEEP_RING =
+  'group ease-out-quart focus-visible:outline-accent border-border hover:bg-surface-raised flex size-13 shrink-0 items-center justify-center rounded-full border transition-[background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90 disabled:opacity-50';
+
+/** Écouter: the ink pill, its disc and its word, as in the phone's sheet; the line's width there. */
+function ListenPill({ listen, onToggle }: { listen: ListenState; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={listenAria(listen)}
+      aria-busy={listen === 'connecting'}
+      // The line's width on a phone, its own from 40rem.
+      className={cn(LISTEN_PILL, 'w-auto flex-1 sm:flex-none')}
+    >
+      <ListenDisc state={listen} className="size-11" />
+      <span className="text-ui font-semibold">{listenLabel(listen)}</span>
+    </button>
+  );
+}
 
 /**
- * What plays now, the biggest thing on the page: the cover, the title, the artist (a link to their
- * page once it exists) and its album, and the round Écouter right under them, beside Garder,
- * Partager, Diffuser and the volume, on one line. The cover takes the room the hero leaves it
- * (design/tokens.css, hero-player); the title is sized on its own column and holds on three lines.
- * What played before is the thread below.
+ * What plays now: the cover, square, the largest thing on the page and nothing ever written over
+ * it; then, in the column beside it (under it on a phone), « En direct », the title, the artist (a
+ * link to their page once it exists) and its album, and the ink Écouter pill with Garder, the
+ * volume and Diffuser. Two blocks of the hero's grid (design/tokens.css, hero-cover and hero-live).
  */
 export function NowPlayingView({
   track,
@@ -85,17 +130,22 @@ export function NowPlayingView({
   isKept,
   isKeeping,
   onToggleKeep,
-  onShare,
-  diffusion = null,
   artistHref,
-  hasChanged = false,
+  swap = 'idle',
   volume,
+  diffusion = null,
+  liveRef,
 }: NowPlayingViewProps) {
   const trackKey = track ? `${track.artist}|${track.title}` : 'none';
   const album = track ? shownAlbum(track.album, track.title) : null;
   return (
-    <div className="hero-player">
-      <div className="lift-in cover-room [grid-area:cover]">
+    <>
+      <div
+        data-testid="hero-cover"
+        data-swap={swap}
+        data-off-air={isOnline ? undefined : true}
+        className="hero-cover"
+      >
         {track ? (
           <CoverOpenLarge
             src={track.art}
@@ -106,34 +156,44 @@ export function NowPlayingView({
             largeAlt={m.now_cover_alt({ title: track.title, artist: track.artist })}
             caption={m.track_caption({ title: track.title, artist: track.artist })}
             priority
-            // cover-fit (design/tokens.css): the room's width or height, whichever is shorter. Side
-            // by side (hero-wide), the height the hero's rows leave (79vh - 6.5rem, measured from
-            // 700 to 1080 px high) or half the page less its gutters; stacked, the line less the
-            // gutters or the height left under a short title, from md and on a phone. Measured
-            // within 3% of the drawn cover where the height decides (#619).
             sizes={HERO_COVER_SIZES}
-            triggerClassName="cover-fit"
-            className={cn('shadow-cover size-full', hasChanged && 'swap-in')}
+            // Under the pointer the cover grows a little (a dimmed one read as disabled); its focus
+            // ring inside it, clear of the hero's edge.
+            triggerClassName="size-full hover:opacity-100 motion-safe:hover:scale-102 focus-visible:-outline-offset-4"
+            className="size-full"
           />
         ) : (
-          <div aria-hidden="true" className="cover-fit bg-surface-raised" />
+          <div aria-hidden="true" className="bg-surface-raised size-full" />
         )}
       </div>
 
-      {/* A container: the title's size follows this column (text-hero, cqi). */}
-      <div className="lift-in-late @container flex min-w-0 flex-col [grid-area:meta]">
+      <div ref={liveRef} className="hero-live">
         {!isOnline ? (
           <p className="text-intro text-text-muted m-0" aria-live="polite">
             {m.off_air()}
           </p>
         ) : track ? (
-          <div key={trackKey} className={cn('flex flex-col gap-2', hasChanged && 'swap-in-late')}>
-            {/* Three lines at most: the whole title stays in the page for screen readers. */}
-            <h2 className="font-display text-hero m-0 line-clamp-3 text-balance">{track.title}</h2>
-            <p className="text-headline m-0 font-normal">
+          <div
+            key={trackKey}
+            data-testid="hero-words"
+            data-swap={swap}
+            className="hero-words flex flex-col"
+          >
+            <p className="text-ui m-0 mb-3 flex items-center gap-2 font-semibold">
+              {/* The station is live: a still dot, the one that beats is the horizon's. */}
+              <span aria-hidden="true" className="bg-dawn-ink size-1.75 shrink-0 rounded-full" />
+              {m.now_live()}
+            </p>
+            {/* Two lines at most on a phone, three beside the cover, where a longer title raises
+                « En direct » (the column stands on the cover's foot); the whole title stays in the
+                page for screen readers. */}
+            <h2 className="font-display text-track hero-split:line-clamp-3 m-0 line-clamp-2 text-balance">
+              {track.title}
+            </h2>
+            <p className="text-intro m-0 mt-2 line-clamp-2">
               {/* Inline padding grows the tap target to 44px without moving the line. */}
               {artistHref ? (
-                <Link to={artistHref} className={cn(ARTIST_LINK, 'py-3 underline-offset-6')}>
+                <Link to={artistHref} className={cn(ARTIST_LINK, 'py-3 underline-offset-5')}>
                   {track.artist}
                 </Link>
               ) : (
@@ -142,7 +202,7 @@ export function NowPlayingView({
               {album ? (
                 <span className="text-text-muted">
                   {' · '}
-                  <cite>{album}</cite>
+                  <cite className="not-italic">{album}</cite>
                 </span>
               ) : null}
             </p>
@@ -153,56 +213,48 @@ export function NowPlayingView({
           </p>
         ) : (
           <div aria-busy="true" className="flex flex-col gap-2">
-            <span className="bg-surface-raised h-16 w-3/4" />
-            <span className="bg-surface-raised h-7 w-1/3" />
+            <span className="bg-surface-raised h-14 w-3/4" />
+            <span className="bg-surface-raised h-6 w-1/3" />
           </div>
         )}
-      </div>
 
-      <div className="hero-actions lift-in-late [grid-area:actions]">
-        <div>
-          <button
-            type="button"
-            onClick={onToggleListen}
-            aria-label={listenAria(listen)}
-            aria-busy={listen === 'connecting'}
-            className={LISTEN_DISC}
-          >
-            <ListenDisc state={listen} tone="ink" className={DISC_SIZE} />
-          </button>
+        <div className="mt-6 flex items-center gap-3">
+          <ListenPill listen={listen} onToggle={onToggleListen} />
           {track && isOnline ? (
-            <>
-              <button
-                type="button"
-                onClick={onToggleKeep}
-                disabled={isKeeping}
-                aria-pressed={isKept}
-                className={TEXT_ACTION}
-              >
-                <KeepHeart isKept={isKept} className="size-4" />
-                <span data-label>{m.track_keep()}</span>
-              </button>
-              <button type="button" onClick={onShare} className={TEXT_ACTION}>
-                <ShareIcon className="size-4" />
-                <span data-label>{m.track_share()}</span>
-              </button>
-              {diffusion ? <CastControl diffusion={diffusion} variant="text" /> : null}
-            </>
+            <KeepButton
+              title={track.title}
+              isKept={isKept}
+              isKeeping={isKeeping}
+              onToggle={onToggleKeep}
+              className={KEEP_RING}
+              heartClassName="size-6"
+            />
           ) : null}
-          <VolumeControl {...volume} />
+          {/* Where a mouse sets it: a phone sets the level with its own buttons (and iOS ignores
+              it from a page). */}
+          <VolumeControl {...volume} showLevel className="fine-pointer:flex ml-1.5 hidden" />
+          {diffusion ? <CastControl diffusion={diffusion} variant="hero" /> : null}
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
-export function NowPlaying() {
-  const { title, artist, album, art, isOnline, isUnreachable } = useNowPlayingStore(
+/**
+ * The track the hero shows (`shown`, home/useTrackSwap.ts: the one on air, or the last one while
+ * the next comes in), with its own Garder, so a press keeps the track in view.
+ */
+export function NowPlaying({
+  shown,
+  swap,
+  liveRef,
+}: {
+  shown: SongEntry | null;
+  swap: Swap;
+  liveRef?: Ref<HTMLDivElement>;
+}) {
+  const { isOnline, isUnreachable } = useNowPlayingStore(
     useShallow((s) => ({
-      title: s.data?.now_playing?.song.title,
-      artist: s.data?.now_playing?.song.artist,
-      album: s.data?.now_playing?.song.album,
-      art: s.data?.now_playing?.song.art,
       isOnline: s.data?.is_online ?? true,
       // The store keeps polling, with backoff: the track replaces this once it answers.
       isUnreachable: !s.data && s.error !== null,
@@ -212,28 +264,33 @@ export function NowPlaying() {
     useShallow((s) => ({ isPlaying: s.isPlaying, isConnecting: s.isConnecting, toggle: s.toggle }))
   );
   const volume = useVolume();
-  const { isLiked, isLiking, handleToggleLike, handleShare } = useTrackActions();
+  const tracks = useLikedTracksStore((s) => s.tracks);
+  const { likingTrackId, toggleLike } = useLikeAction();
   const diffusion = useDiffusion();
-  const artistPage = useArtistPage(artist);
-  const trackKey = title && artist ? `${artist}|${title}` : null;
-  const [firstTrackKey, setFirstTrackKey] = useState<string | null>(null);
-  if (firstTrackKey === null && trackKey !== null) setFirstTrackKey(trackKey);
+  const song = shown?.song;
+  const artistPage = useArtistPage(song?.artist);
 
   return (
     <NowPlayingView
-      track={title && artist ? { title, artist, album: album ?? '', art } : null}
+      track={
+        song?.title && song.artist
+          ? { title: song.title, artist: song.artist, album: song.album, art: song.art }
+          : null
+      }
       isOnline={isOnline}
       isUnreachable={isUnreachable}
       listen={listenState(isPlaying, isConnecting)}
       onToggleListen={toggle}
-      isKept={isLiked}
-      isKeeping={isLiking}
-      onToggleKeep={handleToggleLike}
-      onShare={handleShare}
-      diffusion={diffusion}
+      isKept={song ? isTrackLiked(tracks, song.title, song.artist) : false}
+      isKeeping={song ? likingTrackId === trackKey(song.title, song.artist) : false}
+      onToggleKeep={() => {
+        if (song) void toggleLike(song.title, song.artist, song.art);
+      }}
       artistHref={artistPage ? artistPath(artistPage) : null}
-      hasChanged={firstTrackKey !== null && trackKey !== firstTrackKey}
+      swap={swap}
       volume={volume}
+      diffusion={diffusion}
+      liveRef={liveRef}
     />
   );
 }
@@ -253,34 +310,27 @@ function useVolume(): NowPlayingViewProps['volume'] {
 
 /**
  * When the track on air cannot be shown, its zone says so and nothing else goes: the header, the
- * dawn and the horizon stay, and the live can still be heard.
+ * rest of the hero and the horizon stay, and the live can still be heard.
  */
-export function NowPlayingFallback({ resetErrorBoundary }: FallbackProps) {
+export function NowPlayingFallback({
+  resetErrorBoundary,
+  liveRef,
+}: FallbackProps & { liveRef?: Ref<HTMLDivElement> }) {
   const { isPlaying, isConnecting, toggle } = usePlayer(
     useShallow((s) => ({ isPlaying: s.isPlaying, isConnecting: s.isConnecting, toggle: s.toggle }))
   );
   const listen = listenState(isPlaying, isConnecting);
   const volume = useVolume();
   return (
-    <div role="alert" className="flex flex-col justify-end gap-2">
+    <div ref={liveRef} role="alert" className="hero-live flex flex-col gap-2">
       <p className="font-display text-section m-0">{m.error_track_title()}</p>
       <p className="text-intro text-text-muted m-0">{m.error_track_body()}</p>
-      <div className="hero-actions mt-4 md:mt-6">
-        <div>
-          <button
-            type="button"
-            onClick={toggle}
-            aria-label={listenAria(listen)}
-            aria-busy={listen === 'connecting'}
-            className={LISTEN_DISC}
-          >
-            <ListenDisc state={listen} tone="ink" className={DISC_SIZE} />
-          </button>
-          <button type="button" onClick={resetErrorBoundary} className={TEXT_ACTION}>
-            {m.error_retry()}
-          </button>
-          <VolumeControl {...volume} />
-        </div>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <ListenPill listen={listen} onToggle={toggle} />
+        <button type="button" onClick={resetErrorBoundary} className={TEXT_ACTION}>
+          {m.error_retry()}
+        </button>
+        <VolumeControl {...volume} showLevel className="fine-pointer:flex hidden" />
       </div>
     </div>
   );

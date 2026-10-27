@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
 import { cn } from '@/lib/utils';
-import { KeepHeart } from '../design/KeepHeart';
+import { KeepButton } from '../design/KeepButton';
 import { useNowPlayingStore } from '../lib/azuracast';
 import { useHasHeroPlayer, useHeroPlayerStore } from '../stores/heroPlayerStore';
 import { usePlayer } from '../lib/player';
@@ -171,15 +171,13 @@ export function PlayerBarView({
         )}
 
         {track && isOnline ? (
-          <button
-            type="button"
-            onClick={onToggleKeep}
-            aria-pressed={isKept}
-            aria-label={m.track_keep_aria({ title: track.title })}
+          <KeepButton
+            title={track.title}
+            isKept={isKept}
+            onToggle={onToggleKeep}
             className={ICON_BUTTON}
-          >
-            <KeepHeart isKept={isKept} className="size-4" />
-          </button>
+            heartClassName="size-4"
+          />
         ) : null}
 
         {/* The speaker only from 21rem of bar (a 384 px phone): on a narrower one the title needs

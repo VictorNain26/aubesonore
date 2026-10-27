@@ -21,8 +21,11 @@ export function CastControl({
   variant,
 }: {
   diffusion: Diffusion;
-  /** `bar`: the dark player bar, icon first. `text`: a text action on the page or the sheet. */
-  variant: 'bar' | 'text';
+  /**
+   * `bar`: the dark player bar, icon first. `text`: a text action in the sheet. `hero`: a text
+   * action beside the hero's volume, the icon alone on a phone, its word from 40rem.
+   */
+  variant: 'bar' | 'text' | 'hero';
 }) {
   const [helpOpen, setHelpOpen] = useState(false);
   const { kind, found, device, connecting, onOpen } = diffusion;
@@ -53,15 +56,22 @@ export function CastControl({
             className={
               variant === 'bar'
                 ? cn(BAR, connected && 'bg-on-accent text-accent hover:opacity-90')
-                : cn(TEXT_ACTION, connected && 'font-semibold')
+                : cn(
+                    TEXT_ACTION,
+                    // The icon alone on a phone: still a 44 px target.
+                    variant === 'hero' && 'min-w-11 justify-center',
+                    connected && 'font-semibold'
+                  )
             }
           >
             {icon}
-            {/* The bar shows the word once there is room for it, the device always; the hero's
-                actions hide it to the eye on a phone (data-label, hero-actions). */}
+            {/* The bar shows the word once there is room for it, the device always; the hero, on a
+                computer. */}
             <span
-              data-label
-              className={cn(variant === 'bar' && !connected && 'sr-only md:not-sr-only')}
+              className={cn(
+                variant === 'bar' && !connected && 'sr-only md:not-sr-only',
+                variant === 'hero' && 'sr-only sm:not-sr-only'
+              )}
             >
               {label}
             </span>
@@ -69,8 +79,8 @@ export function CastControl({
         }
       />
       <Popover.Portal>
-        {/* 16 px from the screen's edges, the page's gutter (Base UI's default is 5). In the hero
-            and the sheet it opens under the button, off the title; the bar sits at the bottom. */}
+        {/* 16 px from the screen's edges, the page's gutter (Base UI's default is 5). In the sheet
+            it opens under the button, off the title; the bar sits at the bottom. */}
         <Popover.Positioner
           side={variant === 'bar' ? 'top' : 'bottom'}
           sideOffset={8}

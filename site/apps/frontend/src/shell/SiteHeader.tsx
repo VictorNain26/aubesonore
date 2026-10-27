@@ -25,7 +25,12 @@ const CURRENT_LINK = 'wave-underline hover:opacity-100';
 const AVATAR =
   'bg-accent text-on-accent ease-out-quart focus-visible:outline-accent flex size-11 items-center justify-center rounded-full font-semibold transition-[scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95';
 
-export function SiteHeader() {
+/**
+ * The site's header on every page: the name, which leads home, and the pages. On the home page
+ * (`tagline`) the station's line stands beside the name, under it on a phone, as the page's one
+ * heading: it names the page and holds still, where the title on air changes every few minutes.
+ */
+export function SiteHeader({ tagline = false }: { tagline?: boolean }) {
   const { isAuthenticated, isLoading, user, signOut } = useAuthStore(
     useShallow((s) => ({
       isAuthenticated: s.isAuthenticated,
@@ -46,13 +51,30 @@ export function SiteHeader() {
   const atRest = state === 'rest';
 
   // The same link on every page, never a heading: each page names itself (the home page with its
-  // welcome line).
-  const brand = (
+  // line, beside the link).
+  const link = (
     <Link to={localizeHref('/')} className={BRAND_LINK}>
       {/* Under 22rem the lockup steps down a size, so Menu keeps the page's right gutter. */}
       <Logo intro className="text-mark max-[22rem]:text-title h-[0.839em]" />
       <span className="sr-only">AubeSonore</span>
     </Link>
+  );
+  const brand = tagline ? (
+    <span className="flex min-w-0 flex-col gap-0.75 md:flex-row md:items-baseline md:gap-3.5">
+      {link}
+      {/* At rest only: the header back over the page stays one compact row. The page's heading
+          all the same, for screen readers. */}
+      <h1
+        className={cn(
+          'font-display text-tagline text-text-muted m-0 font-normal italic',
+          !atRest && 'sr-only'
+        )}
+      >
+        {m.hero_title()}
+      </h1>
+    </span>
+  ) : (
+    link
   );
 
   return (

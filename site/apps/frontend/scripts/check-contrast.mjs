@@ -75,6 +75,10 @@ const ratio = (fg, bg) => {
 };
 const mix = (a, b, w) => a.map((v, i) => v * w + b[i] * (1 - w));
 const clip = (rgb) => rgb.map((c) => Math.min(1, Math.max(0, c)));
+// A browser composites a translucent layer in gamma-encoded sRGB, not in linear light.
+const encode = (c) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055);
+const decode = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+const over = (top, alpha, under) => mix(top.map(encode), under.map(encode), alpha).map(decode);
 
 const checkScheme = (scheme, vars) => {
   const rows = [];
@@ -94,6 +98,15 @@ const checkScheme = (scheme, vars) => {
     return clip(oklchToLinearSrgb(lch));
   };
   const glow = mix(c('dawn'), c('surface'), 0.3);
+  const alpha = (key) => {
+    const m = vars[key]?.match(/\/\s*([\d.]+)\)$/);
+    if (!m) throw new Error(`--${key} has no alpha`);
+    return Number(m[1]);
+  };
+  // The hero's light is dimmed per cover until its words hold (home/lightStrength.ts), down to
+  // none: then the veil at the top of the hero, where it is thinnest, over the paper alone. That
+  // floor must hold them, or no light would.
+  const veiled = over(c('light-veil-top'), alpha('light-veil-top'), c('surface'));
   const pairs = [
     ['text/surface', c('text'), c('surface'), 4.5],
     ['text-muted/surface', c('text-muted'), c('surface'), 4.5],
@@ -107,6 +120,8 @@ const checkScheme = (scheme, vars) => {
     ['on-bar/bar', c('on-bar'), c('bar'), 4.5],
     ['on-bar-muted/bar', c('on-bar-muted'), c('bar'), 4.5],
     ['text/dawn-glow', c('text'), glow, 4.5],
+    ['text/veil over the paper', c('text'), veiled, 4.5],
+    ['text-muted/veil over the paper', c('text-muted'), veiled, 4.5],
     // The wave under the current page and the selected tab: a mark, beside text that holds AA.
     ['dawn-ink/surface', c('dawn-ink'), c('surface'), 3.0],
   ];

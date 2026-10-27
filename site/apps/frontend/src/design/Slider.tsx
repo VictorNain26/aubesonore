@@ -82,7 +82,8 @@ export function Slider({
           </svg>
           <BaseSlider.Thumb
             aria-label={label}
-            className="ease-out-quart size-3 rounded-full bg-current transition-transform duration-150 group-hover/slider:scale-125 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current active:scale-125"
+            // A 12 px dot, grabbed on 24 px (WCAG 2.5.8): the hit area is the ::before's.
+            className="ease-out-quart size-3 rounded-full bg-current transition-transform duration-150 group-hover/slider:scale-125 before:absolute before:-inset-1.5 before:rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current active:scale-125"
           />
         </BaseSlider.Track>
       </BaseSlider.Control>

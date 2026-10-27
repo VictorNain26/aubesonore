@@ -1,5 +1,4 @@
 import type { ArtistPageRef, ArtistProfile } from '@aubesonore/shared-types/client';
-import { object, record, safeParse, string } from 'valibot';
 import { getLocale, localizeHref, type Locale } from '@/paraglide/runtime.js';
 import { getJson, HttpError, readKnown } from './api';
 
@@ -35,9 +34,13 @@ export async function fetchArtistProfile(
 // One request per name however many parts of the page ask for it (the hero and the player bar
 // show the same artist), and a page once found is kept for the visit: /api/artist/resolve allows
 // 10 calls a minute per address, which listeners behind one address (a carrier's NAT, an office)
-// share. A name without a page yet is asked again later: an artist heard for the first time gets
-// its page a little after its first play.
-const resolving = new Map<string, Promise<ArtistPageRef | null>>();
+// share. A name without a page yet, or refused (the limit reached), is no page for MISS_KEPT_MS,
+// then asked again: an artist heard for the first time gets its page a little after its first
+// play, and a refusal is never asked again in a loop.
+const resolving = new Map<string, { request: Promise<ArtistPageRef | null>; until: number }>();
+
+/** How long a name without a page is held as none before it is asked again. */
+export const MISS_KEPT_MS = 5 * 60_000;
 
 /**
  * The page of an artist heard on the antenna, from the raw AzuraCast string.
@@ -47,7 +50,7 @@ export function resolveArtistPage(name: string): Promise<ArtistPageRef | null> {
   const trimmed = name.trim();
   if (!trimmed) return Promise.resolve(null);
   const known = resolving.get(trimmed);
-  if (known) return known;
+  if (known && Date.now() < known.until) return known.request;
 
   // Any failed answer is no page; a request that never answers is asked again.
   const request = getJson<ArtistPageRef>(
@@ -56,33 +59,15 @@ export function resolveArtistPage(name: string): Promise<ArtistPageRef | null> {
     if (err instanceof HttpError) return null;
     throw err;
   });
-  resolving.set(trimmed, request);
+  const entry = { request, until: Infinity };
+  resolving.set(trimmed, entry);
   void request.then(
     (page) => {
-      if (!page) resolving.delete(trimmed);
+      if (!page) entry.until = Date.now() + MISS_KEPT_MS;
     },
-    () => resolving.delete(trimmed)
+    () => {
+      if (resolving.get(trimmed) === entry) resolving.delete(trimmed);
+    }
   );
   return request;
-}
-
-const ArtistPagesSchema = record(string(), object({ id: string(), slug: string() }));
-
-/**
- * The pages of artists the antenna already played, from raw AzuraCast strings, in one
- * request. A name without a page is left out of the map.
- */
-export async function fetchArtistPages(
-  names: readonly string[],
-  signal?: AbortSignal
-): Promise<Map<string, ArtistPageRef>> {
-  const payload = await getJson<unknown>('/api/artist/pages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ names }),
-    signal: signal ?? null,
-  });
-  const parsed = safeParse(ArtistPagesSchema, payload);
-  if (!parsed.success) throw new Error('invalid payload');
-  return new Map(Object.entries(parsed.output));
 }

@@ -51,20 +51,6 @@ export const handlers = [
     return HttpResponse.json({ id: 'a-1', slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-') });
   }),
 
-  http.post(`${API}/api/artist/pages`, async ({ request }) => {
-    const { names } = (await request.json()) as { names: string[] };
-    return HttpResponse.json(
-      Object.fromEntries(
-        names
-          .filter((name) => name !== 'Unknown')
-          .map((name) => [
-            name,
-            { id: 'a-1', slug: name.toLowerCase().replace(/[^a-z0-9]+/g, '-') },
-          ])
-      )
-    );
-  }),
-
   http.get(`${API}/api/artist/page/:slug`, ({ params }) => {
     if (params.slug === 'malformed') return new HttpResponse(null, { status: 400 });
     if (params.slug !== 'hania-rani') return new HttpResponse(null, { status: 404 });
@@ -75,9 +61,6 @@ export const handlers = [
   http.get(`${AZURA}/api/nowplaying_static/aubesonore.json`, () =>
     HttpResponse.json(makeNowPlaying())
   ),
-
-  // Radio history (proxied through the backend — AzuraCast key stays server-side)
-  http.get(`${API}/api/radio/history`, () => HttpResponse.json([])),
 ];
 
 export function makeNowPlaying() {

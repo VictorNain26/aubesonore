@@ -25,7 +25,6 @@ function props(overrides: Partial<NowPlayingViewProps> = {}): NowPlayingViewProp
     isKept: false,
     isKeeping: false,
     onToggleKeep: vi.fn(),
-    onShare: vi.fn(),
     artistHref: null,
     ...overrides,
   };
@@ -51,36 +50,82 @@ describe('NowPlayingView', () => {
     expect(screen.getAllByText(/four to the floor/i)).toHaveLength(1);
   });
 
-  it('puts Écouter under the title and names the action, not the waiting', async () => {
+  it('says « En direct » above the title while the station is on air, and not off air', () => {
+    const { rerender } = render(<NowPlayingView {...props()} />);
+    const live = screen.getByText('En direct');
+    const title = screen.getByRole('heading', { name: 'Mimoun' });
+    expect(live.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    rerender(<NowPlayingView {...props({ isOnline: false })} />);
+    expect(screen.queryByText('En direct')).not.toBeInTheDocument();
+  });
+
+  it('draws Écouter as a pill that says its word, and Arrêter while the live plays', async () => {
     const onToggleListen = vi.fn();
     const { rerender } = render(<NowPlayingView {...props({ onToggleListen })} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Écouter le direct' }));
+    const listen = screen.getByRole('button', { name: 'Écouter le direct' });
+    expect(listen).toHaveTextContent('Écouter');
+    await userEvent.click(listen);
     expect(onToggleListen).toHaveBeenCalledOnce();
 
     // The ring alone tells the waiting: the button already names what a press does.
     rerender(<NowPlayingView {...props({ listen: 'connecting' })} />);
-    expect(screen.getByRole('button', { name: 'Mettre en pause' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Arrêter le direct' })).toHaveAttribute(
       'aria-busy',
       'true'
     );
 
+    // The player has no pause, only a stop: a press after rejoins the live where it is.
     rerender(<NowPlayingView {...props({ listen: 'playing' })} />);
-    expect(screen.getByRole('button', { name: 'Mettre en pause' })).not.toHaveAttribute(
-      'aria-busy',
+    const stop = screen.getByRole('button', { name: 'Arrêter le direct' });
+    expect(stop).not.toHaveAttribute('aria-busy', 'true');
+    expect(stop).toHaveTextContent('Arrêter');
+    expect(screen.queryByText('Pause')).not.toBeInTheDocument();
+  });
+
+  it('keeps the track with a heart named for its title, the kept state in aria-pressed', async () => {
+    const onToggleKeep = vi.fn();
+    const { rerender } = render(<NowPlayingView {...props({ onToggleKeep })} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Garder «\u00a0Mimoun\u00a0»' }));
+    expect(onToggleKeep).toHaveBeenCalledOnce();
+
+    rerender(<NowPlayingView {...props({ isKept: true })} />);
+    expect(screen.getByRole('button', { name: 'Garder «\u00a0Mimoun\u00a0»' })).toHaveAttribute(
+      'aria-pressed',
       'true'
     );
   });
 
-  it('keeps a constant label and carries the kept state in aria-pressed', async () => {
-    const onToggleKeep = vi.fn();
-    const { rerender } = render(<NowPlayingView {...props({ onToggleKeep })} />);
+  it('offers no Partager: the hero holds Écouter, Garder, the volume and Diffuser', () => {
+    render(<NowPlayingView {...props()} />);
+    expect(screen.queryByRole('button', { name: 'Partager' })).not.toBeInTheDocument();
+  });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Garder' }));
-    expect(onToggleKeep).toHaveBeenCalledOnce();
+  it('offers Diffuser, with its word, wherever the browser can cast, a device found or not', () => {
+    const diffusion = (found: boolean, device: string | null = null) => ({
+      kind: 'chromecast' as const,
+      found,
+      device,
+      connecting: false,
+      onOpen: vi.fn(),
+    });
+    // A browser that cannot cast: no button.
+    const { rerender } = render(<NowPlayingView {...props({ diffusion: null })} />);
+    expect(screen.queryByRole('button', { name: /Diffuser|Sur / })).not.toBeInTheDocument();
 
-    rerender(<NowPlayingView {...props({ isKept: true })} />);
-    expect(screen.getByRole('button', { name: 'Garder' })).toHaveAttribute('aria-pressed', 'true');
+    // No device on the network yet: the button is there, its help says what to check.
+    rerender(<NowPlayingView {...props({ diffusion: diffusion(false) })} />);
+    expect(screen.getByRole('button', { name: 'Diffuser sur un appareil' })).toHaveTextContent(
+      'Diffuser'
+    );
+
+    rerender(<NowPlayingView {...props({ diffusion: diffusion(true) })} />);
+    expect(screen.getByRole('button', { name: 'Diffuser sur un appareil' })).toBeInTheDocument();
+
+    rerender(<NowPlayingView {...props({ diffusion: diffusion(false, 'Salon') })} />);
+    expect(screen.getByRole('button', { name: /Salon/ })).toBeInTheDocument();
   });
 
   it("links the artist's name to their page only once it exists", () => {
@@ -113,29 +158,30 @@ describe('NowPlayingView', () => {
     expect(onToggleMute).toHaveBeenCalledOnce();
   });
 
-  it('names Garder, Partager and Diffuser for screen readers, also when they show as icons alone', () => {
-    const diffusion = {
-      kind: 'chromecast' as const,
-      found: true,
-      device: null,
-      connecting: false,
-      onOpen: vi.fn(),
-    };
-    render(<NowPlayingView {...props({ diffusion })} />);
+  it('says radio silence when the station is off air, the last cover kept but dimmed', () => {
+    const art = 'https://radio.aubesonore.fr/api/station/aubesonore/art/a1-1.jpg';
+    const { rerender } = render(
+      <NowPlayingView {...props({ track: { ...props().track!, art } })} />
+    );
+    expect(screen.getByTestId('hero-cover')).not.toHaveAttribute('data-off-air');
 
-    // Under 30rem of row the words are visually hidden (design/tokens.css, action-label), never
-    // taken out of the accessibility tree.
-    for (const name of ['Garder', 'Partager', 'Diffuser sur un appareil']) {
-      expect(screen.getByRole('button', { name })).toBeInTheDocument();
-    }
-    for (const word of ['Garder', 'Partager', 'Diffuser']) {
-      expect(screen.getByText(word)).not.toHaveAttribute('aria-hidden');
-    }
+    rerender(<NowPlayingView {...props({ isOnline: false, track: { ...props().track!, art } })} />);
+    expect(screen.getByText('Silence radio. Retour dans un instant.')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Pochette de Mimoun, Mickey 3D' })).toBeInTheDocument();
+    expect(screen.getByTestId('hero-cover')).toHaveAttribute('data-off-air');
   });
 
-  it('says radio silence when the station is off air', () => {
-    render(<NowPlayingView {...props({ isOnline: false })} />);
-    expect(screen.getByText('Silence radio. Retour dans un instant.')).toBeInTheDocument();
+  it('marks the track leaving, then the one arriving, for the hero to animate them', () => {
+    const { rerender } = render(<NowPlayingView {...props()} />);
+    const marks = () =>
+      ['hero-cover', 'hero-words'].map((id) => screen.getByTestId(id).getAttribute('data-swap'));
+    expect(marks()).toEqual(['idle', 'idle']);
+
+    rerender(<NowPlayingView {...props({ swap: 'out' })} />);
+    expect(marks()).toEqual(['out', 'out']);
+
+    rerender(<NowPlayingView {...props({ swap: 'in' })} />);
+    expect(marks()).toEqual(['in', 'in']);
   });
 
   it('says the live is not answering, rather than load forever, when the station is unreachable', () => {
@@ -145,7 +191,7 @@ describe('NowPlayingView', () => {
 
   it('beats the heart when a track is kept, not when it loads kept', () => {
     const { rerender } = render(<NowPlayingView {...props({ isKept: true })} />);
-    const keep = () => screen.getByRole('button', { name: 'Garder' });
+    const keep = () => screen.getByRole('button', { name: 'Garder «\u00a0Mimoun\u00a0»' });
     expect(keep()).not.toContainHTML('keep-pop');
 
     rerender(<NowPlayingView {...props({ isKept: false })} />);
@@ -153,25 +199,24 @@ describe('NowPlayingView', () => {
     expect(keep()).toContainHTML('keep-pop');
   });
 
-  it('fetches the cover at the width the hero gives it, side by side or stacked', () => {
+  it('fetches the cover at the width the hero gives it, beside the column or above it', () => {
     const art = 'https://is1-ssl.mzstatic.com/image/thumb/Music/aa/bb/x.jpg/600x600bb.jpg';
     render(<NowPlayingView {...props({ track: { ...props().track!, art } })} />);
-    const sizes = screen
-      .getByRole('img', { name: 'Pochette de Mimoun, Mickey 3D' })
-      .getAttribute('sizes');
+    const img = screen.getByRole('img', { name: 'Pochette de Mimoun, Mickey 3D' });
 
-    // Side by side (hero-wide), the room's height or half its width, whichever is shorter; then,
-    // stacked, the line or the height the rows leave, from md and on a phone.
-    const wide = 'min(79vh - 6.5rem, min(100vw - 5rem, 100rem) / 2)';
-    expect(sizes).toBe(
+    // Beside the column (hero-split), the screen's height less the header and its 24 px and the
+    // horizon it rests on, or the width the gutter and the column's 32rem leave (the gutter is
+    // 2.5rem from 48rem, or half of what passes 100rem; 1.5rem below); above it, the screen's
+    // width, held under the height the header's 16 px and the words need.
+    expect(img.getAttribute('sizes')).toBe(
       [
-        `(min-width: 64rem) ${wide}`,
-        `(min-width: 48rem) and (orientation: landscape) ${wide}`,
-        `(orientation: landscape) and (max-height: 30rem) ${wide}`,
-        '(min-width: 48rem) min(100vw - 5rem, 75vh - 18rem)',
-        'min(100vw - 3rem, 74vh - 13.75rem)',
+        '(min-width: 48rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 34.5rem, 50vw + 18rem)',
+        '(min-width: 40rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 33.5rem)',
+        'min(100vw, max(13rem, 100vh - 28rem))',
       ].join(', ')
     );
+    // The page's largest image: fetched first.
+    expect(img).toHaveAttribute('fetchpriority', 'high');
   });
 
   it('keeps the large cover open into the next track, showing the new one', async () => {
@@ -185,7 +230,7 @@ describe('NowPlayingView', () => {
     );
     await screen.findByRole('dialog', { name: 'Mimoun' });
 
-    rerender(<NowPlayingView {...props({ track: next, hasChanged: true })} />);
+    rerender(<NowPlayingView {...props({ track: next, swap: 'in' })} />);
     const dialog = screen.getByRole('dialog', { name: 'Respire' });
     expect(within(dialog).getByRole('img')).toHaveProperty('src', art('b'));
   });
