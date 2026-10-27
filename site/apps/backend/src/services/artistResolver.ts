@@ -179,12 +179,16 @@ async function identify(primary: string, played: Played): Promise<Identification
 
 /**
  * Writes an identity as found, nothing kept from the one it replaces, and
- * drops the stored profile when the identity changed: its portrait and facts
- * were another artist's. Another row holding that identity (two spellings of
- * one artist) leaves this one as it was, logged.
+ * drops the stored profile when the MBID changed: its portrait and facts
+ * were another artist's. The Deezer id is only the link the MBID's page
+ * declares, not an identity. Another row holding that MBID (two spellings of
+ * one artist) leaves this one as it was, logged: 'held'.
  */
-async function writeIdentity(row: Row, identity: Identification): Promise<boolean> {
-  const changed = identity.deezerId !== row.deezerId || identity.mbid !== row.mbid;
+async function writeIdentity(
+  row: Row,
+  identity: Identification
+): Promise<'changed' | 'unchanged' | 'held'> {
+  const changed = identity.mbid !== row.mbid;
   try {
     await db
       .update(artist)
@@ -202,14 +206,14 @@ async function writeIdentity(row: Row, identity: Identification): Promise<boolea
       mbid: identity.mbid,
       message: (err as Error).message,
     });
-    return false;
+    return 'held';
   }
-  if (changed) await db.delete(artistProfile).where(eq(artistProfile.artistId, row.id));
+  if (!changed) return 'unchanged';
+  await db.delete(artistProfile).where(eq(artistProfile.artistId, row.id));
   // The page is the new MBID's; without one, the row's own again, the slug it kept or a new one.
-  if (changed && identity.mbid)
-    await bindArtistSlug(db, row.id, identity.mbid, identity.displayName);
-  else if (changed) await claimSlug(db, { artistId: row.id }, identity.displayName);
-  return changed;
+  if (identity.mbid) await bindArtistSlug(db, row.id, identity.mbid, identity.displayName);
+  else await claimSlug(db, { artistId: row.id }, identity.displayName);
+  return 'changed';
 }
 
 /** A track kept of this artist, the evidence of an artist known only from a like. */
@@ -222,22 +226,76 @@ async function keptTrack(artistId: string): Promise<Played | null> {
   return rows[0] ?? null;
 }
 
+/** What identifying a known artist again did to its MBID. */
+export type Reidentified =
+  | 'same'
+  | 'changed'
+  | 'cleared'
+  | 'gained'
+  | 'none'
+  | 'held'
+  | 'unplayed'
+  | 'failed';
+
 /**
  * Identifies a known artist again from scratch, from its latest play, else a
- * track kept of it (`artists:resolve`): repairs identities taken from an ISRC
- * before answers were checked. 'unplayed' when neither exists.
+ * track kept of it: an MBID found again is left as it was (only its Deezer
+ * link read again), another one replaces it, none clears it; the row and its
+ * page stay. 'unplayed' when neither a play nor a kept track exists.
  */
 export async function reverifyArtist(
   normalizedName: string,
   displayName: string
-): Promise<'changed' | 'kept' | 'unplayed' | 'failed'> {
+): Promise<Reidentified> {
   const row = await findBy(normalizedName);
   if (!row) return 'unplayed';
   const played = (await playedTrack(normalizedName)) ?? (await keptTrack(row.id));
   if (!played) return 'unplayed';
   const identity = await identify(displayName, played);
   if (identity === 'failed') return 'failed';
-  return (await writeIdentity(row, identity)) ? 'changed' : 'kept';
+  if ((await writeIdentity(row, identity)) === 'held') return 'held';
+  if (identity.mbid === row.mbid) return identity.mbid ? 'same' : 'none';
+  if (!row.mbid) return 'gained';
+  return identity.mbid ? 'changed' : 'cleared';
+}
+
+/**
+ * Every known artist identified again by MusicBrainz alone (`artists:resolve`), one after the
+ * other at MusicBrainz's pace: the MBIDs the Deezer API once led to are read again (docs/vision.md
+ * §2.5). Running it again changes nothing.
+ */
+export async function reidentifyArtists(): Promise<Record<Reidentified, number>> {
+  const known = await db
+    .select({ normalizedName: artist.normalizedName, displayName: artist.displayName })
+    .from(artist)
+    .orderBy(artist.normalizedName);
+  const outcomes: Record<Reidentified, number> = {
+    same: 0,
+    changed: 0,
+    cleared: 0,
+    gained: 0,
+    none: 0,
+    held: 0,
+    unplayed: 0,
+    failed: 0,
+  };
+  for (const row of known) {
+    let outcome: Reidentified;
+    try {
+      outcome = await reverifyArtist(row.normalizedName, row.displayName);
+    } catch (err) {
+      outcome = 'failed';
+      logger.warn('artist.reidentify_failed', {
+        name: row.displayName,
+        message: (err as Error).message,
+      });
+    }
+    outcomes[outcome] += 1;
+    if (outcome === 'changed' || outcome === 'cleared' || outcome === 'gained') {
+      logger.info('artist.reidentified', { name: row.displayName, outcome });
+    }
+  }
+  return outcomes;
 }
 
 export async function resolveArtist(rawName: string): Promise<Resolved | null> {
@@ -258,7 +316,7 @@ export async function resolveArtist(rawName: string): Promise<Resolved | null> {
       identity &&
       identity !== 'failed' &&
       (identity.identifiedBy === 'isrc' || (existing.mbid === null && identity.mbid !== null))
-        ? await writeIdentity(existing, identity)
+        ? (await writeIdentity(existing, identity)) === 'changed'
         : false;
     // A new MBID can give the page another address: its MBID's slug.
     const slug = moved ? await slugOfArtistPage(existing.id) : existing.slug;

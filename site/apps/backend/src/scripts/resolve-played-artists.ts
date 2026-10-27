@@ -4,14 +4,14 @@ import { db, pool } from '../db/index';
 import { artist, likedTracks, radioPlay } from '../db/schema';
 import { toIsrc } from '../lib/isrc';
 import { artistKey, normalizeArtistName } from '../lib/artistName';
-import { resolveArtist, reverifyArtist } from '../services/artistResolver';
+import { reidentifyArtists, resolveArtist } from '../services/artistResolver';
 import { findPlay } from '../services/radioPlayService';
 import { shareRateWithBackend } from '../services/musicbrainzService';
 
-// One-off catch-up (docs/vision.md §4.4). Plays recorded before AzuraCast
-// reported ISRCs get theirs from the station's media, matched on artist and
-// title once normalised; then every played artist is resolved again, which
-// identifies new ones and re-identifies those only their name had bound.
+// One-off catch-up (docs/vision.md §4.4), run by hand after a deploy that
+// changes identity. Plays recorded before AzuraCast reported ISRCs get theirs
+// from the station's media, matched on artist and title once normalised; then
+// every known artist is identified again, and every played artist resolved.
 // Last, each kept track not yet tied to its artist is tied through its play;
 // one kept before plays were recorded stays untied. New plays and new kept
 // tracks are handled as they come. Sequential on purpose: MusicBrainz allows
@@ -46,6 +46,12 @@ for (const play of withoutIsrc) {
   filled += 1;
 }
 
+// Every known artist identified again by MusicBrainz alone: an MBID the Deezer API once led to
+// (docs/vision.md §2.5), or one taken from an ISRC before answers were checked, is replaced or
+// cleared; one found again is left as it was. The row and its page stay. Before the
+// played names, so that what it changes is counted here.
+const outcomes = await reidentifyArtists();
+
 const played = await db.selectDistinct({ name: radioPlay.artist }).from(radioPlay);
 let failed = 0;
 for (const { name } of played) {
@@ -54,24 +60,6 @@ for (const { name } of played) {
   } catch (err) {
     failed += 1;
     console.error(`${name}: ${(err as Error).message}`);
-  }
-}
-
-// Every known artist identified again from scratch: an identity taken from an
-// ISRC before answers were checked against the played title and name is
-// replaced, and its stored profile dropped.
-const known = await db
-  .select({ normalizedName: artist.normalizedName, displayName: artist.displayName })
-  .from(artist);
-const outcomes = { changed: 0, kept: 0, unplayed: 0, failed: 0 };
-for (const row of known) {
-  try {
-    const outcome = await reverifyArtist(row.normalizedName, row.displayName);
-    outcomes[outcome] += 1;
-    if (outcome === 'changed') console.log(`identity changed: ${row.displayName}`);
-  } catch (err) {
-    outcomes.failed += 1;
-    console.error(`${row.displayName}: ${(err as Error).message}`);
   }
 }
 
@@ -104,8 +92,11 @@ const [byIsrc] = await db
 const [bridged] = await db.select({ n: count() }).from(artist).where(isNotNull(artist.mbid));
 console.log(
   `${filled} of ${withoutIsrc.length} plays given their ISRC; ${played.length} played names, ` +
-    `${failed} failed; ${total?.n ?? 0} artists (${outcomes.changed} identities changed, ` +
-    `${outcomes.failed} could not be checked), ${byIsrc?.n ?? 0} identified by ISRC, ` +
+    `${failed} failed; ${total?.n ?? 0} artists identified again: ${outcomes.same} same MBID, ` +
+    `${outcomes.changed} changed, ${outcomes.cleared} cleared, ${outcomes.gained} gained, ` +
+    `${outcomes.none} still without, ${outcomes.held} held by another row, ` +
+    `${outcomes.unplayed} unplayed, ${outcomes.failed} could not be checked; ` +
+    `${byIsrc?.n ?? 0} identified by ISRC, ` +
     `${bridged?.n ?? 0} with an MBID; ${tied} of ${untied.length} kept tracks tied to their artist`
 );
 await pool.end();

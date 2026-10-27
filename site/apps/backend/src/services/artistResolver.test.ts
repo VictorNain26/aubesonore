@@ -605,15 +605,17 @@ describe('reverifyArtist', () => {
     expect(deletedProfiles).toBe(1);
   });
 
-  it('clears a Deezer artist MusicBrainz does not declare', async () => {
+  it('clears a Deezer artist MusicBrainz does not declare, the identity kept', async () => {
     artistRows = [
       { id: 'a-dp', slug: 'daft-punk', deezerId: '27', mbid: 'mb-dp', identifiedBy: 'isrc' },
     ];
     playRows = [{ title: 'One More Time', isrc: 'GBDUW0000053' }];
     isrcLookup = found([recording('One More Time', ['mb-dp', 'Daft Punk'])]);
 
-    expect(await reverifyArtist('daft punk', 'Daft Punk')).toBe('changed');
+    expect(await reverifyArtist('daft punk', 'Daft Punk')).toBe('same');
     expect(updates).toEqual([{ deezerId: null, mbid: 'mb-dp', identifiedBy: 'isrc' }]);
+    // The Deezer id is a link, not the identity: the profile stays.
+    expect(deletedProfiles).toBe(0);
   });
 
   it('keeps an identity that checks out', async () => {
@@ -624,7 +626,7 @@ describe('reverifyArtist', () => {
     isrcLookup = found([recording('One More Time', ['mb-dp', 'Daft Punk'])]);
     declaredDeezerId = found('27');
 
-    expect(await reverifyArtist('daft punk', 'Daft Punk')).toBe('kept');
+    expect(await reverifyArtist('daft punk', 'Daft Punk')).toBe('same');
     expect(deletedProfiles).toBe(0);
   });
 });
