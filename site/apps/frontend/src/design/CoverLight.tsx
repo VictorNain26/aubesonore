@@ -11,17 +11,19 @@ const LIGHT_PIXELS = 96;
  * the last fades out, then the last goes, already gone from view.
  */
 export const LIGHT_FADE_MS = 1000;
-/** The canvas the light is painted into, then drawn at the hero's size as an image. */
+/** The canvas the light is painted into, then drawn at its host's size as an image. */
 const CANVAS_PIXELS = 32;
 /** At 32 px, 1.5 px of blur: about 90 px once drawn over a large screen; the mockup's colours. */
 const PAINT_FILTER = 'blur(1.5px) saturate(1.35)';
 /**
- * The canvas's part the hero shows (it is drawn at 130% × 150% from -15%, -25%: tokens.css,
- * cover-light), the words' ground: the hero from 1.25% to 98.75% of its width, inside its gutters,
- * and from its top to its foot, the header's name, line and links included.
+ * The canvas's part the hero and the sheet show (it is drawn at 130% × 150% from -15%, -25%:
+ * tokens.css, cover-light), the words' ground: the hero from 1.25% to 98.75% of its width, inside
+ * its gutters, and from its top to its foot, the header's name, line and links included. The
+ * player bar shows a band across its middle (tokens.css, player-bar), inside it: weighed whole,
+ * its words hold over the band.
  */
 const SHOWN = { x: 4, y: 5, width: 24, height: 22 } as const;
-/** The depth in the hero (0 at its top, 1 at its foot) of the centre of a row of SHOWN. */
+/** The depth in its host (0 at its top, 1 at its foot) of the centre of a row of SHOWN. */
 const depthOfRow = (row: number) => ((SHOWN.y + row + 0.5) / CANVAS_PIXELS) * 1.5 - 0.25;
 /** A cover as dark and as light as any: what a cover whose pixels cannot be read is dimmed for. */
 const WORST_PIXELS = new Uint8ClampedArray([0, 0, 0, 255, 255, 255, 255, 255]);
@@ -39,8 +41,9 @@ interface Layers {
 }
 
 /**
- * The cover on air as the hero's light, blurred behind it under a veil of the paper
- * (design/tokens.css, cover-light), dimmed for a cover its words would not read on. When the
+ * The cover on air as a light, blurred behind the hero, the phone's sheet or the player bar under
+ * a veil of their ground (design/tokens.css, cover-light, player-bar), dimmed for a cover their
+ * words would not read on, weighed for their own inks (design/lightInks.ts). When the
  * track changes, the next light fades in as the last fades out, once its file has come, then the
  * last goes: two at most, the one shown and the newest. The first fades in with the cover. A next
  * light whose file cannot be had leaves none: the last fades out, it is not this track's.
@@ -130,7 +133,7 @@ function paint(canvas: HTMLCanvasElement | null, image: HTMLImageElement) {
 
 /**
  * The light's opacity for its cover: the whole light, unless the words over it would fall under
- * AA, then just enough less (home/lightStrength.ts). A cover of another origin that does not
+ * AA, then just enough less (design/lightStrength.ts). A cover of another origin that does not
  * answer CORS cannot be read: it is dimmed as the worst cover would be.
  */
 function weigh(canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
@@ -204,7 +207,7 @@ function Light({
   );
 }
 
-/** The light of the cover the hero shows; none off air (home/Hero.tsx). */
+/** The light of the cover on air; none off air (home/Hero.tsx, shell/PlayerBar.tsx). */
 export function CoverLight({ art }: { art: string | null | undefined }) {
   return <CoverLightView art={art} />;
 }

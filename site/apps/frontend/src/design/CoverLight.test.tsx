@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { CoverLightView, LIGHT_FADE_MS } from './CoverLight';
 import { lightOpacity, type LightInks } from './lightStrength';
 
-// The night's paper and inks, as a browser reads them from the tokens (home/lightInks.ts).
+// The night's paper and inks, as a browser reads them from the tokens (design/lightInks.ts).
 const NIGHT: LightInks = {
   surface: [26, 32, 61],
   veil: [14, 20, 44, 0.38],

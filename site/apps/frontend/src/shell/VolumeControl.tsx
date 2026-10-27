@@ -8,31 +8,27 @@ export interface VolumeControlProps {
   isMuted: boolean;
   onVolumeChange: (value: number) => void;
   onToggleMute: () => void;
-  /** Shows the level whatever the room around: the hero's, beside Écouter on a computer. */
-  showLevel?: boolean;
   className?: string;
 }
 
 /**
- * The volume: the speaker mutes, and the level beside it is a slider drawn with the line. Where it
- * sits (the player bar, the hero's actions) is a container: under 38rem of it there is no room for
- * the slider and the speaker stays alone, unless its host asks for the level (`showLevel`); a phone
- * sets the level with its own buttons (and iOS ignores it from a page). The level reads 0–100, so
- * a screen reader says "60", not "0.6".
+ * The volume: the speaker mutes, and the level beside it is a slider drawn with the line. Its hosts
+ * (the hero's actions, the player bar) show it where a mouse sets it: a phone sets the level with
+ * its own buttons (and iOS ignores it from a page). The level reads 0–100, so a screen reader says
+ * "60", not "0.6".
  */
 export function VolumeControl({
   volume,
   isMuted,
   onVolumeChange,
   onToggleMute,
-  showLevel = false,
   className,
 }: VolumeControlProps) {
   const level = isMuted ? 0 : volume;
   const Icon = level === 0 ? VolumeOffIcon : level < 0.5 ? VolumeLowIcon : VolumeHighIcon;
 
   return (
-    <div className={cn('flex shrink-0 items-center gap-1', className)}>
+    <div data-testid="volume" className={cn('flex shrink-0 items-center gap-1', className)}>
       <button
         type="button"
         onClick={onToggleMute}
@@ -41,10 +37,7 @@ export function VolumeControl({
       >
         <Icon className="size-4" />
       </button>
-      <span
-        data-testid="volume-level"
-        className={cn('w-28', showLevel ? 'flex' : 'hidden @min-[38rem]:flex @min-[40rem]:w-35')}
-      >
+      <span data-testid="volume-level" className="flex w-28">
         <Slider
           label={m.volume_slider()}
           value={Math.round(level * 100)}

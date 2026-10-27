@@ -11,14 +11,14 @@ import { describe, expect, it } from 'vitest';
  */
 const DISCS: Record<string, string> = {
   'home/listen.tsx': 'the Écouter pill, its disc and the live bars',
-  'home/NowPlaying.tsx': 'the live dot above the title, and the ring of Garder beside Écouter',
   'home/Horizon.tsx': 'the now dot on the horizon',
-  'shell/PlayerBar.tsx': "the player bar's disc and controls",
+  'shell/PlayerBar.tsx': "the player bar's disc and controls, and the live dot",
   'shell/NowPlayingSheet.tsx': "the player sheet's controls and handle",
   'shell/VolumeControl.tsx': "the player's volume button",
   'shell/CastControl.tsx': "the player's Diffuser button",
   'shell/SiteHeader.tsx': "the account's round avatar",
-  'design/classes.ts': 'the way back to the live',
+  'design/classes.ts': 'the way back to the live, and the ring of Garder beside Écouter',
+  'design/onAir.tsx': 'the live dot above the title',
   'design/Slider.tsx': "the slider's thumb",
   'design/Button.tsx': "the loading spinner's ring",
 };

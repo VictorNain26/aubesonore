@@ -188,6 +188,7 @@ describe('the player bar beside the hero', { timeout: PAGE_TEST_TIMEOUT }, () =>
     await userEvent.tab();
     expect(screen.getByRole('link', { name: 'Aller au contenu principal' })).toHaveFocus();
     await userEvent.tab();
-    expect(within(bar()).getByRole('button', { name: 'Écouter le direct' })).toHaveFocus();
+    // A computer's Écouter, first in the bar (jsdom applies no CSS: the phone's disc is there too).
+    expect(within(bar()).getAllByRole('button', { name: 'Écouter le direct' })[0]).toHaveFocus();
   });
 });

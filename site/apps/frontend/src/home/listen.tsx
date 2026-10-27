@@ -1,13 +1,6 @@
 import { cn } from '@/lib/utils';
 import * as m from '@/paraglide/messages.js';
 
-/**
- * The ink pill that starts the live, its disc and its word: the hero's, and the phone's sheet's.
- * Under the pointer it lifts 2 px on its shadow (the shadow alone under reduced motion).
- */
-export const LISTEN_PILL =
-  'group bg-accent text-on-accent ease-spring focus-visible:outline-accent hover:shadow-cover flex h-14 w-full items-center gap-3 rounded-full py-1.5 pr-6 pl-1.5 transition-[translate,scale,box-shadow] duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95 motion-safe:hover:-translate-y-0.5 md:w-auto';
-
 export type ListenState = 'idle' | 'connecting' | 'playing';
 
 export function listenState(isPlaying: boolean, isConnecting: boolean): ListenState {
@@ -27,7 +20,7 @@ export function listenAria(state: ListenState): string {
   return state === 'idle' ? m.player_listen_aria() : m.player_stop_aria();
 }
 
-// A third of the disc: 16 px in the bar's, about 27 in the hero's.
+// A third of the disc: 16 px in the phone bar's, about 15 in the hero's.
 const GLYPH =
   'ease-out-quart absolute inset-0 m-auto size-1/3 transition-[opacity,scale] duration-200';
 const SHOWN = 'scale-100 opacity-100';
@@ -40,13 +33,14 @@ const ON_PRESS_SHOW =
   'group-hover:scale-100 group-hover:opacity-100 group-focus-visible:scale-100 group-focus-visible:opacity-100';
 
 const TONE = {
-  // On an accent ground (the bar, the sheet's pill): the accent's own ink, whatever the ground.
+  // On an accent ground (the phone's bar, the ink pill): the accent's own ink, whatever the ground.
   paper: { disc: 'bg-on-accent text-accent', ring: 'border-accent/15 border-t-accent' },
+  // In the bar's paper pill: the bar's colour.
   ink: { disc: 'bg-accent text-on-accent', ring: 'border-on-accent/15 border-t-on-accent' },
 };
 
 /**
- * The disc of Écouter, paper on the ink bar and in the sheet's pill, ink on the hero's paper, with
+ * The disc of Écouter, paper on the phone's bar and in the ink pill, ink in the bar's paper pill, with
  * the play glyph; three live bars while the stream plays, the stop square when the pointer or the
  * focus is on its button (which carries `group`); a thin ring turns while the stream connects. The
  * glyphs cross-fade instead of swapping.
@@ -104,5 +98,54 @@ export function ListenDisc({
         <rect x="4" y="4" width="12" height="12" rx="1.5" fill="currentColor" />
       </svg>
     </span>
+  );
+}
+
+/** Under the pointer the pill lifts 2 px on its shadow (the shadow alone under reduced motion). */
+const PILL =
+  'group ease-spring hover:shadow-cover flex items-center rounded-full transition-[translate,scale,box-shadow] duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95 motion-safe:hover:-translate-y-0.5';
+
+const PLACE = {
+  // On the paper (the hero, the phone's sheet): the ink pill, its paper disc.
+  page: {
+    pill: 'bg-accent text-on-accent focus-visible:outline-accent h-14 gap-3 py-1.5 pr-6 pl-1.5',
+    disc: 'paper',
+    discSize: 'size-11',
+  },
+  // On the ink bar, the other way round: the paper pill, its ink disc, a step smaller.
+  bar: {
+    pill: 'bg-on-accent text-accent focus-visible:outline-on-accent h-12 gap-2.5 py-1 pr-5.5 pl-1',
+    disc: 'ink',
+    discSize: 'size-10',
+  },
+} as const;
+
+/**
+ * Écouter, its disc and its word: « Écouter », « Arrêter » while the live plays. The hero's and the
+ * phone's sheet's on the paper, the player bar's on a computer.
+ */
+export function ListenPill({
+  listen,
+  onToggle,
+  place = 'page',
+  className,
+}: {
+  listen: ListenState;
+  onToggle: () => void;
+  place?: keyof typeof PLACE;
+  className?: string;
+}) {
+  const look = PLACE[place];
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={listenAria(listen)}
+      aria-busy={listen === 'connecting'}
+      className={cn(PILL, look.pill, className)}
+    >
+      <ListenDisc state={listen} tone={look.disc} className={look.discSize} />
+      <span className="text-ui font-semibold">{listenLabel(listen)}</span>
+    </button>
   );
 }

@@ -16,9 +16,10 @@ function bytesOf(
 }
 
 /**
- * The paper, the veil and the words' inks the hero's light is read through, from the tokens as
- * the element inherits them (by day or by night), in the bytes the canvas holds its cover in. Null
- * where the browser cannot tell: the light then keeps the opacity its style gives it.
+ * The ground, the veil and the words' inks a light is read through, from the light's tokens as
+ * the element inherits them (by day or by night; the paper and the text in the hero and the sheet,
+ * the bar and its inks in the player bar), in the bytes the canvas holds its cover in. Null where
+ * the browser cannot tell: the light then keeps the opacity its style gives it.
  */
 export function readInks(element: Element): LightInks | null {
   const style = getComputedStyle(element);
@@ -29,11 +30,11 @@ export function readInks(element: Element): LightInks | null {
   if (!probe) return null;
   const read = (name: string) => bytesOf(probe, style.getPropertyValue(name).trim());
   const [surface, veil, veilMid, text, muted] = [
-    '--surface',
+    '--light-ground',
     '--light-veil-top',
     '--light-veil-mid',
-    '--text',
-    '--text-muted',
+    '--light-ink',
+    '--light-ink-muted',
   ].map(read);
   const opacity = Number.parseFloat(style.getPropertyValue('--light-opacity'));
   if (!surface || !veil || !veilMid || !text || !muted || Number.isNaN(opacity)) return null;

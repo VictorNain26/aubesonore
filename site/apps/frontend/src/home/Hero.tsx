@@ -9,7 +9,7 @@ import { useNowPlayingStore, type SongEntry } from '../lib/azuracast';
 import { JustBefore } from './JustBefore';
 import { MostKept } from './MostKept';
 import { Horizon } from './Horizon';
-import { CoverLight } from './CoverLight';
+import { CoverLight } from '../design/CoverLight';
 import type { Loaded } from '../lib/homeData';
 import { useHeroPlayerStore } from '../stores/heroPlayerStore';
 
