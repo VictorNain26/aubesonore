@@ -5,7 +5,13 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import sharp from 'sharp';
 import { coverStoreRoutes } from '../routes/coverStore.routes';
-import { createCoverStore, parseCoverKey, type CoverStore } from './coverStore';
+import {
+  createCoverStore,
+  parseCoverBlocklist,
+  parseCoverKey,
+  readCoverBlocklist,
+  type CoverStore,
+} from './coverStore';
 
 const RG = '00b3e683-47fa-3302-add0-4c0cecc5224e';
 const ART_ID = '27d87a8584e8ebe4e670e5e7-1791145643';
@@ -345,5 +351,124 @@ describe('GET /api/cover-store/:kind/:id/:file', () => {
       expect((await ask(path)).status).toBe(404);
     }
     expect(seen).toEqual([]);
+  });
+});
+
+describe('the block list', () => {
+  const SHA = 'c'.repeat(64);
+
+  it('reads one cover a line, with who asked and when, between comments and blank lines', () => {
+    const text = [
+      '# Covers taken down on request.',
+      '',
+      `caa ${RG}  # removal request from the label, 2026-10-27`,
+      `station ${ART_ID} # artist's request 2026-10-28`,
+      `kept ${SHA}\t# listener's request 2026-10-29`,
+      '',
+    ].join('\n');
+
+    expect([...parseCoverBlocklist(text)]).toEqual([
+      `caa/${RG}`,
+      `station/${ART_ID}`,
+      `kept/${SHA}`,
+    ]);
+  });
+
+  it.each([
+    [`caa ${RG}`, 'no comment saying who asked and when'],
+    [`caa ${RG} #`, 'an empty comment'],
+    [`caa ${RG.toUpperCase()} # request 2026-10-27`, 'an id the store would never name'],
+    [`caa ${RG}/500.webp # request 2026-10-27`, 'a file, not a cover'],
+    [`station ${RG} # request 2026-10-27`, 'an id of another kind'],
+    [`photo ${RG} # request 2026-10-27`, 'an unknown kind'],
+    [`caa ${RG} extra # request 2026-10-27`, 'a third word'],
+    [`https://coverartarchive.org/release-group/${RG} # request`, 'a URL'],
+  ])('refuses %s (%s), naming its line', (line) => {
+    expect(() => parseCoverBlocklist(`# header\n${line}\n`)).toThrow(/line 2/);
+  });
+
+  it('is valid as committed, so a malformed line fails here rather than at boot', () => {
+    expect(() => readCoverBlocklist()).not.toThrow();
+  });
+});
+
+describe('a blocked cover', () => {
+  const ART = `http://azuracast.test/api/station/aubesonore/art/${ART_ID}.jpg`;
+  let SHA: string;
+  let blocked: CoverStore;
+
+  beforeEach(() => {
+    SHA = createHash('sha256').update(jpeg1000).digest('hex');
+    blocked = createCoverStore({
+      root,
+      fetch: fakeFetch,
+      userAgent: 'AubeSonore/test (https://example.test)',
+      azuracastBaseUrl: 'http://azuracast.test',
+      stationId: 'aubesonore',
+      publicBaseUrl: 'https://aubesonore.fr',
+      blocked: new Set([`caa/${RG}`, `station/${ART_ID}`, `kept/${SHA}`]),
+    });
+  });
+
+  it('is answered 404 for a day, like a record with no cover, and never fetched again', async () => {
+    answers.set(CAA_500, image(jpeg1000));
+    // Still on the volume (the boot's removal not run yet): never served by the backend either.
+    await mkdir(join(root, 'covers/caa', RG), { recursive: true });
+    await writeFile(join(root, 'covers/caa', RG, '500.webp'), jpeg100);
+
+    for (const path of [`caa/${RG}/500.webp`, `caa/${RG}/250.webp`, `station/${ART_ID}/96.webp`]) {
+      const res = await coverStoreRoutes(blocked).handle(
+        new Request(`http://localhost/api/cover-store/${path}`)
+      );
+      expect(res.status).toBe(404);
+      expect(res.headers.get('cache-control')).toBe('public, max-age=86400');
+    }
+    expect(seen).toEqual([]);
+  });
+
+  it('is skipped by the fill and by the antenna, which ask nothing and write nothing', async () => {
+    answers.set(CAA_500, image(jpeg1000));
+    answers.set(ART, image(jpeg1000));
+
+    expect(await blocked.fillReleaseGroup(RG)).toBe('blocked');
+    await blocked.prepareStation(ART_ID);
+
+    expect(seen).toEqual([]);
+    expect(await readdir(root)).toEqual([]);
+  });
+
+  it('is not copied for a kept track', async () => {
+    answers.set(ART, image(jpeg1000));
+
+    expect(
+      await blocked.keepStationArt(
+        `https://radio.aubesonore.fr/api/station/aubesonore/art/${ART_ID}.jpg`
+      )
+    ).toBeNull();
+    expect(await readdir(root)).toEqual([]);
+  });
+
+  it('has its files removed from the volume, and only its own, as many times as it runs', async () => {
+    const other = '11111111-2222-3333-4444-555555555555';
+    const files = [
+      `covers/caa/${RG}/250.webp`,
+      `covers/caa/${RG}/500.webp`,
+      `covers/station/${ART_ID}/96.webp`,
+      `covers/kept/${SHA}/768.webp`,
+      `originals/${SHA}`,
+      `covers/caa/${other}/500.webp`,
+    ];
+    for (const file of files) {
+      await mkdir(join(root, file, '..'), { recursive: true });
+      await writeFile(join(root, file), jpeg100);
+    }
+
+    expect(await blocked.removeBlocked()).toBe(3);
+    expect(await blocked.removeBlocked()).toBe(0);
+
+    expect(await readdir(join(root, 'covers/caa'))).toEqual([other]);
+    expect(await readdir(join(root, 'covers/station'))).toEqual([]);
+    expect(await readdir(join(root, 'covers/kept'))).toEqual([]);
+    expect(await readdir(join(root, 'originals'))).toEqual([]);
   });
 });

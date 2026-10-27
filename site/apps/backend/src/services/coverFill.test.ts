@@ -60,7 +60,23 @@ describe('the daytime fill', () => {
       'fill e',
       'sleep 1000',
     ]);
-    expect(tally).toEqual({ stored: 1, present: 1, missing: 1, 'known-missing': 1, failed: 1 });
+    expect(tally).toEqual({
+      stored: 1,
+      present: 1,
+      missing: 1,
+      'known-missing': 1,
+      failed: 1,
+      blocked: 0,
+    });
+  });
+
+  it('passes a blocked cover by without a pause, and counts it', async () => {
+    const { fill, events } = harness({ a: 'blocked', b: 'stored' });
+
+    const tally = await fill.runPass();
+
+    expect(events).toEqual(['fill a', 'fill b', 'sleep 1000']);
+    expect(tally).toMatchObject({ blocked: 1, stored: 1 });
   });
 
   it('waits for the morning when night falls, then goes on where it stopped', async () => {
