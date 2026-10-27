@@ -47,15 +47,19 @@ const barLight = {
   'light-ink': 'var(--on-bar)',
   'light-ink-muted': 'var(--on-bar-muted)',
 };
-const decls = (vars) =>
-  Object.entries(vars)
-    .map(([name, value]) => `  --${name}: ${value};`)
+// Each token written once, as tokens.css writes it: its day value, or its day and night values on
+// the switch of the day and the night.
+const decls = (dayVars, nightVars = {}) =>
+  Object.entries(dayVars)
+    .map(([name, value]) =>
+      name in nightVars
+        ? `  --${name}: var(--by-day, ${value}) var(--by-night, ${nightVars[name]});`
+        : `  --${name}: ${value};`
+    )
     .join('\n');
 const css = (dayVars, nightVars, bar = barLight) =>
-  `:root {\n${decls(dayVars)}\n}\n\n@theme inline {\n  --color-text: var(--text);\n}\n` +
-  (nightVars
-    ? `\n@media (prefers-color-scheme: dark) {\n  :root {\n${decls(nightVars)}\n  }\n}\n`
-    : '') +
+  `:root {\n  --by-day: initial;\n  --by-night: ;\n${decls(dayVars, nightVars)}\n}\n\n` +
+  `@theme inline {\n  --color-text: var(--text);\n}\n` +
   `\n@utility player-bar {\n  --accent: var(--bar);\n${decls(bar)}\n}\n`;
 const failures = (rows) =>
   rows.filter((row) => !row.pass).map((row) => `${row.scheme} ${row.label}`);
@@ -81,7 +85,7 @@ describe('checkTokens', () => {
     ]);
   });
 
-  it('checks the night block with the same pairs', () => {
+  it('checks the night values with the same pairs', () => {
     const rows = checkTokens(css(day, { ...night, text: night.surface }));
     expect(failures(rows)).toContain('night text/surface');
     expect(failures(rows).filter((f) => f.startsWith('day'))).toEqual([]);
@@ -89,8 +93,8 @@ describe('checkTokens', () => {
     expect(pairs('night').map((row) => row.label)).toEqual(pairs('day').map((row) => row.label));
   });
 
-  it('keeps by night a day token the night block does not redefine', () => {
-    // accent and on-accent are not redefined: they still read the night's text and surface.
+  it('keeps by night a token written once', () => {
+    // accent and on-accent are written once: by night they read the night's text and surface.
     const rows = checkTokens(css(day, night));
     const onAccent = rows.find((row) => row.scheme === 'night' && row.label === 'on-accent/accent');
     const text = rows.find((row) => row.scheme === 'night' && row.label === 'text/surface');
@@ -152,8 +156,15 @@ describe('checkTokens', () => {
     );
   });
 
-  it('refuses tokens without a night block', () => {
-    expect(() => checkTokens(css(day))).toThrow(/prefers-color-scheme: dark/);
+  it('refuses tokens without a night value', () => {
+    expect(() => checkTokens(css(day))).toThrow(/--by-night/);
+  });
+
+  it('refuses a token written for one of the two only', () => {
+    // Without its day value the token would be empty by day, and no pair would say so.
+    const nightOnly = css(day, night).replace(`--text: var(--by-day, ${day.text}) `, '--text: ');
+    expect(nightOnly).toContain(`--text: var(--by-night, ${night.text});`);
+    expect(() => checkTokens(nightOnly)).toThrow(/--text/);
   });
 
   it('refuses a palette missing a token of a pair', () => {

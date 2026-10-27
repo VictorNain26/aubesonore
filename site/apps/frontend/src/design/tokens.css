@@ -1,8 +1,8 @@
 /*
   AubeSonore's design system: the one source of its tokens.
   One style, by day and by night: by day, warm paper and a night-blue ink; by night (the device's
-  dark setting), a blue night sky and paper-coloured ink, the dawn still an ember below the
-  horizon. One apricot light, the dawn, and the sky's scale, for decoration.
+  dark setting, or the listener's choice), a blue night sky and paper-coloured ink, the dawn still
+  an ember below the horizon. One apricot light, the dawn, and the sky's scale, for decoration.
   The semantic tokens are the only API, exposed to Tailwind through @theme inline; the --p-*
   primitives hold the font stacks they read.
   AA and the sRGB gamut, by day and by night, are proven by scripts/check-contrast.mjs.
@@ -10,6 +10,14 @@
 
 :root {
   color-scheme: light dark;
+  /* The switch of the day and the night: a token that changes is written once,
+     `var(--by-day, <day>) var(--by-night, <night>)`. The side that is on holds the
+     guaranteed-invalid `initial`, so its var() gives its value; the other holds nothing, so its
+     var() gives nothing (www.w3.org/TR/css-variables-1/#guaranteed-invalid). Not light-dark(): Tailwind's floor is
+     Safari 16.4 and Chrome 111, light-dark() came in Safari 17.5 and Chrome 123, Lightning CSS
+     leaves it as it is in a custom property, and it takes no number (--light-opacity). */
+  --by-day: initial;
+  --by-night: ;
 
   --p-font-text: 'Atkinson Hyperlegible Next Variable', system-ui, sans-serif;
   --p-font-display: 'Fraunces Variable', Georgia, serif;
@@ -22,26 +30,26 @@
   --sky-apricot: oklch(0.82 0.11 55);
   --sky-gold: oklch(0.9 0.11 88);
 
-  --surface: oklch(0.93 0.018 60);
-  --surface-raised: oklch(0.895 0.022 58);
-  --text: oklch(0.26 0.045 270);
-  --text-muted: oklch(0.42 0.05 275);
-  --text-faint: oklch(0.47 0.045 280);
-  --border: oklch(0.83 0.025 60);
+  --surface: var(--by-day, oklch(0.93 0.018 60)) var(--by-night, oklch(0.235 0.045 268));
+  --surface-raised: var(--by-day, oklch(0.895 0.022 58)) var(--by-night, oklch(0.285 0.05 268));
+  --text: var(--by-day, oklch(0.26 0.045 270)) var(--by-night, oklch(0.93 0.018 70));
+  --text-muted: var(--by-day, oklch(0.42 0.05 275)) var(--by-night, oklch(0.8 0.03 280));
+  --text-faint: var(--by-day, oklch(0.47 0.045 280)) var(--by-night, oklch(0.74 0.035 285));
+  --border: var(--by-day, oklch(0.83 0.025 60)) var(--by-night, oklch(0.36 0.05 270));
   --accent: var(--text);
   --on-accent: var(--surface);
-  --on-accent-muted: oklch(0.8 0.03 275);
+  --on-accent-muted: var(--by-day, oklch(0.8 0.03 275)) var(--by-night, oklch(0.42 0.05 275));
   /* The dawn: one light, apricot, fringed with the sky's rose and lilac. Decoration only, never
      under text. */
-  --dawn: var(--sky-apricot);
-  --dawn-rose: var(--sky-rose);
-  --dawn-lilac: var(--sky-lilac);
+  --dawn: var(--by-day, var(--sky-apricot)) var(--by-night, oklch(0.62 0.12 45));
+  --dawn-rose: var(--by-day, var(--sky-rose)) var(--by-night, var(--sky-lilac));
+  --dawn-lilac: var(--by-day, var(--sky-lilac)) var(--by-night, var(--sky-blue));
   /* The veil behind a large image (OpenLarge) and the phone's sheet: the night sky, by day as by
      night. No text on it, so no AA pair. */
   --scrim: color-mix(in oklab, var(--sky-night) 50%, transparent);
   /* The dawn as an ink: the wave under the current page and the selected tab, beside text that
      holds AA on its own. Darker than the light so the mark itself holds 3:1 (WCAG 1.4.11). */
-  --dawn-ink: oklch(0.6 0.13 45);
+  --dawn-ink: var(--by-day, oklch(0.6 0.13 45)) var(--by-night, var(--dawn));
   /* The calm rule between rows: a tile of the line, drawn by ruleMask() in design/wave.ts (its test
      holds this value to it), used as a mask in the rule's colour (wave-rule). */
   --wave-rule: url('data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22640%22%20height%3D%226%22%20viewBox%3D%220%200%20640%206%22%3E%3Cpath%20d%3D%22M0%203.9%20L5.98%203.87%20L11.96%203.75%20L17.94%203.56%20L23.93%203.36%20L29.91%203.2%20L35.89%203.14%20L41.87%203.19%20L47.85%203.33%20L53.83%203.5%20L59.81%203.66%20L65.79%203.74%20L71.78%203.74%20L77.76%203.67%20L83.74%203.58%20L89.72%203.5%20L95.7%203.47%20L101.68%203.48%20L107.66%203.5%20L113.64%203.49%20L119.63%203.4%20L125.61%203.2%20L131.59%202.91%20L137.57%202.57%20L143.55%202.26%20L149.53%202.02%20L155.51%201.89%20L161.5%201.88%20L167.48%201.95%20L173.46%202.05%20L179.44%202.13%20L185.42%202.17%20L191.4%202.17%20L197.38%202.16%20L203.36%202.18%20L209.35%202.27%20L215.33%202.44%20L221.31%202.66%20L227.29%202.88%20L233.27%203.04%20L239.25%203.1%20L245.23%203.06%20L251.21%202.93%20L257.2%202.76%20L263.18%202.63%20L269.16%202.58%20L275.14%202.62%20L281.12%202.75%20L287.1%202.91%20L293.08%203.05%20L299.07%203.16%20L305.05%203.21%20L311.03%203.23%20L317.01%203.27%20L322.99%203.36%20L328.97%203.53%20L334.95%203.77%20L340.93%204.03%20L346.92%204.25%20L352.9%204.38%20L358.88%204.38%20L364.86%204.25%20L370.84%204.04%20L376.82%203.8%20L382.8%203.6%20L388.79%203.45%20L394.77%203.36%20L400.75%203.31%20L406.73%203.25%20L412.71%203.15%20L418.69%202.99%20L424.67%202.79%20L430.65%202.6%20L436.64%202.47%20L442.62%202.43%20L448.6%202.51%20L454.58%202.66%20L460.56%202.83%20L466.54%202.96%20L472.52%203.01%20L478.5%202.95%20L484.49%202.81%20L490.47%202.62%20L496.45%202.45%20L502.43%202.34%20L508.41%202.3%20L514.39%202.3%20L520.37%202.31%20L526.36%202.29%20L532.34%202.21%20L538.32%202.09%20L544.3%201.95%20L550.28%201.86%20L556.26%201.87%20L562.24%202%20L568.22%202.25%20L574.21%202.57%20L580.19%202.89%20L586.17%203.17%20L592.15%203.35%20L598.13%203.44%20L604.11%203.47%20L610.09%203.49%20L616.07%203.53%20L622.06%203.61%20L628.04%203.73%20L634.02%203.84%20L640%203.9%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221%22%2F%3E%3C%2Fsvg%3E');
@@ -52,20 +60,23 @@
      --light-ink and --light-ink-muted (design/lightStrength.ts), down to the veil over the ground
      alone, which holds them (scripts/check-contrast.mjs). The player bar lays it on its own
      ground, veil and inks (player-bar). */
-  --light-opacity: 0.75;
+  --light-opacity: var(--by-day, 0.75) var(--by-night, 0.9);
   --light-ground: var(--surface);
-  --light-veil-top: oklch(0.93 0.018 60 / 0.55);
-  --light-veil-mid: oklch(0.93 0.018 60 / 0.72);
+  --light-veil-top: var(--by-day, oklch(0.93 0.018 60 / 0.55))
+    var(--by-night, oklch(0.18 0.04 268 / 0.38));
+  --light-veil-mid: var(--by-day, oklch(0.93 0.018 60 / 0.72))
+    var(--by-night, oklch(0.2 0.045 268 / 0.62));
   --light-veil-foot: var(--light-ground);
   --light-ink: var(--text);
   --light-ink-muted: var(--text-muted);
   /* The player bar, by day the ink (as the accent); by night the sky one step up, not a slab of
      paper at the foot of the screen. Its words keep AA (scripts/check-contrast.mjs). The veil of
      its light: its own colour, a little deeper. */
-  --bar: var(--accent);
-  --on-bar: var(--on-accent);
-  --on-bar-muted: var(--on-accent-muted);
-  --bar-veil: oklch(0.22 0.045 270 / 0.62);
+  --bar: var(--by-day, var(--accent)) var(--by-night, var(--surface-raised));
+  --on-bar: var(--by-day, var(--on-accent)) var(--by-night, var(--text));
+  --on-bar-muted: var(--by-day, var(--on-accent-muted)) var(--by-night, var(--text-muted));
+  --bar-veil: var(--by-day, oklch(0.22 0.045 270 / 0.62))
+    var(--by-night, oklch(0.2 0.045 268 / 0.55));
   /* The room every page keeps at its foot for the player bar: its 4.75rem on a computer (the
      phone's is 0.5rem less), 1rem of air, and the iPhone's gesture area under it. */
   --bar-space: calc(5.75rem + env(safe-area-inset-bottom));
@@ -73,30 +84,23 @@
   --header-space: 4.5rem;
 }
 
-/* The night, while the device asks for dark: a blue sky, not a black. The dawn has not risen yet:
-   an ember (a dawn as light as by day fails the text over its glow), fringed with the sky one step
-   lower. What it does not redefine (accent, on-accent, the sky) follows from the day's block. */
+/* The night: a blue sky, not a black. The dawn has not risen yet: an ember (a dawn as light as by
+   day fails the text over its glow), fringed with the sky one step lower. The device's while the
+   listener has not chosen, or the listener's (design/theme.ts, data-theme on <html>);
+   color-scheme turns the browser's own parts with it (scrollbars, form controls). */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --surface: oklch(0.235 0.045 268);
-    --surface-raised: oklch(0.285 0.05 268);
-    --text: oklch(0.93 0.018 70);
-    --text-muted: oklch(0.8 0.03 280);
-    --text-faint: oklch(0.74 0.035 285);
-    --border: oklch(0.36 0.05 270);
-    --on-accent-muted: oklch(0.42 0.05 275);
-    --dawn: oklch(0.62 0.12 45);
-    --dawn-ink: var(--dawn);
-    --dawn-rose: var(--sky-lilac);
-    --dawn-lilac: var(--sky-blue);
-    --bar: var(--surface-raised);
-    --on-bar: var(--text);
-    --on-bar-muted: var(--text-muted);
-    --light-opacity: 0.9;
-    --light-veil-top: oklch(0.18 0.04 268 / 0.38);
-    --light-veil-mid: oklch(0.2 0.045 268 / 0.62);
-    --bar-veil: oklch(0.2 0.045 268 / 0.55);
+  :root:not([data-theme='light']) {
+    --by-day: ;
+    --by-night: initial;
   }
+}
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --by-day: ;
+  --by-night: initial;
 }
 
 @theme inline {
