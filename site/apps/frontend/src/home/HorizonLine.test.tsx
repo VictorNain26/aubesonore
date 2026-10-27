@@ -47,10 +47,11 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function runFrames(count: number) {
-  for (let i = 0; i < count; i++) {
-    const next = frames.shift();
-    next?.(performance.now() + i * 16);
+/** Runs the next `count` frames, 1/60 s apart from `start`; `after` sees each one once drawn. */
+function runFrames(count: number, after?: () => void, start = performance.now()) {
+  for (let i = 1; i <= count; i++) {
+    frames.shift()?.(start + (i * 1000) / 60);
+    after?.();
   }
 }
 
@@ -123,33 +124,127 @@ describe('HorizonLine', () => {
     analyser.current = null;
   });
 
-  it('beats the now dot with the bass while the live plays', () => {
-    let frame = 0;
+  /**
+   * A fresh analyser of 64 bins at 48 kHz (375 Hz each, the bass in the first): every read starts
+   * from zeros, then `fill` writes the bins of read number `read` (0 is the paint at mount, frame
+   * k of `playFrames` is read k).
+   */
+  function fakeAnalyser(fill: (into: Uint8Array, read: number) => void = () => undefined) {
+    let read = 0;
+    return {
+      frequencyBinCount: 64,
+      context: { sampleRate: 48000 },
+      getByteFrequencyData: (into: Uint8Array) => {
+        into.fill(0);
+        fill(into, read++);
+      },
+    };
+  }
+  /** The bass bins at `level`, 0..255. */
+  const bassAt = (into: Uint8Array, level: number) => into.fill(Math.round(level), 0, 2);
+  /** A bass swinging around `middle` by `swing`, about 2.4 times a second. */
+  const wave = (read: number, middle: number, swing: number) => middle + swing * Math.sin(read / 4);
+
+  /** Plays `count` frames of the live: the dot's `--bass` and the drawn points of each frame. */
+  function playFrames(count: number) {
     const ctx = fakeContext();
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
       ctx as unknown as CanvasRenderingContext2D
     );
-    analyser.current = {
-      frequencyBinCount: 64,
-      context: { sampleRate: 48000 },
-      // A kick every half second (30 frames at 60 fps) over a loud, steady bass.
-      getByteFrequencyData: (into: Uint8Array) =>
-        into.fill(0).fill(frame++ % 30 < 3 ? 255 : 230, 0, 2),
-    };
-
-    render(
+    vi.spyOn(performance, 'now').mockReturnValue(0);
+    const { unmount } = render(
       <div data-horizon data-testid="horizon">
         <HorizonLine isPlaying />
       </div>
     );
-    const levels: number[] = [];
-    let now = performance.now();
-    for (let i = 0; i < 120; i++) {
-      now += 1000 / 60;
-      frames.shift()?.(now);
-      levels.push(Number(screen.getByTestId('horizon').style.getPropertyValue('--bass')));
-    }
-    expect(Math.max(...levels) - Math.min(...levels)).toBeGreaterThan(0.3);
+    const horizon = screen.getByTestId('horizon');
+    const seen: { bass: number; points: number[] }[] = [];
+    ctx.lineTo.mockClear();
+    runFrames(
+      count,
+      () => {
+        seen.push({
+          bass: Number(horizon.style.getPropertyValue('--bass')),
+          points: ctx.lineTo.mock.calls.map((call) => call[1] as number),
+        });
+        ctx.lineTo.mockClear();
+      },
+      0
+    );
+    unmount();
+    frames = [];
+    return seen;
+  }
+  const spread = (levels: number[]) => Math.max(...levels) - Math.min(...levels);
+
+  it('beats the now dot with the bass while the live plays', () => {
+    // A kick every half second (30 frames at 60 fps) over a loud, steady bass.
+    analyser.current = fakeAnalyser((into, read) => bassAt(into, read % 30 < 3 ? 255 : 230));
+    const seen = playFrames(120);
+
+    expect(spread(seen.map((frame) => frame.bass))).toBeGreaterThan(0.3);
+  });
+
+  it('keeps the mockup motion while the analyser hears nothing, as without one', () => {
+    // Safari's analyser on a live stream reads only zeros (WebKit #180696).
+    analyser.current = null;
+    const without = playFrames(60);
+    analyser.current = fakeAnalyser();
+    const deafened = playFrames(60);
+
+    expect(deafened).toEqual(without);
+    expect(deafened.every((frame) => frame.bass === 0)).toBe(true);
+  });
+
+  it('counts faint or unread bins as silence', () => {
+    analyser.current = null;
+    const without = playFrames(60);
+    // Every other frame: the bass bin at its lowest step, and a bin at 15 kHz, above the treble.
+    analyser.current = fakeAnalyser((into, read) => {
+      if (read % 2 === 0) return;
+      into[0] = 1;
+      into[40] = 255;
+    });
+
+    expect(playFrames(60)).toEqual(without);
+  });
+
+  it('neither drops nor flickers on a lone silent frame while the stream is heard', () => {
+    analyser.current = fakeAnalyser((into, read) => {
+      if (read % 7 !== 0) bassAt(into, wave(read, 128, 100));
+    });
+    const bass = playFrames(120).map((frame) => frame.bass);
+
+    const steps = bass.slice(31).map((level, i) => Math.abs(level - (bass[30 + i] ?? 0)));
+    expect(Math.max(...steps)).toBeLessThan(0.1);
+  });
+
+  it('follows the stream within a quarter second of its first sound, after a silence', () => {
+    // A second of zeros (a fade-in, a muted start, a silent intro), then the stream.
+    analyser.current = fakeAnalyser((into, read) => {
+      if (read > 60) bassAt(into, wave(read, 128, 100));
+    });
+    const bass = playFrames(150).map((frame) => frame.bass);
+
+    expect(bass.slice(0, 60).every((level) => level === 0)).toBe(true);
+    expect(Math.max(...bass.slice(60, 75))).toBeGreaterThan(0.3);
+  });
+
+  it('reads a new track at its own level after a silence, not at the last one', () => {
+    // Two seconds of a loud, narrow bass, a second of silence, then a quiet track...
+    const quiet = (into: Uint8Array, read: number) => {
+      if (read > 180) bassAt(into, wave(read, 105, 25));
+    };
+    analyser.current = fakeAnalyser((into, read) => {
+      if (read <= 120) bassAt(into, wave(read, 242, 13));
+      else quiet(into, read);
+    });
+    const after = playFrames(260).map((frame) => frame.bass);
+    // ...beats as much as the same quiet track with nothing before it.
+    analyser.current = fakeAnalyser(quiet);
+    const alone = playFrames(260).map((frame) => frame.bass);
+
+    expect(spread(after.slice(200))).toBeGreaterThan(0.9 * spread(alone.slice(200)));
   });
 
   it('draws the two traces on every frame', () => {

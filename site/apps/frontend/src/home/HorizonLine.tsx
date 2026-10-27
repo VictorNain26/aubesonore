@@ -12,8 +12,8 @@ import { AMPLITUDE, LAYERS, QUIET, waveY, type Bands } from '../design/wave';
 // of the stream (its widest swell the bass, the finest the treble) and the
 // whole line breathes with the energy; the bass also beats the "now" dot
 // through `--bass` on the horizon. On iOS the stream stays off Web Audio
-// (lib/player.ts): the bands rest at their middle and the line is the
-// mockup's alone.
+// (lib/player.ts), and while the analyser hears nothing (below): the bands
+// rest at their middle and the line is the mockup's alone.
 //
 // One period spans the visible width, so the drift loops seamlessly. The rAF
 // loop lives in the canvas: a frame never re-renders the React tree, and
@@ -27,6 +27,20 @@ const BAND_HZ = [250, 2000, 8000] as const;
 /** Bands rise fast and fall slowly, like a meter, so the line follows beats without jitter. */
 const ATTACK_SECONDS = 0.06;
 const RELEASE_SECONDS = 0.35;
+
+/** Moves `level` towards `goal` over `dt` seconds, as a meter: fast up, slowly down. */
+function follow(level: number, goal: number, dt: number): number {
+  const tau = goal > level ? ATTACK_SECONDS : RELEASE_SECONDS;
+  return goal + (level - goal) * Math.exp(-dt / tau);
+}
+
+/**
+ * Nothing is heard while every band stays under SILENT_LEVEL for SILENCE_SECONDS: the fade-in,
+ * a mute, a silence, or Safari's analyser on a live stream, which reads only zeros (WebKit
+ * #180696). The line then keeps the mockup's motion; the first sound brings the stream back.
+ */
+const SILENT_LEVEL = 0.01;
+const SILENCE_SECONDS = 0.5;
 
 /** Mean level of each band (bass up to 250 Hz, mid to 2 kHz, treble to 8 kHz), 0..1. */
 export function bandsOf(frequencies: Uint8Array, sampleRate: number): Bands {
@@ -100,11 +114,9 @@ export function stepMotion(
     const period = layer.period.rest + (layer.period.live - layer.period.rest) * liveness;
     return ((motion.drift[i] ?? 0) + (layer.direction * dt) / period) % 1;
   });
-  const bands = motion.bands.map((level, k) => {
-    const goal = heard[k] ?? 0.5;
-    const tau = goal > level ? ATTACK_SECONDS : RELEASE_SECONDS;
-    return goal + (level - goal) * Math.exp(-dt / tau);
-  }) as unknown as Bands;
+  const bands = motion.bands.map((level, k) =>
+    follow(level, heard[k] ?? 0.5, dt)
+  ) as unknown as Bands;
   return { liveness, drift, bands };
 }
 
@@ -153,6 +165,9 @@ export function HorizonLine({
     };
     let frequencies: Uint8Array<ArrayBuffer> | null = null;
     let gain: Gain | null = null;
+    let hearing = false;
+    let silentFor = 0;
+    let bass = 0;
     const horizon = canvas.closest<HTMLElement>('[data-horizon]');
     let frame = 0;
     let looping = false;
@@ -170,13 +185,27 @@ export function HorizonLine({
         if (analyser) {
           frequencies ??= new Uint8Array(analyser.frequencyBinCount);
           analyser.getByteFrequencyData(frequencies);
-          const read = autoGain(gain, bandsOf(frequencies, analyser.context.sampleRate), dt);
-          gain = read.gain;
-          heard = read.bands;
+          const raw = bandsOf(frequencies, analyser.context.sampleRate);
+          const sounding = raw.some((level) => level >= SILENT_LEVEL);
+          silentFor = sounding ? 0 : silentFor + dt;
+          if (sounding) hearing = true;
+          // A track after the silence is read at its own level, not between the last one's.
+          else if (silentFor >= SILENCE_SECONDS) hearing = false;
+          if (hearing) {
+            const read = autoGain(gain, raw, dt);
+            gain = read.gain;
+            heard = read.bands;
+          } else {
+            gain = null;
+          }
+        } else {
+          hearing = false;
+          gain = null;
         }
         motion = stepMotion(motion, isPlayingRef.current, dt, heard);
-        // The dot beats with the bass only while it is heard: 0 when quiet.
-        horizon?.style.setProperty('--bass', String(analyser ? motion.bands[0] : 0));
+        // The dot beats with the bass only while it is heard, and settles to 0 when it is not.
+        bass = follow(bass, hearing ? motion.bands[0] : 0, dt);
+        horizon?.style.setProperty('--bass', String(bass));
       }
 
       const { width, height } = canvas;

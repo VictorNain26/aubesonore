@@ -120,7 +120,7 @@ describe('player store', () => {
   it('play() never routes audio through Web Audio on iOS (keeps lock-screen playback alive)', async () => {
     // Regression guard for the locked-screen silence bug: routing the stream
     // through createMediaElementSource makes the AudioContext the sole output,
-    // and iOS suspends it seconds after lock (WebKit #231105). On iOS the
+    // and iOS suspends it seconds after lock (WebKit #237878). On iOS the
     // player must stay on the bare <audio> element.
     vi.stubGlobal('navigator', {
       userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15',
