@@ -161,6 +161,14 @@ function readCore(mbid: string): Promise<Core> {
   });
 }
 
+/** The artist's records' release groups, as the page lists them; null while Musilogy is not loaded. */
+export async function listReleaseGroupIds(mbid: string): Promise<string[] | null> {
+  const rows = await section<{ mbid: string }>(
+    sql`SELECT mbid FROM musilogy.artist_releases(${mbid})`
+  );
+  return rows?.map((row) => row.mbid) ?? null;
+}
+
 export async function getMusilogyArtist(mbid: string): Promise<MusilogyArtist | null> {
   const cached = musilogyCache.get(mbid);
   if (cached !== undefined) return cached;

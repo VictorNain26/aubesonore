@@ -25,6 +25,7 @@
     "html-to-text": "^10.0.1",
     "nodemailer": "^10.0.13",
     "pg": "^8.20.0",
+    "sharp": "^0.35.5",
     "valibot": "^1.4.2"
   },
   "devDependencies": {

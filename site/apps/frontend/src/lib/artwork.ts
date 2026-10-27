@@ -9,20 +9,22 @@
 // - Deezer's image CDN (`…/1000x1000-000000-80-0-0.jpg`), artist portraits and album covers: 17 of
 //   18 portraits of artists the antenna played and 4 of 4 album covers load at 320×320, a fifth
 //   of the bytes; the 18th redirects at its own size as well.
-// - The station's covers: AzuraCast serves one 1000 px art (~95 KB); nginx shrinks it at /covers/ to
-//   96, 192, 384 and 768 px, 2.4, 6.2 and 18.9 KB for the first three (nginx.conf, measured
-//   2026-10-06). The original stays the largest choice, for the now-playing cover on dense screens.
+// - The station's covers: AzuraCast serves one 1000 px art (~95 KB); this site's cover store keeps
+//   it as WebP at 96, 192, 384 and 768 px (/covers/station/, made when the track starts). The
+//   original stays the largest choice, for the now-playing cover on dense screens.
 // - Wikimedia Commons thumbnails (`…/thumb/…/1280px-File.jpg`): Wikimedia serves a hotlink only at
 //   its standard widths (mediawiki.org/wiki/Common_thumbnail_sizes); an original smaller than
 //   1280 px comes without /thumb/ and keeps its URL.
 // - The Cover Art Archive (`coverartarchive.org/release-group/<id>/front-<size>`): served by this
-//   site at /caa/<size>/<id>.jpg (nginx.conf), its three sizes, 250, 500 and 1200 px. Asked
-//   directly, a thumbnail took 2.6 s at the median behind two redirects, and 1 in 15 failed
-//   (2026-10-12).
-// Other hosts (our own store) keep their URL.
+//   site's cover store as WebP at /covers/caa/<id>/<size>.webp, the archive's three sizes, 250, 500
+//   and 1200 px. Asked directly, a thumbnail took 2.6 s at the median behind two redirects, and 1
+//   in 15 failed (2026-10-12).
+// - A kept track's own copy of the station's art (/covers/kept/<sha256>/<size>.webp), from the
+//   cover store at the station's sizes.
+// Other hosts keep their URL.
 const APPLE_SIZED =
   /^(https:\/\/is\d+-ssl\.mzstatic\.com\/image\/thumb\/.+)\/(\d+x\d+)bb\.(?:jpg|webp)$/;
-// Only this station's art: nginx fetches it from radio.aubesonore.fr.
+// Only this station's art: the cover store fetches it from our own AzuraCast.
 const STATION_ART =
   /^https:\/\/radio\.aubesonore\.fr\/api\/station\/aubesonore\/art\/([0-9a-f]+-\d+)\.jpg$/;
 const STATION_WIDTHS = [96, 192, 384, 768] as const;
@@ -32,6 +34,8 @@ const COMMONS_THUMB =
 const CAA =
   /^https:\/\/coverartarchive\.org\/release-group\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/front(?:-(250|500|1200))?$/;
 const CAA_WIDTHS = [250, 500, 1200] as const;
+// The store's address of a kept track's cover, on whichever origin the backend wrote it with.
+const KEPT = /^(?:https?:\/\/[^/]+)?\/covers\/kept\/([0-9a-f]{64})\/(96|192|384|768)\.webp$/;
 const DEEZER_SIZED =
   /^(https:\/\/cdn-images\.dzcdn\.net\/images\/(?:artist|cover)\/[0-9a-f]+)\/\d+x\d+(-[^/]+\.jpg)$/;
 
@@ -43,6 +47,9 @@ interface Sizer {
    */
   widths: readonly number[];
 }
+
+const caaAt = (releaseGroup: string, size: number | string) =>
+  `/covers/caa/${releaseGroup}/${size}.webp`;
 
 function sizer(url: string): Sizer | null {
   const apple = APPLE_SIZED.exec(url);
@@ -70,17 +77,26 @@ function sizer(url: string): Sizer | null {
   const caa = CAA.exec(url);
   if (caa) {
     return {
-      at: (pixels) => `/caa/${CAA_WIDTHS.find((w) => w >= pixels) ?? 1200}/${caa[1]}.jpg`,
+      at: (pixels) => caaAt(caa[1]!, CAA_WIDTHS.find((w) => w >= pixels) ?? 1200),
       widths: CAA_WIDTHS,
+    };
+  }
+  const kept = KEPT.exec(url);
+  if (kept) {
+    return {
+      at: (pixels) =>
+        `/covers/kept/${kept[1]}/${STATION_WIDTHS.find((w) => w >= pixels) ?? 768}.webp`,
+      widths: STATION_WIDTHS,
     };
   }
   const art = STATION_ART.exec(url);
   if (art) {
     return {
-      // nginx makes these widths only: another size takes the next one up, past them the original.
+      // The store keeps these widths only: another size takes the next one up, past them the
+      // original.
       at: (pixels) => {
         const width = STATION_WIDTHS.find((w) => w >= pixels);
-        return width ? `/covers/${width}/${art[1]}.jpg` : url;
+        return width ? `/covers/station/${art[1]}/${width}.webp` : url;
       },
       widths: [...STATION_WIDTHS, STATION_ORIGINAL],
     };
@@ -89,12 +105,15 @@ function sizer(url: string): Sizer | null {
 }
 
 /**
- * The address a cover is fetched at, at the size its URL names: the Cover Art Archive's through
- * this site (the original's, 1200, when it names none), Apple's as WebP; any other as given.
+ * The address a cover is fetched at, at the size its URL names: the Cover Art Archive's and a
+ * kept track's from this site's cover store (the archive's largest, 1200, when it names none),
+ * Apple's as WebP; any other as given.
  */
 export function artworkSrc(url: string): string {
   const caa = CAA.exec(url);
-  if (caa) return `/caa/${caa[2] ?? '1200'}/${caa[1]}.jpg`;
+  if (caa) return caaAt(caa[1]!, caa[2] ?? '1200');
+  const kept = KEPT.exec(url);
+  if (kept) return `/covers/kept/${kept[1]}/${kept[2]}.webp`;
   const apple = APPLE_SIZED.exec(url);
   return apple ? `${apple[1]}/${apple[2]}bb.webp` : url;
 }

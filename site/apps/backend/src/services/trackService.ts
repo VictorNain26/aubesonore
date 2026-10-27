@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 import type { User, LikedTrack } from '../db/schema';
 import type { KeptArtistPage } from '@aubesonore/shared-types/client';
 import { findItunesCover } from './trackLinksService';
-import { keepCover } from './coverService';
+import { coverStore } from './coverStore';
 import { resolveArtist } from './artistResolver';
 import { mbidSlug, ownSlug, pageSlug } from './artistSlugs';
 import { findPlay } from './radioPlayService';
@@ -118,11 +118,13 @@ async function enrichTrackInBackground(
     .limit(1);
 
   // The artist-verified iTunes cover, else our own copy of the AzuraCast art, which dies with its
-  // media.
+  // media: kept in the cover store.
   const verifiedArt = await findItunesCover(title, artist);
   const existingAzuracastUrl = track?.artworkUrl ?? null;
   const keptArt =
-    !verifiedArt && existingAzuracastUrl ? await keepCover(existingAzuracastUrl) : null;
+    !verifiedArt && existingAzuracastUrl
+      ? await coverStore.keepStationArt(existingAzuracastUrl)
+      : null;
   const nextArt = verifiedArt ?? keptArt ?? existingAzuracastUrl ?? null;
   if (!nextArt) return;
 

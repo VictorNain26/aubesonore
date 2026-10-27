@@ -46,6 +46,8 @@ COPY --from=builder /app/packages ./packages
 COPY --from=builder /app/apps/backend ./apps/backend
 
 RUN chown -R bunjs:bunjs /app
+# The cover store's mount point (compose.yaml, cover_store), the backend's to write.
+RUN mkdir -p /srv/cover-store && chown bunjs:bunjs /srv/cover-store
 
 USER bunjs
 

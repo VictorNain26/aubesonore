@@ -40,6 +40,8 @@ interface EnvConfig {
   FRONTEND_ORIGIN_INTERNAL: string;
   // The artist pages' server render on the compose network (apps/frontend/scripts/renderer.mjs).
   RENDERER_ORIGIN_INTERNAL: string;
+  // The cover store's volume (services/coverStore.ts), which nginx serves at /covers/.
+  COVER_STORE_DIR: string;
 
   // AzuraCast (radio history proxy — key must stay server-side)
   AZURACAST_BASE_URL: string;
@@ -59,9 +61,9 @@ interface EnvConfig {
 
   /**
    * Whether this backend records what the antenna plays and resolves its artists
-   * (antennaWatcher): production's job only. Any other backend leaves it to production
-   * with `false` (`.env.example`), or it would record the same plays and ask
-   * MusicBrainz again from the same address.
+   * (antennaWatcher), and fills the cover store ahead by day (coverFill): production's jobs
+   * only. Any other backend leaves them to production with `false` (`.env.example`), or it would
+   * record the same plays and ask MusicBrainz and the Cover Art Archive again from the same address.
    */
   RECORD_ANTENNA: boolean;
 }
@@ -132,6 +134,7 @@ export const env: EnvConfig = {
   OUTBOUND_USER_AGENT: optional('OUTBOUND_USER_AGENT') ?? 'AubeSonore/1.0 (https://aubesonore.fr)',
   FRONTEND_ORIGIN_INTERNAL: Bun.env.FRONTEND_ORIGIN_INTERNAL ?? 'http://frontend',
   RENDERER_ORIGIN_INTERNAL: Bun.env.RENDERER_ORIGIN_INTERNAL ?? 'http://renderer:3000',
+  COVER_STORE_DIR: Bun.env.COVER_STORE_DIR ?? '/srv/cover-store',
 
   AZURACAST_BASE_URL: Bun.env.AZURACAST_BASE_URL ?? '',
   AZURACAST_API_KEY: Bun.env.AZURACAST_API_KEY ?? '',

@@ -6,7 +6,7 @@ import type { NowPlayingTrack } from './nowPlaying';
 const { createAntennaWatcher } = await import('./antennaWatcher');
 
 function track(sh_id: number, artist = 'Hania Rani', title = 'F Major'): NowPlayingTrack {
-  return { sh_id, title, artist, isrc: 'DEN271800071' };
+  return { sh_id, title, artist, isrc: 'DEN271800071', artId: `a${sh_id}-1` };
 }
 
 interface RecordedPlay {
@@ -19,6 +19,7 @@ interface RecordedPlay {
 function makeDeps(overrides: Partial<WatcherDeps> = {}) {
   const played: RecordedPlay[] = [];
   const resolved: string[] = [];
+  const covers: string[] = [];
   const deps: WatcherDeps = {
     fetchNowPlaying: () => Promise.resolve(track(1)),
     recordPlay: (shId, title, artist, isrc) => {
@@ -29,9 +30,13 @@ function makeDeps(overrides: Partial<WatcherDeps> = {}) {
       resolved.push(artist);
       return Promise.resolve({ id: `id:${artist}` });
     },
+    prepareCover: (artId) => {
+      covers.push(artId);
+      return Promise.resolve();
+    },
     ...overrides,
   };
-  return { deps, played, resolved };
+  return { deps, played, resolved, covers };
 }
 
 describe('createAntennaWatcher', () => {
@@ -112,5 +117,30 @@ describe('createAntennaWatcher', () => {
 
     expect(played).toHaveLength(0);
     expect(resolved).toHaveLength(0);
+  });
+
+  it("makes each new track's covers before a listener asks for them", async () => {
+    let current = track(1);
+    const { deps, covers } = makeDeps({ fetchNowPlaying: () => Promise.resolve(current) });
+    const check = createAntennaWatcher(deps);
+
+    await check();
+    await check();
+    current = { ...track(2), artId: null };
+    await check();
+    current = track(3, '   ');
+    await check();
+
+    expect(covers).toEqual(['a1-1', 'a3-1']);
+  });
+
+  it('records the play when its covers cannot be made', async () => {
+    const { deps, played } = makeDeps({
+      prepareCover: () => Promise.reject(new Error('azuracast down')),
+    });
+
+    await createAntennaWatcher(deps)();
+
+    expect(played).toHaveLength(1);
   });
 });

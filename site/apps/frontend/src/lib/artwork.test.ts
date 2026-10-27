@@ -40,7 +40,6 @@ describe('artworkAt', () => {
 
   it.each([
     'https://radio.aubesonore.fr/api/station/1/art/abc-1691234.jpg',
-    'https://api.aubesonore.fr/api/covers/9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
     'https://is1-ssl.mzstatic.com/image/thumb/Music6/v4/a1/cover.png',
     // Not Apple's CDN, though shaped like it.
     'https://example.com/image/thumb/Music6/v4/a1/cover.jpg/600x600bb.jpg',
@@ -98,21 +97,23 @@ describe('artworkSrcSet', () => {
     );
   });
 
-  it("offers the station's covers at the widths nginx makes, then the original", () => {
+  it("offers the station's covers at the widths the store keeps, then the original", () => {
     const original =
       'https://radio.aubesonore.fr/api/station/aubesonore/art/27d87a8584e8ebe4e670e5e7-1791145643.jpg';
     expect(artworkSrcSet(original)).toBe(
       [96, 192, 384, 768]
-        .map((width) => `/covers/${width}/27d87a8584e8ebe4e670e5e7-1791145643.jpg ${width}w`)
+        .map(
+          (width) => `/covers/station/27d87a8584e8ebe4e670e5e7-1791145643/${width}.webp ${width}w`
+        )
         .concat(`${original} 1000w`)
         .join(', ')
     );
   });
 
-  it("takes the next width nginx makes for a station's cover at another size", () => {
+  it("takes the next width the store keeps for a station's cover at another size", () => {
     const url = 'https://radio.aubesonore.fr/api/station/aubesonore/art/abc-1.jpg';
-    expect(artworkAt(url, 160)).toBe('/covers/192/abc-1.jpg');
-    expect(artworkAt(url, 500)).toBe('/covers/768/abc-1.jpg');
+    expect(artworkAt(url, 160)).toBe('/covers/station/abc-1/192.webp');
+    expect(artworkAt(url, 500)).toBe('/covers/station/abc-1/768.webp');
     expect(artworkAt(url, 1000)).toBe(url);
   });
 
@@ -144,17 +145,17 @@ describe('artworkSrcSet', () => {
   });
 });
 
-describe('the Cover Art Archive, through this site', () => {
+describe('the Cover Art Archive, from the cover store', () => {
   const RG = '00b3e683-47fa-3302-add0-4c0cecc5224e';
 
-  it('is fetched at /caa/ at the size its URL names, the original without one', () => {
+  it('is fetched as WebP at the size its URL names, the largest without one', () => {
     expect(artworkSrc(`https://coverartarchive.org/release-group/${RG}/front-250`)).toBe(
-      `/caa/250/${RG}.jpg`
+      `/covers/caa/${RG}/250.webp`
     );
     expect(artworkSrc(`https://coverartarchive.org/release-group/${RG}/front`)).toBe(
-      `/caa/1200/${RG}.jpg`
+      `/covers/caa/${RG}/1200.webp`
     );
-    // Anything else is left as given: nothing but a release group's id reaches the proxy.
+    // Anything else is left as given: nothing but a release group's id reaches the store.
     expect(artworkSrc(`https://coverartarchive.org/release/${RG}/front-250`)).toBe(
       `https://coverartarchive.org/release/${RG}/front-250`
     );
@@ -163,8 +164,31 @@ describe('the Cover Art Archive, through this site', () => {
   it('offers its three sizes to the browser', () => {
     const url = `https://coverartarchive.org/release-group/${RG}/front-250`;
     expect(artworkSrcSet(url)).toBe(
-      `/caa/250/${RG}.jpg 250w, /caa/500/${RG}.jpg 500w, /caa/1200/${RG}.jpg 1200w`
+      `/covers/caa/${RG}/250.webp 250w, /covers/caa/${RG}/500.webp 500w, /covers/caa/${RG}/1200.webp 1200w`
     );
-    expect(artworkAt(url, 400)).toBe(`/caa/500/${RG}.jpg`);
+    expect(artworkAt(url, 400)).toBe(`/covers/caa/${RG}/500.webp`);
+  });
+});
+
+describe("a kept track's own copy, from the cover store", () => {
+  const SHA = '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08';
+  const kept = `https://aubesonore.fr/covers/kept/${SHA}/768.webp`;
+
+  it('is fetched from this site at the size its URL names', () => {
+    expect(artworkSrc(kept)).toBe(`/covers/kept/${SHA}/768.webp`);
+  });
+
+  it('offers the sizes the store keeps', () => {
+    expect(artworkSrcSet(kept)).toBe(
+      [96, 192, 384, 768].map((w) => `/covers/kept/${SHA}/${w}.webp ${w}w`).join(', ')
+    );
+    expect(artworkAt(kept, 160)).toBe(`/covers/kept/${SHA}/192.webp`);
+    expect(artworkAt(kept, 1000)).toBe(`/covers/kept/${SHA}/768.webp`);
+  });
+
+  it('leaves anything shaped otherwise as given', () => {
+    const odd = `https://aubesonore.fr/covers/kept/${SHA}/500.webp`;
+    expect(artworkSrc(odd)).toBe(odd);
+    expect(artworkSrcSet(odd)).toBeUndefined();
   });
 });
