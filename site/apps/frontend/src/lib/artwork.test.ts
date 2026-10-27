@@ -99,25 +99,12 @@ describe('the Cover Art Archive, from the cover store', () => {
   });
 });
 
-describe("a kept track's own copy, from the cover store", () => {
-  const SHA = '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08';
-  const kept = `https://aubesonore.fr/covers/kept/${SHA}/768.webp`;
-
-  it('is fetched from this site at the size its URL names', () => {
-    expect(artworkSrc(kept)).toBe(`/covers/kept/${SHA}/768.webp`);
-  });
-
-  it('offers the sizes the store keeps', () => {
-    expect(artworkSrcSet(kept)).toBe(
-      [96, 192, 384, 768].map((w) => `/covers/kept/${SHA}/${w}.webp ${w}w`).join(', ')
-    );
-    expect(artworkAt(kept, 160)).toBe(`/covers/kept/${SHA}/192.webp`);
-    expect(artworkAt(kept, 1000)).toBe(`/covers/kept/${SHA}/768.webp`);
-  });
-
-  it('leaves anything shaped otherwise as given', () => {
-    const odd = `https://aubesonore.fr/covers/kept/${SHA}/500.webp`;
-    expect(artworkSrc(odd)).toBe(odd);
-    expect(artworkSrcSet(odd)).toBeUndefined();
+describe("a kept track's old copy of the antenna's art", () => {
+  it('is no cover of the store any more: left as given', () => {
+    const SHA = '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08';
+    const kept = `https://aubesonore.fr/covers/kept/${SHA}/768.webp`;
+    expect(artworkSrc(kept)).toBe(kept);
+    expect(artworkSrcSet(kept)).toBeUndefined();
+    expect(artworkAt(kept, 160)).toBe(kept);
   });
 });

@@ -11,16 +11,13 @@ import { createSingleFlight } from '../lib/singleFlight';
 /**
  * The covers this site serves from its own domain, each made once and kept as a file nginx serves
  * straight from the `cover_store` volume (apps/frontend/nginx.conf, /covers/): a listener never
- * waits on the Cover Art Archive or on a resize again once a cover is stored. Three kinds:
+ * waits on the Cover Art Archive or on a resize again once a cover is stored. Two kinds:
  * - `caa/<release group>/<250|500|1200>.webp`: the Cover Art Archive's front cover of a record.
  *   250 and 500 come from one fetch of the archive's 500 px thumbnail; 1200 from its 1200 px one,
  *   the first time the large view opens. The legal page credits the archive (docs/vision.md §2.5).
  * - `station/<art id>/<96|192|384|768>.webp`: the antenna's art of a track, from our own AzuraCast,
  *   made when the track starts (antennaWatcher) so the hero never waits.
- * - `kept/<sha256>/<96|192|384|768>.webp`: the copies of that art kept tracks were given until a
- *   kept track's cover became its record's (keptTrackCovers.ts); none is made any more, those
- *   made stay served. Their original bytes stay in `originals/<sha256>`, out of nginx's reach, so
- *   any size can be made again.
+ * A kept track's cover is its record's, a `caa` one (keptTrackCovers.ts).
  * WebP at quality 80, never enlarged: 250 + 500 weigh about 37 KB a record (measured 2026-10-27).
  * A cover taken down on request is on the block list (coverBlocklist.txt): never served, fetched
  * nor stored again, its files removed at boot.
@@ -34,17 +31,15 @@ type StationSize = (typeof STATION_SIZES)[number];
 
 export type CoverKey =
   | { kind: 'caa'; id: string; size: CaaSize }
-  | { kind: 'station' | 'kept'; id: string; size: StationSize };
+  | { kind: 'station'; id: string; size: StationSize };
 
 const RELEASE_GROUP = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const STATION_ART_ID = /^[0-9a-f]+-[0-9]+$/;
-const SHA256 = /^[0-9a-f]{64}$/;
 const FILE = /^([1-9][0-9]*)\.webp$/;
 
 const ID_OF: Record<CoverKey['kind'], RegExp> = {
   caa: RELEASE_GROUP,
   station: STATION_ART_ID,
-  kept: SHA256,
 };
 
 function isCover(kind: string, id: string): kind is CoverKey['kind'] {
@@ -102,8 +97,6 @@ export interface CoverStoreOptions {
   userAgent: string;
   azuracastBaseUrl: string;
   stationId: string;
-  /** The site's origin, which a kept track's cover is addressed from. */
-  publicBaseUrl: string;
   /** Covers taken down on request, as `<kind>/<id>` (parseCoverBlocklist). */
   blocked?: ReadonlySet<string>;
 }
@@ -119,7 +112,7 @@ const MISSING_FOR_MS = 24 * 60 * 60 * 1000;
 const WEBP_QUALITY = 80;
 
 export function createCoverStore(options: CoverStoreOptions) {
-  const { root, userAgent, azuracastBaseUrl, stationId, publicBaseUrl } = options;
+  const { root, userAgent, azuracastBaseUrl, stationId } = options;
   const blocked = options.blocked ?? new Set<string>();
   const isBlocked = (kind: CoverKey['kind'], id: string) => blocked.has(`${kind}/${id}`);
   // Read at call time: tests stub the global.
@@ -130,7 +123,6 @@ export function createCoverStore(options: CoverStoreOptions) {
   const flight = createSingleFlight<Map<number, Buffer> | 'missing' | 'failed'>();
 
   const fileOf = (key: CoverKey) => join(root, 'covers', key.kind, key.id, `${key.size}.webp`);
-  const originalOf = (sha: string) => join(root, 'originals', sha);
 
   async function exists(path: string): Promise<boolean> {
     try {
@@ -280,30 +272,13 @@ export function createCoverStore(options: CoverStoreOptions) {
         key.size
       );
     }
-    if (key.kind === 'station') {
-      return make(
-        `station/${key.id}`,
-        () => fetchStationArt(`/api/station/${stationId}/art/${key.id}.jpg`),
-        STATION_SIZES,
-        (size) => ({ kind: 'station', id: key.id, size: size as StationSize }),
-        key.size
-      );
-    }
-    const made = flight(`kept/${key.id}/${key.size}`, async () => {
-      let original: Buffer;
-      try {
-        original = await readFile(originalOf(key.id));
-      } catch {
-        return 'missing';
-      }
-      try {
-        return await store(original, [key.size], () => key);
-      } catch (error) {
-        logger.warn('coverStore.not_made', { kept: key.id, message: (error as Error).message });
-        return 'failed';
-      }
-    });
-    return pick(made, key.size);
+    return make(
+      `station/${key.id}`,
+      () => fetchStationArt(`/api/station/${stationId}/art/${key.id}.jpg`),
+      STATION_SIZES,
+      (size) => ({ kind: 'station', id: key.id, size: size as StationSize }),
+      key.size
+    );
   }
 
   return {
@@ -339,7 +314,7 @@ export function createCoverStore(options: CoverStoreOptions) {
     },
 
     /**
-     * Deletes the blocked covers' files, a kept one's original with them; run at boot, as often
+     * Deletes the blocked covers' files; run at boot, as often
      * as it likes. nginx serves the volume, so a file gone is a cover it no longer serves. How
      * many covers had files.
      */
@@ -347,35 +322,25 @@ export function createCoverStore(options: CoverStoreOptions) {
       let removed = 0;
       for (const entry of blocked) {
         const [kind, id] = entry.split('/') as [CoverKey['kind'], string];
-        const paths = [join(root, 'covers', kind, id)];
-        if (kind === 'kept') paths.push(originalOf(id));
-        const present = (await Promise.all(paths.map(exists))).some(Boolean);
-        await Promise.all(paths.map((path) => rm(path, { recursive: true, force: true })));
+        const path = join(root, 'covers', kind, id);
+        const present = await exists(path);
+        await rm(path, { recursive: true, force: true });
         if (present) removed++;
       }
       return removed;
     },
 
-    keptUrl(sha: string): string {
-      return `${publicBaseUrl}/covers/kept/${sha}/768.webp`;
-    },
-
     /**
-     * Writes a kept original unless the same bytes are there, then reads it back: true only once
-     * the file holds exactly those bytes (keptCovers, moving the covers table).
+     * Deletes the copies of the antenna's art kept tracks were given before their cover became
+     * their record's (keptTrackCovers.ts, migration 0024), with their originals: the pipeline
+     * takes that art from Deezer, whose content the site does not keep. Run at boot, as often as
+     * it likes; true when there was something to delete.
      */
-    async keepOriginal(sha: string, bytes: Buffer): Promise<boolean> {
-      if (!SHA256.test(sha)) return false;
-      const path = originalOf(sha);
-      const holds = async () => {
-        try {
-          return (await readFile(path)).equals(bytes);
-        } catch {
-          return false;
-        }
-      };
-      if (!(await holds())) await writeWhole(path, bytes);
-      return holds();
+    async removeKeptCopies(): Promise<boolean> {
+      const paths = [join(root, 'covers', 'kept'), join(root, 'originals')];
+      const present = (await Promise.all(paths.map(exists))).some(Boolean);
+      await Promise.all(paths.map((path) => rm(path, { recursive: true, force: true })));
+      return present;
     },
   };
 }
@@ -387,6 +352,5 @@ export const coverStore = createCoverStore({
   userAgent: env.OUTBOUND_USER_AGENT,
   azuracastBaseUrl: env.AZURACAST_BASE_URL,
   stationId: env.AZURACAST_STATION_ID,
-  publicBaseUrl: env.FRONTEND_BASE_URL,
   blocked: readCoverBlocklist(),
 });

@@ -27,16 +27,7 @@ import { startYouTubeLinks } from './services/youtubeLinks';
 import { startDiscoveredArtists } from './services/discoveredArtists';
 import { coverStore } from './services/coverStore';
 import { startCoverFill } from './services/coverFill';
-import { moveKeptCovers } from './services/keptCovers';
 import { startKeptCoverFill } from './services/keptTrackCovers';
-
-// The kept tracks' covers leave the covers table for the cover store before migration 0023 drops
-// it; a cover not moved keeps its row, and the migration then stops the boot (keptCovers.ts).
-try {
-  await moveKeptCovers(coverStore);
-} catch (err) {
-  logger.error('keptCovers.move_failed', { err: (err as Error).message });
-}
 
 // A cover taken down on request (services/coverBlocklist.txt) leaves the volume nginx serves.
 try {
@@ -54,6 +45,14 @@ try {
 } catch (err) {
   logger.error('migrations failed, aborting boot', { err: (err as Error).message });
   process.exit(1);
+}
+
+// The kept tracks' old copies of the antenna's art (Deezer's) leave the volume, once migration
+// 0024 has cleared their addresses.
+try {
+  if (await coverStore.removeKeptCopies()) logger.info('coverStore.kept_copies_removed');
+} catch (err) {
+  logger.error('coverStore.kept_copies_not_removed', { err: (err as Error).message });
 }
 
 // Start TTL cache sweeps (every minute, unref'd so process can exit)

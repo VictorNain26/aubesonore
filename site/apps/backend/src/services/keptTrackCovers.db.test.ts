@@ -61,7 +61,7 @@ const artworks = async () =>
   );
 
 describe('migration 0024', () => {
-  it("clears Apple's covers only, keeps every track, and changes nothing run again", async () => {
+  it("clears Apple's covers and the copies of the antenna's art, keeps every track, and changes nothing run again", async () => {
     await keep('apple', APPLE, { userId: 'u1' });
     await keep('apple2', 'https://is5-ssl.mzstatic.com/image/thumb/b/600x600bb.webp', {
       userId: 'u2',
@@ -74,7 +74,7 @@ describe('migration 0024', () => {
     const once = await artworks();
     await db.execute(sql.raw(DROP_APPLE));
 
-    expect(once).toEqual({ apple: null, apple2: null, caa: CAA, kept: KEPT, none: null });
+    expect(once).toEqual({ apple: null, apple2: null, caa: CAA, kept: null, none: null });
     expect(await artworks()).toEqual(once);
   });
 });

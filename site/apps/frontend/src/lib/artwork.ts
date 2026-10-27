@@ -11,8 +11,6 @@
 //   and 1200 px. Asked directly, a thumbnail took 2.6 s at the median behind two redirects, and 1
 //   in 15 failed (2026-10-12).
 //   A kept track's cover is its record's, from the archive too.
-// - The copies of the station's art kept tracks were given before (/covers/kept/<sha256>/), from
-//   the cover store at the station's sizes.
 // Other hosts keep their URL.
 // Only this station's art: the cover store fetches it from our own AzuraCast.
 const STATION_ART =
@@ -27,8 +25,6 @@ const COMMONS_WIDTHS = [120, 330, 500, 960, 1280] as const;
 const CAA =
   /^https:\/\/coverartarchive\.org\/release-group\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/front(?:-(250|500|1200))?$/;
 const CAA_WIDTHS = [250, 500, 1200] as const;
-// The store's address of a kept track's cover, on whichever origin the backend wrote it with.
-const KEPT = /^(?:https?:\/\/[^/]+)?\/covers\/kept\/([0-9a-f]{64})\/(96|192|384|768)\.webp$/;
 
 interface Sizer {
   at: (pixels: number) => string;
@@ -55,14 +51,6 @@ function sizer(url: string): Sizer | null {
       widths: CAA_WIDTHS,
     };
   }
-  const kept = KEPT.exec(url);
-  if (kept) {
-    return {
-      at: (pixels) =>
-        `/covers/kept/${kept[1]}/${STATION_WIDTHS.find((w) => w >= pixels) ?? 768}.webp`,
-      widths: STATION_WIDTHS,
-    };
-  }
   const art = STATION_ART.exec(url);
   if (art) {
     return {
@@ -79,15 +67,12 @@ function sizer(url: string): Sizer | null {
 }
 
 /**
- * The address a cover is fetched at, at the size its URL names: the Cover Art Archive's and a
- * kept track's from this site's cover store (the archive's largest, 1200, when it names none);
- * any other as given.
+ * The address a cover is fetched at, at the size its URL names: the Cover Art Archive's from this
+ * site's cover store (the archive's largest, 1200, when it names none); any other as given.
  */
 export function artworkSrc(url: string): string {
   const caa = CAA.exec(url);
-  if (caa) return caaAt(caa[1]!, caa[2] ?? '1200');
-  const kept = KEPT.exec(url);
-  return kept ? `/covers/kept/${kept[1]}/${kept[2]}.webp` : url;
+  return caa ? caaAt(caa[1]!, caa[2] ?? '1200') : url;
 }
 
 /** The cover at `pixels` on its longer side where its host can serve that size, else as given. */

@@ -221,8 +221,8 @@ const PAUSE_MS = 1000;
 const NIGHT_CHECK_MS = 10 * 60 * 1000;
 
 /**
- * The kept tracks without a cover, one at a time: those whose Apple cover was dropped (migration
- * 0024), and those MusicBrainz or the archive failed at their keeping. A second's pause after
+ * The kept tracks without a cover, one at a time: those whose Apple cover or copy of the antenna's
+ * art was dropped (migration 0024), and those MusicBrainz or the archive failed at their keeping. A second's pause after
  * each one MusicBrainz was asked about leaves the live pages its other slots (one request a
  * second, musicbrainzService). By day only, like coverFill.
  */
