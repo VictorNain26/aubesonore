@@ -22,7 +22,8 @@ const PUBLIC_READS = ['^/api/musilogy/', '^/api/artist/page/', '^/api/trends'];
 
 /**
  * The listener's theme on the page before its first paint (src/design/theme.ts): a script in
- * <head>, ahead of the styles, which the browser runs before drawing anything. A file of its own,
+ * <head>, after the theme-color tags it turns and ahead of the styles, which the browser runs
+ * before drawing anything (scripts/theme-before-paint.test.mjs). A file of its own,
  * since the CSP allows no inline script, named by its content under /assets/ so nginx and the
  * service worker keep it for a year. The home page only: not the Cast receiver nor the page the
  * Google sign-in popup ends on.
@@ -50,7 +51,7 @@ function themeBeforePaint(): Plugin {
       order: 'pre',
       handler(_html, { path: page }) {
         if (page === '/cast/receiver.html' || page === '/auth/google.html') return;
-        return [{ tag: 'script', attrs: { src: `/${fileName}` }, injectTo: 'head-prepend' }];
+        return [{ tag: 'script', attrs: { src: `/${fileName}` }, injectTo: 'head' }];
       },
     },
   };
