@@ -174,18 +174,22 @@ export const authApi = {
     if (!response.ok) throw await authError(response, m.error_reset_failed);
   },
 
-  // Better Auth's /sign-in/social is POST-only: POST {provider, callbackURL},
-  // receive { url } (the provider authorize URL) and redirect the browser to it.
-  signInWithProvider: async (provider: 'google', callbackURL: string): Promise<void> => {
+  // Better Auth's /sign-in/social is POST-only: it answers { url }, Google's authorize address,
+  // for the caller to open. Once signed in, Google's answer lands on callbackURL; a failure on
+  // errorCallbackURL with ?error= (better-auth oauth2/errors.mjs), else on Better Auth's own page.
+  googleSignInUrl: async (to: {
+    callbackURL: string;
+    errorCallbackURL?: string;
+  }): Promise<string> => {
     const response = await fetch(`${API_BASE_URL}/api/auth/sign-in/social`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider, callbackURL }),
+      body: JSON.stringify({ provider: 'google', ...to }),
     });
     if (!response.ok) throw await authError(response, m.error_oauth_failed);
     const data = (await response.json()) as { url?: string };
     if (!data.url) throw new Error(m.error_redirect_missing());
-    window.location.href = data.url;
+    return data.url;
   },
 };

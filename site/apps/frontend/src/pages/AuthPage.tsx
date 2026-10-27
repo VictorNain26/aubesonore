@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useLocation, useNavigate, useSearchParams } from 'react-router';
-import { localizeHref } from '@/paraglide/runtime.js';
-import { usePlayer } from '../lib/player';
+import { getLocale, localizeHref } from '@/paraglide/runtime.js';
 import type { SignInState } from '../lib/signIn';
 import { takePendingKeep } from '../lib/pendingKeep';
 import { SiteHeader } from '../shell/SiteHeader';
@@ -12,6 +11,7 @@ import { authApi } from '../lib/api';
 import { toast } from 'sonner';
 import { toastError } from '../lib/appToast';
 import { AuthView, type AuthMode } from '../auth/AuthView';
+import { signInWithGoogle } from '../auth/googleSignIn';
 import * as m from '@/paraglide/messages.js';
 import { PASSWORD_MIN_LENGTH } from '@aubesonore/shared-types/auth';
 
@@ -58,7 +58,6 @@ export function AuthPage() {
   const defaultMode = opened.mode ?? 'signin';
   const keepTitle = opened.keepTitle;
   const backTo = opened.from ?? localizeHref('/');
-  const isListening = usePlayer((s) => s.isPlaying);
   const [mode, setMode] = useState<AuthMode>(resetToken ? 'reset-password' : defaultMode);
 
   useEffect(() => {
@@ -73,9 +72,9 @@ export function AuthPage() {
     if (isAuthenticated && mode !== 'verification-sent') void navigate(backTo, { replace: true });
   }, [isAuthenticated, mode, backTo, navigate]);
 
-  // Left without signing in: forget the track they wanted to keep. A redirect to Google unloads
-  // the page without unmounting it, so the track survives the round trip. The forgetting waits a
-  // task: a page mounted again at once (StrictMode, a page React keeps) cancels it.
+  // Left without signing in: forget the track they wanted to keep. The redirect to Google (when
+  // the popup is blocked) unloads the page without unmounting it, so the track survives it. The
+  // forgetting waits a task: a page mounted again at once (StrictMode, a page React keeps) cancels it.
   useEffect(() => {
     clearTimeout(forgetPendingKeep);
     return () => {
@@ -191,14 +190,27 @@ export function AuthPage() {
     }
   };
 
-  const handleOAuth = async (provider: 'google') => {
+  // Called in the click itself: signInWithGoogle opens its popup before awaiting anything.
+  const handleGoogle = async () => {
     setIsLoading(true);
     try {
-      // Back to the page the listener came from, not to the sign-in page.
-      await authApi.signInWithProvider(provider, `${window.location.origin}${backTo}`);
-      // On success the browser navigates to the provider; keep loading state.
+      await signInWithGoogle(backTo, getLocale(), (outcome) => {
+        if (outcome === 'failed') {
+          toastError(m.error_oauth_failed());
+          return;
+        }
+        // The popup set the session cookie: read it, and the page goes back to backTo.
+        void useAuthStore
+          .getState()
+          .init()
+          .then(() => {
+            if (useAuthStore.getState().isAuthenticated) toast.success(m.toast_signin_success());
+          });
+      });
     } catch (err) {
       toastError(err instanceof Error ? err.message : m.error_oauth_failed());
+    } finally {
+      // The page cannot tell when the listener closes the popup: the button never stays busy.
       setIsLoading(false);
     }
   };
@@ -214,7 +226,6 @@ export function AuthPage() {
       <SiteHeader />
       <AuthView
         keepTitle={keepTitle}
-        isListening={isListening}
         mode={mode}
         isLoading={isLoading}
         email={email}
@@ -231,7 +242,7 @@ export function AuthPage() {
         onSubmit={(e) => {
           void handleSubmit(e);
         }}
-        onOAuthGoogle={() => void handleOAuth('google')}
+        onOAuthGoogle={() => void handleGoogle()}
         onToggleShowPassword={() => setShowPassword((s) => !s)}
         onNameChange={(value) => setName(value)}
         onEmailChange={(value) => {
