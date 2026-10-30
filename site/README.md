@@ -79,7 +79,7 @@ pnpm format:check              # prettier --check
 
 pnpm --filter @aubesonore/frontend test          # Vitest
 pnpm --filter @aubesonore/backend test           # bun test
-pnpm --filter @aubesonore/frontend storybook     # le catalogue, sur http://localhost:6006
+pnpm storybook                 # le catalogue, sur http://localhost:6006
 ```
 
 ### Le catalogue
