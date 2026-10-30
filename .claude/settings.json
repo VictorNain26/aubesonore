@@ -24,7 +24,21 @@
     ]
   },
   "sandbox": {
-    "excludedCommands": ["pnpm stack", "pnpm data:pull", "pnpm musilogy:sample"],
+    "excludedCommands": [
+      "pnpm -C site stack",
+      "pnpm -C site data:pull",
+      "pnpm -C site musilogy:sample",
+      "pnpm -C site storybook"
+    ],
+    "network": {
+      "allowedDomains": [
+        "musicbrainz.org",
+        "coverartarchive.org",
+        "archive.org",
+        "*.archive.org",
+        "aubesonore.fr"
+      ]
+    },
     "credentials": {
       "files": [
         { "path": "azuracast/azuracast.env", "mode": "deny" }

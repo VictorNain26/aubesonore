@@ -17,7 +17,7 @@ A webradio: backend Bun + Elysia, frontend Vite + React, pnpm monorepo orchestra
 
 ## Workflow rules
 
-- **A site PR is tried in Chrome before its merge**, at 1280 and 390 px wide, on the local stack (`pnpm stack`, README « La pile locale, en une commande »).
+- **A site PR is tried in Chrome before its merge**, at 1280 and 390 px wide, on the local stack (`pnpm -C site stack`, README « La pile locale, en une commande »).
 - Checks: `.husky/pre-push` is the list the CI runs (typecheck, lint, knip, contrast, tests, build); frontend tests `pnpm --filter=@aubesonore/frontend test --run` (without `--run`, Vitest watches); backend tests `pnpm --filter=@aubesonore/backend test` (mocks).
 - Tests against a real Postgres (`*.db.test.ts`): `pnpm --filter=@aubesonore/backend test:db` with `DATABASE_URL` naming a disposable database whose name ends in `_test`, its schema from `db:push` (`src/test/pg.ts` refuses any other). `db:push` reads `DATABASE_URL`, else `.env`: export the test database's first, or it syncs `schema.ts` onto the database `.env` names.
 - `.husky/pre-push` mirrors most of the CI (see the file); the Postgres tests, `scripts/*.test.sh`, `format:check` and the audit run only in CI.
