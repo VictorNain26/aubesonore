@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
 import { TRACKS } from '../stories/fixtures';
 import { PlayerBarView } from './PlayerBar';
+import * as m from '@/paraglide/messages.js';
 
 const { growlers } = TRACKS;
 
@@ -77,6 +78,7 @@ export const FicheDuTelephone: Story = {
   name: 'Téléphone : la fiche du titre',
   globals: { viewport: { value: 'w390' } },
   play: async ({ canvas, userEvent }) => {
-    await userEvent.click(await canvas.findByRole('button', { name: /I’ll Be Around/ }));
+    const opens = m.sheet_open({ title: growlers.title, artist: growlers.artist });
+    await userEvent.click(await canvas.findByRole('button', { name: opens }));
   },
 };
