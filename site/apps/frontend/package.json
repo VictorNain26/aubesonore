@@ -13,6 +13,7 @@
     "typecheck": "pnpm compile:i18n && tsc --noEmit && tsc -p tsconfig.node.json --noEmit --composite false",
     "check:contrast": "node scripts/check-contrast.mjs",
     "preview": "vite preview",
+    "storybook": "pnpm compile:i18n && storybook dev -p 6006 --no-open",
     "test": "vitest",
     "clean": "rm -rf dist"
   },
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@inlang/plugin-message-format": "4.4.0",
+    "@storybook/react-vite": "10.6.5",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "14.6.1",
@@ -50,6 +52,7 @@
     "jsdom": "29.1.1",
     "msw": "2.14.6",
     "rollup-plugin-visualizer": "7.0.1",
+    "storybook": "10.6.5",
     "tailwindcss": "4.3.0",
     "typescript": "5.9.3",
     "vite": "8.1.6",
