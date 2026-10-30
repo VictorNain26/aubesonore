@@ -15,6 +15,7 @@
     "dev": "turbo dev",
     "dev:backend": "turbo dev --filter=@aubesonore/backend",
     "dev:frontend": "turbo dev --filter=@aubesonore/frontend",
+    "storybook": "pnpm --filter=@aubesonore/frontend storybook",
     "build": "turbo build",
     "build:backend": "turbo build --filter=@aubesonore/backend",
     "build:frontend": "turbo build --filter=@aubesonore/frontend",

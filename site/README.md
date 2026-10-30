@@ -79,7 +79,12 @@ pnpm format:check              # prettier --check
 
 pnpm --filter @aubesonore/frontend test          # Vitest
 pnpm --filter @aubesonore/backend test           # bun test
+pnpm storybook                 # le catalogue, sur http://localhost:6006
 ```
+
+### Le catalogue
+
+Storybook montre les vrais composants du site, état par état, sans backend : la barre d'outils choisit le ciel (Système, Jour, Nuit), la langue et la largeur de 320 à 2560 px. Les stories vivent à côté de leur composant (`*.stories.tsx`), les données d'exemple dans `apps/frontend/src/stories/fixtures.ts` ; la configuration est dans `apps/frontend/.storybook/`. Il ne tourne qu'en développement : rien n'en arrive dans le site publié.
 
 Détails par app : [backend](apps/backend/README.md) · [frontend](apps/frontend/README.md).
 
