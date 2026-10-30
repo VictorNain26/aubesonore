@@ -1,5 +1,5 @@
 import type { Decorator, Preview } from '@storybook/react-vite';
-import { useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 // What src/main.tsx loads for the page's look: the same fonts, the same tokens.
 import '@fontsource-variable/atkinson-hyperlegible-next';
@@ -28,11 +28,31 @@ const withLocale: Decorator = (Story, { globals }) => {
   return <Story key={locale} />;
 };
 
-/** The links of a view need a router; a story is one page of its own. */
-const withRouter: Decorator = (Story) => {
-  const router = createMemoryRouter([{ path: '*', element: <Story /> }]);
-  return <RouterProvider router={router} />;
-};
+/**
+ * The links of a view need a router; a story is one page of its own. The router is made once per
+ * story, the story reaching it through a context: a router made on each render would remount the
+ * story at every change of a control or of the toolbar, closing what its `play` opened.
+ */
+const StorySlot = createContext<ReactNode>(null);
+
+function Slot() {
+  return useContext(StorySlot);
+}
+
+function Routed({ children }: { children: ReactNode }) {
+  const [router] = useState(() => createMemoryRouter([{ path: '*', element: <Slot /> }]));
+  return (
+    <StorySlot.Provider value={children}>
+      <RouterProvider router={router} />
+    </StorySlot.Provider>
+  );
+}
+
+const withRouter: Decorator = (Story) => (
+  <Routed>
+    <Story />
+  </Routed>
+);
 
 /** The widths the audit of 2026-10-29 walked through, from the smallest phone to a large screen. */
 const WIDTHS = {
