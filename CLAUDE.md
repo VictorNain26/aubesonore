@@ -47,6 +47,10 @@ covers rebuilding the whole system from nothing.
   is the production checkout. Start Claude Code at the worktree's root, never in a piece's
   folder, and run a piece's commands from there (`uv --directory musilogy run …`,
   `pnpm -C site …`).
+- **Servers Claude starts run outside its sandbox.** On Linux and WSL2 a sandboxed command's
+  `localhost` is private to it: a dev server started there is unreachable from the browser.
+  The commands that start one are the `sandbox.excludedCommands` of `.claude/settings.json`,
+  matched on their exact text, so call them exactly as listed there, without a redirect or `cd`.
 
 ## How the pieces fit together
 
