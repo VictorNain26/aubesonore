@@ -65,6 +65,8 @@ const WIDTHS = {
 };
 
 const preview: Preview = {
+  // A documentation page for every component, from its props and its stories.
+  tags: ['autodocs'],
   decorators: [withRouter, withLocale, withTheme],
   globalTypes: {
     theme: {
@@ -90,6 +92,23 @@ const preview: Preview = {
   initialGlobals: { theme: 'system', locale: baseLocale },
   parameters: {
     layout: 'fullscreen',
+    // The site as a design system: what it is made of, then its parts, then its pages.
+    options: {
+      storySort: {
+        order: [
+          'Introduction',
+          'Fondations',
+          ['Couleurs', 'Typographie', 'Icônes', 'La ligne'],
+          'Composants',
+          'Coque',
+          'Pages',
+          ['Accueil', 'Artiste', 'Musilogy', 'Compte', 'Mes titres', 'Mentions légales', '404'],
+        ],
+      },
+    },
+    // Every story checked by axe-core; a violation shows as a warning in the panel. 'error' would
+    // fail only through the Vitest addon, which runs tests in a browser: not used here.
+    a11y: { test: 'todo' },
     viewport: { options: WIDTHS },
   },
 };

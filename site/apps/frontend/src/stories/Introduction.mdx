@@ -1,0 +1,26 @@
+import { Meta } from '@storybook/addon-docs/blocks';
+
+<Meta title="Introduction" />
+
+# Le système de design d'AubeSonore
+
+Ce catalogue montre les vrais composants du site, rendus par son propre code, avec ses polices et ses jetons. Ce qui s'y voit est ce que voit l'auditeur, écarts compris.
+
+## Le lancer
+
+```bash
+pnpm -C site storybook
+```
+
+Il s'ouvre sur http://localhost:6006. La barre d'outils choisit le ciel (Système, Jour, Nuit), la langue et la largeur, de 320 à 2560 px. Chaque story a son panneau Accessibilité (axe-core) et chaque composant sa page de documentation.
+
+## Ce qu'il contient
+
+- **Fondations** : les couleurs, la typographie et les icônes, lues dans `src/design/tokens.css` et `src/design/icons.tsx`, et la ligne du site.
+- **Composants** : les briques de `src/design/`.
+- **Coque** : ce qui entoure chaque page (`src/shell/`).
+- **Pages** : chaque page, état par état.
+
+## Ce qui n'y est pas
+
+Ce qui est décidé mais pas encore construit est dans le plan de travail, et arrive ici avec la PR qui le livre. Les règles du système sont dans `.claude/rules/site-frontend.md`.

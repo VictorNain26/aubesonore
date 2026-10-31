@@ -1,0 +1,40 @@
+import { ColorItem, ColorPalette, Meta } from '@storybook/addon-docs/blocks';
+import tokensCss from '../design/tokens.css?raw';
+import { colourRows } from './foundations';
+
+export const rows = colourRows(tokensCss);
+
+<Meta title="Fondations/Couleurs" />
+
+# Couleurs
+
+Lues dans `src/design/tokens.css` à chaque build : la valeur de jour et celle de nuit de chaque jeton, telles que le site les dessine. Un jeton qui en nomme un autre montre la valeur qu'il prend dans chaque ciel.
+
+## Le thème
+
+Les couleurs que les classes peuvent nommer (`bg-…`, `text-…`, `border-…`).
+
+<ColorPalette>
+  {rows
+    .filter((row) => !row.name.startsWith('sky-'))
+    .map((row) => (
+      <ColorItem
+        key={row.name}
+        title={`--${row.name}`}
+        subtitle={`bg-${row.name}`}
+        colors={{ Jour: row.day, Nuit: row.night }}
+      />
+    ))}
+</ColorPalette>
+
+## Le ciel
+
+Le décor, la même valeur de jour comme de nuit.
+
+<ColorPalette>
+  {rows
+    .filter((row) => row.name.startsWith('sky-'))
+    .map((row) => (
+      <ColorItem key={row.name} title={`--${row.name}`} subtitle="" colors={[row.day]} />
+    ))}
+</ColorPalette>

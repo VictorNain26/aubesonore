@@ -27,7 +27,9 @@ function withoutSiteOnly(plugins: PluginOption[]): PluginOption[] {
 
 export default defineMain({
   framework: '@storybook/react-vite',
-  stories: ['../src/**/*.stories.tsx'],
+  stories: ['../src/**/*.mdx', '../src/**/*.stories.tsx'],
+  // The docs pages (MDX, autodocs) and the accessibility panel (axe-core), both official.
+  addons: ['@storybook/addon-docs', '@storybook/addon-a11y'],
   core: { disableTelemetry: true },
   viteFinal(config) {
     return {
