@@ -72,6 +72,9 @@ async function fetchJson<T>(path: string): Promise<Lookup<T>> {
       return { status: 'failed' };
     }
     if (delay > 0) await sleep(delay);
+    // A wait can end late: the next slot is then a second after this send, not after its slot
+    // (the CI measured 994.5 ms between two requests of a sequential run).
+    nextSlotAt = Math.max(nextSlotAt, performance.now() + intervalMs);
 
     let response: Response;
     try {
