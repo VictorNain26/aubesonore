@@ -323,3 +323,31 @@ describe('findRecordingReleases', () => {
     expect(await findRecordingReleases({ isrc: 'ZZZ000000002' })).toEqual({ status: 'none' });
   });
 });
+
+// The CI measured 994.5 ms between two requests (2026-10-30 and 31): a wait that ends late sent
+// its request late, and the next was timed on the late one's slot, not on its send.
+it('keeps a second between requests as sent, after a wait that ends late', async () => {
+  let now = 1_000_000;
+  let late = 5;
+  const clock = spyOn(performance, 'now').mockImplementation(() => now);
+  __useMusicbrainzSleep((ms) => {
+    now += ms + late;
+    late = 0;
+    return Promise.resolve();
+  });
+  const sent: number[] = [];
+  spyOn(globalThis, 'fetch').mockImplementation((() => {
+    sent.push(now);
+    return Promise.resolve(json({ recordings: [] }));
+  }) as unknown as typeof fetch);
+
+  try {
+    for (const isrc of ['ZZZ000000020', 'ZZZ000000021', 'ZZZ000000022']) {
+      await findRecordingReleases({ isrc });
+    }
+    expect(sent).toEqual([1_000_000, 1_001_005, 1_002_005]);
+  } finally {
+    __useMusicbrainzSleep(null);
+    clock.mockRestore();
+  }
+});
