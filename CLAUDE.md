@@ -51,6 +51,8 @@ covers rebuilding the whole system from nothing.
   `localhost` is private to it: a dev server started there is unreachable from the browser.
   The commands that start one are the `sandbox.excludedCommands` of `.claude/settings.json`,
   matched on their exact text, so call them exactly as listed there, without a redirect or `cd`.
+- **Victor runs a rebase or merge that changes `.claude/settings.json`.** The sandbox forbids writing
+  that file: git stops halfway, the working tree half rewritten. Ask him to run it.
 
 ## How the pieces fit together
 
