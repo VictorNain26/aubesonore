@@ -1,0 +1,18 @@
+import { IconGallery, IconItem, Meta } from '@storybook/addon-docs/blocks';
+import * as icons from '../design/icons';
+
+export const all = Object.entries(icons).filter(([name]) => name.endsWith('Icon'));
+
+<Meta title="Fondations/Icônes" />
+
+# Icônes
+
+Toutes les icônes de `src/design/icons.tsx`, dessinées pour le site, dans la couleur du texte qui les entoure.
+
+<IconGallery>
+  {all.map(([name, Icon]) => (
+    <IconItem key={name} name={name}>
+      <Icon className="size-6" />
+    </IconItem>
+  ))}
+</IconGallery>

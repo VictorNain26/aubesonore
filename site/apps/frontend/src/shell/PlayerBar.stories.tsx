@@ -7,7 +7,7 @@ import * as m from '@/paraglide/messages.js';
 const { growlers } = TRACKS;
 
 const meta = {
-  title: 'Lecteur/La barre',
+  title: 'Coque/La barre',
   component: PlayerBarView,
   args: {
     isHidden: false,

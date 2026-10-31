@@ -33,7 +33,7 @@ function live({ data, unreachable = false, playing = false }: Live): () => () =>
 }
 
 const meta = {
-  title: 'Accueil/La hero',
+  title: 'Pages/Accueil',
   component: Hero,
   args: { trends: { week: WEEK } },
 } satisfies Meta<typeof Hero>;

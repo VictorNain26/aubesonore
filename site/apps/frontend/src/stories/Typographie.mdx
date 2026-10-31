@@ -1,0 +1,76 @@
+import { Meta, Typeset } from '@storybook/addon-docs/blocks';
+import tokensCss from '../design/tokens.css?raw';
+import * as m from '../paraglide/messages.js';
+import { fontRows, textRows } from './foundations';
+
+export const fonts = fontRows(tokensCss);
+export const sizes = textRows(tokensCss);
+
+<Meta title="Fondations/Typographie" />
+
+# Typographie
+
+Lue dans `src/design/tokens.css` à chaque build.
+
+## Les familles
+
+{fonts.map((font) => (
+
+  <div key={font.name}>
+    <h3>
+      <code>--p-font-{font.name}</code>
+    </h3>
+    <p>
+      <code>{font.family}</code>
+    </p>
+    <Typeset fontFamily={font.family} fontSizes={['1rem', '1.5rem', '3rem']} sampleText={m.hero_title()} />
+  </div>
+))}
+
+## Les tailles
+
+Chaque classe `text-…` du thème, avec la hauteur de ligne, la graisse et l'approche que Tailwind pose avec elle. Les tailles en `clamp()` suivent la largeur de la fenêtre.
+
+<table>
+  <thead>
+    <tr>
+      <th>Classe</th>
+      <th>Taille</th>
+      <th>Ligne</th>
+      <th>Graisse</th>
+      <th>Approche</th>
+    </tr>
+  </thead>
+  <tbody>
+    {sizes.map((row) => (
+      <tr key={row.name}>
+        <td>
+          <code>text-{row.name}</code>
+        </td>
+        <td>
+          <code>{row.size}</code>
+        </td>
+        <td>{row.lineHeight ?? '—'}</td>
+        <td>{row.weight ?? '—'}</td>
+        <td>{row.tracking ?? '—'}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
+
+{sizes.map((row) => (
+
+  <p
+    key={row.name}
+    style={{
+      fontSize: row.size,
+      lineHeight: row.lineHeight ?? undefined,
+      fontWeight: row.weight ?? undefined,
+      letterSpacing: row.tracking ?? undefined,
+      margin: '0 0 0.5em',
+    }}
+  >
+    <code style={{ fontSize: '0.75rem', marginRight: '1rem' }}>text-{row.name}</code>
+    {m.hero_title()}
+  </p>
+))}

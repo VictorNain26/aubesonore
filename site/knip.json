@@ -4,7 +4,7 @@
   "workspaces": {
     "apps/frontend": {
       "entry": ["scripts/*.mjs", "src/entry-server.tsx"],
-      "project": ["src/**/*.{ts,tsx,css}", "scripts/*.mjs"],
+      "project": ["src/**/*.{ts,tsx,css,mdx}", "scripts/*.mjs"],
       "ignoreDependencies": ["@inlang/plugin-message-format"]
     }
   }
