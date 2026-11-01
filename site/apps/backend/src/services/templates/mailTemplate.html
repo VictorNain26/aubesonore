@@ -3,28 +3,86 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="light" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="supported-color-schemes" content="light dark" />
     <title>{{subject}}</title>
+    <!--
+      The site's charter (apps/frontend/src/design/tokens.css) as hex: mail clients read neither
+      oklch nor custom properties. By day the paper, the raised surface, the ink, the muted ink and
+      the border; by night their night values. Every style is also inline: the night and the phone
+      below are the only rules a client may drop. The night follows prefers-color-scheme where the
+      client reads it: Apple Mail, Outlook on macOS, iOS, Android and outlook.com, Samsung Email;
+      not Gmail nor Outlook on Windows (caniemail.com/features/css-at-media-prefers-color-scheme).
+      No web font: Fraunces where installed, else Georgia.
+    -->
+    <style>
+      @media (prefers-color-scheme: dark) {
+        .page {
+          background-color: #151d33 !important;
+          color: #f0e6db !important;
+        }
+        .card {
+          background-color: #1f2943 !important;
+        }
+        .ink {
+          color: #f0e6db !important;
+        }
+        .muted {
+          color: #b9bcd1 !important;
+        }
+        .button-cell {
+          background-color: #f0e6db !important;
+        }
+        .button {
+          color: #151d33 !important;
+        }
+        .rule {
+          border-top-color: #333c58 !important;
+        }
+        .day {
+          display: none !important;
+        }
+        .night {
+          display: block !important;
+        }
+      }
+      @media (max-width: 480px) {
+        .card {
+          padding: 28px 22px 24px !important;
+        }
+        .heading {
+          font-size: 30px !important;
+        }
+      }
+    </style>
   </head>
 
-  <!-- The site's paper, ink and dawn (apps/frontend/src/design/tokens.css), as plain hex: mail
-       clients read neither oklch nor custom properties. Tables and inline styles, as they need. -->
   <body
+    class="page"
     style="
       margin: 0;
       padding: 0;
-      background-color: #e8e0d7;
-      color: #211f26;
-      font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f1e5dc;
+      color: #1b233a;
+      font-family:
+        'Atkinson Hyperlegible Next',
+        -apple-system,
+        'Segoe UI',
+        Roboto,
+        Helvetica,
+        Arial,
+        sans-serif;
     "
   >
     <div style="display: none; max-height: 0; overflow: hidden; opacity: 0">{{preheader}}</div>
     <table
+      class="page"
       width="100%"
       cellpadding="0"
       cellspacing="0"
       role="presentation"
-      style="background-color: #e8e0d7"
+      bgcolor="#f1e5dc"
+      style="background-color: #f1e5dc"
     >
       <tr>
         <td align="center" style="padding: 40px 16px">
@@ -33,72 +91,111 @@
             cellpadding="0"
             cellspacing="0"
             role="presentation"
-            style="width: 520px; max-width: 100%"
+            style="width: 100%; max-width: 520px"
           >
             <tr>
-              <td style="padding-bottom: 32px">
+              <td style="padding-bottom: 28px">
                 <img
-                  src="https://aubesonore.fr/icon-180.png"
-                  alt=""
-                  width="40"
-                  height="40"
-                  style="display: inline-block; vertical-align: middle; border-radius: 8px"
-                />
-                <span
+                  class="day"
+                  src="{{lockupUrl}}"
+                  alt="{{lockupAlt}}"
+                  width="{{lockupWidth}}"
+                  height="{{lockupHeight}}"
                   style="
-                    display: inline-block;
-                    vertical-align: middle;
-                    margin-left: 10px;
+                    display: block;
+                    border: 0;
+                    color: #1b233a;
                     font-size: 22px;
-                    font-weight: 600;
-                    letter-spacing: -0.02em;
+                    font-weight: 700;
                   "
-                  >aubesonore</span
-                >
+                />
+                <!--[if !mso]><!-->
+                <img
+                  class="night"
+                  src="{{lockupNightUrl}}"
+                  alt="{{lockupAlt}}"
+                  width="{{lockupWidth}}"
+                  height="{{lockupHeight}}"
+                  style="
+                    display: none;
+                    border: 0;
+                    color: #f0e6db;
+                    font-size: 22px;
+                    font-weight: 700;
+                  "
+                />
+                <!--<![endif]-->
               </td>
             </tr>
             <tr>
-              <td>
-                <h1 style="margin: 0; font-size: 28px; line-height: 1.15; font-weight: 600">
+              <td
+                class="card"
+                bgcolor="#e8d9cf"
+                style="padding: 36px 36px 32px; background-color: #e8d9cf"
+              >
+                <h1
+                  class="heading ink"
+                  style="
+                    margin: 0;
+                    color: #1b233a;
+                    font-family: Fraunces, Georgia, 'Times New Roman', serif;
+                    font-size: 36px;
+                    line-height: 1.1;
+                    font-weight: 400;
+                    letter-spacing: -0.02em;
+                  "
+                >
                   {{heading}}
                 </h1>
-                <p style="margin: 16px 0 0; font-size: 16px; line-height: 1.55; color: #4a4650">
+                <p
+                  class="ink"
+                  style="margin: 18px 0 0; color: #1b233a; font-size: 17px; line-height: 1.55"
+                >
                   {{body}}
                 </p>
-                <p style="margin: 32px 0 0">
-                  <a
-                    href="{{buttonLink}}"
-                    style="
-                      display: inline-block;
-                      padding: 14px 28px;
-                      border-radius: 999px;
-                      background-color: #211f26;
-                      color: #e8e0d7;
-                      font-size: 16px;
-                      font-weight: 600;
-                      text-decoration: none;
-                    "
-                    >{{buttonText}}</a
-                  >
-                </p>
-                <p style="margin: 32px 0 0; font-size: 14px; line-height: 1.5; color: #4a4650">
+                <table cellpadding="0" cellspacing="0" role="presentation" style="margin-top: 26px">
+                  <tr>
+                    <td class="button-cell" bgcolor="#1b233a" style="background-color: #1b233a">
+                      <a
+                        href="{{buttonLink}}"
+                        class="button"
+                        style="
+                          display: inline-block;
+                          padding: 15px 24px;
+                          color: #f1e5dc;
+                          font-size: 16px;
+                          font-weight: 600;
+                          text-decoration: none;
+                        "
+                        >{{buttonText}}</a
+                      >
+                    </td>
+                  </tr>
+                </table>
+                <p
+                  class="muted"
+                  style="margin: 26px 0 0; color: #454b69; font-size: 14px; line-height: 1.5"
+                >
                   {{ignore}}
                 </p>
               </td>
             </tr>
             <tr>
-              <td style="height: 40px; line-height: 40px; font-size: 0">&nbsp;</td>
+              <td style="height: 24px; line-height: 24px; font-size: 0">&nbsp;</td>
             </tr>
             <tr>
               <td
+                class="rule muted"
                 style="
-                  padding-top: 16px;
-                  border-top: 1px solid #f2ac81;
-                  font-size: 12px;
-                  color: #4a4650;
+                  padding-top: 12px;
+                  border-top: 1px solid #d4c4b8;
+                  color: #454b69;
+                  font-size: 13px;
+                  line-height: 1.5;
                 "
               >
-                {{footer}}
+                AubeSonore ·
+                <a href="{{siteUrl}}" class="muted" style="color: #454b69">{{siteHost}}</a>
               </td>
             </tr>
           </table>

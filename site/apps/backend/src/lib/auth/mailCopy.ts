@@ -9,15 +9,10 @@ export interface MailCopy {
   body: string;
   button: string;
   ignore: string;
-  footer: string;
 }
 
-const FOOTER: Record<SiteLocale, string> = {
-  fr: 'AubeSonore, webradio de découverte non commerciale · aubesonore.fr',
-  en: 'AubeSonore, a non-commercial discovery web radio · aubesonore.fr',
-};
-
-const COPY: Record<MailKind, Record<SiteLocale, Omit<MailCopy, 'footer'>>> = {
+// The mails sign « AubeSonore · aubesonore.fr », in every language (services/templates/mailTemplate.html).
+const COPY: Record<MailKind, Record<SiteLocale, MailCopy>> = {
   verify: {
     fr: {
       subject: 'Confirmez votre adresse e-mail',
@@ -58,5 +53,5 @@ const COPY: Record<MailKind, Record<SiteLocale, Omit<MailCopy, 'footer'>>> = {
 };
 
 export function mailCopy(kind: MailKind, locale: SiteLocale): MailCopy {
-  return { ...COPY[kind][locale], footer: FOOTER[locale] };
+  return COPY[kind][locale];
 }
