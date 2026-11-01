@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import * as icons from './icons';
 import { CloseIcon, SearchIcon } from './icons';
 
 // A decorative icon is hidden from the accessibility tree, so the tests read its wrapper's markup.
@@ -28,5 +29,28 @@ describe('icons', () => {
     const icon = screen.getByRole('img', { name: 'Chercher' });
     expect(icon).toHaveAttribute('stroke', 'currentColor');
     expect(icon).toHaveClass('size-4');
+  });
+
+  it('draw a 1.4 px line at every size, as the wave beside them', () => {
+    const drawn = Object.entries(icons).filter(([name]) => name.endsWith('Icon'));
+    const lines = drawn.map(([name, Icon]) => {
+      const { unmount } = render(
+        <span data-testid={name}>
+          <Icon className="size-6" />
+        </span>
+      );
+      const svg = markup(name);
+      unmount();
+      return {
+        name,
+        width: svg.match(/^<svg[^>]* stroke-width="([\d.]+)"/)?.[1],
+        shapes: svg.match(/<(path|circle)\b/g)?.length ?? 0,
+        unscaled: svg.match(/<(path|circle)\b[^>]* vector-effect="non-scaling-stroke"/g)?.length,
+      };
+    });
+    for (const line of lines) {
+      expect(line.shapes).toBeGreaterThan(0);
+      expect(line).toEqual({ ...line, width: '1.4', unscaled: line.shapes });
+    }
   });
 });

@@ -59,7 +59,8 @@ export function Menu({ trigger, header, choice, items }: MenuProps) {
                   <BaseMenu.RadioItem
                     key={option.value}
                     value={option.value}
-                    className={cn(itemClassName, 'data-[checked]:font-semibold')}
+                    // The wave alone marks the checked one, as every chosen option of the site.
+                    className={(state) => cn(itemClassName, state.checked && 'wave-underline')}
                   >
                     {option.label}
                   </BaseMenu.RadioItem>

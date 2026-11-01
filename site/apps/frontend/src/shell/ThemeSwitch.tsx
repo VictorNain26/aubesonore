@@ -18,8 +18,8 @@ export interface ThemeSwitchViewProps {
 }
 
 /**
- * The theme, written as words, set like the language switch: the current one bold, the others
- * underlined. Real radios, hidden behind their words, so the arrow keys and screen readers know
+ * The theme, written as words, set like the language switch: the current one has the wave under
+ * it, and nothing else sets it apart (no weight, ink or underline, so nothing beside it moves). Real radios, hidden behind their words, so the arrow keys and screen readers know
  * it as one choice; each switch its own group (useId), as the footer and the menu both show one.
  */
 export function ThemeSwitchView({ choice, onChange, className }: ThemeSwitchViewProps) {
@@ -35,10 +35,8 @@ export function ThemeSwitchView({ choice, onChange, className }: ThemeSwitchView
           {i > 0 ? <span aria-hidden="true">/</span> : null}
           <label
             className={cn(
-              'ease-out-quart has-focus-visible:outline-accent inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center active:opacity-70 has-focus-visible:outline-2 md:min-w-8',
-              choice === value
-                ? 'font-semibold'
-                : 'underline decoration-1 underline-offset-4 hover:decoration-2'
+              'ease-out-quart has-focus-visible:outline-accent inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center transition-opacity duration-150 hover:opacity-70 active:opacity-70 has-focus-visible:outline-2 md:min-w-8',
+              choice === value && 'wave-underline'
             )}
           >
             <input

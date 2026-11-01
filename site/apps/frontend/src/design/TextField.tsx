@@ -31,7 +31,7 @@ export function TextField({
       <div className="relative">
         <Field.Control
           className={cn(
-            'border-accent text-line text-text h-13 w-full rounded-none border-0 border-b bg-transparent px-0',
+            'border-accent text-line text-text h-12 w-full rounded-none border-0 border-b bg-transparent px-0',
             'ease-out-quart placeholder:text-text-faint autofill-paper transition-[border-width,color] duration-150',
             // Focus thickens the ink underline instead of drawing a box around the field.
             'focus-visible:border-b-2 focus-visible:outline-none',

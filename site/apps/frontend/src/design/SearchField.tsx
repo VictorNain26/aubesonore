@@ -28,7 +28,7 @@ export function SearchField({
   onFocus?: () => void;
   /** The search landmark around the field. */
   ref?: Ref<HTMLDivElement>;
-  /** The page's one action (Musilogy): the words larger, the field taller. */
+  /** The page's one action (Musilogy): the words larger, the field taller (56 px, 48 else). */
   large?: boolean;
   className?: string;
 }) {
@@ -59,7 +59,7 @@ export function SearchField({
           autoComplete="off"
           className={cn(
             'border-accent ease-out-quart placeholder:text-text-faint autofill-paper w-full rounded-none border-0 border-b bg-transparent font-normal transition-[border-width,background-color] duration-150 hover:border-b-2 focus-visible:border-b-2 focus-visible:outline-none [&::-webkit-search-cancel-button]:hidden',
-            large ? 'text-heading h-16 pl-10' : 'text-line h-14 pl-8 font-semibold',
+            large ? 'text-heading h-14 pl-10' : 'text-line h-12 pl-8 font-semibold',
             // The clear button's room is kept only while it shows: a phone needs it for the placeholder.
             query ? 'pr-12' : 'pr-0'
           )}

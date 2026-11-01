@@ -24,6 +24,9 @@ const day = {
   'light-ink': 'var(--text)',
   'light-ink-muted': 'var(--text-muted)',
   'bar-veil': 'oklch(0.22 0.045 270 / 0.62)',
+  'keep-ring': 'oklch(0.26 0.045 270 / 0.35)',
+  scrim: 'oklch(0.24 0.06 272 / 0.5)',
+  'cover-shadow': 'oklch(0.3 0.04 330 / 0.45)',
 };
 const night = {
   surface: 'oklch(0.235 0.045 268)',
@@ -39,6 +42,9 @@ const night = {
   'dawn-ink': 'var(--dawn)',
   'light-veil-top': 'oklch(0.18 0.04 268 / 0.38)',
   'bar-veil': 'oklch(0.2 0.045 268 / 0.55)',
+  'keep-ring': 'oklch(0.93 0.018 70 / 0.4)',
+  scrim: 'oklch(0.1 0.03 270 / 0.6)',
+  'cover-shadow': 'oklch(0.1 0.03 270 / 0.6)',
 };
 // The light under the player bar: its ground, its veil and the inks it is weighed for.
 const barLight = {
@@ -115,6 +121,23 @@ describe('checkTokens', () => {
     // The mockup's ink, 2.3:1 on the paper: the wave alone says which page is open (WCAG 1.4.11).
     const rows = checkTokens(css({ ...day, 'dawn-ink': 'oklch(0.7 0.13 50)' }, night));
     expect(failures(rows)).toEqual(['day dawn-ink/surface']);
+  });
+
+  it("fails a night that keeps the day's ring, veil and shadow (they fade into the night sky)", () => {
+    // The ring of the border, the night sky as the veil, the day's shadow: before the charter's P5.
+    const rows = checkTokens(
+      css(day, {
+        ...night,
+        'keep-ring': 'oklch(0.36 0.05 270 / 1)',
+        scrim: 'oklch(0.24 0.06 272 / 0.5)',
+        'cover-shadow': 'oklch(0.3 0.04 330 / 0.45)',
+      })
+    );
+    expect(failures(rows)).toEqual([
+      'night keep-ring/surface',
+      'night scrim darkens the surface',
+      'night cover-shadow darkens the surface',
+    ]);
   });
 
   it("fails a veil the hero's words do not read on, the light dimmed to nothing", () => {

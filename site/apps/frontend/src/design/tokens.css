@@ -44,9 +44,18 @@
   --dawn: var(--by-day, var(--sky-apricot)) var(--by-night, oklch(0.62 0.12 45));
   --dawn-rose: var(--by-day, var(--sky-rose)) var(--by-night, var(--sky-lilac));
   --dawn-lilac: var(--by-day, var(--sky-lilac)) var(--by-night, var(--sky-blue));
-  /* The veil behind a large image (OpenLarge) and the phone's sheet: the night sky, by day as by
-     night. No text on it, so no AA pair. */
-  --scrim: color-mix(in oklab, var(--sky-night) 50%, transparent);
+  /* The veil behind a large image (OpenLarge) and the phone's sheet: by day the night sky at half;
+     by night deeper than the sky, which as a veil veiled nothing. No text on it: it only has to
+     darken the page (scripts/check-contrast.mjs). */
+  --scrim: var(--by-day, oklch(0.24 0.06 272 / 0.5)) var(--by-night, oklch(0.1 0.03 270 / 0.6));
+  /* Garder's ring beside Écouter: the text's ink, thinned, so it stays seen on the night's light,
+     where the border's colour faded into it. */
+  --keep-ring: var(--by-day, oklch(0.26 0.045 270 / 0.35))
+    var(--by-night, oklch(0.93 0.018 70 / 0.4));
+  /* The shadow under the cover on air (shadow-cover): by night deeper than the sky, where the
+     day's drew a halo lighter than it. */
+  --cover-shadow: var(--by-day, oklch(0.3 0.04 330 / 0.45))
+    var(--by-night, oklch(0.1 0.03 270 / 0.6));
   /* The dawn as an ink: the wave under the current page and the selected tab, beside text that
      holds AA on its own. Darker than the light so the mark itself holds 3:1 (WCAG 1.4.11). */
   --dawn-ink: var(--by-day, oklch(0.6 0.13 45)) var(--by-night, var(--dawn));
@@ -82,6 +91,19 @@
   --bar-space: calc(5.75rem + env(safe-area-inset-bottom));
   /* The header back over the page when it scrolls up: py-3 around a 44 px row, and its rule. */
   --header-space: 4.5rem;
+  /* The page's side margin, one formula for the header, the pages, the footer and the player bar
+     (px-page, mx-page), the hero and the artist's stage: 1.5rem, 2.5rem from md, wider past
+     --container-page so the content stays centred on a large screen. In vw, not %: the same
+     length in every box (a grid area's padding, the hero's columns), where % took the box's own
+     width and left the cover 7.5 px off the logo past 1680 px. Centred all the same; past 1680 px
+     the content is a scrollbar narrower than --container-page. */
+  --gutter: max(1.5rem, (100vw - var(--container-page)) / 2);
+}
+
+@media (width >= 48rem) {
+  :root {
+    --gutter: max(2.5rem, (100vw - var(--container-page)) / 2);
+  }
 }
 
 /* The night: a blue sky, not a black. The dawn has not risen yet: an ember (a dawn as light as by
@@ -117,6 +139,7 @@
   --color-dawn: var(--dawn);
   --color-dawn-ink: var(--dawn-ink);
   --color-scrim: var(--scrim);
+  --color-keep-ring: var(--keep-ring);
 
   --font-*: initial;
   --font-sans: var(--p-font-text);
@@ -168,8 +191,10 @@
   --text-mark--line-height: 1;
 
   --radius-*: initial;
-  /* Two shapes: the disc (Écouter, the live) and the right angle, Tailwind's default, for the
-     rest. design/shapes.test.ts holds the files allowed a disc. */
+  /* Two shapes: the disc for the two main actions, Écouter and Garder, and the live's dot; the
+     right angle, Tailwind's default, for every other control. design/shapes.test.ts holds the
+     files allowed a disc, and the three control heights: 56 px (h-14, the hero's and the sheet's
+     actions), 48 (h-12, the bar's and the forms'), 44 (h-11, the smallest target, the rest). */
   --radius-full: 9999px;
 
   --ease-out-quart: cubic-bezier(0.2, 0, 0, 1);
@@ -181,7 +206,7 @@
 
   --shadow-*: initial;
   /* One shadow, under the cover on air: the rest of the page is flat. */
-  --shadow-cover: 0 24px 60px -26px oklch(0.3 0.04 330 / 0.45);
+  --shadow-cover: 0 24px 60px -26px var(--cover-shadow);
 
   /* Reading measures: a caption holds on two lines. */
   --container-blurb: 28ch;
@@ -448,14 +473,9 @@
   }
 }
 
-/* Page gutters: 1.5rem, 2.5rem from md, and wider past --container-page so the content stays
-   centred on large screens while backgrounds still run edge to edge. */
+/* The page's gutters (--gutter), inside a block whose background runs edge to edge. */
 @utility px-page {
-  padding-inline: max(1.5rem, (100% - var(--container-page)) / 2);
-
-  @media (width >= 48rem) {
-    padding-inline: max(2.5rem, (100% - var(--container-page)) / 2);
-  }
+  padding-inline: var(--gutter);
 }
 
 /* The room of the artist's portrait (ArtistPortrait), square, the portrait at its own shape inside
@@ -477,11 +497,7 @@
 }
 
 @utility mx-page {
-  margin-inline: max(1.5rem, (100% - var(--container-page)) / 2);
-
-  @media (width >= 48rem) {
-    margin-inline: max(2.5rem, (100% - var(--container-page)) / 2);
-  }
+  margin-inline: var(--gutter);
 }
 
 @utility dawn-arrive {
@@ -561,24 +577,18 @@
    grew and shrank under the finger and moved the page (MDN, CSS <length>, viewport units). */
 @utility hero {
   --horizon-height: 2.5rem;
-  /* The page's edge, the header's gutter (px-page). */
-  --hero-gutter: max(1.5rem, (100vw - var(--container-page)) / 2);
   position: relative;
   overflow: hidden;
-
-  @media (width >= 48rem) {
-    --hero-gutter: max(2.5rem, (100vw - var(--container-page)) / 2);
-  }
 
   @variant hero-split {
     /* The screen's height less the header and its 24 px (6rem) and the horizon the cover rests
        on (3.5rem), or what the gutter and the column's 32rem leave on a screen too narrow for
        its height: the cover stays square (home/NowPlaying.tsx, HERO_COVER_SIZES). */
-    --hero-cover: min(100svh - 9.5rem, 100vw - 32rem - var(--hero-gutter));
+    --hero-cover: min(100svh - 9.5rem, 100vw - 32rem - var(--gutter));
     /* Between the column's blocks: 20 px at 720 high, 28 at 900, 35 at 1080. */
     --hero-gap: clamp(1.25rem, 4svh - 0.5rem, 2.5rem);
     display: grid;
-    grid-template-columns: calc(var(--hero-gutter) + var(--hero-cover)) minmax(0, 1fr);
+    grid-template-columns: calc(var(--gutter) + var(--hero-cover)) minmax(0, 1fr);
     grid-template-rows: auto 1fr auto auto auto;
     grid-template-areas: 'header header' 'cover .' 'cover live' 'cover before' 'cover kept';
     min-height: 100svh;
@@ -629,7 +639,7 @@
   justify-self: start;
   width: var(--cover-side);
   margin-top: 1rem;
-  margin-inline-start: clamp(0px, 100% - var(--cover-side), var(--hero-gutter));
+  margin-inline-start: clamp(0px, 100% - var(--cover-side), var(--gutter));
   aspect-ratio: 1;
   animation: fade-in 500ms var(--ease-enter) both;
 
@@ -659,7 +669,7 @@
     width: var(--hero-cover);
     margin-top: 1.5rem;
     margin-bottom: 3.5rem;
-    margin-inline-start: var(--hero-gutter);
+    margin-inline-start: var(--gutter);
 
     @media (height < 42rem) {
       align-self: start;
@@ -674,7 +684,7 @@
   grid-area: live;
   position: relative;
   min-width: 0;
-  padding: 1.125rem var(--hero-gutter) 0;
+  padding: 1.125rem var(--gutter) 0;
   animation: hero-rise 500ms var(--ease-enter) 120ms both;
 
   @media (prefers-reduced-motion: reduce) {
@@ -684,7 +694,7 @@
 
   @variant hero-split {
     /* 24 px under the header at least, as the cover, when the column fills the screen. */
-    padding: 1.5rem var(--hero-gutter) 0 3.5rem;
+    padding: 1.5rem var(--gutter) 0 3.5rem;
   }
 }
 
@@ -720,7 +730,7 @@
   grid-area: before;
   position: relative;
   min-width: 0;
-  margin: 1.375rem var(--hero-gutter) 0;
+  margin: 1.375rem var(--gutter) 0;
   padding-top: 1rem;
   border-top: 1px solid var(--border);
   animation: hero-rise 500ms var(--ease-enter) 120ms both;
@@ -738,7 +748,7 @@
   }
 
   @variant hero-split {
-    margin: var(--hero-gap) var(--hero-gutter) 0 3.5rem;
+    margin: var(--hero-gap) var(--gutter) 0 3.5rem;
   }
 }
 
@@ -748,7 +758,7 @@
   grid-area: kept;
   position: relative;
   min-width: 0;
-  padding: 1.5rem var(--hero-gutter) 2.5rem;
+  padding: 1.5rem var(--gutter) 2.5rem;
   animation: hero-rise 500ms var(--ease-enter) 120ms both;
 
   @media (prefers-reduced-motion: reduce) {
@@ -758,7 +768,7 @@
 
   @variant hero-split {
     margin-top: var(--hero-gap);
-    padding: 0 var(--hero-gutter) 3.5rem 3.5rem;
+    padding: 0 var(--gutter) 3.5rem 3.5rem;
   }
 }
 
@@ -782,20 +792,15 @@
    the horizon, resting on the horizon; the column beside it standing on its foot (end), 3.5rem
    from it as the home's. The portrait's light lies behind it all (cover-light). */
 @utility artist-stage {
-  --stage-gutter: max(1.5rem, (100vw - var(--container-page)) / 2);
   position: relative;
   overflow: hidden;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: 'header' 'portrait' 'column' 'horizon';
 
-  @media (width >= 48rem) {
-    --stage-gutter: max(2.5rem, (100vw - var(--container-page)) / 2);
-  }
-
   @variant hero-split {
     --stage-portrait: min(100svh - 10rem, 42vw, 36rem);
-    grid-template-columns: calc(var(--stage-gutter) + var(--stage-portrait)) minmax(0, 1fr);
+    grid-template-columns: calc(var(--gutter) + var(--stage-portrait)) minmax(0, 1fr);
     grid-template-areas: 'header header' 'portrait column' 'horizon horizon';
     align-items: end;
   }
@@ -804,10 +809,10 @@
 @utility artist-stage-portrait {
   grid-area: portrait;
   position: relative;
-  margin: 1rem var(--stage-gutter) 0;
+  margin: 1rem var(--gutter) 0;
 
   @variant hero-split {
-    margin: 1.5rem 0 0 var(--stage-gutter);
+    margin: 1.5rem 0 0 var(--gutter);
   }
 }
 
@@ -815,10 +820,10 @@
   grid-area: column;
   position: relative;
   min-width: 0;
-  padding: 1.5rem var(--stage-gutter) 0;
+  padding: 1.5rem var(--gutter) 0;
 
   @variant hero-split {
-    padding: 1.5rem var(--stage-gutter) 0 3.5rem;
+    padding: 1.5rem var(--gutter) 0 3.5rem;
   }
 }
 
@@ -837,7 +842,7 @@
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
-  margin-inline-end: calc(-1 * var(--hero-gutter, 1.5rem));
+  margin-inline-end: calc(-1 * var(--gutter));
   padding-inline-end: 3.5rem;
   mask-image: linear-gradient(to left, transparent, black 3.5rem);
 

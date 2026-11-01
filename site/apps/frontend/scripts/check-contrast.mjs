@@ -94,7 +94,8 @@ const checkScheme = (scheme, vars, barLight) => {
       });
   }
   const page = colours(vars);
-  const { c } = page;
+  const { c, alpha } = page;
+  const onSurface = (key) => over(c(key), alpha(key), c('surface'));
   const glow = mix(c('dawn'), c('surface'), 0.3);
   const pairs = [
     ['text/surface', c('text'), c('surface'), 4.5],
@@ -113,10 +114,29 @@ const checkScheme = (scheme, vars, barLight) => {
     ...lightFloor('bar', colours({ ...vars, ...barLight })),
     // The wave under the current page and the selected tab: a mark, beside text that holds AA.
     ['dawn-ink/surface', c('dawn-ink'), c('surface'), 3.0],
+    // Garder's ring beside Écouter: seen by day and by night, beside the heart in the text's ink
+    // that names the button (WCAG 1.4.11 asks 3:1 of that heart, not of the ring).
+    ['keep-ring/surface', onSurface('keep-ring'), c('surface'), 2.0],
   ];
   for (const [label, fg, bg, floor] of pairs) {
     const r = ratio(fg, bg);
     rows.push({ scheme, label, ratio: r, floor, pass: r >= floor });
+  }
+  // The veil behind the phone's sheet and a large image, and the shadow under the cover on air: no
+  // text on them, but each must darken the page under it, by night too, where the night sky as a
+  // veil veiled nothing and the day's shadow drew a halo lighter than the sky.
+  for (const key of ['scrim', 'cover-shadow']) {
+    const under = onSurface(key);
+    const r = ratio(under, c('surface'));
+    const floor = 1.1;
+    const darker = luminance(under) < luminance(c('surface'));
+    rows.push({
+      scheme,
+      label: `${key} darkens the surface`,
+      ratio: r,
+      floor,
+      pass: darker && r >= floor,
+    });
   }
   return rows;
 };

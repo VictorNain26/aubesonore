@@ -33,7 +33,7 @@ export function VolumeControl({
         type="button"
         onClick={onToggleMute}
         aria-label={level === 0 ? m.volume_unmute() : m.volume_mute()}
-        className="ease-out-quart flex size-11 items-center justify-center rounded-full transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current active:opacity-50"
+        className="ease-out-quart flex size-11 items-center justify-center transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current active:opacity-50"
       >
         <Icon className="size-4" />
       </button>

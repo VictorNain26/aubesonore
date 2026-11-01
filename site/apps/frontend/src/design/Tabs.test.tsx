@@ -27,6 +27,17 @@ describe('Tabs', () => {
     expect(screen.getByText('Justice')).not.toBeVisible();
   });
 
+  it('marks the selected tab with the wave alone: no weight, ink or underline sets it apart', () => {
+    render(<Holder />);
+    const selected = screen.getByRole('tab', { name: 'Même son' });
+    const other = screen.getByRole('tab', { name: 'Filiation' });
+    const withoutWave = (element: Element) =>
+      [...element.classList].filter((name) => name !== 'wave-underline');
+    expect(selected).toHaveClass('wave-underline');
+    expect(other).not.toHaveClass('wave-underline');
+    expect(withoutWave(selected)).toEqual(withoutWave(other));
+  });
+
   it('puts one tab in the Tab order and moves between them with the arrows, Home and End', async () => {
     const user = userEvent.setup();
     render(<Holder />);
