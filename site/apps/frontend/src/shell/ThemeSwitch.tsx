@@ -28,7 +28,7 @@ export function ThemeSwitchView({ choice, onChange, className }: ThemeSwitchView
     <span
       role="radiogroup"
       aria-label={m.theme_label()}
-      className={cn('text-caption flex items-center gap-1', className)}
+      className={cn('text-small flex items-center gap-1', className)}
     >
       {themeOptions().map(({ value, label }, i) => (
         <span key={value} className="flex items-center gap-1">
@@ -37,7 +37,7 @@ export function ThemeSwitchView({ choice, onChange, className }: ThemeSwitchView
             className={cn(
               'ease-out-quart has-focus-visible:outline-accent inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center active:opacity-70 has-focus-visible:outline-2 md:min-w-8',
               choice === value
-                ? 'font-bold'
+                ? 'font-semibold'
                 : 'underline decoration-1 underline-offset-4 hover:decoration-2'
             )}
           >

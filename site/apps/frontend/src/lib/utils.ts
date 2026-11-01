@@ -2,27 +2,11 @@ import { type ClassValue, clsx } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';
 
 // tailwind-merge only knows Tailwind's default scale: without this, a custom
-// size like `text-ui` is read as a color and dropped next to `text-on-accent`.
+// size like `text-line` is read as a color and dropped next to `text-on-accent`.
 const twMerge = extendTailwindMerge({
   extend: {
     theme: {
-      text: [
-        'title',
-        'body',
-        'caption',
-        'track',
-        'tagline',
-        'label',
-        'page',
-        'now',
-        'mark',
-        'section',
-        'headline',
-        'intro',
-        'row',
-        'sub',
-        'ui',
-      ],
+      text: ['name', 'page', 'title', 'heading', 'line', 'body', 'small', 'mark'],
       shadow: ['cover'],
     },
   },

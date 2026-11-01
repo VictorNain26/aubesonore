@@ -7,7 +7,7 @@ import { SiteFooter } from '../shell/SiteFooter';
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-headline m-0">{title}</h2>
+      <h2 className="font-display text-title m-0">{title}</h2>
       <div className="text-body text-text-muted flex max-w-prose flex-col gap-3">{children}</div>
     </section>
   );

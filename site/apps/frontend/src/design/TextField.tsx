@@ -27,11 +27,11 @@ export function TextField({
 }: TextFieldProps) {
   return (
     <Field.Root invalid={error !== undefined} className="flex w-full flex-col gap-1.5">
-      <Field.Label className="text-ui">{label}</Field.Label>
+      <Field.Label className="text-body">{label}</Field.Label>
       <div className="relative">
         <Field.Control
           className={cn(
-            'border-accent text-sub text-text h-13 w-full rounded-none border-0 border-b bg-transparent px-0',
+            'border-accent text-line text-text h-13 w-full rounded-none border-0 border-b bg-transparent px-0',
             'ease-out-quart placeholder:text-text-faint autofill-paper transition-[border-width,color] duration-150',
             // Focus thickens the ink underline instead of drawing a box around the field.
             'focus-visible:border-b-2 focus-visible:outline-none',
@@ -47,12 +47,10 @@ export function TextField({
         ) : null}
       </div>
       {description !== undefined ? (
-        <Field.Description className="text-caption text-text-muted">
-          {description}
-        </Field.Description>
+        <Field.Description className="text-small text-text-muted">{description}</Field.Description>
       ) : null}
       {error !== undefined ? (
-        <Field.Error className="text-caption text-text font-medium" match>
+        <Field.Error className="text-small text-text font-semibold" match>
           {error}
         </Field.Error>
       ) : null}

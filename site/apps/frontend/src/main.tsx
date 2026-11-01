@@ -9,6 +9,8 @@ import {
 } from 'react-router';
 import '@fontsource-variable/atkinson-hyperlegible-next';
 import '@fontsource-variable/fraunces/opsz.css';
+// The real italic, for the tagline alone (shell/SiteHeader.tsx): the browser fetches it only there.
+import '@fontsource-variable/fraunces/opsz-italic.css';
 import './index.css';
 import { handlePreloadError } from './lib/preloadReload';
 import { readLocaleChoice } from './stores/localeStore';

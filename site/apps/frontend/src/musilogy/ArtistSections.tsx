@@ -60,7 +60,7 @@ function AlsoIn({ projects }: { projects: readonly MusilogyProject[] }) {
   const [open, setOpen] = useState(false);
   const shown = open ? projects : projects.slice(0, PROJECTS_SHOWN);
   return (
-    <div className="text-ui text-text-muted flex flex-wrap items-start gap-x-1.5">
+    <div className="text-body text-text-muted flex flex-wrap items-start gap-x-1.5">
       <span>{m.musilogy_also_in()}</span>
       <ul className="m-0 flex min-w-0 list-none flex-wrap items-start p-0">
         {shown.map((project, i) => (
@@ -105,19 +105,19 @@ function MemberRow({
           state={DISCOVERY}
           className={cn(
             ARTIST_LINK,
-            'text-row flex min-h-11 underline-offset-4',
+            'text-line flex min-h-11 font-semibold underline-offset-4',
             below ? 'items-end' : 'items-center'
           )}
         >
           {member.name}
         </Link>
         {years ? (
-          <span className="text-ui text-text-muted whitespace-nowrap tabular-nums">{years}</span>
+          <span className="text-body text-text-muted whitespace-nowrap tabular-nums">{years}</span>
         ) : null}
       </span>
       {member.disambiguation ? (
         // MusicBrainz writes its disambiguations in English, whatever the page's language.
-        <span lang="en" className="text-ui text-text-muted truncate">
+        <span lang="en" className="text-body text-text-muted truncate">
           {member.disambiguation}
         </span>
       ) : null}
@@ -180,7 +180,7 @@ function Members({
 function SubList({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="text-ui text-text-muted m-0 font-normal">{label}</h3>
+      <h3 className="text-body text-text-muted m-0 font-normal">{label}</h3>
       {children}
     </div>
   );
@@ -210,12 +210,12 @@ function InlineArtists<T extends MusilogyArtistRef>({
               state={DISCOVERY}
               className={cn(
                 ARTIST_LINK,
-                'text-row inline-flex min-h-11 items-center underline-offset-4'
+                'text-line inline-flex min-h-11 items-center font-semibold underline-offset-4'
               )}
             >
               {artist.name}
             </Link>
-            {note ? <span className="text-ui text-text-muted">{note}</span> : null}
+            {note ? <span className="text-body text-text-muted">{note}</span> : null}
           </li>
         );
       })}
@@ -293,7 +293,7 @@ function filiationCount({ bands, memberProjects, otherNames, credits }: Musilogy
 function Panel({ note, children }: { note: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-6">
-      <p className="text-intro text-text-muted max-w-blurb m-0">{note}</p>
+      <p className="text-line text-text-muted max-w-blurb m-0">{note}</p>
       {children}
     </div>
   );

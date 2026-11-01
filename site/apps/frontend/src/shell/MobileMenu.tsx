@@ -12,7 +12,7 @@ import { CLOSE_BUTTON, OUTLINE_ACTION, TEXT_ACTION } from '../design/classes';
 import * as m from '@/paraglide/messages.js';
 
 const PAGE_LINK =
-  'font-display text-section ease-out-quart focus-visible:outline-accent flex min-h-14 items-center transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 aria-[current=page]:wave-underline';
+  'font-display text-page ease-out-quart focus-visible:outline-accent flex min-h-14 items-center transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 aria-[current=page]:wave-underline';
 
 /**
  * The site's pages on a phone, where the header has no room for them: a Menu button opens them
@@ -74,10 +74,10 @@ export function MobileMenu() {
             {user ? (
               <div className="flex items-center justify-between gap-4">
                 <span className="flex min-w-0 flex-col">
-                  <span className="text-ui truncate font-semibold">
+                  <span className="text-body truncate font-semibold">
                     {user.name || m.header_user_fallback()}
                   </span>
-                  <span className="text-caption text-text-muted truncate">{user.email}</span>
+                  <span className="text-small text-text-muted truncate">{user.email}</span>
                 </span>
                 <button
                   type="button"
@@ -103,14 +103,14 @@ export function MobileMenu() {
                     className={cn(
                       TEXT_ACTION,
                       'min-w-11 justify-center',
-                      locale === code ? 'font-bold' : 'text-text-muted'
+                      locale === code ? 'font-semibold' : 'text-text-muted'
                     )}
                   >
                     {code}
                   </button>
                 ))}
               </div>
-              <ThemeSwitch className="text-ui" />
+              <ThemeSwitch className="text-body" />
             </div>
           </div>
         </Dialog.Popup>

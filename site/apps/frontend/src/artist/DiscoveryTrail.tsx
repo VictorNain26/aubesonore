@@ -12,7 +12,7 @@ export function DiscoveryTrail({ steps }: { steps: readonly TrailStep[] }) {
   if (steps.length < 2) return null;
   return (
     <nav aria-label={m.trail_label()}>
-      <ol className="text-ui text-text-muted m-0 flex list-none flex-wrap items-center gap-x-2 p-0">
+      <ol className="text-body text-text-muted m-0 flex list-none flex-wrap items-center gap-x-2 p-0">
         {steps.map((step, i) => (
           <li key={step.path} className="inline-flex min-h-11 items-center gap-2">
             {i > 0 ? <span aria-hidden="true">›</span> : null}

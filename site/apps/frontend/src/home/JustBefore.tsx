@@ -42,7 +42,7 @@ export function JustBeforeView({ track, onToggleKeep, swap = 'idle' }: JustBefor
   if (!track) return null;
   return (
     <section aria-labelledby="just-before-title" data-swap={swap} className="hero-before">
-      <h2 id="just-before-title" className="text-label text-text-muted m-0 mb-2 font-normal">
+      <h2 id="just-before-title" className="text-small text-text-muted m-0 mb-2 font-normal">
         {m.just_before_title()}
       </h2>
       <div className="flex items-center gap-3">
@@ -63,13 +63,13 @@ export function JustBeforeView({ track, onToggleKeep, swap = 'idle' }: JustBefor
               to={track.artistHref}
               className={cn(
                 ARTIST_LINK,
-                'text-label text-text-muted -my-3 self-start truncate py-3 underline-offset-3'
+                'text-small text-text-muted -my-3 self-start truncate py-3 underline-offset-3'
               )}
             >
               {track.artist}
             </Link>
           ) : (
-            <span className="text-label text-text-muted truncate">{track.artist}</span>
+            <span className="text-small text-text-muted truncate">{track.artist}</span>
           )}
         </span>
         <KeepButton

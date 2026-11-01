@@ -84,7 +84,7 @@ export function OpenLarge({
           <Dialog.Title className="sr-only">{title}</Dialog.Title>
           <Large key={large.src} image={large} />
           <div className="flex items-center justify-between gap-4 pl-1">
-            <div className="text-ui text-text-muted">{caption}</div>
+            <div className="text-body text-text-muted">{caption}</div>
             <Dialog.Close aria-label={m.close()} className={CLOSE_BUTTON}>
               <CloseIcon className="size-4.5" />
             </Dialog.Close>

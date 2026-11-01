@@ -163,7 +163,7 @@ export function ArtistPortrait({ images, name, seed }: ArtistPortraitProps) {
       {usable.kind === 'photo' ? (
         <span
           aria-hidden="true"
-          className="bg-surface text-text-muted text-caption absolute right-2 bottom-2 inline-flex size-6 items-center justify-center"
+          className="bg-surface text-text-muted text-small absolute right-2 bottom-2 inline-flex size-6 items-center justify-center"
         >
           ©
         </span>

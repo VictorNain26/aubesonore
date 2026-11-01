@@ -14,7 +14,7 @@ import { chooseTheme, useThemeChoice } from '../stores/themeStore';
 import { themeOptions } from './ThemeSwitch';
 
 const NAV_LINK =
-  'text-ui ease-out-quart focus-visible:outline-accent hidden min-h-11 items-center transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-97 md:inline-flex';
+  'text-body ease-out-quart focus-visible:outline-accent hidden min-h-11 items-center transition-[opacity,scale] duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-4 active:scale-97 md:inline-flex';
 
 // The padding makes a 44 px target of the lockup (21 px on a phone, 25 wider); the margin keeps the
 // header's layout.
@@ -58,8 +58,8 @@ export function SiteHeader({ tagline = false }: { tagline?: boolean }) {
   // line, beside the link).
   const link = (
     <Link to={localizeHref('/')} className={BRAND_LINK}>
-      {/* Under 22rem the lockup steps down a size, so Menu keeps the page's right gutter. */}
-      <Logo intro className="text-mark max-[22rem]:text-title h-[0.839em]" />
+      {/* Under 22rem the mark is drawn a touch smaller, so Menu keeps the page's right gutter. */}
+      <Logo intro className="text-mark h-[0.839em] max-[22rem]:h-[0.824em]" />
       <span className="sr-only">AubeSonore</span>
     </Link>
   );
@@ -70,7 +70,7 @@ export function SiteHeader({ tagline = false }: { tagline?: boolean }) {
           all the same, for screen readers. */}
       <h1
         className={cn(
-          'font-display text-tagline text-text-muted m-0 font-normal italic',
+          'font-display text-small md:text-line text-text-muted m-0 font-normal italic',
           !atRest && 'sr-only'
         )}
       >
@@ -124,10 +124,10 @@ export function SiteHeader({ tagline = false }: { tagline?: boolean }) {
                 }
                 header={
                   <span className="flex flex-col py-1">
-                    <span className="text-ui font-semibold">
+                    <span className="text-body font-semibold">
                       {user.name || m.header_user_fallback()}
                     </span>
-                    <span className="text-caption text-text-muted">{user.email}</span>
+                    <span className="text-small text-text-muted">{user.email}</span>
                   </span>
                 }
                 // The footer's theme switch, here as the menu's own radio items.

@@ -59,7 +59,7 @@ export function SearchField({
           autoComplete="off"
           className={cn(
             'border-accent ease-out-quart placeholder:text-text-faint autofill-paper w-full rounded-none border-0 border-b bg-transparent font-normal transition-[border-width,background-color] duration-150 hover:border-b-2 focus-visible:border-b-2 focus-visible:outline-none [&::-webkit-search-cancel-button]:hidden',
-            large ? 'text-headline h-16 pl-10' : 'text-row h-14 pl-8',
+            large ? 'text-heading h-16 pl-10' : 'text-line h-14 pl-8 font-semibold',
             // The clear button's room is kept only while it shows: a phone needs it for the placeholder.
             query ? 'pr-12' : 'pr-0'
           )}

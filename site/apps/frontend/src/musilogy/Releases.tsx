@@ -46,9 +46,9 @@ function Record({ release }: { release: MusilogyRelease }) {
         sizes="(min-width: 64rem) calc((min(100vw - 5rem, 100rem) - 6.25rem) / 6), (min-width: 48rem) calc((100vw - 7.5rem) / 3), (min-width: 40rem) calc((100vw - 5.5rem) / 3), calc((100vw - 4.25rem) / 2)"
       />
       <span className="flex min-w-0 flex-col">
-        <span className="text-ui break-words">{release.title}</span>
+        <span className="text-body break-words">{release.title}</span>
         {hints.length > 0 ? (
-          <span className="text-ui text-text-muted tabular-nums">{hints.join(' · ')}</span>
+          <span className="text-body text-text-muted">{hints.join(' · ')}</span>
         ) : null}
       </span>
     </li>
@@ -109,7 +109,7 @@ export function ReleasesSection({ releases }: { releases: readonly MusilogyRelea
         {albums.length > 0 ? (
           <div className="flex flex-col gap-4">
             {both ? (
-              <h3 className="text-ui text-text-muted m-0 font-normal">
+              <h3 className="text-body text-text-muted m-0 font-normal">
                 {m.artist_records_albums()}
               </h3>
             ) : null}
@@ -119,7 +119,9 @@ export function ReleasesSection({ releases }: { releases: readonly MusilogyRelea
         {eps.length > 0 ? (
           <div className="flex flex-col gap-4">
             {both ? (
-              <h3 className="text-ui text-text-muted m-0 font-normal">{m.artist_records_eps()}</h3>
+              <h3 className="text-body text-text-muted m-0 font-normal">
+                {m.artist_records_eps()}
+              </h3>
             ) : null}
             <FoldedRecords releases={eps} first={EPS_SHOWN} />
           </div>

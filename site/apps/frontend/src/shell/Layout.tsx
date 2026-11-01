@@ -18,7 +18,7 @@ export function Layout({ children }: LayoutProps) {
         duration={3000}
         toastOptions={{
           classNames: {
-            toast: '!bg-accent !text-on-accent !border-0 !text-ui !rounded-none',
+            toast: '!bg-accent !text-on-accent !border-0 !text-body !rounded-none',
             description: '!text-on-accent-muted',
             actionButton: '!bg-surface !text-text',
           },
