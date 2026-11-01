@@ -91,6 +91,18 @@ export const LONG_UNCOVERED: SampleTrack = {
   art: undefined,
 };
 
+/**
+ * A title longer still, with a word wider than a phone's line (a place's name, 85 letters): the
+ * hero takes the lines it needs and breaks the word rather than cut or overflow. Not a real record.
+ */
+export const LONG_WORD: SampleTrack = {
+  title:
+    'Taumatawhakatangihangakoauauotamateaturipukakapikimaungahoronukupokaiwhenuakitanatahu (Version longue pour la nuit)',
+  artist: 'Un artiste d’exemple',
+  album: '',
+  art: undefined,
+};
+
 /** The week's most kept, the most kept first, as /api/trends ranks them. */
 export const WEEK: TrendEntry[] = [
   TRACKS.umo,

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useNowPlayingStore, type NowPlaying } from '../lib/azuracast';
 import { usePlayer } from '../lib/player';
 import { useAuthStore } from '../stores/authStore';
-import { LONG_UNCOVERED, TRACKS, WEEK, nowPlayingPayload } from '../stories/fixtures';
+import { LONG_UNCOVERED, LONG_WORD, TRACKS, WEEK, nowPlayingPayload } from '../stories/fixtures';
 import { Hero } from './Hero';
 
 interface Live {
@@ -56,9 +56,26 @@ export const SansPochetteTitreLong: Story = {
   beforeEach: live({ data: nowPlayingPayload(LONG_UNCOVERED, TRACKS.gesaffelstein) }),
 };
 
+export const TitreTresLong: Story = {
+  name: 'Titre très long, mot sans coupure',
+  beforeEach: live({ data: nowPlayingPayload(LONG_WORD, TRACKS.danny) }),
+};
+
 export const PremierTitre: Story = {
   name: 'Rien juste avant',
   beforeEach: live({ data: nowPlayingPayload(TRACKS.tame, null) }),
+};
+
+export const RienAvantSemaineVide: Story = {
+  name: 'Rien juste avant, semaine vide',
+  args: { trends: { week: [] } },
+  beforeEach: live({ data: nowPlayingPayload(TRACKS.tame, null) }),
+};
+
+export const Chargement: Story = {
+  name: 'Le direct n’a pas encore répondu',
+  args: { trends: null },
+  beforeEach: live({ data: null }),
 };
 
 export const HorsAntenne: Story = {
