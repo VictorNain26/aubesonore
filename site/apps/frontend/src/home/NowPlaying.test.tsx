@@ -184,6 +184,33 @@ describe('NowPlayingView', () => {
     expect(marks()).toEqual(['in', 'in']);
   });
 
+  it('never cuts the title on air: a long one wraps, a word wider than the line breaks', () => {
+    const title = `${'Pneumonoultramicroscopicsilicovolcanoconiosis'.repeat(2)} and What We Are Meant to Be`;
+    render(<NowPlayingView {...props({ track: { ...props().track!, title } })} />);
+    const heading = screen.getByRole('heading', { name: title });
+    expect(heading.className).not.toMatch(/line-clamp|truncate|text-ellipsis|overflow-hidden/);
+    expect(heading).toHaveClass('wrap-break-word');
+  });
+
+  it("holds the words' room while the live has not answered: a line of each, at its size", () => {
+    // The classes that set a line's height and the air around it.
+    const sizing = (line: Element) =>
+      [...line.classList]
+        .filter((c) => /^(text-(body|title|line)|font-display|m[tb]-\d+)$/.test(c))
+        .sort()
+        .join(' ');
+    const { rerender } = render(<NowPlayingView {...props({ track: null })} />);
+    const waiting = screen.getAllByTestId('hero-words-waiting').map(sizing);
+
+    rerender(<NowPlayingView {...props()} />);
+    const words = [
+      screen.getByText('En direct'),
+      screen.getByRole('heading', { name: 'Mimoun' }),
+      screen.getByText((_, el) => el?.tagName === 'P' && el.textContent?.startsWith('Mickey 3D')),
+    ].map(sizing);
+    expect(waiting).toEqual(words);
+  });
+
   it('says the live is not answering, rather than load forever, when the station is unreachable', () => {
     render(<NowPlayingView {...props({ track: null, isUnreachable: true })} />);
     expect(screen.getByText('Le direct ne répond pas pour le moment.')).toBeInTheDocument();
@@ -204,15 +231,16 @@ describe('NowPlayingView', () => {
     render(<NowPlayingView {...props({ track: { ...props().track!, art } })} />);
     const img = screen.getByRole('img', { name: 'Pochette de Mimoun, Mickey 3D' });
 
-    // Beside the column (hero-split), the screen's height less the header and its 24 px and the
-    // horizon it rests on, or the width the gutter and the column's 32rem leave (the gutter is
-    // 2.5rem from 48rem, or half of what passes 100rem; 1.5rem below); above it, the screen's
-    // width, held under the height the header's 16 px and the words need.
+    // The hero's one formula (design/tokens.css, --hero-cover), in vw: beside the column, the
+    // screen's height less the header, its 24 px and the horizon (9.5rem), or the hero's width less
+    // both gutters, the column's 26rem and its 3.5rem of air (2.5rem gutters from 48rem, held to
+    // 100rem of content past it: 70.5rem at most; 1.5rem gutters below); above it, the screen's
+    // width, held under the height the header, its 24 px and the words need (28.5rem).
     expect(img.getAttribute('sizes')).toBe(
       [
-        '(min-width: 48rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 34.5rem, 50vw + 18rem)',
-        '(min-width: 40rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 33.5rem)',
-        'min(100vw, max(9rem, 100vh - 28rem))',
+        '(min-width: 48rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 34.5rem, 70.5rem)',
+        '(min-width: 40rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 32.5rem)',
+        'min(100vw, max(9rem, 100vh - 28.5rem))',
       ].join(', ')
     );
     // The page's largest image: fetched first.

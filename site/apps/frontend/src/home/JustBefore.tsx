@@ -10,7 +10,7 @@ import { useLikedTracksStore, isTrackLiked, trackKey } from '../stores/likedTrac
 import { useArtistPage } from '../hooks/useArtistPage';
 import { usePreviousTrack } from './usePreviousTrack';
 import type { Swap } from './useTrackSwap';
-import type { SongEntry } from '../lib/azuracast';
+import { useNowPlayingStore, type SongEntry } from '../lib/azuracast';
 import * as m from '@/paraglide/messages.js';
 
 /** Garder beside a track of the hero: the heart alone, a 44 px target named for its title. */
@@ -30,6 +30,8 @@ export interface JustBeforeViewProps {
   onToggleKeep: () => void;
   /** Where the hero is in a change of track: it leaves and comes back with it. */
   swap?: Swap;
+  /** The live has not answered yet: its room is kept, so the column does not move when it does. */
+  waiting?: boolean;
 }
 
 /**
@@ -38,8 +40,30 @@ export interface JustBeforeViewProps {
  * page) and Garder; nothing to play, the live is the one thing that plays. Nothing before the
  * first track has played.
  */
-export function JustBeforeView({ track, onToggleKeep, swap = 'idle' }: JustBeforeViewProps) {
-  if (!track) return null;
+export function JustBeforeView({
+  track,
+  onToggleKeep,
+  swap = 'idle',
+  waiting = false,
+}: JustBeforeViewProps) {
+  if (!track) {
+    if (!waiting) return null;
+    // Its label's line, its cover, its two lines and the heart's room, no title over what may not
+    // come; the same element as the track's, so it is not drawn in again when the track comes.
+    return (
+      <section aria-busy="true" data-testid="hero-before-waiting" className="hero-before">
+        <span className="text-small mb-2 block h-lh" />
+        <span className="flex items-center gap-3">
+          <span className="bg-surface-raised hero-split:size-14 size-11 shrink-0" />
+          <span className="flex min-w-0 flex-1 flex-col">
+            <span className="text-body bg-surface-raised h-lh w-2/3" />
+            <span className="text-small bg-surface-raised h-lh w-1/3" />
+          </span>
+          <span className="size-11 shrink-0" />
+        </span>
+      </section>
+    );
+  }
   return (
     <section aria-labelledby="just-before-title" data-swap={swap} className="hero-before">
       <h2 id="just-before-title" className="text-small text-text-muted m-0 mb-2 font-normal">
@@ -100,6 +124,8 @@ export function JustBefore({ shown, swap }: { shown: SongEntry | null; swap: Swa
 
 function JustBeforeTrack({ shown, swap }: { shown: SongEntry | null; swap: Swap }) {
   const entry = usePreviousTrack(shown);
+  // Until the station's first answer, which brings the track before with the one on air.
+  const waiting = useNowPlayingStore((s) => s.data === null && s.error === null);
   const tracks = useLikedTracksStore((s) => s.tracks);
   const { likingTrackId, toggleLike } = useLikeAction();
   // The same resolver as the track on air: the page it found then is reused, from its cache.
@@ -120,6 +146,7 @@ function JustBeforeTrack({ shown, swap }: { shown: SongEntry | null; swap: Swap 
           : null
       }
       swap={swap}
+      waiting={waiting}
       onToggleKeep={() => {
         if (entry) void toggleLike(entry.song.title, entry.song.artist);
       }}

@@ -51,16 +51,17 @@ export interface NowPlayingViewProps {
 }
 
 /**
- * The cover's width in each layout of the hero (design/tokens.css, hero, --hero-cover): beside
- * the column, the screen's height less the header and its 24 px (6rem) and the horizon it rests on
- * (3.5rem), or what the gutter and the column's 32rem leave, the gutter written out (--gutter:
- * 2.5rem from 48rem, or half of what passes 100rem; 1.5rem below); above it, the screen's width,
- * held under the height the header's 16 px and the words below it need (28rem).
+ * The cover's width, the hero's one formula (design/tokens.css, hero, --hero-cover) written in vw
+ * (`sizes` knows only the screen; the hero spans it): beside the column, the screen's height less
+ * the header, its 24 px and the horizon (9.5rem), or the width less both gutters, the column's
+ * 26rem and its 3.5rem of air. The gutters written out: 2.5rem from 48rem, half of what passes
+ * 100rem past it, so the cover is 70.5rem at most; 1.5rem below 48rem. Above the words, the
+ * screen's width, held under the height the header, its 24 px and the words need (28.5rem).
  */
 const HERO_COVER_SIZES = [
-  '(min-width: 48rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 34.5rem, 50vw + 18rem)',
-  '(min-width: 40rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 33.5rem)',
-  'min(100vw, max(9rem, 100vh - 28rem))',
+  '(min-width: 48rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 34.5rem, 70.5rem)',
+  '(min-width: 40rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 32.5rem)',
+  'min(100vw, max(9rem, 100vh - 28.5rem))',
 ].join(', ');
 
 /**
@@ -78,8 +79,11 @@ export function preloadCover(art: string | undefined): Promise<void> {
   return image.decode();
 }
 
-/** Écouter in the hero: the line's width on a phone, its own from 40rem. */
-const HERO_PILL = 'flex-1 sm:flex-none';
+/**
+ * Écouter in the hero: its own width at least, the rest of its line on a phone, its own alone from
+ * 40rem. The row of actions wraps rather than squeeze or overflow the screen.
+ */
+const HERO_PILL = 'grow sm:grow-0';
 
 /**
  * What plays now: the cover, square, the largest thing on the page and nothing ever written over
@@ -145,10 +149,10 @@ export function NowPlayingView({
             className="hero-words flex flex-col"
           >
             <LiveMark className="mb-3" />
-            {/* Two lines at most on a phone, three beside the cover, where a longer title raises
-                « En direct » (the column stands on the cover's foot); the whole title stays in the
-                page for screen readers. */}
-            <h2 className="font-display text-title hero-split:line-clamp-3 m-0 line-clamp-2 text-balance">
+            {/* Whole, the one thing the hero must say in full: a long title takes the lines it
+                needs (beside the cover it raises « En direct », the column standing on the cover's
+                foot), a word wider than the line breaks. */}
+            <h2 className="font-display text-title m-0 text-balance wrap-break-word">
               {track.title}
             </h2>
             <TrackCredit
@@ -164,13 +168,22 @@ export function NowPlayingView({
             {m.now_unreachable()}
           </p>
         ) : (
-          <div aria-busy="true" className="flex flex-col gap-2">
-            <span className="bg-surface-raised h-14 w-3/4" />
-            <span className="bg-surface-raised h-6 w-1/3" />
+          // The words' room until the live answers: a line of « En direct », of the title and of
+          // the credit, each at its size and with its air, so nothing moves when they come.
+          <div aria-busy="true" className="flex flex-col">
+            <span data-testid="hero-words-waiting" className="text-body mb-3 h-lh" />
+            <span
+              data-testid="hero-words-waiting"
+              className="font-display text-title bg-surface-raised h-lh w-3/4"
+            />
+            <span
+              data-testid="hero-words-waiting"
+              className="text-line bg-surface-raised mt-2 h-lh w-1/3"
+            />
           </div>
         )}
 
-        <div className="mt-6 flex items-center gap-3">
+        <div className="mt-6 flex flex-wrap items-center gap-3">
           <ListenPill listen={listen} onToggle={onToggleListen} className={HERO_PILL} />
           {track && isOnline ? (
             <KeepButton

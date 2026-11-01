@@ -96,13 +96,26 @@
      --container-page so the content stays centred on a large screen. In vw, not %: the same
      length in every box (a grid area's padding, the hero's columns), where % took the box's own
      width and left the cover 7.5 px off the logo past 1680 px. Centred all the same; past 1680 px
-     the content is a scrollbar narrower than --container-page. */
-  --gutter: max(1.5rem, (100vw - var(--container-page)) / 2);
+     the content is a scrollbar narrower than --container-page. An iPhone on its side reports the
+     side of its notch as unsafe (env(safe-area-inset-*), the page laid out under it by
+     viewport-fit=cover in index.html): the gutter is that wide at least, on both sides so the
+     content stays centred, as WebKit's « Designing Websites for iPhone X » does it with max(). */
+  --gutter: max(
+    1.5rem,
+    env(safe-area-inset-left, 0px),
+    env(safe-area-inset-right, 0px),
+    (100vw - var(--container-page)) / 2
+  );
 }
 
 @media (width >= 48rem) {
   :root {
-    --gutter: max(2.5rem, (100vw - var(--container-page)) / 2);
+    --gutter: max(
+      2.5rem,
+      env(safe-area-inset-left, 0px),
+      env(safe-area-inset-right, 0px),
+      (100vw - var(--container-page)) / 2
+    );
   }
 }
 
@@ -565,7 +578,7 @@
 
 /* The opening screen, « la colonne » (home/Hero.tsx), the mockup's (Proposition 1), written for
    a phone first. Stacked (a phone, an upright tablet), the first screen is the header, the cover
-   16 px under it, the track on air and « Juste avant », down to the horizon (hero-screen); the
+   24 px under it, the track on air and « Juste avant », down to the horizon (hero-screen); the
    week follows under it. Beside each other (hero-split), one grid the screen's height at least:
    the header across; the cover on the left, square, on the page's gutter in line with the logo,
    24 px under the header at least and resting on the horizon (--hero-cover); the column on the
@@ -573,18 +586,28 @@
    the week's last line ends level with the cover. The player bar stays away while Écouter shows
    (stores/heroPlayerStore.ts), so no room is kept for it. A minimum, not a height: content taller
    than the screen grows the hero rather than overlap.
+   --hero-cover is the cover's one formula, taken from the hero's width (100%: the grid's own
+   width where the columns use it, the cover's row where the stacked cover does), mirrored in vw
+   by HERO_COVER_SIZES (home/NowPlaying.tsx). Not in container query units: a size container
+   above the grid would hold the header, which turns fixed on scroll, and Safari before 18.4
+   still gives such a container layout containment, so the header would stay pinned in the hero
+   (css-conditional-5, « no longer apply layout containment »; WebKit, Safari 18.4).
    svh, not dvh: the dynamic height follows the address bar as it folds on scroll, so the cover
    grew and shrank under the finger and moved the page (MDN, CSS <length>, viewport units). */
 @utility hero {
   --horizon-height: 2.5rem;
+  /* Stacked: the hero's width, held under the height the header, its 24 px and the words below
+     need (28.5rem), so they end in the first screen; 9rem at least. */
+  --hero-cover: min(100%, max(9rem, 100svh - 28.5rem));
   position: relative;
   overflow: hidden;
 
   @variant hero-split {
     /* The screen's height less the header and its 24 px (6rem) and the horizon the cover rests
-       on (3.5rem), or what the gutter and the column's 32rem leave on a screen too narrow for
-       its height: the cover stays square (home/NowPlaying.tsx, HERO_COVER_SIZES). */
-    --hero-cover: min(100svh - 9.5rem, 100vw - 32rem - var(--gutter));
+       on (3.5rem), or the hero's width less both gutters, the column's 26rem and its 3.5rem of
+       air, on a screen too narrow for its height: the cover stays square and the column keeps
+       its room from 640 to 2560 px. */
+    --hero-cover: min(100svh - 9.5rem, 100% - 2 * var(--gutter) - 29.5rem);
     /* Between the column's blocks: 20 px at 720 high, 28 at 900, 35 at 1080. */
     --hero-gap: clamp(1.25rem, 4svh - 0.5rem, 2.5rem);
     display: grid;
@@ -592,6 +615,9 @@
     grid-template-rows: auto 1fr auto auto auto;
     grid-template-areas: 'header header' 'cover .' 'cover live' 'cover before' 'cover kept';
     min-height: 100svh;
+    /* The column's foot and the cover's, whatever block ends the column (« Juste avant », the
+       track itself, the week): 3.5rem over the hero's foot, clear of the horizon. */
+    padding-bottom: 3.5rem;
   }
 }
 
@@ -623,23 +649,22 @@
   grid-area: header;
 }
 
-/* The cover on air: 16 px under the header, edge to edge, held under the height the words below
-   it need (28rem) so they end in the first screen; narrower than the screen, it stands on the
-   page's gutter, in line with the words. Beside the column, --hero-cover on the gutter, at the
-   foot of its rows, 3.5rem over the hero's foot: it rests on the horizon. On a screen too low
+/* The cover on air: 24 px under the header, --hero-cover wide, edge to edge on a phone; narrower
+   than the screen, it stands on the page's gutter, in line with the words. Beside the column, its
+   column less the gutter it stands on (--hero-cover), at the foot of its rows, 3.5rem over the
+   hero's foot (the hero's padding): it rests on the horizon. On a screen too low
    for the column (a phone on its side), the hero grows past the screen: the cover stays level
    with the column's top, in the first screen, not at the hero's foot. Nothing is written over
    it. It fades in at the page's load (the server drew it: its paint is not held back); a change
    of track lets it go, then brings the next in (home/useTrackSwap.ts); off air it stays,
    dimmed. */
 @utility hero-cover {
-  --cover-side: min(100%, max(9rem, 100svh - 28rem));
   grid-area: cover;
   position: relative;
   justify-self: start;
-  width: var(--cover-side);
-  margin-top: 1rem;
-  margin-inline-start: clamp(0px, 100% - var(--cover-side), var(--gutter));
+  width: var(--hero-cover);
+  margin-top: 1.5rem;
+  margin-inline-start: clamp(0px, 100% - var(--hero-cover), var(--gutter));
   aspect-ratio: 1;
   animation: fade-in 500ms var(--ease-enter) both;
 
@@ -666,9 +691,8 @@
 
   @variant hero-split {
     align-self: end;
-    width: var(--hero-cover);
-    margin-top: 1.5rem;
-    margin-bottom: 3.5rem;
+    /* Its column is the gutter and --hero-cover: % here is the column's width, not the hero's. */
+    width: calc(100% - var(--gutter));
     margin-inline-start: var(--gutter);
 
     @media (height < 42rem) {
@@ -753,7 +777,7 @@
 }
 
 /* The week: under the hero on a phone; beside the cover, under « Juste avant », its last line
-   level with the cover's foot (hero-cover's 3.5rem), clear of the horizon. */
+   level with the cover's foot (the hero's 3.5rem), clear of the horizon. */
 @utility hero-kept {
   grid-area: kept;
   position: relative;
@@ -768,7 +792,7 @@
 
   @variant hero-split {
     margin-top: var(--hero-gap);
-    padding: 0 var(--gutter) 3.5rem 3.5rem;
+    padding: 0 var(--gutter) 0 3.5rem;
   }
 }
 

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactElement } from 'react';
-import { render as rtlRender, screen } from '@testing-library/react';
+import { act, render as rtlRender, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { makeNowPlaying } from '../mocks/handlers';
@@ -115,6 +115,19 @@ describe('JustBefore', () => {
       'href',
       '/artiste/danny-brown'
     );
+  });
+
+  it("keeps « Juste avant »'s room until the live answers, not once it says it cannot", () => {
+    useNowPlayingStore.setState({ data: null, isConnected: false, error: null });
+    const { container } = render(<JustBefore shown={null} swap="idle" />);
+    const waiting = screen.getByTestId('hero-before-waiting');
+    expect(waiting).toHaveClass('hero-before');
+    expect(waiting).toHaveAttribute('aria-busy', 'true');
+    // A room, not a title over what may not come.
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+
+    act(() => useNowPlayingStore.setState({ error: 'unreachable' }));
+    expect(container).toBeEmptyDOMElement();
   });
 
   it('leaves the rest of the page standing when the station sends a malformed track', () => {
