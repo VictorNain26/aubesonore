@@ -6,15 +6,7 @@ import {
 } from '@aubesonore/shared-types/client';
 import type { TrackLinks } from '../trackLinksService';
 import { env } from '../../config/env';
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
+import { escapeHtml } from './escapeHtml';
 
 const COPY: Record<
   SiteLocale,

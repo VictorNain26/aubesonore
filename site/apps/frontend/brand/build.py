@@ -7,8 +7,8 @@
     uv run brand/build.py            # from apps/frontend; needs a Chromium for the PNGs
     CHROME=/path/to/chrome uv run brand/build.py
 
-Writes brand/svg/*.svg, public/favicon.svg, public/favicon.ico, public/icon-*.png, public/og-*.png
-and src/design/logoArt.ts. Run it again after changing a rule, never edit the outputs.
+Writes brand/svg/*.svg, public/favicon.svg, public/favicon.ico, public/icon-*.png, public/og-*.png,
+public/lockup*.png and src/design/logoArt.ts. Run it again after changing a rule, never edit the outputs.
 """
 
 import bisect
@@ -45,6 +45,11 @@ ART_TS = FRONTEND / "src/design/logoArt.ts"
 # --text-muted, and the sky's rose and lilac that fringe the dawn.
 PAPER, INK, DAWN, MUTED = "#F1E5DC", "#1B233A", "#FCB17E", "#454B69"
 ROSE, LILAC = "#EDA3AF", "#A894C2"
+# The night's --text and --dawn (the ember), for the lockup on the night sky.
+NIGHT_INK, NIGHT_DAWN = "#F0E6DB", "#C16D45"
+# The lockup as an image, for the mails and the share page the backend serves: its height in CSS
+# px, drawn at 3× for sharp screens. services/templates/lockup.ts holds the same size.
+LOCKUP_HEIGHT, LOCKUP_SCALE = 22, 3
 
 # The wordmark: Fraunces at its display size, weight 560, softness 60, without its wonky letters,
 # tracking −2 %.
@@ -392,6 +397,15 @@ p{{margin:0 0 0 2px;font-size:28px;line-height:1.3;color:{MUTED};font-weight:450
 <div class="glow"></div><div class="text"><h1>{title}</h1><p>{sub}</p></div>
 <div class="logo">{logo}</div>"""
         render(html, 1200, 630, PUBLIC / f"og-{lang}.png")
+
+    # The lockup as a PNG, by day and by night, on no ground: mail clients show no SVG (Gmail
+    # rasterises it, caniemail.com/features/image-svg), and the mails and the share page swap the
+    # night one in under prefers-color-scheme: dark.
+    height = LOCKUP_HEIGHT * LOCKUP_SCALE
+    width = round(height * lockup_box[2] / lockup_box[3])
+    for name, sun, ink in (("lockup.png", DAWN, INK), ("lockup-night.png", NIGHT_DAWN, NIGHT_INK)):
+        render(svg_doc(lockup_box, lockup_body("m", sun, ink, ink), width, height), width, height, PUBLIC / name,
+               transparent=True)
 
     # The component's drawing: the lockup's parts, named for its animation.
     art = {

@@ -34,7 +34,6 @@ export async function sendBetterAuthEmail({
         buttonLink,
         buttonText: copy.button,
         ignore: copy.ignore,
-        footer: copy.footer,
       },
     });
     logger.info('better_auth_email.sent', { to, kind, locale });

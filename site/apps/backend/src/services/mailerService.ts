@@ -5,10 +5,10 @@ import { dirname, resolve } from 'path';
 import { htmlToText } from 'html-to-text';
 import { env } from '../config/env';
 import { logger } from '../lib/logger';
+import { escapeHtml } from './templates/escapeHtml';
+import { LOCKUP } from './templates/lockup';
 
-interface MailVariables {
-  [key: string]: string | boolean | undefined;
-}
+type MailVariables = Record<string, string | undefined>;
 
 interface SendMailOptions {
   to: string;
@@ -22,16 +22,29 @@ interface SendMailOptions {
 const here = dirname(fileURLToPath(import.meta.url));
 const htmlTemplate = readFileSync(resolve(here, 'templates/mailTemplate.html'), 'utf-8');
 
-function compileTemplate(template: string, variables: MailVariables = {}): string {
-  return template
-    .replace(
-      /{{#if (.*?)}}([\s\S]*?){{\/if}}/g,
-      (_: string, condition: string, content: string) => {
-        const value = variables[condition.trim()];
-        return value ? content : '';
-      }
-    )
-    .replace(/{{(.*?)}}/g, (_: string, key: string) => String(variables[key.trim()] ?? ''));
+// What every mail shows besides its copy: the lockup and the site's address.
+const SITE: MailVariables = {
+  lockupUrl: LOCKUP.day,
+  lockupNightUrl: LOCKUP.night,
+  lockupWidth: String(LOCKUP.width),
+  lockupHeight: String(LOCKUP.height),
+  lockupAlt: LOCKUP.alt,
+  siteUrl: env.FRONTEND_BASE_URL,
+  siteHost: new URL(env.FRONTEND_BASE_URL).host,
+};
+
+/** The mail's HTML, every value escaped, and its plain text. */
+export function renderMail(subject: string, variables: MailVariables = {}) {
+  const values: MailVariables = { ...SITE, subject, ...variables };
+  const html = htmlTemplate.replace(/{{(.*?)}}/g, (_: string, key: string) =>
+    escapeHtml(values[key.trim()] ?? '')
+  );
+  // The lockup is a picture of the name: the text needs neither it nor its address.
+  const text = htmlToText(html, {
+    wordwrap: 130,
+    selectors: [{ selector: 'img', format: 'skip' }],
+  });
+  return { html, text };
 }
 
 const transporter = nodemailer.createTransport({
@@ -49,8 +62,7 @@ const transporter = nodemailer.createTransport({
 
 export async function sendMail({ to, subject, variables = {} }: SendMailOptions): Promise<void> {
   try {
-    const html = compileTemplate(htmlTemplate, { subject, ...variables });
-    const text = htmlToText(html, { wordwrap: 130 });
+    const { html, text } = renderMail(subject, variables);
 
     const info = await transporter.sendMail({
       from: env.SMTP_FROM,
