@@ -7,6 +7,7 @@ import {
 import type { TrackLinks } from '../trackLinksService';
 import { env } from '../../config/env';
 import { escapeHtml } from './escapeHtml';
+import { LOCKUP } from './lockup';
 
 const COPY: Record<
   SiteLocale,
@@ -15,8 +16,8 @@ const COPY: Record<
     coverAlt: (title: string) => string;
     heardOn: string;
     listenLive: string;
+    elsewhere: string;
     listenOn: (platform: string) => string;
-    footer: string;
   }
 > = {
   fr: {
@@ -25,8 +26,8 @@ const COPY: Record<
     coverAlt: (title) => `Pochette de ${title}`,
     heardOn: 'Entendu sur AubeSonore',
     listenLive: 'Écouter le direct',
+    elsewhere: 'Écouter ailleurs',
     listenOn: (platform) => `Écouter sur ${platform}`,
-    footer: 'AubeSonore, radio de découverte indé, électro, hip-hop',
   },
   en: {
     description:
@@ -34,8 +35,8 @@ const COPY: Record<
     coverAlt: (title) => `Cover of ${title}`,
     heardOn: 'Heard on AubeSonore',
     listenLive: 'Listen live',
+    elsewhere: 'Listen elsewhere',
     listenOn: (platform) => `Listen on ${platform}`,
-    footer: 'AubeSonore, an indie, electronic, hip-hop discovery radio',
   },
 };
 
@@ -69,29 +70,40 @@ export function renderSharePage({
     : [];
 
   // Link previews take the archive's JPEG, like the artist page's og:image; the page shows the
-  // cover store's WebP.
+  // cover store's WebP, and lays it blurred behind everything, as the home page's hero does.
   const ogImage = releaseGroup
     ? `\n    <meta property="og:image" content="${escapeHtml(coverArtUrl(releaseGroup, 500))}" />`
     : '';
-  const cover = releaseGroup
-    ? `\n      <img class="cover" src="${escapeHtml(`${env.FRONTEND_BASE_URL}/covers/caa/${releaseGroup}/500.webp`)}" alt="${escapeHtml(copy.coverAlt(title))}" width="240" height="240" />`
+  const coverSrc = releaseGroup
+    ? escapeHtml(`${env.FRONTEND_BASE_URL}/covers/caa/${releaseGroup}/500.webp`)
+    : null;
+  const light = coverSrc
+    ? `\n    <div class="light" aria-hidden="true"><img src="${coverSrc}" alt="" /></div>`
+    : '';
+  const cover = coverSrc
+    ? `\n      <img class="cover" src="${coverSrc}" alt="${escapeHtml(copy.coverAlt(title))}" width="420" height="420" />`
     : '';
   const platforms =
     platformLinks.length > 0
-      ? `\n      <nav class="platforms">\n${platformLinks
+      ? `\n      <nav class="platforms" aria-label="${copy.elsewhere}">\n${platformLinks
           .map(
             ([id, url]) =>
-              `        <a class="platform" href="${escapeHtml(url)}" rel="noopener noreferrer">${escapeHtml(copy.listenOn(PLATFORM_NAMES[id]))}</a>`
+              `        <a href="${escapeHtml(url)}" rel="noopener noreferrer">${escapeHtml(copy.listenOn(PLATFORM_NAMES[id]))}</a>`
           )
           .join('\n')}\n      </nav>`
       : '';
+  const home = escapeHtml(env.FRONTEND_BASE_URL);
+  const lockup = `<a class="home" href="${home}"><picture><source srcset="${escapeHtml(LOCKUP.night)}" media="(prefers-color-scheme: dark)" /><img src="${escapeHtml(LOCKUP.day)}" alt="${LOCKUP.alt}" width="${LOCKUP.width}" height="${LOCKUP.height}" /></picture></a>`;
 
-  // The site's paper, ink, muted ink and dawn (apps/frontend/src/design/tokens.css), as hex.
+  // The site's charter (apps/frontend/src/design/tokens.css) as hex, by day and by night: the
+  // paper, the ink, the muted ink, and the veil over the cover's light (--light-*). No web font:
+  // Fraunces where installed, else Georgia.
   return `<!doctype html>
 <html lang="${locale}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
     <title>${escapeHtml(title)}, ${escapeHtml(artist)} · AubeSonore</title>
     <meta name="description" content="${copy.description}" />
     <meta name="robots" content="noindex" />
@@ -103,60 +115,116 @@ export function renderSharePage({
     <meta property="og:locale" content="${locale === 'en' ? 'en_GB' : 'fr_FR'}" />
     <meta name="twitter:card" content="${releaseGroup ? 'summary_large_image' : 'summary'}" />${ogImage}
     <style>
+      :root {
+        --surface: #f1e5dc;
+        --text: #1b233a;
+        --text-muted: #454b69;
+        --light-opacity: 0.75;
+        --light-veil-top: rgb(241 229 220 / 0.55);
+        --light-veil-mid: rgb(241 229 220 / 0.72);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --surface: #151d33;
+          --text: #f0e6db;
+          --text-muted: #b9bcd1;
+          --light-opacity: 0.9;
+          --light-veil-top: rgb(10 16 35 / 0.38);
+          --light-veil-mid: rgb(13 21 42 / 0.62);
+        }
+      }
       * { margin: 0; box-sizing: border-box; }
       body {
         min-height: 100vh;
+        font-family: 'Atkinson Hyperlegible Next', system-ui, sans-serif;
+        color: var(--text);
+        background: var(--surface);
+      }
+      .light { position: fixed; inset: 0; overflow: hidden; }
+      .light img {
+        position: absolute;
+        left: -15%;
+        top: -25%;
+        width: 130%;
+        height: 150%;
+        object-fit: cover;
+        filter: blur(80px) saturate(1.35);
+        opacity: var(--light-opacity);
+      }
+      .light::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, var(--light-veil-top) 0%, var(--light-veil-mid) 70%, var(--surface) 100%);
+      }
+      main {
+        position: relative;
+        min-height: 100vh;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 2rem 1rem;
-        font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        color: #211f26;
-        background: radial-gradient(60% 40% at 50% 100%, #f2ac8166 0%, transparent 70%), #e8e0d7;
+        padding: 32px 20px 72px;
+        text-align: center;
       }
-      .card { width: 100%; max-width: 24rem; text-align: center; }
-      .cover {
-        width: 240px;
-        height: 240px;
-        max-width: 100%;
-        border-radius: 0.5rem;
-        object-fit: cover;
-        box-shadow: 0 18px 40px -16px rgb(33 31 38 / 45%);
+      a { color: inherit; }
+      .home { display: flex; align-items: center; min-height: 44px; margin-bottom: 28px; }
+      .home img { display: block; }
+      .cover { display: block; width: 300px; height: 300px; max-width: 100%; object-fit: cover; }
+      h1 {
+        max-width: 20ch;
+        margin-top: 24px;
+        font-family: Fraunces, Georgia, 'Times New Roman', serif;
+        font-size: clamp(1.875rem, 1.364rem + 2.095vw, 3.25rem);
+        line-height: 1.03;
+        font-weight: 400;
+        letter-spacing: -0.025em;
+        text-wrap: balance;
       }
-      h1 { margin-top: 1.5rem; font-size: 1.75rem; line-height: 1.15; font-weight: 600; letter-spacing: -0.02em; }
-      .artist { margin-top: 0.375rem; font-size: 1.125rem; color: #4a4650; }
-      .heard { margin-top: 1rem; font-size: 0.875rem; color: #4a4650; }
+      .artist { margin-top: 8px; font-size: 19px; }
+      .heard { margin-top: 6px; font-size: 16px; color: var(--text-muted); }
       .cta {
-        display: inline-block;
-        margin-top: 1.5rem;
-        padding: 0.875rem 1.75rem;
-        font-size: 1rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        height: 56px;
+        margin-top: 24px;
+        padding: 0 28px 0 22px;
+        border-radius: 9999px;
+        background: var(--text);
+        color: var(--surface);
+        font-size: 16px;
         font-weight: 600;
-        color: #e8e0d7;
-        background: #211f26;
-        border-radius: 9999px;
         text-decoration: none;
       }
-      .platforms { margin-top: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; }
-      .platform {
-        display: block;
-        padding: 0.75rem 1rem;
-        font-size: 0.9375rem;
-        color: #211f26;
-        border: 1px solid #211f26;
-        border-radius: 9999px;
-        text-decoration: none;
+      .platforms {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0 22px;
+        margin-top: 14px;
+        font-size: 16px;
+        font-weight: 600;
       }
-      footer { margin-top: 2rem; font-size: 0.75rem; color: #4a4650; }
+      .platforms a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        text-decoration-color: var(--text-muted);
+        text-underline-offset: 5px;
+      }
+      @media (min-width: 768px) {
+        .cover { width: 420px; height: 420px; }
+      }
     </style>
   </head>
-  <body>
-    <main class="card">${cover}
+  <body>${light}
+    <main>
+      ${lockup}${cover}
       <h1>${escapeHtml(title)}</h1>
       <p class="artist">${escapeHtml(artist)}</p>
       <p class="heard">${copy.heardOn}</p>
-      <a class="cta" href="${escapeHtml(env.FRONTEND_BASE_URL)}">${copy.listenLive}</a>${platforms}
-      <footer>${copy.footer}</footer>
+      <a class="cta" href="${home}"><svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 3.5v13a.6.6 0 0 0 .9.5l10.4-6.5a.6.6 0 0 0 0-1L6.9 3a.6.6 0 0 0-.9.5Z" fill="currentColor" /></svg>${copy.listenLive}</a>${platforms}
     </main>
   </body>
 </html>
