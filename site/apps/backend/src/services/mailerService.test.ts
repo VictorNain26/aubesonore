@@ -45,7 +45,7 @@ describe('renderMail', () => {
         expect(elements(html, 'html')[0]?.attrs.lang).toBe(locale);
         expect(elements(html, 'h1')[0]?.text).toBe(copy.heading);
         const [button] = elements(html, 'a.button');
-        expect(button?.attrs.href).toBe(LINK.replace('&', '&amp;'));
+        expect(button?.attrs.href).toBe(LINK.replaceAll('&', '&amp;'));
         expect(button?.text).toBe(copy.button);
         // The plain text keeps the link whole, so a client without HTML can still follow it.
         expect(text).toContain(LINK);
