@@ -65,6 +65,17 @@ describe('MobileMenu', () => {
   it('offers the theme beside the language, to everyone', async () => {
     await open();
 
+    // The language in use, marked by the wave alone: no weight, ink or underline sets it apart.
+    const language = within(screen.getByRole('group', { name: 'Langue' }));
+    const french = language.getByRole('button', { name: 'fr' });
+    const english = language.getByRole('button', { name: 'en' });
+    expect(french).toHaveAttribute('aria-pressed', 'true');
+    expect(french).toHaveClass('wave-underline');
+    expect(english).not.toHaveClass('wave-underline');
+    const withoutWave = (element: Element) =>
+      [...element.classList].filter((name) => name !== 'wave-underline');
+    expect(withoutWave(french)).toEqual(withoutWave(english));
+
     const theme = within(screen.getByRole('dialog')).getByRole('radiogroup', { name: 'Thème' });
     expect(within(theme).getByRole('radio', { name: 'Système' })).toBeChecked();
     await userEvent.click(within(theme).getByRole('radio', { name: 'Sombre' }));

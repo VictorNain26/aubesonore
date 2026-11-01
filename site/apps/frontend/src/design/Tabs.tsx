@@ -72,8 +72,9 @@ export function Tabs({
               onClick={() => onSelect(tab.id)}
               onKeyDown={(event) => onKeyDown(event, index)}
               className={cn(
-                'text-line ease-out-quart focus-visible:outline-accent inline-flex min-h-11 shrink-0 items-center font-semibold whitespace-nowrap transition-[color,opacity] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70',
-                isSelected ? 'text-text wave-underline' : 'text-text-muted hover:text-text'
+                'text-line ease-out-quart focus-visible:outline-accent inline-flex min-h-11 shrink-0 items-center font-semibold whitespace-nowrap transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70',
+                // The wave alone says which: no weight, ink or underline sets it apart.
+                isSelected && 'wave-underline'
               )}
             >
               {tab.label}

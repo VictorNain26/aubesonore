@@ -2,17 +2,19 @@
 export const TEXT_ACTION =
   'text-body ease-out-quart focus-visible:outline-accent inline-flex min-h-11 items-center gap-2 transition-[opacity,scale] duration-150 hover:opacity-70 active:scale-97 focus-visible:outline-2 focus-visible:outline-offset-4 disabled:opacity-50';
 
-/** Garder beside Écouter: the heart in a ring as tall as the pill (the hero, the phone's sheet). */
+/** Garder beside Écouter: the heart in a ring as tall as the pill, 56 px (the hero, the phone's
+ *  sheet), seen by night as by day. */
 export const KEEP_RING =
-  'group ease-out-quart focus-visible:outline-accent border-border hover:bg-surface-raised flex size-13 shrink-0 items-center justify-center rounded-full border transition-[background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90 disabled:opacity-50';
+  'group ease-out-quart focus-visible:outline-accent border-keep-ring hover:bg-surface-raised flex size-14 shrink-0 items-center justify-center rounded-full border transition-[background-color,scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-90 disabled:opacity-50';
 
 /** An artist's name that leads to their page: underlined, since a phone has no hover. */
 export const ARTIST_LINK =
   'ease-out-quart hover:text-text focus-visible:outline-accent decoration-text-muted/40 hover:decoration-text underline decoration-1 transition-[color,opacity] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
 
-/** The ink pill back to the live, where a page has nothing to show (404, an unknown artist). */
+/** The ink button back to the live, where a page has nothing to show (404, an unknown artist): a
+ *  right angle, 48 px, as a form's. */
 export const BACK_TO_LIVE =
-  'bg-accent text-on-accent text-body ease-spring focus-visible:outline-accent inline-flex h-14 items-center rounded-full px-6 font-semibold transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95';
+  'bg-accent text-on-accent text-body ease-spring focus-visible:outline-accent inline-flex h-12 items-center px-6 font-semibold transition-transform duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95';
 
 /** A square 44px close button, for a full-screen menu, a sheet or a large image. */
 export const CLOSE_BUTTON =

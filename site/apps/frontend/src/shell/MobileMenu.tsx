@@ -103,7 +103,7 @@ export function MobileMenu() {
                     className={cn(
                       TEXT_ACTION,
                       'min-w-11 justify-center',
-                      locale === code ? 'font-semibold' : 'text-text-muted'
+                      locale === code && 'wave-underline'
                     )}
                   >
                     {code}

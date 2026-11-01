@@ -271,6 +271,18 @@ describe('PlayerBarView', () => {
     expect(button).toHaveTextContent('Sur TV');
   });
 
+  it('marks Diffuser on with the wave alone: no weight, fill or underline sets it apart', () => {
+    const withoutWave = (element: Element) =>
+      [...element.classList].filter((name) => name !== 'wave-underline');
+    const { rerender } = render(<PlayerBarView {...props({ diffusion: diffusion() })} />);
+    const off = withoutWave(screen.getByRole('button', { name: 'Diffuser sur un appareil' }));
+
+    rerender(<PlayerBarView {...props({ diffusion: diffusion({ device: 'TV' }) })} />);
+    const on = screen.getByRole('button', { name: 'Diffusion sur TV' });
+    expect(on).toHaveClass('wave-underline');
+    expect(withoutWave(on)).toEqual(off);
+  });
+
   it("leads from the track to the artist's page once it exists", () => {
     const { rerender } = render(<PlayerBarView {...props()} />);
     expect(screen.queryByRole('link')).not.toBeInTheDocument();

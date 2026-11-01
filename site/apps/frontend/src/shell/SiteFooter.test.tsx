@@ -9,6 +9,9 @@ import { SiteFooter, SiteFooterView } from './SiteFooter';
 // The footer links to Musilogy through the router, so the stream keeps playing.
 const render = (ui: ReactElement) => renderInDom(ui, { wrapper: MemoryRouter });
 const HREFS = { fr: '/mentions-legales/', en: '/en/legal/' };
+/** An option's classes but the wave: the chosen one's must be the others'. */
+const withoutWave = (element: Element) =>
+  [...element.classList].filter((name) => name !== 'wave-underline');
 
 describe('SiteFooterView', () => {
   it('links each language to this page in it, marks the current one, and switches in place', async () => {
@@ -24,8 +27,13 @@ describe('SiteFooterView', () => {
       />
     );
 
-    expect(screen.getByRole('link', { name: 'fr' })).toHaveAttribute('aria-current', 'true');
+    const french = screen.getByRole('link', { name: 'fr' });
+    expect(french).toHaveAttribute('aria-current', 'true');
     const english = screen.getByRole('link', { name: 'en' });
+    // The wave alone marks it: no weight, ink or underline sets it apart.
+    expect(french).toHaveClass('wave-underline');
+    expect(english).not.toHaveClass('wave-underline');
+    expect(withoutWave(french)).toEqual(withoutWave(english));
     expect(english).toHaveAttribute('href', '/en/legal/');
     expect(english).toHaveAttribute('hreflang', 'en');
     await userEvent.click(english);

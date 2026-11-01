@@ -5,6 +5,10 @@ import userEvent from '@testing-library/user-event';
 import { ThemeSwitch, ThemeSwitchView } from './ThemeSwitch';
 import { chooseTheme } from '../stores/themeStore';
 
+/** An option's classes but the wave: the chosen one's must be the others'. */
+const withoutWave = (element: Element) =>
+  [...element.classList].filter((name) => name !== 'wave-underline');
+
 afterEach(() => {
   act(() => chooseTheme('system'));
 });
@@ -22,6 +26,15 @@ describe('ThemeSwitchView', () => {
       expect(within(group).getByRole('radio', { name })).toBeInTheDocument();
     expect(within(group).getByRole('radio', { name: 'Clair' })).toBeChecked();
     expect(within(group).getByRole('radio', { name: 'Système' })).not.toBeChecked();
+  });
+
+  it('marks the current theme with the wave alone: no weight, ink or underline sets it apart', () => {
+    render(<ThemeSwitchView choice="light" onChange={vi.fn()} />);
+    // The word the radio hides behind, its label.
+    const word = (name: string) => screen.getByText(name);
+    expect(word('Clair')).toHaveClass('wave-underline');
+    expect(word('Sombre')).not.toHaveClass('wave-underline');
+    expect(withoutWave(word('Clair'))).toEqual(withoutWave(word('Sombre')));
   });
 
   it('tells the theme the listener picks, with a click or the arrow keys', async () => {

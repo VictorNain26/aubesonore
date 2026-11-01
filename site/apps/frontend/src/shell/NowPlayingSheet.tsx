@@ -48,7 +48,7 @@ export function NowPlayingSheet({
     <Drawer.Root>
       <Drawer.Trigger
         aria-label={m.sheet_open({ title: track.title, artist: track.artist })}
-        className="ease-out-quart focus-visible:outline-on-accent flex min-w-0 flex-1 items-center gap-3 rounded-full py-1 pr-2 text-left transition-opacity duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-60"
+        className="ease-out-quart focus-visible:outline-on-accent flex min-w-0 flex-1 items-center gap-3 py-1 pr-2 text-left transition-opacity duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-60"
       >
         {children}
       </Drawer.Trigger>
@@ -57,10 +57,7 @@ export function NowPlayingSheet({
         <Drawer.Viewport className="fixed inset-0 z-50 flex items-end justify-center">
           <Drawer.Popup className="sheet-popup bg-surface text-text relative w-full px-6 pt-3 outline-none">
             <CoverLight art={track.art} />
-            <span
-              aria-hidden="true"
-              className="bg-border relative mx-auto mb-6 block h-1 w-10 rounded-full"
-            />
+            <span aria-hidden="true" className="bg-border relative mx-auto mb-6 block h-1 w-10" />
             <Drawer.Close
               aria-label={m.close()}
               className={cn(CLOSE_BUTTON, 'absolute top-2 right-3')}

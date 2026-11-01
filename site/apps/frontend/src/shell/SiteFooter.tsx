@@ -92,10 +92,8 @@ export function SiteFooterView({
                 }}
                 aria-current={locale === code ? 'true' : undefined}
                 className={cn(
-                  'ease-out-quart focus-visible:outline-accent inline-flex min-h-11 min-w-11 items-center justify-center focus-visible:outline-2 md:min-w-8',
-                  locale === code
-                    ? 'font-semibold'
-                    : 'underline decoration-1 underline-offset-4 hover:decoration-2'
+                  'ease-out-quart focus-visible:outline-accent inline-flex min-h-11 min-w-11 items-center justify-center transition-opacity duration-150 hover:opacity-70 focus-visible:outline-2 active:opacity-70 md:min-w-8',
+                  locale === code && 'wave-underline'
                 )}
               >
                 {code}

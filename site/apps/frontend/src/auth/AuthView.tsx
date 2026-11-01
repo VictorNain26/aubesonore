@@ -129,7 +129,7 @@ function MailSentBody({
         {separator} {rest}
       </p>
       <p className="text-body text-text-muted m-0 font-normal">{hint}</p>
-      <Button onClick={onAction} className="h-14 w-full justify-center">
+      <Button onClick={onAction} className="w-full justify-center">
         {action}
       </Button>
     </div>
@@ -277,7 +277,7 @@ export function AuthView({
                     variant="ghost"
                     onClick={onOAuthGoogle}
                     disabled={isLoading}
-                    className="border-accent h-13 w-full justify-center gap-2.5 border hover:bg-transparent hover:opacity-80"
+                    className="border-accent w-full justify-center gap-2.5 border hover:bg-transparent hover:opacity-80"
                   >
                     <GoogleLogo className="size-4.5" />
                     {m.auth_oauth_google()}
@@ -371,7 +371,7 @@ export function AuthView({
               </div>
 
               <div className="flex flex-col gap-4">
-                <Button type="submit" loading={isLoading} className="h-14 w-full justify-center">
+                <Button type="submit" loading={isLoading} className="w-full justify-center">
                   {isLoading
                     ? m.loading()
                     : mode === 'signin'

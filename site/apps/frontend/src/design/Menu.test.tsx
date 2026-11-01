@@ -71,6 +71,13 @@ describe('Menu', () => {
     );
     const dark = within(group).getByRole('menuitemradio', { name: 'Sombre' });
     expect(dark).toHaveAttribute('aria-checked', 'false');
+    // The wave alone marks the checked one: no weight, ink or underline sets it apart.
+    const light = within(group).getByRole('menuitemradio', { name: 'Clair' });
+    const withoutWave = (element: Element) =>
+      [...element.classList].filter((name) => name !== 'wave-underline');
+    expect(light).toHaveClass('wave-underline');
+    expect(dark).not.toHaveClass('wave-underline');
+    expect(withoutWave(light)).toEqual(withoutWave(dark));
     fireEvent.click(dark);
     expect(onChange).toHaveBeenCalledWith('dark');
 

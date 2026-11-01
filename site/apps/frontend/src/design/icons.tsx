@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 
 // ─────────────────────────────────────────────
-// The site's icons, drawn by hand at the line's weight: 1.4 on a 20-unit box, round caps and
-// joins, so a 16 px icon carries the same stroke as the wave beside it. They draw in
+// The site's icons, drawn by hand at the line's weight: a 1.4 px stroke at every size, round caps
+// and joins, so an icon carries the same line as the wave beside it. The stroke does not scale
+// with the 20-unit box (SVG's vector-effect: non-scaling-stroke, on each shape since the property
+// is not inherited): 1.4 units of it gave 0.98 px at 14 px and 1.68 at 24. They draw in
 // `currentColor` and are decoration by default: the button or link around them carries the
 // name. One that stands alone takes a `title`, its accessible name.
 // ─────────────────────────────────────────────
@@ -36,6 +38,7 @@ export function HeartIcon({ filled = false, ...props }: IconProps & { filled?: b
   return (
     <Icon {...props}>
       <path
+        vectorEffect="non-scaling-stroke"
         d="M10 17 C4 12.5 2 9.8 2 7.2 A4 4 0 0 1 10 5.4 A4 4 0 0 1 18 7.2 C18 9.8 16 12.5 10 17 Z"
         fill={filled ? 'currentColor' : 'none'}
       />
@@ -47,8 +50,8 @@ export function HeartIcon({ filled = false, ...props }: IconProps & { filled?: b
 export function ShareIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M3 15 C3 9 6 7 12 7 M9 3.5 L12.5 7 L9 10.5" />
-      <path d="M3 18 H17" />
+      <path vectorEffect="non-scaling-stroke" d="M3 15 C3 9 6 7 12 7 M9 3.5 L12.5 7 L9 10.5" />
+      <path vectorEffect="non-scaling-stroke" d="M3 18 H17" />
     </Icon>
   );
 }
@@ -57,8 +60,14 @@ export function ShareIcon(props: IconProps) {
 export function CastIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M2 6 V4.5 A1.5 1.5 0 0 1 3.5 3 H16.5 A1.5 1.5 0 0 1 18 4.5 V15.5 A1.5 1.5 0 0 1 16.5 17 H12" />
-      <path d="M2 10 A7 7 0 0 1 9 17 M2 13.5 A3.5 3.5 0 0 1 5.5 17" />
+      <path
+        vectorEffect="non-scaling-stroke"
+        d="M2 6 V4.5 A1.5 1.5 0 0 1 3.5 3 H16.5 A1.5 1.5 0 0 1 18 4.5 V15.5 A1.5 1.5 0 0 1 16.5 17 H12"
+      />
+      <path
+        vectorEffect="non-scaling-stroke"
+        d="M2 10 A7 7 0 0 1 9 17 M2 13.5 A3.5 3.5 0 0 1 5.5 17"
+      />
     </Icon>
   );
 }
@@ -67,8 +76,8 @@ export function CastIcon(props: IconProps) {
 export function SearchIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <circle cx="8.5" cy="8.5" r="5.5" />
-      <path d="M12.5 12.5 L17.5 17.5" />
+      <circle vectorEffect="non-scaling-stroke" cx="8.5" cy="8.5" r="5.5" />
+      <path vectorEffect="non-scaling-stroke" d="M12.5 12.5 L17.5 17.5" />
     </Icon>
   );
 }
@@ -77,7 +86,7 @@ export function SearchIcon(props: IconProps) {
 export function RisingIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M3 15 L8 9 L11 12 L17 5" />
+      <path vectorEffect="non-scaling-stroke" d="M3 15 L8 9 L11 12 L17 5" />
     </Icon>
   );
 }
@@ -86,7 +95,7 @@ export function RisingIcon(props: IconProps) {
 export function CloseIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M5 5 L15 15 M15 5 L5 15" />
+      <path vectorEffect="non-scaling-stroke" d="M5 5 L15 15 M15 5 L5 15" />
     </Icon>
   );
 }
@@ -95,7 +104,7 @@ export function CloseIcon(props: IconProps) {
 export function ArrowLeftIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M16.5 10 H3.5 M8 5.5 L3.5 10 L8 14.5" />
+      <path vectorEffect="non-scaling-stroke" d="M16.5 10 H3.5 M8 5.5 L3.5 10 L8 14.5" />
     </Icon>
   );
 }
@@ -104,7 +113,7 @@ export function ArrowLeftIcon(props: IconProps) {
 export function ExternalIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M5.5 14.5 L14.5 5.5 M7.5 5.5 H14.5 V12.5" />
+      <path vectorEffect="non-scaling-stroke" d="M5.5 14.5 L14.5 5.5 M7.5 5.5 H14.5 V12.5" />
     </Icon>
   );
 }
@@ -113,7 +122,7 @@ export function ExternalIcon(props: IconProps) {
 export function ArrowUpIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M10 16.5 V3.5 M5.5 8 L10 3.5 L14.5 8" />
+      <path vectorEffect="non-scaling-stroke" d="M10 16.5 V3.5 M5.5 8 L10 3.5 L14.5 8" />
     </Icon>
   );
 }
@@ -122,7 +131,7 @@ export function ArrowUpIcon(props: IconProps) {
 export function ArrowDownIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M10 3.5 V16.5 M5.5 12 L10 16.5 L14.5 12" />
+      <path vectorEffect="non-scaling-stroke" d="M10 3.5 V16.5 M5.5 12 L10 16.5 L14.5 12" />
     </Icon>
   );
 }
@@ -131,7 +140,10 @@ export function ArrowDownIcon(props: IconProps) {
 export function ArrowUpDownIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M6.5 16 V4 M3.5 7 L6.5 4 L9.5 7 M13.5 4 V16 M10.5 13 L13.5 16 L16.5 13" />
+      <path
+        vectorEffect="non-scaling-stroke"
+        d="M6.5 16 V4 M3.5 7 L6.5 4 L9.5 7 M13.5 4 V16 M10.5 13 L13.5 16 L16.5 13"
+      />
     </Icon>
   );
 }
@@ -140,8 +152,11 @@ export function ArrowUpDownIcon(props: IconProps) {
 export function EyeIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M2 10 C4.5 5.5 15.5 5.5 18 10 C15.5 14.5 4.5 14.5 2 10 Z" />
-      <circle cx="10" cy="10" r="2.4" />
+      <path
+        vectorEffect="non-scaling-stroke"
+        d="M2 10 C4.5 5.5 15.5 5.5 18 10 C15.5 14.5 4.5 14.5 2 10 Z"
+      />
+      <circle vectorEffect="non-scaling-stroke" cx="10" cy="10" r="2.4" />
     </Icon>
   );
 }
@@ -150,8 +165,11 @@ export function EyeIcon(props: IconProps) {
 export function EyeClosedIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d="M2 8.5 C4.5 13 15.5 13 18 8.5" />
-      <path d="M5 11.6 L3.8 13.6 M10 12.9 V15.2 M15 11.6 L16.2 13.6" />
+      <path vectorEffect="non-scaling-stroke" d="M2 8.5 C4.5 13 15.5 13 18 8.5" />
+      <path
+        vectorEffect="non-scaling-stroke"
+        d="M5 11.6 L3.8 13.6 M10 12.9 V15.2 M15 11.6 L16.2 13.6"
+      />
     </Icon>
   );
 }
@@ -162,8 +180,8 @@ const SPEAKER = 'M2.5 7.5 H5.5 L10 4 V16 L5.5 12.5 H2.5 Z';
 export function VolumeOffIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d={SPEAKER} />
-      <path d="M13.5 7.5 L18 12 M18 7.5 L13.5 12" />
+      <path vectorEffect="non-scaling-stroke" d={SPEAKER} />
+      <path vectorEffect="non-scaling-stroke" d="M13.5 7.5 L18 12 M18 7.5 L13.5 12" />
     </Icon>
   );
 }
@@ -172,8 +190,8 @@ export function VolumeOffIcon(props: IconProps) {
 export function VolumeLowIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d={SPEAKER} />
-      <path d="M13 7.5 A3.5 3.5 0 0 1 13 12.5" />
+      <path vectorEffect="non-scaling-stroke" d={SPEAKER} />
+      <path vectorEffect="non-scaling-stroke" d="M13 7.5 A3.5 3.5 0 0 1 13 12.5" />
     </Icon>
   );
 }
@@ -182,8 +200,11 @@ export function VolumeLowIcon(props: IconProps) {
 export function VolumeHighIcon(props: IconProps) {
   return (
     <Icon {...props}>
-      <path d={SPEAKER} />
-      <path d="M13 7.5 A3.5 3.5 0 0 1 13 12.5 M15.5 5 A7 7 0 0 1 15.5 15" />
+      <path vectorEffect="non-scaling-stroke" d={SPEAKER} />
+      <path
+        vectorEffect="non-scaling-stroke"
+        d="M13 7.5 A3.5 3.5 0 0 1 13 12.5 M15.5 5 A7 7 0 0 1 15.5 15"
+      />
     </Icon>
   );
 }

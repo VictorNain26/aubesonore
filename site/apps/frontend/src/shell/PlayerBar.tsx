@@ -18,7 +18,7 @@ import { VolumeControl } from './VolumeControl';
 import { NowPlayingSheet } from './NowPlayingSheet';
 import { HorizonLine } from '../home/HorizonLine';
 import { CoverLight } from '../design/CoverLight';
-import { shownAlbum } from '../design/onAir';
+import { LiveDot, shownAlbum } from '../design/onAir';
 import {
   ListenDisc,
   ListenPill,
@@ -65,7 +65,7 @@ export interface PlayerBarViewProps {
 const BAR_LINE_AMPLITUDE = 1.25 / 24;
 
 const TRACK_LINK =
-  'ease-out-quart focus-visible:outline-on-accent flex min-w-0 items-center gap-3.5 rounded-full py-1 pr-2 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-60';
+  'ease-out-quart focus-visible:outline-on-accent flex min-w-0 items-center gap-3.5 py-1 pr-2 transition-opacity duration-150 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-60';
 
 /**
  * The live player, pinned to the bottom of every page, laid out as the hero: lit by the cover on
@@ -258,8 +258,8 @@ function TrackLine({
       >
         <span className="text-body truncate font-semibold">{track.title}</span>
         <span className="text-small text-on-accent-muted flex min-w-0 items-center gap-1.5">
-          {/* The station is live: the dawn's still dot, as « En direct » on the hero. */}
-          <span aria-hidden="true" className="bg-dawn size-1.5 shrink-0 rounded-full" />
+          {/* The station is live: the live's dot, as « En direct » on the hero. */}
+          <LiveDot />
           <span className="truncate">{album ? `${track.artist} · ${album}` : track.artist}</span>
         </span>
       </span>

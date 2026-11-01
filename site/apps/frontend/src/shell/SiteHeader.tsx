@@ -26,7 +26,7 @@ const BRAND_LINK =
 const CURRENT_LINK = 'wave-underline hover:opacity-100';
 
 const AVATAR =
-  'bg-accent text-on-accent ease-out-quart focus-visible:outline-accent flex size-11 items-center justify-center rounded-full font-semibold transition-[scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95';
+  'bg-accent text-on-accent ease-out-quart focus-visible:outline-accent flex size-11 items-center justify-center font-semibold transition-[scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-95';
 
 /**
  * The site's header on every page: the name, which leads home, and the pages. On the home page

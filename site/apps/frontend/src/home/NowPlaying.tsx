@@ -53,7 +53,7 @@ export interface NowPlayingViewProps {
 /**
  * The cover's width in each layout of the hero (design/tokens.css, hero, --hero-cover): beside
  * the column, the screen's height less the header and its 24 px (6rem) and the horizon it rests on
- * (3.5rem), or what the gutter and the column's 32rem leave, the gutter written out (--hero-gutter:
+ * (3.5rem), or what the gutter and the column's 32rem leave, the gutter written out (--gutter:
  * 2.5rem from 48rem, or half of what passes 100rem; 1.5rem below); above it, the screen's width,
  * held under the height the header's 16 px and the words below it need (28rem).
  */

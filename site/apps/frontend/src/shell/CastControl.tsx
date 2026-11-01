@@ -7,14 +7,15 @@ import { TEXT_ACTION } from '../design/classes';
 import * as m from '@/paraglide/messages.js';
 
 const BAR =
-  'ease-out-quart focus-visible:outline-on-accent flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-full px-3 transition-[opacity,background-color,color] duration-150 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2';
+  'ease-out-quart focus-visible:outline-on-accent flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 px-3 transition-[opacity,background-color,color] duration-150 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2';
 
 /**
  * Diffuser: one button for AirPlay (Safari) and Chromecast (Chrome), shown wherever the browser can
  * cast, as Google's checklist asks of the Cast button on every screen with playable content
  * (developers.google.com/cast/docs/design_checklist/cast-button). It opens the device picker; with
  * no device found, it says what to check instead of opening a picker with nothing in it.
- * Connecting, its waves pulse; connected, it fills and names the device.
+ * Connecting, its waves pulse; connected, it names the device, the wave under it as under any
+ * chosen option, and nothing else changes.
  */
 export function CastControl({
   diffusion,
@@ -55,12 +56,12 @@ export function CastControl({
             aria-busy={connecting || undefined}
             className={
               variant === 'bar'
-                ? cn(BAR, connected && 'bg-on-accent text-accent hover:opacity-90')
+                ? cn(BAR, connected && 'wave-underline')
                 : cn(
                     TEXT_ACTION,
                     // The icon alone on a phone: still a 44 px target.
                     variant === 'hero' && 'min-w-11 justify-center',
-                    connected && 'font-semibold'
+                    connected && 'wave-underline'
                   )
             }
           >
