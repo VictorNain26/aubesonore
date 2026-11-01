@@ -49,16 +49,17 @@ line turns to paper on a dark tab strip.
 
 ## Files
 
-| File                                  | Use                                                                                                                                  |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `svg/symbol*.svg`, `svg/lockup*.svg`  | colour, one colour, inverse: press, partners, other surfaces                                                                         |
-| `public/favicon.ico`                  | 16 and 32 px, each its own drawing                                                                                                   |
-| `public/favicon.svg`                  | browser tab                                                                                                                          |
-| `public/icon-180.png`                 | iOS home screen                                                                                                                      |
-| `public/icon-192.png`, `icon-512.png` | manifest, Android splash, Cast metadata                                                                                              |
-| `public/icon-maskable-512.png`        | Android adaptive icon: the symbol inside the 40 % radius circle every mask keeps ([web.dev](https://web.dev/articles/maskable-icon)) |
-| `public/og-fr.png`, `og-en.png`       | sharing cards, 1200 × 630                                                                                                            |
-| `src/design/logoArt.ts`               | the lockup's parts for `Logo.tsx`                                                                                                    |
+| File                                    | Use                                                                                                                                  |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `svg/symbol*.svg`, `svg/lockup*.svg`    | colour, one colour, inverse: press, partners, other surfaces                                                                         |
+| `public/favicon.ico`                    | 16 and 32 px, each its own drawing                                                                                                   |
+| `public/favicon.svg`                    | browser tab                                                                                                                          |
+| `public/icon-180.png`                   | iOS home screen                                                                                                                      |
+| `public/icon-192.png`, `icon-512.png`   | manifest, Android splash, Cast metadata                                                                                              |
+| `public/icon-maskable-512.png`          | Android adaptive icon: the symbol inside the 40 % radius circle every mask keeps ([web.dev](https://web.dev/articles/maskable-icon)) |
+| `public/og-fr.png`, `og-en.png`         | sharing cards, 1200 × 630                                                                                                            |
+| `public/lockup.png`, `lockup-night.png` | the lockup by day and by night, for the backend's mails and share page                                                               |
+| `src/design/logoArt.ts`                 | the lockup's parts for `Logo.tsx`                                                                                                    |
 
 The favicon set follows Evil Martians' [How to Favicon](https://evilmartians.com/chronicles/how-to-favicon-in-2021-six-files-that-fit-most-needs).
 
