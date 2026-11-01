@@ -4,6 +4,8 @@ import { createMemoryRouter, RouterProvider } from 'react-router';
 // What src/main.tsx loads for the page's look: the same fonts, the same tokens.
 import '@fontsource-variable/atkinson-hyperlegible-next';
 import '@fontsource-variable/fraunces/opsz.css';
+// The real italic, for the tagline alone (shell/SiteHeader.tsx): the browser fetches it only there.
+import '@fontsource-variable/fraunces/opsz-italic.css';
 import '../src/index.css';
 import { THEME_CHOICES, type ThemeChoice } from '../src/design/theme';
 import { chooseTheme } from '../src/stores/themeStore';

@@ -52,14 +52,14 @@ export function Menu({ trigger, header, choice, items }: MenuProps) {
                 onValueChange={(value: string) => choice.onChange(value)}
                 className="border-border border-b py-1"
               >
-                <BaseMenu.GroupLabel className="text-caption text-text-muted px-4 py-1">
+                <BaseMenu.GroupLabel className="text-small text-text-muted px-4 py-1">
                   {choice.label}
                 </BaseMenu.GroupLabel>
                 {choice.options.map((option) => (
                   <BaseMenu.RadioItem
                     key={option.value}
                     value={option.value}
-                    className={cn(itemClassName, 'data-[checked]:font-bold')}
+                    className={cn(itemClassName, 'data-[checked]:font-semibold')}
                   >
                     {option.label}
                   </BaseMenu.RadioItem>

@@ -16,7 +16,7 @@ function ArtistSection({ records }: { records: boolean }) {
         {RECORDS.map((record) => (
           <li key={record.title} className="flex flex-col gap-2">
             <Cover src={record.art} alt="" seed={record.title} className="aspect-square w-full" />
-            <span className="text-ui">{record.title}</span>
+            <span className="text-body">{record.title}</span>
           </li>
         ))}
       </ul>

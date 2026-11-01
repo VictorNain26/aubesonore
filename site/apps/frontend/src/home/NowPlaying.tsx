@@ -134,7 +134,7 @@ export function NowPlayingView({
 
       <div ref={liveRef} className="hero-live">
         {!isOnline ? (
-          <p className="text-intro text-text-muted m-0" aria-live="polite">
+          <p className="text-line text-text-muted m-0" aria-live="polite">
             {m.off_air()}
           </p>
         ) : track ? (
@@ -148,7 +148,7 @@ export function NowPlayingView({
             {/* Two lines at most on a phone, three beside the cover, where a longer title raises
                 « En direct » (the column stands on the cover's foot); the whole title stays in the
                 page for screen readers. */}
-            <h2 className="font-display text-track hero-split:line-clamp-3 m-0 line-clamp-2 text-balance">
+            <h2 className="font-display text-title hero-split:line-clamp-3 m-0 line-clamp-2 text-balance">
               {track.title}
             </h2>
             <TrackCredit
@@ -160,7 +160,7 @@ export function NowPlayingView({
             />
           </div>
         ) : isUnreachable ? (
-          <p className="text-intro text-text-muted m-0" aria-live="polite">
+          <p className="text-line text-text-muted m-0" aria-live="polite">
             {m.now_unreachable()}
           </p>
         ) : (
@@ -275,8 +275,8 @@ export function NowPlayingFallback({
   const volume = useVolume();
   return (
     <div ref={liveRef} role="alert" className="hero-live flex flex-col gap-2">
-      <p className="font-display text-section m-0">{m.error_track_title()}</p>
-      <p className="text-intro text-text-muted m-0">{m.error_track_body()}</p>
+      <p className="font-display text-title m-0">{m.error_track_title()}</p>
+      <p className="text-line text-text-muted m-0">{m.error_track_body()}</p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <ListenPill listen={listen} onToggle={toggle} className={HERO_PILL} />
         <button type="button" onClick={resetErrorBoundary} className={TEXT_ACTION}>

@@ -32,10 +32,10 @@ function Kept({ entry }: { entry: TrendEntry }) {
         className="aspect-square w-full"
       />
       <span className="flex min-w-0 flex-col">
-        <span className="text-label truncate font-semibold" title={entry.title}>
+        <span className="text-small truncate font-semibold" title={entry.title}>
           {entry.title}
         </span>
-        <span className="text-caption text-text-muted truncate font-normal">
+        <span className="text-small text-text-muted truncate font-normal">
           {entry.artistPage?.name ?? entry.artist}
         </span>
       </span>
@@ -66,7 +66,7 @@ export function MostKeptView({ week, status }: MostKeptViewProps) {
   if (status === 'loading' || week?.length === 0) return null;
   return (
     <section aria-labelledby="most-kept-title" className="hero-kept">
-      <h2 id="most-kept-title" className="text-label text-text-muted m-0 mb-2 font-normal">
+      <h2 id="most-kept-title" className="text-small text-text-muted m-0 mb-2 font-normal">
         {m.most_kept_title()}
       </h2>
       {week ? (
@@ -85,7 +85,7 @@ export function MostKeptView({ week, status }: MostKeptViewProps) {
           ))}
         </ol>
       ) : (
-        <p className="text-label text-text-muted m-0">{m.most_kept_error()}</p>
+        <p className="text-small text-text-muted m-0">{m.most_kept_error()}</p>
       )}
     </section>
   );

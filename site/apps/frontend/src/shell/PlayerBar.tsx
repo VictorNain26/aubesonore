@@ -186,7 +186,7 @@ export function PlayerBarView({
           // Écouter's word, which the computer's pill already says; off air, the silence.
           <span
             className={cn(
-              'text-ui min-w-0 flex-1 truncate font-semibold md:flex-none',
+              'text-body min-w-0 flex-1 truncate font-semibold md:flex-none',
               isOnline && 'md:hidden'
             )}
           >
@@ -256,8 +256,8 @@ function TrackLine({
         key={`${key}:words`}
         className={cn('flex min-w-0 flex-col', hasChanged && 'swap-in-late')}
       >
-        <span className="text-ui truncate font-semibold">{track.title}</span>
-        <span className="text-caption text-on-accent-muted flex min-w-0 items-center gap-1.5">
+        <span className="text-body truncate font-semibold">{track.title}</span>
+        <span className="text-small text-on-accent-muted flex min-w-0 items-center gap-1.5">
           {/* The station is live: the dawn's still dot, as « En direct » on the hero. */}
           <span aria-hidden="true" className="bg-dawn size-1.5 shrink-0 rounded-full" />
           <span className="truncate">{album ? `${track.artist} · ${album}` : track.artist}</span>

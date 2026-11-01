@@ -32,12 +32,16 @@ function SearchHitRow({ hit }: { hit: MusilogySearchHit }) {
         <Link
           to={pagePathOf(hit)}
           state={DISCOVERY}
-          className={cn(ARTIST_LINK, STRETCHED, 'text-row self-start truncate underline-offset-4')}
+          className={cn(
+            ARTIST_LINK,
+            STRETCHED,
+            'text-line self-start truncate font-semibold underline-offset-4'
+          )}
         >
           {hit.name}
         </Link>
         {hit.disambiguation || kind ? (
-          <span className="text-sub text-text-muted truncate">
+          <span className="text-line text-text-muted truncate">
             {kind}
             {kind && hit.disambiguation ? ' · ' : null}
             {/* MusicBrainz writes its disambiguations in English, whatever the page's language. */}
@@ -45,7 +49,7 @@ function SearchHitRow({ hit }: { hit: MusilogySearchHit }) {
           </span>
         ) : null}
       </span>
-      <span className="text-ui text-text-muted whitespace-nowrap tabular-nums">
+      <span className="text-body text-text-muted whitespace-nowrap tabular-nums">
         {hit.y0 ?? null}
       </span>
     </li>
@@ -109,7 +113,7 @@ export function MusilogyHomeView({
       <div className="flex max-w-6xl flex-col">
         <div className="flex flex-col gap-3.5">
           <h1 className="font-display text-page m-0">{m.musilogy_title()}</h1>
-          <p className="text-intro text-text-muted m-0">{m.musilogy_lead()}</p>
+          <p className="text-line text-text-muted m-0">{m.musilogy_lead()}</p>
         </div>
 
         <SearchField

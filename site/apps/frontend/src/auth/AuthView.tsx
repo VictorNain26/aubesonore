@@ -85,7 +85,7 @@ const TEXT_LINK_CLASSES =
   'ease-out-quart focus-visible:outline-accent inline-flex min-h-11 items-center underline decoration-1 underline-offset-4 transition-opacity duration-150 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
 
 const BACK_LINK_CLASSES =
-  'text-ui text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -ml-1 inline-flex min-h-11 items-center gap-2 self-start px-1 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
+  'text-body text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -ml-1 inline-flex min-h-11 items-center gap-2 self-start px-1 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
 
 /** What an account brings, in two short lines, each with its small mark: a heart, a line climbing. */
 function AccountLines() {
@@ -124,11 +124,11 @@ function MailSentBody({
 }) {
   return (
     <div className="max-w-form flex flex-col gap-6">
-      <p className="text-intro text-text-muted m-0">
-        {lead} <span className="text-text font-medium wrap-break-word">{email}</span>
+      <p className="text-line text-text-muted m-0">
+        {lead} <span className="text-text font-semibold wrap-break-word">{email}</span>
         {separator} {rest}
       </p>
-      <p className="text-ui text-text-muted m-0 font-normal">{hint}</p>
+      <p className="text-body text-text-muted m-0 font-normal">{hint}</p>
       <Button onClick={onAction} className="h-14 w-full justify-center">
         {action}
       </Button>
@@ -233,10 +233,10 @@ export function AuthView({
             {headerCopy.title}
           </h1>
           {headerCopy.desc ? (
-            <p className="text-intro text-text-muted max-w-aside m-0">{headerCopy.desc}</p>
+            <p className="text-line text-text-muted max-w-aside m-0">{headerCopy.desc}</p>
           ) : null}
           {withPromise ? (
-            <p className="font-display text-headline text-text-muted m-0 font-normal italic">
+            <p className="font-display text-heading font-book text-text-muted m-0">
               {m.auth_aside_title()}
             </p>
           ) : null}
@@ -282,7 +282,7 @@ export function AuthView({
                     <GoogleLogo className="size-4.5" />
                     {m.auth_oauth_google()}
                   </Button>
-                  <div className="text-ui text-text-muted flex items-center gap-4 font-normal">
+                  <div className="text-body text-text-muted flex items-center gap-4 font-normal">
                     <span aria-hidden="true" className="wave-rule h-1.5 flex-1" />
                     {m.auth_or()}
                     <span aria-hidden="true" className="wave-rule h-1.5 flex-1" />
@@ -345,7 +345,7 @@ export function AuthView({
                       <button
                         type="button"
                         onClick={() => onSwitchMode('forgot')}
-                        className={cn(TEXT_LINK_CLASSES, 'text-ui self-end font-normal')}
+                        className={cn(TEXT_LINK_CLASSES, 'text-body self-end font-normal')}
                       >
                         {m.auth_forgot_link()}
                       </button>
@@ -383,7 +383,7 @@ export function AuthView({
                           : m.auth_submit_reset()}
                 </Button>
                 {mode === 'signup' && (
-                  <p className="text-caption text-text-muted m-0">
+                  <p className="text-small text-text-muted m-0">
                     {m.auth_privacy_notice()}{' '}
                     <a
                       href={localizeHref('/mentions-legales/')}
@@ -397,7 +397,7 @@ export function AuthView({
               </div>
 
               {withAccountChoice ? (
-                <p className="wave-rule-top text-ui text-text-muted m-0 pt-5 font-normal">
+                <p className="wave-rule-top text-body text-text-muted m-0 pt-5 font-normal">
                   {mode === 'signin' ? m.auth_no_account() : m.auth_have_account()}{' '}
                   <button
                     type="button"

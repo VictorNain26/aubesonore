@@ -77,7 +77,7 @@ export function NowPlayingSheet({
                 className="shadow-cover mb-5 aspect-square w-[min(100%,36svh)] self-center"
               />
               <LiveMark className="mb-1" />
-              <Drawer.Title className="font-display text-section m-0 text-balance">
+              <Drawer.Title className="font-display text-title m-0 text-balance">
                 {track.title}
               </Drawer.Title>
               <TrackCredit

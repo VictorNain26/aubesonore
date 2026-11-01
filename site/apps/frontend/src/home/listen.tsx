@@ -145,7 +145,7 @@ export function ListenPill({
       className={cn(PILL, look.pill, className)}
     >
       <ListenDisc state={listen} tone={look.disc} className={look.discSize} />
-      <span className="text-ui font-semibold">{listenLabel(listen)}</span>
+      <span className="text-body font-semibold">{listenLabel(listen)}</span>
     </button>
   );
 }

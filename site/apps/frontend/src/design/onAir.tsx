@@ -17,7 +17,7 @@ export function shownAlbum(album: string, title: string): string | null {
  */
 export function LiveMark({ className }: { className?: string }) {
   return (
-    <p className={cn('text-ui m-0 flex items-center gap-2 font-semibold', className)}>
+    <p className={cn('text-body m-0 flex items-center gap-2 font-semibold', className)}>
       <span aria-hidden="true" className="bg-dawn-ink size-1.75 shrink-0 rounded-full" />
       {m.now_live()}
     </p>
@@ -43,7 +43,7 @@ export function TrackCredit({
 }) {
   const shown = shownAlbum(album, title);
   return (
-    <p className={cn('text-intro m-0', className)}>
+    <p className={cn('text-line m-0', className)}>
       {/* Inline padding grows the tap target to 44px without moving the line. */}
       {artistHref ? (
         <Link to={artistHref} className={cn(ARTIST_LINK, 'py-3 underline-offset-5')}>

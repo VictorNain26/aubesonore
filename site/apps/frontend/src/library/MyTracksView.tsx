@@ -117,15 +117,20 @@ const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
         className="size-full"
         sizes="(min-width: 48rem) 3.5rem, 3rem"
       />
-      <span className="text-row self-end truncate md:self-center">{track.title}</span>
+      <span className="text-line self-end truncate font-semibold md:self-center">
+        {track.title}
+      </span>
       {/* Under the title, the artist, then from `sm` the date: a phone's line is too short for both.
           On a wide screen the wrapper steps aside and each takes its column. */}
-      <span className="text-sub text-text-muted col-start-2 row-start-2 flex min-w-0 items-baseline gap-1.5 self-start md:contents">
+      <span className="text-line text-text-muted col-start-2 row-start-2 flex min-w-0 items-baseline gap-1.5 self-start md:contents">
         <ArtistName track={track} />
         <span aria-hidden="true" className="hidden sm:inline md:hidden">
           ·
         </span>
-        <time dateTime={track.createdAt} className="hidden shrink-0 whitespace-nowrap sm:inline">
+        <time
+          dateTime={track.createdAt}
+          className="hidden shrink-0 whitespace-nowrap tabular-nums sm:inline"
+        >
           {keptOn(track.createdAt, thisYear)}
         </time>
       </span>
@@ -138,7 +143,7 @@ const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
           aria-label={m.library_listen({ title: track.title })}
           className={cn(
             ARTIST_LINK,
-            'text-ui inline-flex min-h-11 items-center gap-1 px-2 font-semibold underline-offset-4'
+            'text-body inline-flex min-h-11 items-center gap-1 px-2 font-semibold underline-offset-4'
           )}
         >
           YouTube
@@ -163,7 +168,7 @@ const Row = memo(function Row({ track, thisYear, onRemove }: RowProps) {
 }, sameRow);
 
 const SORT_BUTTON =
-  'group text-caption text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -mx-1 inline-flex min-h-11 items-center gap-1.5 justify-self-start px-1 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
+  'group text-small text-text-muted ease-out-quart hover:text-text focus-visible:outline-accent -mx-1 inline-flex min-h-11 items-center gap-1.5 justify-self-start px-1 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 active:opacity-70';
 
 /**
  * The columns' names, each a sort: a click orders the list by it, a second click reverses it. On a
@@ -255,12 +260,12 @@ export function MyTracksView({
           <h1 tabIndex={-1} className="font-display text-page m-0 outline-none">
             {m.library_title()}
           </h1>
-          <p className="text-intro text-text-muted m-0">
+          <p className="text-line text-text-muted m-0">
             {m.library_body()}
             {total > 0 ? (
               <>
                 {' · '}
-                <span aria-live="polite" className="tabular-nums">
+                <span aria-live="polite">
                   {query.trim()
                     ? m.library_count_filtered({ shown, count: total })
                     : total > 1
@@ -284,7 +289,7 @@ export function MyTracksView({
 
       {state.status === 'signed-out' ? (
         <div className="flex flex-col gap-5">
-          <p className="text-row m-0">{m.library_signed_out()}</p>
+          <p className="text-line m-0 font-semibold">{m.library_signed_out()}</p>
           <Link
             to={state.signInHref}
             state={{ from: state.from }}
@@ -297,21 +302,23 @@ export function MyTracksView({
         <LineLoader className="min-h-108" />
       ) : state.status === 'error' ? (
         <div className="flex flex-col gap-3">
-          <p className="text-row m-0">{m.library_error()}</p>
+          <p className="text-line m-0 font-semibold">{m.library_error()}</p>
           <button type="button" onClick={state.onRetry} className={cn(TEXT_ACTION, 'self-start')}>
             {m.error_retry()}
           </button>
         </div>
       ) : state.total === 0 ? (
         <div className="flex flex-col gap-1">
-          <p className="text-row m-0">{m.library_empty_title()}</p>
+          <p className="text-line m-0 font-semibold">{m.library_empty_title()}</p>
           <p className="text-text-muted m-0">{m.library_empty_body()}</p>
         </div>
       ) : (
         <div className="flex flex-col">
           {state.tracks.length === 0 ? (
             <div className="wave-rule-top flex flex-col items-start gap-3 pt-8">
-              <p className="text-row m-0">{m.library_search_empty({ query: query.trim() })}</p>
+              <p className="text-line m-0 font-semibold">
+                {m.library_search_empty({ query: query.trim() })}
+              </p>
               <button type="button" onClick={() => onQueryChange('')} className={TEXT_ACTION}>
                 {m.library_search_clear()}
               </button>

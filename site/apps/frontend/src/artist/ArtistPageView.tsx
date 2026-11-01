@@ -107,7 +107,7 @@ const OUTSIDE_LINK = { rel: 'noopener noreferrer', target: '_blank' } as const;
 /** The opening of the article, its link closing the paragraph rather than taking a line. */
 function Summary({ summary }: { summary: ArtistSummary }) {
   return (
-    <figure className="text-intro m-0 max-w-prose">
+    <figure className="text-line m-0 max-w-prose">
       <blockquote cite={summary.url} lang={summary.lang} className="m-0 inline">
         <p className="m-0 inline">{summary.text}</p>
       </blockquote>{' '}
@@ -115,7 +115,7 @@ function Summary({ summary }: { summary: ArtistSummary }) {
         <a
           href={summary.url}
           {...OUTSIDE_LINK}
-          className={cn(ARTIST_LINK, 'text-ui text-text-muted underline-offset-4')}
+          className={cn(ARTIST_LINK, 'text-body text-text-muted underline-offset-4')}
         >
           {summary.lang === getLocale()
             ? m.artist_summary_source()
@@ -133,7 +133,7 @@ function Summary({ summary }: { summary: ArtistSummary }) {
 function ListenLinks({ links }: { links: ArtistProfile['links'] }) {
   return (
     <div className="flex flex-wrap items-center gap-x-5">
-      <span id="listen-title" className="text-ui text-text-muted font-normal">
+      <span id="listen-title" className="text-body text-text-muted font-normal">
         {m.artist_listen_title()}
       </span>
       <ul aria-labelledby="listen-title" className="m-0 flex list-none flex-wrap gap-x-5 p-0">
@@ -144,7 +144,7 @@ function ListenLinks({ links }: { links: ArtistProfile['links'] }) {
               {...OUTSIDE_LINK}
               className={cn(
                 ARTIST_LINK,
-                'text-ui inline-flex min-h-11 items-center gap-1 font-semibold underline-offset-5'
+                'text-body inline-flex min-h-11 items-center gap-1 font-semibold underline-offset-5'
               )}
             >
               {PLATFORM_LABELS[link.platform]()}
@@ -161,7 +161,7 @@ function ListenLinks({ links }: { links: ArtistProfile['links'] }) {
 const STYLES_SHOWN = 3;
 
 function Portrait({ text }: { text: string }) {
-  return <p className="text-intro m-0 max-w-prose">{text}</p>;
+  return <p className="text-line m-0 max-w-prose">{text}</p>;
 }
 
 /**
@@ -237,10 +237,10 @@ function Profile({
             them. */}
         <div className="lift-in-late artist-stage-column flex flex-col">
           <DiscoveryTrail steps={trail} />
-          {facts ? <p className="text-sub text-text-muted m-0">{facts}</p> : null}
+          {facts ? <p className="text-line text-text-muted m-0">{facts}</p> : null}
           {/* The page's largest words, above every page's title: the name, as the title on air. */}
-          <h1 className="font-display text-now m-0 mt-3 break-words">{profile.name}</h1>
-          {styles.length > 0 ? <p className="text-sub m-0 mt-4">{styles.join(' · ')}</p> : null}
+          <h1 className="font-display text-name m-0 mt-3 break-words">{profile.name}</h1>
+          {styles.length > 0 ? <p className="text-line m-0 mt-4">{styles.join(' · ')}</p> : null}
           {profile.summary || portrait ? (
             <div className="mt-5 md:mt-6">
               {profile.summary ? <Summary summary={profile.summary} /> : null}
@@ -267,12 +267,12 @@ function Profile({
                   className="reveal wave-rule grid min-h-14 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 py-2 md:px-1"
                 >
                   <span className="flex min-w-0 flex-col">
-                    <span className="text-row truncate">{track.title}</span>
+                    <span className="text-line truncate font-semibold">{track.title}</span>
                     {track.album ? (
-                      <span className="text-ui text-text-muted truncate">{track.album}</span>
+                      <span className="text-body text-text-muted truncate">{track.album}</span>
                     ) : null}
                   </span>
-                  <span className="text-ui text-text-muted whitespace-nowrap tabular-nums">
+                  <span className="text-body text-text-muted whitespace-nowrap tabular-nums">
                     {formatKeptAt(track.createdAt)}
                   </span>
                 </li>

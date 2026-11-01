@@ -19,11 +19,11 @@ export function Section({
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="flex scroll-mt-10 flex-col gap-5">
       <div className="reveal flex items-baseline gap-3.5">
-        <h2 id={`${id}-title`} className="font-display text-section m-0">
+        <h2 id={`${id}-title`} className="font-display text-title m-0">
           {title}
         </h2>
         {count === undefined ? null : (
-          <span className="text-ui text-text-muted font-normal tabular-nums">{count}</span>
+          <span className="text-body text-text-muted font-normal">{count}</span>
         )}
       </div>
       <div className="flex min-w-0 flex-col">{children}</div>

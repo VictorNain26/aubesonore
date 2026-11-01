@@ -88,13 +88,13 @@ export function CastControl({
           className="z-60"
         >
           <Popover.Popup className="border-border bg-surface-raised text-text ease-out-quart flex w-[min(20rem,calc(100vw-2rem))] origin-(--transform-origin) flex-col gap-2 border p-4 transition-[opacity,scale] duration-150 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 data-[starting-style]:scale-95 data-[starting-style]:opacity-0">
-            <Popover.Title className="text-ui m-0 font-semibold">
+            <Popover.Title className="text-body m-0 font-semibold">
               {m.cast_none_title()}
             </Popover.Title>
-            <Popover.Description className="text-ui text-text-muted m-0">
+            <Popover.Description className="text-body text-text-muted m-0">
               {m.cast_none_body()}
             </Popover.Description>
-            <p className="text-caption text-text-muted m-0">
+            <p className="text-small text-text-muted m-0">
               {kind === 'chromecast' ? m.cast_none_chromecast() : m.cast_none_airplay()}
             </p>
           </Popover.Popup>
