@@ -3,6 +3,6 @@
 // the Cast receiver (cast/receiver.ts) takes the schemas from './validators' alone, without the
 // store and its React dependency.
 
-export { useNowPlayingStore, startNowPlayingPolling } from './store';
+export { useNowPlayingStore, startNowPlayingPolling, retryNowPlaying } from './store';
 export { isDefaultArtwork } from './artwork';
 export { type SongEntry, type NowPlaying } from './validators';

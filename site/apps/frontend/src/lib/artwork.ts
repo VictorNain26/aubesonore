@@ -1,3 +1,5 @@
+import { isDefaultArtwork } from './azuracast/artwork';
+
 // Covers whose host serves them at the size their URL names, so a cover shown small costs a small
 // file:
 // - The station's covers: AzuraCast serves one 1000 px art (~95 KB); this site's cover store keeps
@@ -84,4 +86,19 @@ export function artworkAt(url: string, pixels: number): string {
 export function artworkSrcSet(url: string): string | undefined {
   const host = sizer(url);
   return host?.widths.map((width) => `${host.at(width)} ${width}w`).join(', ');
+}
+
+/**
+ * A cover fetched and decoded as its host will draw it (the same files, the same `sizes`), so a
+ * change of track brings it in whole rather than as an empty square (home/useTrackSwap.ts).
+ */
+export function preloadCover(art: string | undefined, sizes: string): Promise<void> {
+  if (!art || isDefaultArtwork(art)) return Promise.resolve();
+  const image = new Image();
+  image.referrerPolicy = 'no-referrer';
+  image.sizes = sizes;
+  const set = artworkSrcSet(art);
+  if (set) image.srcset = set;
+  image.src = artworkSrc(art);
+  return image.decode();
 }

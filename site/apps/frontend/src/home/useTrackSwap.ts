@@ -6,7 +6,7 @@ export type Swap = 'idle' | 'out' | 'in';
 /** The last track's leave: its words, its cover and « Juste avant » fade out. */
 export const OUT_MS = 150;
 /**
- * The next track's arrival, its longest block included (design/tokens.css, hero-words: the third
+ * The next track's arrival, its longest block included (design/tokens.css, swap-words: the third
  * line starts at 240 ms and lasts 300): past it the hero settles, so a block that mounts again
  * later (the same track's corrected title, the station back on air) does not arrive again.
  */

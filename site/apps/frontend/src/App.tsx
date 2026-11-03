@@ -5,6 +5,7 @@ import { AuthInit } from './shell/AuthInit';
 import { NowPlayingPoller } from './shell/NowPlayingPoller';
 import { PlayerSideEffects } from './shell/PlayerSideEffects';
 import { PlayerBar } from './shell/PlayerBar';
+import { LiveTrackAnnouncer } from './shell/TrackAnnouncer';
 import { SiteFooter } from './shell/SiteFooter';
 import { Layout } from './shell/Layout';
 import { useLocale, useLocaleStore } from './stores/localeStore';
@@ -57,6 +58,7 @@ export function App() {
         <PlayerBar />
         <Outlet />
         <PlayerSideEffects />
+        <LiveTrackAnnouncer />
       </Layout>
       <ScrollRestoration getKey={scrollKey} />
     </>

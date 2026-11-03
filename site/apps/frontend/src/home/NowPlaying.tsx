@@ -2,16 +2,16 @@ import type { Ref } from 'react';
 import type { FallbackProps } from 'react-error-boundary';
 import { useShallow } from 'zustand/react/shallow';
 import { KeepButton } from '../design/KeepButton';
-import { isDefaultArtwork, useNowPlayingStore, type SongEntry } from '../lib/azuracast';
+import { retryNowPlaying, useNowPlayingStore, type SongEntry } from '../lib/azuracast';
+import { useTrackActions } from '../hooks/useTrackActions';
 import { usePlayer } from '../lib/player';
 import { useLikeAction } from '../hooks/useLikeAction';
 import { useLikedTracksStore, isTrackLiked, trackKey } from '../stores/likedTracksStore';
-import { artworkSrc, artworkSrcSet } from '../lib/artwork';
 import type { Swap } from './useTrackSwap';
 import { useArtistPage } from '../hooks/useArtistPage';
 import { artistPath } from '../lib/artistProfile';
 import { CoverOpenLarge } from '../design/CoverOpenLarge';
-import { KEEP_RING, TEXT_ACTION } from '../design/classes';
+import { KEEP_RING, OUTLINE_ACTION, TEXT_ACTION } from '../design/classes';
 import { LiveMark, TrackCredit } from '../design/onAir';
 import { VolumeControl, type VolumeControlProps } from '../shell/VolumeControl';
 import { CastControl } from '../shell/CastControl';
@@ -30,6 +30,8 @@ export interface NowPlayingViewProps {
   isOnline: boolean;
   /** No answer from the station yet: the hero says so rather than wait in silence. */
   isUnreachable?: boolean;
+  /** Réessayer, while the station does not answer: asks it again now. */
+  onRetry?: () => void;
   listen: ListenState;
   onToggleListen: () => void;
   isKept: boolean;
@@ -58,26 +60,11 @@ export interface NowPlayingViewProps {
  * 100rem past it, so the cover is 70.5rem at most; 1.5rem below 48rem. Above the words, the
  * screen's width, held under the height the header, its 24 px and the words need (28.5rem).
  */
-const HERO_COVER_SIZES = [
+export const HERO_COVER_SIZES = [
   '(min-width: 48rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 34.5rem, 70.5rem)',
   '(min-width: 40rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 32.5rem)',
   'min(100vw, max(9rem, 100vh - 28.5rem))',
 ].join(', ');
-
-/**
- * The next cover, fetched and decoded as the hero will draw it (same files, same sizes), so it
- * comes in whole rather than as an empty square (home/useTrackSwap.ts).
- */
-export function preloadCover(art: string | undefined): Promise<void> {
-  if (!art || isDefaultArtwork(art)) return Promise.resolve();
-  const image = new Image();
-  image.referrerPolicy = 'no-referrer';
-  image.sizes = HERO_COVER_SIZES;
-  const set = artworkSrcSet(art);
-  if (set) image.srcset = set;
-  image.src = artworkSrc(art);
-  return image.decode();
-}
 
 /**
  * Écouter in the hero: its own width at least, the rest of its line on a phone, its own alone from
@@ -95,6 +82,7 @@ export function NowPlayingView({
   track,
   isOnline,
   isUnreachable = false,
+  onRetry,
   listen,
   onToggleListen,
   isKept,
@@ -107,13 +95,16 @@ export function NowPlayingView({
   liveRef,
 }: NowPlayingViewProps) {
   const trackKey = track ? `${track.artist}|${track.title}` : 'none';
+  // Off air or unreachable, nothing to hear, so nothing to do; but a live still heard keeps its
+  // Arrêter.
+  const hasNothing = !isOnline || (!track && isUnreachable);
   return (
     <>
       <div
         data-testid="hero-cover"
         data-swap={swap}
         data-off-air={isOnline ? undefined : true}
-        className="hero-cover"
+        className="hero-cover swap-cover"
       >
         {track ? (
           <CoverOpenLarge
@@ -146,7 +137,7 @@ export function NowPlayingView({
             key={trackKey}
             data-testid="hero-words"
             data-swap={swap}
-            className="hero-words flex flex-col"
+            className="swap-words flex flex-col"
           >
             <LiveMark className="mb-3" />
             {/* Whole, the one thing the hero must say in full: a long title takes the lines it
@@ -164,9 +155,16 @@ export function NowPlayingView({
             />
           </div>
         ) : isUnreachable ? (
-          <p className="text-line text-text-muted m-0" aria-live="polite">
-            {m.now_unreachable()}
-          </p>
+          <div className="flex flex-col items-start gap-5">
+            <p className="text-line text-text-muted m-0" aria-live="polite">
+              {m.now_unreachable()}
+            </p>
+            {onRetry ? (
+              <button type="button" onClick={onRetry} className={OUTLINE_ACTION}>
+                {m.error_retry()}
+              </button>
+            ) : null}
+          </div>
         ) : (
           // The words' room until the live answers: a line of « En direct », of the title and of
           // the credit, each at its size and with its air, so nothing moves when they come.
@@ -183,25 +181,62 @@ export function NowPlayingView({
           </div>
         )}
 
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <ListenPill listen={listen} onToggle={onToggleListen} className={HERO_PILL} />
-          {track && isOnline ? (
-            <KeepButton
-              title={track.title}
-              isKept={isKept}
-              isKeeping={isKeeping}
-              onToggle={onToggleKeep}
-              className={KEEP_RING}
-              heartClassName="size-6"
-            />
-          ) : null}
-          {/* Where a mouse sets it: a phone sets the level with its own buttons (and iOS ignores
-              it from a page). */}
-          <VolumeControl {...volume} className="fine-pointer:flex ml-1.5 hidden" />
-          {diffusion ? <CastControl diffusion={diffusion} variant="hero" /> : null}
-        </div>
+        {hasNothing && listen === 'idle' ? null : hasNothing ? (
+          <div className="mt-6 flex">
+            <ListenPill listen={listen} onToggle={onToggleListen} className={HERO_PILL} />
+          </div>
+        ) : (
+          <HeroActions
+            listen={listen}
+            onToggleListen={onToggleListen}
+            keep={track ? { title: track.title, isKept, isKeeping, onToggle: onToggleKeep } : null}
+            volume={volume}
+            diffusion={diffusion}
+          />
+        )}
       </div>
     </>
+  );
+}
+
+interface HeroActionsProps {
+  listen: ListenState;
+  onToggleListen: () => void;
+  /** Garder for the track shown; none without a track. */
+  keep: { title: string; isKept: boolean; isKeeping: boolean; onToggle: () => void } | null;
+  volume: Omit<VolumeControlProps, 'className'>;
+  diffusion: Diffusion | null;
+  children?: React.ReactNode;
+}
+
+/** Écouter, Garder, the volume and Diffuser: the hero's row, its error fallback's too. */
+function HeroActions({
+  listen,
+  onToggleListen,
+  keep,
+  volume,
+  diffusion,
+  children,
+}: HeroActionsProps) {
+  return (
+    <div className="mt-6 flex flex-wrap items-center gap-3">
+      <ListenPill listen={listen} onToggle={onToggleListen} className={HERO_PILL} />
+      {keep ? (
+        <KeepButton
+          title={keep.title}
+          isKept={keep.isKept}
+          isKeeping={keep.isKeeping}
+          onToggle={keep.onToggle}
+          className={KEEP_RING}
+          heartClassName="size-6"
+        />
+      ) : null}
+      {children}
+      {/* Where a mouse sets it: a phone sets the level with its own buttons (and iOS ignores
+          it from a page). */}
+      <VolumeControl {...volume} className="fine-pointer:flex ml-1.5 hidden" />
+      {diffusion ? <CastControl diffusion={diffusion} variant="hero" /> : null}
+    </div>
   );
 }
 
@@ -244,6 +279,7 @@ export function NowPlaying({
       }
       isOnline={isOnline}
       isUnreachable={isUnreachable}
+      onRetry={retryNowPlaying}
       listen={listenState(isPlaying, isConnecting)}
       onToggleListen={toggle}
       isKept={song ? isTrackLiked(tracks, song.title, song.artist) : false}
@@ -284,19 +320,44 @@ export function NowPlayingFallback({
   const { isPlaying, isConnecting, toggle } = usePlayer(
     useShallow((s) => ({ isPlaying: s.isPlaying, isConnecting: s.isConnecting, toggle: s.toggle }))
   );
-  const listen = listenState(isPlaying, isConnecting);
   const volume = useVolume();
+  const diffusion = useDiffusion();
+  const { title, isLiked, isLiking, handleToggleLike } = useTrackActions();
+  return (
+    <NowPlayingFallbackView
+      listen={listenState(isPlaying, isConnecting)}
+      onToggleListen={toggle}
+      volume={volume}
+      keep={
+        title ? { title, isKept: isLiked, isKeeping: isLiking, onToggle: handleToggleLike } : null
+      }
+      diffusion={diffusion}
+      onRetry={resetErrorBoundary}
+      liveRef={liveRef}
+    />
+  );
+}
+
+export interface NowPlayingFallbackViewProps extends Omit<HeroActionsProps, 'children'> {
+  onRetry: () => void;
+  liveRef?: Ref<HTMLDivElement> | undefined;
+}
+
+/** The fallback's words, then the hero's own row, Réessayer beside the heart. */
+export function NowPlayingFallbackView({
+  onRetry,
+  liveRef,
+  ...actions
+}: NowPlayingFallbackViewProps) {
   return (
     <div ref={liveRef} role="alert" className="hero-live flex flex-col gap-2">
       <p className="font-display text-title m-0">{m.error_track_title()}</p>
       <p className="text-line text-text-muted m-0">{m.error_track_body()}</p>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <ListenPill listen={listen} onToggle={toggle} className={HERO_PILL} />
-        <button type="button" onClick={resetErrorBoundary} className={TEXT_ACTION}>
+      <HeroActions {...actions}>
+        <button type="button" onClick={onRetry} className={TEXT_ACTION}>
           {m.error_retry()}
         </button>
-        <VolumeControl {...volume} className="fine-pointer:flex hidden" />
-      </div>
+      </HeroActions>
     </div>
   );
 }

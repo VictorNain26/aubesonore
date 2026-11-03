@@ -199,6 +199,17 @@ export function startNowPlayingPolling(): () => void {
   };
 }
 
+/**
+ * Réessayer, while the station does not answer: asks now rather than wait out the backoff, which
+ * starts again from its first step if this answer fails too.
+ */
+export function retryNowPlaying(): void {
+  if (!isStarted) return;
+  clearTimer();
+  consecutiveErrors = 0;
+  void runPoll();
+}
+
 // ─────────────────────────────────────────────
 // Test-only helpers
 // ─────────────────────────────────────────────

@@ -46,6 +46,8 @@ export const Connexion: Story = { name: 'Connexion au direct', args: { listen: '
 
 export const Garde: Story = { name: 'Titre gardé', args: { isKept: true } };
 
+export const GardeEnCours: Story = { name: 'Garder en cours', args: { isKeeping: true } };
+
 export const Muet: Story = { name: 'Son coupé', args: { listen: 'playing', isMuted: true } };
 
 export const AvecDiffuser: Story = {
