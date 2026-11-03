@@ -5,7 +5,13 @@ import { render as rtlRender, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
 import { ErrorBoundary } from 'react-error-boundary';
-import { NowPlayingFallback, NowPlayingView, type NowPlayingViewProps } from './NowPlaying';
+import {
+  NowPlayingFallback,
+  NowPlayingFallbackView,
+  NowPlayingView,
+  type NowPlayingFallbackViewProps,
+  type NowPlayingViewProps,
+} from './NowPlaying';
 
 // The artist link is a router <Link>.
 const render = (ui: ReactElement) => rtlRender(ui, { wrapper: MemoryRouter });
@@ -69,12 +75,11 @@ describe('NowPlayingView', () => {
     await userEvent.click(listen);
     expect(onToggleListen).toHaveBeenCalledOnce();
 
-    // The ring alone tells the waiting: the button already names what a press does.
+    // Connecting, it says so, its name its word; a press still stops.
     rerender(<NowPlayingView {...props({ listen: 'connecting' })} />);
-    expect(screen.getByRole('button', { name: 'Arrêter le direct' })).toHaveAttribute(
-      'aria-busy',
-      'true'
-    );
+    const connecting = screen.getByRole('button', { name: 'Connexion…' });
+    expect(connecting).toHaveAttribute('aria-busy', 'true');
+    expect(connecting).toHaveTextContent('Connexion…');
 
     // The player has no pause, only a stop: a press after rejoins the live where it is.
     rerender(<NowPlayingView {...props({ listen: 'playing' })} />);
@@ -82,6 +87,21 @@ describe('NowPlayingView', () => {
     expect(stop).not.toHaveAttribute('aria-busy', 'true');
     expect(stop).toHaveTextContent('Arrêter');
     expect(screen.queryByText('Pause')).not.toBeInTheDocument();
+  });
+
+  it('shows the stop square as soon as the live plays, with no hover a finger cannot give', () => {
+    const { rerender } = render(<NowPlayingView {...props({ listen: 'playing' })} />);
+    const glyph = (button: string, name: string) =>
+      within(screen.getByRole('button', { name: button })).getByTestId(`glyph-${name}`);
+    const shown = (element: Element) =>
+      element.classList.contains('opacity-100') &&
+      ![...element.classList].some((c) => /hover:|focus-visible:/.test(c));
+    expect(shown(glyph('Arrêter le direct', 'stop'))).toBe(true);
+    expect(shown(glyph('Arrêter le direct', 'play'))).toBe(false);
+
+    rerender(<NowPlayingView {...props({ listen: 'idle' })} />);
+    expect(shown(glyph('Écouter le direct', 'play'))).toBe(true);
+    expect(shown(glyph('Écouter le direct', 'stop'))).toBe(false);
   });
 
   it('keeps the track with a heart named for its title, the kept state in aria-pressed', async () => {
@@ -124,8 +144,14 @@ describe('NowPlayingView', () => {
     rerender(<NowPlayingView {...props({ diffusion: diffusion(true) })} />);
     expect(screen.getByRole('button', { name: 'Diffuser sur un appareil' })).toBeInTheDocument();
 
+    // The word alone on a phone is left to screen readers; the device it plays on is shown at every
+    // width, with its wave, or a phone would not see the stream is cast.
+    const off = screen.getByRole('button', { name: 'Diffuser sur un appareil' });
+    expect(within(off).getByText('Diffuser')).toHaveClass('sr-only');
     rerender(<NowPlayingView {...props({ diffusion: diffusion(false, 'Salon') })} />);
-    expect(screen.getByRole('button', { name: /Salon/ })).toBeInTheDocument();
+    const on = screen.getByRole('button', { name: 'Diffusion sur Salon' });
+    expect(on).toHaveClass('wave-underline');
+    expect(within(on).getByText('Sur Salon')).not.toHaveClass('sr-only');
   });
 
   it("links the artist's name to their page only once it exists", () => {
@@ -182,6 +208,9 @@ describe('NowPlayingView', () => {
 
     rerender(<NowPlayingView {...props({ swap: 'in' })} />);
     expect(marks()).toEqual(['in', 'in']);
+    // The steps the player bar takes too (shell/PlayerBar.tsx): one choreography.
+    expect(screen.getByTestId('hero-cover')).toHaveClass('swap-cover');
+    expect(screen.getByTestId('hero-words')).toHaveClass('swap-words');
   });
 
   it('never cuts the title on air: a long one wraps, a word wider than the line breaks', () => {
@@ -211,9 +240,34 @@ describe('NowPlayingView', () => {
     expect(waiting).toEqual(words);
   });
 
-  it('says the live is not answering, rather than load forever, when the station is unreachable', () => {
-    render(<NowPlayingView {...props({ track: null, isUnreachable: true })} />);
+  it('says the live is not answering, rather than load forever, and offers Réessayer', async () => {
+    const onRetry = vi.fn();
+    render(<NowPlayingView {...props({ track: null, isUnreachable: true, onRetry })} />);
     expect(screen.getByText('Le direct ne répond pas pour le moment.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Réessayer' }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ['off air', { isOnline: false }],
+    ['unreachable', { track: null, isUnreachable: true }],
+  ] as const)('offers nothing to do %s, with nothing to hear', (_, state) => {
+    const cast = { kind: 'chromecast' as const, found: true, device: null, connecting: false };
+    render(<NowPlayingView {...props({ ...state, diffusion: { ...cast, onOpen: vi.fn() } })} />);
+    expect(screen.queryByRole('button', { name: 'Écouter le direct' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Garder/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Couper le son' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Diffuser/ })).not.toBeInTheDocument();
+  });
+
+  it('keeps Arrêter off air while the live is still heard, so it can be stopped', () => {
+    render(<NowPlayingView {...props({ isOnline: false, listen: 'playing' })} />);
+    expect(screen.getByRole('button', { name: 'Arrêter le direct' })).toBeInTheDocument();
+  });
+
+  it('offers Réessayer only while the station does not answer', () => {
+    render(<NowPlayingView {...props({ onRetry: vi.fn() })} />);
+    expect(screen.queryByRole('button', { name: 'Réessayer' })).not.toBeInTheDocument();
   });
 
   it('beats the heart when a track is kept, not when it loads kept', () => {
@@ -286,5 +340,44 @@ describe('NowPlayingFallback', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Réessayer' }));
     expect(screen.getByText('Mimoun')).toBeInTheDocument();
     spy.mockRestore();
+  });
+});
+
+describe('NowPlayingFallbackView', () => {
+  const cast = {
+    kind: 'chromecast' as const,
+    found: true,
+    device: null,
+    connecting: false,
+    onOpen: vi.fn(),
+  };
+  function fallback(
+    overrides: Partial<NowPlayingFallbackViewProps> = {}
+  ): NowPlayingFallbackViewProps {
+    return {
+      listen: 'idle',
+      onToggleListen: vi.fn(),
+      volume: { volume: 0.8, isMuted: false, onVolumeChange: vi.fn(), onToggleMute: vi.fn() },
+      keep: { title: 'Mimoun', isKept: false, isKeeping: false, onToggle: vi.fn() },
+      diffusion: cast,
+      onRetry: vi.fn(),
+      ...overrides,
+    };
+  }
+
+  it('keeps Garder and Diffuser beside Écouter while the track does not show', async () => {
+    const view = fallback();
+    render(<NowPlayingFallbackView {...view} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Garder «\u00a0Mimoun\u00a0»' }));
+    expect(view.keep?.onToggle).toHaveBeenCalledOnce();
+    await userEvent.click(screen.getByRole('button', { name: 'Diffuser sur un appareil' }));
+    expect(cast.onOpen).toHaveBeenCalledOnce();
+  });
+
+  it('leaves out Garder with no track to keep, and Diffuser where the browser cannot cast', () => {
+    render(<NowPlayingFallbackView {...fallback({ keep: null, diffusion: null })} />);
+    expect(screen.queryByRole('button', { name: /Garder/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Diffuser/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Écouter le direct' })).toBeInTheDocument();
   });
 });

@@ -73,9 +73,10 @@ describe('PlayerBarView', () => {
 
   it.each([
     ['idle', 'Écouter', 'Écouter le direct'],
+    ['connecting', 'Connexion…', 'Connexion…'],
     ['playing', 'Arrêter', 'Arrêter le direct'],
   ] as const)(
-    'says its word on a computer while %s, as the hero does: Écouter, then Arrêter',
+    'says its word on a computer while %s, as the hero does: Écouter, Connexion…, Arrêter',
     (listen, word, name) => {
       render(<PlayerBarView {...props({ listen })} />);
       const pill = screen.getAllByRole('button', { name }).find((b) => b.textContent === word);
@@ -83,6 +84,25 @@ describe('PlayerBarView', () => {
       expect(pill).toHaveClass('hidden', 'md:flex');
     }
   );
+
+  it('names the phone’s disc « Connexion… » while the stream connects', () => {
+    render(<PlayerBarView {...props({ listen: 'connecting' })} />);
+    const disc = screen.getAllByRole('button', { name: 'Connexion…' }).find((b) => !b.textContent);
+    expect(disc).toHaveAttribute('aria-busy', 'true');
+  });
+
+  it('waits on a keep under way, in the bar and in the sheet, as the hero does', async () => {
+    const { rerender } = render(<PlayerBarView {...props()} />);
+    const heart = () => screen.getByRole('button', { name: /^Garder/ });
+    expect(heart()).toBeEnabled();
+
+    rerender(<PlayerBarView {...props({ isKeeping: true })} />);
+    expect(heart()).toBeDisabled();
+
+    await userEvent.click(screen.getByRole('button', { name: /^Ouvrir/ }));
+    const sheet = await screen.findByRole('dialog', { name: 'Mimoun' });
+    expect(within(sheet).getByRole('button', { name: /^Garder/ })).toBeDisabled();
+  });
 
   it('puts the heart right after the track on a computer, before the volume', () => {
     render(<PlayerBarView {...props({ artistHref: '/artist/a-1/mickey-3d' })} />);
@@ -281,6 +301,29 @@ describe('PlayerBarView', () => {
     const on = screen.getByRole('button', { name: 'Diffusion sur TV' });
     expect(on).toHaveClass('wave-underline');
     expect(withoutWave(on)).toEqual(off);
+  });
+
+  it('changes track with the hero’s choreography: its cover and its words take the same steps', () => {
+    const marked = (swap: string) =>
+      (['bar-cover', 'bar-words'] as const).map(
+        (id, i) =>
+          screen
+            .getAllByTestId(id)
+            .filter(
+              (el) =>
+                el.getAttribute('data-swap') === swap &&
+                el.classList.contains(i === 0 ? 'swap-cover' : 'swap-words')
+            ).length
+      );
+    const { rerender } = render(<PlayerBarView {...props()} />);
+    // The phone's track line and the computer's, one hidden by CSS.
+    expect(marked('idle')).toEqual([2, 2]);
+
+    rerender(<PlayerBarView {...props({ swap: 'out' })} />);
+    expect(marked('out')).toEqual([2, 2]);
+
+    rerender(<PlayerBarView {...props({ swap: 'in' })} />);
+    expect(marked('in')).toEqual([2, 2]);
   });
 
   it("leads from the track to the artist's page once it exists", () => {

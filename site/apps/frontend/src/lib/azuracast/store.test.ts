@@ -4,7 +4,12 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
 import { makeNowPlaying } from '../../mocks/handlers';
-import { useNowPlayingStore, startNowPlayingPolling, __resetNowPlayingStore } from './store';
+import {
+  useNowPlayingStore,
+  startNowPlayingPolling,
+  retryNowPlaying,
+  __resetNowPlayingStore,
+} from './store';
 
 const URL_NP = 'https://radio.aubesonore.fr/api/nowplaying_static/aubesonore.json';
 
@@ -357,6 +362,37 @@ describe('nowPlaying store — backoff', () => {
       await vi.advanceTimersByTimeAsync(4_000);
     });
     expect(calls).toBe(4);
+    warnSpy.mockRestore();
+  });
+
+  it('asks again at once on Réessayer, rather than wait out the backoff', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let calls = 0;
+    server.use(
+      http.get(URL_NP, () => {
+        calls++;
+        return new HttpResponse(null, { status: 500 });
+      })
+    );
+    start();
+    await vi.waitFor(() => expect(calls).toBe(1));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+    expect(calls).toBe(3);
+
+    // The next poll is 4 s away; Réessayer asks now, then starts the backoff again from 1 s.
+    await act(async () => {
+      retryNowPlaying();
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    expect(calls).toBe(4);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1_000);
+    });
+    expect(calls).toBe(5);
     warnSpy.mockRestore();
   });
 
