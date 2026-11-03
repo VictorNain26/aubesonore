@@ -44,5 +44,18 @@
         { "path": "azuracast/azuracast.env", "mode": "deny" }
       ]
     }
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -e .stop_hook_active >/dev/null && exit 0; cd \"$CLAUDE_PROJECT_DIR\" && { pnpm -C site typecheck && uv --directory pipeline run ruff check && uv --directory musilogy run ruff check; } 1>&2 || exit 2",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
   }
 }
