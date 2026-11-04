@@ -3,10 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { TrackAnnouncer } from './TrackAnnouncer';
 
-const mimoun = { title: 'Mimoun', artist: 'Mickey 3D' };
-const respire = { title: 'Respire', artist: 'Mickey 3D' };
+const mimoun = { id: 1, title: 'Mimoun', artist: 'Mickey 3D' };
+const respire = { id: 2, title: 'Respire', artist: 'Mickey 3D' };
 
 describe('TrackAnnouncer', () => {
+  it('says nothing when the station corrects the title of the same play', () => {
+    const { rerender } = render(<TrackAnnouncer track={mimoun} />);
+    rerender(<TrackAnnouncer track={{ ...mimoun, title: 'Mimoun (Remastered)' }} />);
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
   it('announces the next track to screen readers, not the one the page opened on', () => {
     const { rerender } = render(<TrackAnnouncer track={mimoun} />);
     const region = screen.getByRole('status');

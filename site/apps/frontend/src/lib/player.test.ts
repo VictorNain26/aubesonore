@@ -363,8 +363,9 @@ describe('player resilience (stream auto-recovery)', () => {
     const { usePlayer } = await import('./player');
     await usePlayer.getState().play();
 
+    // Still playing for the lock screen, the tab title and the horizon: the listener stopped nothing.
     mockAudioInstance.emit('ended');
-    expect(usePlayer.getState()).toMatchObject({ isPlaying: false, isConnecting: true });
+    expect(usePlayer.getState()).toMatchObject({ isPlaying: true, isConnecting: true });
 
     await vi.advanceTimersByTimeAsync(600);
     mockAudioInstance.emit('playing');

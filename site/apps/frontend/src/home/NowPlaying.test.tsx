@@ -12,6 +12,20 @@ import {
   type NowPlayingFallbackViewProps,
   type NowPlayingViewProps,
 } from './NowPlaying';
+import type * as UseDiffusionModule from '../hooks/useDiffusion';
+
+// The cast store, made to throw as the data that crashed the hero might.
+const diffusionThrows = vi.hoisted(() => ({ value: false }));
+vi.mock('../hooks/useDiffusion', async (importOriginal) => {
+  const actual = await importOriginal<typeof UseDiffusionModule>();
+  return {
+    ...actual,
+    useDiffusion: () => {
+      if (diffusionThrows.value) throw new Error('cast store');
+      return actual.useDiffusion();
+    },
+  };
+});
 
 // The artist link is a router <Link>.
 const render = (ui: ReactElement) => rtlRender(ui, { wrapper: MemoryRouter });
@@ -248,16 +262,28 @@ describe('NowPlayingView', () => {
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
-  it.each([
-    ['off air', { isOnline: false }],
-    ['unreachable', { track: null, isUnreachable: true }],
-  ] as const)('offers nothing to do %s, with nothing to hear', (_, state) => {
+  it('offers nothing to do off air, with nothing to hear', () => {
     const cast = { kind: 'chromecast' as const, found: true, device: null, connecting: false };
-    render(<NowPlayingView {...props({ ...state, diffusion: { ...cast, onOpen: vi.fn() } })} />);
+    render(
+      <NowPlayingView {...props({ isOnline: false, diffusion: { ...cast, onOpen: vi.fn() } })} />
+    );
     expect(screen.queryByRole('button', { name: 'Écouter le direct' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Garder/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Couper le son' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Diffuser/ })).not.toBeInTheDocument();
+  });
+
+  it('keeps Écouter, the volume and Diffuser while the live does not answer: the stream may', () => {
+    const cast = { kind: 'chromecast' as const, found: true, device: null, connecting: false };
+    render(
+      <NowPlayingView
+        {...props({ track: null, isUnreachable: true, diffusion: { ...cast, onOpen: vi.fn() } })}
+      />
+    );
+    expect(screen.getByRole('button', { name: 'Écouter le direct' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Couper le son' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Diffuser/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Garder/ })).not.toBeInTheDocument();
   });
 
   it.each([
@@ -351,6 +377,25 @@ describe('NowPlayingFallback', () => {
     shouldThrow = false;
     await userEvent.click(screen.getByRole('button', { name: 'Réessayer' }));
     expect(screen.getByText('Mimoun')).toBeInTheDocument();
+    spy.mockRestore();
+  });
+
+  it('still offers Écouter and Réessayer when a store its row reads throws as well', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    diffusionThrows.value = true;
+    function Track(): null {
+      throw new Error('boom');
+    }
+    render(
+      <ErrorBoundary FallbackComponent={NowPlayingFallback}>
+        <Track />
+      </ErrorBoundary>
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Le titre en cours ne s’affiche pas.');
+    expect(screen.getByRole('button', { name: 'Écouter le direct' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toBeInTheDocument();
+    diffusionThrows.value = false;
     spy.mockRestore();
   });
 });
