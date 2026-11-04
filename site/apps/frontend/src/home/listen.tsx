@@ -4,6 +4,8 @@ import { Wave } from '../design/Wave';
 
 export type ListenState = 'idle' | 'connecting' | 'playing';
 
+const STATES: readonly ListenState[] = ['idle', 'connecting', 'playing'];
+
 export function listenState(isPlaying: boolean, isConnecting: boolean): ListenState {
   if (isConnecting) return 'connecting';
   return isPlaying ? 'playing' : 'idle';
@@ -126,6 +128,7 @@ export function ListenPill({
   className?: string;
 }) {
   const look = PLACE[place];
+  const others = STATES.filter((state) => state !== listen).map(listenLabel);
   return (
     <button
       type="button"
@@ -135,7 +138,21 @@ export function ListenPill({
       className={cn(PILL, look.pill, className)}
     >
       <ListenDisc state={listen} tone={look.disc} className={look.discSize} />
-      <span className="text-body font-semibold">{listenLabel(listen)}</span>
+      {/* The pill as wide as its widest word: the two others sit, unseen, in the same cell (as
+          ::before and ::after, so the button says only its own word), and it never grows nor
+          pushes the heart when « Connexion… » comes. */}
+      <span
+        data-other={others[0]}
+        data-another={others[1]}
+        className={cn(
+          'text-body grid font-semibold',
+          '*:col-start-1 *:row-start-1',
+          'before:invisible before:col-start-1 before:row-start-1 before:content-[attr(data-other)]',
+          'after:invisible after:col-start-1 after:row-start-1 after:content-[attr(data-another)]'
+        )}
+      >
+        <span>{listenLabel(listen)}</span>
+      </span>
     </button>
   );
 }

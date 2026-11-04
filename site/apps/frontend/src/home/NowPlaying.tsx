@@ -17,7 +17,10 @@ import { VolumeControl, type VolumeControlProps } from '../shell/VolumeControl';
 import { CastControl } from '../shell/CastControl';
 import { useDiffusion, type Diffusion } from '../hooks/useDiffusion';
 import { ListenPill, listenState, type ListenState } from './listen';
+import { cn } from '@/lib/utils';
 import * as m from '@/paraglide/messages.js';
+
+const OFF_AIR_TITLE = 'font-display text-title m-0 text-balance';
 
 export interface NowPlayingViewProps {
   track: {
@@ -129,9 +132,10 @@ export function NowPlayingView({
 
       <div ref={liveRef} className="hero-live">
         {!isOnline ? (
-          <p className="text-line text-text-muted m-0" aria-live="polite">
+          // Nothing on air: the sentence takes the title's place, at its size.
+          <h2 className={OFF_AIR_TITLE} aria-live="polite">
             {m.off_air()}
-          </p>
+          </h2>
         ) : track ? (
           <div
             key={trackKey}
@@ -156,11 +160,12 @@ export function NowPlayingView({
           </div>
         ) : isUnreachable ? (
           <div className="flex flex-col items-start gap-5">
-            <p className="text-line text-text-muted m-0" aria-live="polite">
+            <h2 className={OFF_AIR_TITLE} aria-live="polite">
               {m.now_unreachable()}
-            </p>
+            </h2>
             {onRetry ? (
-              <button type="button" onClick={onRetry} className={OUTLINE_ACTION}>
+              // A framed button of the forms' height, 48 px.
+              <button type="button" onClick={onRetry} className={cn(OUTLINE_ACTION, 'h-12')}>
                 {m.error_retry()}
               </button>
             ) : null}
