@@ -424,6 +424,55 @@ describe('player resilience (stream auto-recovery)', () => {
     expect(usePlayer.getState()).toMatchObject({ isConnecting: true, playError: null });
   });
 
+  it('counts a refused reconnect as a failed attempt, never connecting for good', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.useFakeTimers();
+    const { usePlayer } = await import('./player');
+    await usePlayer.getState().play();
+    const callsBefore = mockAudioInstance.play.mock.calls.length;
+
+    // In a background tab the browser may refuse play() with no media event after it.
+    mockAudioInstance.play.mockImplementation(() =>
+      Promise.reject(new DOMException('not allowed', 'NotAllowedError'))
+    );
+    mockAudioInstance.emit('ended');
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    expect(mockAudioInstance.play.mock.calls.length).toBe(callsBefore + 4);
+    expect(usePlayer.getState()).toMatchObject({ isPlaying: false, isConnecting: false });
+    expect(usePlayer.getState().playError?.code).toBe('network');
+  });
+
+  it('makes one attempt for a stall and an error that report the same loss', async () => {
+    vi.useFakeTimers();
+    const { usePlayer } = await import('./player');
+    await usePlayer.getState().play();
+    const callsBefore = mockAudioInstance.play.mock.calls.length;
+
+    mockAudioInstance.emit('waiting');
+    mockAudioInstance.emit('error');
+    // The error's attempt goes at 500 ms; the stall's timer, at 1.5 s, must not add a second.
+    await vi.advanceTimersByTimeAsync(3_000);
+    expect(mockAudioInstance.play.mock.calls.length).toBe(callsBefore + 1);
+  });
+
+  it('keeps a stream that plays again on its own before the attempt goes', async () => {
+    vi.useFakeTimers();
+    const { usePlayer } = await import('./player');
+    await usePlayer.getState().play();
+    const callsBefore = mockAudioInstance.play.mock.calls.length;
+
+    mockAudioInstance.emit('waiting');
+    // Past the stall's grace an attempt is due 500 ms later; the buffer refills before it.
+    await vi.advanceTimersByTimeAsync(1_600);
+    mockAudioInstance.emit('playing');
+    await vi.advanceTimersByTimeAsync(5_000);
+
+    expect(mockAudioInstance.play.mock.calls.length).toBe(callsBefore);
+    expect(usePlayer.getState()).toMatchObject({ isPlaying: true, isConnecting: false });
+  });
+
   it('a new play does not let an older reconnect fire', async () => {
     vi.useFakeTimers();
     const { usePlayer } = await import('./player');
