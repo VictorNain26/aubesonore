@@ -78,7 +78,8 @@ export function ListenDisc({
         height={16}
         amplitude={4}
         seed={1.7}
-        travel
+        // It travels only while it shows: hidden, an endless animation would still paint.
+        travel={state === 'connecting'}
         className={cn(PLACED, 'h-1/3 w-3/5', state === 'connecting' ? SHOWN : HIDDEN)}
       />
       <svg

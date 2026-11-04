@@ -631,7 +631,7 @@
    for the column (a phone on its side), the hero grows past the screen: the cover stays level
    with the column's top, in the first screen, not at the hero's foot. Nothing is written over
    it. It fades in at the page's load (the server drew it: its paint is not held back); a change
-   of track lets it go, then brings the next in (home/useTrackSwap.ts); off air it stays,
+   of track lets it go, then brings the next in (hooks/useTrackSwap.ts); off air it stays,
    dimmed. */
 @utility hero-cover {
   grid-area: cover;
@@ -687,7 +687,7 @@
   }
 }
 
-/* A change of track, one choreography for the hero and the player bar (home/useTrackSwap.ts): the
+/* A change of track, one choreography for the hero and the player bar (hooks/useTrackSwap.ts): the
    cover and the words leave together, then the cover comes into its place and the words come one
    after the other. */
 @utility swap-cover {

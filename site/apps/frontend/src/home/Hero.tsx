@@ -5,7 +5,7 @@ import type { TrendsResult } from '@aubesonore/shared-types/client';
 import { SiteHeader } from '../shell/SiteHeader';
 import { HERO_COVER_SIZES, NowPlaying, NowPlayingFallback } from './NowPlaying';
 import { preloadCover } from '../lib/artwork';
-import { useTrackSwap } from './useTrackSwap';
+import { useTrackSwap } from '../hooks/useTrackSwap';
 import { useNowPlayingStore, type SongEntry } from '../lib/azuracast';
 import { JustBefore } from './JustBefore';
 import { MostKept } from './MostKept';

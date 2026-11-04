@@ -156,9 +156,16 @@ function handleVisibility(): void {
     useNowPlayingStore.setState({ isConnected: false });
   } else {
     // Resume immediately on focus return.
-    consecutiveErrors = 0;
-    void runPoll();
+    pollNow();
   }
+}
+
+/** Ask now, the backoff started again from its first step, whatever was waiting or under way. */
+function pollNow(): void {
+  clearTimer();
+  cancelInflight();
+  consecutiveErrors = 0;
+  void runPoll();
 }
 
 function attachVisibilityListener(): void {
@@ -205,9 +212,7 @@ export function startNowPlayingPolling(): () => void {
  */
 export function retryNowPlaying(): void {
   if (!isStarted) return;
-  clearTimer();
-  consecutiveErrors = 0;
-  void runPoll();
+  pollNow();
 }
 
 // ─────────────────────────────────────────────

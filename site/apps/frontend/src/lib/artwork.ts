@@ -90,7 +90,7 @@ export function artworkSrcSet(url: string): string | undefined {
 
 /**
  * A cover fetched and decoded as its host will draw it (the same files, the same `sizes`), so a
- * change of track brings it in whole rather than as an empty square (home/useTrackSwap.ts).
+ * change of track brings it in whole rather than as an empty square (hooks/useTrackSwap.ts).
  */
 export function preloadCover(art: string | undefined, sizes: string): Promise<void> {
   if (!art || isDefaultArtwork(art)) return Promise.resolve();

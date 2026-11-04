@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { KeepButton } from '../design/KeepButton';
 import { useNowPlayingStore, type SongEntry } from '../lib/azuracast';
 import { preloadCover } from '../lib/artwork';
-import { useTrackSwap, type Swap } from '../home/useTrackSwap';
+import { useTrackSwap, type Swap } from '../hooks/useTrackSwap';
 import { useHasHeroPlayer, useHeroPlayerStore } from '../stores/heroPlayerStore';
 import { usePlayer } from '../lib/player';
 import { useAirPlayStore } from '../stores/airplayStore';
@@ -60,7 +60,7 @@ export interface PlayerBarViewProps {
   /** The page of the artist on air, once it exists: the track leads there. */
   artistHref: string | null;
   isOnline: boolean;
-  /** Where the bar is in a change of track: the hero's steps (home/useTrackSwap.ts). */
+  /** Where the bar is in a change of track: the hero's steps (hooks/useTrackSwap.ts). */
   swap?: Swap;
 }
 

@@ -7,7 +7,7 @@ import { useTrackActions } from '../hooks/useTrackActions';
 import { usePlayer } from '../lib/player';
 import { useLikeAction } from '../hooks/useLikeAction';
 import { useLikedTracksStore, isTrackLiked, trackKey } from '../stores/likedTracksStore';
-import type { Swap } from './useTrackSwap';
+import type { Swap } from '../hooks/useTrackSwap';
 import { useArtistPage } from '../hooks/useArtistPage';
 import { artistPath } from '../lib/artistProfile';
 import { CoverOpenLarge } from '../design/CoverOpenLarge';
@@ -42,7 +42,7 @@ export interface NowPlayingViewProps {
   onToggleKeep: () => void;
   /** The artist's page, once it exists: no link rather than a dead one. */
   artistHref: string | null;
-  /** Where the hero is in a change of track (home/useTrackSwap.ts): the blocks animate by it. */
+  /** Where the hero is in a change of track (hooks/useTrackSwap.ts): the blocks animate by it. */
   swap?: Swap;
   /** The hero's own volume: the player bar stays away while the hero shows. */
   volume: Omit<VolumeControlProps, 'className'>;
@@ -246,7 +246,7 @@ function HeroActions({
 }
 
 /**
- * The track the hero shows (`shown`, home/useTrackSwap.ts: the one on air, or the last one while
+ * The track the hero shows (`shown`, hooks/useTrackSwap.ts: the one on air, or the last one while
  * the next comes in), with its own Garder, so a press keeps the track in view.
  */
 export function NowPlaying({
