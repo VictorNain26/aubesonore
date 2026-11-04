@@ -260,6 +260,18 @@ describe('NowPlayingView', () => {
     expect(screen.queryByRole('button', { name: /Diffuser/ })).not.toBeInTheDocument();
   });
 
+  it.each([
+    ['off air', { isOnline: false }, 'Silence radio. Retour dans un instant.'],
+    [
+      'unreachable',
+      { track: null, isUnreachable: true },
+      'Le direct ne répond pas pour le moment.',
+    ],
+  ] as const)('says it %s as the title in its place, a heading', (_, state, sentence) => {
+    render(<NowPlayingView {...props(state)} />);
+    expect(screen.getByRole('heading', { name: sentence })).toBeInTheDocument();
+  });
+
   it('keeps Arrêter off air while the live is still heard, so it can be stopped', () => {
     render(<NowPlayingView {...props({ isOnline: false, listen: 'playing' })} />);
     expect(screen.getByRole('button', { name: 'Arrêter le direct' })).toBeInTheDocument();
