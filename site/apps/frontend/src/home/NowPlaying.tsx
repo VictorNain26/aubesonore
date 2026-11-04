@@ -1,5 +1,5 @@
 import type { Ref } from 'react';
-import type { FallbackProps } from 'react-error-boundary';
+import { ErrorBoundary, type FallbackProps } from 'react-error-boundary';
 import { useShallow } from 'zustand/react/shallow';
 import { KeepButton } from '../design/KeepButton';
 import { retryNowPlaying, useNowPlayingStore, type SongEntry } from '../lib/azuracast';
@@ -98,9 +98,9 @@ export function NowPlayingView({
   liveRef,
 }: NowPlayingViewProps) {
   const trackKey = track ? `${track.artist}|${track.title}` : 'none';
-  // Off air or unreachable, nothing to hear, so nothing to do; but a live still heard keeps its
-  // Arrêter.
-  const hasNothing = !isOnline || (!track && isUnreachable);
+  // Off air, nothing to hear, so nothing to do; but a live still heard keeps its Arrêter. While
+  // the live does not answer, only the track's words fail: the stream may play, so the row stays.
+  const hasNothing = !isOnline;
   return (
     <>
       <div
@@ -325,20 +325,34 @@ export function NowPlayingFallback({
   const { isPlaying, isConnecting, toggle } = usePlayer(
     useShallow((s) => ({ isPlaying: s.isPlaying, isConnecting: s.isConnecting, toggle: s.toggle }))
   );
-  const volume = useVolume();
+  const view = {
+    listen: listenState(isPlaying, isConnecting),
+    onToggleListen: toggle,
+    volume: useVolume(),
+    onRetry: resetErrorBoundary,
+    liveRef,
+  };
+  // Garder and Diffuser read stores the data that crashed the hero may break too: should they
+  // throw, the row keeps Écouter, the volume and Réessayer, which only the player gives.
+  return (
+    <ErrorBoundary
+      fallbackRender={() => <NowPlayingFallbackView {...view} keep={null} diffusion={null} />}
+    >
+      <FallbackWithStores {...view} />
+    </ErrorBoundary>
+  );
+}
+
+function FallbackWithStores(props: Omit<NowPlayingFallbackViewProps, 'keep' | 'diffusion'>) {
   const diffusion = useDiffusion();
   const { title, isLiked, isLiking, handleToggleLike } = useTrackActions();
   return (
     <NowPlayingFallbackView
-      listen={listenState(isPlaying, isConnecting)}
-      onToggleListen={toggle}
-      volume={volume}
+      {...props}
       keep={
         title ? { title, isKept: isLiked, isKeeping: isLiking, onToggle: handleToggleLike } : null
       }
       diffusion={diffusion}
-      onRetry={resetErrorBoundary}
-      liveRef={liveRef}
     />
   );
 }

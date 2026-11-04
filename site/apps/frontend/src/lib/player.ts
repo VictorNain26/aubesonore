@@ -197,7 +197,8 @@ function reconnect(): void {
     return;
   }
   reconnectAttempts++;
-  usePlayer.setState({ isPlaying: false, isConnecting: true });
+  // Still playing for the lock screen, the tab title and the horizon: the listener stopped nothing.
+  usePlayer.setState({ isConnecting: true });
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null;
     if (!wantsPlayback) return;

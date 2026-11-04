@@ -4,6 +4,8 @@ import { useNowPlayingStore } from '../lib/azuracast';
 import * as m from '@/paraglide/messages.js';
 
 interface Track {
+  /** The play's id (AzuraCast's sh_id): a title corrected during the same play is no new track. */
+  id: number;
   title: string;
   artist: string;
 }
@@ -14,8 +16,8 @@ interface Track {
  * page opened on, which the hero or the bar already shows, and off air.
  */
 export function TrackAnnouncer({ track }: { track: Track | null }) {
-  const key = track ? `${track.artist}|${track.title}` : null;
-  const [firstKey, setFirstKey] = useState<string | null>(null);
+  const key = track ? track.id : null;
+  const [firstKey, setFirstKey] = useState<number | null>(null);
   const [hasMoved, setHasMoved] = useState(false);
   if (firstKey === null && key !== null) setFirstKey(key);
   if (!hasMoved && firstKey !== null && key !== firstKey) setHasMoved(true);
@@ -29,12 +31,17 @@ export function TrackAnnouncer({ track }: { track: Track | null }) {
 
 /** The track on air, from the station's store. */
 export function LiveTrackAnnouncer() {
-  const { title, artist, isOnline } = useNowPlayingStore(
+  const { id, title, artist, isOnline } = useNowPlayingStore(
     useShallow((s) => ({
+      id: s.data?.now_playing?.sh_id,
       title: s.data?.now_playing?.song.title,
       artist: s.data?.now_playing?.song.artist,
       isOnline: s.data?.is_online ?? true,
     }))
   );
-  return <TrackAnnouncer track={title && artist && isOnline ? { title, artist } : null} />;
+  return (
+    <TrackAnnouncer
+      track={id !== undefined && title && artist && isOnline ? { id, title, artist } : null}
+    />
+  );
 }
