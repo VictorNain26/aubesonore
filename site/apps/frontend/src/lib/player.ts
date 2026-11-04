@@ -181,11 +181,12 @@ function cutStream(audio: HTMLAudioElement): void {
 function reconnect(): void {
   // One attempt at a time: an attempt that fails often reports it twice (error, then stalled).
   if (!wantsPlayback || reconnectTimer) return;
+  // This attempt answers the loss; a stall timer armed before it would only start a second one.
+  clearStallTimer();
   const delay = RECONNECT_BACKOFF_MS[reconnectAttempts];
   if (delay === undefined) {
     console.warn('[Player] stream lost, giving up after', reconnectAttempts, 'attempts');
     wantsPlayback = false;
-    clearStallTimer();
     reconnectAttempts = 0;
     cutStream(getAudioElement());
     usePlayer.setState({
@@ -206,6 +207,9 @@ function reconnect(): void {
     audio.load();
     void audio.play().catch((err: unknown) => {
       console.warn('[Player] reconnect play() rejected:', (err as Error).message);
+      // A refusal (a background tab) may come with no media event after it: it counts as a
+      // failed attempt, so the player tries again or gives up rather than connect for good.
+      reconnect();
     });
   }, delay);
 }
@@ -354,7 +358,10 @@ function attachResilience(audio: HTMLAudioElement): void {
     // pending stall recovery and reset backoff for the next incident.
     clearStallTimer();
     reconnectAttempts = 0;
-    if (wantsPlayback && reconnectTimer === null && usePlayer.getState().isConnecting) {
+    if (!wantsPlayback) return;
+    // A stream that plays again on its own keeps playing: the attempt still to come is dropped.
+    clearReconnectTimer();
+    if (usePlayer.getState().isConnecting) {
       usePlayer.setState({ isPlaying: true, isConnecting: false });
     }
   });

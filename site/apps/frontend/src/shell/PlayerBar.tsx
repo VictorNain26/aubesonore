@@ -304,7 +304,7 @@ export function PlayerBar() {
   const initializeAirPlay = useAirPlayStore((s) => s.initialize);
   const initializeCast = useCastStore((s) => s.initialize);
   const diffusion = useDiffusion();
-  const { isLiked, isLiking, handleToggleLike, handleShare } = useTrackActions();
+  const { isLiked, isLiking, handleToggleLike, handleShare } = useTrackActions({ title, artist });
   const heroPlayerInView = useHeroPlayerStore((s) => s.inView);
   const hasHeroPlayer = useHasHeroPlayer();
   const { restoreVolume } = player;

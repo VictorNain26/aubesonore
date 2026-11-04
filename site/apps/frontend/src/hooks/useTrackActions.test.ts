@@ -6,7 +6,7 @@ const toggleLike = vi.fn(() => Promise.resolve());
 vi.mock('./useLikeAction', () => ({
   useLikeAction: () => ({ likingTrackId: null, toggleLike }),
 }));
-const shareTrackWithToast = vi.fn(() => Promise.resolve());
+const shareTrackWithToast = vi.fn((_track: unknown) => Promise.resolve());
 vi.mock('../lib/shareTrack', () => ({
   shareTrackWithToast: (track: unknown) => shareTrackWithToast(track),
   getRadioShareUrl: (title: string, artist: string) => `https://aubesonore.fr/#${title}-${artist}`,
