@@ -14,13 +14,21 @@ interface UseTrackActions {
   handleShare: () => void;
 }
 
-export function useTrackActions(): UseTrackActions {
-  const { title, artist } = useNowPlayingStore(
+/**
+ * Garder and Partager for a track: the one a view shows when it gives it (the bar keeps the last
+ * track on screen while the next one's cover loads), else the one on air.
+ */
+export function useTrackActions(shown?: {
+  title: string | undefined;
+  artist: string | undefined;
+}): UseTrackActions {
+  const onAir = useNowPlayingStore(
     useShallow((s) => ({
       title: s.data?.now_playing?.song.title,
       artist: s.data?.now_playing?.song.artist,
     }))
   );
+  const { title, artist } = shown ?? onAir;
   const tracks = useLikedTracksStore((s) => s.tracks);
   const { likingTrackId, toggleLike } = useLikeAction();
 

@@ -156,9 +156,16 @@ function handleVisibility(): void {
     useNowPlayingStore.setState({ isConnected: false });
   } else {
     // Resume immediately on focus return.
-    consecutiveErrors = 0;
-    void runPoll();
+    pollNow();
   }
+}
+
+/** Ask now, the backoff started again from its first step, whatever was waiting or under way. */
+function pollNow(): void {
+  clearTimer();
+  cancelInflight();
+  consecutiveErrors = 0;
+  void runPoll();
 }
 
 function attachVisibilityListener(): void {
@@ -197,6 +204,15 @@ export function startNowPlayingPolling(): () => void {
     // Keep state.data so remounted consumers see the last value immediately.
     useNowPlayingStore.setState({ isConnected: false });
   };
+}
+
+/**
+ * Réessayer, while the station does not answer: asks now rather than wait out the backoff, which
+ * starts again from its first step if this answer fails too.
+ */
+export function retryNowPlaying(): void {
+  if (!isStarted) return;
+  pollNow();
 }
 
 // ─────────────────────────────────────────────

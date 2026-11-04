@@ -358,6 +358,135 @@ describe('player resilience (stream auto-recovery)', () => {
     expect(mockAudioInstance.play.mock.calls.length).toBe(callsBefore);
   });
 
+  it('says it is connecting while it reconnects, and playing once the stream plays again', async () => {
+    vi.useFakeTimers();
+    const { usePlayer } = await import('./player');
+    await usePlayer.getState().play();
+
+    // Still playing for the lock screen, the tab title and the horizon: the listener stopped nothing.
+    mockAudioInstance.emit('ended');
+    expect(usePlayer.getState()).toMatchObject({ isPlaying: true, isConnecting: true });
+
+    await vi.advanceTimersByTimeAsync(600);
+    mockAudioInstance.emit('playing');
+    expect(usePlayer.getState()).toMatchObject({ isPlaying: true, isConnecting: false });
+  });
+
+  it('stays on « playing » through a short wait the stream recovers from', async () => {
+    vi.useFakeTimers();
+    const { usePlayer } = await import('./player');
+    await usePlayer.getState().play();
+    mockAudioInstance.emit('waiting');
+    await vi.advanceTimersByTimeAsync(500);
+    expect(usePlayer.getState()).toMatchObject({ isPlaying: true, isConnecting: false });
+  });
+
+  it('gives up after four failed attempts and says the sound is cut', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.useFakeTimers();
+    const { usePlayer } = await import('./player');
+    await usePlayer.getState().play();
+    const callsBefore = mockAudioInstance.play.mock.calls.length;
+
+    mockAudioInstance.emit('ended');
+    // Each attempt fails as a dead stream does: the element reports an error.
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      await vi.advanceTimersByTimeAsync(8_000);
+      expect(mockAudioInstance.play.mock.calls.length).toBe(callsBefore + attempt);
+      expect(usePlayer.getState().playError).toBeNull();
+      mockAudioInstance.emit('error');
+    }
+
+    expect(usePlayer.getState()).toMatchObject({ isPlaying: false, isConnecting: false });
+    expect(usePlayer.getState().playError?.code).toBe('network');
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(mockAudioInstance.play.mock.calls.length).toBe(callsBefore + 4);
+  });
+
+  it('counts the attempts again from the start once the stream has played', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.useFakeTimers();
+    const { usePlayer } = await import('./player');
+    await usePlayer.getState().play();
+
+    mockAudioInstance.emit('ended');
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      await vi.advanceTimersByTimeAsync(8_000);
+      mockAudioInstance.emit('error');
+    }
+    await vi.advanceTimersByTimeAsync(8_000);
+    mockAudioInstance.emit('playing');
+
+    mockAudioInstance.emit('ended');
+    await vi.advanceTimersByTimeAsync(8_000);
+    mockAudioInstance.emit('error');
+    expect(usePlayer.getState()).toMatchObject({ isConnecting: true, playError: null });
+  });
+
+  it('counts a refused reconnect as a failed attempt, never connecting for good', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.useFakeTimers();
+    const { usePlayer } = await import('./player');
+    await usePlayer.getState().play();
+    const callsBefore = mockAudioInstance.play.mock.calls.length;
+
+    // In a background tab the browser may refuse play() with no media event after it.
+    mockAudioInstance.play.mockImplementation(() =>
+      Promise.reject(new DOMException('not allowed', 'NotAllowedError'))
+    );
+    mockAudioInstance.emit('ended');
+    await vi.advanceTimersByTimeAsync(30_000);
+
+    expect(mockAudioInstance.play.mock.calls.length).toBe(callsBefore + 4);
+    expect(usePlayer.getState()).toMatchObject({ isPlaying: false, isConnecting: false });
+    expect(usePlayer.getState().playError?.code).toBe('network');
+  });
+
+  it('makes one attempt for a stall and an error that report the same loss', async () => {
+    vi.useFakeTimers();
+    const { usePlayer } = await import('./player');
+    await usePlayer.getState().play();
+    const callsBefore = mockAudioInstance.play.mock.calls.length;
+
+    mockAudioInstance.emit('waiting');
+    mockAudioInstance.emit('error');
+    // The error's attempt goes at 500 ms; the stall's timer, at 1.5 s, must not add a second.
+    await vi.advanceTimersByTimeAsync(3_000);
+    expect(mockAudioInstance.play.mock.calls.length).toBe(callsBefore + 1);
+  });
+
+  it('keeps a stream that plays again on its own before the attempt goes', async () => {
+    vi.useFakeTimers();
+    const { usePlayer } = await import('./player');
+    await usePlayer.getState().play();
+    const callsBefore = mockAudioInstance.play.mock.calls.length;
+
+    mockAudioInstance.emit('waiting');
+    // Past the stall's grace an attempt is due 500 ms later; the buffer refills before it.
+    await vi.advanceTimersByTimeAsync(1_600);
+    mockAudioInstance.emit('playing');
+    await vi.advanceTimersByTimeAsync(5_000);
+
+    expect(mockAudioInstance.play.mock.calls.length).toBe(callsBefore);
+    expect(usePlayer.getState()).toMatchObject({ isPlaying: true, isConnecting: false });
+  });
+
+  it('a new play does not let an older reconnect fire', async () => {
+    vi.useFakeTimers();
+    const { usePlayer } = await import('./player');
+    await usePlayer.getState().play();
+    mockAudioInstance.emit('ended');
+    usePlayer.getState().stop();
+    await usePlayer.getState().play();
+    const callsAfterPlay = mockAudioInstance.play.mock.calls.length;
+
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(mockAudioInstance.play.mock.calls.length).toBe(callsAfterPlay);
+  });
+
   it('stop() cancels pending auto-recovery', async () => {
     vi.useFakeTimers();
     const { usePlayer } = await import('./player');

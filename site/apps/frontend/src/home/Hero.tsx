@@ -3,8 +3,9 @@ import { useShallow } from 'zustand/react/shallow';
 import { ErrorBoundary } from 'react-error-boundary';
 import type { TrendsResult } from '@aubesonore/shared-types/client';
 import { SiteHeader } from '../shell/SiteHeader';
-import { NowPlaying, NowPlayingFallback, preloadCover } from './NowPlaying';
-import { useTrackSwap } from './useTrackSwap';
+import { HERO_COVER_SIZES, NowPlaying, NowPlayingFallback } from './NowPlaying';
+import { preloadCover } from '../lib/artwork';
+import { useTrackSwap } from '../hooks/useTrackSwap';
 import { useNowPlayingStore, type SongEntry } from '../lib/azuracast';
 import { JustBefore } from './JustBefore';
 import { MostKept } from './MostKept';
@@ -92,4 +93,4 @@ export function Hero({ trends }: { trends: Loaded<TrendsResult> | null }) {
   );
 }
 
-const preloadTrackCover = (track: SongEntry) => preloadCover(track.song.art);
+const preloadTrackCover = (track: SongEntry) => preloadCover(track.song.art, HERO_COVER_SIZES);

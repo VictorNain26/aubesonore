@@ -24,7 +24,8 @@ export function CastControl({
   diffusion: Diffusion;
   /**
    * `bar`: the dark player bar, icon first. `text`: a text action in the sheet. `hero`: a text
-   * action beside the hero's volume, the icon alone on a phone, its word from 40rem.
+   * action beside the hero's volume, the icon alone on a phone, its word from 40rem; the device's
+   * name at every width.
    */
   variant: 'bar' | 'text' | 'hero';
 }) {
@@ -66,12 +67,12 @@ export function CastControl({
             }
           >
             {icon}
-            {/* The bar shows the word once there is room for it, the device always; the hero, on a
-                computer. */}
+            {/* The word once there is room for it (the bar from md, the hero from 40rem); the
+                device it plays on always, its wave under it, so a phone sees the stream is cast. */}
             <span
               className={cn(
-                variant === 'bar' && !connected && 'sr-only md:not-sr-only',
-                variant === 'hero' && 'sr-only sm:not-sr-only'
+                !connected && variant === 'bar' && 'sr-only md:not-sr-only',
+                !connected && variant === 'hero' && 'sr-only sm:not-sr-only'
               )}
             >
               {label}

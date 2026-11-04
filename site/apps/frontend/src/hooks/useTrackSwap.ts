@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 
-/** Where the hero is in a change of track (design/tokens.css: data-swap). */
+/** Where the hero or the bar is in a change of track (design/tokens.css: data-swap). */
 export type Swap = 'idle' | 'out' | 'in';
 
 /** The last track's leave: its words, its cover and « Juste avant » fade out. */
 export const OUT_MS = 150;
 /**
- * The next track's arrival, its longest block included (design/tokens.css, hero-words: the third
- * line starts at 240 ms and lasts 300): past it the hero settles, so a block that mounts again
+ * The next track's arrival, its longest block included (design/tokens.css, swap-words: the third
+ * line starts at 240 ms and lasts 300): past it the view settles, so a block that mounts again
  * later (the same track's corrected title, the station back on air) does not arrive again.
  */
 export const IN_MS = 540;
@@ -17,7 +17,7 @@ export const PRELOAD_MAX_MS = 2000;
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /**
- * The track the hero shows, and where it is in a change: the first comes at once; the next waits
+ * The track a view shows (the hero, the bar), and where it is in a change: the first comes at once; the next waits
  * for the last to leave (OUT_MS) and for its cover to be ready (`preload`, PRELOAD_MAX_MS at
  * most), so the cover never comes in as an empty square. A track that comes during the leave
  * replaces the one awaited. The same track (same sh_id) follows at once, details and all.

@@ -7,7 +7,8 @@ const STORAGE_KEY = 'aubesonore_volume';
 // Liquidsoap track changes / brief network blips; the native <audio>
 // element does not reconnect on its own, so we do it for it.
 const STALL_RECOVERY_MS = 1_500; // wait this long before declaring a stall fatal
-const RECONNECT_BACKOFF_MS = [500, 1000, 2000, 4000, 8000]; // capped at last value
+// One delay per attempt: past the last, the player gives up and says the sound is cut.
+const RECONNECT_BACKOFF_MS = [500, 1000, 2000, 4000];
 
 export interface PlayError {
   code: 'aborted' | 'network' | 'unknown';
@@ -16,7 +17,7 @@ export interface PlayError {
 
 interface PlayerState {
   isPlaying: boolean;
-  /** Between the click on Écouter and the first sound (stream buffering). */
+  /** Between the click on Écouter and the first sound, and while the stream reconnects. */
   isConnecting: boolean;
   volume: number;
   isMuted: boolean;
@@ -88,6 +89,7 @@ let isStopping = false;
 // audio-level disconnects should auto-recover.
 let wantsPlayback = false;
 let stallTimer: ReturnType<typeof setTimeout> | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let reconnectAttempts = 0;
 
 const getStoredVolume = (): number => {
@@ -148,17 +150,57 @@ function clearStallTimer() {
   }
 }
 
+function clearReconnectTimer() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+}
+
+/** Drops the stream without the element reporting it as an error (stop(), giving up). */
+function cutStream(audio: HTMLAudioElement): void {
+  isStopping = true;
+  audio.pause();
+  // Removed, not emptied: an empty src is the page's own address, which the element fails to
+  // load and reports as an error in a later task, past the guard below. With no source,
+  // load() only drops the stream (HTML, the media element load algorithm).
+  audio.removeAttribute('src');
+  audio.load();
+  queueMicrotask(() => {
+    isStopping = false;
+  });
+}
+
 /**
  * Re-attach the stream URL and call play() again. Live streams cannot be
  * "resumed" — the only way to recover from a stall/end/error is to start a
  * fresh request. Backoff guards against hammering the server when it's down.
+ * Meanwhile the player says it is connecting; past the last attempt it stops and says the sound
+ * is cut (shell/PlayerSideEffects.tsx).
  */
 function reconnect(): void {
-  if (!wantsPlayback) return;
-  const delay =
-    RECONNECT_BACKOFF_MS[Math.min(reconnectAttempts, RECONNECT_BACKOFF_MS.length - 1)] ?? 8000;
+  // One attempt at a time: an attempt that fails often reports it twice (error, then stalled).
+  if (!wantsPlayback || reconnectTimer) return;
+  // This attempt answers the loss; a stall timer armed before it would only start a second one.
+  clearStallTimer();
+  const delay = RECONNECT_BACKOFF_MS[reconnectAttempts];
+  if (delay === undefined) {
+    console.warn('[Player] stream lost, giving up after', reconnectAttempts, 'attempts');
+    wantsPlayback = false;
+    reconnectAttempts = 0;
+    cutStream(getAudioElement());
+    usePlayer.setState({
+      isPlaying: false,
+      isConnecting: false,
+      playError: { code: 'network', message: 'stream lost' },
+    });
+    return;
+  }
   reconnectAttempts++;
-  setTimeout(() => {
+  // Still playing for the lock screen, the tab title and the horizon: the listener stopped nothing.
+  usePlayer.setState({ isConnecting: true });
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
     if (!wantsPlayback) return;
     console.debug('[Player] auto-reconnect attempt', reconnectAttempts);
     const audio = getAudioElement();
@@ -166,6 +208,9 @@ function reconnect(): void {
     audio.load();
     void audio.play().catch((err: unknown) => {
       console.warn('[Player] reconnect play() rejected:', (err as Error).message);
+      // A refusal (a background tab) may come with no media event after it: it counts as a
+      // failed attempt, so the player tries again or gives up rather than connect for good.
+      reconnect();
     });
   }, delay);
 }
@@ -210,6 +255,7 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
     }
     set({ playError: null, isConnecting: true });
     wantsPlayback = true;
+    clearReconnectTimer();
     reconnectAttempts = 0;
     const audio = getAudioElement();
     try {
@@ -242,22 +288,14 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
     }
     wantsPlayback = false;
     clearStallTimer();
+    clearReconnectTimer();
     reconnectAttempts = 0;
     const audio = getAudioElement();
     // The button says Écouter at once; the sound fades out, then the stream is cut.
     set({ isPlaying: false, isConnecting: false, playError: null });
     const cut = () => {
       stopTimer = null;
-      isStopping = true;
-      audio.pause();
-      // Removed, not emptied: an empty src is the page's own address, which the element fails to
-      // load and reports as an error in a later task, past the guard below. With no source,
-      // load() only drops the stream (HTML, the media element load algorithm).
-      audio.removeAttribute('src');
-      audio.load();
-      queueMicrotask(() => {
-        isStopping = false;
-      });
+      cutStream(audio);
     };
     if (fader && !audio.paused) {
       fadeTo(0, FADE_OUT_S);
@@ -321,6 +359,12 @@ function attachResilience(audio: HTMLAudioElement): void {
     // pending stall recovery and reset backoff for the next incident.
     clearStallTimer();
     reconnectAttempts = 0;
+    if (!wantsPlayback) return;
+    // A stream that plays again on its own keeps playing: the attempt still to come is dropped.
+    clearReconnectTimer();
+    if (usePlayer.getState().isConnecting) {
+      usePlayer.setState({ isPlaying: true, isConnecting: false });
+    }
   });
 
   audio.addEventListener('waiting', () => {

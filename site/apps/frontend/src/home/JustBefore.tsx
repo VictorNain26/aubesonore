@@ -9,7 +9,7 @@ import { artistPath } from '../lib/artistProfile';
 import { useLikedTracksStore, isTrackLiked, trackKey } from '../stores/likedTracksStore';
 import { useArtistPage } from '../hooks/useArtistPage';
 import { usePreviousTrack } from './usePreviousTrack';
-import type { Swap } from './useTrackSwap';
+import type { Swap } from '../hooks/useTrackSwap';
 import { useNowPlayingStore, type SongEntry } from '../lib/azuracast';
 import * as m from '@/paraglide/messages.js';
 

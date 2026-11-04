@@ -10,20 +10,26 @@ interface Live {
   data: NowPlaying | null;
   unreachable?: boolean;
   playing?: boolean;
+  connecting?: boolean;
 }
 
 /**
  * The stores the hero reads, as the live and the player would leave them, then back to their
  * first state: the next story starts clean.
  */
-function live({ data, unreachable = false, playing = false }: Live): () => () => void {
+function live({
+  data,
+  unreachable = false,
+  playing = false,
+  connecting = false,
+}: Live): () => () => void {
   return () => {
     useNowPlayingStore.setState({
       data,
       isConnected: data !== null,
       error: unreachable ? 'unreachable' : null,
     });
-    usePlayer.setState({ isPlaying: playing, isConnecting: false });
+    usePlayer.setState({ isPlaying: playing, isConnecting: connecting });
     useAuthStore.setState({ isLoading: false, isAuthenticated: false, user: null });
     return () => {
       useNowPlayingStore.setState(useNowPlayingStore.getInitialState(), true);
@@ -49,6 +55,19 @@ export const EnDirect: Story = {
 export const EnEcoute: Story = {
   name: 'En écoute',
   beforeEach: live({ data: nowPlayingPayload(TRACKS.growlers, TRACKS.danny), playing: true }),
+};
+
+export const Connexion: Story = {
+  name: 'Connexion au direct',
+  beforeEach: live({ data: nowPlayingPayload(TRACKS.growlers, TRACKS.danny), connecting: true }),
+};
+
+export const HorsAntenneEnEcoute: Story = {
+  name: 'Hors antenne, le direct encore entendu',
+  beforeEach: live({
+    data: nowPlayingPayload(TRACKS.growlers, TRACKS.danny, false),
+    playing: true,
+  }),
 };
 
 export const SansPochetteTitreLong: Story = {

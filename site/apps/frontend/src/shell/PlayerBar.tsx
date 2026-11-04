@@ -3,7 +3,9 @@ import { Link } from 'react-router';
 import { useShallow } from 'zustand/react/shallow';
 import { cn } from '@/lib/utils';
 import { KeepButton } from '../design/KeepButton';
-import { useNowPlayingStore } from '../lib/azuracast';
+import { useNowPlayingStore, type SongEntry } from '../lib/azuracast';
+import { preloadCover } from '../lib/artwork';
+import { useTrackSwap, type Swap } from '../hooks/useTrackSwap';
 import { useHasHeroPlayer, useHeroPlayerStore } from '../stores/heroPlayerStore';
 import { usePlayer } from '../lib/player';
 import { useAirPlayStore } from '../stores/airplayStore';
@@ -45,6 +47,8 @@ export interface PlayerBarViewProps {
     playedAt: number;
   } | null;
   isKept: boolean;
+  /** A keep under way: the heart waits for it, as the hero's. */
+  isKeeping?: boolean;
   onToggleKeep: () => void;
   onShare: () => void;
   volume: number;
@@ -56,9 +60,12 @@ export interface PlayerBarViewProps {
   /** The page of the artist on air, once it exists: the track leads there. */
   artistHref: string | null;
   isOnline: boolean;
-  /** True once the live has moved past the track shown first: the change then animates. */
-  hasChanged?: boolean;
+  /** Where the bar is in a change of track: the hero's steps (hooks/useTrackSwap.ts). */
+  swap?: Swap;
 }
+
+/** The bar's cover, 44 px on a phone and 48 from md: the file a 3rem slot takes. */
+const BAR_COVER_SIZES = '3rem';
 
 /** The edge line's rest swell, as a share of its 24 px: a pixel and a quarter; seven and a half
  *  while the live is heard. */
@@ -76,8 +83,9 @@ const TRACK_LINK =
  * Écouter's disc at the right, under the thumb; no volume, the phone's own buttons set it, as on
  * the hero. On the home page it springs in once the hero's player has scrolled away and leaves
  * when it comes back, so there is never two players on screen. Every page keeps its height free at
- * the bottom (`pb-bar`), so it hides nothing. When the live moves on, the cover comes into focus
- * and the words fade in. The site's line runs along its top edge, alive while the live is heard.
+ * the bottom (`pb-bar`), so it hides nothing. When the live moves on, the track changes as the
+ * hero's does: the same steps, its cover awaited. The site's line runs along its top edge, alive
+ * while the live is heard.
  */
 export function PlayerBarView({
   isHidden,
@@ -85,6 +93,7 @@ export function PlayerBarView({
   onToggleListen,
   track,
   isKept,
+  isKeeping = false,
   onToggleKeep,
   onShare,
   volume,
@@ -94,7 +103,7 @@ export function PlayerBarView({
   diffusion,
   artistHref,
   isOnline,
-  hasChanged = false,
+  swap = 'idle',
 }: PlayerBarViewProps) {
   const [hasFocus, setHasFocus] = useState(false);
   // Never hide the bar while it holds the keyboard focus (WCAG 2.4.11). Only the keyboard's: a
@@ -149,11 +158,12 @@ export function PlayerBarView({
                 listen={listen}
                 onToggleListen={onToggleListen}
                 isKept={isKept}
+                isKeeping={isKeeping}
                 onToggleKeep={onToggleKeep}
                 onShare={onShare}
                 diffusion={diffusion}
               >
-                <TrackLine track={onAir} hasChanged={hasChanged} />
+                <TrackLine track={onAir} swap={swap} />
               </NowPlayingSheet>
             </span>
             <span className="hidden min-w-0 md:flex">
@@ -163,20 +173,21 @@ export function PlayerBarView({
                   title={`${onAir.title}, ${onAir.artist}`}
                   className={TRACK_LINK}
                 >
-                  <TrackLine track={onAir} hasChanged={hasChanged} withAlbum />
+                  <TrackLine track={onAir} swap={swap} withAlbum />
                 </Link>
               ) : (
                 <span
                   title={`${onAir.title}, ${onAir.artist}`}
                   className="flex min-w-0 items-center gap-3.5"
                 >
-                  <TrackLine track={onAir} hasChanged={hasChanged} withAlbum />
+                  <TrackLine track={onAir} swap={swap} withAlbum />
                 </span>
               )}
             </span>
             <KeepButton
               title={onAir.title}
               isKept={isKept}
+              isKeeping={isKeeping}
               onToggle={onToggleKeep}
               className={cn(ICON_BUTTON, 'md:ml-1.5')}
               heartClassName="size-5"
@@ -233,29 +244,28 @@ export function PlayerBarView({
  */
 function TrackLine({
   track,
-  hasChanged,
+  swap,
   withAlbum = false,
 }: {
   track: NonNullable<PlayerBarViewProps['track']>;
-  hasChanged: boolean;
+  swap: Swap;
   withAlbum?: boolean;
 }) {
   const key = `${track.artist}|${track.title}`;
   const album = withAlbum ? shownAlbum(track.album, track.title) : null;
   return (
     <>
-      <Cover
-        key={key}
-        src={track.art}
-        alt=""
-        seed={key}
-        sizes="3rem"
-        className={cn('size-11 shrink-0 md:size-12', hasChanged && 'swap-in')}
-      />
-      <span
-        key={`${key}:words`}
-        className={cn('flex min-w-0 flex-col', hasChanged && 'swap-in-late')}
-      >
+      <span data-testid="bar-cover" data-swap={swap} className="swap-cover shrink-0">
+        <Cover
+          key={key}
+          src={track.art}
+          alt=""
+          seed={key}
+          sizes={BAR_COVER_SIZES}
+          className="size-11 md:size-12"
+        />
+      </span>
+      <span data-testid="bar-words" data-swap={swap} className="swap-words flex min-w-0 flex-col">
         <span className="text-body truncate font-semibold">{track.title}</span>
         <span className="text-small text-on-accent-muted flex min-w-0 items-center gap-1.5">
           {/* The station is live: the live's dot, as « En direct » on the hero. */}
@@ -267,21 +277,18 @@ function TrackLine({
   );
 }
 
+const preloadBarCover = (track: SongEntry) => preloadCover(track.song.art, BAR_COVER_SIZES);
+
 export function PlayerBar() {
-  const { title, artist, album, art, playedAt, isOnline } = useNowPlayingStore(
-    useShallow((s) => ({
-      title: s.data?.now_playing?.song.title,
-      artist: s.data?.now_playing?.song.artist,
-      album: s.data?.now_playing?.song.album,
-      art: s.data?.now_playing?.song.art,
-      playedAt: s.data?.now_playing?.played_at,
-      isOnline: s.data?.is_online ?? true,
-    }))
+  const { onAir, isOnline } = useNowPlayingStore(
+    useShallow((s) => ({ onAir: s.data?.now_playing ?? null, isOnline: s.data?.is_online ?? true }))
   );
+  // One change at a time, as the hero shows it: the last track leaves, the next comes once its
+  // cover is ready.
+  const { shown, swap } = useTrackSwap(onAir, preloadBarCover);
+  const { title, artist, album, art } = shown?.song ?? {};
+  const playedAt = shown?.played_at;
   const artistPage = useArtistPage(artist);
-  const trackKey = title && artist ? `${artist}|${title}` : null;
-  const [firstTrackKey, setFirstTrackKey] = useState<string | null>(null);
-  if (firstTrackKey === null && trackKey !== null) setFirstTrackKey(trackKey);
   const player = usePlayer(
     useShallow((s) => ({
       isPlaying: s.isPlaying,
@@ -297,7 +304,7 @@ export function PlayerBar() {
   const initializeAirPlay = useAirPlayStore((s) => s.initialize);
   const initializeCast = useCastStore((s) => s.initialize);
   const diffusion = useDiffusion();
-  const { isLiked, handleToggleLike, handleShare } = useTrackActions();
+  const { isLiked, isLiking, handleToggleLike, handleShare } = useTrackActions({ title, artist });
   const heroPlayerInView = useHeroPlayerStore((s) => s.inView);
   const hasHeroPlayer = useHasHeroPlayer();
   const { restoreVolume } = player;
@@ -318,6 +325,7 @@ export function PlayerBar() {
           : null
       }
       isKept={isLiked}
+      isKeeping={isLiking}
       onToggleKeep={handleToggleLike}
       onShare={handleShare}
       volume={player.volume}
@@ -327,7 +335,7 @@ export function PlayerBar() {
       diffusion={diffusion}
       artistHref={artistPage ? artistPath(artistPage) : null}
       isOnline={isOnline}
-      hasChanged={firstTrackKey !== null && trackKey !== firstTrackKey}
+      swap={swap}
     />
   );
 }

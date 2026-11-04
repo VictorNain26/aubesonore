@@ -17,6 +17,7 @@ export interface NowPlayingSheetProps {
   listen: ListenState;
   onToggleListen: () => void;
   isKept: boolean;
+  isKeeping: boolean;
   onToggleKeep: () => void;
   onShare: () => void;
   diffusion: Diffusion | null;
@@ -39,6 +40,7 @@ export function NowPlayingSheet({
   listen,
   onToggleListen,
   isKept,
+  isKeeping,
   onToggleKeep,
   onShare,
   diffusion,
@@ -90,6 +92,7 @@ export function NowPlayingSheet({
                   <KeepButton
                     title={track.title}
                     isKept={isKept}
+                    isKeeping={isKeeping}
                     onToggle={onToggleKeep}
                     className={KEEP_RING}
                     heartClassName="size-6"
