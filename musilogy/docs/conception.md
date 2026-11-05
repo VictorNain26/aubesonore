@@ -94,8 +94,8 @@ zéro ligne pour un MBID inconnu. Chacune passe en production au premier
 `musilogy load` qui suit sa fusion ; d'ici là, le site la traite comme absente
 (code `42883`). Leurs signatures et leur ordre de tri sont dans
 `src/musilogy/pg/90_artist.sql` et `src/musilogy/pg/90_search.sql`, chacune
-commentée ; `tests/test_artist.py`, `test_same_sound.py`, `test_colisten.py` et
-`test_credits.py` vérifient contre Postgres les signatures que le site lit.
+commentée ; `tests/test_contract.py` vérifie contre Postgres les signatures que le
+site lit.
 
 - `artist_homonym_rank(artists)` : le rang de chaque artiste parmi ceux de son
   nom exact, les plus écoutés d'abord ; le site en tire l'adresse d'une page

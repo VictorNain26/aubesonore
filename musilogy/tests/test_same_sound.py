@@ -191,18 +191,3 @@ def test_the_site_reads_a_neighbours_end_only_when_declared(tmp_path, pg):
     ]
     ends = dict(pg_query(pg, f"SELECT mbid, y_end FROM musilogy.artist_same_sound('{A}')"))
     assert (ends[B], ends[D]) == (1979, None)
-
-
-def test_artist_same_sound_keeps_the_signature_the_site_reads(tmp_path, pg):
-    loaded(tmp_path, pg, ARTISTS)
-    assert pg_query(
-        pg,
-        "SELECT pg_get_function_result(p.oid) FROM pg_proc p "
-        "JOIN pg_namespace n ON n.oid = p.pronamespace "
-        "WHERE n.nspname = 'musilogy' AND p.proname = 'artist_same_sound'",
-    ) == [
-        (
-            "TABLE(mbid text, name text, disambiguation text, y0 integer, y_end integer, "
-            "ended boolean, rank integer, term text)",
-        )
-    ]

@@ -203,17 +203,6 @@ def test_the_site_reads_the_colisten_in_rank_order(tmp_path, pg):
         (B, 1979, 1),
         (C, None, 2),
     ]
-    assert pg_query(
-        pg,
-        "SELECT pg_get_function_result(p.oid) FROM pg_proc p "
-        "JOIN pg_namespace n ON n.oid = p.pronamespace "
-        "WHERE n.nspname = 'musilogy' AND p.proname = 'artist_colisten'",
-    ) == [
-        (
-            "TABLE(mbid text, name text, disambiguation text, y0 integer, y_end integer, "
-            "ended boolean, rank integer)",
-        )
-    ]
 
 
 def test_the_site_leaves_out_a_neighbour_the_dump_does_not_hold_ranks_closed(tmp_path, pg):

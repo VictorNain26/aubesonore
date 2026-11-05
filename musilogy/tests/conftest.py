@@ -105,7 +105,7 @@ def build_synthetic(tmp_path, artists, release_groups=(), **build_kwargs):
     return c
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def pg():
     """A libpq connection string to a disposable Postgres, never the site's:
     the tests drop and recreate the musilogy schemas. The CI provides one; a

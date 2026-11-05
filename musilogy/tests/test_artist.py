@@ -71,21 +71,6 @@ def test_the_card_carries_the_discogs_styles_most_records_first(tmp_path, pg):
     assert json.loads(cards[B]) == []
 
 
-def test_the_card_keeps_the_signature_the_site_reads(tmp_path, pg):
-    # The signature is the contract the site reads (docs/conception.md §4).
-    loaded(tmp_path, pg, [group(A)], popularity={A: 42})
-    assert pg_query(
-        pg, "SELECT pg_get_function_result('musilogy.artist_card(text)'::regprocedure)"
-    ) == [
-        (
-            "TABLE(mbid text, name text, disambiguation text, type text, country text, "
-            "begin_area text, y_birth integer, y0 integer, y0_source text, y_end integer, "
-            "y_end_source text, ended boolean, styles jsonb, "
-            "listen_count bigint, user_count bigint)",
-        )
-    ]
-
-
 def test_a_page_shows_the_work_from_the_first_album_to_the_declared_end(tmp_path, pg):
     # A, a group that ended in 1985: the EP before its first album and the
     # album after its end stay out; the posthumous album Wikidata files as a
@@ -123,14 +108,6 @@ def test_a_page_shows_the_work_from_the_first_album_to_the_declared_end(tmp_path
         (RG8, 1990),
         (RG10, None),
     ]
-    assert pg_query(
-        pg, "SELECT pg_get_function_result('musilogy.artist_releases(text)'::regprocedure)"
-    ) == [
-        (
-            "TABLE(mbid text, title text, primary_type text, soundtrack boolean, "
-            "remix boolean, y integer)",
-        )
-    ]
 
 
 def test_an_ended_page_is_no_longer_the_artist_s(tmp_path, pg):
@@ -145,9 +122,6 @@ def test_an_ended_page_is_no_longer_the_artist_s(tmp_path, pg):
         ("bandcamp", "https://a.bandcamp.com/"),
         ("free streaming", "https://www.deezer.com/artist/1"),
     ]
-    assert pg_query(
-        pg, "SELECT pg_get_function_result('musilogy.artist_urls(text)'::regprocedure)"
-    ) == [("TABLE(type text, url text)",)]
 
 
 GROUP = "00000000-0000-4000-8000-0000000000b1"
@@ -270,32 +244,6 @@ def test_other_names_read_both_ways(tmp_path, pg):
     ]
 
 
-def test_the_band_sections_keep_the_signatures_the_site_reads(tmp_path, pg):
-    # The contract of docs/conception.md §4.
-    band_history(tmp_path, pg)
-    assert pg_query(
-        pg,
-        "SELECT p.proname, pg_get_function_result(p.oid) FROM pg_proc p "
-        "JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'musilogy' "
-        "AND p.proname IN ('artist_bands', 'artist_member_projects', 'artist_other_names') "
-        "ORDER BY 1",
-    ) == [
-        (
-            "artist_bands",
-            "TABLE(role text, mbid text, name text, disambiguation text, y0 integer, "
-            "y_begin integer, y_end integer)",
-        ),
-        (
-            "artist_member_projects",
-            "TABLE(mbid text, name text, disambiguation text, y0 integer, via text[])",
-        ),
-        (
-            "artist_other_names",
-            "TABLE(kind text, mbid text, name text, disambiguation text, y0 integer)",
-        ),
-    ]
-
-
 def homonym(i):
     return f"00000000-0000-4000-8000-0000000002{i:02d}"
 
@@ -326,17 +274,3 @@ def test_homonyms_ranked_by_listeners_the_unknown_last_then_by_mbid(tmp_path, pg
         homonym(2): 3,
         homonym(3): 1,
     }
-
-
-def test_the_rank_keeps_the_signature_the_site_reads(tmp_path, pg):
-    # The site does arithmetic on homonym_rank: a bigint would reach it as a string.
-    loaded(tmp_path, pg, [synthetic_artist(homonym(0), "1990", None, name="Ab")], popularity={})
-    assert pg_query(
-        pg,
-        "SELECT pg_get_function_result('musilogy.artist_homonym_rank(text[])'::regprocedure)",
-    ) == [("TABLE(mbid text, homonym_rank integer)",)]
-
-
-def test_an_artist_the_dump_does_not_hold_has_no_rank(tmp_path, pg):
-    loaded(tmp_path, pg, [synthetic_artist(homonym(0), "1990", None, name="Ab")], popularity={})
-    assert ranks(pg, homonym(9)) == {}
