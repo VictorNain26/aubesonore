@@ -78,6 +78,7 @@ pnpm typecheck                 # turbo typecheck
 pnpm format:check              # prettier --check
 
 pnpm --filter @aubesonore/frontend test          # Vitest
+pnpm --filter @aubesonore/frontend test:visual   # captures et axe (voir plus bas)
 pnpm --filter @aubesonore/backend test           # bun test
 pnpm storybook                 # le catalogue, sur http://localhost:6006
 ```
@@ -85,6 +86,25 @@ pnpm storybook                 # le catalogue, sur http://localhost:6006
 ### Le catalogue
 
 Storybook montre les vrais composants du site, état par état, sans backend : la barre d'outils choisit le ciel (Système, Jour, Nuit), la langue et la largeur de 320 à 2560 px. Les stories vivent à côté de leur composant (`*.stories.tsx`), les données d'exemple dans `apps/frontend/src/stories/fixtures.ts` ; la configuration est dans `apps/frontend/.storybook/`. Il ne tourne qu'en développement : rien n'en arrive dans le site publié.
+
+### Captures et accessibilité
+
+`apps/frontend/visual/` capture entières chaque page du site et les états de l'accueil difficiles à voir en vrai (la liste est dans `visual/pages.visual.ts`), à 390 et 1280 px, de jour et de nuit, et la compare pixel pour pixel à sa référence (`visual/__screenshots__/`). axe passe ensuite sur chaque page : une violation grave ou critique fait échouer le test, sauf celles listées et expliquées dans `visual/axe.ts`. Rien ne vient du réseau : `visual/network.ts` répond à la place de la station, de l'API et des images, avec les données d'exemple de `src/stories/`. Configuration : `apps/frontend/playwright.config.ts`.
+
+Les polices et le lissage changent d'un système à l'autre : les références ne sont dessinées et comparées que dans l'image officielle de Playwright, à la version installée (`mcr.microsoft.com/playwright:v<version>-noble`, celle du job `visual` de `.github/workflows/site.yml`). La CI lance la suite à chaque PR. Hors de cette image, un lancement local sert à regarder une page, pas à juger une différence.
+
+Redessiner les références après un changement voulu, au choix :
+
+- **Par la CI** : Actions → Site → Run workflow, sur la branche ; l'artefact `visual-baselines` du run contient toutes les captures, à copier dans `apps/frontend/visual/__screenshots__/` et à commiter. Une capture nouvelle, sans référence, arrive aussi dans cet artefact quand le job échoue sur une PR.
+- **Avec Docker**, depuis la racine du worktree, dépendances installées (`pnpm -C site install`, puis `pnpm -C site turbo build --filter=@aubesonore/shared-types`), sans réseau :
+
+  ```bash
+  docker run --rm --network none --user "$(id -u):$(id -g)" -v "$PWD":/work \
+    -w /work/site/apps/frontend mcr.microsoft.com/playwright:v1.64.1-noble \
+    node ../../node_modules/@playwright/test/cli.js test --update-snapshots
+  ```
+
+Le tag de l'image suit la version de `@playwright/test` de `apps/frontend/package.json` : les deux changent ensemble.
 
 Détails par app : [backend](apps/backend/README.md) · [frontend](apps/frontend/README.md).
 

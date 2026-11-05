@@ -47,6 +47,8 @@ drizzle/migrations/meta/
 
 # Testing
 coverage/
+apps/frontend/test-results/
+apps/frontend/playwright-report/
 
 # Temporary
 temp-*/
