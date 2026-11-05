@@ -1,6 +1,7 @@
 import http.client
 import io
 import json
+import re
 import tarfile
 import urllib.error
 from email.message import Message
@@ -266,6 +267,56 @@ def test_a_throttled_wikidata_query_waits_for_its_retry_after(monkeypatch, slept
     monkeypatch.setattr(fetch, "get_json", get)
     assert fetch.discography() == []
     assert slept == [9.0]
+
+
+def sparql(*ids):
+    """A SPARQL 1.1 JSON result (w3.org/TR/sparql11-results-json) binding ?rg."""
+    bindings = [{"rg": {"type": "literal", "value": i}} for i in ids]
+    return {"head": {"vars": ["rg"]}, "results": {"bindings": bindings}}
+
+
+def wikidata(answers):
+    """A fake query service answering each form's query with answers[form QID]."""
+
+    def get(_url, params):
+        (qid,) = re.findall(r"wd:(Q\d+)", params["query"])
+        return answers[qid], Message()
+
+    return get
+
+
+def test_the_discography_is_one_row_per_release_group_and_form_sorted(monkeypatch):
+    # A record filed twice under one form is one row; under two forms, two.
+    # The malformed ID stays as Wikidata holds it: telling it from a release
+    # group is a rule of the SQL.
+    answers = {
+        "Q208569": sparql("rg-b", "rg-a", "rg-b"),
+        "Q169930": sparql("rg-a", "not an mbid"),
+        "Q4176708": sparql("rg-c"),
+    }
+    monkeypatch.setattr(fetch, "get_json", wikidata(answers))
+    assert fetch.discography() == [
+        {"rg_mbid": "not an mbid", "form": "ep"},
+        {"rg_mbid": "rg-a", "form": "ep"},
+        {"rg_mbid": "rg-a", "form": "studio"},
+        {"rg_mbid": "rg-b", "form": "studio"},
+        {"rg_mbid": "rg-c", "form": "soundtrack"},
+    ]
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        pytest.param({"head": {"vars": ["rg"]}}, id="no results"),
+        pytest.param({"results": {"bindings": None}}, id="bindings not a list"),
+        pytest.param({"results": {"bindings": [{"album": {"value": "x"}}]}}, id="no ?rg bound"),
+    ],
+)
+def test_an_answer_of_another_shape_stops_the_snapshot(monkeypatch, answer):
+    # Never an empty discography: every record would read as filed nowhere.
+    monkeypatch.setattr(fetch, "get_json", lambda _url, _params: (answer, Message()))
+    with pytest.raises(fetch.DownloadError, match="unexpected shape"):
+        fetch.discography()
 
 
 def browse(artist, ids, count=None):
