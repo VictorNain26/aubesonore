@@ -135,10 +135,18 @@ def test_a_stuck_sockseek_is_stopped_and_its_finished_tracks_kept(
     assert not (tmp_path / "sockseek.conf").exists()
 
 
-def test_time_limit_follows_the_search_pace() -> None:
+@pytest.mark.parametrize(
+    ("n_wanted", "limit"),
+    [
+        # 16 fenêtres de 220 s, doublées, plus 30 min : 2 h 27 (docs/conception.md, ~2 h 30).
+        pytest.param(160, 8840.0, id="whole-windows"),
+        # Le 161e titre ouvre une 17e fenêtre : 440 s de plus, pas 22.
+        pytest.param(161, 9280.0, id="a-started-window-counts"),
+    ],
+)
+def test_time_limit_follows_the_search_pace(n_wanted: int, limit: float) -> None:
     cfg = AcquisitionConfig(searches_per_time=10, searches_renew_s=220)
-    # 160 titres : 16 fenêtres de 220 s, doublées, plus une demi-heure.
-    assert time_limit(160, cfg) == 2 * 16 * 220 + 1800
+    assert time_limit(n_wanted, cfg) == limit
 
 
 def test_unknown_failure_code_is_named(tmp_path: Path) -> None:

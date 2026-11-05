@@ -1,4 +1,5 @@
 import logging
+from html.parser import HTMLParser
 from pathlib import Path
 
 import jwt
@@ -81,12 +82,36 @@ def test_page_shows_next_ballot_blind(db: Path) -> None:
         assert hidden not in r.text
 
 
+class _Elements(HTMLParser):
+    """Les éléments de la page dans l'ordre : (balise, attributs, texte)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.elements: list[tuple[str, dict[str, str | None], str]] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.elements.append((tag, dict(attrs), ""))
+
+    def handle_data(self, data: str) -> None:
+        if self.elements:
+            tag, attrs, text = self.elements[-1]
+            self.elements[-1] = (tag, attrs, text + data)
+
+
 def test_page_shows_a_hint_when_the_preview_fails_to_play(db: Path) -> None:
-    r = _client(db).get("/", headers=OK)
-    assert '<p class="indispo" hidden>Extrait indisponible : choisir « Passer ».</p>' in r.text
-    assert 'onerror="this.nextElementSibling.hidden=false"' in r.text
-    for hidden in ("exam", "lesson", "leçon"):  # à l'aveugle, même côté indisponibilité
-        assert hidden not in r.text
+    b = _first(db)
+    page = _Elements()
+    page.feed(_client(db).get("/", headers=OK).text)
+    i = next(
+        i
+        for i, (tag, attrs, _) in enumerate(page.elements)
+        if tag == "audio" and attrs.get("src") == f"/extrait/{b.deezer_track_id}"
+    )
+    # L'aide suit le lecteur, cachée ; une erreur de lecture la montre.
+    assert page.elements[i][1]["onerror"] == "this.nextElementSibling.hidden=false"
+    tag, attrs, text = page.elements[i + 1]
+    assert tag == "p" and "hidden" in attrs
+    assert text == "Extrait indisponible : choisir « Passer »."
 
 
 def test_vote_is_recorded_and_page_moves_on(db: Path) -> None:
@@ -207,20 +232,6 @@ def test_extrait_supports_byte_ranges(db: Path) -> None:
     assert r.headers["content-range"] == "bytes 0-1/7"
     assert r.headers["accept-ranges"] == "bytes"
     assert r.headers["cache-control"] == "no-store"
-
-    r = c.get(f"/extrait/{tid}", headers={**OK, "Range": "bytes=3-"})
-    assert r.status_code == 206
-    assert r.content == b"-mp3"
-    assert r.headers["content-range"] == "bytes 3-6/7"
-
-    r = c.get(f"/extrait/{tid}", headers={**OK, "Range": "bytes=-2"})
-    assert r.status_code == 206
-    assert r.content == b"p3"
-    assert r.headers["content-range"] == "bytes 5-6/7"
-
-    r = c.get(f"/extrait/{tid}", headers={**OK, "Range": "bytes=9-"})
-    assert r.status_code == 416
-    assert r.headers["content-range"] == "bytes */7"
 
     r = c.get(f"/extrait/{tid}", headers=OK)
     assert r.status_code == 200

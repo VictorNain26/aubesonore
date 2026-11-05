@@ -3,7 +3,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from radio.library.weights import play_weight
 from radio.model.dataset import (
     LIBRARY,
     VOTE_NO,
@@ -37,18 +36,29 @@ def test_categories_and_exam(tmp_path: Path) -> None:
 
 def test_library_weights_follow_plays(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path, n_artists=3, per_artist=2)
+    conn.executemany(
+        "UPDATE library_tracks SET plays = ? WHERE plex_key = ?",
+        [(0, "p0-0"), (100, "p0-1"), (1, "p1-0")],
+    )
+    # Deux copies Plex du même titre Deezer : leurs écoutes s'additionnent (1 + 2).
+    conn.execute(
+        "INSERT INTO library_tracks VALUES ('p1-0b', 'Lib 1', 'Chanson 0', 'Album', 200000, 2, "
+        "'d', NULL)"
+    )
+    conn.execute("INSERT INTO deezer_matches VALUES ('p1-0b', 'matched', NULL, 100010, 1001, 'd')")
+    conn.commit()
     table = load_signals(conn)
     lab = build_labels(conn, table, 60)
-    plays = {
-        r[0]: r[1]
-        for r in conn.execute(
-            "SELECT m.deezer_track_id, t.plays FROM deezer_matches m JOIN library_tracks t "
-            "USING (plex_key)"
-        )
-    }
     lib = lab.train.categories == LIBRARY
-    for row, w in zip(lab.train.rows[lib], lab.train.base_weights[lib], strict=True):
-        assert w == pytest.approx(play_weight(plays[int(table.track_ids[row])]))
+    weight_of = {
+        int(table.track_ids[row]): float(w)
+        for row, w in zip(lab.train.rows[lib], lab.train.base_weights[lib], strict=True)
+    }
+    # 1 + ln(1 + écoutes), plafonné à 4 (library/weights.py) : 0 écoute → 1, 100 → plafond,
+    # 3 écoutes → 1 + ln 4.
+    assert weight_of[100000] == 1.0
+    assert weight_of[100001] == 4.0
+    assert weight_of[100010] == pytest.approx(2.386294, abs=1e-6)
 
 
 def test_a_vote_overrides_the_origin(tmp_path: Path) -> None:

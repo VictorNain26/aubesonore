@@ -1,5 +1,4 @@
 import json
-import sqlite3
 from collections.abc import Iterable
 from dataclasses import replace
 from datetime import date, datetime, tzinfo
@@ -705,25 +704,15 @@ def test_the_grid_empties_the_hour_missing_from_the_day(
 
 
 def test_the_grid_counts_what_azuracast_has_already_queued(
-    tmp_path: Path, grille_env: FakeAzuracast, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, grille_env: FakeAzuracast
 ) -> None:
     # Breaks if the queue is ignored: AzuraCast queues ~20 min ahead, and a title already handed
     # to Liquidsoap plays even when its hour is rewritten; placed again, it would play twice.
+    # 400 titres jamais joués pour moins de 400 créneaux : sans la file, s1 passerait demain.
     _on_air(tmp_path, 400)
     grille_env.queue = {"s1": 1_791_130_000.0}
-    seen: list[dict[str, float]] = []
-    real = cli.antenne.grille_mod.with_published
-
-    def spy(
-        conn: sqlite3.Connection,
-        played: dict[str, float],
-        now: float,
-        rewritten: Iterable[float],
-    ) -> dict[str, float]:
-        seen.append(played)
-        return real(conn, played, now, rewritten)
-
-    monkeypatch.setattr(cli.antenne.grille_mod, "with_published", spy)
     res = CliRunner().invoke(cli.app, ["grille"])
     assert res.exit_code == 0, res.output
-    assert seen == [{"s2": 50.0, "s1": 1_791_130_000.0}]
+    day = "".join(grille_env.filled.values())
+    assert "antenne/1.mp3\n" not in day
+    assert "antenne/3.mp3\n" in day

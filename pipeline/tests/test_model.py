@@ -1,22 +1,10 @@
 from collections import Counter
-from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-import pytest
-
-import radio.model.model as model_mod
 from radio.core.config import ModelConfig
-from radio.model.model import Batch, _decide, last_batch, rescore, train
+from radio.model.model import Batch, last_batch, rescore, train
 from tests.model_factory import NOW, add_vote, as_news, make_model_db
-
-
-def test_decide_keeps_the_serving_model_unless_the_new_one_is_as_good() -> None:
-    serving = (1, object())
-    assert _decide(None, None, None) is None
-    assert _decide(serving, 0.8, 0.8) is None
-    assert _decide(serving, 0.7, 0.8) == "AUC d'examen 0,700 < 0,800 (modèle en service)"
-    assert _decide(serving, None, 0.8) is not None
 
 
 def _two_batches(conn: Any) -> None:
@@ -205,24 +193,65 @@ def test_last_batch_counts_the_floored_news_of_the_latest_run(tmp_path: Path) ->
     assert last_batch(conn) == Batch(2, 48, 9, 3)
 
 
-def test_a_worse_model_is_kept_out_of_service(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+EXAM_YES, EXAM_NO = (200100, 200200, 200300), (300100, 300200, 300300)
+
+
+def _exam(conn: Any, no: tuple[int, ...] = EXAM_NO) -> None:
+    for t in EXAM_YES:
+        add_vote(conn, t, "exam", "oui")
+    for t in no:
+        add_vote(conn, t, "exam", "non")
+
+
+def test_a_model_as_good_as_the_serving_one_is_promoted(tmp_path: Path) -> None:
+    conn = make_model_db(tmp_path)
+    _two_batches(conn)
+    cfg = ModelConfig()
+    train(conn, tmp_path / "models", cfg, NOW)
+    _exam(conn)
+    # Mêmes exemples : les deux modèles classent l'examen sans faute, AUC 1 contre 1. L'égalité
+    # suffit (docs/conception.md, « Promotion » : « égale au moins celle du modèle en service »).
+    second = train(conn, tmp_path / "models", cfg, NOW)
+    assert (second.new_auc, second.current_auc) == (1.0, 1.0)
+    assert second.promoted and second.verdict == "AUC d'examen au moins égale"
+    assert rescore(conn, tmp_path / "models", cfg) == second.model_id
+
+
+def test_a_worse_model_is_kept_out_of_service(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     _two_batches(conn)
     cfg = ModelConfig()
     first = train(conn, tmp_path / "models", cfg, NOW)
-    for t in (200100, 200200, 200300):
-        add_vote(conn, t, "exam", "oui")
-    for t in (300100, 300200, 300300):
-        add_vote(conn, t, "exam", "non")
-    real_fit = model_mod.fit
-
-    def inverted(table: Any, ds: Any, c: ModelConfig) -> Any:
-        return real_fit(table, replace(ds, labels=1 - ds.labels), c)
-
-    monkeypatch.setattr(model_mod, "fit", inverted)
+    _exam(conn)
+    # Des leçons qui contredisent tout le goût : « non » aux candidats aimés, « oui » aux rejetés.
+    # Elles pèsent plus que la bibliothèque : le second modèle apprend le goût à l'envers.
+    for t in range(200000, 201200, 100):
+        for k in range(4):
+            if t + k not in EXAM_YES:
+                add_vote(conn, t + k, "lesson", "non")
+    for t in range(300000, 301200, 100):
+        for k in range(4):
+            if t + k not in EXAM_NO:
+                add_vote(conn, t + k, "lesson", "oui")
     second = train(conn, tmp_path / "models", cfg, NOW)
-    assert not second.promoted and second.new_auc == 0.0 and second.current_auc == 1.0
+    assert (second.new_auc, second.current_auc) == (0.0, 1.0)
+    assert not second.promoted
+    assert second.verdict == "AUC d'examen 0,000 < 1,000 (modèle en service)"
     assert rescore(conn, tmp_path / "models", cfg) == first.model_id
     assert {m for m, _ in _scores(conn).values()} == {first.model_id}
+
+
+def test_an_exam_without_both_answers_keeps_the_serving_model(tmp_path: Path) -> None:
+    conn = make_model_db(tmp_path)
+    _two_batches(conn)
+    cfg = ModelConfig()
+    first = train(conn, tmp_path / "models", cfg, NOW)
+    _exam(conn, no=())
+    # Que des « oui » : aucune AUC, donc rien ne prouve que le nouveau modèle vaut l'ancien.
+    second = train(conn, tmp_path / "models", cfg, NOW)
+    assert (second.new_auc, second.current_auc) == (None, None)
+    assert not second.promoted
+    assert second.verdict == (
+        "comparaison impossible : l'examen n'a pas à la fois des « oui » et des « non »"
+    )
+    assert rescore(conn, tmp_path / "models", cfg) == first.model_id

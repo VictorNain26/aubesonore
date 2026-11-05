@@ -49,28 +49,6 @@ def test_blob_round_trip() -> None:
     assert np.array_equal(from_blob(b), v)
 
 
-class _FakeLoader:
-    def configure(self, **kwargs: object) -> None:
-        pass
-
-    def __call__(self) -> np.ndarray:
-        return np.ones(32000, dtype=np.float32)
-
-
-class _FakeNetRaising:
-    def __call__(self, audio: np.ndarray) -> np.ndarray:
-        raise RuntimeError("boom")
-
-
-def test_effnet_returns_none_when_net_raises_runtime_error() -> None:
-    # Réseau EffNet factice (aucun modèle réel requis) : une RuntimeError du graphe TensorFlow
-    # doit être comptée « empreinte ratée », pas bloquer `signals` (F3).
-    emb = object.__new__(EffnetEmbedder)
-    emb._loader = _FakeLoader()  # type: ignore[attr-defined]
-    emb._net = _FakeNetRaising()  # type: ignore[attr-defined]
-    assert emb.embed(b"whatever bytes") is None
-
-
 @pytest.fixture(scope="module")
 def effnet() -> EffnetEmbedder:
     return EffnetEmbedder(MODEL)
@@ -103,3 +81,23 @@ def test_effnet_rejects_garbage(effnet: EffnetEmbedder) -> None:
 @needs_model
 def test_effnet_rejects_too_short(effnet: EffnetEmbedder) -> None:
     assert effnet.embed(sine_wav(seconds=1.0), suffix=".wav") is None
+
+
+class _GraphFailing:
+    def __init__(self, **kwargs: object) -> None:
+        pass
+
+    def __call__(self, audio: object) -> object:
+        raise RuntimeError("TensorFlow : graphe en échec")
+
+
+@needs_model
+def test_effnet_counts_a_failing_graph_as_a_missed_embedding(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Le graphe TensorFlow d'essentia est remplacé par un graphe qui lève, le reste est réel :
+    # l'extrait est raté (None), `signals` le compte et continue au lieu de s'arrêter.
+    import essentia.standard
+
+    monkeypatch.setattr(essentia.standard, "TensorflowPredictEffnetDiscogs", _GraphFailing)
+    assert EffnetEmbedder(MODEL).embed(sine_wav(), suffix=".wav") is None

@@ -1,4 +1,7 @@
+import io
+import json
 import time
+import urllib.request
 from types import SimpleNamespace
 from typing import Any
 
@@ -51,8 +54,23 @@ def test_invalid_tokens_are_refused(token: str) -> None:
         AccessVerifier(TEAM, AUD, Keys())(token)
 
 
-def test_default_keys_come_from_the_team_certs_url() -> None:
-    v = AccessVerifier(TEAM, AUD)
-    assert v.issuer == ISS
-    assert isinstance(v._keys, jwt.PyJWKClient)
-    assert v._keys.uri == f"{ISS}/cdn-cgi/access/certs"
+def test_default_keys_come_from_the_team_certs_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Le réseau est remplacé au niveau d'urllib, que PyJWKClient appelle : la page publiée par
+    # Cloudflare sert la clé publique de KEY sous l'identifiant du jeton.
+    jwk = json.loads(jwt.algorithms.RSAAlgorithm.to_jwk(KEY.public_key()))
+    jwks = json.dumps({"keys": [{**jwk, "kid": "k1", "alg": "RS256", "use": "sig"}]}).encode()
+    asked: list[str] = []
+
+    def serve(self: Any, request: urllib.request.Request, *args: Any, **kwargs: Any) -> Any:
+        asked.append(request.full_url)
+        return io.BytesIO(jwks)
+
+    monkeypatch.setattr(urllib.request.OpenerDirector, "open", serve)
+    token = jwt.encode(
+        {"aud": [AUD], "iss": ISS, "exp": int(time.time()) + 600},
+        KEY,
+        algorithm="RS256",
+        headers={"kid": "k1"},
+    )
+    AccessVerifier(TEAM, AUD)(token)
+    assert asked == ["https://aube.cloudflareaccess.com/cdn-cgi/access/certs"]
