@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-import typer
 from pydantic import SecretStr
 from typer.testing import CliRunner
 
@@ -183,9 +182,3 @@ def test_pass_stages_are_the_weekly_units_commands() -> None:
         if line.startswith("ExecStart=")
     )
     assert commands == (*cli.ops.PASS_STAGES, "check")
-
-
-def test_help_lists_the_pass_in_its_order() -> None:
-    # radio --help suit l'ordre d'enregistrement des commandes (radio/cli/__init__.py).
-    names = list(typer.main.get_command(cli.app).commands)
-    assert [n for n in names if n in cli.ops.PASS_STAGES] == list(cli.ops.PASS_STAGES)

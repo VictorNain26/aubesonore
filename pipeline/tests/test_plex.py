@@ -66,19 +66,19 @@ def test_tracks_are_read_with_plays_and_track_artist() -> None:
     assert sec.container_sizes == [5000]
 
 
-def test_forbidden_section_is_refused() -> None:
+@pytest.mark.parametrize(
+    "section",
+    [
+        pytest.param(FakeSection(title="Musique Second Wave"), id="forbidden-section"),
+        pytest.param(FakeSection(type="movie"), id="not-music"),
+        pytest.param(
+            FakeSection(locations=["/media/plex/Musique", "/srv/autre"]), id="outside-root"
+        ),
+    ],
+)
+def test_a_section_outside_the_guard_is_refused(section: FakeSection) -> None:
     with pytest.raises(LibraryGuardError):
-        source(FakeSection(title="Musique Second Wave"))
-
-
-def test_non_music_section_is_refused() -> None:
-    with pytest.raises(LibraryGuardError):
-        source(FakeSection(type="movie"))
-
-
-def test_location_outside_root_is_refused() -> None:
-    with pytest.raises(LibraryGuardError):
-        source(FakeSection(locations=["/media/plex/Musique", "/srv/autre"]))
+        source(section)
 
 
 @pytest.mark.parametrize(

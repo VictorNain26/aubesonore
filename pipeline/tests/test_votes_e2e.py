@@ -15,8 +15,8 @@ from radio.core.config import Settings
 from radio.core.db import connect
 from radio.votes.app import create_app
 from radio.votes.select import pending_ballots
+from tests.factories import OK, PreviewDeezer, verify
 from tests.model_factory import add_vote, make_model_db, seed_run
-from tests.test_votes_app import OK, FakeDeezer, _verify
 
 runner = CliRunner()
 
@@ -59,7 +59,7 @@ def test_votes_lifecycle_from_training_to_a_second_selection(env: Path) -> None:
     assert "en attente de vote : pas de nouvelle sélection" in res.output
 
     # 4. vote sur la vraie page pour chaque bulletin en attente, « oui »/« non » en alternance.
-    client = TestClient(create_app(db_path, FakeDeezer(), _verify))
+    client = TestClient(create_app(db_path, PreviewDeezer(), verify))
     for i, ballot in enumerate(first_pending):
         choix = "oui" if i % 2 == 0 else "non"
         r = client.post(

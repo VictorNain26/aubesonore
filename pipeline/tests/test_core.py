@@ -20,12 +20,10 @@ def test_connect_applies_migrations(tmp_path: Path) -> None:
     names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert {"library_tracks", "deezer_matches"} <= names
     assert conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1
-
-
-def test_connect_is_idempotent(tmp_path: Path) -> None:
-    connect(tmp_path / "radio.db").close()
-    conn = connect(tmp_path / "radio.db")
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == N_MIGRATIONS
+    conn.close()
+    # Rouvrir une base à jour ne rejoue aucune migration (un CREATE TABLE rejoué lèverait).
+    again = connect(tmp_path / "radio.db")
+    assert again.execute("PRAGMA user_version").fetchone()[0] == N_MIGRATIONS
 
 
 def test_migration_9_marks_published_discoveries(

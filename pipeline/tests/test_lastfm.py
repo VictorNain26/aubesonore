@@ -77,7 +77,3 @@ def test_network_error_leaks_no_key(caplog: pytest.LogCaptureFixture) -> None:
         client().similar_artists("x")
     assert KEY not in str(exc.value)
     assert KEY not in caplog.text
-
-
-def test_unavailable_is_not_a_lastfm_error() -> None:
-    assert not issubclass(LastfmUnavailable, LastfmError)

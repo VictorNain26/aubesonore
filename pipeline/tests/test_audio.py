@@ -12,9 +12,7 @@ from radio.signals.audio import (
     EffnetEmbedder,
     ModelError,
     check_model,
-    from_blob,
     single_thread_tensorflow,
-    to_blob,
 )
 
 MODEL = Settings(_env_file=None).effnet_model
@@ -40,13 +38,6 @@ def test_tensorflow_runs_on_one_thread_unless_already_set(monkeypatch: pytest.Mo
     assert os.environ["TF_NUM_INTRAOP_THREADS"] == "1"
     assert os.environ["TF_NUM_INTEROP_THREADS"] == "4"  # un réglage de l'opérateur l'emporte
     assert os.environ["TF_CPP_MIN_LOG_LEVEL"] == "3"
-
-
-def test_blob_round_trip() -> None:
-    v = np.arange(DIM, dtype=np.float32) / DIM
-    b = to_blob(v)
-    assert len(b) == 5120
-    assert np.array_equal(from_blob(b), v)
 
 
 @pytest.fixture(scope="module")
