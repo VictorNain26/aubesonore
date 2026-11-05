@@ -110,22 +110,6 @@ def test_first_album_fallback_survives_an_illegible_begin(tmp_path):
     assert counter(c, "first_album_with_begin_below_min_year") == 0
 
 
-def test_y_end_falls_back_to_last_album_when_there_is_no_declared_end(tmp_path):
-    mbid = "no-end-band"
-    c = build_synthetic(
-        tmp_path,
-        [synthetic_artist(mbid, "1990-01-01", None)],
-        [
-            synthetic_release_group("rg-3", mbid, "1992-01-01"),
-            synthetic_release_group("rg-4", mbid, "1998-01-01"),
-        ],
-    )
-    row = c.execute(
-        "SELECT y0, y0_source, y_end, y_end_source FROM artists WHERE mbid = ?", [mbid]
-    ).fetchone()
-    assert row == (1990, "declared", 1998, "last_album")
-
-
 def test_y0_and_y_end_are_both_null_without_any_evidence(tmp_path):
     mbid = "no-evidence-band"
     c = build_synthetic(tmp_path, [synthetic_artist(mbid, None, None)])

@@ -129,7 +129,7 @@ uv sync
 
 Deux niveaux de test :
 
-- `uv run pytest` — suite rapide, quelques secondes, sans dépendance au dump. Tourne sur les témoins réels de `cli.WITNESSES`, versionnés dans `tests/fixtures/` (extraits authentiques du dump de référence, jamais de données inventées) et sur quelques enregistrements synthétiques pour les formes qu'aucun témoin ne porte.
+- `uv run pytest` — suite rapide, sans dépendance au dump (`--durations=10` dit où passe son temps). Tourne sur les témoins réels de `cli.WITNESSES`, versionnés dans `tests/fixtures/` (extraits authentiques du dump de référence, jamais de données inventées) et sur quelques enregistrements synthétiques pour les formes qu'aucun témoin ne porte.
 - Les tests qui demandent la fixture `pg` (`tests/conftest.py`) — le chargement et les fonctions SQL du site — tournent contre un vrai Postgres jetable désigné par `MUSILOGY_TEST_PG` (chaîne de connexion libpq ; les tests y suppriment et recréent les schémas `musilogy`, jamais celui du site) : `MUSILOGY_TEST_PG='host=… dbname=…' uv run pytest`. Sans elle, ces tests sont sautés, sauf en CI, qui fournit un service Postgres 16 et échoue si la variable manque.
 
 La suite passe depuis n'importe quel répertoire : tous les chemins sont ancrés sur le paquet (`musilogy.paths`), jamais sur le répertoire courant.

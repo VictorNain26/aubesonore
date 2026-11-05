@@ -15,20 +15,23 @@ from musilogy.paths import dump_sums
 REF = dump_sums(REFERENCE_DUMP)
 
 
-def test_sha256_of_known_content(tmp_path):
+def test_verify_accepts_a_file_whose_sha256_is_the_one_expected(tmp_path):
+    # Every digest musilogy checks is a SHA-256 written by its publisher. The
+    # expected value comes from `printf musilogy | sha256sum`, not from
+    # sha256_file: every other test computes both sides with it.
     p = tmp_path / "a.bin"
     p.write_bytes(b"musilogy")
-    assert sha256_file(p) == ("a4164857777a9573db9057c25dd069b99c641aa3909b3fe38e5e3e711dfa01ae")
+    verify(p, "a4164857777a9573db9057c25dd069b99c641aa3909b3fe38e5e3e711dfa01ae")
 
 
-def test_expected_sums_reads_the_reference_file():
-    sums = expected_sums(REF)
-    assert sums["artist.tar.xz"] == (
-        "a68940e911830f65ff412275f4ba8a9100569cba1f677bdd6e6c091938e452f2"
-    )
-    assert sums["release-group.tar.xz"] == (
-        "38de1e46c25b6b6e5acc051e3ab359ed13e873056e1ddfe4aae75fe2e642124f"
-    )
+def test_the_musicbrainz_sums_are_read_without_their_binary_marker():
+    # MetaBrainz writes "<digest> *<name>", the binary-mode marker of
+    # sha256sum, where the other publishers write two spaces: the name must
+    # come without it, or no archive of the dump would find its digest.
+    assert expected_sums(REF) == {
+        "artist.tar.xz": "a68940e911830f65ff412275f4ba8a9100569cba1f677bdd6e6c091938e452f2",
+        "release-group.tar.xz": "38de1e46c25b6b6e5acc051e3ab359ed13e873056e1ddfe4aae75fe2e642124f",
+    }
 
 
 def test_verify_rejects_a_corrupted_file(tmp_path):

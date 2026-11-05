@@ -105,66 +105,70 @@ def test_run_refuses_to_publish_when_the_extraction_disagrees(tmp_path, publishe
     assert published == [], "publish() ran before the guard could stop the run"
 
 
-def test_run_stops_when_the_pinned_snapshot_is_missing(tmp_path, monkeypatch):
-    # A snapshot cannot be taken again: run must neither fetch a fresh one,
-    # which would publish other counts under the pinned date, nor build
-    # without one, which would publish an empty popularity table.
+# A survey cannot be taken again: ListenBrainz, Wikidata and MusicBrainz move
+# every day. A run must neither fetch a fresh one, which would publish other
+# counts under the pinned date, nor build without one, which would publish an
+# empty table. Each case lets the surveys checked before it through, and the
+# run names the command that takes the one missing.
+@pytest.mark.parametrize(
+    ("found", "missing", "command"),
+    [
+        pytest.param(
+            {},
+            ("POPULARITY_JSONL", lambda tmp: tmp / "artist-popularity.jsonl"),
+            "snapshot-popularity",
+            id="popularity",
+        ),
+        pytest.param(
+            {"verified_popularity": "popularity.jsonl"},
+            ("DISCOGRAPHY_JSONL", lambda tmp: tmp / "discography.jsonl"),
+            "snapshot-discography",
+            id="discography",
+        ),
+        pytest.param(
+            {
+                "verified_popularity": "popularity.jsonl",
+                "verified_discography": "discography.jsonl",
+            },
+            ("REFERENCE_OFFICIAL", lambda _tmp: ("1999-01-01",)),
+            "snapshot-official",
+            id="official-part",
+        ),
+    ],
+)
+def test_run_stops_when_a_pinned_survey_is_missing(tmp_path, monkeypatch, found, missing, command):
     monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
     monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
     monkeypatch.setattr(cli, "verified_extraction", lambda: None)
-    monkeypatch.setattr(cli, "POPULARITY_JSONL", tmp_path / "artist-popularity.jsonl")
+    for name, fixture in found.items():
+        monkeypatch.setattr(cli, name, lambda fixture=fixture: FIX / fixture)
+    attribute, value = missing
+    monkeypatch.setattr(cli, attribute, value(tmp_path))
     with pytest.raises(SystemExit) as raised:
         cli.run()
     assert "cannot be taken again" in str(raised.value)
+    assert f"`musilogy {command}`" in str(raised.value)
 
 
-def test_a_snapshot_already_taken_today_is_never_taken_again(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    ("snapshot", "fetcher", "command"),
+    [
+        ("popularity_snapshot", "fetch_popularity", "snapshot_popularity"),
+        ("discography_snapshot", "fetch_discography", "snapshot_discography"),
+    ],
+)
+def test_a_survey_already_taken_today_is_never_taken_again(
+    tmp_path, monkeypatch, snapshot, fetcher, command
+):
     # Taking it again would overwrite the pinned file and its committed digest.
-    taken = tmp_path / "artist-popularity.jsonl"
+    taken = tmp_path / "taken.jsonl"
     taken.write_text("", encoding="utf-8")
     monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
-    monkeypatch.setattr(cli, "popularity_snapshot", lambda _date: taken)
-    monkeypatch.setattr(cli, "fetch_popularity", lambda *_: pytest.fail("asked ListenBrainz"))
+    monkeypatch.setattr(cli, snapshot, lambda _date: taken)
+    monkeypatch.setattr(cli, fetcher, lambda *_: pytest.fail(f"{fetcher} asked its source"))
     with pytest.raises(SystemExit) as raised:
-        cli.snapshot_popularity()
+        getattr(cli, command)()
     assert "never taken again" in str(raised.value)
-
-
-def test_run_stops_when_the_pinned_discography_is_missing(tmp_path, monkeypatch):
-    # Same contract as the ListenBrainz snapshot: Wikidata moves every day, so
-    # a run neither asks it again nor builds without it.
-    monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
-    monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
-    monkeypatch.setattr(cli, "verified_extraction", lambda: None)
-    monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
-    monkeypatch.setattr(cli, "DISCOGRAPHY_JSONL", tmp_path / "discography.jsonl")
-    with pytest.raises(SystemExit) as raised:
-        cli.run()
-    assert "cannot be taken again" in str(raised.value)
-
-
-def test_a_discography_taken_today_is_never_taken_again(tmp_path, monkeypatch):
-    taken = tmp_path / "discography.jsonl"
-    taken.write_text("", encoding="utf-8")
-    monkeypatch.setattr(cli, "discography_snapshot", lambda _date: taken)
-    monkeypatch.setattr(cli, "fetch_discography", lambda *_: pytest.fail("asked Wikidata"))
-    with pytest.raises(SystemExit) as raised:
-        cli.snapshot_discography()
-    assert "never taken again" in str(raised.value)
-
-
-def test_run_stops_when_a_pinned_part_of_a_survey_is_missing(monkeypatch):
-    # MusicBrainz moves every day: a run neither asks it again nor builds
-    # without every part it pins.
-    monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
-    monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
-    monkeypatch.setattr(cli, "verified_extraction", lambda: None)
-    monkeypatch.setattr(cli, "verified_popularity", lambda: FIX / "popularity.jsonl")
-    monkeypatch.setattr(cli, "verified_discography", lambda: FIX / "discography.jsonl")
-    monkeypatch.setattr(cli, "REFERENCE_OFFICIAL", ("1999-01-01",))
-    with pytest.raises(SystemExit) as raised:
-        cli.run()
-    assert "MusicBrainz official status 1999-01-01 missing" in str(raised.value)
 
 
 def test_a_new_part_of_the_official_survey_asks_only_the_artists_no_part_asked(

@@ -2,6 +2,9 @@ from tests.conftest import build_synthetic, synthetic_artist
 
 GROUP = "00000000-0000-4000-8000-0000000000a1"
 PERSON = "00000000-0000-4000-8000-0000000000a2"
+SUMNER = "6fa2e161-200e-475a-8492-3755594581f9"
+JOY_DIVISION = "9a58fda3-f4ed-4080-a3a5-f457aac9fcdd"
+NEW_ORDER = "f1106b17-dcbb-45f6-b938-199ccfab50cc"
 
 
 def membership(direction, target, begin="1990", end=None):
@@ -30,11 +33,21 @@ def links(con):
     ).fetchall()
 
 
-def test_a_relation_carried_by_both_artists_lands_once_oriented_forward(tmp_path):
-    # Backward on the band, forward on the member: the same relation twice in
-    # the dump, one row here, from the member to the band.
-    c = band_and_member(tmp_path, [membership("backward", PERSON)], [membership("forward", GROUP)])
-    assert links(c) == [(PERSON, GROUP, "member of band", 1990, None)]
+def test_a_membership_is_one_link_from_the_member_to_the_band(con):
+    # The dump carries the relation on Bernard Sumner's record and on each
+    # band's: read from both sides, oriented forward, it must land once, from
+    # him to the band.
+    rows = dict(
+        con.execute(
+            "SELECT dst_mbid, count(*) FROM links WHERE src_mbid = ? AND type = 'member of band' "
+            "GROUP BY dst_mbid",
+            [SUMNER],
+        ).fetchall()
+    )
+    assert rows[JOY_DIVISION] == rows[NEW_ORDER] == 1
+    assert con.execute(
+        "SELECT count(*) FROM links WHERE dst_mbid = ? AND type = 'member of band'", [SUMNER]
+    ).fetchone() == (0,)
 
 
 def test_a_relation_read_from_one_side_only_is_oriented_all_the_same(tmp_path):

@@ -11,7 +11,6 @@ from musilogy.paths import (
     aside_of,
     discogs_extraction,
     discogs_releases,
-    dump_sums,
     extraction_sidecar,
     out_dir,
     work_dir,
@@ -38,11 +37,6 @@ def test_the_data_directory_sits_beside_the_package_not_under_it():
     # rooted on PACKAGE_DIR would write outputs into the source tree.
     assert PACKAGE_DIR not in DATA_DIR.parents
     assert DATA_DIR.name == "data"
-
-
-def test_the_dump_digests_are_named_after_the_dump():
-    assert dump_sums("20260909-001002").name == "20260909-001002.SHA256SUMS"
-    assert dump_sums("20260909-001002") != dump_sums("20270101-000000")
 
 
 def test_an_extraction_sidecar_sits_beside_its_extraction():

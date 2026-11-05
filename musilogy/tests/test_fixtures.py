@@ -24,6 +24,9 @@ def test_no_fixture_line_carries_a_genre():
 
 
 def test_every_release_group_credits_a_witness():
+    # The linked artists come without their release groups (make_fixtures).
+    # The replay below cannot see a widened selection: run on fixtures it
+    # produced itself, it gives them back whatever it selects.
     wanted = set(WITNESSES)
     with (FIX / "release_groups.jsonl").open(encoding="utf-8") as fh:
         for line in fh:
@@ -64,16 +67,6 @@ def test_the_attribution_names_the_pinned_sources():
     # Written by make-fixtures from the pinned references: a hand-written one
     # fell behind the popularity re-pin of 2026-10-06.
     assert (FIX / "ATTRIBUTION.md").read_text(encoding="utf-8") == fixtures_attribution()
-
-
-def test_the_discogs_fixture_is_what_the_witnesses_discogs_pages_select(tmp_path, monkeypatch):
-    # Breaks if make-fixtures reads a Discogs id other than the build's
-    # discogs_artist_id does: replayed on the fixtures, the selection must give
-    # back every committed line, and only those.
-    monkeypatch.setattr(cli, "verified_discogs", lambda: FIX / "discogs.jsonl")
-    out = tmp_path / "discogs.jsonl"
-    cli._discogs_fixture(FIX / "artists.jsonl", out)
-    assert out.read_text(encoding="utf-8") == (FIX / "discogs.jsonl").read_text(encoding="utf-8")
 
 
 FIXTURE_FILES = (

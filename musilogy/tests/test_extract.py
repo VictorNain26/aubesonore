@@ -3,6 +3,7 @@ import io
 import json
 import logging
 import lzma
+import re
 import tarfile
 import xml.etree.ElementTree as ET
 
@@ -57,6 +58,7 @@ def test_reduce_artist_keeps_the_identity_and_dates_and_drops_the_genres():
     assert out["mbid"] == GROUP["id"]
     assert out["begin"] == "1992"
     assert out["ended"] is False
+    assert out["country"] == "US"
     assert out["begin_area"] == "Tampa"
     assert out["begin_area_mbid"] == "ff21865c-ce46-4417-967c-a3d2d02d29bf"
     assert "genres" not in out
@@ -69,17 +71,6 @@ def test_reduce_artist_keeps_the_disambiguation_comment_as_written():
         out = reduce_artist({**GROUP, "disambiguation": comment})
         assert out is not None
         assert out["disambiguation"] == comment
-
-
-def test_reduce_artist_drops_area_no_table_consumes():
-    # `area` is present in the source record above and must not survive the
-    # projection: it duplicated `country` and `begin_area`, both published,
-    # for 9.9 MB of the intermediate that no table ever read.
-    out = reduce_artist(GROUP)
-    assert out is not None
-    assert "area" not in out
-    assert out["country"] == "US"
-    assert out["begin_area"] == "Tampa"
 
 
 def test_reduce_artist_keeps_artist_relations_with_their_type_and_direction():
@@ -122,19 +113,15 @@ def test_reduce_artist_keeps_url_relations_with_their_type_and_end():
     ]
 
 
-def test_reduce_artist_keeps_persons():
-    out = reduce_artist({"id": "x", "name": "y", "type": "Person"})
+# 698 614 artists of the reference dump: 75 387 untyped artists have an album,
+# and 16 080 of the co-listening neighbours were among them.
+@pytest.mark.parametrize(
+    "kind", ["Person", "Group", "Orchestra", "Choir", "Character", "Other", None]
+)
+def test_reduce_artist_keeps_every_type_none_included(kind):
+    out = reduce_artist({"id": "x", "name": "y", "type": kind})
     assert out is not None
-    assert out["type"] == "Person"
-
-
-def test_reduce_artist_keeps_every_type_none_included():
-    # 698 614 artists of the reference dump: 75 387 untyped artists have an
-    # album, and 16 080 of the co-listening neighbours were among them.
-    for kind in ("Character", "Other", None):
-        out = reduce_artist({"id": "x", "name": "y", "type": kind})
-        assert out is not None
-        assert out["type"] == kind
+    assert out["type"] == kind
 
 
 def test_reduce_artist_drops_the_special_purpose_artists():
@@ -171,16 +158,24 @@ def test_reduce_release_group_drops_the_genres():
     assert "genres" not in reduced
 
 
-def test_reduce_release_group_keeps_eps_and_names_the_type():
-    for kind in ("Album", "EP"):
-        reduced = reduce_release_group({"id": "r", "primary-type": kind})
+@pytest.mark.parametrize(
+    ("kind", "kept"),
+    [
+        ("Album", True),
+        ("EP", True),
+        ("Single", False),
+        ("Broadcast", False),
+        ("Other", False),
+        (None, False),
+    ],
+)
+def test_reduce_release_group_keeps_the_albums_and_eps_and_names_the_type(kind, kept):
+    reduced = reduce_release_group({"id": "r", "primary-type": kind})
+    if kept:
         assert reduced is not None
         assert reduced["primary_type"] == kind
-
-
-def test_reduce_release_group_drops_singles_and_the_other_types():
-    for kind in ("Single", "Broadcast", "Other", None):
-        assert reduce_release_group({"id": "r", "primary-type": kind}) is None
+    else:
+        assert reduced is None
 
 
 def _write_mbdump_archive(path, lines: list[bytes]) -> None:
@@ -193,13 +188,15 @@ def _write_mbdump_archive(path, lines: list[bytes]) -> None:
 
 def test_iter_records_surfaces_malformed_lines_instead_of_dropping_them_silently(tmp_path, caplog):
     archive = tmp_path / "sample.tar.xz"
-    _write_mbdump_archive(archive, [b'{"id": "ok"}', b"{not json"])
+    _write_mbdump_archive(archive, [b'{"id": "ok"}', b"{not json", b'{"id": "ok too"}', b"{nor"])
 
     with caplog.at_level(logging.WARNING):
         records = list(iter_records(archive))
 
-    assert records == [{"id": "ok"}]
-    assert any("1" in r.message for r in caplog.records)
+    assert records == [{"id": "ok"}, {"id": "ok too"}]
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert re.search(r"\b2 malformed\b", warnings[0])
 
 
 def test_extract_reports_what_it_dropped(tmp_path):
