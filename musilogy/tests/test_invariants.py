@@ -38,6 +38,14 @@ LONE_LINK = (
     " ORDER BY ALL LIMIT 1"
 )
 FIRST_CREDIT = "rowid = (SELECT min(rowid) FROM credits)"
+FIRST_RELEASE = "rowid = (SELECT min(rowid) FROM releases)"
+FIRST_URL = "rowid = (SELECT min(rowid) FROM urls)"
+FIRST_STYLE = "rowid = (SELECT min(rowid) FROM styles)"
+FIRST_FREE_STREAMING = "rowid = (SELECT min(rowid) FROM urls WHERE type = 'free streaming')"
+# Joy Division's co-listening, written by hand: the sample has no listens.
+NEW_ORDER = "f1106b17-dcbb-45f6-b938-199ccfab50cc"
+U2 = "a3cb23fc-acd3-4ce0-8f36-1e5aa6a18432"
+COLISTEN = "INSERT INTO colisten VALUES "
 JOY_DIVISION_FIRST_SAME_SOUND = f"artist_mbid = '{JOY_DIVISION}' AND rank = 1"
 
 CASES = [
@@ -47,6 +55,13 @@ CASES = [
         (f"INSERT INTO artists SELECT * FROM artists WHERE mbid = '{BEATLES}'",),
     ),
     Broken("duplicate_artist", "a NULL mbid is a violation even alone", (NULL_MBID_ARTIST,)),
+    Broken(
+        "empty_disambiguation",
+        # A consumer testing IS NULL would read the artist as told apart from
+        # its homonyms.
+        "an absent comment published as '' rather than NULL",
+        (f"UPDATE artists SET disambiguation = '' WHERE mbid = '{JOY_DIVISION}'",),
+    ),
     Broken(
         "artist_unexpected_type",
         "a seventh MusicBrainz type would reach the dates unread",
@@ -89,6 +104,11 @@ CASES = [
         (f"UPDATE artists SET y0 = 1849 WHERE mbid = '{BEATLES}'",),
     ),
     Broken(
+        "artist_out_of_window",
+        "a start after 2026, the window's upper end",
+        (f"UPDATE artists SET y0 = 2027 WHERE mbid = '{BEATLES}'",),
+    ),
+    Broken(
         "end_before_begin",
         "an end the year before the start",
         (f"UPDATE artists SET y_end = y0 - 1 WHERE mbid = '{BEATLES}'",),
@@ -104,6 +124,11 @@ CASES = [
         (f"UPDATE artists SET y_end_declared = 1537, y_end = 1537 WHERE mbid = '{BEATLES}'",),
     ),
     Broken(
+        "end_before_min_year",
+        "a published end before 1850, whatever the declared one says",
+        (f"UPDATE artists SET y_end = 1849 WHERE mbid = '{BEATLES}'",),
+    ),
+    Broken(
         "y0_source_mismatch",
         "'declared' names a start that is not the declared one",
         (f"UPDATE artists SET y0 = y0 - 1 WHERE mbid = '{BEATLES}'",),
@@ -115,6 +140,24 @@ CASES = [
             "UPDATE artists SET y0 = 1999 WHERE mbid = "
             "(SELECT min(mbid) FROM artists WHERE y0_source IS NULL)",
         ),
+    ),
+    Broken(
+        "y0_source_mismatch",
+        "'first_album' names a start that is not the first album",
+        (
+            "UPDATE artists SET y0 = y0 - 1 WHERE mbid = "
+            "(SELECT min(mbid) FROM artists WHERE y0_source = 'first_album')",
+        ),
+    ),
+    Broken(
+        "y0_source_mismatch",
+        "a source the contract does not name",
+        (f"UPDATE artists SET y0_source = 'guess' WHERE mbid = '{BEATLES}'",),
+    ),
+    Broken(
+        "y_end_source_mismatch",
+        "a source the contract does not name",
+        (f"UPDATE artists SET y_end_source = 'guess' WHERE mbid = '{BEATLES}'",),
     ),
     Broken(
         "y_end_source_mismatch",
@@ -159,6 +202,77 @@ CASES = [
         # 2027 is past 2026 for any album, whichever band it is.
         "an album after 2026, the window's upper end",
         ("UPDATE albums SET y = 2027 WHERE rg_mbid = (SELECT min(rg_mbid) FROM albums)",),
+    ),
+    Broken(
+        "album_out_of_window",
+        "an album before 1850, the window's lower end",
+        ("UPDATE albums SET y = 1849 WHERE rg_mbid = (SELECT min(rg_mbid) FROM albums)",),
+    ),
+    Broken(
+        "album_not_an_album",
+        # The extraction keeps the EPs for the discography.
+        "an EP among the albums that date an artist",
+        (
+            "UPDATE raw_release_groups SET primary_type = 'EP' "
+            "WHERE mbid = (SELECT min(rg_mbid) FROM albums)",
+        ),
+    ),
+    Broken(
+        "release_unexpected_type",
+        "a single among the albums and EPs",
+        (f"UPDATE releases SET primary_type = 'Single' WHERE {FIRST_RELEASE}",),
+    ),
+    Broken(
+        "release_unexpected_type",
+        "a record without a primary type",
+        (f"UPDATE releases SET primary_type = NULL WHERE {FIRST_RELEASE}",),
+    ),
+    Broken(
+        "release_without_artist",
+        "a record of an artist that is not published",
+        (
+            "INSERT INTO releases SELECT * REPLACE ('inconnu' AS artist_mbid) FROM releases "
+            f"WHERE {FIRST_RELEASE}",
+        ),
+    ),
+    Broken(
+        "duplicate_release",
+        "one record published twice for one artist",
+        (f"INSERT INTO releases SELECT * FROM releases WHERE {FIRST_RELEASE}",),
+    ),
+    Broken(
+        "release_extra_secondary_type",
+        "a live record is not part of the work",
+        (
+            "UPDATE raw_release_groups SET secondary = ['Live'] WHERE mbid = "
+            "(SELECT rg_mbid FROM releases GROUP BY rg_mbid HAVING count(*) = 1 "
+            "ORDER BY rg_mbid LIMIT 1)",
+        ),
+    ),
+    Broken(
+        "release_extra_secondary_type",
+        "a soundtrack flag the secondary types do not carry",
+        (f"UPDATE releases SET soundtrack = NOT soundtrack WHERE {FIRST_RELEASE}",),
+    ),
+    Broken(
+        "release_extra_secondary_type",
+        "a remix flag the secondary types do not carry",
+        (f"UPDATE releases SET remix = NOT remix WHERE {FIRST_RELEASE}",),
+    ),
+    Broken(
+        "release_filed_mismatch",
+        "filed_original saying the opposite of the Wikidata snapshot",
+        (f"UPDATE releases SET filed_original = NOT filed_original WHERE {FIRST_RELEASE}",),
+    ),
+    Broken(
+        "release_uncredited",
+        "a record handed to an artist it does not credit",
+        (
+            f"UPDATE releases SET artist_mbid = '{BEATLES}' WHERE rowid = "
+            "(SELECT min(rowid) FROM releases x WHERE NOT EXISTS (SELECT 1 FROM "
+            "raw_release_groups r WHERE r.mbid = x.rg_mbid "
+            f"AND list_contains(r.artists, '{BEATLES}')))",
+        ),
     ),
     Broken(
         "album_extra_secondary_type",
@@ -216,6 +330,47 @@ CASES = [
         ),
     ),
     Broken(
+        "url_without_artist",
+        "a page of an artist that is not published",
+        (
+            "INSERT INTO urls SELECT * REPLACE ('inconnu' AS artist_mbid) FROM urls "
+            f"WHERE {FIRST_URL}",
+        ),
+    ),
+    Broken(
+        "duplicate_url",
+        "one page published twice for one artist",
+        (f"INSERT INTO urls SELECT * FROM urls WHERE {FIRST_URL}",),
+    ),
+    Broken(
+        "url_out_of_scope",
+        "a listening page on a site the artist page does not use",
+        (f"UPDATE urls SET url = 'https://example.org/artist/1' WHERE {FIRST_FREE_STREAMING}",),
+    ),
+    Broken(
+        "url_out_of_scope",
+        # The host is read label by label: a name that only ends like an
+        # allowed domain is another domain.
+        "notdeezer.com is not deezer.com",
+        (
+            "UPDATE urls SET url = 'https://www.notdeezer.com/artist/1' "
+            f"WHERE {FIRST_FREE_STREAMING}",
+        ),
+    ),
+    Broken(
+        "url_unsourced",
+        "a page retyped",
+        (f"UPDATE urls SET type = 'streaming' WHERE {FIRST_FREE_STREAMING}",),
+    ),
+    Broken(
+        "url_unsourced",
+        "a page handed to another artist",
+        (
+            f"UPDATE urls SET artist_mbid = '{BEATLES}' WHERE rowid = "
+            f"(SELECT min(rowid) FROM urls WHERE artist_mbid <> '{BEATLES}')",
+        ),
+    ),
+    Broken(
         "duplicate_popularity",
         "two counts for one artist",
         (
@@ -235,6 +390,65 @@ CASES = [
         "popularity_unrequested",
         "an artist the snapshot never asked about",
         (f"DELETE FROM raw_popularity WHERE artist_mbid = '{BEATLES}'",),
+    ),
+    Broken(
+        "duplicate_colisten",
+        "one pair published twice",
+        (COLISTEN + f"('{JOY_DIVISION}', '{NEW_ORDER}', 5, 0.5, 1)",) * 2,
+    ),
+    Broken(
+        "colisten_self",
+        "an artist is never its own neighbour",
+        (COLISTEN + f"('{JOY_DIVISION}', '{JOY_DIVISION}', 5, 0.5, 1)",),
+    ),
+    Broken(
+        "colisten_rank_out_of_range",
+        "ranks that do not start at 1",
+        (COLISTEN + f"('{JOY_DIVISION}', '{NEW_ORDER}', 5, 0.5, 2)",),
+    ),
+    Broken(
+        "colisten_rank_out_of_range",
+        "a gap between two ranks",
+        (
+            COLISTEN + f"('{JOY_DIVISION}', '{U2}', 5, 0.5, 1), "
+            f"('{JOY_DIVISION}', '{NEW_ORDER}', 5, 0.4, 3)",
+        ),
+    ),
+    Broken(
+        "colisten_rank_out_of_range",
+        "nine neighbours, past the eight the page shows",
+        (
+            f"INSERT INTO colisten SELECT '{JOY_DIVISION}', mbid, 5, 1 / i, i FROM "
+            f"(SELECT mbid, row_number() OVER (ORDER BY mbid) AS i FROM artists "
+            f"WHERE mbid <> '{JOY_DIVISION}' ORDER BY mbid LIMIT 9)",
+        ),
+    ),
+    Broken(
+        "colisten_below_min_common",
+        "a pair with one listener in common, under the two the rule asks",
+        (COLISTEN + f"('{JOY_DIVISION}', '{NEW_ORDER}', 1, 0.5, 1)",),
+    ),
+    Broken(
+        "colisten_out_of_order",
+        "a lower score ranked first",
+        (
+            COLISTEN + f"('{JOY_DIVISION}', '{NEW_ORDER}', 5, 0.2, 1), "
+            f"('{JOY_DIVISION}', '{U2}', 5, 0.5, 2)",
+        ),
+    ),
+    Broken(
+        "colisten_out_of_order",
+        # U2's MBID sorts before New Order's.
+        "a tie not ranked by the neighbour's MBID",
+        (
+            COLISTEN + f"('{JOY_DIVISION}', '{NEW_ORDER}', 5, 0.5, 1), "
+            f"('{JOY_DIVISION}', '{U2}', 5, 0.5, 2)",
+        ),
+    ),
+    Broken(
+        "duplicate_same_sound",
+        "one pair published twice",
+        (f"INSERT INTO same_sound SELECT * FROM same_sound WHERE {JOY_DIVISION_FIRST_SAME_SOUND}",),
     ),
     Broken(
         "same_sound_self",
@@ -261,6 +475,11 @@ CASES = [
         "same_sound_score_out_of_range",
         "a colour of zero is no colour",
         (f"UPDATE same_sound SET score = 0 WHERE {JOY_DIVISION_FIRST_SAME_SOUND}",),
+    ),
+    Broken(
+        "same_sound_score_out_of_range",
+        "a cosine above one",
+        (f"UPDATE same_sound SET score = 1.01 WHERE {JOY_DIVISION_FIRST_SAME_SOUND}",),
     ),
     Broken(
         "same_sound_unexplained",
@@ -299,6 +518,63 @@ CASES = [
             "UPDATE releases SET official = true WHERE rg_mbid = "
             "(SELECT min(rg_mbid) FROM releases WHERE official = false)",
         ),
+    ),
+    Broken(
+        "official_unsourced",
+        "a record a surveyed credited artist lists, published not official",
+        (
+            "UPDATE releases SET official = false WHERE rg_mbid = "
+            "(SELECT min(rg_mbid) FROM releases WHERE official)",
+        ),
+    ),
+    Broken(
+        "official_unsourced",
+        "a record no credited artist was surveyed for, published with a status",
+        (
+            "UPDATE releases SET official = true WHERE rg_mbid = "
+            "(SELECT min(rg_mbid) FROM releases WHERE official IS NULL)",
+        ),
+    ),
+    Broken(
+        "official_asked_twice",
+        "the survey asks each artist once",
+        (
+            "INSERT INTO raw_official SELECT * FROM raw_official "
+            "WHERE artist_mbid = (SELECT min(artist_mbid) FROM raw_official)",
+        ),
+    ),
+    Broken(
+        "duplicate_style",
+        "one artist, decade and style published twice",
+        (f"INSERT INTO styles SELECT * FROM styles WHERE {FIRST_STYLE}",),
+    ),
+    Broken(
+        "style_without_artist",
+        "a style of an artist that is not published",
+        (
+            "INSERT INTO styles SELECT * REPLACE ('inconnu' AS artist_mbid) FROM styles "
+            f"WHERE {FIRST_STYLE}",
+        ),
+    ),
+    Broken(
+        "style_decade_malformed",
+        "a decade that is not a year rounded down to ten",
+        (f"UPDATE styles SET decade = 1985 WHERE {FIRST_STYLE}",),
+    ),
+    Broken(
+        "style_decade_malformed",
+        "a decade before the window",
+        (f"UPDATE styles SET decade = 1840 WHERE {FIRST_STYLE}",),
+    ),
+    Broken(
+        "style_decade_malformed",
+        "a decade after the window",
+        (f"UPDATE styles SET decade = 2030 WHERE {FIRST_STYLE}",),
+    ),
+    Broken(
+        "style_decade_malformed",
+        "a style on no record",
+        (f"UPDATE styles SET records = 0 WHERE {FIRST_STYLE}",),
     ),
     Broken(
         "artist_styles_mismatch",
@@ -342,6 +618,12 @@ def test_a_broken_table_fails_its_invariant(con, case):
     for sql in case.mutation:
         con.execute(sql)
     assert violations(con, case.invariant) == case.rows, case.why
+
+
+def test_every_invariant_is_seen_failing():
+    # An invariant that would pass whatever happens checks nothing
+    # (.claude/rules/musilogy-sql.md): each one has its broken table above.
+    assert set(INVARIANTS) - {case.invariant for case in CASES} == set()
 
 
 def test_every_view_defined_in_90_invariants_is_registered_in_invariants():
