@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from radio.acquire.sockseek import (
+    Outcome,
     SockseekError,
     Wanted,
     download,
@@ -147,6 +148,14 @@ def test_a_stuck_sockseek_is_stopped_and_its_finished_tracks_kept(
 def test_time_limit_follows_the_search_pace(n_wanted: int, limit: float) -> None:
     cfg = AcquisitionConfig(searches_per_time=10, searches_renew_s=220)
     assert time_limit(n_wanted, cfg) == limit
+
+
+def test_a_file_already_downloaded_is_a_success(tmp_path: Path) -> None:
+    # État 3 (AlreadyExists, JobStateOld au tag v3.0.5) : le fichier d'une passe interrompue est
+    # déjà dans le dossier ; le compter comme un échec le ferait retélécharger.
+    _index(tmp_path, [f"{tmp_path}/111.mp3,A Certain Ratio,,Crystal,173,0,3,0"])
+    out = read_index(tmp_path / "retenus" / "_index.csv", WANTED[:1])
+    assert out == [Outcome(111, tmp_path / "111.mp3", None)]
 
 
 def test_unknown_failure_code_is_named(tmp_path: Path) -> None:

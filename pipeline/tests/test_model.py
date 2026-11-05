@@ -2,9 +2,34 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+import pytest
+
 from radio.core.config import ModelConfig
-from radio.model.model import Batch, last_batch, rescore, train
+from radio.model.model import Batch, last_batch, rescore, train, yes_rate
 from tests.model_factory import NOW, add_vote, as_news, make_model_db
+
+
+@pytest.mark.parametrize(
+    ("n", "yes", "low", "high"),
+    [
+        # Intervalle de Wilson à 95 %, forme fermée avec z = 1,96 : les exemples de Newcombe
+        # (1998, Statistics in Medicine 17, table I), qui décident des sources « à retirer ».
+        (263, 81, 0.2553, 0.3662),
+        (148, 15, 0.0624, 0.1605),
+        (20, 0, 0.0, 0.1611),  # aucun oui : l'intervalle reste ouvert vers le haut
+        (29, 1, 0.0061, 0.1718),
+    ],
+)
+def test_yes_rate_is_the_wilson_interval(n: int, yes: int, low: float, high: float) -> None:
+    labels = np.array([1] * yes + [0] * (n - yes), dtype=np.int64)
+    rate = yes_rate(labels)
+    assert rate is not None and (rate.n, rate.yes) == (n, yes)
+    assert (round(rate.low, 4), round(rate.high, 4)) == (low, high)
+
+
+def test_no_vote_has_no_yes_rate() -> None:
+    assert yes_rate(np.zeros(0, dtype=np.int64)) is None
 
 
 def _two_batches(conn: Any) -> None:

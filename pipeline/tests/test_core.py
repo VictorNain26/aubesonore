@@ -26,6 +26,30 @@ def test_connect_applies_migrations(tmp_path: Path) -> None:
     assert again.execute("PRAGMA user_version").fetchone()[0] == N_MIGRATIONS
 
 
+def test_a_migration_that_breaks_a_foreign_key_is_rolled_back(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Breaks if a rebuild that loses a parent row is committed: the keys are off during a
+    # migration (official table rebuild), so only foreign_key_check sees the orphan.
+    scripts = tmp_path / "migrations"
+    scripts.mkdir()
+    for script in MIGRATIONS.glob("*.sql"):
+        (scripts / script.name).write_text(script.read_text(encoding="utf-8"), encoding="utf-8")
+    monkeypatch.setattr("radio.core.db.MIGRATIONS", scripts)
+    db = tmp_path / "radio.db"
+    connect(db).close()
+    name = f"{N_MIGRATIONS + 1:03d}_orpheline.sql"
+    (scripts / name).write_text(
+        "INSERT INTO deezer_matches VALUES ('absente', 'matched', NULL, 1, 1, 'd');",
+        encoding="utf-8",
+    )
+    with pytest.raises(sqlite3.IntegrityError, match=f"clés étrangères rompues par {name}"):
+        connect(db)
+    raw = sqlite3.connect(db)
+    assert raw.execute("PRAGMA user_version").fetchone()[0] == N_MIGRATIONS
+    assert raw.execute("SELECT COUNT(*) FROM deezer_matches").fetchone()[0] == 0
+
+
 def test_migration_9_marks_published_discoveries(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
