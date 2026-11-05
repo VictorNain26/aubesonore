@@ -3,8 +3,7 @@ import { Elysia } from 'elysia';
 
 const VALID_ID = '11111111-1111-1111-1111-111111111111';
 
-// spyOn on the real exports, restored after this file: mock.module would
-// replace these modules for every other test file of the run (Bun 1.3).
+// spyOn on the real exports, restored after this file.
 const profileService = await import('../services/artistProfileService');
 const resolver = await import('../services/artistResolver');
 

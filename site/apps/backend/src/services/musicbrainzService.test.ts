@@ -57,33 +57,60 @@ describe('findDeezerIdByMbid', () => {
     expect(await findDeezerIdByMbid(group.id)).toEqual({ status: 'none' });
   });
 
-  it('caches an unknown artist, retries after a failure', async () => {
-    const fetchSpy = spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(json({ error: 'Not Found' }, 404))
-      .mockResolvedValueOnce(new Response(null, { status: 500 }))
-      .mockResolvedValueOnce(json(single));
+  describe('at its pace, its waits recorded and never slept', () => {
+    let waits: number[];
+    let clock: { mockRestore: () => void };
 
-    expect(await findDeezerIdByMbid('1')).toEqual({ status: 'none' });
-    expect(await findDeezerIdByMbid('1')).toEqual({ status: 'none' });
-    expect(fetchSpy.mock.calls.length).toBe(1);
+    beforeEach(() => {
+      waits = [];
+      let now = 1_000_000;
+      clock = spyOn(performance, 'now').mockImplementation(() => now);
+      __useMusicbrainzSleep((ms) => {
+        waits.push(ms);
+        now += ms;
+        return Promise.resolve();
+      });
+    });
 
-    expect(await findDeezerIdByMbid('2')).toEqual({ status: 'failed' });
-    expect((await findDeezerIdByMbid('2')).status).toBe('found');
-  });
+    afterEach(() => {
+      __useMusicbrainzSleep(null);
+      clock.mockRestore();
+    });
 
-  it('keeps its pace when the system clock is set back', async () => {
-    spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(json(single))
-      .mockResolvedValueOnce(json(single));
-    const now = Date.now();
-    const wallClock = spyOn(Date, 'now').mockReturnValue(now);
-    try {
-      expect((await findDeezerIdByMbid('1')).status).toBe('found');
-      wallClock.mockReturnValue(now - 5_000);
+    it('caches an unknown artist', async () => {
+      const fetchSpy = spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+        json({ error: 'Not Found' }, 404)
+      );
+
+      expect(await findDeezerIdByMbid('1')).toEqual({ status: 'none' });
+      expect(await findDeezerIdByMbid('1')).toEqual({ status: 'none' });
+      expect(fetchSpy.mock.calls.length).toBe(1);
+    });
+
+    it('asks again after a failure', async () => {
+      spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(new Response(null, { status: 500 }))
+        .mockResolvedValueOnce(json(single));
+
+      expect(await findDeezerIdByMbid('2')).toEqual({ status: 'failed' });
       expect((await findDeezerIdByMbid('2')).status).toBe('found');
-    } finally {
-      wallClock.mockRestore();
-    }
+    });
+
+    it('keeps a second between requests when the system clock is set back', async () => {
+      spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(json(single))
+        .mockResolvedValueOnce(json(single));
+      const now = Date.now();
+      const wallClock = spyOn(Date, 'now').mockReturnValue(now);
+      try {
+        expect((await findDeezerIdByMbid('1')).status).toBe('found');
+        wallClock.mockReturnValue(now - 5_000);
+        expect((await findDeezerIdByMbid('2')).status).toBe('found');
+      } finally {
+        wallClock.mockRestore();
+      }
+      expect(waits).toEqual([1_000]);
+    });
   });
 
   it('fails at once rather than queue past the caller budget', async () => {

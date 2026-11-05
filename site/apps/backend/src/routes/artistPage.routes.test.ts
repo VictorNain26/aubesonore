@@ -30,8 +30,7 @@ const COVER = 'https://coverartarchive.org/release-group/homework/front-500';
 const cover = (url: string) => ({ kind: 'cover' as const, url, title: 'Homework', year: 1997 });
 let profileImages: ArtistImage[] = [cover(COVER)];
 
-// spyOn on the real exports, restored after this file: mock.module would
-// replace these modules for every other test file of the run (Bun 1.3).
+// spyOn on the real exports, restored after this file.
 const profileService = await import('../services/artistProfileService');
 const musilogyService = await import('../services/musilogyService');
 const DAFT_PUNK_MBID = '056e4f3e-d505-4dad-8ec1-d04f521cbb56';

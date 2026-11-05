@@ -4,7 +4,9 @@ import { memoryAdapter } from 'better-auth/adapters/memory';
 import { AUTH_CLIENT_IP, AUTH_RATE_LIMIT } from './limits';
 
 // The production limits on a Better Auth with an in-memory store: the sign-in route is counted
-// per Cloudflare client address, whatever chain of x-forwarded-for comes with it.
+// per Cloudflare client address, whatever chain of x-forwarded-for comes with it. Better Auth keeps
+// that store in its module (better-auth/dist/api/rate-limiter), shared by every instance of the
+// process: each test counts its own client addresses, or one test's tries fill another's bucket.
 function makeAuth() {
   return betterAuth({
     baseURL: 'http://localhost:3000',
@@ -36,7 +38,7 @@ describe('sign-in limits', () => {
     const statuses: number[] = [];
     for (let i = 0; i < 6; i++) {
       // A new x-forwarded-for on each try: read alone, it would open a new bucket every time.
-      statuses.push((await signIn(auth, '203.0.113.7', `198.51.100.${i}`)).status);
+      statuses.push((await signIn(auth, '203.0.113.1', `198.51.100.${i}`)).status);
     }
     expect(statuses.slice(0, 5)).not.toContain(429);
     expect(statuses[5]).toBe(429);
@@ -45,8 +47,8 @@ describe('sign-in limits', () => {
   it('give each client its own count', async () => {
     const auth = makeAuth();
     // Chains of two, as a proxy on the way writes them: read alone, they would share one bucket.
-    for (let i = 0; i < 5; i++) await signIn(auth, '203.0.113.7', '10.0.0.2, 203.0.113.7');
-    expect((await signIn(auth, '203.0.113.8', '10.0.0.2, 203.0.113.8')).status).not.toBe(429);
+    for (let i = 0; i < 5; i++) await signIn(auth, '203.0.113.2', '10.0.0.2, 203.0.113.2');
+    expect((await signIn(auth, '203.0.113.3', '10.0.0.2, 203.0.113.3')).status).not.toBe(429);
   });
 });
 
@@ -58,7 +60,7 @@ describe('password reset limits', () => {
       const response = await auth.handler(
         new Request('http://localhost:3000/api/auth/request-password-reset', {
           method: 'POST',
-          headers: { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.7' },
+          headers: { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.4' },
           body: JSON.stringify({ email: 'listener@example.com' }),
         })
       );

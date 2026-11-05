@@ -2,7 +2,6 @@ import { afterAll, describe, it, expect, spyOn } from 'bun:test';
 import * as nowPlaying from './nowPlaying';
 import { buildPlayRow, playOnAir } from './radioPlayService';
 
-// spyOn, not mock.module: a mocked module leaks into the other test files (Bun 1.3).
 const onAir = spyOn(nowPlaying, 'fetchNowPlaying');
 afterAll(() => onAir.mockRestore());
 

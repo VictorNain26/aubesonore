@@ -4,13 +4,24 @@ import { sql } from 'drizzle-orm';
 import { db, pool } from '../db';
 import { artist, artistProfile, artistSlug, radioPlay } from '../db/schema';
 import { assertTestDatabase, emptyArtistTables, installMusilogyRanks, setRanks } from '../test/pg';
-import { __resetMusicbrainzThrottle, musicbrainzCache } from './musicbrainzService';
+import {
+  __resetMusicbrainzThrottle,
+  __useMusicbrainzSleep,
+  musicbrainzCache,
+} from './musicbrainzService';
 import { slugOfArtistPage } from './artistSlugs';
 import { reidentifyArtists } from './artistResolver';
 
 // The one-off pass after the Deezer API left identity (docs/vision.md §2.5): every known artist
 // identified again by MusicBrainz alone, against the real database. MusicBrainz is the real
-// service behind a mocked fetch, its throttle included.
+// service behind a mocked fetch, its throttle included: its waits move a fake monotonic clock
+// instead of being slept, so the pace is read exactly and the passes take no real second.
+let clockMs = 1_000_000;
+const clock = spyOn(performance, 'now').mockImplementation(() => clockMs);
+__useMusicbrainzSleep((ms) => {
+  clockMs += ms;
+  return Promise.resolve();
+});
 const A = '00000000-0000-4000-8000-00000000000a';
 const B_OLD = '00000000-0000-4000-8000-0000000000b0';
 const B_NEW = '00000000-0000-4000-8000-0000000000b1';
@@ -83,6 +94,8 @@ function forget(): void {
 }
 
 let first: Awaited<ReturnType<typeof reidentifyArtists>>;
+// What the first pass asked, kept apart: the second pass of a later test starts its own record.
+let firstPass: { requests: Array<{ path: string; at: number }>; mostInFlight: number };
 
 beforeAll(async () => {
   await assertTestDatabase();
@@ -122,10 +135,13 @@ beforeAll(async () => {
 
   forget();
   first = await reidentifyArtists();
-}, 30_000);
+  firstPass = { requests: [...requests], mostInFlight };
+});
 
 afterAll(async () => {
   fetchSpy.mockRestore();
+  __useMusicbrainzSleep(null);
+  clock.mockRestore();
   await pool.end();
 });
 
@@ -188,11 +204,11 @@ describe('every known artist identified again by MusicBrainz alone', () => {
   });
 
   it('asks MusicBrainz one request at a time, a second apart at least', () => {
-    expect(requests.length).toBeGreaterThan(1);
-    expect(mostInFlight).toBe(1);
-    const gaps = requests.slice(1).map((r, i) => r.at - (requests[i]?.at ?? 0));
-    // The throttle's timer may fire a millisecond early.
-    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(995);
+    const { requests: asked } = firstPass;
+    expect(asked.length).toBeGreaterThan(1);
+    expect(firstPass.mostInFlight).toBe(1);
+    const gaps = asked.slice(1).map((r, i) => r.at - (asked[i]?.at ?? 0));
+    expect(Math.min(...gaps)).toBeGreaterThanOrEqual(1_000);
   });
 
   it('changes nothing when run again', async () => {
@@ -209,5 +225,5 @@ describe('every known artist identified again by MusicBrainz alone', () => {
       failed: 0,
     });
     expect(await snapshot()).toEqual(before);
-  }, 30_000);
+  });
 });
