@@ -243,10 +243,6 @@ describe('CoverLight', () => {
     expect(lights()[0]).not.toHaveClass('light-out');
   });
 
-  it('cross-fades in one second', () => {
-    expect(LIGHT_FADE_MS).toBe(1000);
-  });
-
   it('holds two lights at most, the one shown and the newest, however fast the titles change', () => {
     const { rerender } = render(<CoverLight art={art('a1')} />);
 

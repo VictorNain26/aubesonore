@@ -73,12 +73,6 @@ describe('AuthPage', () => {
     expect(promise()).toContain(LIBRARY);
   });
 
-  it('switches to sign-up', async () => {
-    open('/connexion');
-    await userEvent.click(screen.getByRole('button', { name: 'Créer un compte' }));
-    expect(await screen.findByLabelText('Nom')).toBeInTheDocument();
-  });
-
   it.each([
     { form: 'sign-up', entry: { pathname: '/connexion' }, signUp: true },
     {

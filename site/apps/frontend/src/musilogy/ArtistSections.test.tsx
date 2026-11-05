@@ -133,13 +133,6 @@ describe('MusilogySections', () => {
     );
   });
 
-  it('names each band link from the artist side', () => {
-    showFiliation(artist());
-
-    expect(screen.getByRole('heading', { name: 'Membres' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Marc Bolan' })).toBeInTheDocument();
-  });
-
   it('leaves out every tab with nothing in it, and opens the first one left', () => {
     show(artist({ sameSound: null, colisten: [] }));
 

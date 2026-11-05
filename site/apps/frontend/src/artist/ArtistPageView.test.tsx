@@ -284,7 +284,7 @@ describe('ArtistPageView', () => {
     expect(screen.getByRole('heading', { name: 'Page indisponible.' })).toBeInTheDocument();
   });
 
-  it('leads back to the live from the header', () => {
+  it('keeps the header, and its way back to the live, while the page loads', () => {
     render(
       <MemoryRouter initialEntries={['/artist/a-1/hania-rani']}>
         <ArtistPageView state={{ status: 'loading' }} kept={[]} />

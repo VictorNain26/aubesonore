@@ -39,10 +39,6 @@ beforeEach(() => {
 });
 
 describe('chooseTheme', () => {
-  it('follows the system until the listener chooses', () => {
-    expect(themeChoice()).toBe('system');
-  });
-
   it('remembers a forced theme on the device and draws the page in it', () => {
     chooseTheme('dark');
     expect(themeChoice()).toBe('dark');

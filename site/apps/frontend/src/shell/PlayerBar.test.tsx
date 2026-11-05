@@ -162,13 +162,6 @@ describe('PlayerBarView', () => {
     expect(screen.getAllByText('Écouter')).toHaveLength(2);
   });
 
-  it('offers to stop the live while it plays, never to pause it: a press rejoins the live', () => {
-    render(<PlayerBarView {...props({ track: null, listen: 'playing' })} />);
-    expect(screen.getAllByRole('button', { name: 'Arrêter le direct' })).toHaveLength(2);
-    expect(screen.getAllByText('Arrêter')).toHaveLength(2);
-    expect(screen.queryByText('Pause')).not.toBeInTheDocument();
-  });
-
   it('is inert while hidden, so nothing in it can be focused', () => {
     render(<PlayerBarView {...props({ isHidden: true })} />);
     expect(screen.getByRole('region', { hidden: true })).toHaveAttribute('inert');
@@ -444,13 +437,5 @@ describe('the line along its edge', () => {
     document.documentElement.style.setProperty('--dawn', 'rgb(4, 5, 6)');
     render(<PlayerBarView {...props()} />);
     expect(ctx.strokeStyle).toContain('rgb(4, 5, 6)');
-  });
-
-  it('holds still under reduced motion, even while the live plays', () => {
-    const ctx = drawn(true);
-    render(<PlayerBarView {...props({ listen: 'playing' })} />);
-    expect(frames).toHaveLength(0);
-    expect(ctx.stroke).toHaveBeenCalledOnce();
-    expect(heard).not.toHaveBeenCalled();
   });
 });

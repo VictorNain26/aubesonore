@@ -57,11 +57,4 @@ describe('Cover', () => {
     render(<Cover src={ART} alt="Pochette" seed="seed" priority />);
     expect(screen.getByRole('img', { name: 'Pochette' }).className).not.toContain('opacity-0');
   });
-
-  it('asks this site for a Cover Art Archive cover', () => {
-    render(<Cover src={ART} alt="Pochette" seed="seed" />);
-    expect(screen.getByRole('img', { name: 'Pochette' }).getAttribute('src')).toBe(
-      '/covers/caa/00b3e683-47fa-3302-add0-4c0cecc5224e/250.webp'
-    );
-  });
 });

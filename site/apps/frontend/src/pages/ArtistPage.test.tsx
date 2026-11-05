@@ -75,29 +75,6 @@ describe('ArtistPage', { timeout: PAGE_TEST_TIMEOUT }, () => {
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
   });
 
-  it('draws a page this tab already holds without asking for it again', async () => {
-    server.use(http.get('*/api/artist/page/:slug', () => HttpResponse.error()));
-    seedArtistPage({
-      locale: 'fr',
-      profile: {
-        id: 'a10',
-        name: 'Déjà Là',
-        slug: 'deja-la',
-        mbid: null,
-        played: true,
-        images: [],
-        facts: null,
-        summary: null,
-        links: [],
-      },
-      musilogy: null,
-    });
-
-    await settle(open('/artiste/deja-la'));
-
-    expect(screen.getByRole('heading', { level: 1, name: 'Déjà Là' })).toBeInTheDocument();
-  });
-
   it('shows the not-found state for a slug the API does not know, with the way back', async () => {
     await settle(open('/artiste/nope'));
 

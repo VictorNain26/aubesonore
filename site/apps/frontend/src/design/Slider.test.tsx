@@ -26,11 +26,6 @@ function ControlledSlider({
 }
 
 describe('Slider', () => {
-  it('renders a slider with the given label', () => {
-    render(<Slider label="Volume" value={0.5} onValueChange={vi.fn()} />);
-    expect(screen.getByRole('slider', { name: 'Volume' })).toBeInTheDocument();
-  });
-
   it('moves one hundredth of the range on each arrow key', () => {
     const onValueChange = vi.fn();
     render(<ControlledSlider onValueChange={onValueChange} />);

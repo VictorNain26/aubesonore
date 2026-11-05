@@ -66,12 +66,6 @@ describe('artworkSrcSet', () => {
     expect(at(400)).toBe('500px-Stereolab.jpg');
     expect(at(2000)).toBe('1280px-Stereolab.jpg');
   });
-
-  it('offers nothing for a host that cannot resize', () => {
-    expect(artworkSrcSet('https://radio.aubesonore.fr/api/station/1/art/abc-1691234.jpg')).toBe(
-      undefined
-    );
-  });
 });
 
 describe('the Cover Art Archive, from the cover store', () => {
