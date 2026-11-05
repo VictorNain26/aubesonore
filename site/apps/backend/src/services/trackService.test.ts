@@ -175,6 +175,22 @@ describe('likeTrack → its cover', () => {
     );
   });
 
+  it("stores no ISRC a caller sends: only the play's counts", async () => {
+    // An untyped caller: the HTTP body as it came, before any validation.
+    const body = {
+      title: 'Typed',
+      artist: 'By Hand',
+      youtubeUrl: 'https://youtube.example.com/watch?v=d',
+      isrc: 'DEN271800071',
+    };
+
+    const answer = await likeTrack({ user: fakeUser, body });
+    await flushBackgroundWork();
+
+    expect(answer.track?.isrc).toBeNull();
+    expect(rows[0]?.isrc).toBeNull();
+  });
+
   it('still looks the cover up when tying the track to its play failed', async () => {
     findPlayMock.mockRejectedValueOnce(new Error('db down'));
 
