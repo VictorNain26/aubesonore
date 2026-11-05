@@ -15,6 +15,7 @@
     "preview": "vite preview",
     "storybook": "pnpm compile:i18n && storybook dev -p 6006 --no-open",
     "test": "vitest",
+    "test:visual": "playwright test",
     "clean": "rm -rf dist"
   },
   "dependencies": {
@@ -37,7 +38,9 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@inlang/plugin-message-format": "4.4.0",
+    "@playwright/test": "1.64.1",
     "@storybook/addon-a11y": "10.6.5",
     "@storybook/addon-docs": "10.6.5",
     "@storybook/react-vite": "10.6.5",

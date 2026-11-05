@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
     "composite": true,
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
@@ -8,5 +10,11 @@
     "strict": true,
     "allowJs": true
   },
-  "include": ["vite.config.ts", "vitest.config.ts", "scripts/paraglide-options.mjs"]
+  "include": [
+    "vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "visual",
+    "scripts/paraglide-options.mjs"
+  ]
 }
