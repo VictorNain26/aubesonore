@@ -12,7 +12,8 @@ from radio.sources.plex import PlexTrack
 from radio.votes.access import HEADER
 
 SIGNED = "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/x.mp3?hdnea=exp=1~acl=*~hmac=SIGNE"
-OK = {HEADER: "bon-jeton"}
+TOKEN = "bon-jeton"
+OK = {HEADER: TOKEN}
 
 
 class PreviewDeezer:
@@ -36,7 +37,7 @@ class PreviewDeezer:
 
 def verify(token: str) -> None:
     """Cloudflare Access : seul `OK` passe."""
-    if token != "bon-jeton":
+    if token != TOKEN:
         raise jwt.InvalidTokenError("refusé")
 
 

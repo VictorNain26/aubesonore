@@ -250,14 +250,10 @@ def test_a_worse_model_is_kept_out_of_service(tmp_path: Path) -> None:
     _exam(conn)
     # Des leçons qui contredisent tout le goût : « non » aux candidats aimés, « oui » aux rejetés.
     # Elles pèsent plus que la bibliothèque : le second modèle apprend le goût à l'envers.
-    for t in range(200000, 201200, 100):
-        for k in range(4):
-            if t + k not in EXAM_YES:
-                add_vote(conn, t + k, "lesson", "non")
-    for t in range(300000, 301200, 100):
-        for k in range(4):
-            if t + k not in EXAM_NO:
-                add_vote(conn, t + k, "lesson", "oui")
+    for base, exam, vote in ((200000, EXAM_YES, "non"), (300000, EXAM_NO, "oui")):
+        for t in range(base, base + 1200):
+            if t % 100 < 4 and t not in exam:
+                add_vote(conn, t, "lesson", vote)
     second = train(conn, tmp_path / "models", cfg, NOW)
     assert (second.new_auc, second.current_auc) == (0.0, 1.0)
     assert not second.promoted

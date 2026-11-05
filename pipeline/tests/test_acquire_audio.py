@@ -67,6 +67,7 @@ def _melody(path: Path, seed: int) -> None:
     )
 
 
+RSGAIN = Path(str(shutil.which("rsgain")))
 needs_tools = pytest.mark.skipif(not TOOLS, reason="ffmpeg, fpcalc et rsgain requis")
 
 
@@ -97,7 +98,7 @@ def test_preparation_writes_a_tagged_mp3_with_its_cover(full: Path, tmp_path: Pa
     _ffmpeg("-f", "lavfi", "-i", "color=red:s=64x64", "-frames:v", "1", str(cover))
     dest = tmp_path / "123.mp3"
     tags_in = Tags("Artiste", "Titre", 123, "Album", cover.read_bytes(), "FRZ039800212")
-    prepare(full, dest, p.codec, tags_in, Path(str(shutil.which("rsgain"))))
+    prepare(full, dest, p.codec, tags_in, RSGAIN)
     tags = _tags(dest)
     assert probe(dest).codec == "mp3"
     assert (tags["artist"], tags["title"], tags["album"], tags["comment"]) == (
@@ -116,13 +117,7 @@ def test_preparation_writes_a_tagged_mp3_with_its_cover(full: Path, tmp_path: Pa
 @needs_tools
 def test_preparation_without_cover_or_isrc_writes_neither(full: Path, tmp_path: Path) -> None:
     bare = tmp_path / "124.mp3"
-    prepare(
-        full,
-        bare,
-        "flac",
-        Tags("Artiste", "Titre", 124, "", None),
-        Path(str(shutil.which("rsgain"))),
-    )
+    prepare(full, bare, "flac", Tags("Artiste", "Titre", 124, "", None), RSGAIN)
     assert _pictures(bare) == 0
     assert "TSRC" not in _tags(bare)
 

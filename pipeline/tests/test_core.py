@@ -1,5 +1,6 @@
 import ast
 import logging
+import shutil
 import sqlite3
 from pathlib import Path
 
@@ -32,9 +33,7 @@ def test_a_migration_that_breaks_a_foreign_key_is_rolled_back(
     # Breaks if a rebuild that loses a parent row is committed: the keys are off during a
     # migration (official table rebuild), so only foreign_key_check sees the orphan.
     scripts = tmp_path / "migrations"
-    scripts.mkdir()
-    for script in MIGRATIONS.glob("*.sql"):
-        (scripts / script.name).write_text(script.read_text(encoding="utf-8"), encoding="utf-8")
+    shutil.copytree(MIGRATIONS, scripts)
     monkeypatch.setattr("radio.core.db.MIGRATIONS", scripts)
     db = tmp_path / "radio.db"
     connect(db).close()

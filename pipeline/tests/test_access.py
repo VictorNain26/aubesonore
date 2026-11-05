@@ -23,7 +23,9 @@ class Keys:
         return SimpleNamespace(key=KEY.public_key())
 
 
-def _token(key: Any = KEY, alg: str = "RS256", **claims: Any) -> str:
+def _token(
+    key: Any = KEY, alg: str = "RS256", headers: dict[str, str] | None = None, **claims: Any
+) -> str:
     body: dict[str, Any] = {
         "aud": [AUD],
         "iss": ISS,
@@ -31,7 +33,7 @@ def _token(key: Any = KEY, alg: str = "RS256", **claims: Any) -> str:
         "email": "v@example.org",
     }
     body.update(claims)
-    return jwt.encode(body, key, algorithm=alg)
+    return jwt.encode(body, key, algorithm=alg, headers=headers)
 
 
 def test_valid_access_token_passes() -> None:
@@ -66,11 +68,5 @@ def test_default_keys_come_from_the_team_certs_url(monkeypatch: pytest.MonkeyPat
         return io.BytesIO(jwks)
 
     monkeypatch.setattr(urllib.request.OpenerDirector, "open", serve)
-    token = jwt.encode(
-        {"aud": [AUD], "iss": ISS, "exp": int(time.time()) + 600},
-        KEY,
-        algorithm="RS256",
-        headers={"kid": "k1"},
-    )
-    AccessVerifier(TEAM, AUD)(token)
+    AccessVerifier(TEAM, AUD)(_token(headers={"kid": "k1"}))
     assert asked == ["https://aube.cloudflareaccess.com/cdn-cgi/access/certs"]

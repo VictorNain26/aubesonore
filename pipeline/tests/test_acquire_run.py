@@ -233,26 +233,25 @@ def _no_attempt_recorded(conn: Any) -> bool:
 
 
 @pytest.mark.parametrize(
-    "fatal",
+    "code",
     [
         # Connexion ou compte refusé : Sockseek sort en 1 sans écrire d'index.
-        pytest.param(False, id="no-index"),
+        pytest.param(1, id="no-index"),
         # Erreur d'usage : un index est écrit, mais le code 2 le rend douteux.
-        pytest.param(True, id="fatal-code"),
+        pytest.param(2, id="fatal-code"),
     ],
 )
 def test_a_failed_sockseek_consumes_no_attempt(
-    tmp_path: Path, fake_audio: dict[int, float], fatal: bool
+    tmp_path: Path, fake_audio: dict[int, float], code: int
 ) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
     run = _sockseek(set(pending(conn, CFG).tids))
 
-    def usage_error(args: Sequence[str], timeout: float, log: Path) -> int:
-        if not fatal:
-            return 1
-        run(args, timeout, log)
-        return 2
+    def failing(args: Sequence[str], timeout: float, log: Path) -> int:
+        if code == 2:
+            run(args, timeout, log)
+        return code
 
     with pytest.raises(SockseekError):
         acquire_pass(
@@ -263,7 +262,7 @@ def test_a_failed_sockseek_consumes_no_attempt(
             ("u", "p"),
             CFG,
             NOW,
-            usage_error,
+            failing,
         )
     assert _no_attempt_recorded(conn)
     assert not (tmp_path / "w").exists()
