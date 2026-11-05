@@ -49,11 +49,23 @@ def neighbours(con, artist):
 def test_the_rule_ranks_the_most_shared_first(con):
     # A: 5 listeners, B: 5, C: 4; A and B share 4, A and C share 3.
     assert neighbours(con, A) == [(B, 4, 1), (C, 3, 2)]
-    score = con.execute(
-        "SELECT score FROM colisten WHERE artist_mbid = ? AND neighbour_mbid = ?", [A, B]
-    ).fetchone()
-    assert score is not None
-    assert score[0] == pytest.approx(4 / (5**0.3 * 5**0.7) * 4 / (4 + 10))
+
+
+def score(con, artist, neighbour):
+    return con.execute(
+        "SELECT score FROM colisten WHERE artist_mbid = ? AND neighbour_mbid = ?",
+        [artist, neighbour],
+    ).fetchone()[0]
+
+
+def test_the_score_is_aiollis_asymmetric_cosine_shrunk(con):
+    # docs/conception.md §3: common / (|A|^alpha |C|^(1-alpha)) for the artist
+    # A and its neighbour C, times common / (common + h), with alpha = 0.3 and
+    # h = 10. A has 5 listeners, C 4, three in common: 3 / (5^0.3 * 4^0.7) *
+    # 3/13 from A, 3 / (4^0.3 * 5^0.7) * 3/13 from C, which tells alpha from
+    # 1 - alpha.
+    assert score(con, A, C) == pytest.approx(0.161870, rel=1e-5)
+    assert score(con, C, A) == pytest.approx(0.148048, rel=1e-5)
 
 
 def test_a_tie_falls_to_the_neighbours_mbid(con):
