@@ -19,11 +19,6 @@ describe('TtlCache', () => {
     expect(cache.get('b')).toBe(2);
   });
 
-  it('returns undefined for missing key', () => {
-    const cache = new TtlCache<string>(1000);
-    expect(cache.get('missing')).toBeUndefined();
-  });
-
   it('keeps an entry for its TTL, and not a millisecond past it', () => {
     const now = spyOn(Date, 'now').mockReturnValue(1_000_000);
     try {

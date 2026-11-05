@@ -6,7 +6,7 @@ import { normalizeArtistName } from '../lib/artistName';
 import { artistKey } from '../lib/artistName';
 import { fetchNowPlaying } from './nowPlaying';
 
-export function buildPlayRow(
+function buildPlayRow(
   shId: number,
   title: string,
   artist: string,

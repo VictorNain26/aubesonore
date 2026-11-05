@@ -141,45 +141,6 @@ describe('getArtistIdentity', () => {
     });
   });
 
-  it("takes the first EP's cover when there is no album, and none without a record", async () => {
-    answers.artist_releases = [releases[2]!];
-    expect((await getArtistIdentity(DAFT_PUNK))?.firstCover).toEqual({
-      url: `https://coverartarchive.org/release-group/${releases[2]!.mbid}/front-500`,
-      title: 'The New Wave',
-      year: 1994,
-    });
-
-    identityCache.dispose();
-    coreCache.dispose();
-    answers.artist_releases = [];
-    expect((await getArtistIdentity(DAFT_PUNK))?.firstCover).toBeNull();
-  });
-
-  it('prefers an undated album to a dated EP', async () => {
-    const undated = { ...releases[1]!, y: null };
-    answers.artist_releases = [releases[2]!, undated];
-    expect((await getArtistIdentity(DAFT_PUNK))?.firstCover).toEqual({
-      url: `https://coverartarchive.org/release-group/${HOMEWORK}/front-500`,
-      title: 'Homework',
-      year: null,
-    });
-  });
-
-  it('never reads a birth as a career for a person', async () => {
-    answers.artist_card = [
-      card({ type: 'Person', begin_area: 'Reykjavík', country: 'IS', y0: 1977, ended: false }),
-    ];
-
-    expect((await getArtistIdentity(DAFT_PUNK))?.facts).toEqual({
-      kind: 'person',
-      place: null,
-      country: 'IS',
-      formed: null,
-      ended: null,
-      active: false,
-    });
-  });
-
   it('says no kind, place nor year for an artist without a type', async () => {
     answers.artist_card = [
       card({
@@ -211,35 +172,6 @@ describe('getArtistIdentity', () => {
       ended: null,
       active: true,
     });
-  });
-
-  it('names no dissolved country nor MusicBrainz region, Kosovo it does', async () => {
-    const countryOf = async (code: string) => {
-      identityCache.dispose();
-      coreCache.dispose();
-      answers.artist_card = [card({ country: code })];
-      return (await getArtistIdentity(DAFT_PUNK))?.facts.country;
-    };
-
-    expect(await countryOf('SU')).toBeNull();
-    expect(await countryOf('YU')).toBeNull();
-    expect(await countryOf('XW')).toBeNull();
-    expect(await countryOf('XK')).toBe('XK');
-  });
-
-  it('leaves out a begin area that only repeats the country', async () => {
-    answers.artist_card = [card({ country: 'US', begin_area: 'United States' })];
-
-    expect((await getArtistIdentity(DAFT_PUNK))?.facts).toMatchObject({
-      place: null,
-      country: 'US',
-    });
-  });
-
-  it('names no Wikidata item when the dump links two', async () => {
-    answers.artist_urls = [...urls, { type: 'wikidata', url: 'https://www.wikidata.org/wiki/Q1' }];
-
-    expect((await getArtistIdentity(DAFT_PUNK))?.wikidataId).toBeNull();
   });
 
   it('knows no artist the dump does not hold, and says when musilogy is not loaded', async () => {

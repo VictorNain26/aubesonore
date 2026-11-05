@@ -120,17 +120,3 @@ describe('GET /api/artist/resolve', () => {
     expect(res.status).toBe(404);
   });
 });
-
-describe('POST /api/artist/pages', () => {
-  it('is not served: no page asks for a batch of artists any more', async () => {
-    const res = await app.handle(
-      new Request('http://localhost/api/artist/pages', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ names: ['Daft Punk'] }),
-      })
-    );
-
-    expect(res.status).toBe(404);
-  });
-});

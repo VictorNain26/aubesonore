@@ -66,13 +66,21 @@ describe('toFacts', () => {
     expect([facts.place, facts.formed, facts.active]).toEqual([null, null, false]);
   });
 
-  it('leaves out an inferred start, an area that repeats the country, a dissolved country', () => {
+  it('leaves out an inferred start and an area that repeats the country', () => {
     const facts = toFacts(
       card({ country: 'GB', begin_area: 'United Kingdom', y0: 1990, y0_source: 'first_release' })
     );
     expect([facts.place, facts.formed]).toEqual([null, null]);
-    expect(toFacts(card({ country: 'SU' })).country).toBeNull();
-    expect(toFacts(card({ country: 'XW' })).country).toBeNull();
+  });
+
+  // Intl would read SU as Russia; XW is MusicBrainz's « [Worldwide] »; Kosovo is a country.
+  it.each([
+    ['SU', null],
+    ['YU', null],
+    ['XW', null],
+    ['XK', 'XK'],
+  ])('names the country %s as %p', (code, named) => {
+    expect(toFacts(card({ country: code })).country).toBe(named);
   });
 });
 
@@ -155,5 +163,11 @@ describe('firstCoverOf', () => {
       'ep1'
     );
     expect(firstCoverOf([])).toBeNull();
+  });
+
+  it('prefers an undated album to a dated EP', () => {
+    expect(firstCoverOf([release('ep', 'EP', 1970), release('album', 'Album', null)])?.title).toBe(
+      'album'
+    );
   });
 });

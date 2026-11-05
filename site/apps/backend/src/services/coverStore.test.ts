@@ -207,7 +207,7 @@ describe('a Cover Art Archive cover', () => {
     expect(await widthOf(large)).toBe(500);
   });
 
-  it('writes each file whole: no temporary file is left, and a reader never sees half a file', async () => {
+  it('leaves only the finished files, readable by nginx, no temporary one beside them', async () => {
     answers.set(CAA_500, image(jpeg1000));
 
     await store.get({ kind: 'caa', id: RG, size: 500 });

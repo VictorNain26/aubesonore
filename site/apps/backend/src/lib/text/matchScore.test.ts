@@ -10,43 +10,33 @@ describe('normalize', () => {
 });
 
 describe('similarity', () => {
-  it('returns 1 for identical strings', () => {
+  it('is 1 for the same string, 0 for nothing shared, in between for a near one', () => {
     expect(similarity('goldstar', 'goldstar')).toBe(1);
-  });
-  it('returns 0 for completely different strings of same length', () => {
     expect(similarity('aaaa', 'zzzz')).toBe(0);
-  });
-  it('returns a value between 0 and 1 for partial matches', () => {
-    const score = similarity('goldstar', 'goldstars');
-    expect(score).toBeGreaterThan(0.8);
-    expect(score).toBeLessThan(1);
+    const near = similarity('goldstar', 'goldstars');
+    expect(near).toBeGreaterThan(0.8);
+    expect(near).toBeLessThan(1);
   });
 });
 
 describe('artistMatch', () => {
-  it('accepts the same artist regardless of the song', () => {
-    expect(artistMatch('The Sophs', 'The Sophs')).toBe(true);
-  });
-  it('rejects a different artist', () => {
-    expect(artistMatch('gemstonemario', 'Écho Mémoire')).toBe(false);
-  });
-  it('tells apart two names in another script', () => {
-    expect(artistMatch('Кино', 'Ария')).toBe(false);
-    expect(artistMatch('坂本龍一', '久石譲')).toBe(false);
-  });
-
-  it('accepts the same name in another script', () => {
-    expect(artistMatch('Кино', 'кино')).toBe(true);
-    expect(artistMatch('坂本龍一', '坂本龍一')).toBe(true);
+  it.each([
+    ['the same name', 'The Sophs', 'The Sophs'],
+    ['a name in another case', 'canaries', 'Canaries'],
+    ['a name with a stray dot', 'Kiwi jr', 'Kiwi jr.'],
+    ['the same Cyrillic name in another case', 'Кино', 'кино'],
+    ['the same name in kanji', '坂本龍一', '坂本龍一'],
+  ])('accepts %s', (_, played, found) => {
+    expect(artistMatch(played, found)).toBe(true);
   });
 
-  it('never matches on nothing: a name made only of punctuation', () => {
-    expect(artistMatch('!!!', '???')).toBe(false);
-  });
-
-  it('tolerates casing/punctuation drift', () => {
-    expect(artistMatch('canaries', 'Canaries')).toBe(true);
-    expect(artistMatch('Kiwi jr', 'Kiwi jr.')).toBe(true);
+  it.each([
+    ['another artist', 'gemstonemario', 'Écho Mémoire'],
+    ['another Cyrillic name', 'Кино', 'Ария'],
+    ['another name in kanji', '坂本龍一', '久石譲'],
+    ['names of punctuation alone, which say nothing', '!!!', '???'],
+  ])('refuses %s', (_, played, found) => {
+    expect(artistMatch(played, found)).toBe(false);
   });
 });
 

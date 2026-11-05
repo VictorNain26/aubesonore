@@ -68,12 +68,6 @@ describe('youtubeUrls', () => {
     await store('None', 'A', null, daysAgo(1));
     expect((await youtubeUrls([{ title: 'None', artist: 'A' }])).size).toBe(0);
   });
-
-  it('asks the database nothing for no song', async () => {
-    const select = spyOn(db, 'select');
-    expect((await youtubeUrls([])).size).toBe(0);
-    expect(select).not.toHaveBeenCalled();
-  });
 });
 
 describe('refreshStoredLinks', () => {

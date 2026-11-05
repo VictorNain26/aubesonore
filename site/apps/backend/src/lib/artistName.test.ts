@@ -31,21 +31,14 @@ describe('primaryArtistName', () => {
 });
 
 describe('slugify', () => {
-  it('lowercases and hyphenates', () => {
-    expect(slugify('Daft Punk')).toBe('daft-punk');
-  });
-
-  it('strips diacritics', () => {
-    expect(slugify('Étienne Daho')).toBe('etienne-daho');
-  });
-
-  it('collapses punctuation and trims stray hyphens', () => {
-    expect(slugify('Simon & Garfunkel!')).toBe('simon-garfunkel');
-    expect(slugify('!!!')).toBe('');
-  });
-
-  it('keeps letters of every script', () => {
-    expect(slugify('Кино')).toBe('кино');
+  it.each([
+    ['lowercases and hyphenates', 'Daft Punk', 'daft-punk'],
+    ['strips diacritics', 'Étienne Daho', 'etienne-daho'],
+    ['collapses punctuation and trims stray hyphens', 'Simon & Garfunkel!', 'simon-garfunkel'],
+    ['makes nothing of punctuation alone', '!!!', ''],
+    ['keeps letters of every script', 'Кино', 'кино'],
+  ])('%s: %s → %p', (_, name, slug) => {
+    expect(slugify(name)).toBe(slug);
   });
 });
 
