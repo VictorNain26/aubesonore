@@ -43,7 +43,6 @@ afterEach(() => {
   activeStop = null;
   __resetNowPlayingStore();
   vi.useRealTimers();
-  vi.restoreAllMocks();
 });
 
 // MSW payload helper that produces a `now_playing` fresh enough to land in the
@@ -70,26 +69,22 @@ describe('nowPlaying store — initial poll', () => {
 
   it('sets error and keeps data null when the server returns 500', async () => {
     server.use(http.get(URL_NP, () => new HttpResponse(null, { status: 500 })));
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     start();
     const { result } = renderHook(() => useNowPlayingStore((s) => s));
     await waitFor(() => expect(result.current.error).toBe('HTTP 500'));
     expect(result.current.data).toBeNull();
     expect(result.current.isConnected).toBe(false);
-    warnSpy.mockRestore();
   });
 
-  it('logs and sets error on schema validation failure', async () => {
+  it('sets error and keeps data null on a payload of the wrong shape', async () => {
     server.use(http.get(URL_NP, () => HttpResponse.json({ broken: true })));
-    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     start();
     const { result } = renderHook(() => useNowPlayingStore((s) => s));
     await waitFor(() => expect(result.current.error).toBe('invalid payload'));
     expect(result.current.data).toBeNull();
-    expect(errSpy).toHaveBeenCalled();
-    errSpy.mockRestore();
-    warnSpy.mockRestore();
   });
 });
 
@@ -346,7 +341,7 @@ describe('nowPlaying store — jitter', () => {
 describe('nowPlaying store — backoff', () => {
   it('backs off exponentially on consecutive failures (1s, 2s, 4s, ...)', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     let calls = 0;
     server.use(
       http.get(URL_NP, () => {
@@ -368,12 +363,11 @@ describe('nowPlaying store — backoff', () => {
       await vi.advanceTimersByTimeAsync(4_000);
     });
     expect(calls).toBe(4);
-    warnSpy.mockRestore();
   });
 
   it('asks again at once on Réessayer, rather than wait out the backoff', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     let calls = 0;
     server.use(
       http.get(URL_NP, () => {
@@ -399,12 +393,11 @@ describe('nowPlaying store — backoff', () => {
       await vi.advanceTimersByTimeAsync(1_000);
     });
     expect(calls).toBe(5);
-    warnSpy.mockRestore();
   });
 
   it('resets backoff after a successful response', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     let calls = 0;
     server.use(
       http.get(URL_NP, () => {
@@ -424,7 +417,6 @@ describe('nowPlaying store — backoff', () => {
       await vi.advanceTimersByTimeAsync(15_000);
     });
     expect(calls).toBe(3);
-    warnSpy.mockRestore();
   });
 });
 

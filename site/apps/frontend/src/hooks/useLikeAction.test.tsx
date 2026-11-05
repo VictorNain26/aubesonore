@@ -41,7 +41,6 @@ function renderWithLocation() {
 
 describe('useLikeAction', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
     useAuthStore.setState({ isAuthenticated: true });
     useLikedTracksStore.setState({ tracks: [], likingTrackId: null, error: null });
     takePendingKeep();

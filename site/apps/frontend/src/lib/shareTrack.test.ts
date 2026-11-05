@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { shareTrack, getRadioShareUrl } from './shareTrack';
 import { overwriteGetLocale } from '@/paraglide/runtime.js';
 import { API_BASE_URL } from './config';
@@ -8,8 +8,6 @@ const input = {
   artist: 'Psychic Lines',
   url: 'https://aubesonore.fr',
 };
-
-afterEach(() => vi.unstubAllGlobals());
 
 describe('shareTrack', () => {
   it('uses navigator.share when available', async () => {

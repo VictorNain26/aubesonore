@@ -70,6 +70,8 @@ let mockAudioInstance: MockAudio;
 
 beforeEach(() => {
   vi.resetModules();
+  // The level a test saved is not the next one's starting level.
+  localStorage.removeItem('aubesonore_volume');
   mockAudioInstance = new MockAudio();
   vi.stubGlobal(
     'Audio',
@@ -245,7 +247,6 @@ describe('player store', () => {
     expect(mockAudioInstance.pause).toHaveBeenCalledOnce();
     expect(mockAudioInstance.src).toBe('');
     expect(consoleError).not.toHaveBeenCalled();
-    consoleError.mockRestore();
   });
 
   it('keeps the stream when play comes back during the fade-out', async () => {

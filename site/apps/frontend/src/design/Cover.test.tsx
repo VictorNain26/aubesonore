@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Cover } from './Cover';
 
@@ -10,10 +10,6 @@ const ART =
 function loading(still: boolean) {
   vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(!still);
 }
-
-afterEach(() => {
-  vi.restoreAllMocks();
-});
 
 describe('Cover', () => {
   it('lets the browser pick the size a resizing host serves for its layout width', () => {

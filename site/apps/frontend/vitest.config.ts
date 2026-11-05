@@ -9,6 +9,13 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./src/mocks/setup.ts'],
+    // Every test starts from the real functions and globals: a spy, a stubbed global or env left by
+    // a test that failed half-way never leaks into the next one.
+    // A mock shared by a file's tests counts only the calls of the test at hand.
+    clearMocks: true,
+    restoreMocks: true,
+    unstubGlobals: true,
+    unstubEnvs: true,
     env: {
       VITE_API_URL: 'http://localhost:3000',
       VITE_AZURACAST_BASE_URL: 'https://radio.aubesonore.fr',

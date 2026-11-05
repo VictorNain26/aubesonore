@@ -70,7 +70,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
-  vi.restoreAllMocks();
+  chooseTheme('system');
 });
 
 describe('CoverLight', () => {
@@ -199,7 +199,6 @@ describe('CoverLight', () => {
     act(() => onChange?.());
     // The paper-coloured words of the night do not read on a white cover: the light is dimmed.
     expect(Number(lights()[0]!.style.opacity)).toBeLessThan(0.75);
-    vi.unstubAllGlobals();
   });
 
   it('weighs the light again when the listener chooses the night', () => {
@@ -213,7 +212,6 @@ describe('CoverLight', () => {
     act(() => chooseTheme('dark'));
     // The paper-coloured words of the night do not read on a white cover: the light is dimmed.
     expect(Number(lights()[0]!.style.opacity)).toBeLessThan(0.75);
-    act(() => chooseTheme('system'));
   });
 
   it('has no light without a real cover', () => {

@@ -420,8 +420,7 @@ describe('the line along its edge', () => {
   afterEach(() => {
     stream.analyser = null;
     heard.mockReset();
-    vi.unstubAllGlobals();
-    vi.restoreAllMocks();
+    document.documentElement.style.removeProperty('--dawn');
   });
 
   it('listens to the stream only while the live is heard, calm otherwise', () => {
@@ -442,11 +441,9 @@ describe('the line along its edge', () => {
 
   it('is drawn in the dawn, the token itself: the theme emits no --color-dawn', () => {
     const ctx = drawn();
-    const root = document.documentElement;
-    root.style.setProperty('--dawn', 'rgb(4, 5, 6)');
+    document.documentElement.style.setProperty('--dawn', 'rgb(4, 5, 6)');
     render(<PlayerBarView {...props()} />);
     expect(ctx.strokeStyle).toContain('rgb(4, 5, 6)');
-    root.style.removeProperty('--dawn');
   });
 
   it('holds still under reduced motion, even while the live plays', () => {

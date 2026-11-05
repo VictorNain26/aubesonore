@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { afterEach, describe, expect, it, beforeEach, vi } from 'vitest';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
@@ -28,6 +28,7 @@ beforeEach(() => {
   window.history.replaceState({}, '', '/');
   useAuthStore.setState(baseAuthState);
 });
+afterEach(() => chooseTheme('system'));
 
 describe('SiteHeader', () => {
   it('leads to the sign-in page when unauthenticated', () => {
@@ -140,7 +141,6 @@ describe('SiteHeader', () => {
     await userEvent.click(within(menu).getByRole('menuitemradio', { name: 'Clair' }));
     expect(document.documentElement.dataset.theme).toBe('light');
     expect(within(footer).getByRole('radio', { name: 'Clair' })).toBeChecked();
-    act(() => chooseTheme('system'));
   });
 
   it('shows neither sign-in nor user menu while loading', () => {

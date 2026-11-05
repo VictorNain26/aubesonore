@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import {
@@ -35,10 +35,6 @@ describe('signInWithGoogle', () => {
 
   beforeEach(() => {
     popup = { location: { href: 'about:blank' }, close: vi.fn<() => void>() };
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
   });
 
   it('signs in in a popup that comes back to the return page, and the page never leaves', async () => {

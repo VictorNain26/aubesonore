@@ -30,11 +30,12 @@ async function openHome() {
 
 beforeEach(() => {
   forgetHomeData();
-  window.matchMedia = vi.fn().mockReturnValue({
-    matches: false,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  });
+  vi.stubGlobal(
+    'matchMedia',
+    vi
+      .fn()
+      .mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })
+  );
   const now = Math.floor(Date.now() / 1000);
   const np = makeNowPlaying() as unknown as NowPlaying;
   np.now_playing = { ...np.now_playing, sh_id: 7, played_at: now - 60 };
@@ -150,8 +151,6 @@ function watchIntersections() {
 }
 
 describe('the player bar beside the hero', { timeout: PAGE_TEST_TIMEOUT }, () => {
-  afterEach(() => vi.unstubAllGlobals());
-
   const bar = () => screen.getByRole('region', { name: 'Lecteur du direct', hidden: true });
 
   it("stays away while the hero's player is on screen, and comes once it has left", async () => {

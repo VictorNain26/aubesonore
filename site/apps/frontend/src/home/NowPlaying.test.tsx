@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactElement } from 'react';
 import { render as rtlRender, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
@@ -332,8 +332,12 @@ describe('NowPlayingView', () => {
 });
 
 describe('NowPlayingFallback', () => {
+  afterEach(() => {
+    diffusionThrows.value = false;
+  });
+
   it('says the track does not show, keeps the live to hear, and retries', async () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     let shouldThrow = true;
     function Track() {
       if (shouldThrow) throw new Error('boom');
@@ -352,11 +356,10 @@ describe('NowPlayingFallback', () => {
     shouldThrow = false;
     await userEvent.click(screen.getByRole('button', { name: 'Réessayer' }));
     expect(screen.getByText('Mimoun')).toBeInTheDocument();
-    spy.mockRestore();
   });
 
   it('still offers Écouter and Réessayer when a store its row reads throws as well', () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     diffusionThrows.value = true;
     function Track(): null {
       throw new Error('boom');
@@ -370,8 +373,6 @@ describe('NowPlayingFallback', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Le titre en cours ne s’affiche pas.');
     expect(screen.getByRole('button', { name: 'Écouter le direct' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Réessayer' })).toBeInTheDocument();
-    diffusionThrows.value = false;
-    spy.mockRestore();
   });
 });
 

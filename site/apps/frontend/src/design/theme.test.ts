@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { applyThemeChoice, readThemeChoice, THEME_KEY, themeHeadScript } from './theme';
 
 const root = document.documentElement;
@@ -23,9 +23,6 @@ function blockStorage() {
 beforeEach(() => {
   localStorage.removeItem(THEME_KEY);
   delete root.dataset.theme;
-});
-afterEach(() => {
-  vi.restoreAllMocks();
 });
 
 describe('readThemeChoice', () => {

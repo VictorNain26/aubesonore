@@ -69,5 +69,9 @@ if (typeof globalThis.localStorage === 'undefined') {
 }
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-afterEach(() => server.resetHandlers());
+afterEach(() => {
+  server.resetHandlers();
+  // The tab's storage is the test's alone (a track to keep, the discovery trail).
+  if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
+});
 afterAll(() => server.close());

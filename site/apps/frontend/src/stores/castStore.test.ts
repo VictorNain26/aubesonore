@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../lib/cast/chromecast', () => ({
   RECEIVER_APP_ID: 'E913507F',
@@ -135,10 +135,6 @@ beforeEach(() => {
   vi.resetModules();
   toastError.mockClear();
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
 });
 
 async function setUp() {

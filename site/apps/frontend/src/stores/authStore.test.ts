@@ -22,7 +22,6 @@ const user = {
 };
 
 beforeEach(() => {
-  vi.clearAllMocks();
   useAuthStore.setState({
     user: null,
     isLoading: true,

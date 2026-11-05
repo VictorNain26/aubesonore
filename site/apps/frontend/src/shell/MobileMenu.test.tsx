@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
@@ -19,6 +19,7 @@ function open(path = '/') {
 beforeEach(() => {
   useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: false });
 });
+afterEach(() => chooseTheme('system'));
 
 describe('MobileMenu', () => {
   it('opens the pages a phone header has no room for, Musilogy among them; the logo leads home', async () => {
@@ -80,7 +81,6 @@ describe('MobileMenu', () => {
     expect(within(theme).getByRole('radio', { name: 'Système' })).toBeChecked();
     await userEvent.click(within(theme).getByRole('radio', { name: 'Sombre' }));
     expect(document.documentElement.dataset.theme).toBe('dark');
-    chooseTheme('system');
   });
 
   it('closes once a page is chosen', async () => {
