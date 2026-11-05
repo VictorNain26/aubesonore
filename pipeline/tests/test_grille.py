@@ -644,11 +644,14 @@ def _clock(monkeypatch: pytest.MonkeyPatch, at: datetime) -> None:
     monkeypatch.setattr(cli.antenne, "datetime", Fixed)
 
 
+WEDNESDAY = datetime(2026, 11, 4, 10, tzinfo=UTC)
+
+
 @pytest.fixture
 def grille_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeAzuracast:
     # Un mercredi ordinaire : la grille de jeudi a 24 heures. La veille du passage à l'heure
     # d'été, elle n'en a que 23 (test_the_grid_empties_the_hour_missing_from_the_day).
-    _clock(monkeypatch, datetime(2026, 11, 4, 10, tzinfo=UTC))
+    _clock(monkeypatch, WEDNESDAY)
     cfg = tmp_path / "config"
     cfg.mkdir()
     (cfg / "editorial.toml").write_text("")
@@ -721,7 +724,7 @@ def test_the_grid_counts_what_azuracast_has_already_queued(
     # to Liquidsoap plays even when its hour is rewritten; placed again, it would play twice.
     # 400 titres jamais joués pour moins de 400 créneaux : sans la file, s1 passerait demain.
     _on_air(tmp_path, 400)
-    grille_env.queue = {"s1": 1_791_130_000.0}
+    grille_env.queue = {"s1": WEDNESDAY.timestamp() + 600}  # jouera dans 10 min
     res = CliRunner().invoke(cli.app, ["grille"])
     assert res.exit_code == 0, res.output
     day = "".join(grille_env.filled.values())

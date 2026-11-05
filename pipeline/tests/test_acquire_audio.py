@@ -113,11 +113,9 @@ def test_preparation_writes_a_tagged_mp3_with_its_cover(full: Path, tmp_path: Pa
     assert _pictures(dest) == 1  # la pochette survit à rsgain
     assert sorted(f.name for f in tmp_path.iterdir() if f.name.startswith(".")) == []
 
-
-@needs_tools
-def test_preparation_without_cover_or_isrc_writes_neither(full: Path, tmp_path: Path) -> None:
+    # Un MP3 est copié sans réencodage, mais ses anciennes pochette et TSRC ne passent pas.
     bare = tmp_path / "124.mp3"
-    prepare(full, bare, "flac", Tags("Artiste", "Titre", 124, "", None), RSGAIN)
+    prepare(dest, bare, "mp3", Tags("Artiste", "Titre", 124, "", None), RSGAIN)
     assert _pictures(bare) == 0
     assert "TSRC" not in _tags(bare)
 

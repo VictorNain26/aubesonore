@@ -25,6 +25,7 @@ def test_connect_applies_migrations(tmp_path: Path) -> None:
     # Rouvrir une base à jour ne rejoue aucune migration (un CREATE TABLE rejoué lèverait).
     again = connect(tmp_path / "radio.db")
     assert again.execute("PRAGMA user_version").fetchone()[0] == N_MIGRATIONS
+    again.close()
 
 
 def test_a_migration_that_breaks_a_foreign_key_is_rolled_back(
@@ -47,6 +48,7 @@ def test_a_migration_that_breaks_a_foreign_key_is_rolled_back(
     raw = sqlite3.connect(db)
     assert raw.execute("PRAGMA user_version").fetchone()[0] == N_MIGRATIONS
     assert raw.execute("SELECT COUNT(*) FROM deezer_matches").fetchone()[0] == 0
+    raw.close()
 
 
 def test_migration_9_marks_published_discoveries(
