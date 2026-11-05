@@ -1,7 +1,7 @@
 import json
 from collections.abc import Iterable
 from dataclasses import replace
-from datetime import date, datetime, tzinfo
+from datetime import UTC, date, datetime, tzinfo
 from itertools import islice
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -633,8 +633,22 @@ class FakeAzuracast(FakeStation):
         return XF
 
 
+def _clock(monkeypatch: pytest.MonkeyPatch, at: datetime) -> None:
+    """La commande lit l'heure ici : la grille de demain ne dépend plus du jour du test."""
+
+    class Fixed(datetime):
+        @classmethod
+        def now(cls, tz: tzinfo | None = None) -> "Fixed":
+            return cls.fromtimestamp(at.timestamp(), tz)
+
+    monkeypatch.setattr(cli.antenne, "datetime", Fixed)
+
+
 @pytest.fixture
 def grille_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeAzuracast:
+    # Un mercredi ordinaire : la grille de jeudi a 24 heures. La veille du passage à l'heure
+    # d'été, elle n'en a que 23 (test_the_grid_empties_the_hour_missing_from_the_day).
+    _clock(monkeypatch, datetime(2026, 11, 4, 10, tzinfo=UTC))
     cfg = tmp_path / "config"
     cfg.mkdir()
     (cfg / "editorial.toml").write_text("")
@@ -689,18 +703,15 @@ def test_a_short_hour_is_published_then_fails_the_grid(
 def test_the_grid_empties_the_hour_missing_from_the_day(
     tmp_path: Path, grille_env: FakeAzuracast, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # The command passes the hours the day lacks to `publish`: here, 2 h, as on 2027-03-28.
+    # The command passes the hours the day lacks to `publish`: run on Saturday 2027-03-27, it
+    # plans Sunday 2027-03-28, which has no 2 h.
+    _clock(monkeypatch, datetime(2027, 3, 27, 10, tzinfo=UTC))
     _on_air(tmp_path, 400)
     grille_env.existing = {playlist_name(d, 2): 200 + d for d in range(1, 8)}
-    real = cli.antenne.grille_mod.hour_spans
-
-    def spring(day: date, hours: Iterable[int], tz: tzinfo) -> dict[int, tuple[float, float]]:
-        return {h: span for h, span in real(day, hours, tz).items() if h != 2}
-
-    monkeypatch.setattr(cli.antenne.grille_mod, "hour_spans", spring)
     res = CliRunner().invoke(cli.app, ["grille"])
     assert res.exit_code == 0, res.output
-    assert len(grille_env.emptied) == 1 and grille_env.emptied[0] not in grille_env.filled
+    assert grille_env.emptied == [207]  # « Grille dim 02h »
+    assert len(grille_env.filled) == 23 and 207 not in grille_env.filled
 
 
 def test_the_grid_counts_what_azuracast_has_already_queued(
