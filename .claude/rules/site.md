@@ -103,7 +103,7 @@ Musilogy's data is loaded into the `musilogy` schema: `musilogyService` calls on
 ## Security baselines
 
 - Never `fetch()` a user-supplied URL. The app has no URL guard: a route that must fetch one needs one first, blocking private IPv4/IPv6 and link-local (`169.254.0.0/16` = cloud metadata) and enforcing `https` in prod.
-- The `securityHeaders` Elysia plugin must stay mounted in `index.ts` (CSP, HSTS in prod, etc.).
+- The `securityHeaders` Elysia plugin must stay mounted on the app (`app.ts`, which `index.ts` serves; `app.test.ts`): CSP, HSTS in prod, etc.
 
 ## Track links and YouTube
 
