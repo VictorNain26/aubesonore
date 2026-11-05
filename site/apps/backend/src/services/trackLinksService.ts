@@ -141,8 +141,8 @@ export async function findTrackLinks(
   artist: string,
   isrc: string | null = null
 ): Promise<TrackLinks | null> {
-  // The ISRC can come from a like's body: it joins the key instead of replacing
-  // it, so one listener's ISRC never answers another title from the cache.
+  // The ISRC joins the key instead of replacing it, so one track's ISRC never
+  // answers another title from the cache.
   const cacheKey = `${isrc ?? ''}|${title.toLowerCase()}|${artist.toLowerCase()}`;
   const cached = linksCache.get(cacheKey);
   if (cached !== undefined) return cached;

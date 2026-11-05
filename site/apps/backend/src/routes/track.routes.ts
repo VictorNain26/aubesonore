@@ -53,15 +53,7 @@ export const trackRoutes = new Elysia({ prefix: '/api/track' })
       return data;
     }
 
-    // Build request with only defined optional fields
-    const requestBody = {
-      title: data.title,
-      artist: data.artist,
-      youtubeUrl: data.youtubeUrl,
-      ...(data.album !== undefined && { album: data.album }),
-      ...(data.isrc !== undefined && { isrc: data.isrc }),
-    };
-    const { status, ...answer } = await trackService.likeTrack({ user, body: requestBody });
+    const { status, ...answer } = await trackService.likeTrack({ user, body: data });
     if (answer.error) set.status = status ?? 400;
     return answer;
   })

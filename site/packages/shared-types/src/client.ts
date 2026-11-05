@@ -67,9 +67,7 @@ export interface TrendsResult {
 export interface LikeTrackRequest {
   title: string;
   artist: string;
-  album?: string;
   youtubeUrl: string;
-  isrc?: string;
 }
 
 /** The two languages the site is published in. */

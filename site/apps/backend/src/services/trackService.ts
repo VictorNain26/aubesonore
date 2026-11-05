@@ -22,9 +22,7 @@ const LIKED_TRACKS_MAX_PAGE = 500;
 interface LikeTrackBody {
   title: string;
   artist: string;
-  album?: string;
   youtubeUrl: string;
-  isrc?: string;
 }
 
 /** A track service's answer; `status` is the HTTP status the route sets, never sent. */
@@ -46,7 +44,7 @@ export async function likeTrack({
   user: User;
   body: LikeTrackBody;
 }): Promise<ServiceResponse> {
-  const { title, artist, album, youtubeUrl, isrc } = body;
+  const { title, artist, youtubeUrl } = body;
   const trackId = randomUUID();
 
   // Atomic insert relying on the unique index (user_id, title, artist).
@@ -58,9 +56,7 @@ export async function likeTrack({
       userId: user.id,
       title,
       artist,
-      album: album || null,
       youtubeUrl,
-      isrc: isrc || null,
     })
     .onConflictDoNothing({
       target: [schema.likedTracks.userId, schema.likedTracks.title, schema.likedTracks.artist],
@@ -102,7 +98,7 @@ export async function linkKeptTrack(trackId: string, title: string, artist: stri
   const resolved = await resolveArtist(artist);
   await db
     .update(schema.likedTracks)
-    .set({ artistId: resolved?.id ?? null, ...(play.isrc ? { isrc: play.isrc } : {}) })
+    .set({ artistId: resolved?.id ?? null, isrc: play.isrc })
     .where(eq(schema.likedTracks.id, trackId));
 }
 
