@@ -47,6 +47,7 @@ NEW_ORDER = "f1106b17-dcbb-45f6-b938-199ccfab50cc"
 U2 = "a3cb23fc-acd3-4ce0-8f36-1e5aa6a18432"
 COLISTEN = "INSERT INTO colisten VALUES "
 JOY_DIVISION_FIRST_SAME_SOUND = f"artist_mbid = '{JOY_DIVISION}' AND rank = 1"
+JOY_DIVISION_FIRST_TWO_SAME_SOUND = f"artist_mbid = '{JOY_DIVISION}' AND rank <= 2"
 
 CASES = [
     Broken(
@@ -469,6 +470,17 @@ CASES = [
         (
             "UPDATE same_sound SET rank = 3 - rank "
             f"WHERE artist_mbid = '{JOY_DIVISION}' AND rank <= 2",
+        ),
+    ),
+    Broken(
+        "same_sound_out_of_order",
+        "a tie not ranked by the neighbour's MBID",
+        (
+            f"UPDATE same_sound SET score = 0.5 WHERE {JOY_DIVISION_FIRST_TWO_SAME_SOUND}",
+            # The lower MBID of the two, ranked second.
+            "UPDATE same_sound SET rank = CASE WHEN neighbour_mbid = (SELECT min(neighbour_mbid) "
+            f"FROM same_sound WHERE {JOY_DIVISION_FIRST_TWO_SAME_SOUND}) THEN 2 ELSE 1 END "
+            f"WHERE {JOY_DIVISION_FIRST_TWO_SAME_SOUND}",
         ),
     ),
     Broken(

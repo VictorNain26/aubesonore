@@ -6,9 +6,22 @@ into it."""
 
 import pytest
 
-from tests.conftest import loaded, pg_query, synthetic_artist
+from tests.conftest import (
+    discogs_release,
+    discogs_url,
+    loaded,
+    pg_query,
+    synthetic_artist,
+    synthetic_release_group,
+)
 
 ARTIST = "00000000-0000-4000-8000-0000000003a1"
+MEMBER = "00000000-0000-4000-8000-0000000003a2"
+OTHER_BAND = "00000000-0000-4000-8000-0000000003a3"
+FORMER = "00000000-0000-4000-8000-0000000003a4"
+PARTNER = "00000000-0000-4000-8000-0000000003a5"
+RECORD = "00000000-0000-4000-8000-0000000003b1"
+OTHER_RECORD = "00000000-0000-4000-8000-0000000003b2"
 UNKNOWN = "00000000-0000-4000-8000-0000000003ff"
 
 NEIGHBOUR = "mbid text, name text, disambiguation text, y0 integer, y_end integer, ended boolean"
@@ -54,11 +67,59 @@ CONTRACT = {
 }
 
 
+def related(kind, target):
+    return {"type": kind, "direction": "forward", "mbid": target, "begin": None, "end": None}
+
+
 @pytest.fixture(scope="module")
 def site_database(tmp_path_factory, pg):
-    """One load for the whole module: every test here reads, none writes."""
-    artist = synthetic_artist(ARTIST, "1990", None, name="Ab")
-    return loaded(tmp_path_factory.mktemp("contract"), pg, [artist], popularity={ARTIST: 42})
+    """One load for the whole module, every test here reading, none writing.
+    ARTIST has a row in each section, so that a function which ignored its
+    argument would answer the unknown MBID too: a member also in OTHER_BAND,
+    a former name, a page, a record shared with PARTNER, and PARTNER's
+    listeners and Discogs style."""
+    tmp = tmp_path_factory.mktemp("contract")
+    artists = [
+        synthetic_artist(
+            ARTIST,
+            "1990",
+            None,
+            name="Ab",
+            urls=[
+                discogs_url(1),
+                {"type": "bandcamp", "url": "https://ab.bandcamp.com/", "ended": False},
+            ],
+        ),
+        synthetic_artist(
+            MEMBER,
+            "1970",
+            None,
+            kind="Person",
+            relations=[related("member of band", ARTIST), related("member of band", OTHER_BAND)],
+        ),
+        synthetic_artist(OTHER_BAND, "1995", None, urls=[discogs_url(3)]),
+        synthetic_artist(FORMER, "1985", "1990", relations=[related("artist rename", ARTIST)]),
+        synthetic_artist(PARTNER, "1990", None, urls=[discogs_url(2)]),
+    ]
+    release_groups = [
+        synthetic_release_group(RECORD, ARTIST, "1991", co_artists=[PARTNER]),
+        synthetic_release_group(OTHER_RECORD, OTHER_BAND, "1996"),
+    ]
+    # Three records each, the least a colour takes; OTHER_BAND's rock keeps
+    # Krautrock from being every artist's style, which would weigh it nothing.
+    discogs = [
+        *(discogs_release(i, [1 + i % 2], 0, "1992", ["Krautrock"]) for i in range(10, 16)),
+        *(discogs_release(i, [3], 0, "1996", ["Rock"]) for i in range(20, 23)),
+    ]
+    return loaded(
+        tmp,
+        pg,
+        artists,
+        popularity={ARTIST: 42},
+        release_groups=release_groups,
+        listening={user: [ARTIST, PARTNER] for user in range(3)},
+        discogs=discogs,
+    )
 
 
 def test_the_functions_the_site_reads_keep_their_signatures(site_database):
@@ -71,21 +132,25 @@ def test_the_functions_the_site_reads_keep_their_signatures(site_database):
         "JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_language l ON l.oid = p.prolang "
         f"WHERE n.nspname = 'musilogy' AND p.proname IN ({names})",
     )
-    assert {name: (args, result, lang, vol) for name, args, result, lang, vol in rows} == {
-        name: (args, result, "sql", "s") for name, (args, result) in CONTRACT.items()
-    }
+    # A list, not a dict by name: a second overload of one function must show.
+    assert sorted(rows) == sorted(
+        (name, args, result, "sql", "s") for name, (args, result) in CONTRACT.items()
+    )
 
 
 BY_ARTIST = [name for name, (args, _) in CONTRACT.items() if args == "artist text"]
 
 
+def rows(conninfo, call):
+    return pg_query(conninfo, f"SELECT count(*) FROM musilogy.{call}")[0][0]
+
+
 @pytest.mark.parametrize("function", BY_ARTIST)
 def test_an_unknown_mbid_gets_no_row(site_database, function):
-    rows = pg_query(site_database, f"SELECT count(*) FROM musilogy.{function}('{UNKNOWN}')")
-    assert rows == [(0,)]
+    assert rows(site_database, f"{function}('{ARTIST}')") > 0
+    assert rows(site_database, f"{function}('{UNKNOWN}')") == 0
 
 
 def test_an_unknown_mbid_gets_no_rank(site_database):
-    assert pg_query(
-        site_database, f"SELECT count(*) FROM musilogy.artist_homonym_rank(ARRAY['{UNKNOWN}'])"
-    ) == [(0,)]
+    assert rows(site_database, f"artist_homonym_rank(ARRAY['{ARTIST}'])") == 1
+    assert rows(site_database, f"artist_homonym_rank(ARRAY['{UNKNOWN}'])") == 0

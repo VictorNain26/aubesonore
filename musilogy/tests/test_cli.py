@@ -2,8 +2,8 @@ import json
 
 import pytest
 
+from musilogy import REFERENCE_DISCOGRAPHY, REFERENCE_LISTENING, REFERENCE_POPULARITY, cli
 from musilogy import REFERENCE_DUMP as DUMP
-from musilogy import REFERENCE_LISTENING, cli
 from musilogy.build import RAW_ARTIST_FIELDS, RAW_DISCOGS_FIELDS, RAW_RG_FIELDS
 from musilogy.colisten import cache_key
 from musilogy.fetch import ChecksumError, sha256_file
@@ -109,19 +109,21 @@ def test_run_refuses_to_publish_when_the_extraction_disagrees(tmp_path, publishe
 # every day. A run must neither fetch a fresh one, which would publish other
 # counts under the pinned date, nor build without one, which would publish an
 # empty table. Each case lets the surveys checked before it through, and the
-# run names the command that takes the one missing.
+# run names the survey missing, its date, and the command that takes it.
 @pytest.mark.parametrize(
-    ("found", "missing", "command"),
+    ("found", "missing", "survey", "command"),
     [
         pytest.param(
             {},
             ("POPULARITY_JSONL", lambda tmp: tmp / "artist-popularity.jsonl"),
+            f"ListenBrainz snapshot {REFERENCE_POPULARITY} missing",
             "snapshot-popularity",
             id="popularity",
         ),
         pytest.param(
             {"verified_popularity": "popularity.jsonl"},
             ("DISCOGRAPHY_JSONL", lambda tmp: tmp / "discography.jsonl"),
+            f"Wikidata snapshot {REFERENCE_DISCOGRAPHY} missing",
             "snapshot-discography",
             id="discography",
         ),
@@ -131,12 +133,15 @@ def test_run_refuses_to_publish_when_the_extraction_disagrees(tmp_path, publishe
                 "verified_discography": "discography.jsonl",
             },
             ("REFERENCE_OFFICIAL", lambda _tmp: ("1999-01-01",)),
+            "MusicBrainz official status 1999-01-01 missing",
             "snapshot-official",
             id="official-part",
         ),
     ],
 )
-def test_run_stops_when_a_pinned_survey_is_missing(tmp_path, monkeypatch, found, missing, command):
+def test_run_stops_when_a_pinned_survey_is_missing(
+    tmp_path, monkeypatch, found, missing, survey, command
+):
     monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
     monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
     monkeypatch.setattr(cli, "verified_extraction", lambda: None)
@@ -146,6 +151,7 @@ def test_run_stops_when_a_pinned_survey_is_missing(tmp_path, monkeypatch, found,
     monkeypatch.setattr(cli, attribute, value(tmp_path))
     with pytest.raises(SystemExit) as raised:
         cli.run()
+    assert survey in str(raised.value)
     assert "cannot be taken again" in str(raised.value)
     assert f"`musilogy {command}`" in str(raised.value)
 

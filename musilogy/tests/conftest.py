@@ -11,7 +11,7 @@ from musilogy import (
     REFERENCE_DUMP,
     REFERENCE_POPULARITY,
 )
-from musilogy.build import build
+from musilogy.build import build, scalar
 from musilogy.load import load
 from musilogy.paths import FIXTURES_DIR, SQL_DIR
 from musilogy.publish import publish
@@ -44,7 +44,7 @@ def con(sample):
 def violations(con, invariant):
     """The rows of one invariant view: the view alone, where check_invariants
     would count all of them for the one a test breaks."""
-    return con.execute(f"SELECT count(*) FROM {invariant}").fetchone()[0]
+    return scalar(con, f"SELECT count(*) FROM {invariant}")
 
 
 # Synthetic records, for the date shapes the witnesses do not carry (a begin

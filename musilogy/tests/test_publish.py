@@ -55,6 +55,7 @@ def test_publish_removes_every_file_it_did_not_write(con, tmp_path):
     assert not retired.exists()
     assert not stale.exists()
     assert set(manifest["output_sha256"]) == {f"{name}.parquet" for name in TABLES}
+    assert "genre_parents" not in manifest["counts"]
 
 
 def test_manifest_carries_archive_checksums(con, tmp_path):
