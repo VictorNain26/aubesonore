@@ -81,9 +81,9 @@ describe('CoverOpenLarge', () => {
         className="size-11"
       />
     );
-    expect(container.innerHTML).toMatch(
-      /^<div class="row-span-2 size-11"><div class="bg-surface-raised /
-    );
+    // The trigger's place is held by what stands in for it.
+    expect(container.innerHTML).toMatch(/^<div class="row-span-2 size-11">/);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('opens again for another cover after one failed', () => {

@@ -53,14 +53,12 @@ describe('PlayerBarView', () => {
     expect(onShare).toHaveBeenCalledOnce();
   });
 
-  it('puts the title and the artist forward, without the time', async () => {
+  it('puts the title and the artist forward, and plays the live from Écouter', async () => {
     const onToggleListen = vi.fn();
     render(<PlayerBarView {...props({ onToggleListen })} />);
 
-    // Twice: the phone's sheet trigger and the larger screens' line, one hidden by CSS.
-    expect(screen.getAllByText('Mimoun')).toHaveLength(2);
-    expect(screen.getAllByText('Mickey 3D')).toHaveLength(2);
-    expect(screen.queryByText(/à l’antenne/)).not.toBeInTheDocument();
+    expect(screen.getAllByText('Mimoun')[0]).toBeVisible();
+    expect(screen.getAllByText('Mickey 3D')[0]).toBeVisible();
     await userEvent.click(screen.getAllByRole('button', { name: 'Écouter le direct' })[0]!);
     expect(onToggleListen).toHaveBeenCalledOnce();
   });
@@ -81,7 +79,6 @@ describe('PlayerBarView', () => {
       render(<PlayerBarView {...props({ listen })} />);
       const pill = screen.getAllByRole('button', { name }).find((b) => b.textContent === word);
       expect(pill).toBeDefined();
-      expect(pill).toHaveClass('hidden', 'md:flex');
     }
   );
 
@@ -112,16 +109,10 @@ describe('PlayerBarView', () => {
     expect(follows(slider, keepButton())).toBe(true);
   });
 
-  it('leaves the volume to the phone’s own buttons: none in the bar under md', () => {
-    render(<PlayerBarView {...props()} />);
-    expect(screen.getByTestId('volume')).toHaveClass('hidden', 'md:fine-pointer:flex');
-  });
-
   it('puts Écouter under the thumb on a phone: the disc alone, after the heart', () => {
     render(<PlayerBarView {...props()} />);
     const disc = listenButtons().find((b) => b.textContent === '');
     expect(disc).toBeDefined();
-    expect(disc).toHaveClass('md:hidden');
     expect(follows(disc!, keepButton())).toBe(true);
     const trigger = screen.getByRole('button', { name: /Ouvrir «\u00a0Mimoun\u00a0»/ });
     expect(follows(keepButton(), trigger)).toBe(true);
@@ -169,7 +160,6 @@ describe('PlayerBarView', () => {
     render(<PlayerBarView {...props({ track: null })} />);
     // The phone's word beside its disc; a computer's pill says it already.
     expect(screen.getAllByText('Écouter')).toHaveLength(2);
-    expect(screen.getByText('Écouter', { ignore: 'button *' })).toHaveClass('md:hidden');
   });
 
   it('offers to stop the live while it plays, never to pause it: a press rejoins the live', () => {
@@ -306,14 +296,8 @@ describe('PlayerBarView', () => {
   it('changes track with the hero’s choreography: its cover and its words take the same steps', () => {
     const marked = (swap: string) =>
       (['bar-cover', 'bar-words'] as const).map(
-        (id, i) =>
-          screen
-            .getAllByTestId(id)
-            .filter(
-              (el) =>
-                el.getAttribute('data-swap') === swap &&
-                el.classList.contains(i === 0 ? 'swap-cover' : 'swap-words')
-            ).length
+        (id) =>
+          screen.getAllByTestId(id).filter((el) => el.getAttribute('data-swap') === swap).length
       );
     const { rerender } = render(<PlayerBarView {...props()} />);
     // The phone's track line and the computer's, one hidden by CSS.

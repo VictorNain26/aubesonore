@@ -22,26 +22,20 @@ const PROFILE: ArtistProfile = {
 // Runs without window, document or localStorage, like the build-time
 // pre-render: any browser API touched at import or render time fails here.
 describe('entry-server', () => {
-  it('renders the French home page as static HTML, its one heading the welcome line', async () => {
-    const html = await pageHtml('fr');
-    expect(html.match(/<h1[^>]*>.*?<\/h1>/g)).toEqual([
-      expect.stringMatching(/>Une aube à chaque titre\.<\/h1>$/),
-    ]);
-    // The welcome is its one sentence: no line under it.
-    expect(html).not.toContain('Des sons qui n’ont pas encore de nom pour vous.');
-    // The track before the one on air comes with the live payload, after the page is drawn.
-    expect(html).not.toContain('Depuis l’aube');
-  });
-
-  it('renders the English home page as static HTML, its one heading the welcome line', async () => {
-    const html = await pageHtml('en');
-    expect(html.match(/<h1[^>]*>.*?<\/h1>/g)).toEqual([
-      expect.stringMatching(/>A dawn with every track\.<\/h1>$/),
-    ]);
-    expect(html).not.toContain('Sounds you don’t have a name for yet.');
-    // The week comes with its data, and only when it holds a kept track (home/MostKept.tsx).
-    expect(html).not.toContain('Most kept');
-  });
+  it.each([
+    ['fr', />Une aube à chaque titre\.<\/h1>$/, 'Juste avant', 'Les plus gardés de la semaine'],
+    ['en', />A dawn with every track\.<\/h1>$/, 'Just before', 'Most kept this week'],
+  ] as const)(
+    'renders the %s home page as static HTML, its one heading the welcome line',
+    async (locale, welcome, justBefore, week) => {
+      const html = await pageHtml(locale);
+      expect(html.match(/<h1[^>]*>.*?<\/h1>/g)).toEqual([expect.stringMatching(welcome)]);
+      // The track before the one on air comes with the live payload, after the page is drawn;
+      // the week with its data, and only when it holds a kept track (home/MostKept.tsx).
+      expect(html).not.toContain(justBefore);
+      expect(html).not.toContain(week);
+    }
+  );
 
   it('marks the language of the page as the current one, not the language of the first render', async () => {
     await pageHtml('fr');

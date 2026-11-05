@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { resolveArtistPage } from '../lib/artistProfile';
 import { useArtistPage } from './useArtistPage';
 
 describe('useArtistPage', () => {
@@ -10,10 +11,12 @@ describe('useArtistPage', () => {
     await waitFor(() => expect(result.current).toEqual({ id: 'a-1', slug: 'hania-rani' }));
   });
 
-  it('stays null for an artist without a page', async () => {
+  it('stays null for an artist without a page, once the answer is in', async () => {
     const { result } = renderHook(() => useArtistPage('Unknown'));
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // The hook shares this request: once it has answered, the hook has heard the answer too.
+    await act(() => resolveArtistPage('Unknown'));
+
     expect(result.current).toBeNull();
   });
 

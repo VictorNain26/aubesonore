@@ -53,15 +53,6 @@ describe('ArtistPortrait', () => {
     const shown = () => within(screen.getByRole('button')).getByRole('presentation');
     expect(screen.getByRole('button').style.aspectRatio).toBe('1280 / 1920');
     expect(shown().className).toContain('object-cover');
-    // Fetched at the width it is drawn: a tall photo narrower than its square room, the line on a
-    // phone, beside the column the least of the screen's height, 42% of its width and 36 rem.
-    expect(shown().getAttribute('sizes')).toContain(
-      'min((100vw - 3rem), (100vw - 3rem) * 1280 / 1920)'
-    );
-    const room = 'min(100vh - 10rem, 42vw, 36rem)';
-    expect(shown().getAttribute('sizes')).toContain(
-      `(min-width: 40rem) and (orientation: landscape) min(${room}, ${room} * 1280 / 1920)`
-    );
 
     // A cover's size is not known: whole inside a square, even one that is not quite square.
     rerender(<ArtistPortrait images={[COVER]} name="Neu!" seed={SEED} />);

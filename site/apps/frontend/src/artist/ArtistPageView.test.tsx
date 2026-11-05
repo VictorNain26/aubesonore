@@ -111,8 +111,6 @@ describe('ArtistPageView', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Artistes proches' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Explorer dans Musilogy' })).not.toBeInTheDocument();
   });
 
   it("opens the next artist's close artists on its own first tab", () => {

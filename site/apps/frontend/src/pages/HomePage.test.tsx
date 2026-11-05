@@ -70,13 +70,13 @@ describe('HomePage', { timeout: PAGE_TEST_TIMEOUT }, () => {
     await openHome();
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Une aube à chaque titre.');
-    expect(screen.queryByText(/pas encore de nom/)).not.toBeInTheDocument();
-    expect(screen.getAllByText('Nüchtern').length).toBeGreaterThan(0);
+    expect(screen.getByRole('heading', { name: 'Nüchtern' })).toBeInTheDocument();
     const before = screen.getByRole('region', { name: 'Juste avant' });
     expect(before).toHaveTextContent('Mimoun');
     expect(before).not.toHaveTextContent('Nüchtern');
-    expect(screen.queryByRole('heading', { name: 'Depuis l’aube' })).not.toBeInTheDocument();
-    expect(screen.getAllByText('Oh No').length).toBeGreaterThan(0);
+    expect(screen.getByRole('region', { name: 'Les plus gardés de la semaine' })).toHaveTextContent(
+      'Oh No'
+    );
   });
 
   it('keeps the last cover dimmed off air, without its light', async () => {

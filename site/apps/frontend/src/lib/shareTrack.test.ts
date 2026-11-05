@@ -61,9 +61,9 @@ describe('getRadioShareUrl', () => {
     }
   });
 
-  it('encodes spaces in both params', () => {
+  it('encodes an accented letter as UTF-8', () => {
     expect(getRadioShareUrl('La Vie En Rose', 'Édith Piaf')).toBe(
-      `${API_BASE_URL}/t?artist=${encodeURIComponent('Édith Piaf')}&title=La%20Vie%20En%20Rose&lang=fr`
+      `${API_BASE_URL}/t?artist=%C3%89dith%20Piaf&title=La%20Vie%20En%20Rose&lang=fr`
     );
   });
 });

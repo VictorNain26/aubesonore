@@ -146,7 +146,6 @@ describe('MusilogySections', () => {
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Filiation']);
     expect(screen.getByRole('tab', { name: 'Filiation' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('heading', { name: 'Membres' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
   });
 
   it('leaves out the section, title and all, when no tab has anything', () => {

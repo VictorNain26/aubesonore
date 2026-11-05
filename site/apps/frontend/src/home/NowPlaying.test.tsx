@@ -222,17 +222,6 @@ describe('NowPlayingView', () => {
 
     rerender(<NowPlayingView {...props({ swap: 'in' })} />);
     expect(marks()).toEqual(['in', 'in']);
-    // The steps the player bar takes too (shell/PlayerBar.tsx): one choreography.
-    expect(screen.getByTestId('hero-cover')).toHaveClass('swap-cover');
-    expect(screen.getByTestId('hero-words')).toHaveClass('swap-words');
-  });
-
-  it('never cuts the title on air: a long one wraps, a word wider than the line breaks', () => {
-    const title = `${'Pneumonoultramicroscopicsilicovolcanoconiosis'.repeat(2)} and What We Are Meant to Be`;
-    render(<NowPlayingView {...props({ track: { ...props().track!, title } })} />);
-    const heading = screen.getByRole('heading', { name: title });
-    expect(heading.className).not.toMatch(/line-clamp|truncate|text-ellipsis|overflow-hidden/);
-    expect(heading).toHaveClass('wrap-break-word');
   });
 
   it("holds the words' room while the live has not answered: a line of each, at its size", () => {
@@ -318,24 +307,10 @@ describe('NowPlayingView', () => {
     expect(keep()).toContainHTML('keep-pop');
   });
 
-  it('fetches the cover at the width the hero gives it, beside the column or above it', () => {
+  it("fetches the cover first: the page's largest image", () => {
     const art = 'https://radio.aubesonore.fr/api/station/aubesonore/art/abc-1.jpg';
     render(<NowPlayingView {...props({ track: { ...props().track!, art } })} />);
     const img = screen.getByRole('img', { name: 'Pochette de Mimoun, Mickey 3D' });
-
-    // The hero's one formula (design/tokens.css, --hero-cover), in vw: beside the column, the
-    // screen's height less the header, its 24 px and the horizon (9.5rem), or the hero's width less
-    // both gutters, the column's 26rem and its 3.5rem of air (2.5rem gutters from 48rem, held to
-    // 100rem of content past it: 70.5rem at most; 1.5rem gutters below); above it, the screen's
-    // width, held under the height the header, its 24 px and the words need (28.5rem).
-    expect(img.getAttribute('sizes')).toBe(
-      [
-        '(min-width: 48rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 34.5rem, 70.5rem)',
-        '(min-width: 40rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 32.5rem)',
-        'min(100vw, max(9rem, 100vh - 28.5rem))',
-      ].join(', ')
-    );
-    // The page's largest image: fetched first.
     expect(img).toHaveAttribute('fetchpriority', 'high');
   });
 

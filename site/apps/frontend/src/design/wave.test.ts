@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { LAYERS, QUIET, hashOf, ruleMask, seedOf, traceOffset, wavePath, waveY } from './wave';
+import { hashOf, ruleMask, seedOf, wavePath, waveY } from './wave';
 
 /** The y of every point of a path, in order. */
 function ysOf(d: string): number[] {
@@ -66,19 +66,15 @@ describe('wavePath', () => {
 });
 
 describe('waveY', () => {
+  // The values the validated horizon had when it was drawn: a change to the sines moves them.
   it("is the home page's horizon for seed 0: the first trace, as it was drawn", () => {
-    const sines = LAYERS[0]!.sines;
     const opts = { width: 1000, height: 120, amplitude: 10 };
-    expect(waveY(300, opts)).toBeCloseTo(60 + 10 * traceOffset(sines, 0.3, QUIET), 9);
+    expect(waveY(300, opts)).toBeCloseTo(55.00997, 4);
   });
 
   it('draws the second trace with its own sines and gain', () => {
     const opts = { width: 1000, height: 120, amplitude: 10 };
-    const second = LAYERS[1]!;
-    expect(waveY(300, { ...opts, layer: 1 })).toBeCloseTo(
-      60 + 10 * second.gain * traceOffset(second.sines, 0.3, QUIET),
-      9
-    );
+    expect(waveY(300, { ...opts, layer: 1 })).toBeCloseTo(67.19011, 4);
   });
 });
 

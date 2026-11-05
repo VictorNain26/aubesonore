@@ -136,19 +136,25 @@ describe('nowPlaying store — lifecycle', () => {
     expect(calls).toBe(1);
   });
 
-  it('startNowPlayingPolling is idempotent', async () => {
+  it('a second start runs no second loop, and its cleanup leaves the first one running', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     let calls = 0;
     server.use(
       http.get(URL_NP, () => {
         calls++;
-        return HttpResponse.json(makeNowPlaying());
+        return HttpResponse.json(freshNowPlaying());
       })
     );
     start();
-    // Second start is a no-op; we should not see a duplicate first-fetch.
-    startNowPlayingPolling();
+    const second = startNowPlayingPolling();
     await vi.waitFor(() => expect(calls).toBe(1));
-    expect(calls).toBe(1);
+    second();
+
+    // One loop at the mid-track cadence (15 s): one more poll in 16 s, not none, not two.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(16_000);
+    });
+    expect(calls).toBe(2);
   });
 });
 
