@@ -2,7 +2,15 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, spyOn } from 'bu
 import { randomUUID } from 'node:crypto';
 import { eq, sql } from 'drizzle-orm';
 import { db, pool } from '../db';
-import { artist, artistSlug, likedTracks, radioPlay, user, type User } from '../db/schema';
+import {
+  artist,
+  artistSlug,
+  likedTracks,
+  radioPlay,
+  user,
+  youtubeLink,
+  type User,
+} from '../db/schema';
 import { artistKey } from '../lib/artistName';
 import { assertTestDatabase, emptyArtistTables } from '../test/pg';
 import * as keptTrackCovers from './keptTrackCovers';
@@ -10,7 +18,8 @@ import * as musicbrainz from './musicbrainzService';
 import * as onAir from './nowPlaying';
 import * as radioPlays from './radioPlayService';
 import * as youtubeLinks from './youtubeLinks';
-import { getLikedTracks, likeTrack, linkKeptTrack } from './trackService';
+import { songKey } from './youtubeLinks';
+import { getLikedTracks, likeTrack, linkKeptTrack, unlikeTrack } from './trackService';
 
 const MBID = '00000000-0000-4000-8000-000000000001';
 const listener = { id: 'u1' } as User;
@@ -107,6 +116,16 @@ describe('likeTrack', () => {
     expect((await kept(answer.track!.id))?.isrc).toBeNull();
   });
 
+  it('keeps a track once per listener: a second like is refused and adds no row', async () => {
+    await likeAndSettle(song);
+
+    expect(await likeTrack({ user: listener, body: song })).toEqual({
+      status: 400,
+      error: 'Morceau déjà liké',
+    });
+    expect(await db.select().from(likedTracks)).toHaveLength(1);
+  });
+
   it('still looks the cover up when tying the track to its play failed', async () => {
     const findPlay = spyOn(radioPlays, 'findPlay').mockRejectedValueOnce(new Error('db down'));
     try {
@@ -196,5 +215,48 @@ describe('getLikedTracks', () => {
     await keep('t5', 'Typed', null);
 
     expect(await pagesOf()).toEqual({ t4: null, t5: null });
+  });
+
+  it('links the verified Art Track in place of the search the track was kept with', async () => {
+    await keep('t6', 'Air', null);
+    await keep('t7', 'Air', null);
+    await db.insert(youtubeLink).values({
+      songKey: songKey('Title t6', 'Air'),
+      videoId: 'art-track',
+      checkedAt: new Date(),
+    });
+
+    const links = Object.fromEntries(
+      (await getLikedTracks({ user: listener })).map((track) => [track.id, track.youtubeUrl])
+    );
+
+    expect(links).toEqual({
+      t6: 'https://www.youtube.com/watch?v=art-track',
+      t7: 'https://www.youtube.com/results?search_query=x',
+    });
+  });
+});
+
+describe('unlikeTrack', () => {
+  it("removes a listener's own track, never another listener's", async () => {
+    const now = new Date();
+    await db
+      .insert(user)
+      .values({ id: 'u2', name: 'O', email: 'o@example.test', createdAt: now, updatedAt: now });
+    await keep('mine', 'Air', null);
+    await db.insert(likedTracks).values({
+      id: 'theirs',
+      title: 'Theirs',
+      artist: 'Air',
+      youtubeUrl: 'https://www.youtube.com/results?search_query=x',
+      userId: 'u2',
+    });
+
+    expect(await unlikeTrack({ user: listener, id: 'theirs' })).toEqual({
+      status: 404,
+      error: 'Morceau non trouvé ou déjà supprimé',
+    });
+    expect((await unlikeTrack({ user: listener, id: 'mine' })).track?.id).toBe('mine');
+    expect((await db.select().from(likedTracks)).map((row) => row.id)).toEqual(['theirs']);
   });
 });

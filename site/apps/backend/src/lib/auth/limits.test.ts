@@ -69,3 +69,37 @@ describe('password reset limits', () => {
     expect(statuses).toEqual([200, 200, 200, 429]);
   });
 });
+
+describe('sign-up and confirmation limits', () => {
+  it('count three sign-ups a minute per client, each with a new address', async () => {
+    const auth = makeAuth();
+    const statuses: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      const response = await auth.handler(
+        new Request('http://localhost:3000/api/auth/sign-up/email', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'cf-connecting-ip': '203.0.113.5' },
+          body: JSON.stringify({ email: `new${i}@example.com`, password: 'a-password', name: 'N' }),
+        })
+      );
+      statuses.push(response.status);
+    }
+    expect(statuses.slice(0, 3)).not.toContain(429);
+    expect(statuses[3]).toBe(429);
+  });
+
+  it('count ten confirmation links a minute per client, the eleventh refused', async () => {
+    const auth = makeAuth();
+    const statuses: number[] = [];
+    for (let i = 0; i < 11; i++) {
+      const response = await auth.handler(
+        new Request(`http://localhost:3000/api/auth/verify-email?token=guess-${i}`, {
+          headers: { 'cf-connecting-ip': '203.0.113.6' },
+        })
+      );
+      statuses.push(response.status);
+    }
+    expect(statuses.slice(0, 10)).not.toContain(429);
+    expect(statuses[10]).toBe(429);
+  });
+});

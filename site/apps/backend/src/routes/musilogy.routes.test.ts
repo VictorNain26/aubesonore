@@ -307,6 +307,15 @@ describe('GET /api/musilogy/search', () => {
     ]);
   });
 
+  it('answers 503 while musilogy is not loaded, saying it is not available', async () => {
+    notLoaded = new Set(['search_artists']);
+
+    const res = await get('/search?q=t.%20rex');
+
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "Musilogy n'est pas disponible pour l'instant" });
+  });
+
   it('refuses a query too short to narrow anything', async () => {
     expect((await get('/search?q=a')).status).toBe(400);
     expect((await get('/search')).status).toBe(400);

@@ -10,7 +10,8 @@ set -euo pipefail
 CONTAINER=aubesonore-db
 DB_USER=${POSTGRES_USER:-aubesonore}
 DB_NAME=${POSTGRES_DB:-aubesonore}
-DEST=/media/plex/.backups/aubesonore
+# BACKUP_DEST is for backup-db.test.sh only; the timer sets nothing.
+DEST=${BACKUP_DEST:-/media/plex/.backups/aubesonore}
 RETENTION_DAYS=14
 STAMP=$(date +%F_%H%M)
 TARGET="$DEST/aubesonore-$STAMP.dump"

@@ -97,6 +97,9 @@ jobs:
       - name: Deploy script guard
         run: bash scripts/deploy.test.sh
 
+      - name: Database backup script guards
+        run: bash scripts/backup-db.test.sh
+
       - name: Local data script guards
         run: bash scripts/local-data.test.sh
 

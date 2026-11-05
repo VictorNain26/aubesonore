@@ -118,4 +118,40 @@ deploy
 name="failed healthchecks roll back"
 if [ "$status" -ne 0 ] && head_is "$C" && failed_is "$BAD"; then passed "$name"; else failed "$name"; fi
 
+# schema.ts moves only with its own migration (the backend applies drizzle/*.sql at boot), or once
+# the operator records the schema they applied by hand.
+schema=site/apps/backend/src/db/schema.ts
+commit_schema() { # <schema text> <migration file or ""> <message>
+  mkdir -p "$r/dev/$(dirname "$schema")" "$r/dev/site/apps/backend/drizzle"
+  echo "$1" >"$r/dev/$schema"
+  [ -n "$2" ] && echo "SELECT 1;" >"$r/dev/site/apps/backend/drizzle/$2"
+  git -C "$r/dev" add -A
+  git -C "$r/dev" commit -qm "$3"
+  git -C "$r/dev" push -q origin master
+  git -C "$r/dev" rev-parse HEAD
+}
+BAD=none FAIL=none
+
+M=$(commit_schema "v1" 0001_v1.sql "schema with its migration")
+deploy
+name="a schema change with its own migration deploys"
+if [ "$status" -eq 0 ] && head_is "$M"; then passed "$name"; else failed "$name"; fi
+
+U=$(commit_schema "v2" "" "schema without a migration")
+deploy
+name="a schema change without a migration waits for the operator"
+if [ "$status" -ne 0 ] && head_is "$M" && [[ "$output" == *"schema.ts changed without a migration in: ${U:0:8}"* ]]; then
+  passed "$name"
+else failed "$name"; fi
+
+O=$(commit_schema "v2" 0002_other.sql "an unrelated migration after it")
+deploy
+name="a later commit's migration does not count for it"
+if [ "$status" -ne 0 ] && head_is "$M"; then passed "$name"; else failed "$name"; fi
+
+git -C "$r/repo" config aubesonore.appliedSchema "$(git -C "$r/repo" rev-parse "origin/master:$schema")"
+deploy
+name="the schema the operator applied lets it through"
+if [ "$status" -eq 0 ] && head_is "$O"; then passed "$name"; else failed "$name"; fi
+
 exit "$failures"
