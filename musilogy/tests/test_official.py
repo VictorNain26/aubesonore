@@ -8,7 +8,6 @@ from tests.conftest import (
     synthetic_artist,
     synthetic_release_group,
 )
-from tests.test_invariants import restored
 
 A = "00000000-0000-4000-8000-0000000000d1"
 B = "00000000-0000-4000-8000-0000000000d2"
@@ -64,14 +63,6 @@ def test_a_record_is_official_when_a_surveyed_credited_artist_lists_it(tmp_path)
 def test_without_a_survey_every_status_is_unknown(tmp_path):
     c = build_synthetic(tmp_path, [synthetic_artist(A, "1975", None)], RGS[:2])
     assert set(statuses(c).values()) == {None}
-
-
-def test_official_unsourced_catches_a_flipped_status(tmp_path):
-    c = built(tmp_path)
-    undo = "UPDATE releases SET official = ? WHERE rg_mbid = ?"
-    with restored(c, (undo, [False, BOOTLEG])):
-        c.execute(undo, [True, BOOTLEG])
-        assert dict(check_invariants(c, SQL)).get("official_unsourced") == 1
 
 
 def test_an_artist_asked_by_two_parts_of_the_official_survey_is_reported(tmp_path):

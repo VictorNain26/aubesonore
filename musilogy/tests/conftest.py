@@ -21,11 +21,30 @@ FIX = FIXTURES_DIR
 SQL = SQL_DIR
 
 
-@pytest.fixture(scope="module")
-def con():
+@pytest.fixture(scope="session")
+def sample():
+    """The pipeline run on the witnesses, once for the whole session, with the
+    invariant views created over it."""
     c = duckdb.connect(":memory:")
     build_sample(c)
+    c.execute((SQL / "90_invariants.sql").read_text(encoding="utf-8"))
     return c
+
+
+@pytest.fixture
+def con(sample):
+    """The sample inside a transaction rolled back after the test: a test may
+    break a table to see an invariant fail, and whatever it changed, even on a
+    failing assertion, never reaches the next test."""
+    sample.begin()
+    yield sample
+    sample.rollback()
+
+
+def violations(con, invariant):
+    """The rows of one invariant view: the view alone, where check_invariants
+    would count all of them for the one a test breaks."""
+    return con.execute(f"SELECT count(*) FROM {invariant}").fetchone()[0]
 
 
 # Synthetic records, for the date shapes the witnesses do not carry (a begin

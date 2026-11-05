@@ -1,8 +1,6 @@
 """« Même son » (samesound.py) on a synthetic build: the Discogs records below
 make each rule of the colour visible, with no listens at all."""
 
-import pytest
-
 from musilogy import samesound
 from musilogy.build import check_invariants
 from musilogy.paths import SQL_DIR
@@ -163,32 +161,6 @@ def test_batches_and_workers_give_the_same_table(tmp_path, monkeypatch):
 def test_no_records_give_no_same_sound(tmp_path):
     c = build_synthetic(tmp_path, ARTISTS)
     assert c.execute("SELECT count(*) FROM same_sound").fetchone() == (0,)
-
-
-A_B = f"artist_mbid = '{A}' AND neighbour_mbid = '{B}'"
-
-
-@pytest.mark.parametrize(
-    ("invariant", "mutation"),
-    [
-        # B and D tie on the colour: the tie must fall to the MBID.
-        (
-            "same_sound_out_of_order",
-            f"UPDATE same_sound SET rank = 3 - rank WHERE artist_mbid = '{A}' AND rank <= 2",
-        ),
-        ("same_sound_unexplained", f"UPDATE same_sound SET term = 'Rock' WHERE {A_B}"),
-        ("same_sound_self", f"UPDATE same_sound SET neighbour_mbid = artist_mbid WHERE {A_B}"),
-        (
-            "same_sound_rank_out_of_range",
-            f"UPDATE same_sound SET rank = 9 WHERE artist_mbid = '{A}' AND neighbour_mbid = '{F}'",
-        ),
-        ("same_sound_score_out_of_range", f"UPDATE same_sound SET score = 0 WHERE {A_B}"),
-    ],
-)
-def test_a_broken_same_sound_is_reported(tmp_path, invariant, mutation):
-    c = built(tmp_path)
-    c.execute(mutation)
-    assert invariant in dict(check_invariants(c, SQL_DIR))
 
 
 def test_the_site_reads_same_sound_in_rank_order_each_with_its_reason(tmp_path, pg):

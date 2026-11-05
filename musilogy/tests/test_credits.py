@@ -1,8 +1,6 @@
 """Credited together (86_credits.sql) on a synthetic build: MusicBrainz release
 groups and Discogs records, each rule of the count made visible."""
 
-import pytest
-
 from musilogy.build import check_invariants
 from musilogy.paths import SQL_DIR
 from tests.conftest import (
@@ -105,25 +103,6 @@ def test_a_collective_release_group_counts_every_artist_it_credits(tmp_path):
 
 def test_musicbrainz_alone_credits_a_pair(tmp_path):
     assert credits(built(tmp_path, releases=[]), Q) == [(P, 1)]
-
-
-@pytest.mark.parametrize(
-    ("invariant", "mutation"),
-    [
-        ("credit_one_way", f"DELETE FROM credits WHERE artist_mbid = '{Q}'"),
-        ("credit_without_record", f"UPDATE credits SET records = 0 WHERE artist_mbid = '{Q}'"),
-        ("credit_self", f"UPDATE credits SET other_mbid = artist_mbid WHERE artist_mbid = '{Q}'"),
-        ("credit_linked", f"INSERT INTO credits VALUES ('{P}', '{M}', 1), ('{M}', '{P}', 1)"),
-        (
-            "duplicate_credit",
-            f"INSERT INTO credits SELECT * FROM credits WHERE artist_mbid = '{Q}'",
-        ),
-    ],
-)
-def test_broken_credits_are_reported(tmp_path, invariant, mutation):
-    c = built(tmp_path)
-    c.execute(mutation)
-    assert invariant in dict(check_invariants(c, SQL_DIR))
 
 
 def test_the_site_reads_the_most_credited_first_then_by_name(tmp_path, pg):
