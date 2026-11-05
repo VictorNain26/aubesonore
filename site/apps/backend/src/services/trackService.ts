@@ -98,7 +98,7 @@ export async function linkKeptTrack(trackId: string, title: string, artist: stri
   const resolved = await resolveArtist(artist);
   await db
     .update(schema.likedTracks)
-    .set({ artistId: resolved?.id ?? null, ...(play.isrc ? { isrc: play.isrc } : {}) })
+    .set({ artistId: resolved?.id ?? null, isrc: play.isrc })
     .where(eq(schema.likedTracks.id, trackId));
 }
 

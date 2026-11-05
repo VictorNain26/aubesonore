@@ -373,7 +373,8 @@ un autre artiste (en production, le 2026-10-04 : Paul McCartney crédité à Win
 déposé sur un titre d'ANNA). Une réponse ISRC n'est retenue que si le titre et l'un des noms
 crédités sont ceux joués, une fois normalisés.
 
-Un titre gardé enregistre son ISRC et l'artiste qu'il désigne : c'est ce qui permet à la page de
+Un titre gardé enregistre l'ISRC de son passage à l'antenne, jamais celui d'un appelant, et
+l'artiste qu'il désigne : c'est ce qui permet à la page de
 montrer « vos titres gardés ». Un featuring crédite plusieurs artistes : la page est celle de
 l'artiste principal, chaque crédité est relié.
 
