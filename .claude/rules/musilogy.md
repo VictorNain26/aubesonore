@@ -9,7 +9,9 @@ paths:
 Les chemins ci-dessous sont relatifs à `musilogy/`.
 
 Règles métier et commandes : `README.md` (« Installation, tests, exécution ») ; conception, dont le contrat des fonctions SQL que lit le site :
-`docs/conception.md` ; place dans le produit : `docs/vision.md` §2 (racine du dépôt).
+`docs/conception.md` ; place dans le produit : `docs/vision.md` §2 (racine du dépôt). Un avis sur une
+méthode ou un affichage de Musilogy part des dossiers de `docs/research/` et des sources qu'ils citent ; une décision
+qu'ils ont tranchée ne se rouvre que sur une preuve nouvelle.
 
 ## Python
 
