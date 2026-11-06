@@ -538,7 +538,7 @@ le dernier passage.
 |---|---|---|
 | dimanche 03:00 | `radio-weekly` | `library-sync`, `discover`, `nouveautes`, `favoris`, `signals`, `train`, `votes-select`, `acquire`, `antenne`, `mesures`, `grille --aujourdhui`, `check` ; bornée à 12 h |
 | chaque jour 23:00 | `radio-grille` | grille du lendemain dans les 24 playlists horaires du jour |
-| chaque jour 04:30 | `radio-backup` | copie de `data/radio.db` (API de sauvegarde SQLite, `integrity_check` vérifié) et de `data/models/` dans `RADIO_BACKUP_DIR` (`/media/plex/.backups/radio`, autre disque physique), 14 jours gardés |
+| chaque jour 04:30 | `radio-backup` | copie de `data/radio.db` (API de sauvegarde SQLite, `integrity_check` vérifié avant d'entrer dans son jour : une copie refusée ne laisse rien) et de `data/models/` dans `RADIO_BACKUP_DIR` (`/media/plex/.backups/radio`, autre disque physique), 14 jours gardés |
 | en continu | `radio-votes` | page de vote, `127.0.0.1:8040`, publiée sur `votes.aubesonore.fr` |
 
 - Pannes : §8.2.

@@ -16,16 +16,23 @@ class BackupError(Exception):
 
 
 def backup(db: Path, models: Path, dest: Path, today: date, keep_days: int) -> Path:
-    target = dest / today.isoformat()
-    target.mkdir(parents=True, exist_ok=True)
+    # The copy is made beside the days and enters its day only once sound: a refused copy leaves
+    # nothing, so the newest day stays one to restore, even a sound copy made earlier today.
+    dest.mkdir(parents=True, exist_ok=True)
     dest.chmod(0o700)
-    copy = target / "radio.db"
-    copy.unlink(missing_ok=True)
-    with closing(sqlite3.connect(db)) as src, closing(sqlite3.connect(copy)) as dst:
-        src.backup(dst)
-        check = dst.execute("PRAGMA integrity_check").fetchone()[0]
-    if check != "ok":
-        raise BackupError(f"integrity_check : {check}")
+    partial = dest / ".radio.db.partial"
+    partial.unlink(missing_ok=True)
+    try:
+        with closing(sqlite3.connect(db)) as src, closing(sqlite3.connect(partial)) as dst:
+            src.backup(dst)
+            check = dst.execute("PRAGMA integrity_check").fetchone()[0]
+        if check != "ok":
+            raise BackupError(f"integrity_check : {check}")
+        target = dest / today.isoformat()
+        target.mkdir(exist_ok=True)
+        partial.replace(target / "radio.db")
+    finally:
+        partial.unlink(missing_ok=True)
     if models.exists():
         shutil.copytree(models, target / "models", dirs_exist_ok=True)
     oldest = (today - timedelta(days=keep_days)).isoformat()

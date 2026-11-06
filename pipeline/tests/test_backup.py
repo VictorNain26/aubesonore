@@ -73,7 +73,30 @@ def test_an_unsound_copy_is_refused_and_older_backups_are_kept(tmp_path: Path) -
     with pytest.raises(BackupError, match="integrity_check : row 1 missing from index t_a"):
         backup(db, models, dest, TODAY, 14)
     assert (dest / "2026-09-01").is_dir()
-    assert not (dest / "2026-10-02" / "models").exists()
+    # Nothing of the refused copy stays: the newest day must still be a sound one to restore.
+    assert sorted(p.name for p in dest.iterdir()) == ["2026-09-01"]
+
+
+def test_a_refused_copy_keeps_the_sound_one_made_earlier_the_same_day(tmp_path: Path) -> None:
+    # Breaks if a second run of the day destroys its sound copy before knowing the new one is sound.
+    db = tmp_path / "radio.db"
+    make_model_db(tmp_path).close()
+    models = tmp_path / "models"
+    dest = tmp_path / "sauvegardes"
+    target = backup(db, models, dest, TODAY, 14)
+    sound = (target / "radio.db").read_bytes()
+    broken = sqlite3.connect(db)
+    broken.executescript(
+        "CREATE TABLE t (a, b); CREATE INDEX t_a ON t (a); INSERT INTO t VALUES (1, 2);"
+        "PRAGMA writable_schema = ON;"
+        "UPDATE sqlite_master SET sql = 'CREATE INDEX t_a ON t (b)' WHERE name = 't_a';"
+    )
+    broken.close()
+
+    with pytest.raises(BackupError):
+        backup(db, models, dest, TODAY, 14)
+    assert (target / "radio.db").read_bytes() == sound
+    assert sorted(p.name for p in target.iterdir()) == ["radio.db"]
 
 
 def test_backup_needs_a_destination(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
