@@ -13,3 +13,4 @@ paths:
   `pytest -q -W error -rs`). `pipeline/scripts/dev-setup.sh` une fois, sinon des tests se sautent.
 - Le schéma en vigueur : `sqlite3 pipeline/data/radio.db .schema`.
 - Ne pas lancer `train` pendant `signals`.
+- Un script de migration SQLite ne contient ni `BEGIN` ni `COMMIT` (`radio/core/db.py`, `_migrate`).
