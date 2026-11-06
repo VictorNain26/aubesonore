@@ -24,8 +24,9 @@ async function open(page: Page, { path, scene = {}, stream = 'plays' }: Visit) {
 }
 
 /**
- * The page at rest: no request pending, the fonts in, every image decoded. A lazy image is asked
- * now: below the screen it would come or not depending on the moment of the capture.
+ * The page at rest: no request pending, the fonts in, every image decoded, the cover's light
+ * settled. A lazy image is asked now: below the screen it would come or not depending on the
+ * moment of the capture.
  */
 async function settle(page: Page) {
   await page.waitForLoadState('networkidle');
@@ -36,6 +37,12 @@ async function settle(page: Page) {
     await Promise.all(images.map((img) => img.decode().catch(() => undefined)));
   });
   await page.waitForLoadState('networkidle');
+  // A light whose cover came after the first render fades in, and keeps its fade's class until
+  // a timer drops it (design/CoverLight.tsx, LIGHT_FADE_MS): captured on either side of that
+  // moment, the hero came out a shade apart at the edge of a few pixels.
+  await expect(
+    page.locator('.cover-light > canvas:is(.light-in, .light-out, .invisible)')
+  ).toHaveCount(0);
 }
 
 /** The capture, then axe on the same page; the capture is soft so axe runs even when it differs. */
