@@ -10,12 +10,9 @@
   "osvVulnerabilityAlerts": true,
   "dependencyDashboardOSVVulnerabilitySummary": "all",
   "vulnerabilityAlerts": {
+    "description": "Fixes skip the 14 days but wait 3, the age of security:minimumReleaseAgeNpm, so a fix published hours ago is not deployed by itself; then the packageRules decide: minor and patch merge once CI passes, majors wait for review",
     "labels": ["security"],
-    "minimumReleaseAge": null,
-    "automerge": true
-  },
-  "lockFileMaintenance": {
-    "automerge": true
+    "minimumReleaseAge": "3 days"
   },
   "packageRules": [
     {
@@ -72,7 +69,7 @@
       "schedule": ["before 6am on monday"]
     },
     {
-      "description": "Postgres: one image for production (site/compose.yaml) and the CI services, so one PR moves them together, reviewed by hand",
+      "description": "Postgres: one image for production (site/compose.yaml) and the CI services, so one PR moves them together, reviewed by hand, its digest re-pins included",
       "matchPackageNames": ["postgres"],
       "groupName": "postgres",
       "automerge": false,
