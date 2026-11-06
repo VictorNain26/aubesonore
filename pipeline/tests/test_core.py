@@ -1,5 +1,6 @@
 import ast
 import logging
+import shutil
 import sqlite3
 from pathlib import Path
 
@@ -20,12 +21,34 @@ def test_connect_applies_migrations(tmp_path: Path) -> None:
     names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert {"library_tracks", "deezer_matches"} <= names
     assert conn.execute("PRAGMA foreign_keys").fetchone()[0] == 1
+    conn.close()
+    # Rouvrir une base à jour ne rejoue aucune migration (un CREATE TABLE rejoué lèverait).
+    again = connect(tmp_path / "radio.db")
+    assert again.execute("PRAGMA user_version").fetchone()[0] == N_MIGRATIONS
+    again.close()
 
 
-def test_connect_is_idempotent(tmp_path: Path) -> None:
-    connect(tmp_path / "radio.db").close()
-    conn = connect(tmp_path / "radio.db")
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == N_MIGRATIONS
+def test_a_migration_that_breaks_a_foreign_key_is_rolled_back(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Breaks if a rebuild that loses a parent row is committed: the keys are off during a
+    # migration (official table rebuild), so only foreign_key_check sees the orphan.
+    scripts = tmp_path / "migrations"
+    shutil.copytree(MIGRATIONS, scripts)
+    monkeypatch.setattr("radio.core.db.MIGRATIONS", scripts)
+    db = tmp_path / "radio.db"
+    connect(db).close()
+    name = f"{N_MIGRATIONS + 1:03d}_orpheline.sql"
+    (scripts / name).write_text(
+        "INSERT INTO deezer_matches VALUES ('absente', 'matched', NULL, 1, 1, 'd');",
+        encoding="utf-8",
+    )
+    with pytest.raises(sqlite3.IntegrityError, match=f"clés étrangères rompues par {name}"):
+        connect(db)
+    raw = sqlite3.connect(db)
+    assert raw.execute("PRAGMA user_version").fetchone()[0] == N_MIGRATIONS
+    assert raw.execute("SELECT COUNT(*) FROM deezer_matches").fetchone()[0] == 0
+    raw.close()
 
 
 def test_migration_9_marks_published_discoveries(

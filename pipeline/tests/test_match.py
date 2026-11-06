@@ -59,41 +59,40 @@ def test_normalize(raw: str, norm: str) -> None:
     assert normalize(raw) == norm
 
 
-def test_search_query_strips_quotes_and_decorations() -> None:
-    assert search_query('Say "Hi"', "Mannequin (Remastered) - Live") == "Say Hi Mannequin - Live"
-
-
-def test_search_query_keeps_non_harmless_bracket_group() -> None:
-    assert search_query("Wire", "(Interlude)") == "Wire (Interlude)"
-
-
-def test_search_query_is_simple_no_advanced_syntax() -> None:
-    assert search_query("Daft Punk", "Harder Better Faster Stronger") == (
-        "Daft Punk Harder Better Faster Stronger"
-    )
-
-
-def test_search_query_strips_feat_from_artist() -> None:
-    assert search_query("M83 feat. Susanne Sundfør", "For the Kids") == "M83 For the Kids"
-
-
-def test_search_query_strips_feat_from_title() -> None:
-    assert search_query("Artist", "Song feat. Someone") == "Artist Song"
-
-
-def test_search_query_keeps_live_after_stripping_feat_from_title() -> None:
-    assert search_query("Artist", "Song feat. X (Live)") == "Artist Song (Live)"
-
-
-def test_search_query_strips_feat_from_title_with_accent() -> None:
-    # _FEAT s'applique sur le texte brut (pas de _base au préalable) : vérifie qu'il ne dépend
-    # pas des accents dans le nom retiré.
-    assert search_query("Artist", "Song feat. Ünal (Live)") == "Artist Song (Live)"
-
-
-def test_search_query_falls_back_to_raw_artist_when_emptied() -> None:
-    # L'artiste entier disparaît via _FEAT (feat. en tête) : repli sur l'artiste brut.
-    assert search_query(" feat. Guest", "Song") == "feat. Guest Song"
+@pytest.mark.parametrize(
+    ("artist", "title", "query"),
+    [
+        pytest.param(
+            'Say "Hi"',
+            "Mannequin (Remastered) - Live",
+            "Say Hi Mannequin - Live",
+            id="strips-quotes-and-decorations",
+        ),
+        pytest.param("Wire", "(Interlude)", "Wire (Interlude)", id="keeps-a-meaningful-bracket"),
+        # Texte simple : le filtre avancé `artist:"…"` est cassé côté Deezer.
+        pytest.param(
+            "Daft Punk",
+            "Harder Better Faster Stronger",
+            "Daft Punk Harder Better Faster Stronger",
+            id="no-advanced-syntax",
+        ),
+        pytest.param(
+            "M83 feat. Susanne Sundfør", "For the Kids", "M83 For the Kids", id="feat-in-artist"
+        ),
+        pytest.param("Artist", "Song feat. Someone", "Artist Song", id="feat-in-title"),
+        pytest.param(
+            "Artist", "Song feat. X (Live)", "Artist Song (Live)", id="keeps-live-after-feat"
+        ),
+        # _FEAT s'applique au texte brut : le nom retiré peut porter des accents.
+        pytest.param(
+            "Artist", "Song feat. Ünal (Live)", "Artist Song (Live)", id="accented-featured-name"
+        ),
+        # Un « feat. » en tête vide l'artiste entier : repli sur l'artiste brut.
+        pytest.param(" feat. Guest", "Song", "feat. Guest Song", id="emptied-artist-falls-back"),
+    ],
+)
+def test_search_query(artist: str, title: str, query: str) -> None:
+    assert search_query(artist, title) == query
 
 
 def test_pick_exact_prefers_preview_then_duration_then_rank() -> None:

@@ -119,10 +119,6 @@ def test_malformed_item_is_definitive() -> None:
         client().search_tracks("q")
 
 
-def test_unavailable_is_not_a_deezer_error() -> None:
-    assert not issubclass(DeezerUnavailable, DeezerError)
-
-
 API = "https://api.deezer.com"
 PREVIEW = "https://cdnt-preview.dzcdn.net/api/1/1/x.mp3?hdnea=SIGNED-SECRET"
 

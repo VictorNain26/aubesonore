@@ -67,42 +67,38 @@ def _melody(path: Path, seed: int) -> None:
     )
 
 
-@pytest.mark.skipif(not TOOLS, reason="ffmpeg, fpcalc et rsgain requis")
-def test_real_tools_identity_and_preparation(tmp_path: Path) -> None:
-    full, other = tmp_path / "full.flac", tmp_path / "other.flac"
-    _melody(full, 1)
+RSGAIN = Path(str(shutil.which("rsgain")))
+needs_tools = pytest.mark.skipif(not TOOLS, reason="ffmpeg, fpcalc et rsgain requis")
+
+
+@pytest.fixture(scope="module")
+def full(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Le fichier Soulseek : une mélodie de 60 s en FLAC, générée une fois pour le module."""
+    path = tmp_path_factory.mktemp("source") / "full.flac"
+    _melody(path, 1)
+    return path
+
+
+@needs_tools
+def test_the_preview_identifies_its_own_file_only(full: Path, tmp_path: Path) -> None:
+    other, excerpt = tmp_path / "other.flac", tmp_path / "excerpt.mp3"
     _melody(other, 2)
-    excerpt = tmp_path / "excerpt.mp3"
-    subprocess.run(
-        ["ffmpeg", "-v", "error", "-y", "-ss", "20", "-t", "30", "-i", str(full), str(excerpt)],
-        check=True,
-    )
+    # L'extrait Deezer : 30 s prises au milieu du titre, en MP3.
+    _ffmpeg("-ss", "20", "-t", "30", "-i", str(full), str(excerpt))
     preview = fingerprint(excerpt)
     assert similarity(fingerprint(full), preview) >= CFG.identity_threshold
     assert similarity(fingerprint(other), preview) < CFG.identity_threshold
 
+
+@needs_tools
+def test_preparation_writes_a_tagged_mp3_with_its_cover(full: Path, tmp_path: Path) -> None:
     p = probe(full)
     assert (p.codec, round(p.duration_s), p.kbps) == ("flac", 60, None)
     cover = tmp_path / "cover.jpg"
-    subprocess.run(
-        [
-            "ffmpeg",
-            "-v",
-            "error",
-            "-f",
-            "lavfi",
-            "-i",
-            "color=red:s=64x64",
-            "-frames:v",
-            "1",
-            str(cover),
-        ],
-        check=True,
-    )
-    rsgain = Path(str(shutil.which("rsgain")))
+    _ffmpeg("-f", "lavfi", "-i", "color=red:s=64x64", "-frames:v", "1", str(cover))
     dest = tmp_path / "123.mp3"
     tags_in = Tags("Artiste", "Titre", 123, "Album", cover.read_bytes(), "FRZ039800212")
-    prepare(full, dest, p.codec, tags_in, rsgain)
+    prepare(full, dest, p.codec, tags_in, RSGAIN)
     tags = _tags(dest)
     assert probe(dest).codec == "mp3"
     assert (tags["artist"], tags["title"], tags["album"], tags["comment"]) == (
@@ -112,13 +108,14 @@ def test_real_tools_identity_and_preparation(tmp_path: Path) -> None:
         "deezer:123",
     )
     assert "REPLAYGAIN_TRACK_GAIN" in {k.upper() for k in tags}
-    assert _tags(dest)["TSRC"] == "FRZ039800212"
+    assert tags["TSRC"] == "FRZ039800212"
     assert cue_of(dest) == cue_points(full)  # points de coupe du fichier source
     assert _pictures(dest) == 1  # la pochette survit à rsgain
     assert sorted(f.name for f in tmp_path.iterdir() if f.name.startswith(".")) == []
 
+    # Un MP3 est copié sans réencodage, mais ses anciennes pochette et TSRC ne passent pas.
     bare = tmp_path / "124.mp3"
-    prepare(dest, bare, "mp3", Tags("Artiste", "Titre", 124, "", None), rsgain)
+    prepare(dest, bare, "mp3", Tags("Artiste", "Titre", 124, "", None), RSGAIN)
     assert _pictures(bare) == 0
     assert "TSRC" not in _tags(bare)
 

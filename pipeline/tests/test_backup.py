@@ -6,7 +6,7 @@ import pytest
 from typer.testing import CliRunner
 
 import radio.cli as cli
-from radio.core.backup import backup
+from radio.core.backup import BackupError, backup
 from radio.core.config import Settings
 from radio.core.db import connect
 from radio.core.report import last_stages
@@ -48,6 +48,32 @@ def test_a_second_backup_the_same_day_replaces_the_first(tmp_path: Path) -> None
     assert sqlite3.connect(target / "radio.db").execute(
         "SELECT COUNT(*) FROM votes"
     ).fetchone() == (1,)
+
+
+def test_an_unsound_copy_is_refused_and_older_backups_are_kept(tmp_path: Path) -> None:
+    # Breaks if a corrupt copy passes for a backup, or if it makes room by pruning the sound
+    # ones: the copy keeps the defect of the source, so integrity_check must see it.
+    db = tmp_path / "radio.db"
+    conn = connect(db)
+    conn.execute("INSERT INTO votes VALUES (1, 'lesson', 'non', 'd', 'test')")
+    conn.commit()
+    conn.close()
+    broken = sqlite3.connect(db)
+    broken.executescript(
+        "CREATE TABLE t (a, b); CREATE INDEX t_a ON t (a); INSERT INTO t VALUES (1, 2);"
+        "PRAGMA writable_schema = ON;"
+        "UPDATE sqlite_master SET sql = 'CREATE INDEX t_a ON t (b)' WHERE name = 't_a';"
+    )
+    broken.close()
+    models = tmp_path / "models"
+    models.mkdir()
+    dest = tmp_path / "sauvegardes"
+    (dest / "2026-09-01").mkdir(parents=True)  # au-delà de 14 jours, mais la seule saine
+
+    with pytest.raises(BackupError, match="integrity_check : row 1 missing from index t_a"):
+        backup(db, models, dest, TODAY, 14)
+    assert (dest / "2026-09-01").is_dir()
+    assert not (dest / "2026-10-02" / "models").exists()
 
 
 def test_backup_needs_a_destination(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

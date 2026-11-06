@@ -109,6 +109,28 @@ def test_titles_on_air_are_measured_once_and_missing_files_named(tmp_path: Path)
     assert fake.cues == {"1.mp3": Cue(0.2, 0.9), "2.mp3": None}
 
 
+@pytest.mark.skipif(not (shutil.which("ffmpeg") and shutil.which("ffprobe")), reason="ffmpeg")
+def test_a_file_whose_cues_cannot_be_read_is_a_failed_measure(tmp_path: Path) -> None:
+    # Breaks if ffprobe failing on one file stops the pass, or lets the title be measured from
+    # its first second instead of its cue points.
+    conn = connect(tmp_path / "radio.db")
+    media = tmp_path / "media"
+    (media / "antenne").mkdir(parents=True)
+    (media / "antenne" / "1.mp3").write_bytes(b"pas de l'audio")
+    _mp3(media / "antenne" / "2.mp3")
+    conn.executemany(
+        "INSERT INTO antenne VALUES (?, 'decouverte', 'decouvertes', ?, ?, ?, 'd', 'd')",
+        [(1, 1, "s1", "antenne/1.mp3"), (2, 2, "s2", "antenne/2.mp3")],
+    )
+    conn.commit()
+    fake = FakeExtractor(set())
+    rep = measure_antenna(conn, media, fake, NOW)
+    assert (rep.n_todo, rep.n_ok, rep.n_failed, rep.missing) == (2, 1, 1, [])
+    assert fake.seen == ["2.mp3"]
+    rows = dict(conn.execute("SELECT deezer_track_id, status FROM track_features"))
+    assert rows == {1: "audio_failed", 2: "ok"}
+
+
 def test_models_are_pinned(tmp_path: Path) -> None:
     with pytest.raises(ModelError, match="absent"):
         check_models(tmp_path)

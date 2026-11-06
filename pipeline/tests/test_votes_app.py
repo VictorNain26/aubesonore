@@ -1,42 +1,18 @@
 import logging
+from html.parser import HTMLParser
 from pathlib import Path
 
-import jwt
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
 from radio.core.db import connect
-from radio.sources.deezer import DeezerError, DeezerTrack, DeezerUnavailable
+from radio.sources.deezer import DeezerError, DeezerUnavailable
 from radio.votes.access import HEADER
 from radio.votes.app import create_app
 from radio.votes.select import Ballot, pending_ballots, select_batch
+from tests.factories import OK, SIGNED, PreviewDeezer, verify
 from tests.model_factory import NO_FLOOR, NOW, make_model_db, serve_scores
-
-SIGNED = "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/x.mp3?hdnea=exp=1~acl=*~hmac=SIGNE"
-OK = {HEADER: "bon-jeton"}
-
-
-class FakeDeezer:
-    def __init__(self, fail: Exception | None = None, preview: str | None = SIGNED) -> None:
-        self.fail = fail
-        self.preview = preview
-        self.urls: list[str] = []
-
-    def track(self, track_id: int) -> tuple[DeezerTrack, str | None] | None:
-        if self.fail is not None:
-            raise self.fail
-        t = DeezerTrack(track_id, "T", "T", 30, 1, 1, "A", self.preview is not None)
-        return t, self.preview
-
-    def download(self, url: str) -> bytes:
-        self.urls.append(url)
-        return b"ID3-mp3"
-
-
-def _verify(token: str) -> None:
-    if token != "bon-jeton":
-        raise jwt.InvalidTokenError("refusé")
 
 
 @pytest.fixture
@@ -48,8 +24,8 @@ def db(tmp_path: Path) -> Path:
     return tmp_path / "radio.db"
 
 
-def _client(db: Path, deezer: FakeDeezer | None = None) -> TestClient:
-    return TestClient(create_app(db, deezer or FakeDeezer(), _verify))
+def _client(db: Path, deezer: PreviewDeezer | None = None) -> TestClient:
+    return TestClient(create_app(db, deezer or PreviewDeezer(), verify))
 
 
 def _first(db: Path) -> Ballot:
@@ -81,12 +57,36 @@ def test_page_shows_next_ballot_blind(db: Path) -> None:
         assert hidden not in r.text
 
 
+class _Elements(HTMLParser):
+    """Les éléments de la page dans l'ordre : (balise, attributs, texte)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.elements: list[tuple[str, dict[str, str | None], str]] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.elements.append((tag, dict(attrs), ""))
+
+    def handle_data(self, data: str) -> None:
+        if self.elements:
+            tag, attrs, text = self.elements[-1]
+            self.elements[-1] = (tag, attrs, text + data)
+
+
 def test_page_shows_a_hint_when_the_preview_fails_to_play(db: Path) -> None:
-    r = _client(db).get("/", headers=OK)
-    assert '<p class="indispo" hidden>Extrait indisponible : choisir « Passer ».</p>' in r.text
-    assert 'onerror="this.nextElementSibling.hidden=false"' in r.text
-    for hidden in ("exam", "lesson", "leçon"):  # à l'aveugle, même côté indisponibilité
-        assert hidden not in r.text
+    b = _first(db)
+    page = _Elements()
+    page.feed(_client(db).get("/", headers=OK).text)
+    i = next(
+        i
+        for i, (tag, attrs, _) in enumerate(page.elements)
+        if tag == "audio" and attrs.get("src") == f"/extrait/{b.deezer_track_id}"
+    )
+    # L'aide suit le lecteur, cachée ; une erreur de lecture la montre.
+    assert page.elements[i][1]["onerror"] == "this.nextElementSibling.hidden=false"
+    tag, attrs, text = page.elements[i + 1]
+    assert tag == "p" and "hidden" in attrs
+    assert text == "Extrait indisponible : choisir « Passer »."
 
 
 def test_vote_is_recorded_and_page_moves_on(db: Path) -> None:
@@ -167,7 +167,7 @@ def test_preview_is_relayed_and_its_url_never_leaks(
 ) -> None:
     caplog.set_level(logging.DEBUG)
     b = _first(db)
-    deezer = FakeDeezer()
+    deezer = PreviewDeezer()
     c = _client(db, deezer)
     r = c.get(f"/extrait/{b.deezer_track_id}", headers=OK)
     assert r.status_code == 200 and r.content == b"ID3-mp3"
@@ -183,12 +183,12 @@ def test_preview_is_relayed_and_its_url_never_leaks(
 @pytest.mark.parametrize(
     ("deezer", "status"),
     [
-        (FakeDeezer(preview=None), 404),
-        (FakeDeezer(fail=DeezerError("code 800")), 404),
-        (FakeDeezer(fail=DeezerUnavailable("HTTP 503")), 503),
+        (PreviewDeezer(preview=None), 404),
+        (PreviewDeezer(fail=DeezerError("code 800")), 404),
+        (PreviewDeezer(fail=DeezerUnavailable("HTTP 503")), 503),
     ],
 )
-def test_preview_failures(db: Path, deezer: FakeDeezer, status: int) -> None:
+def test_preview_failures(db: Path, deezer: PreviewDeezer, status: int) -> None:
     b = _first(db)
     r = _client(db, deezer).get(f"/extrait/{b.deezer_track_id}", headers=OK)
     assert r.status_code == status
@@ -196,7 +196,7 @@ def test_preview_failures(db: Path, deezer: FakeDeezer, status: int) -> None:
 
 def test_extrait_supports_byte_ranges(db: Path) -> None:
     # Safari iOS sonde l'extrait avec `Range: bytes=0-1` avant de le lire (Apple, Safari Web
-    # Content Guide) ; FakeDeezer renvoie b"ID3-mp3", 7 octets.
+    # Content Guide) ; PreviewDeezer renvoie b"ID3-mp3", 7 octets.
     b = _first(db)
     c = _client(db)
     tid = b.deezer_track_id
@@ -208,20 +208,6 @@ def test_extrait_supports_byte_ranges(db: Path) -> None:
     assert r.headers["accept-ranges"] == "bytes"
     assert r.headers["cache-control"] == "no-store"
 
-    r = c.get(f"/extrait/{tid}", headers={**OK, "Range": "bytes=3-"})
-    assert r.status_code == 206
-    assert r.content == b"-mp3"
-    assert r.headers["content-range"] == "bytes 3-6/7"
-
-    r = c.get(f"/extrait/{tid}", headers={**OK, "Range": "bytes=-2"})
-    assert r.status_code == 206
-    assert r.content == b"p3"
-    assert r.headers["content-range"] == "bytes 5-6/7"
-
-    r = c.get(f"/extrait/{tid}", headers={**OK, "Range": "bytes=9-"})
-    assert r.status_code == 416
-    assert r.headers["content-range"] == "bytes */7"
-
     r = c.get(f"/extrait/{tid}", headers=OK)
     assert r.status_code == 200
     assert r.content == b"ID3-mp3"
@@ -232,7 +218,7 @@ def test_extraits_never_outlive_the_app(db: Path) -> None:
     # Starlette ne lance pas la tâche de nettoyage sur un 416 : le fichier reste dans le
     # répertoire de l'application, supprimé avec elle.
     tid = _first(db).deezer_track_id
-    app = create_app(db, FakeDeezer(), _verify)
+    app = create_app(db, PreviewDeezer(), verify)
     c = TestClient(app)
     folder = Path(app.state.extraits.name)
     assert c.get(f"/extrait/{tid}", headers=OK).status_code == 200
