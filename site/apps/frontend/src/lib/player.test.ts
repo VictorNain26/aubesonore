@@ -297,6 +297,7 @@ describe('player resilience (stream auto-recovery)', () => {
     ['ended', 600],
     ['error', 600],
     ['waiting', 2_100],
+    ['stalled', 2_100],
   ])("reconnects once the stream says '%s', in %i ms", async (event, within) => {
     vi.useFakeTimers();
     const { usePlayer } = await import('./player');

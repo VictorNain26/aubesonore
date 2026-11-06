@@ -5,7 +5,17 @@ import { render as rtlRender, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
 import { ErrorBoundary } from 'react-error-boundary';
+import { makeNowPlaying } from '../mocks/handlers';
 import {
+  useNowPlayingStore,
+  type NowPlaying as NowPlayingData,
+  type SongEntry,
+} from '../lib/azuracast';
+import { __resetNowPlayingStore } from '../lib/azuracast/store';
+import { useLikedTracksStore } from '../stores/likedTracksStore';
+import type { LikedTrack } from '../lib/api';
+import {
+  NowPlaying,
   NowPlayingFallback,
   NowPlayingFallbackView,
   NowPlayingView,
@@ -328,6 +338,48 @@ describe('NowPlayingView', () => {
     rerender(<NowPlayingView {...props({ track: next, swap: 'in' })} />);
     const dialog = screen.getByRole('dialog', { name: 'Respire' });
     expect(within(dialog).getByRole('img')).toHaveProperty('src', art('b'));
+  });
+});
+
+describe('NowPlaying, from the stores', () => {
+  const entry = (song: Partial<SongEntry['song']> = {}): SongEntry => {
+    const onAir = makeNowPlaying().now_playing as unknown as SongEntry;
+    return { ...onAir, song: { ...onAir.song, title: 'Mimoun', artist: 'Mickey 3D', ...song } };
+  };
+  afterEach(() => {
+    __resetNowPlayingStore();
+    useLikedTracksStore.setState({ tracks: [] });
+  });
+
+  it('says the live is not answering once the station failed before any answer', () => {
+    useNowPlayingStore.setState({ data: null, error: 'HTTP 500' });
+    render(<NowPlaying shown={null} swap="idle" />);
+    expect(screen.getByText('Le direct ne répond pas pour le moment.')).toBeInTheDocument();
+  });
+
+  it('never says the live is not answering once it has answered, a later poll failing', () => {
+    useNowPlayingStore.setState({
+      data: makeNowPlaying() as unknown as NowPlayingData,
+      error: 'HTTP 500',
+    });
+    render(<NowPlaying shown={null} swap="idle" />);
+    expect(screen.queryByText('Le direct ne répond pas pour le moment.')).not.toBeInTheDocument();
+  });
+
+  it('shows the heart full for a track the listener kept, whatever its case', () => {
+    useLikedTracksStore.setState({
+      tracks: [{ id: 'k1', title: 'MIMOUN', artist: 'mickey 3d' } as LikedTrack],
+    });
+    render(<NowPlaying shown={entry()} swap="idle" />);
+    expect(screen.getByRole('button', { name: 'Garder « Mimoun »' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
+  it('shows no track for an entry without a title', () => {
+    render(<NowPlaying shown={entry({ title: '' })} swap="idle" />);
+    expect(screen.queryByRole('button', { name: /^Garder/ })).not.toBeInTheDocument();
   });
 });
 

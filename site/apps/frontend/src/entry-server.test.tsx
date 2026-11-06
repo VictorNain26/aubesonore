@@ -119,4 +119,29 @@ describe('entry-server', () => {
     expect(meta('en').description).toMatch(/^A free, ad-free discovery web radio/);
     expect(meta('fr', 'legal').description).not.toBe(meta('fr', 'legal').title);
   });
+
+  it.each([
+    [
+      'fr',
+      'Page introuvable · AubeSonore',
+      'Cette page n’existe pas, ou plus. Le direct continue.',
+    ],
+    [
+      'en',
+      'Page not found · AubeSonore',
+      'This page doesn’t exist, or no longer does. The radio plays on.',
+    ],
+  ] as const)('names the %s 404 the pre-render writes', (locale, title, description) => {
+    expect(meta(locale, 'notFound')).toEqual({ title, description });
+  });
+
+  it('refuses to draw a page whose data is a redirect, rather than write an empty one', async () => {
+    await expect(
+      pageHtml(
+        'fr',
+        '/artiste/kino',
+        new Response(null, { status: 301, headers: { Location: '/artiste/kino-band' } })
+      )
+    ).rejects.toThrow('/artiste/kino answered 301');
+  });
 });

@@ -115,6 +115,47 @@ describe('useLikeAction', () => {
     expect(useLikedTracksStore.getState().tracks).toHaveLength(0);
   });
 
+  it('sends a listener not signed in to sign in, asking the server nothing', async () => {
+    useAuthStore.setState({ isAuthenticated: false });
+    let asked = 0;
+    server.use(
+      http.post(LIKE_URL, () => {
+        asked++;
+        return HttpResponse.json({ error: 'x' }, { status: 401 });
+      })
+    );
+    const { result } = renderWithLocation();
+
+    await act(() => result.current.like.toggleLike('Test Track', 'Test Artist'));
+
+    expect(asked).toBe(0);
+    expect(result.current.location.pathname).toBe('/connexion');
+    expect(result.current.location.state).toMatchObject({ keepTitle: 'Test Track' });
+    expect(takePendingKeep()).toMatchObject({ title: 'Test Track', artist: 'Test Artist' });
+  });
+
+  it('keeps a track once however fast the heart is pressed again', async () => {
+    let asked = 0;
+    server.use(
+      http.post(LIKE_URL, async ({ request }) => {
+        asked++;
+        const body = (await request.json()) as { title: string; artist: string };
+        return HttpResponse.json({ message: 'ok', track: { ...kept, ...body } });
+      })
+    );
+    const { result } = renderWithLocation();
+
+    await act(() =>
+      Promise.all([
+        result.current.like.toggleLike('Test Track', 'Test Artist'),
+        result.current.like.toggleLike('Test Track', 'Test Artist'),
+      ])
+    );
+
+    expect(asked).toBe(1);
+    expect(useLikedTracksStore.getState().likingTrackId).toBeNull();
+  });
+
   it('reports a failed unkeep and keeps the track', async () => {
     useLikedTracksStore.setState({ tracks: [kept] });
     server.use(http.delete(`${LIKE_URL}/kept-1`, () => new HttpResponse(null, { status: 500 })));

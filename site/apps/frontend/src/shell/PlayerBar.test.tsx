@@ -2,9 +2,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactElement } from 'react';
 import { render as rtlRender, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router';
 import userEvent from '@testing-library/user-event';
-import { PlayerBarView, type PlayerBarViewProps } from './PlayerBar';
+import { PlayerBar, PlayerBarView, type PlayerBarViewProps } from './PlayerBar';
+import { makeNowPlaying } from '../mocks/handlers';
+import { useNowPlayingStore, type NowPlaying } from '../lib/azuracast';
+import { __resetNowPlayingStore } from '../lib/azuracast/store';
 import type * as PlayerModule from '../lib/player';
 
 type Player = typeof PlayerModule;
@@ -437,5 +440,40 @@ describe('the line along its edge', () => {
     document.documentElement.style.setProperty('--dawn', 'rgb(4, 5, 6)');
     render(<PlayerBarView {...props()} />);
     expect(ctx.strokeStyle).toContain('rgb(4, 5, 6)');
+  });
+});
+
+describe('PlayerBar, from the stores', () => {
+  /** The bar on a page without a player of its own (a data router: the bar reads its handle). */
+  const openBar = () => {
+    const router = createMemoryRouter([{ path: '/', Component: PlayerBar }]);
+    return rtlRender(<RouterProvider router={router} />);
+  };
+  afterEach(() => {
+    __resetNowPlayingStore();
+    localStorage.removeItem('aubesonore_volume');
+  });
+
+  it('starts at the level the listener left last visit', () => {
+    localStorage.setItem('aubesonore_volume', '0.3');
+    openBar();
+    expect(screen.getByRole('slider', { name: 'Volume' })).toHaveAttribute('aria-valuenow', '30');
+  });
+
+  it("shows the track on air, linked to its artist's page once found", async () => {
+    const np = makeNowPlaying() as unknown as NowPlaying;
+    np.now_playing.song = { ...np.now_playing.song, title: 'Glass', artist: 'Hania Rani' };
+    useNowPlayingStore.setState({ data: np, isConnected: true, error: null });
+    openBar();
+
+    expect(await screen.findByRole('link', { name: /Glass/ })).toHaveAttribute(
+      'href',
+      '/artiste/hania-rani'
+    );
+  });
+
+  it('offers no track to keep while the live has said nothing', () => {
+    openBar();
+    expect(screen.queryByRole('button', { name: /^Garder/ })).not.toBeInTheDocument();
   });
 });

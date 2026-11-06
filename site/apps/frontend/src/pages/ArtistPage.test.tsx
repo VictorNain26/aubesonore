@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
+import { makeArtistProfile } from '../mocks/handlers';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import {
   ARTIST_PAGE_DATA_ID,
@@ -81,6 +82,31 @@ describe('ArtistPage', { timeout: PAGE_TEST_TIMEOUT }, () => {
     expect(screen.getByRole('heading', { name: 'Artiste introuvable.' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Revenir au direct' })).toHaveAttribute('href', '/');
     await waitFor(() => expect(document.title).toBe('Page introuvable · AubeSonore'));
+  });
+
+  it('moves a page reached at its MBID to its slug, its one address', async () => {
+    const mbid = '0e9d7a5c-1f4b-4c1e-9a3e-2b7d5f8c6a10';
+    server.use(http.get(`*/api/artist/page/${mbid}`, () => HttpResponse.json(makeArtistProfile())));
+    const router = open(`/artiste/${mbid}`);
+    await settle(router);
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/artiste/hania-rani'));
+    expect(screen.getByRole('heading', { level: 1, name: 'Hania Rani' })).toBeInTheDocument();
+  });
+
+  it('says the page did not load when the API fails, and asks again on the next visit', async () => {
+    let asked = 0;
+    server.use(
+      http.get('*/api/artist/page/failing-artist', () => {
+        asked++;
+        return new HttpResponse(null, { status: 500 });
+      })
+    );
+    await settle(open('/artiste/failing-artist'));
+    expect(screen.getByRole('heading', { name: 'Page indisponible.' })).toBeInTheDocument();
+
+    await settle(open('/artiste/failing-artist'));
+    expect(asked).toBe(2);
   });
 
   it('shows the not-found state for a slug the API rejects as malformed', async () => {

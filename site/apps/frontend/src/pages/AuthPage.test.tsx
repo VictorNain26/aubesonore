@@ -134,6 +134,81 @@ describe('AuthPage', () => {
     expect(await screen.findByText('page artiste', {}, { timeout: 3000 })).toBeInTheDocument();
   });
 
+  it('says a refused sign-in and stays on the form, signed out', async () => {
+    server.use(
+      http.post('http://localhost:3000/api/auth/sign-in/email', () =>
+        HttpResponse.json(
+          { message: 'Invalid email or password', code: 'INVALID_EMAIL_OR_PASSWORD' },
+          { status: 401 }
+        )
+      )
+    );
+    open({ pathname: '/connexion', state: { from: '/artist/a-1/mickey-3d' } });
+
+    await userEvent.type(screen.getByLabelText('Adresse e-mail'), 'a@b.c');
+    await userEvent.type(screen.getByLabelText('Mot de passe'), 'password123');
+    await userEvent.click(screen.getByRole('button', { name: 'Se connecter' }));
+
+    await vi.waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith(
+        'E-mail ou mot de passe incorrect.',
+        expect.anything()
+      )
+    );
+    expect(screen.getByRole('heading', { level: 1, name: 'Se connecter' })).toBeInTheDocument();
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(screen.getByRole('button', { name: 'Se connecter' })).toBeEnabled();
+  });
+
+  it('says a reset link that no longer works, as Better Auth sends it back', () => {
+    open({ pathname: '/reset-password', search: '?error=INVALID_TOKEN' });
+    expect(toast.error).toHaveBeenCalledWith(
+      'Ce lien est invalide ou a expiré. Demandez un nouveau lien.',
+      expect.anything()
+    );
+  });
+
+  it('saves the new password, then asks to sign in with it', async () => {
+    let sent: unknown = null;
+    server.use(
+      http.post('http://localhost:3000/api/auth/reset-password', async ({ request }) => {
+        sent = await request.json();
+        return HttpResponse.json({ status: true });
+      })
+    );
+    open({ pathname: '/reset-password', search: '?token=some-token' });
+
+    await userEvent.type(screen.getByLabelText('Mot de passe'), 'password123');
+    await userEvent.type(screen.getByLabelText('Confirmer le mot de passe'), 'password123');
+    await userEvent.click(screen.getByRole('button', { name: 'Enregistrer le mot de passe' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Se connecter' })
+    ).toBeInTheDocument();
+    expect(sent).toEqual({ token: 'some-token', newPassword: 'password123' });
+    expect(toast.success).toHaveBeenCalledWith('Mot de passe mis à jour. Connectez-vous.');
+  });
+
+  it('says a Google sign-in that did not go through, and stays on the page', async () => {
+    server.use(
+      http.post('http://localhost:3000/api/auth/sign-in/social', () =>
+        HttpResponse.json({ url: 'https://accounts.google.com/o/oauth2/auth?client_id=x' })
+      )
+    );
+    const popup = { location: { href: 'about:blank' }, close: vi.fn() };
+    vi.spyOn(window, 'open').mockReturnValue(popup as unknown as Window);
+    open('/connexion');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Continuer avec Google' }));
+    await vi.waitFor(() => expect(popup.location.href).toContain('accounts.google.com'));
+    reportGoogleOutcome('?error=access_denied&lang=fr');
+
+    await vi.waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('Connexion impossible', expect.anything())
+    );
+    expect(screen.getByRole('heading', { level: 1, name: 'Se connecter' })).toBeInTheDocument();
+  });
+
   it('after sign-up, asks to open the verification email and leaves the listener signed out', async () => {
     open('/connexion');
 

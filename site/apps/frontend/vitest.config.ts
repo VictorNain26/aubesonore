@@ -44,14 +44,8 @@ export default defineConfig({
         'src/shell/AuthInit.tsx',
         'src/shell/NowPlayingPoller.tsx',
         'src/shell/PlayerSideEffects.tsx',
-        // The player's hooks, covered by manual QA on the player
-        'src/hooks/useLikeAction.ts',
-        'src/hooks/useMediaSession.ts',
-        'src/hooks/useTrackActions.ts',
         // External SDK wrappers — covered by browser, not unit tests
         'src/lib/cast/**',
-        // Browser-only Cast/AirPlay event bridges (same rationale as lib/cast/**)
-        'src/stores/castStore.ts',
       ],
       // Floor thresholds — ratchet up as coverage grows.
       // Current actual: ~85% statements/functions/lines, ~60% branches on remaining surface.
