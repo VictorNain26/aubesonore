@@ -136,13 +136,16 @@ function watchIntersections() {
     }
   );
   return {
-    /** Tells the observer watching `element` (or a block holding it) whether it is on screen. */
-    see(element: Element, isIntersecting: boolean) {
+    /**
+     * Tells the observer watching `element` (or a block holding it) whether it is on screen: one
+     * record, or several at once, oldest first, as the browser queues them between two callbacks.
+     */
+    see(element: Element, ...inTurn: boolean[]) {
       const observer = observers.find((o) => o.targets.some((t) => t.contains(element)));
       if (!observer) throw new Error('nothing watches this element');
       act(() =>
         observer.callback(
-          [{ isIntersecting } as IntersectionObserverEntry],
+          inTurn.map((isIntersecting) => ({ isIntersecting }) as IntersectionObserverEntry),
           {} as IntersectionObserver
         )
       );
@@ -167,6 +170,22 @@ describe('the player bar beside the hero', { timeout: PAGE_TEST_TIMEOUT }, () =>
 
     intersections.see(heroListen, true);
     expect(bar()).toHaveAttribute('inert');
+  });
+
+  it("follows the latest of several records: the hero's player left, then came back", async () => {
+    // A window shrunk then restored between two frames (a full-page capture does it, so may a
+    // phone turned twice): the browser hands both records in one call, the last one is now.
+    const intersections = watchIntersections();
+    await openHome();
+    const heroListen = within(screen.getByRole('main')).getByRole('button', {
+      name: 'Écouter le direct',
+    });
+
+    intersections.see(heroListen, false, true);
+    expect(bar()).toHaveAttribute('inert');
+
+    intersections.see(heroListen, true, false);
+    expect(bar()).not.toHaveAttribute('inert');
   });
 
   it('is there from the start on a page without a player at its top', async () => {
