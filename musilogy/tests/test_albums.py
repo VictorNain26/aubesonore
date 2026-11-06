@@ -23,10 +23,19 @@ def test_beatles_albums_are_not_windowed_around_y0(con):
 
 
 def test_soundtracks_are_kept(con):
-    n = con.execute(
-        "SELECT count(*) FROM albums WHERE artist_mbid = ? AND soundtrack", [BEATLES]
-    ).fetchone()[0]
-    assert n > 0
+    # The Beatles' albums whose secondary types are exactly {Soundtrack} in
+    # the fixture: Love adds Remix, Yellow Submarine Songtrack Compilation,
+    # and they stay out.
+    assert con.execute(
+        "SELECT rg_mbid, y FROM albums WHERE artist_mbid = ? AND soundtrack ORDER BY y", [BEATLES]
+    ).fetchall() == [
+        ("06281c4d-112d-33b0-a25b-df63b420eae7", 1964),  # A Hard Day's Night
+        ("0d44e1cb-c6e0-3453-8b68-4d2082f05421", 1965),  # Help!
+        ("6e514645-fbee-34ac-97e0-c2120a4a5644", 1967),  # Magical Mystery Tour
+        ("8d5f4b07-7e2e-4ffa-ac90-e4772c4d8525", 1969),  # Yellow Submarine
+        # The Beatles Collection, Volume 8: Yellow Submarine
+        ("be328986-51de-453c-b7b6-9f6ec99573df", 1994),
+    ]
 
 
 def test_demo_is_kept(con):

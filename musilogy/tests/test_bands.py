@@ -95,22 +95,9 @@ def test_group_without_any_style_is_in_artists_but_carries_no_vocabulary(con):
     ).fetchone() == (1970, [])
 
 
-def test_declared_begin_before_the_lower_bound_is_not_evidence(con):
-    # Handel and Haydn Society: Group, begin=1815, before min_year=1850 —
-    # y0_declared stays NULL regardless of any album fallback that might
-    # independently produce a y0 for this band.
-    assert rows(
-        con,
-        """
-        SELECT y0_declared FROM artists
-        WHERE mbid = '35ddcb29-4c16-4af6-b6f8-32143ee24a6c'
-    """,
-    ) == [(None,)]
-
-
 def test_declared_begin_below_the_floor_is_not_album_evidence_either(con):
-    # Handel and Haydn Society again, this time through to y0: the society
-    # declares 1815 (neutralised) and owns a single album, in 2014. Publishing
+    # Handel and Haydn Society, through to y0: the society declares 1815,
+    # before min_year=1850 (neutralised), and owns a single album, in 2014. Publishing
     # y0 = 2014 would assert a formation the source contradicts, so the
     # first-album fallback is refused as well — y0 stays NULL.
     assert rows(
@@ -134,12 +121,12 @@ def test_declared_end_below_the_floor_is_neutralised(tmp_path):
     assert c.execute("SELECT end_below_min_year FROM r2_anomalies").fetchone()[0] == 1
 
 
-def test_future_end_is_absent_in_dated(con):
+def test_a_future_end_is_not_published(con):
     # Thunder Jolt: end=2027-01-05, after dump_year=2026.
     assert rows(
         con,
         """
-        SELECT y_end_declared FROM dated
+        SELECT y_end_declared, y_end FROM artists
         WHERE mbid = 'd36b0fad-abd7-44e4-88fa-f638bbf8c9a6'
     """,
-    ) == [(None,)]
+    ) == [(None, None)]

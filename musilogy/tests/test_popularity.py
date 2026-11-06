@@ -1,10 +1,7 @@
 import json
 
 from musilogy import REFERENCE_POPULARITY
-from musilogy.build import check_invariants
-from musilogy.paths import SQL_DIR
 from tests.conftest import FIX, build_synthetic, synthetic_artist
-from tests.test_invariants import restored
 
 BEATLES = "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"
 
@@ -38,36 +35,6 @@ def test_an_artist_listenbrainz_does_not_know_keeps_no_row(con):
         "SELECT count(*) FROM popularity WHERE list_contains(?, mbid)", [unknown]
     ).fetchone()
     assert rows == (0,)
-
-
-def test_an_artist_the_snapshot_never_asked_about_is_reported(con):
-    row = con.execute("SELECT * FROM raw_popularity WHERE artist_mbid = ?", [BEATLES]).fetchone()
-    with restored(con, ("INSERT INTO raw_popularity VALUES (?, ?, ?)", list(row))):
-        con.execute("DELETE FROM raw_popularity WHERE artist_mbid = ?", [BEATLES])
-        violations = dict(check_invariants(con, SQL_DIR))
-    assert violations.get("popularity_unrequested") == 1
-
-
-def test_swapped_counts_are_reported(con):
-    listen, users = con.execute(
-        "SELECT listen_count, user_count FROM popularity WHERE mbid = ?", [BEATLES]
-    ).fetchone()
-    undo = "UPDATE popularity SET listen_count = ?, user_count = ? WHERE mbid = ?"
-    with restored(con, (undo, [listen, users, BEATLES])):
-        con.execute(undo, [users, listen, BEATLES])
-        violations = dict(check_invariants(con, SQL_DIR))
-    assert violations.get("popularity_out_of_range") == 1
-
-
-def test_a_duplicated_artist_is_reported(con):
-    with restored(con, ("DELETE FROM popularity WHERE listen_count = -1", [])):
-        con.execute(
-            "INSERT INTO popularity SELECT mbid, -1, user_count, snapshot "
-            "FROM popularity WHERE mbid = ?",
-            [BEATLES],
-        )
-        violations = dict(check_invariants(con, SQL_DIR))
-    assert violations.get("duplicate_popularity") == 1
 
 
 def test_a_build_without_a_snapshot_keeps_its_snapshot_column_a_date(tmp_path):

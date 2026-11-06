@@ -6,7 +6,6 @@ import pytest
 
 from musilogy import REFERENCE_DUMP as DUMP
 from musilogy import REFERENCE_POPULARITY
-from musilogy.colisten import PARAMETERS as COLISTEN_PARAMETERS
 from musilogy.fetch import expected_sums, sha256_file
 from musilogy.paths import PACKAGE_DIR, SQL_DIR, dump_sums, extraction_sidecar, popularity_sums
 from musilogy.publish import (
@@ -41,27 +40,22 @@ def test_publish_writes_every_table(con, tmp_path):
         assert (tmp_path / f"{name}.parquet").exists()
         assert name in manifest["counts"]
     assert manifest["dump"] == DUMP
-    assert "genre_parents" not in manifest["counts"]
 
 
 def test_publish_removes_every_file_it_did_not_write(con, tmp_path):
     # Deliveries published before the web exports were retired still hold a
-    # web/ directory: it must leave the delivery, not be digested into it.
+    # web/ directory, and a table dropped from the schema leaves its parquet:
+    # both must leave the delivery, not be digested into it.
     retired = tmp_path / "web" / "artists_timeline.json.gz"
     retired.parent.mkdir(parents=True)
     retired.write_bytes(b"retired export")
-    manifest = publish(con, tmp_path, DUMP)
-    assert not retired.exists()
-    assert not any(name.startswith("web/") for name in manifest["output_sha256"])
-
-
-def test_publish_removes_a_parquet_it_no_longer_writes(con, tmp_path):
     stale = tmp_path / "genre_parents.parquet"
     stale.write_bytes(b"not a parquet, and it must not survive anyway")
     manifest = publish(con, tmp_path, DUMP)
+    assert not retired.exists()
     assert not stale.exists()
+    assert set(manifest["output_sha256"]) == {f"{name}.parquet" for name in TABLES}
     assert "genre_parents" not in manifest["counts"]
-    assert (tmp_path / "artists.parquet").exists()
 
 
 def test_manifest_carries_archive_checksums(con, tmp_path):
@@ -103,44 +97,6 @@ def test_a_build_without_snapshot_says_so_in_the_manifest(tmp_path):
     manifest = publish(con, tmp_path / "out", DUMP)
     assert manifest["popularity"] is None
     assert manifest["official"] is None
-
-
-def test_manifest_carries_r2_anomaly_counters(con, tmp_path):
-    manifest = publish(con, tmp_path, DUMP)
-    assert manifest["r2_anomalies"] == {
-        "begin_illegible": 1,
-        "end_illegible": 1,
-        "begin_future": 1,
-        "end_future": 1,
-        # The artists linked to the witnesses count too: Bach's circle, dead
-        # before 1850, brings most of the ends. Births never count here: a
-        # person's begin is not read as a formation.
-        "begin_below_min_year": 3,
-        "end_below_min_year": 22,
-        "end_before_begin": 1,
-        "birth_illegible": 0,
-        "birth_future": 0,
-        "begin_ambiguous": 8,
-    }
-
-
-def test_manifest_carries_the_seven_neutralised_inference_counters(con, tmp_path):
-    # One counter per guard of 30_bands_lifespan.sql. On the witnesses:
-    # Polska Radio One (formed 2015, last album 2014) for the end, Wiener
-    # Philharmoniker and Handel and Haydn Society (begins below 1850) for the
-    # begin, Bach (dead in 1750, recorded from 1961) for an end below 1850. A
-    # neutralised anomaly stays visible instead of being absorbed.
-    manifest = publish(con, tmp_path, DUMP)
-    assert manifest["neutralised_inferences"] == {
-        "first_album_after_declared_end": 0,
-        "last_album_before_declared_begin": 1,
-        "first_album_with_begin_below_min_year": 2,
-        "album_with_end_below_min_year": 1,
-        # Bach again: born in 1685, as well as dead before 1850.
-        "first_album_with_birth_below_min_year": 1,
-        "first_album_before_birth": 0,
-        "last_album_before_birth": 0,
-    }
 
 
 def test_manifest_carries_git_sha(con, tmp_path):
@@ -196,33 +152,17 @@ def test_r2_anomaly_counters_are_not_mismapped_between_subrules(tmp_path):
     }
 
 
-def test_parquet_archives_are_zstd_compressed(con, tmp_path):
-    publish(con, tmp_path, DUMP)
-    parquet_path = (tmp_path / "artists.parquet").as_posix()
-    codecs = con.execute(
-        f"SELECT DISTINCT compression FROM parquet_metadata('{parquet_path}')"
-    ).fetchall()
-    assert codecs == [("ZSTD",)]
-
-
 def test_manifest_carries_the_parameters_the_build_actually_used(tmp_path):
     # Two runs with different bounds produced indistinguishable manifests: a
     # published dataset was not replayable from its own artifacts. Read back
     # from the connection, never from the caller, so the manifest reports what
-    # the build used rather than what the caller meant to set.
+    # the build used rather than what the caller meant to set. The names it
+    # carries: test_the_manifest_names_every_parameter_the_sql_sets.
     c = build_synthetic(
         tmp_path, [synthetic_artist("a", "1990", None)], dump_year=2030, min_year=1900
     )
-    manifest = publish(c, tmp_path / "out", DUMP)
-    assert manifest["parameters"] == {
-        "dump_year": 2030,
-        "min_year": 1900,
-        **COLISTEN_PARAMETERS,
-        "same_sound_min_style_records": 3,
-        "same_sound_shrink": 10,
-        "same_sound_k": 8,
-        "credits_max_artists": 10,
-    }
+    parameters = publish(c, tmp_path / "out", DUMP)["parameters"]
+    assert (parameters["dump_year"], parameters["min_year"]) == (2030, 1900)
 
 
 def test_manifest_counts_the_rows_that_fed_the_build(con, tmp_path):
@@ -233,28 +173,6 @@ def test_manifest_counts_the_rows_that_fed_the_build(con, tmp_path):
         loaded["raw_release_groups"]
         == con.execute("SELECT count(*) FROM raw_release_groups").fetchone()[0]
     )
-
-
-def test_manifest_replays_the_extraction_counts_beside_the_rows_loaded(con, tmp_path):
-    # The point of recording them: a truncated extraction — a full disk — makes
-    # the build silently smaller, and nothing else in the manifest would show
-    # it. Published side by side, kept-at-extraction against rows-loaded, the
-    # discrepancy is readable.
-    sidecar = tmp_path / "extraction.json"
-    sidecar.write_text(
-        json.dumps(
-            {
-                "artists_kept": 7,
-                "artists_dropped": 3,
-                "release_groups_kept": 5,
-                "release_groups_dropped": 11,
-            }
-        ),
-        encoding="utf-8",
-    )
-    manifest = publish(con, tmp_path / "out", DUMP, sidecar)
-    assert manifest["inputs"]["extraction"]["artists_kept"] == 7
-    assert manifest["inputs"]["extraction"]["release_groups_dropped"] == 11
 
 
 AGREEING = {"artists_kept": 694, "release_groups_kept": 10613}

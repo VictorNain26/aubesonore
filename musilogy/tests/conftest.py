@@ -11,7 +11,7 @@ from musilogy import (
     REFERENCE_DUMP,
     REFERENCE_POPULARITY,
 )
-from musilogy.build import build
+from musilogy.build import build, scalar
 from musilogy.load import load
 from musilogy.paths import FIXTURES_DIR, SQL_DIR
 from musilogy.publish import publish
@@ -21,11 +21,30 @@ FIX = FIXTURES_DIR
 SQL = SQL_DIR
 
 
-@pytest.fixture(scope="module")
-def con():
+@pytest.fixture(scope="session")
+def sample():
+    """The pipeline run on the witnesses, once for the whole session, with the
+    invariant views created over it."""
     c = duckdb.connect(":memory:")
     build_sample(c)
+    c.execute((SQL / "90_invariants.sql").read_text(encoding="utf-8"))
     return c
+
+
+@pytest.fixture
+def con(sample):
+    """The sample inside a transaction rolled back after the test: a test may
+    break a table to see an invariant fail, and whatever it changed, even on a
+    failing assertion, never reaches the next test."""
+    sample.begin()
+    yield sample
+    sample.rollback()
+
+
+def violations(con, invariant):
+    """The rows of one invariant view: the view alone, where check_invariants
+    would count all of them for the one a test breaks."""
+    return scalar(con, f"SELECT count(*) FROM {invariant}")
 
 
 # Synthetic records, for the date shapes the witnesses do not carry (a begin
@@ -86,7 +105,7 @@ def build_synthetic(tmp_path, artists, release_groups=(), **build_kwargs):
     return c
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def pg():
     """A libpq connection string to a disposable Postgres, never the site's:
     the tests drop and recreate the musilogy schemas. The CI provides one; a

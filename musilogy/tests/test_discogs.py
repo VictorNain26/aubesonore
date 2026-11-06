@@ -1,19 +1,16 @@
 import json
 from collections import defaultdict
 
-import pytest
-
 from musilogy.build import check_invariants
-from musilogy.paths import SQL_DIR
 from tests.conftest import (
     FIX,
+    SQL,
     build_synthetic,
     discogs_file,
     discogs_release,
     discogs_url,
     synthetic_artist,
 )
-from tests.test_invariants import restored
 
 A = "00000000-0000-4000-8000-0000000000d1"
 B = "00000000-0000-4000-8000-0000000000d2"
@@ -27,7 +24,7 @@ def built(tmp_path, artists, releases):
         discogs=discogs_file(tmp_path / "discogs.jsonl", releases),
         discogs_dump="20261001",
     )
-    assert check_invariants(c, SQL_DIR) == []
+    assert check_invariants(c, SQL) == []
     return c
 
 
@@ -252,48 +249,3 @@ def test_the_witnesses_styles_match_a_recount_of_the_fixture(con):
             summed[style] += records
         expected = sorted(summed.items(), key=lambda s: (-s[1], s[0]))
         assert artist_styles(con, mbid) == expected, mbid
-
-
-@pytest.mark.parametrize(
-    "mutation",
-    [
-        # Two styles of different counts swapped: the order is broken.
-        "list_reverse(styles)",
-        # One record more on the first style: the count no longer adds up.
-        "list_transform(styles, (s, i) -> CASE WHEN i = 1 "
-        "THEN {'style': s.style, 'records': s.records + 1} ELSE s END)",
-        # A style dropped.
-        "styles[2:]",
-    ],
-)
-def test_artist_styles_that_disagree_with_the_styles_table_are_reported(con, mutation):
-    con.execute(
-        "CREATE OR REPLACE TEMP TABLE saved_styles AS SELECT styles FROM artists WHERE mbid = ?",
-        [JOY_DIVISION],
-    )
-    (original,) = con.execute("SELECT styles FROM saved_styles").fetchone()
-    # Two counts at least, or neither the order nor the drop would show.
-    assert original[0]["records"] > original[-1]["records"]
-    undo = "UPDATE artists SET styles = (SELECT styles FROM saved_styles) WHERE mbid = ?"
-    with restored(con, (undo, [JOY_DIVISION])):
-        con.execute(f"UPDATE artists SET styles = {mutation} WHERE mbid = ?", [JOY_DIVISION])
-        violations = dict(check_invariants(con, SQL_DIR))
-    assert violations.get("artist_styles_mismatch") == 1
-
-
-def test_a_style_reached_through_no_discogs_page_of_its_own_is_reported(con):
-    # An artist that relates no Discogs page can only carry a style through an
-    # id another MBID holds.
-    (pageless,) = con.execute(
-        "SELECT a.mbid FROM artists a JOIN raw_artists r USING (mbid) "
-        "WHERE NOT list_contains([u.type FOR u IN r.urls], 'discogs') ORDER BY a.mbid LIMIT 1"
-    ).fetchone()
-    row = con.execute(
-        "SELECT decade, style, records FROM styles WHERE artist_mbid = ? LIMIT 1",
-        [JOY_DIVISION],
-    ).fetchone()
-    undo = "DELETE FROM styles WHERE artist_mbid = ?"
-    with restored(con, (undo, [pageless])):
-        con.execute("INSERT INTO styles VALUES (?, ?, ?, ?)", [pageless, *row])
-        violations = dict(check_invariants(con, SQL_DIR))
-    assert violations.get("discogs_link_ambiguous") == 1

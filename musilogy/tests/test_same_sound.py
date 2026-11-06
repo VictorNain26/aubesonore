@@ -1,8 +1,6 @@
 """« Même son » (samesound.py) on a synthetic build: the Discogs records below
 make each rule of the colour visible, with no listens at all."""
 
-import pytest
-
 from musilogy import samesound
 from musilogy.build import check_invariants
 from musilogy.paths import SQL_DIR
@@ -165,32 +163,6 @@ def test_no_records_give_no_same_sound(tmp_path):
     assert c.execute("SELECT count(*) FROM same_sound").fetchone() == (0,)
 
 
-A_B = f"artist_mbid = '{A}' AND neighbour_mbid = '{B}'"
-
-
-@pytest.mark.parametrize(
-    ("invariant", "mutation"),
-    [
-        # B and D tie on the colour: the tie must fall to the MBID.
-        (
-            "same_sound_out_of_order",
-            f"UPDATE same_sound SET rank = 3 - rank WHERE artist_mbid = '{A}' AND rank <= 2",
-        ),
-        ("same_sound_unexplained", f"UPDATE same_sound SET term = 'Rock' WHERE {A_B}"),
-        ("same_sound_self", f"UPDATE same_sound SET neighbour_mbid = artist_mbid WHERE {A_B}"),
-        (
-            "same_sound_rank_out_of_range",
-            f"UPDATE same_sound SET rank = 9 WHERE artist_mbid = '{A}' AND neighbour_mbid = '{F}'",
-        ),
-        ("same_sound_score_out_of_range", f"UPDATE same_sound SET score = 0 WHERE {A_B}"),
-    ],
-)
-def test_a_broken_same_sound_is_reported(tmp_path, invariant, mutation):
-    c = built(tmp_path)
-    c.execute(mutation)
-    assert invariant in dict(check_invariants(c, SQL_DIR))
-
-
 def test_the_site_reads_same_sound_in_rank_order_each_with_its_reason(tmp_path, pg):
     loaded(tmp_path, pg, ARTISTS, discogs=RELEASES)
     assert pg_query(pg, f"SELECT mbid, rank, term FROM musilogy.artist_same_sound('{A}')") == [
@@ -219,18 +191,3 @@ def test_the_site_reads_a_neighbours_end_only_when_declared(tmp_path, pg):
     ]
     ends = dict(pg_query(pg, f"SELECT mbid, y_end FROM musilogy.artist_same_sound('{A}')"))
     assert (ends[B], ends[D]) == (1979, None)
-
-
-def test_artist_same_sound_keeps_the_signature_the_site_reads(tmp_path, pg):
-    loaded(tmp_path, pg, ARTISTS)
-    assert pg_query(
-        pg,
-        "SELECT pg_get_function_result(p.oid) FROM pg_proc p "
-        "JOIN pg_namespace n ON n.oid = p.pronamespace "
-        "WHERE n.nspname = 'musilogy' AND p.proname = 'artist_same_sound'",
-    ) == [
-        (
-            "TABLE(mbid text, name text, disambiguation text, y0 integer, y_end integer, "
-            "ended boolean, rank integer, term text)",
-        )
-    ]

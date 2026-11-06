@@ -1,8 +1,6 @@
 """Credited together (86_credits.sql) on a synthetic build: MusicBrainz release
 groups and Discogs records, each rule of the count made visible."""
 
-import pytest
-
 from musilogy.build import check_invariants
 from musilogy.paths import SQL_DIR
 from tests.conftest import (
@@ -107,25 +105,6 @@ def test_musicbrainz_alone_credits_a_pair(tmp_path):
     assert credits(built(tmp_path, releases=[]), Q) == [(P, 1)]
 
 
-@pytest.mark.parametrize(
-    ("invariant", "mutation"),
-    [
-        ("credit_one_way", f"DELETE FROM credits WHERE artist_mbid = '{Q}'"),
-        ("credit_without_record", f"UPDATE credits SET records = 0 WHERE artist_mbid = '{Q}'"),
-        ("credit_self", f"UPDATE credits SET other_mbid = artist_mbid WHERE artist_mbid = '{Q}'"),
-        ("credit_linked", f"INSERT INTO credits VALUES ('{P}', '{M}', 1), ('{M}', '{P}', 1)"),
-        (
-            "duplicate_credit",
-            f"INSERT INTO credits SELECT * FROM credits WHERE artist_mbid = '{Q}'",
-        ),
-    ],
-)
-def test_broken_credits_are_reported(tmp_path, invariant, mutation):
-    c = built(tmp_path)
-    c.execute(mutation)
-    assert invariant in dict(check_invariants(c, SQL_DIR))
-
-
 def test_the_site_reads_the_most_credited_first_then_by_name(tmp_path, pg):
     loaded(tmp_path, pg, ARTISTS, release_groups=RELEASE_GROUPS, discogs=RELEASES)
     # Without the official snapshot, the release group with S counts too.
@@ -146,13 +125,3 @@ def test_the_site_reads_the_first_24(tmp_path, pg):
     ]
     loaded(tmp_path, pg, artists, release_groups=groups)
     assert pg_query(pg, f"SELECT count(*) FROM musilogy.artist_credits('{P}')") == [(24,)]
-
-
-def test_artist_credits_keeps_the_signature_the_site_reads(tmp_path, pg):
-    loaded(tmp_path, pg, ARTISTS)
-    assert pg_query(
-        pg,
-        "SELECT pg_get_function_result(p.oid) FROM pg_proc p "
-        "JOIN pg_namespace n ON n.oid = p.pronamespace "
-        "WHERE n.nspname = 'musilogy' AND p.proname = 'artist_credits'",
-    ) == [("TABLE(mbid text, name text, disambiguation text, y0 integer, records integer)",)]

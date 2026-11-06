@@ -1,6 +1,7 @@
 import http.client
 import io
 import json
+import re
 import tarfile
 import urllib.error
 from email.message import Message
@@ -14,20 +15,23 @@ from musilogy.paths import dump_sums
 REF = dump_sums(REFERENCE_DUMP)
 
 
-def test_sha256_of_known_content(tmp_path):
+def test_verify_accepts_a_file_whose_sha256_is_the_one_expected(tmp_path):
+    # Every digest musilogy checks is a SHA-256 written by its publisher. The
+    # expected value comes from `printf musilogy | sha256sum`, not from
+    # sha256_file: every other test computes both sides with it.
     p = tmp_path / "a.bin"
     p.write_bytes(b"musilogy")
-    assert sha256_file(p) == ("a4164857777a9573db9057c25dd069b99c641aa3909b3fe38e5e3e711dfa01ae")
+    verify(p, "a4164857777a9573db9057c25dd069b99c641aa3909b3fe38e5e3e711dfa01ae")
 
 
-def test_expected_sums_reads_the_reference_file():
-    sums = expected_sums(REF)
-    assert sums["artist.tar.xz"] == (
-        "a68940e911830f65ff412275f4ba8a9100569cba1f677bdd6e6c091938e452f2"
-    )
-    assert sums["release-group.tar.xz"] == (
-        "38de1e46c25b6b6e5acc051e3ab359ed13e873056e1ddfe4aae75fe2e642124f"
-    )
+def test_the_musicbrainz_sums_are_read_without_their_binary_marker():
+    # MetaBrainz writes "<digest> *<name>", the binary-mode marker of
+    # sha256sum, where the other publishers write two spaces: the name must
+    # come without it, or no archive of the dump would find its digest.
+    assert expected_sums(REF) == {
+        "artist.tar.xz": "a68940e911830f65ff412275f4ba8a9100569cba1f677bdd6e6c091938e452f2",
+        "release-group.tar.xz": "38de1e46c25b6b6e5acc051e3ab359ed13e873056e1ddfe4aae75fe2e642124f",
+    }
 
 
 def test_verify_rejects_a_corrupted_file(tmp_path):
@@ -266,6 +270,56 @@ def test_a_throttled_wikidata_query_waits_for_its_retry_after(monkeypatch, slept
     monkeypatch.setattr(fetch, "get_json", get)
     assert fetch.discography() == []
     assert slept == [9.0]
+
+
+def sparql(*ids):
+    """A SPARQL 1.1 JSON result (w3.org/TR/sparql11-results-json) binding ?rg."""
+    bindings = [{"rg": {"type": "literal", "value": i}} for i in ids]
+    return {"head": {"vars": ["rg"]}, "results": {"bindings": bindings}}
+
+
+def wikidata(answers):
+    """A fake query service answering each form's query with answers[form QID]."""
+
+    def get(_url, params):
+        (qid,) = re.findall(r"wd:(Q\d+)", params["query"])
+        return answers[qid], Message()
+
+    return get
+
+
+def test_the_discography_is_one_row_per_release_group_and_form_sorted(monkeypatch):
+    # A record filed twice under one form is one row; under two forms, two.
+    # The malformed ID stays as Wikidata holds it: telling it from a release
+    # group is a rule of the SQL.
+    answers = {
+        "Q208569": sparql("rg-b", "rg-a", "rg-b"),
+        "Q169930": sparql("rg-a", "not an mbid"),
+        "Q4176708": sparql("rg-c"),
+    }
+    monkeypatch.setattr(fetch, "get_json", wikidata(answers))
+    assert fetch.discography() == [
+        {"rg_mbid": "not an mbid", "form": "ep"},
+        {"rg_mbid": "rg-a", "form": "ep"},
+        {"rg_mbid": "rg-a", "form": "studio"},
+        {"rg_mbid": "rg-b", "form": "studio"},
+        {"rg_mbid": "rg-c", "form": "soundtrack"},
+    ]
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        pytest.param({"head": {"vars": ["rg"]}}, id="no results"),
+        pytest.param({"results": {"bindings": None}}, id="bindings not a list"),
+        pytest.param({"results": {"bindings": [{"album": {"value": "x"}}]}}, id="no ?rg bound"),
+    ],
+)
+def test_an_answer_of_another_shape_stops_the_snapshot(monkeypatch, answer):
+    # Never an empty discography: every record would read as filed nowhere.
+    monkeypatch.setattr(fetch, "get_json", lambda _url, _params: (answer, Message()))
+    with pytest.raises(fetch.DownloadError, match="unexpected shape"):
+        fetch.discography()
 
 
 def browse(artist, ids, count=None):
