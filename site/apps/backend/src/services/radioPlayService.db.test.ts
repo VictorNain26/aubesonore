@@ -7,7 +7,7 @@ import { assertTestDatabase } from '../test/pg';
 import * as nowPlaying from './nowPlaying';
 import { findPlay, recordPlay } from './radioPlayService';
 
-// radio_play is what the antenna played, the floor no other source knows (.claude/rules/site.md).
+// radio_play is what the antenna played, the floor no other source knows (docs/vision.md §4.5).
 const onAir = spyOn(nowPlaying, 'fetchNowPlaying').mockResolvedValue(null);
 
 const plays = () =>

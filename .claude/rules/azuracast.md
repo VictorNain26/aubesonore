@@ -8,56 +8,10 @@ paths:
 
 Les chemins ci-dessous sont relatifs à `azuracast/`.
 
-## Ce que ce dépôt versionne — et ce qu'il ne versionne pas
-
-Ce dossier est d'abord un **runtime**, pas un projet. Le dépôt ne capture que la
-partie reproductible :
-
-- **versionné** — `docker-compose.yml` (son en-tête liste ce qui diffère de l'exemple amont),
-  `.env.example`, `azuracast.sample.env` (le modèle d'`azuracast.env`), `RUNBOOK.md` et
-  `scripts/`.
-- **ignoré** — `stations/` (le catalogue et la config réécrite par l'UI), `.env`,
-  `azuracast.env` (mot de passe MariaDB), les journaux.
-
-Corollaire : `git status` propre **ne veut pas dire** que la station est
-sauvegardée. Les médias et les secrets sont dans le dépôt restic, la base dans la
-sauvegarde AzuraCast — voir `RUNBOOK.md`.
-
-## Position dans le système
-
-Le rôle de hub et ce que chaque pièce y lit ou écrit : `CLAUDE.md` (« How the pieces fit
-together »). Une conséquence pratique : **couper ce conteneur casse les deux autres.** Un
-`docker compose down` ici met la radio hors antenne, fait échouer le run du pipeline, et vide le
-lecteur du site.
-
-## Règles de travail
-
-- **La config de station appartient à l'UI.** Tout sous `stations/*/config/`
-  (Liquidsoap, Icecast, nginx) est réécrit par AzuraCast. Une modification à la
-  main y est perdue au prochain changement fait depuis l'interface. Passer par
-  l'UI, et traiter les `*.backup.json` comme des instantanés, jamais comme des
-  entrées.
-- **Ne pas déplacer le média hors SSD.** Sur disque mécanique, les rattrapages de
-  latence Liquidsoap produisent des coupures audibles à l'antenne.
-- **Les ports sont remappés exprès** — cette machine héberge beaucoup d'autres
-  services. Avant de publier un port, vérifier `docker ps`. La plage
-  d'auto-attribution déclarée dans `azuracast.env` doit rester cohérente avec ce
-  que `docker-compose.yml` publie réellement.
-- **Les ports ne sont publiés que sur la boucle locale** (127.0.0.1, plus 8080 sur
-  172.17.0.1, l'adresse `host.docker.internal` du backend du site) : Docker contourne ufw et
-  la machine a une IPv6 publique. Tout client est sur la machine (tunnel Cloudflare,
-  pipeline) ; l'interface s'ouvre par `radio.aubesonore.fr`. Un nouveau port suit la même règle.
-- **Le conteneur écrit dans `stations/` en tant que `AZURACAST_PUID:PGID`.** Si
-  ces valeurs ne correspondent plus au propriétaire du dossier sur l'hôte, le
-  pipeline perd l'accès aux fichiers — panne silencieuse et déroutante.
-- **AzuraCast n'applique que sa fenêtre anti-doublon.** La séparation entre deux
-  passages d'un même artiste (3 h) est tenue par la grille du pipeline (`radio
-  grille`, `pipeline/docs/conception.md` §7.3), dont les playlists tournent sans
-  `avoid_duplicates`.
-
-## Modifier la topologie
-
-`docker-compose.yml` décrit la machine autant que le service : chemins de montage,
-ports, pondération CPU face aux autres charges. Un changement ici se teste avec
-`docker compose config` avant `up -d`, et se commite avec la raison — c'est
-précisément le genre de décision qu'on ne sait plus justifier six mois après.
+- **La config de station appartient à l'UI.** Tout sous `stations/*/config/` (Liquidsoap,
+  Icecast, nginx) est réécrit par AzuraCast : une modification à la main y est perdue au prochain
+  changement fait depuis l'interface. Passer par l'UI, et traiter les `*.backup.json` comme des
+  instantanés, jamais comme des entrées.
+- Un changement de `docker-compose.yml` se teste avec `docker compose config` avant `up -d`, et
+  se commite avec sa raison.
+- Un `git status` propre ne veut pas dire que la station est sauvegardée : `RUNBOOK.md`.

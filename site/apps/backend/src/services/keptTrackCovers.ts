@@ -40,8 +40,8 @@ function exactTitle(kept: string, other: string): boolean {
 
 /**
  * The recordings of the kept title credited under the kept name, when they credit one artist of
- * that name only: two homonyms, and none of them is the artist for sure (« Never bind by name
- * alone », .claude/rules/site.md).
+ * that name only: two homonyms, and none of them is the artist for sure (never by the name alone,
+ * docs/vision.md §4.4).
  */
 function matching(
   recordings: readonly RecordingOnReleases[],

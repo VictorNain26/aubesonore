@@ -633,8 +633,8 @@ def test_a_broken_table_fails_its_invariant(con, case):
 
 
 def test_every_invariant_is_seen_failing():
-    # An invariant that would pass whatever happens checks nothing
-    # (.claude/rules/musilogy-sql.md): each one has its broken table above.
+    # An invariant that would pass whatever happens checks nothing: each one
+    # has its broken table above.
     assert set(INVARIANTS) - {case.invariant for case in CASES} == set()
 
 
