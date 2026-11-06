@@ -70,8 +70,6 @@ let mockAudioInstance: MockAudio;
 
 beforeEach(() => {
   vi.resetModules();
-  // The level a test saved is not the next one's starting level.
-  localStorage.removeItem('aubesonore_volume');
   mockAudioInstance = new MockAudio();
   vi.stubGlobal(
     'Audio',

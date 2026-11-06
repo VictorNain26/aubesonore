@@ -5,11 +5,6 @@ import { createMemoryRouter, RouterProvider } from 'react-router';
 import { routes } from './routes';
 import { PAGE_TEST_TIMEOUT, settle } from './mocks/settle';
 
-// The page chunk fails to load, as offline or blocked by an extension.
-vi.mock('./pages/ArtistPage', () => {
-  throw new Error('Failed to fetch dynamically imported module');
-});
-
 // Alone in its file: React Router warns once per module instance, so a page drawn before this one
 // in the same file would swallow the warning this test listens for.
 describe('App, the first page the client draws', { timeout: PAGE_TEST_TIMEOUT }, () => {

@@ -47,8 +47,7 @@ export default defineConfig({
         // External SDK wrappers — covered by browser, not unit tests
         'src/lib/cast/**',
       ],
-      // Floor thresholds — ratchet up as coverage grows.
-      // Current actual: ~85% statements/functions/lines, ~60% branches on remaining surface.
+      // Floor thresholds — ratchet up as coverage grows (the CI's coverage report says where it is).
       thresholds: {
         statements: 70,
         branches: 50,

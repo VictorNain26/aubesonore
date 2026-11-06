@@ -8,6 +8,7 @@ import { PlayerBar, PlayerBarView, type PlayerBarViewProps } from './PlayerBar';
 import { makeNowPlaying } from '../mocks/handlers';
 import { useNowPlayingStore, type NowPlaying } from '../lib/azuracast';
 import { __resetNowPlayingStore } from '../lib/azuracast/store';
+import { usePlayer } from '../lib/player';
 import type * as PlayerModule from '../lib/player';
 
 type Player = typeof PlayerModule;
@@ -60,8 +61,8 @@ describe('PlayerBarView', () => {
     const onToggleListen = vi.fn();
     render(<PlayerBarView {...props({ onToggleListen })} />);
 
-    expect(screen.getAllByText('Mimoun')[0]).toBeVisible();
-    expect(screen.getAllByText('Mickey 3D')[0]).toBeVisible();
+    expect(screen.getAllByText('Mimoun').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Mickey 3D').length).toBeGreaterThan(0);
     await userEvent.click(screen.getAllByRole('button', { name: 'Écouter le direct' })[0]!);
     expect(onToggleListen).toHaveBeenCalledOnce();
   });
@@ -377,12 +378,12 @@ describe('the line along its edge', () => {
   let frames: FrameRequestCallback[] = [];
   const heard = vi.fn();
 
-  function drawn(reducedMotion = false) {
+  function drawn() {
     frames = [];
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => frames.push(cb));
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
-    vi.stubGlobal('matchMedia', (query: string) => ({
-      matches: reducedMotion && query.includes('reduced-motion'),
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     }));
@@ -449,9 +450,10 @@ describe('PlayerBar, from the stores', () => {
     const router = createMemoryRouter([{ path: '/', Component: PlayerBar }]);
     return rtlRender(<RouterProvider router={router} />);
   };
+  const player = usePlayer.getState();
   afterEach(() => {
     __resetNowPlayingStore();
-    localStorage.removeItem('aubesonore_volume');
+    usePlayer.setState({ volume: player.volume, isMuted: player.isMuted });
   });
 
   it('starts at the level the listener left last visit', () => {

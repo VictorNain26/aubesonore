@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, renderHook } from '@testing-library/react';
 import { mediaArtwork, useMediaSession } from './useMediaSession';
 import { usePlayer } from '../lib/player';
 
@@ -43,7 +43,8 @@ describe('useMediaSession', () => {
       handlers: new Map(),
       setActionHandler: (action, handler) => session.handlers.set(action, handler),
     };
-    vi.stubGlobal('navigator', { ...navigator, mediaSession: session });
+    // jsdom has no Media Session: it is added to the real navigator for this test alone.
+    Object.defineProperty(navigator, 'mediaSession', { value: session, configurable: true });
     vi.stubGlobal(
       'MediaMetadata',
       class {
@@ -53,6 +54,14 @@ describe('useMediaSession', () => {
       }
     );
     usePlayer.setState({ play, stop });
+  });
+
+  const player = usePlayer.getState();
+  afterEach(() => {
+    // Unmounted first: the hook lets go of its keys on the session it was given.
+    cleanup();
+    Reflect.deleteProperty(navigator, 'mediaSession');
+    usePlayer.setState({ play: player.play, stop: player.stop });
   });
 
   const track: Parameters<typeof useMediaSession>[0] = {
