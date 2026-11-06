@@ -268,8 +268,10 @@ export function HorizonLine({
       paint(performance.now());
     });
     resizeObserver.observe(canvas);
-    const intersectionObserver = new IntersectionObserver(([entry]) => {
-      onScreen = entry?.isIntersecting ?? true;
+    // Oldest first, several at once when the line left and came back between two callbacks: the
+    // last record is where it is now.
+    const intersectionObserver = new IntersectionObserver((entries) => {
+      onScreen = entries.at(-1)?.isIntersecting ?? true;
       sync();
     });
     intersectionObserver.observe(canvas);
