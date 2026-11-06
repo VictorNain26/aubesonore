@@ -43,7 +43,9 @@ du direct.
 - **Pas une affirmation sans preuve.** Un artiste similaire ou une filiation entre sur une preuve
   mesurée, que les données gardent ; une absence reste une absence, et la page ne propose rien plutôt que du bruit.
 - **Pas de mécanique à l'écran.** Les pages parlent à des auditeurs, avec leurs mots : pas de
-  jargon, pas de nom d'outil ni de base de données, pas de licence. Les sources et leurs licences
+  jargon, pas de nom d'outil ni de base de données, pas de licence. Un texte tient en une phrase,
+  du point de vue de l'auditeur, et le mène au geste suivant (écouter, garder, aller à l'artiste)
+  sans énumérer ce que la page contient. Les sources et leurs licences
   sont créditées dans les Mentions légales ; la provenance reste dans les données. Dire d'où vient
   une information en mots simples reste possible quand ça aide à lui faire confiance (« les
   auditeurs de X écoutent aussi »). Un extrait de Wikipédia renvoie à son article, comme sa licence
