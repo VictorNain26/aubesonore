@@ -147,7 +147,9 @@ else failed "$name"; fi
 O=$(commit_schema "v2" 0002_other.sql "an unrelated migration after it")
 deploy
 name="a later commit's migration does not count for it"
-if [ "$status" -ne 0 ] && head_is "$M"; then passed "$name"; else failed "$name"; fi
+if [ "$status" -ne 0 ] && head_is "$M" && [[ "$output" == *"schema.ts changed without a migration in: ${U:0:8}"* ]]; then
+  passed "$name"
+else failed "$name"; fi
 
 git -C "$r/repo" config aubesonore.appliedSchema "$(git -C "$r/repo" rev-parse "origin/master:$schema")"
 deploy

@@ -24,13 +24,19 @@ esac
 EOF
 chmod +x "$tmp/bin/docker"
 
+# The script as it is, but for its destination: a directory of the test's own.
+sed "s#^DEST=.*#DEST=$tmp/dest#" "$here/backup-db.sh" >"$tmp/backup-db.sh"
+if ! grep -qx "DEST=$tmp/dest" "$tmp/backup-db.sh"; then
+  echo "FAIL backup-db.sh no longer sets DEST on a line of its own"
+  exit 1
+fi
+
 failures=0
 backup() { # <healthy> <restore ok>
-  dest="$tmp/dest"
   : >"$tmp/docker.log"
   status=0
-  output=$(PATH="$tmp/bin:$PATH" BACKUP_DEST="$dest" DOCKER_LOG="$tmp/docker.log" \
-    HEALTHY=$1 RESTORE_OK=$2 bash "$here/backup-db.sh" 2>&1) || status=$?
+  output=$(PATH="$tmp/bin:$PATH" DOCKER_LOG="$tmp/docker.log" \
+    HEALTHY=$1 RESTORE_OK=$2 bash "$tmp/backup-db.sh" 2>&1) || status=$?
 }
 passed() { echo "ok   $1"; }
 failed() {

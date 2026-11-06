@@ -23,6 +23,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await db.execute(sql`TRUNCATE radio_play`);
   onAir.mockClear();
+  onAir.mockResolvedValue(null);
 });
 
 afterAll(async () => {
@@ -39,6 +40,28 @@ describe('recordPlay', () => {
     expect(await plays()).toEqual([
       { shId: 42, artistNormalized: 'etienne daho' },
       { shId: 43, artistNormalized: 'etienne daho' },
+    ]);
+  });
+
+  it("keeps the title as played, AzuraCast's ISRC, and the primary artist as key", async () => {
+    await recordPlay(45, '  D.A.N.C.E.  ', 'Justice feat. Uffie', 'FR0NT0700420');
+
+    expect(
+      await db
+        .select({
+          title: radioPlay.title,
+          artist: radioPlay.artist,
+          artistNormalized: radioPlay.artistNormalized,
+          isrc: radioPlay.isrc,
+        })
+        .from(radioPlay)
+    ).toEqual([
+      {
+        title: '  D.A.N.C.E.  ',
+        artist: 'Justice feat. Uffie',
+        artistNormalized: 'justice',
+        isrc: 'FR0NT0700420',
+      },
     ]);
   });
 
@@ -88,6 +111,5 @@ describe('findPlay', () => {
       isrc: 'DEN271800071',
     });
     expect(await findPlay('Another Song', 'Hania Rani')).toBeNull();
-    onAir.mockResolvedValue(null);
   });
 });

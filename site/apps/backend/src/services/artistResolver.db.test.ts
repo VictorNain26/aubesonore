@@ -596,4 +596,27 @@ describe('reverifyArtist', () => {
     // The Deezer id is a link, not the identity: the profile stays.
     expect(await profiles()).toHaveLength(1);
   });
+
+  it('leaves an identity that checks out as it was, its profile kept', async () => {
+    await known({
+      id: 'a-dp',
+      name: 'Daft Punk',
+      mbid: 'mb-dp',
+      deezerId: '27',
+      identifiedBy: 'isrc',
+      slug: 'daft-punk',
+    });
+    await db.insert(artistProfile).values({ artistId: 'a-dp', refreshedAt: new Date() });
+    await played('Daft Punk', 'One More Time', 'GBDUW0000053');
+    isrcLookup = found([recording('One More Time', ['mb-dp', 'Daft Punk'])]);
+    declaredDeezerId = found('27');
+
+    expect(await reverifyArtist('daft punk', 'Daft Punk')).toBe('same');
+    expect(await rowNamed('Daft Punk')).toMatchObject({
+      deezerId: '27',
+      mbid: 'mb-dp',
+      identifiedBy: 'isrc',
+    });
+    expect(await profiles()).toHaveLength(1);
+  });
 });

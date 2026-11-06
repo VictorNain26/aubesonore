@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'bun:test';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, spyOn } from 'bun:test';
 import { sql } from 'drizzle-orm';
 import { db, pool } from '../db';
 import { artist, artistSlug, likedTracks, user } from '../db/schema';
@@ -76,12 +76,21 @@ describe('getTrends', () => {
     expect(week[1]?.artistPage).toBeNull();
   });
 
-  it('serves the ranking it computed until the cache lets it go', async () => {
-    await like('u1', 'First', 'Air', daysAgo(1));
-    const first = await getTrends();
-    await like('u2', 'Second', 'Air', daysAgo(0));
+  it('serves the ranking it computed for five minutes, then computes it again', async () => {
+    const start = Date.now();
+    const clock = spyOn(Date, 'now').mockReturnValue(start);
+    try {
+      await like('u1', 'First', 'Air', daysAgo(1));
+      const first = await getTrends();
+      await like('u2', 'Second', 'Air', daysAgo(0.5));
 
-    expect(await getTrends()).toEqual(first);
+      clock.mockReturnValue(start + 5 * 60_000);
+      expect(await getTrends()).toEqual(first);
+      clock.mockReturnValue(start + 5 * 60_000 + 1);
+      expect((await getTrends()).week.map(({ title }) => title)).toEqual(['Second', 'First']);
+    } finally {
+      clock.mockRestore();
+    }
   });
 
   it('computes one ranking for concurrent calls on a cold cache', async () => {
