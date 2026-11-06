@@ -29,7 +29,10 @@ const summary = (lang: 'fr' | 'en'): ArtistSummary => ({
   lang,
   url: `https://${lang}.wikipedia.org/wiki/A`,
 });
-const identity = (name: string): musilogy.ArtistIdentity => ({
+const identity = (
+  name: string,
+  values: Partial<musilogy.ArtistIdentity> = {}
+): musilogy.ArtistIdentity => ({
   name,
   facts: { kind: 'group', place: null, country: 'FR', formed: 1995, ended: null, active: true },
   links: [],
@@ -37,7 +40,13 @@ const identity = (name: string): musilogy.ArtistIdentity => ({
   firstCover: null,
   deezerId: null,
   records: 3,
+  ...values,
 });
+const COVER = {
+  url: 'https://coverartarchive.org/release-group/moon-safari/front-500',
+  title: 'Moon Safari',
+  year: 1998,
+};
 
 // The boundaries: musilogy's dump (its SQL is tested in musilogy), Commons, Wikipedia,
 // MusicBrainz. What the page stores and how it finds itself are the real database's.
@@ -113,6 +122,68 @@ describe("a played artist's page", () => {
     expect(await stored()).toMatchObject([
       { artistId: 'a-air', photo: PHOTO, summaryFr: summary('fr'), summaryEn: summary('en') },
     ]);
+  });
+
+  it("shows the photo then the first record's cover, the Deezer link then the dump's", async () => {
+    await playedAir();
+    await db.update(artist).set({ deezerId: '27' });
+    identities[MBID] = identity('Air', {
+      firstCover: COVER,
+      links: [{ platform: 'official', url: 'https://air.fr/' }],
+    });
+
+    const profile = await getArtistProfile('air', 'fr');
+
+    expect(profile?.images).toEqual([
+      { kind: 'photo', ...PHOTO },
+      { kind: 'cover', ...COVER },
+    ]);
+    expect(profile?.links).toEqual([
+      { platform: 'deezer', url: 'https://www.deezer.com/artist/27' },
+      { platform: 'official', url: 'https://air.fr/' },
+    ]);
+  });
+
+  it("shows the first record's cover alone when Commons has no photo", async () => {
+    await playedAir();
+    identities[MBID] = identity('Air', { firstCover: COVER });
+    photoAnswer = { status: 'none' };
+
+    expect((await getArtistProfile('air', 'fr'))?.images).toEqual([{ kind: 'cover', ...COVER }]);
+  });
+
+  it('reads the facts again from the dump at each view, not from what was stored', async () => {
+    await playedAir();
+    await getArtistProfile('air', 'fr');
+    identities[MBID] = identity('Air', {
+      facts: {
+        kind: 'group',
+        place: null,
+        country: 'FR',
+        formed: 1995,
+        ended: 2024,
+        active: false,
+      },
+    });
+
+    expect((await getArtistProfile('air', 'fr'))?.facts).toMatchObject({
+      ended: 2024,
+      active: false,
+    });
+  });
+
+  it('clears the sections of an MBID the dump no longer holds, asking Wikipedia nothing', async () => {
+    await playedAir();
+    await db.update(artist).set({ deezerId: '27' });
+    delete identities[MBID];
+
+    const profile = await getArtistProfile('air', 'fr');
+
+    expect(profile).toMatchObject({ facts: null, summary: null, images: [] });
+    expect(profile?.links).toEqual([
+      { platform: 'deezer', url: 'https://www.deezer.com/artist/27' },
+    ]);
+    expect(spies.summary).not.toHaveBeenCalled();
   });
 
   it('serves a fresh stored profile without asking any live source', async () => {
@@ -198,6 +269,18 @@ describe("a played artist's page", () => {
     // Its opening is the stored one: no live source was asked.
     expect(spies.summary).not.toHaveBeenCalled();
   });
+
+  it('stores a first view made while musilogy is down as stale, so the next view retries', async () => {
+    await playedAir();
+    identities[MBID] = 'down';
+
+    await getArtistProfile('air', 'fr');
+
+    const [row] = await stored();
+    expect(row).toMatchObject({ photo: null, summaryFr: null, summaryEn: null });
+    expect(Date.now() - (row?.refreshedAt.getTime() ?? Date.now())).toBeGreaterThan(8 * DAY_MS);
+    expect(spies.photo).not.toHaveBeenCalled();
+  });
 });
 
 describe("a page the antenna never played (today's behaviour, which the profile's refactor changes)", () => {
@@ -217,6 +300,26 @@ describe("a page the antenna never played (today's behaviour, which the profile'
     expect(spies.summary).toHaveBeenCalledTimes(2);
     expect(spies.summary.mock.calls.every(([, locale]) => locale === 'fr')).toBe(true);
     expect(await stored()).toEqual([]);
+  });
+
+  it('answers at the slug it was given, which its MBID names too', async () => {
+    await db.insert(artistSlug).values({ slug: 'blur', mbid: UNPLAYED });
+
+    expect(await getArtistProfile('blur', 'fr')).toMatchObject({
+      slug: 'blur',
+      mbid: UNPLAYED,
+      played: false,
+    });
+    expect((await getArtistProfile(UNPLAYED, 'fr'))?.slug).toBe('blur');
+  });
+
+  it("shows the first record's cover of an artist without a Wikidata item, asking Commons nothing", async () => {
+    identities[UNPLAYED] = identity('Blur', { wikidataId: null, firstCover: COVER });
+
+    const profile = await getArtistProfile(UNPLAYED, 'fr');
+
+    expect(profile?.images).toEqual([{ kind: 'cover', ...COVER }]);
+    expect(spies.photo).not.toHaveBeenCalled();
   });
 
   it('cannot answer while musilogy is down', async () => {

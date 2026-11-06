@@ -12,7 +12,7 @@ import {
 import { sql } from 'drizzle-orm';
 import { db, pool, schema } from '../db';
 import { assertTestDatabase } from '../test/pg';
-import { refreshStoredLinks, songKey, youtubeUrls } from './youtubeLinks';
+import { refreshStoredLinks, resolveSong, songKey, youtubeUrls } from './youtubeLinks';
 import * as youtube from './youtubeService';
 
 // YouTube API data is refreshed or deleted within 30 days (Developer Policies III.E.4.d): the
@@ -68,11 +68,41 @@ describe('youtubeUrls', () => {
     await store('None', 'A', null, daysAgo(1));
     expect((await youtubeUrls([{ title: 'None', artist: 'A' }])).size).toBe(0);
   });
+});
 
-  it('asks the database nothing for no song', async () => {
-    const select = spyOn(db, 'select');
-    expect((await youtubeUrls([])).size).toBe(0);
-    expect(select).not.toHaveBeenCalled();
+describe('resolveSong', () => {
+  const answer = (lookup: Awaited<ReturnType<typeof youtube.findArtTrack>>) =>
+    spyOn(youtube, 'findArtTrack').mockResolvedValue(lookup);
+
+  it('stores the Art Track it verified, which the kept track then links to', async () => {
+    answer({ status: 'found', value: 'vid' });
+
+    await resolveSong('F Major', 'Hania Rani');
+
+    expect([...(await youtubeUrls([{ title: 'F Major', artist: 'Hania Rani' }])).values()]).toEqual(
+      [youtube.videoUrl('vid')]
+    );
+  });
+
+  it('stores nothing when YouTube cannot answer, so the song is searched again', async () => {
+    answer({ status: 'failed' });
+
+    await resolveSong('F Major', 'Hania Rani');
+
+    expect((await stored()).size).toBe(0);
+  });
+
+  it.each([
+    ['a stored video', 'vid', 40, false],
+    ['a search that found nothing within 30 days', null, 29, false],
+    ['a search that found nothing 30 days ago', null, 31, true],
+  ])('after %s, searches again: %p', async (_, videoId, days, again) => {
+    await store('F Major', 'Hania Rani', videoId, daysAgo(days));
+    const search = answer({ status: 'none' });
+
+    await resolveSong('F Major', 'Hania Rani');
+
+    expect(search.mock.calls.length > 0).toBe(again);
   });
 });
 

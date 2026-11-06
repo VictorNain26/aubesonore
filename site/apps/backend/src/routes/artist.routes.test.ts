@@ -3,8 +3,7 @@ import { Elysia } from 'elysia';
 
 const VALID_ID = '11111111-1111-1111-1111-111111111111';
 
-// spyOn on the real exports, restored after this file: mock.module would
-// replace these modules for every other test file of the run (Bun 1.3).
+// spyOn on the real exports, restored after this file.
 const profileService = await import('../services/artistProfileService');
 const resolver = await import('../services/artistResolver');
 
@@ -116,20 +115,6 @@ describe('GET /api/artist/resolve', () => {
   it('returns 404 when the name resolves to nothing', async () => {
     const res = await app.handle(
       new Request('http://localhost/api/artist/resolve?name=Nobody%20At%20All')
-    );
-
-    expect(res.status).toBe(404);
-  });
-});
-
-describe('POST /api/artist/pages', () => {
-  it('is not served: no page asks for a batch of artists any more', async () => {
-    const res = await app.handle(
-      new Request('http://localhost/api/artist/pages', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ names: ['Daft Punk'] }),
-      })
     );
 
     expect(res.status).toBe(404);

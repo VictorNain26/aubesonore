@@ -30,8 +30,7 @@ const COVER = 'https://coverartarchive.org/release-group/homework/front-500';
 const cover = (url: string) => ({ kind: 'cover' as const, url, title: 'Homework', year: 1997 });
 let profileImages: ArtistImage[] = [cover(COVER)];
 
-// spyOn on the real exports, restored after this file: mock.module would
-// replace these modules for every other test file of the run (Bun 1.3).
+// spyOn on the real exports, restored after this file.
 const profileService = await import('../services/artistProfileService');
 const musilogyService = await import('../services/musilogyService');
 const DAFT_PUNK_MBID = '056e4f3e-d505-4dad-8ec1-d04f521cbb56';
@@ -261,14 +260,17 @@ describe('GET /artiste/:slug', () => {
     expect(jsonLd(html).name).toBe(profileName);
   });
 
-  it('keeps the default share image when the artist image is not on an allowed host', async () => {
+  it.each([
+    ['on a host not allowed', 'https://evil.example/pwn.jpg'],
+    ['not in https', 'http://coverartarchive.org/release-group/homework/front-500'],
+  ])('keeps the default share image for an artist image %s', async (_, url) => {
     mockShell();
-    profileImages = [cover('https://evil.example/pwn.jpg')];
+    profileImages = [cover(url)];
 
     const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
 
     const html = await res.text();
-    expect(html).not.toContain('evil.example');
+    expect(html).not.toContain(url);
     expect(html).toContain(
       '<meta property="og:image" content="https://aubesonore.fr/og-fr.png" />'
     );
@@ -307,15 +309,6 @@ describe('GET /artiste/:slug', () => {
     );
   });
 
-  it('drops a non-https og:image', async () => {
-    mockShell();
-    profileImages = [cover('http://coverartarchive.org/release-group/homework/front-500')];
-
-    const res = await app.handle(new Request('http://localhost/artiste/daft-punk'));
-
-    expect(await res.text()).not.toContain('http://coverartarchive.org');
-  });
-
   it('answers a malformed slug like an unknown artist, without a lookup', async () => {
     mockShell();
     profileSpy.mockClear();
@@ -347,13 +340,18 @@ describe('GET /artiste/:slug', () => {
     );
   });
 
-  it("sends an MBID the antenna played to the artist's slug", async () => {
+  it.each([
+    ['an MBID the antenna played', `/artiste/${DAFT_PUNK_MBID}`, '/artiste/daft-punk'],
+    ['an MBID the antenna played', `/en/artist/${DAFT_PUNK_MBID}`, '/en/artist/daft-punk'],
+    ['the MBID of a page never played', `/artiste/${NAMED_MBID}`, '/artiste/shame'],
+    ['the MBID of a page never played', `/en/artist/${NAMED_MBID}`, '/en/artist/shame'],
+  ])('sends %s to its slug: %s → %s', async (_, from, to) => {
     mockShell();
 
-    const res = await app.handle(new Request(`http://localhost/artiste/${DAFT_PUNK_MBID}`));
+    const res = await app.handle(new Request(`http://localhost${from}`));
 
     expect(res.status).toBe(301);
-    expect(res.headers.get('location')).toBe('/artiste/daft-punk');
+    expect(res.headers.get('location')).toBe(to);
   });
 
   it('serves the page of an artist never played at its MBID, kept out of search results', async () => {
@@ -385,18 +383,12 @@ describe('GET /artiste/:slug', () => {
     expect(html).toContain(
       `<link rel="alternate" hreflang="en" href="${env.FRONTEND_BASE_URL}/en/artist/${UNPLAYED_MBID}" />`
     );
-  });
-
-  it('sends the MBID of a page to its slug, in both languages', async () => {
-    mockShell();
-
-    const fr = await app.handle(new Request(`http://localhost/artiste/${NAMED_MBID}`));
-    const en = await app.handle(new Request(`http://localhost/en/artist/${NAMED_MBID}`));
-
-    expect(fr.status).toBe(301);
-    expect(fr.headers.get('location')).toBe('/artiste/shame');
-    expect(en.status).toBe(301);
-    expect(en.headers.get('location')).toBe('/en/artist/shame');
+    // The English version is its own canonical address.
+    const en = await app.handle(new Request(`http://localhost/en/artist/${UNPLAYED_MBID}`));
+    expect(en.status).toBe(200);
+    expect(await en.text()).toContain(
+      `<link rel="canonical" href="${env.FRONTEND_BASE_URL}/en/artist/${UNPLAYED_MBID}"`
+    );
   });
 
   it('serves a page never played at its slug, its slug the canonical address', async () => {
@@ -409,28 +401,6 @@ describe('GET /artiste/:slug', () => {
     expect(res.status).toBe(200);
     expect(res.headers.get('x-robots-tag')).toBeNull();
     expect(html).toContain(`<link rel="canonical" href="${env.FRONTEND_BASE_URL}/artiste/shame"`);
-  });
-
-  it('serves the English page of an artist never played at its MBID', async () => {
-    mockShell();
-    discovered = [UNPLAYED_MBID];
-
-    const res = await app.handle(new Request(`http://localhost/en/artist/${UNPLAYED_MBID}`));
-    const html = await res.text();
-
-    expect(res.status).toBe(200);
-    expect(html).toContain(
-      `<link rel="canonical" href="${env.FRONTEND_BASE_URL}/en/artist/${UNPLAYED_MBID}"`
-    );
-  });
-
-  it("sends an MBID the antenna played to the artist's English slug", async () => {
-    mockShell();
-
-    const res = await app.handle(new Request(`http://localhost/en/artist/${DAFT_PUNK_MBID}`));
-
-    expect(res.status).toBe(301);
-    expect(res.headers.get('location')).toBe('/en/artist/daft-punk');
   });
 
   it('answers 503 while Musilogy, which makes a page by MBID, is not loaded', async () => {
@@ -480,7 +450,9 @@ describe('the addresses pages had before slugs', () => {
     expect(res.status).toBe(404);
     expect(res.headers.get('location')).toBeNull();
   });
+});
 
+describe('the shell and the renderer behind a page', () => {
   it('returns 502 when the frontend shell cannot be read', async () => {
     setFetch(() => Promise.resolve(new Response(null, { status: 500 })));
 

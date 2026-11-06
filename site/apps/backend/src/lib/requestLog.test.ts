@@ -17,7 +17,11 @@ const app = new Elysia()
   })
   .post('/body', ({ body }) => body, { body: t.Object({ name: t.String() }) });
 
-const info = spyOn(logger, 'info');
+// onAfterResponse runs once the response is out, on a later turn: each request waits for its line.
+let lineWritten: () => void = () => {};
+const info = spyOn(logger, 'info').mockImplementation((msg) => {
+  if (msg === 'http') lineWritten();
+});
 
 afterAll(() => info.mockRestore());
 
@@ -26,9 +30,11 @@ async function logged(
   init?: RequestInit
 ): Promise<{ status: number; line: unknown }> {
   info.mockClear();
+  const written = new Promise<void>((resolve) => {
+    lineWritten = resolve;
+  });
   const res = await app.handle(new Request(`http://localhost${path}`, init));
-  // onAfterResponse runs once the response is out, on the next turn.
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  await written;
   const http = info.mock.calls.filter(([msg]) => msg === 'http');
   expect(http).toHaveLength(1);
   return { status: res.status, line: http[0]?.[1] };

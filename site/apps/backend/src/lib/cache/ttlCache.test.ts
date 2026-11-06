@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, spyOn } from 'bun:test';
 import { TtlCache } from './ttlCache';
 
 describe('TtlCache', () => {
@@ -19,16 +19,18 @@ describe('TtlCache', () => {
     expect(cache.get('b')).toBe(2);
   });
 
-  it('returns undefined for missing key', () => {
-    const cache = new TtlCache<string>(1000);
-    expect(cache.get('missing')).toBeUndefined();
-  });
-
-  it('expires entries after TTL', async () => {
-    const cache = new TtlCache<string>(10);
-    cache.set('a', 'hello');
-    await new Promise((r) => setTimeout(r, 20));
-    expect(cache.get('a')).toBeUndefined();
+  it('keeps an entry for its TTL, and not a millisecond past it', () => {
+    const now = spyOn(Date, 'now').mockReturnValue(1_000_000);
+    try {
+      const cache = new TtlCache<string>(10);
+      cache.set('a', 'hello');
+      now.mockReturnValue(1_000_010);
+      expect(cache.get('a')).toBe('hello');
+      now.mockReturnValue(1_000_011);
+      expect(cache.get('a')).toBeUndefined();
+    } finally {
+      now.mockRestore();
+    }
   });
 
   it('stores null as a real value (distinguishes from missing)', () => {

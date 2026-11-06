@@ -22,6 +22,7 @@ const unlikeSpy = spyOn(trackService, 'unlikeTrack').mockResolvedValue({
 
 afterEach(() => {
   signedIn = true;
+  likeSpy.mockClear();
   __resetRateLimits();
 });
 afterAll(() => {
@@ -52,6 +53,30 @@ describe('POST /api/track/like', () => {
     const answer = (await res.json()) as Record<string, unknown>;
     expect(answer.error).toContain('Titre requis');
     expect(answer).not.toHaveProperty('status');
+  });
+
+  // The link is served back as « play on YouTube »: any other host would be an open redirect.
+  it.each([
+    'https://evil.example/watch?v=x',
+    'https://www.youtube.com.evil.example/watch?v=x',
+    'http://www.youtube.com/watch?v=x',
+    'javascript:alert(1)//www.youtube.com/',
+  ])('refuses a link that is not YouTube: %s', async (youtubeUrl) => {
+    const res = await like({ title: 'In Flight', artist: 'Sunflower Bean', youtubeUrl });
+
+    expect(res.status).toBe(400);
+    expect(likeSpy).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'https://www.youtube.com/watch?v=x',
+    'https://m.youtube.com/watch?v=x',
+    'https://music.youtube.com/watch?v=x',
+    'https://youtu.be/x',
+  ])('keeps a track whose link is YouTube: %s', async (youtubeUrl) => {
+    const res = await like({ title: 'In Flight', artist: 'Sunflower Bean', youtubeUrl });
+
+    expect(res.status).toBe(200);
   });
 
   it('keeps a valid track', async () => {

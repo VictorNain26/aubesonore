@@ -226,20 +226,19 @@ describe('GET /t', () => {
     expect(res.headers.get('vary')).toContain('accept-language');
   });
 
-  it('serves French copy for French or missing Accept-Language', async () => {
+  it.each([
+    ['a French Accept-Language', { 'accept-language': 'fr-FR,fr;q=0.9,en;q=0.8' }],
+    ['no Accept-Language', {}],
+  ])('serves French copy for %s', async (_, headers) => {
     mockPlatforms();
 
-    const french = await app.handle(
-      new Request('http://localhost/t?title=Balance%20Act&artist=Psychic%20Lines', {
-        headers: { 'accept-language': 'fr-FR,fr;q=0.9,en;q=0.8' },
-      })
+    const res = await app.handle(
+      new Request('http://localhost/t?title=Balance%20Act&artist=Psychic%20Lines', { headers })
     );
-    expect(await french.text()).toContain('Écouter le direct');
 
-    const noHeader = await app.handle(
-      new Request('http://localhost/t?title=Balance%20Act&artist=Psychic%20Lines')
-    );
-    expect(await noHeader.text()).toContain('Écouter le direct');
+    const html = await res.text();
+    expect(html).toContain('<html lang="fr">');
+    expect(html).toContain('Écouter le direct');
   });
 
   it("speaks the sharer's language, carried by the link, whatever the reader's", async () => {

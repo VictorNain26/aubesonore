@@ -74,57 +74,74 @@ describe('findTrackLinks', () => {
 
     expect(await findTrackLinks('In Flight', 'Sunflower Bean')).toBeNull();
   });
+});
 
-  it('does not cache a Deezer search that answered a quota error with HTTP 200', async () => {
-    platforms();
-    const answer = globalThis.fetch;
-    globalThis.fetch = ((url: string) =>
-      url.startsWith('https://api.deezer.com/search')
-        ? json({ error: { type: 'Exception', message: 'Quota limit exceeded', code: 4 } })
-        : answer(url)) as unknown as typeof fetch;
-    expect((await findTrackLinks('In Flight', 'Sunflower Bean'))?.platformLinks.deezer).toBe(
+// As Deezer answers /track/isrc: (measured 2026-10-04): the track with its title and artist.
+const EXACT = {
+  id: 999,
+  title: 'In Flight',
+  link: 'https://www.deezer.com/track/999',
+  isrc: 'GBUM71029604',
+  artist: { id: 1, name: 'Sunflower Bean' },
+};
+const QUOTA = { error: { type: 'Exception', message: 'Quota limit exceeded', code: 4 } };
+
+/** Deezer answers `byIsrc` for /track/isrc:, the other platforms as usual. */
+function withIsrc(byIsrc: () => Promise<Response>): void {
+  globalThis.fetch = ((url: string) => {
+    calls.push(url);
+    if (url.startsWith('https://api.deezer.com/track/isrc:')) return byIsrc();
+    if (url.startsWith('https://itunes.apple.com/')) return json(ITUNES);
+    if (url.startsWith('https://api.deezer.com/search')) return json(DEEZER_SEARCH);
+    if (url.startsWith('https://api.deezer.com/track/')) return json({ isrc: 'USQE92100206' });
+    throw new Error(`unexpected ${url}`);
+  }) as unknown as typeof fetch;
+}
+
+describe('an answer cut short by a failed lookup', () => {
+  it.each([
+    [
+      'a Deezer search that answered a quota error with HTTP 200',
+      () => {
+        withIsrc(() => json(EXACT));
+        const answer = globalThis.fetch;
+        globalThis.fetch = ((url: string) =>
+          url.startsWith('https://api.deezer.com/search')
+            ? json(QUOTA)
+            : answer(url)) as unknown as typeof fetch;
+      },
+      null,
+      'https://www.deezer.com/track/1616626132',
+    ],
+    [
+      'a network failure',
+      () => {
+        globalThis.fetch = (() =>
+          Promise.reject(new Error('ECONNRESET'))) as unknown as typeof fetch;
+      },
+      null,
+      'https://www.deezer.com/track/1616626132',
+    ],
+    [
+      'a failed ISRC lookup',
+      () => withIsrc(() => json(QUOTA)),
+      'GBUM71029604',
+      'https://www.deezer.com/track/999',
+    ],
+  ])('is not cached: %s', async (_, fail, isrc, deezer) => {
+    fail();
+    expect((await findTrackLinks('In Flight', 'Sunflower Bean', isrc))?.platformLinks.deezer).toBe(
       undefined
     );
 
-    platforms();
-    expect((await findTrackLinks('In Flight', 'Sunflower Bean'))?.platformLinks.deezer).toBe(
-      'https://www.deezer.com/track/1616626132'
-    );
-  });
-
-  it('does not cache an answer cut short by a network failure', async () => {
-    globalThis.fetch = (() => Promise.reject(new Error('ECONNRESET'))) as unknown as typeof fetch;
-    expect(await findTrackLinks('In Flight', 'Sunflower Bean')).toBeNull();
-
-    platforms();
-    expect((await findTrackLinks('In Flight', 'Sunflower Bean'))?.platformLinks.deezer).toBe(
-      'https://www.deezer.com/track/1616626132'
+    withIsrc(() => json(EXACT));
+    expect((await findTrackLinks('In Flight', 'Sunflower Bean', isrc))?.platformLinks.deezer).toBe(
+      deezer
     );
   });
 });
 
 describe('findTrackLinks with the ISRC of the play', () => {
-  // As Deezer answers /track/isrc: (measured 2026-10-04): the track with its title and artist.
-  const EXACT = {
-    id: 999,
-    title: 'In Flight',
-    link: 'https://www.deezer.com/track/999',
-    isrc: 'GBUM71029604',
-    artist: { id: 1, name: 'Sunflower Bean' },
-  };
-
-  /** Deezer answers `byIsrc` for /track/isrc:, the other platforms as usual. */
-  function withIsrc(byIsrc: () => Promise<Response>): void {
-    globalThis.fetch = ((url: string) => {
-      calls.push(url);
-      if (url.startsWith('https://api.deezer.com/track/isrc:')) return byIsrc();
-      if (url.startsWith('https://itunes.apple.com/')) return json(ITUNES);
-      if (url.startsWith('https://api.deezer.com/search')) return json(DEEZER_SEARCH);
-      if (url.startsWith('https://api.deezer.com/track/')) return json({ isrc: 'USQE92100206' });
-      throw new Error(`unexpected ${url}`);
-    }) as unknown as typeof fetch;
-  }
-
   it('links the very recording on Deezer, without a text search', async () => {
     withIsrc(() => json(EXACT));
 
@@ -144,24 +161,13 @@ describe('findTrackLinks with the ISRC of the play', () => {
     expect(calls).toContain('https://api.deezer.com/track/isrc:GBUM71029604');
   });
 
-  it('does not cache an answer whose ISRC lookup failed', async () => {
-    withIsrc(() =>
-      json({ error: { type: 'Exception', message: 'Quota limit exceeded', code: 4 } })
-    );
-    const failed = await findTrackLinks('In Flight', 'Sunflower Bean', 'GBUM71029604');
-    expect(failed?.platformLinks.deezer).toBeUndefined();
-
-    withIsrc(() => json(EXACT));
-    const retried = await findTrackLinks('In Flight', 'Sunflower Bean', 'GBUM71029604');
-    expect(retried?.platformLinks.deezer).toBe('https://www.deezer.com/track/999');
-  });
-
   it('never answers another title from the cache for the same ISRC', async () => {
     withIsrc(() => json(EXACT));
-    await findTrackLinks('In Flight', 'Sunflower Bean', 'GBUM71029604');
+    const first = await findTrackLinks('In Flight', 'Sunflower Bean', 'GBUM71029604');
+    expect(first?.platformLinks.appleMusic).toBe('https://music.apple.com/fr/song/in-flight/1');
 
-    calls = [];
-    await findTrackLinks('Something Else', 'Sunflower Bean', 'GBUM71029604');
-    expect(calls.length).toBeGreaterThan(0);
+    // Apple's only answer is « In Flight »: another title gets no Apple link of it.
+    const other = await findTrackLinks('Something Else', 'Sunflower Bean', 'GBUM71029604');
+    expect(other?.platformLinks.appleMusic).toBeUndefined();
   });
 });

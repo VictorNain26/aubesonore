@@ -178,9 +178,12 @@ describe('plainText', () => {
     );
   });
 
-  it('drops a character reference Unicode does not have, rather than fail', async () => {
-    // Tags a regex would leave half-open are read by the parser as text or markup, never kept.
+  it('keeps no markup a regex would leave half-open', async () => {
+    // Such tags are read by the parser as text or markup, never kept.
     expect(await plainText('<scr<script>ipt>Greg</a>')).not.toContain('<');
+  });
+
+  it('drops a character reference Unicode does not have, rather than fail', async () => {
     expect(await plainText('A&#1114112;B&#x110000;C')).toBe('ABC');
   });
 });
