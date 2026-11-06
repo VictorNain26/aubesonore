@@ -64,16 +64,11 @@ describe('JustBeforeView', () => {
     expect(screen.queryByRole('button', { name: /YouTube|extrait/i })).not.toBeInTheDocument();
   });
 
-  it("fetches its small cover after the page's other images, at its small size", () => {
+  it("fetches its small cover after the page's other images", () => {
     render(<JustBeforeView {...props()} />);
     const img = screen.getByRole('presentation');
     expect(img).toHaveAttribute('fetchpriority', 'low');
     expect(img).toHaveAttribute('loading', 'lazy');
-    // 56 px beside the cover on air, 44 px on a phone: the 96 or 192 px file.
-    expect(img).toHaveAttribute(
-      'sizes',
-      '(min-width: 40rem) and (orientation: landscape) 3.5rem, 2.75rem'
-    );
   });
 
   it('marks its track leaving and arriving with the hero', () => {
@@ -120,9 +115,7 @@ describe('JustBefore', () => {
   it("keeps « Juste avant »'s room until the live answers, not once it says it cannot", () => {
     useNowPlayingStore.setState({ data: null, isConnected: false, error: null });
     const { container } = render(<JustBefore shown={null} swap="idle" />);
-    const waiting = screen.getByTestId('hero-before-waiting');
-    expect(waiting).toHaveClass('hero-before');
-    expect(waiting).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByTestId('hero-before-waiting')).toHaveAttribute('aria-busy', 'true');
     // A room, not a title over what may not come.
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
 

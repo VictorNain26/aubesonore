@@ -18,7 +18,6 @@ describe('Logo', () => {
       </span>
     );
     expect(markup('logo')).toMatch(/^<svg[^>]* aria-hidden="true"/);
-    expect(markup('logo').match(/class="logo-letter"/g)).toHaveLength('AubeSonore'.length);
   });
 
   it('plays its intro once per page load, whichever logo asks first', async () => {

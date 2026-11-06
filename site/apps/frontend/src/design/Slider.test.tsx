@@ -26,18 +26,13 @@ function ControlledSlider({
 }
 
 describe('Slider', () => {
-  it('renders a slider with the given label', () => {
-    render(<Slider label="Volume" value={0.5} onValueChange={vi.fn()} />);
-    expect(screen.getByRole('slider', { name: 'Volume' })).toBeInTheDocument();
-  });
-
-  it('calls onValueChange with a number on keyboard interaction', () => {
+  it('moves one hundredth of the range on each arrow key', () => {
     const onValueChange = vi.fn();
     render(<ControlledSlider onValueChange={onValueChange} />);
     const thumb = screen.getByRole('slider', { name: 'Volume' });
     thumb.focus();
     fireEvent.keyDown(thumb, { key: 'ArrowRight' });
-    expect(onValueChange).toHaveBeenCalledWith(expect.any(Number));
+    expect(onValueChange).toHaveBeenLastCalledWith(0.51);
   });
 
   it('renders disabled and blocks keyboard focus', () => {

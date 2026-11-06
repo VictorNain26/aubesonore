@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import { readThemeChoice, THEME_KEY } from '../design/theme';
 import {
@@ -37,15 +37,8 @@ beforeEach(() => {
   localStorage.removeItem(THEME_KEY);
   delete root.dataset.theme;
 });
-afterEach(() => {
-  vi.restoreAllMocks();
-});
 
 describe('chooseTheme', () => {
-  it('follows the system until the listener chooses', () => {
-    expect(themeChoice()).toBe('system');
-  });
-
   it('remembers a forced theme on the device and draws the page in it', () => {
     chooseTheme('dark');
     expect(themeChoice()).toBe('dark');

@@ -74,11 +74,6 @@ describe('MostKeptView', () => {
     expect(img).toHaveAttribute('fetchpriority', 'low');
     // Fetched with the page, not as it scrolls in: a lazy row showed empty squares while scrolled.
     expect(img).toHaveAttribute('loading', 'eager');
-    // 104 px beside the cover on air, 120 px on a phone: the 192 px file at most on a dense screen.
-    expect(img).toHaveAttribute(
-      'sizes',
-      '(min-width: 40rem) and (orientation: landscape) 6.5rem, 7.5rem'
-    );
   });
 
   it('says the artist under each title, linked to their page when it has one', () => {

@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 
-import { afterAll, afterEach, beforeAll } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 import { server } from './server';
 
 if (typeof globalThis.ResizeObserver === 'undefined') {
@@ -70,4 +70,14 @@ if (typeof globalThis.localStorage === 'undefined') {
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterEach(() => server.resetHandlers());
+// The browser's storage is each test's alone (a saved volume, a theme, a track to keep), the
+// French pin above put back. Before each test rather than after: by then the spies a test put on
+// the storage are restored (restoreMocks).
+beforeEach(() => {
+  if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
+  if (typeof localStorage !== 'undefined') {
+    localStorage.clear();
+    localStorage.setItem('PARAGLIDE_LOCALE', 'fr');
+  }
+});
 afterAll(() => server.close());

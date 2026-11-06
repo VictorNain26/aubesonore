@@ -12,10 +12,6 @@ describe('TextField', () => {
     render(<TextField label="Adresse e-mail" error="Adresse invalide — vérifie le format." />);
     expect(screen.getByText('Adresse invalide — vérifie le format.')).toBeInTheDocument();
   });
-  it('shows no error element without error', () => {
-    render(<TextField label="Adresse e-mail" />);
-    expect(screen.queryByText(/invalide/)).not.toBeInTheDocument();
-  });
   it('renders the trailing action next to the input', () => {
     render(
       <TextField

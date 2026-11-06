@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, onTestFinished, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
@@ -79,8 +79,12 @@ describe('MusilogyHomeView', () => {
   });
 
   it('lifts the field above an on-screen keyboard at the first letter of each focus only', async () => {
+    // jsdom has no scrollIntoView: it is put on the prototype for this test alone.
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
+    onTestFinished(() => {
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+    });
     const keyboard = (height: number) =>
       vi.stubGlobal('visualViewport', { height: window.innerHeight - height });
     render(<MusilogyHomeView query="" onQueryChange={vi.fn()} search={{ status: 'idle' }} />, {
@@ -97,7 +101,6 @@ describe('MusilogyHomeView', () => {
     await userEvent.type(field, 'cd');
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start', behavior: 'smooth' });
-    vi.unstubAllGlobals();
   });
 
   it('clears the search on its button', async () => {

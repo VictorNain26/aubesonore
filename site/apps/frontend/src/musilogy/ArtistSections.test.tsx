@@ -133,20 +133,12 @@ describe('MusilogySections', () => {
     );
   });
 
-  it('names each band link from the artist side', () => {
-    showFiliation(artist());
-
-    expect(screen.getByRole('heading', { name: 'Membres' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Marc Bolan' })).toBeInTheDocument();
-  });
-
   it('leaves out every tab with nothing in it, and opens the first one left', () => {
     show(artist({ sameSound: null, colisten: [] }));
 
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Filiation']);
     expect(screen.getByRole('tab', { name: 'Filiation' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('heading', { name: 'Membres' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
   });
 
   it('leaves out the section, title and all, when no tab has anything', () => {

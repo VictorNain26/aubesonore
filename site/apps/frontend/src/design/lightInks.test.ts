@@ -49,7 +49,6 @@ beforeEach(() => {
 });
 afterEach(() => {
   element.remove();
-  vi.restoreAllMocks();
 });
 
 describe('readInks', () => {

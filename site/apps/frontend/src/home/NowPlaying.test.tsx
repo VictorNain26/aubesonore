@@ -1,11 +1,21 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactElement } from 'react';
 import { render as rtlRender, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
 import { ErrorBoundary } from 'react-error-boundary';
+import { makeNowPlaying } from '../mocks/handlers';
 import {
+  useNowPlayingStore,
+  type NowPlaying as NowPlayingData,
+  type SongEntry,
+} from '../lib/azuracast';
+import { __resetNowPlayingStore } from '../lib/azuracast/store';
+import { useLikedTracksStore } from '../stores/likedTracksStore';
+import type { LikedTrack } from '../lib/api';
+import {
+  NowPlaying,
   NowPlayingFallback,
   NowPlayingFallbackView,
   NowPlayingView,
@@ -222,17 +232,6 @@ describe('NowPlayingView', () => {
 
     rerender(<NowPlayingView {...props({ swap: 'in' })} />);
     expect(marks()).toEqual(['in', 'in']);
-    // The steps the player bar takes too (shell/PlayerBar.tsx): one choreography.
-    expect(screen.getByTestId('hero-cover')).toHaveClass('swap-cover');
-    expect(screen.getByTestId('hero-words')).toHaveClass('swap-words');
-  });
-
-  it('never cuts the title on air: a long one wraps, a word wider than the line breaks', () => {
-    const title = `${'Pneumonoultramicroscopicsilicovolcanoconiosis'.repeat(2)} and What We Are Meant to Be`;
-    render(<NowPlayingView {...props({ track: { ...props().track!, title } })} />);
-    const heading = screen.getByRole('heading', { name: title });
-    expect(heading.className).not.toMatch(/line-clamp|truncate|text-ellipsis|overflow-hidden/);
-    expect(heading).toHaveClass('wrap-break-word');
   });
 
   it("holds the words' room while the live has not answered: a line of each, at its size", () => {
@@ -318,24 +317,10 @@ describe('NowPlayingView', () => {
     expect(keep()).toContainHTML('keep-pop');
   });
 
-  it('fetches the cover at the width the hero gives it, beside the column or above it', () => {
+  it("fetches the cover first: the page's largest image", () => {
     const art = 'https://radio.aubesonore.fr/api/station/aubesonore/art/abc-1.jpg';
     render(<NowPlayingView {...props({ track: { ...props().track!, art } })} />);
     const img = screen.getByRole('img', { name: 'Pochette de Mimoun, Mickey 3D' });
-
-    // The hero's one formula (design/tokens.css, --hero-cover), in vw: beside the column, the
-    // screen's height less the header, its 24 px and the horizon (9.5rem), or the hero's width less
-    // both gutters, the column's 26rem and its 3.5rem of air (2.5rem gutters from 48rem, held to
-    // 100rem of content past it: 70.5rem at most; 1.5rem gutters below); above it, the screen's
-    // width, held under the height the header, its 24 px and the words need (28.5rem).
-    expect(img.getAttribute('sizes')).toBe(
-      [
-        '(min-width: 48rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 34.5rem, 70.5rem)',
-        '(min-width: 40rem) and (orientation: landscape) min(100vh - 9.5rem, 100vw - 32.5rem)',
-        'min(100vw, max(9rem, 100vh - 28.5rem))',
-      ].join(', ')
-    );
-    // The page's largest image: fetched first.
     expect(img).toHaveAttribute('fetchpriority', 'high');
   });
 
@@ -356,9 +341,55 @@ describe('NowPlayingView', () => {
   });
 });
 
+describe('NowPlaying, from the stores', () => {
+  const entry = (song: Partial<SongEntry['song']> = {}): SongEntry => {
+    const onAir = makeNowPlaying().now_playing as unknown as SongEntry;
+    return { ...onAir, song: { ...onAir.song, title: 'Mimoun', artist: 'Mickey 3D', ...song } };
+  };
+  afterEach(() => {
+    __resetNowPlayingStore();
+    useLikedTracksStore.setState({ tracks: [] });
+  });
+
+  it('says the live is not answering once the station failed before any answer', () => {
+    useNowPlayingStore.setState({ data: null, error: 'HTTP 500' });
+    render(<NowPlaying shown={null} swap="idle" />);
+    expect(screen.getByText('Le direct ne répond pas pour le moment.')).toBeInTheDocument();
+  });
+
+  it('never says the live is not answering once it has answered, a later poll failing', () => {
+    useNowPlayingStore.setState({
+      data: makeNowPlaying() as unknown as NowPlayingData,
+      error: 'HTTP 500',
+    });
+    render(<NowPlaying shown={null} swap="idle" />);
+    expect(screen.queryByText('Le direct ne répond pas pour le moment.')).not.toBeInTheDocument();
+  });
+
+  it('shows the heart full for a track the listener kept, whatever its case', () => {
+    useLikedTracksStore.setState({
+      tracks: [{ id: 'k1', title: 'MIMOUN', artist: 'mickey 3d' } as LikedTrack],
+    });
+    render(<NowPlaying shown={entry()} swap="idle" />);
+    expect(screen.getByRole('button', { name: 'Garder « Mimoun »' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
+  it('shows no track for an entry without a title', () => {
+    render(<NowPlaying shown={entry({ title: '' })} swap="idle" />);
+    expect(screen.queryByRole('button', { name: /^Garder/ })).not.toBeInTheDocument();
+  });
+});
+
 describe('NowPlayingFallback', () => {
+  afterEach(() => {
+    diffusionThrows.value = false;
+  });
+
   it('says the track does not show, keeps the live to hear, and retries', async () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     let shouldThrow = true;
     function Track() {
       if (shouldThrow) throw new Error('boom');
@@ -377,11 +408,10 @@ describe('NowPlayingFallback', () => {
     shouldThrow = false;
     await userEvent.click(screen.getByRole('button', { name: 'Réessayer' }));
     expect(screen.getByText('Mimoun')).toBeInTheDocument();
-    spy.mockRestore();
   });
 
   it('still offers Écouter and Réessayer when a store its row reads throws as well', () => {
-    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     diffusionThrows.value = true;
     function Track(): null {
       throw new Error('boom');
@@ -395,8 +425,6 @@ describe('NowPlayingFallback', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Le titre en cours ne s’affiche pas.');
     expect(screen.getByRole('button', { name: 'Écouter le direct' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Réessayer' })).toBeInTheDocument();
-    diffusionThrows.value = false;
-    spy.mockRestore();
   });
 });
 

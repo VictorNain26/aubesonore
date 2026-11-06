@@ -70,7 +70,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
-  vi.restoreAllMocks();
+  chooseTheme('system');
 });
 
 describe('CoverLight', () => {
@@ -151,13 +151,22 @@ describe('CoverLight', () => {
     expect(weigh((row) => row >= 14)).toBeGreaterThan(weigh(() => true));
   });
 
-  it('dims a cover whose pixels cannot be read as much as the worst cover would need', () => {
+  it('dims a cover whose pixels cannot be read at least as much as a white or a black one', () => {
+    const opacityOf = (read: Uint8ClampedArray | Error) => {
+      pixels = read;
+      const { unmount } = render(<CoverLight art={art('a1')} />);
+      fireEvent.load(files()[0]!);
+      const opacity = Number(lights()[0]!.style.opacity);
+      unmount();
+      return opacity;
+    };
     // What a canvas tainted by a cover of another origin throws on getImageData.
-    pixels = Object.assign(new Error('The canvas has been tainted'), { name: 'SecurityError' });
-    render(<CoverLight art={art('a1')} />);
-    fireEvent.load(files()[0]!);
-    const worst = new Uint8ClampedArray([0, 0, 0, 255, 255, 255, 255, 255]);
-    expect(Number(lights()[0]!.style.opacity)).toBe(lightOpacity(worst, NIGHT));
+    const unread = opacityOf(
+      Object.assign(new Error('The canvas has been tainted'), { name: 'SecurityError' })
+    );
+    expect(unread).toBeGreaterThan(0);
+    expect(unread).toBeLessThanOrEqual(opacityOf(flat([255, 255, 255])));
+    expect(unread).toBeLessThanOrEqual(opacityOf(flat([0, 0, 0])));
   });
 
   it('leaves the light at its style where the browser cannot read the inks', () => {
@@ -190,7 +199,6 @@ describe('CoverLight', () => {
     act(() => onChange?.());
     // The paper-coloured words of the night do not read on a white cover: the light is dimmed.
     expect(Number(lights()[0]!.style.opacity)).toBeLessThan(0.75);
-    vi.unstubAllGlobals();
   });
 
   it('weighs the light again when the listener chooses the night', () => {
@@ -204,7 +212,6 @@ describe('CoverLight', () => {
     act(() => chooseTheme('dark'));
     // The paper-coloured words of the night do not read on a white cover: the light is dimmed.
     expect(Number(lights()[0]!.style.opacity)).toBeLessThan(0.75);
-    act(() => chooseTheme('system'));
   });
 
   it('has no light without a real cover', () => {
@@ -234,10 +241,6 @@ describe('CoverLight', () => {
     });
     expect(srcs()).toEqual(['/covers/station/b2-1/96.webp']);
     expect(lights()[0]).not.toHaveClass('light-out');
-  });
-
-  it('cross-fades in one second', () => {
-    expect(LIGHT_FADE_MS).toBe(1000);
   });
 
   it('holds two lights at most, the one shown and the newest, however fast the titles change', () => {

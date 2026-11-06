@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { shareTrack, getRadioShareUrl } from './shareTrack';
 import { overwriteGetLocale } from '@/paraglide/runtime.js';
 import { API_BASE_URL } from './config';
@@ -8,8 +8,6 @@ const input = {
   artist: 'Psychic Lines',
   url: 'https://aubesonore.fr',
 };
-
-afterEach(() => vi.unstubAllGlobals());
 
 describe('shareTrack', () => {
   it('uses navigator.share when available', async () => {
@@ -61,9 +59,9 @@ describe('getRadioShareUrl', () => {
     }
   });
 
-  it('encodes spaces in both params', () => {
+  it('encodes an accented letter as UTF-8', () => {
     expect(getRadioShareUrl('La Vie En Rose', 'Édith Piaf')).toBe(
-      `${API_BASE_URL}/t?artist=${encodeURIComponent('Édith Piaf')}&title=La%20Vie%20En%20Rose&lang=fr`
+      `${API_BASE_URL}/t?artist=%C3%89dith%20Piaf&title=La%20Vie%20En%20Rose&lang=fr`
     );
   });
 });

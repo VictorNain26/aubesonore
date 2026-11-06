@@ -9,7 +9,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  vi.unstubAllGlobals();
   Reflect.deleteProperty(window, 'chrome');
 });
 

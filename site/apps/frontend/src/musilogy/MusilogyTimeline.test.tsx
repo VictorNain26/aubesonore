@@ -52,14 +52,15 @@ describe('spanOf', () => {
 
 describe('barLabelsOf', () => {
   const axis = { from: 1960, to: 2026, ticks: [1960, 1980], grid: [1960, 1980, 2000, 2020] };
-  const pct = (year: number) => ((year - 1960) / 66) * 100;
+  // Percent of the 66 years from 1960 to 2026.
+  const pct = (percent: number) => expect.closeTo(percent, 2) as number;
 
   it('writes the start from the left end of the bar and the declared end up to its right end', () => {
     expect(barLabelsOf(neighbour('krautrock', { y0: 1968, yEnd: 1991 }), axis)).toEqual({
       first: '1968',
       last: '1991',
-      start: pct(1968),
-      end: pct(1991),
+      start: pct(12.12),
+      end: pct(46.97),
     });
   });
 
@@ -67,15 +68,15 @@ describe('barLabelsOf', () => {
     expect(barLabelsOf(neighbour('krautrock'), axis)).toEqual({
       first: '1971–1975',
       last: null,
-      start: pct(1971),
-      end: pct(1975),
+      start: pct(16.67),
+      end: pct(22.73),
     });
     // Started late and still going: its start, never read as an end at the right of the bar.
     expect(barLabelsOf(neighbour('ambient', { y0: 2010, ended: false }), axis)).toEqual({
       first: '2010',
       last: null,
-      start: pct(2010),
-      end: pct(2010),
+      start: pct(75.76),
+      end: pct(75.76),
     });
     expect(barLabelsOf(neighbour('ambient', { y0: null }), axis)).toBeNull();
   });

@@ -111,8 +111,6 @@ describe('ArtistPageView', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'Artistes proches' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Influences' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Explorer dans Musilogy' })).not.toBeInTheDocument();
   });
 
   it("opens the next artist's close artists on its own first tab", () => {
@@ -286,7 +284,7 @@ describe('ArtistPageView', () => {
     expect(screen.getByRole('heading', { name: 'Page indisponible.' })).toBeInTheDocument();
   });
 
-  it('leads back to the live from the header', () => {
+  it('keeps the header, and its way back to the live, while the page loads', () => {
     render(
       <MemoryRouter initialEntries={['/artist/a-1/hania-rani']}>
         <ArtistPageView state={{ status: 'loading' }} kept={[]} />

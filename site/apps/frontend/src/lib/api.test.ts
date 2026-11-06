@@ -1,7 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
-import { authApi, getJson, HttpError, readKnown } from './api';
+import { authApi, getJson, HttpError, readKnown, trackApi } from './api';
+import { keepRequest } from './pendingKeep';
 
 describe('authApi.getSession', () => {
   it('returns null when no session (401)', async () => {
@@ -12,6 +13,14 @@ describe('authApi.getSession', () => {
     );
     const result = await authApi.getSession();
     expect(result).toBeNull();
+  });
+
+  it.each([
+    ['a refused session (403)', () => HttpResponse.json({}, { status: 403 })],
+    ['an answer without a user', () => HttpResponse.json({ user: null })],
+  ])('returns null for %s', async (_, answer) => {
+    server.use(http.get('http://localhost:3000/api/auth/get-session', answer));
+    expect(await authApi.getSession()).toBeNull();
   });
 
   it('returns user when session valid', async () => {
@@ -159,6 +168,49 @@ describe('authApi errors', () => {
     await expect(authApi.signIn('a@b.fr', 'secret-pass')).rejects.toThrow(
       'Connexion impossible pour le moment. Réessayez dans un instant.'
     );
+  });
+});
+
+describe('trackApi', () => {
+  const LIKE = 'http://localhost:3000/api/track/like';
+  /** What each call handed fetch: the network boundary, passed through to the mock server. */
+  const sent = () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    return () => fetchSpy.mock.calls.map(([, init]) => init);
+  };
+
+  it("sends the listener's session cookie with every call", async () => {
+    server.use(
+      http.get(LIKE, () => HttpResponse.json([])),
+      http.post(LIKE, () => HttpResponse.json({ message: 'ok', track: {} })),
+      http.delete(`${LIKE}/:id`, () => HttpResponse.json({ message: 'ok', track: {} }))
+    );
+    const inits = sent();
+    await trackApi.getLikedTracks();
+    await trackApi.likeTrack(keepRequest('Mimoun', 'Mickey 3D'));
+    await trackApi.unlikeTrack('l1');
+    expect(inits().map((init) => init?.credentials)).toEqual(['include', 'include', 'include']);
+  });
+
+  it('lets a removal sent as the page closes still reach the server', async () => {
+    server.use(http.delete(`${LIKE}/:id`, () => HttpResponse.json({ message: 'ok', track: {} })));
+    const inits = sent();
+    await trackApi.unlikeTrack('l1');
+    expect(inits()[0]).toMatchObject({ method: 'DELETE', keepalive: true });
+  });
+
+  it("throws the server's error with its status, or the network message when its body is not JSON", async () => {
+    server.use(http.get(LIKE, () => HttpResponse.json({ error: 'Non connecté' }, { status: 401 })));
+    await expect(trackApi.getLikedTracks()).rejects.toMatchObject({
+      status: 401,
+      message: 'Non connecté',
+    });
+
+    server.use(http.get(LIKE, () => new HttpResponse('<html>', { status: 502 })));
+    await expect(trackApi.getLikedTracks()).rejects.toMatchObject({
+      status: 502,
+      message: 'Serveur injoignable. Vérifiez votre connexion et réessayez.',
+    });
   });
 });
 

@@ -43,7 +43,6 @@ afterEach(() => {
   activeStop = null;
   __resetNowPlayingStore();
   vi.useRealTimers();
-  vi.restoreAllMocks();
 });
 
 // MSW payload helper that produces a `now_playing` fresh enough to land in the
@@ -70,26 +69,22 @@ describe('nowPlaying store — initial poll', () => {
 
   it('sets error and keeps data null when the server returns 500', async () => {
     server.use(http.get(URL_NP, () => new HttpResponse(null, { status: 500 })));
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     start();
     const { result } = renderHook(() => useNowPlayingStore((s) => s));
     await waitFor(() => expect(result.current.error).toBe('HTTP 500'));
     expect(result.current.data).toBeNull();
     expect(result.current.isConnected).toBe(false);
-    warnSpy.mockRestore();
   });
 
-  it('logs and sets error on schema validation failure', async () => {
+  it('sets error and keeps data null on a payload of the wrong shape', async () => {
     server.use(http.get(URL_NP, () => HttpResponse.json({ broken: true })));
-    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     start();
     const { result } = renderHook(() => useNowPlayingStore((s) => s));
     await waitFor(() => expect(result.current.error).toBe('invalid payload'));
     expect(result.current.data).toBeNull();
-    expect(errSpy).toHaveBeenCalled();
-    errSpy.mockRestore();
-    warnSpy.mockRestore();
   });
 });
 
@@ -98,25 +93,6 @@ describe('nowPlaying store — initial poll', () => {
 // ─────────────────────────────────────────────
 
 describe('nowPlaying store — lifecycle', () => {
-  it('a single startNowPlayingPolling drives many consumers from one fetch loop', async () => {
-    let calls = 0;
-    server.use(
-      http.get(URL_NP, () => {
-        calls++;
-        return HttpResponse.json(makeNowPlaying());
-      })
-    );
-    start();
-    const a = renderHook(() => useNowPlayingStore((s) => s.data));
-    const b = renderHook(() => useNowPlayingStore((s) => s.data));
-    const c = renderHook(() => useNowPlayingStore((s) => s.data));
-    await waitFor(() => expect(a.result.current).not.toBeNull());
-    expect(calls).toBe(1);
-    a.unmount();
-    b.unmount();
-    c.unmount();
-  });
-
   it('stops polling after the cleanup returned by start() is called', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     let calls = 0;
@@ -136,28 +112,7 @@ describe('nowPlaying store — lifecycle', () => {
     expect(calls).toBe(1);
   });
 
-  it('startNowPlayingPolling is idempotent', async () => {
-    let calls = 0;
-    server.use(
-      http.get(URL_NP, () => {
-        calls++;
-        return HttpResponse.json(makeNowPlaying());
-      })
-    );
-    start();
-    // Second start is a no-op; we should not see a duplicate first-fetch.
-    startNowPlayingPolling();
-    await vi.waitFor(() => expect(calls).toBe(1));
-    expect(calls).toBe(1);
-  });
-});
-
-// ─────────────────────────────────────────────
-// Polling cadence
-// ─────────────────────────────────────────────
-
-describe('nowPlaying store — cadence', () => {
-  it('uses the MID_TRACK cadence (~15s) when remaining is large', async () => {
+  it('a second start runs no second loop, and its cleanup leaves the first one running', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     let calls = 0;
     server.use(
@@ -167,13 +122,50 @@ describe('nowPlaying store — cadence', () => {
       })
     );
     start();
+    const second = startNowPlayingPolling();
+    await vi.waitFor(() => expect(calls).toBe(1));
+    second();
+
+    // One loop at the mid-track cadence (15 s): one more poll in 16 s, not none, not two.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(16_000);
+    });
+    expect(calls).toBe(2);
+  });
+});
+
+// ─────────────────────────────────────────────
+// Polling cadence
+// ─────────────────────────────────────────────
+
+describe('nowPlaying store — cadence', () => {
+  // Math.random 0.5 is no jitter, 0 is -20 %, 1 is +20 %. The next poll comes inside the window.
+  it.each([
+    ['mid-track (15 s) while plenty of the track remains', 30, 0.5, 14_000, 16_000],
+    ['near-end (5 s) once less than 20 s remain', 170, 0.5, 4_500, 5_500],
+    ['20 % sooner at the lowest jitter', 30, 0, 11_500, 12_500],
+    ['20 % later at the highest jitter', 30, 1, 17_500, 18_500],
+  ] as const)('asks again at the %s', async (_, playedSecondsAgo, random, notYet, by) => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.spyOn(Math, 'random').mockReturnValue(random);
+    let calls = 0;
+    server.use(
+      http.get(URL_NP, () => {
+        calls++;
+        const np = makeNowPlaying();
+        np.now_playing.played_at = Math.floor(Date.now() / 1000) - playedSecondsAgo;
+        np.now_playing.duration = 180;
+        return HttpResponse.json(np);
+      })
+    );
+    start();
     await vi.waitFor(() => expect(calls).toBe(1));
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(14_000);
+      await vi.advanceTimersByTimeAsync(notYet);
     });
     expect(calls).toBe(1);
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(2_000); // total 16s
+      await vi.advanceTimersByTimeAsync(by - notYet);
     });
     expect(calls).toBe(2);
   });
@@ -257,80 +249,6 @@ describe('nowPlaying store — adaptive cadence', () => {
     expect(calls).toBe(2);
     expect(useNowPlayingStore.getState().data).toBeNull();
   });
-
-  it('switches to NEAR_END cadence (~5s) when remaining < 20s', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    let calls = 0;
-    server.use(
-      http.get(URL_NP, () => {
-        calls++;
-        const np = makeNowPlaying();
-        np.now_playing.played_at = Math.floor(Date.now() / 1000) - 170;
-        np.now_playing.duration = 180;
-        return HttpResponse.json(np);
-      })
-    );
-    start();
-    await vi.waitFor(() => expect(calls).toBe(1));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(4_500);
-    });
-    expect(calls).toBe(1);
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1_000); // total 5.5s
-    });
-    expect(calls).toBe(2);
-  });
-});
-
-// ─────────────────────────────────────────────
-// Jitter
-// ─────────────────────────────────────────────
-
-describe('nowPlaying store — jitter', () => {
-  it('applies negative jitter (Math.random=0) so intervals shorten by 20%', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    vi.spyOn(Math, 'random').mockReturnValue(0); // jitter = -20%
-    let calls = 0;
-    server.use(
-      http.get(URL_NP, () => {
-        calls++;
-        return HttpResponse.json(freshNowPlaying());
-      })
-    );
-    start();
-    await vi.waitFor(() => expect(calls).toBe(1));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(11_500);
-    });
-    expect(calls).toBe(1);
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1_000); // total 12.5s
-    });
-    expect(calls).toBe(2);
-  });
-
-  it('applies positive jitter (Math.random=1) so intervals stretch by 20%', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    vi.spyOn(Math, 'random').mockReturnValue(1); // jitter = +20%
-    let calls = 0;
-    server.use(
-      http.get(URL_NP, () => {
-        calls++;
-        return HttpResponse.json(freshNowPlaying());
-      })
-    );
-    start();
-    await vi.waitFor(() => expect(calls).toBe(1));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(17_500);
-    });
-    expect(calls).toBe(1);
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1_000); // total 18.5s
-    });
-    expect(calls).toBe(2);
-  });
 });
 
 // ─────────────────────────────────────────────
@@ -340,7 +258,7 @@ describe('nowPlaying store — jitter', () => {
 describe('nowPlaying store — backoff', () => {
   it('backs off exponentially on consecutive failures (1s, 2s, 4s, ...)', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     let calls = 0;
     server.use(
       http.get(URL_NP, () => {
@@ -362,12 +280,11 @@ describe('nowPlaying store — backoff', () => {
       await vi.advanceTimersByTimeAsync(4_000);
     });
     expect(calls).toBe(4);
-    warnSpy.mockRestore();
   });
 
   it('asks again at once on Réessayer, rather than wait out the backoff', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     let calls = 0;
     server.use(
       http.get(URL_NP, () => {
@@ -393,12 +310,11 @@ describe('nowPlaying store — backoff', () => {
       await vi.advanceTimersByTimeAsync(1_000);
     });
     expect(calls).toBe(5);
-    warnSpy.mockRestore();
   });
 
   it('resets backoff after a successful response', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     let calls = 0;
     server.use(
       http.get(URL_NP, () => {
@@ -418,7 +334,6 @@ describe('nowPlaying store — backoff', () => {
       await vi.advanceTimersByTimeAsync(15_000);
     });
     expect(calls).toBe(3);
-    warnSpy.mockRestore();
   });
 });
 

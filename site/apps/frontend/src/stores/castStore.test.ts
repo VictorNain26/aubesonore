@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../lib/cast/chromecast', () => ({
   RECEIVER_APP_ID: 'E913507F',
@@ -137,10 +137,6 @@ beforeEach(() => {
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
 });
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 async function setUp() {
   const fake = fakeCast();
   const { useCastStore } = await import('./castStore');
@@ -266,12 +262,23 @@ describe('castStore', () => {
     await vi.waitFor(() => expect(toastError).toHaveBeenCalledOnce());
   });
 
-  it('gives the antenna back when the session ends or the device drops', async () => {
+  it.each([
+    [
+      'the session ends',
+      (fake: ReturnType<typeof fakeCast>) => fake.sessionChanges('SESSION_ENDED'),
+    ],
+    [
+      'the device drops',
+      (fake: ReturnType<typeof fakeCast>) => {
+        fake.remotePlayer.isConnected = false;
+        fake.playerEvent('isConnectedChanged');
+      },
+    ],
+  ])('gives the antenna back when %s', async (_, end) => {
     const { fake, useCastStore, usePlayer } = await setUp();
     fake.sessionChanges('SESSION_STARTED');
-    fake.remotePlayer.isConnected = false;
 
-    fake.playerEvent('isConnectedChanged');
+    end(fake);
 
     expect(useCastStore.getState().deviceName).toBeNull();
     expect(usePlayer.getState()).toMatchObject({ isPlaying: false, isConnecting: false });

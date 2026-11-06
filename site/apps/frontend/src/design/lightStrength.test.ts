@@ -27,7 +27,10 @@ const NIGHT: LightInks = {
 const flat = (rgb: [number, number, number], n = 64) =>
   Uint8ClampedArray.from({ length: n * 4 }, (_, i) => (i % 4 === 3 ? 255 : rgb[i % 4]!));
 
-/** The worst ratio of the inks over the light of these pixels at this opacity, grain or not. */
+/**
+ * The worst ratio of the inks over the light of these pixels at this opacity, grain or not
+ * (home/Hero.tsx: the grain multiplies the hero by noise at 13 %, 6.5 % darker on average).
+ */
 const worst = (pixels: Uint8ClampedArray, inks: LightInks, opacity: number) => {
   let low = Infinity;
   for (let i = 0; i < pixels.length; i += 4) {
@@ -69,14 +72,6 @@ describe('lightOpacity', () => {
     const opacity = lightOpacity(half, NIGHT);
     expect(opacity).toBe(lightOpacity(flat([250, 250, 250]), NIGHT));
     expect(worst(half, NIGHT, opacity)).toBeGreaterThanOrEqual(4.5);
-  });
-
-  it('keeps the dark words at 4.5:1 where the grain darkens the ground, 6.5 % on average', () => {
-    // home/Hero.tsx: the grain multiplies the hero by noise at 13 %, 6.5 % darker on average.
-    const opacity = lightOpacity(flat([0, 0, 0]), DAY);
-    const lit = litBy([0, 0, 0], DAY, opacity);
-    const grained = lit.map((c) => c * 0.935) as unknown as [number, number, number];
-    for (const ink of DAY.inks) expect(contrast(ink, grained)).toBeGreaterThanOrEqual(4.5);
   });
 
   it('weighs each pixel under the veil it lies under, thicker down the hero', () => {

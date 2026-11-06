@@ -117,15 +117,15 @@ describe('player store', () => {
     expect(analyser?.fftSize).toBe(512);
   });
 
-  it('play() never routes audio through Web Audio on iOS (keeps lock-screen playback alive)', async () => {
-    // Regression guard for the locked-screen silence bug: routing the stream
-    // through createMediaElementSource makes the AudioContext the sole output,
-    // and iOS suspends it seconds after lock (WebKit #237878). On iOS the
-    // player must stay on the bare <audio> element.
-    vi.stubGlobal('navigator', {
-      userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15',
-      maxTouchPoints: 5,
-    });
+  // Regression guard for the locked-screen silence bug: routing the stream through
+  // createMediaElementSource makes the AudioContext the sole output, and iOS suspends it seconds
+  // after lock (WebKit #237878). On iOS the player must stay on the bare <audio> element.
+  it.each([
+    ['an iPhone', 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15'],
+    // iPadOS says Macintosh; its touch screen gives it away.
+    ['an iPad', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15'],
+  ])('play() never routes audio through Web Audio on %s', async (_, userAgent) => {
+    vi.stubGlobal('navigator', { userAgent, maxTouchPoints: 5 });
     const AudioContextSpy = vi.fn().mockImplementation(function () {
       return new MockAudioContext();
     });
@@ -133,21 +133,6 @@ describe('player store', () => {
     const { usePlayer, getAnalyser } = await import('./player');
     await usePlayer.getState().play();
     expect(usePlayer.getState().isPlaying).toBe(true);
-    expect(AudioContextSpy).not.toHaveBeenCalled();
-    expect(getAnalyser()).toBeNull();
-  });
-
-  it('detects iPadOS (Macintosh UA with touch) as iOS', async () => {
-    vi.stubGlobal('navigator', {
-      userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15',
-      maxTouchPoints: 5,
-    });
-    const AudioContextSpy = vi.fn().mockImplementation(function () {
-      return new MockAudioContext();
-    });
-    vi.stubGlobal('AudioContext', AudioContextSpy);
-    const { usePlayer, getAnalyser } = await import('./player');
-    await usePlayer.getState().play();
     expect(AudioContextSpy).not.toHaveBeenCalled();
     expect(getAnalyser()).toBeNull();
   });
@@ -201,14 +186,6 @@ describe('player store', () => {
     expect(usePlayer.getState().isPlaying).toBe(false);
   });
 
-  it('stop() clears isPlaying and playError', async () => {
-    const { usePlayer } = await import('./player');
-    await usePlayer.getState().play();
-    usePlayer.getState().stop();
-    expect(usePlayer.getState().isPlaying).toBe(false);
-    expect(usePlayer.getState().playError).toBeNull();
-  });
-
   it('fades the sound in on play, and out before cutting the stream on stop', async () => {
     const context = new MockAudioContext();
     vi.stubGlobal(
@@ -245,7 +222,6 @@ describe('player store', () => {
     expect(mockAudioInstance.pause).toHaveBeenCalledOnce();
     expect(mockAudioInstance.src).toBe('');
     expect(consoleError).not.toHaveBeenCalled();
-    consoleError.mockRestore();
   });
 
   it('keeps the stream when play comes back during the fade-out', async () => {
@@ -314,36 +290,20 @@ describe('player store', () => {
 });
 
 describe('player resilience (stream auto-recovery)', () => {
-  it("reconnects when the live stream emits 'ended'", async () => {
+  // The first attempt comes 500 ms after the loss; a wait is a loss only after 1.5 s of grace.
+  it.each([
+    ['ended', 600],
+    ['error', 600],
+    ['waiting', 2_100],
+    ['stalled', 2_100],
+  ])("reconnects once the stream says '%s', in %i ms", async (event, within) => {
     vi.useFakeTimers();
     const { usePlayer } = await import('./player');
     await usePlayer.getState().play();
     const callsBefore = mockAudioInstance.play.mock.calls.length;
-    mockAudioInstance.emit('ended');
-    // First backoff slot is 500ms
-    await vi.advanceTimersByTimeAsync(600);
-    expect(mockAudioInstance.play.mock.calls.length).toBeGreaterThan(callsBefore);
-  });
-
-  it("reconnects when the audio element emits 'error'", async () => {
-    vi.useFakeTimers();
-    const { usePlayer } = await import('./player');
-    await usePlayer.getState().play();
-    const callsBefore = mockAudioInstance.play.mock.calls.length;
-    mockAudioInstance.emit('error');
-    await vi.advanceTimersByTimeAsync(600);
-    expect(mockAudioInstance.play.mock.calls.length).toBeGreaterThan(callsBefore);
-  });
-
-  it("forces reconnect after sustained 'waiting' (>1.5s without 'playing')", async () => {
-    vi.useFakeTimers();
-    const { usePlayer } = await import('./player');
-    await usePlayer.getState().play();
-    const callsBefore = mockAudioInstance.play.mock.calls.length;
-    mockAudioInstance.emit('waiting');
-    // Grace period 1.5s + first backoff 500ms = 2s
-    await vi.advanceTimersByTimeAsync(2_100);
-    expect(mockAudioInstance.play.mock.calls.length).toBeGreaterThan(callsBefore);
+    mockAudioInstance.emit(event);
+    await vi.advanceTimersByTimeAsync(within);
+    expect(mockAudioInstance.play.mock.calls.length).toBe(callsBefore + 1);
   });
 
   it("does NOT reconnect if 'playing' fires before the stall timer", async () => {

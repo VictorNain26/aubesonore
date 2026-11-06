@@ -9,6 +9,13 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./src/mocks/setup.ts'],
+    // Every test starts from the real functions and globals: a spy, a stubbed global or env left by
+    // a test that failed half-way never leaks into the next one.
+    // A mock shared by a file's tests counts only the calls of the test at hand.
+    clearMocks: true,
+    restoreMocks: true,
+    unstubGlobals: true,
+    unstubEnvs: true,
     env: {
       VITE_API_URL: 'http://localhost:3000',
       VITE_AZURACAST_BASE_URL: 'https://radio.aubesonore.fr',
@@ -37,17 +44,10 @@ export default defineConfig({
         'src/shell/AuthInit.tsx',
         'src/shell/NowPlayingPoller.tsx',
         'src/shell/PlayerSideEffects.tsx',
-        // The player's hooks, covered by manual QA on the player
-        'src/hooks/useLikeAction.ts',
-        'src/hooks/useMediaSession.ts',
-        'src/hooks/useTrackActions.ts',
         // External SDK wrappers — covered by browser, not unit tests
         'src/lib/cast/**',
-        // Browser-only Cast/AirPlay event bridges (same rationale as lib/cast/**)
-        'src/stores/castStore.ts',
       ],
-      // Floor thresholds — ratchet up as coverage grows.
-      // Current actual: ~85% statements/functions/lines, ~60% branches on remaining surface.
+      // Floor thresholds — ratchet up as coverage grows (the CI's coverage report says where it is).
       thresholds: {
         statements: 70,
         branches: 50,

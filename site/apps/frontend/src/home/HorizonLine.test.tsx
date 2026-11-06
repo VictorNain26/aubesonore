@@ -43,11 +43,6 @@ beforeEach(() => {
     .mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() });
 });
 
-afterEach(() => {
-  vi.unstubAllGlobals();
-  vi.restoreAllMocks();
-});
-
 /** Runs the next `count` frames, 1/60 s apart from `start`; `after` sees each one once drawn. */
 function runFrames(count: number, after?: () => void, start = performance.now()) {
   for (let i = 1; i <= count; i++) {
