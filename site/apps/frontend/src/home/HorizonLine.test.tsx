@@ -333,6 +333,47 @@ describe('HorizonLine', () => {
     expect(scheduled.size).toBe(1);
   });
 
+  it('follows the latest of several records handed at once', () => {
+    const scheduled = new Map<number, FrameRequestCallback>();
+    let next = 0;
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      scheduled.set(++next, cb);
+      return next;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => scheduled.delete(id));
+    let seen: IntersectionObserverCallback = () => undefined;
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(callback: IntersectionObserverCallback) {
+          seen = callback;
+        }
+        observe = vi.fn();
+        disconnect = vi.fn();
+      }
+    );
+    const ctx = fakeContext();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+      ctx as unknown as CanvasRenderingContext2D
+    );
+    // Oldest first, as the browser queues them between two callbacks (a window shrunk, then
+    // restored): the last one is where the line is now.
+    const records = (...inTurn: boolean[]) =>
+      inTurn.map((isIntersecting) => ({
+        isIntersecting,
+      })) as unknown as IntersectionObserverEntry[];
+
+    render(<HorizonLine isPlaying />);
+    seen(records(false), {} as IntersectionObserver);
+    expect(scheduled.size).toBe(0);
+
+    seen(records(false, true), {} as IntersectionObserver);
+    expect(scheduled.size).toBe(1);
+
+    seen(records(true, false), {} as IntersectionObserver);
+    expect(scheduled.size).toBe(0);
+  });
+
   it("takes the night's ink as soon as the device turns dark, at rest or moving", () => {
     let turned: () => void = () => undefined;
     let dark = false;

@@ -38,8 +38,10 @@ export function Hero({ trends }: { trends: Loaded<TrendsResult> | null }) {
   useEffect(() => {
     const element = player;
     if (!element) return;
-    const observer = new IntersectionObserver(([entry]) =>
-      setInView(entry?.isIntersecting ?? true)
+    // The records come oldest first, several at once when the block left and came back between
+    // two callbacks (a window shrunk then restored): the last one is where it is now.
+    const observer = new IntersectionObserver((entries) =>
+      setInView(entries.at(-1)?.isIntersecting ?? true)
     );
     observer.observe(element);
     return () => {
