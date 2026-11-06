@@ -1,13 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:best-practices",
-    ":dependencyDashboard",
-    ":semanticCommits",
-    ":separateMultipleMajorReleases"
-  ],
+  "extends": ["config:best-practices", ":semanticCommits", ":separateMultipleMajorReleases"],
   "timezone": "Europe/Paris",
-  "schedule": ["before 6am on monday"],
   "labels": ["dependencies"],
   "rangeStrategy": "bump",
   "prConcurrentLimit": 10,
@@ -16,9 +10,9 @@
   "osvVulnerabilityAlerts": true,
   "dependencyDashboardOSVVulnerabilitySummary": "all",
   "vulnerabilityAlerts": {
+    "description": "Fixes skip the 14 days but wait 3, the age of security:minimumReleaseAgeNpm, so a fix published hours ago is not deployed by itself; then the packageRules decide: minor and patch merge once CI passes, majors wait for review",
     "labels": ["security"],
-    "schedule": ["at any time"],
-    "minimumReleaseAge": null
+    "minimumReleaseAge": "3 days"
   },
   "packageRules": [
     {
@@ -33,50 +27,65 @@
       "enabled": false
     },
     {
-      "description": "Auto-merge pinning and digest re-pins (no functional change)",
+      "description": "Pins and digest re-pins carry no functional change: merged once CI passes. Automerged updates run at any time, minimumReleaseAge (14 days) is their guard, not a schedule",
       "matchUpdateTypes": ["pin", "pinDigest", "digest"],
       "automerge": true
     },
     {
-      "description": "Auto-merge dev dependencies (minor + patch) once CI is green: npm devDependencies, uv dependency groups",
+      "description": "Minor and patch of stable dependencies (locked version >=1.0.0): covered by the site's and the pipelines' tests, merged once CI passes",
+      "matchUpdateTypes": ["minor", "patch"],
+      "matchCurrentVersion": "!/^0\\./",
+      "automerge": true
+    },
+    {
+      "description": "0.x dependencies: a patch merges once CI passes, a minor may break and waits for review",
+      "matchUpdateTypes": ["patch"],
+      "matchCurrentVersion": "/^0\\./",
+      "automerge": true
+    },
+    {
+      "description": "Majors: reviewed by hand, batched into the Monday-morning window",
+      "matchUpdateTypes": ["major"],
+      "schedule": ["before 6am on monday"]
+    },
+    {
+      "description": "Reviewed by hand, batched into the Monday-morning window: 0.x minors",
+      "matchUpdateTypes": ["minor"],
+      "matchCurrentVersion": "/^0\\./",
+      "schedule": ["before 6am on monday"]
+    },
+    {
+      "description": "Dev tools (npm devDependencies, uv dependency groups), 0.x included: minor and patch merge once CI passes, at any time",
       "matchDepTypes": ["devDependencies", "dependency-groups"],
       "matchUpdateTypes": ["minor", "patch"],
-      "automerge": true
+      "automerge": true,
+      "schedule": ["at any time"]
     },
     {
-      "description": "Auto-merge patch bumps of stable (>=1.0.0) runtime deps: npm dependencies, pyproject project.dependencies",
-      "matchDepTypes": ["dependencies", "project.dependencies"],
-      "matchUpdateTypes": ["patch"],
-      "matchCurrentVersion": "!/^0/",
-      "automerge": true
-    },
-    {
-      "description": "Auto-merge GitHub Actions (minor + patch)",
-      "matchManagers": ["github-actions"],
-      "matchUpdateTypes": ["minor", "patch"],
-      "automerge": true
-    },
-    {
-      "description": "Never auto-merge majors — always manual review",
-      "matchUpdateTypes": ["major"],
-      "automerge": false
-    },
-    {
-      "description": "Docker base image tag bumps: manual review (digest re-pins auto-merge via the rule above)",
+      "description": "Docker base image tags: reviewed by hand (their digest re-pins still merge on their own, rule above)",
       "matchManagers": ["dockerfile", "docker-compose"],
       "matchUpdateTypes": ["major", "minor", "patch"],
-      "automerge": false
+      "automerge": false,
+      "schedule": ["before 6am on monday"]
     },
     {
-      "description": "Postgres: one image for production (site/compose.yaml) and the CI services, so one PR moves them together, reviewed by hand",
+      "description": "Postgres: one image for production (site/compose.yaml) and the CI services, so one PR moves them together, reviewed by hand, its digest re-pins included",
       "matchPackageNames": ["postgres"],
       "groupName": "postgres",
-      "automerge": false
+      "automerge": false,
+      "schedule": ["before 6am on monday"]
     },
     {
       "description": "Tools pipeline/scripts/dev-setup.sh downloads: their pinned SHA-256 is replaced by hand in the same PR",
       "matchFileNames": ["pipeline/scripts/dev-setup.sh"],
-      "automerge": false
+      "automerge": false,
+      "schedule": ["before 6am on monday"]
+    },
+    {
+      "description": "pnpm.overrides are security floors (`x`, `x@N`, `a>x`): a major would force a new major on packages that never asked for it. A vulnerability fixed only in a later major is fixed by upgrading the package that pulls it, by hand.",
+      "matchDepTypes": ["pnpm.overrides"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
     }
   ],
   "customManagers": [
