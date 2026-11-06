@@ -39,10 +39,10 @@ async function settle(page: Page) {
   await page.waitForLoadState('networkidle');
   // A light whose cover came after the first render fades in, and keeps its fade's class until
   // a timer drops it (design/CoverLight.tsx, LIGHT_FADE_MS): captured on either side of that
-  // moment, the hero came out a shade apart at the edge of a few pixels.
-  await expect(
-    page.locator('.cover-light > canvas:is(.light-in, .light-out, .invisible)')
-  ).toHaveCount(0);
+  // moment, the hero came out a shade apart at the edge of a few pixels. At rest a light has no
+  // class but the first one's: any other, a new one included, is waited out. Soft: a light stuck
+  // in its fade fails the test, the capture and axe still run.
+  await expect.soft(page.locator('.cover-light > canvas[class]:not(.light-first)')).toHaveCount(0);
 }
 
 /** The capture, then axe on the same page; the capture is soft so axe runs even when it differs. */

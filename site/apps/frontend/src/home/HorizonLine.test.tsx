@@ -364,6 +364,8 @@ describe('HorizonLine', () => {
       })) as unknown as IntersectionObserverEntry[];
 
     render(<HorizonLine isPlaying />);
+    seen(records(false), {} as IntersectionObserver);
+    expect(scheduled.size).toBe(0);
 
     seen(records(false, true), {} as IntersectionObserver);
     expect(scheduled.size).toBe(1);
