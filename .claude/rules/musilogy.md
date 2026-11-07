@@ -6,27 +6,17 @@ paths:
 
 # musilogy
 
-Les chemins ci-dessous sont relatifs à `musilogy/` ; les commandes partent de la
-racine de la worktree, où Claude Code est lancé (`CLAUDE.md` racine), par
-`uv --directory musilogy run …`.
+Les chemins ci-dessous sont relatifs à `musilogy/`.
 
-Les données de Musilogy (`docs/vision.md` à la racine, §2), produites hors
-ligne depuis des sources épinglées et transformées en tables Parquet
-reproductibles, que `musilogy load` copie dans le schéma `musilogy` de la base
-du site. La conception en vigueur, dont le contrat des fonctions SQL que le site
-appelle, est `docs/conception.md` ; les règles métier sont dans le `README.md`.
-Ce qui vaut pour tout le dépôt AubeSonore est dans le `CLAUDE.md` racine.
+Règles métier et commandes : `README.md` (« Installation, tests, exécution ») ; conception, dont le contrat des fonctions SQL que lit le site :
+`docs/conception.md` ; place dans le produit : `docs/vision.md` §2 (racine du dépôt). Un avis sur une
+méthode ou un affichage de Musilogy part des dossiers de `docs/research/` et des sources qu'ils citent ; une décision
+qu'ils ont tranchée ne se rouvre que sur une preuve nouvelle.
 
 ## Python
 
 - Dépendances épinglées au patch près : la reproductibilité du pipeline en
   dépend autant que le code.
-- Chemins ancrés sur le paquet (`musilogy.paths`), jamais sur le répertoire
-  courant : la suite de tests doit passer depuis n'importe où.
-- Séparer le calcul de l'entrée-sortie : une fonction qui fait les deux est
-  difficile à tester.
-- `mypy` plutôt que `ty` : `ty` est encore en 0.0.x, et adosser la vérification
-  de types à un outil dont la sémantique peut bouger contredit l'épinglage.
 
 ## Architecture
 
@@ -39,21 +29,17 @@ Ce qui vaut pour tout le dépôt AubeSonore est dans le `CLAUDE.md` racine.
   dans une PR.
 - Les règles vivent dans le SQL ; le Python enchaîne et vérifie, il n'arbitre
   pas.
-- Le SQL Postgres (`src/musilogy/pg/`) est numéroté comme `sql/` : `10_tables`
-  avant la copie, les suivants sur le schéma de transit, `90_` après la bascule.
-  Ce qu'une fonction Postgres calcule n'a pas de double DuckDB. Seule exception,
-  assumée et testée (`test_search.py`) : `name_key`, calculée par DuckDB pour
-  les tables et refaite en Postgres pour comparer la recherche de l'auditeur.
-- Les chiffres d'une livraison sont dans son `manifest.json`, la référence est
-  la livraison précédente : `musilogy run` compare les comptes des tables et
-  les compteurs du manifeste avant de publier et refuse au-delà de `MAX_DRIFT`
-  (`publish.py`). Un écart refusé se comprend avant d'être accepté : on
-  identifie la règle qui l'a produit, on dit dans la PR pourquoi le nouveau
-  compte est le bon, puis on relance avec `--accept-drift NOM` (une table,
-  `GROUPE.COMPTEUR`, ou un groupe pour chacun de ses compteurs qui a bougé),
-  que le manifeste de la livraison garde, avec les compteurs nouveaux et
-  disparus. Accepter sans
-  cette étape retire le contrôle au lieu de le passer.
+- Un fichier SQL ne lit que des tables produites par un numéro strictement
+  inférieur : si une règle a besoin d'une table définie plus loin, c'est la
+  numérotation qui est fausse.
+- Une valeur dérivée voyage avec sa provenance : publier `y0` à côté de
+  `y0_source` laisse le consommateur distinguer le déclaré de l'inféré.
+- Un témoin qui manque se tire du dump (`make-fixtures`), il ne s'écrit jamais
+  à la main.
+- Un écart refusé par `musilogy run` : `README.md` « Comparaison avec la
+  livraison précédente » avant tout `--accept-drift`.
+- Une source qui n'est pas CC0 ne s'ajoute qu'après une décision écrite dans
+  `LICENSE-DATA`.
 
 ## Mesurer plutôt que raisonner
 
@@ -84,20 +70,6 @@ libérées dès qu'elles ne servent plus.
 - Le dump de référence (`REFERENCE_DUMP`, `src/musilogy/__init__.py`) n'est
   plus publié par MetaBrainz : cette copie est la seule, ne jamais la supprimer
   ni l'écraser.
-
-## Commandes
-
-Installation, tests (Postgres compris), contrôles de la CI et commandes du
-pipeline : `README.md`, « Installation, tests, exécution ».
-
-Sur victorserv : un calcul sur les données complètes passe par le skill
-`musilogy-run` (scope mémoire plafonné, débordement sur le SSD externe) ; le
-chargement en production est `/musilogy-load`, que seul Victor lance.
-
-## Licence
-
-Musilogy ne lit que des sources CC0 (`LICENSE-DATA`). Les genres et tags
-MusicBrainz, données supplémentaires sous licence non commerciale, ne sont pas
-lus : une source qui n'est pas CC0 ne s'ajoute qu'après une décision écrite
-dans `LICENSE-DATA`. La licence du jeu produit, fixtures versionnées
-comprises, reste à fixer par le propriétaire.
+- Un calcul sur les données complètes passe par le skill `musilogy-run` (scope
+  mémoire plafonné, débordement sur le SSD externe) ; le chargement en
+  production est `/musilogy-load`, que seul Victor lance.

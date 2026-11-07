@@ -10,6 +10,10 @@ description: Lancer `musilogy run` ou une requête lourde sur les données compl
 services de la machine en occupent déjà une bonne part. Une requête sans borne
 l'a déjà gelée.
 
+Depuis le poste, une commande part sur victorserv par `victorserv claude '<commande>'` (compte
+restreint, sans demande ; il ne lit pas `/home/victormoi`) ou `victorserv admin '<commande>'`
+(victormoi, root par sudo, demande à chaque fois). Un `ssh` direct vers victorserv est refusé.
+
 ```bash
 systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=0 \
   nice -n 10 uv --directory musilogy run musilogy run

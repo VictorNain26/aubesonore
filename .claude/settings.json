@@ -1,26 +1,18 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
-    "allow": [
-      "Bash(uv run pytest*)",
-      "Bash(uv run ruff *)",
-      "Bash(uv run mypy*)",
-      "Bash(uv run musilogy *)",
-      "Bash(uv sync*)",
-      "Bash(uv lock*)"
-    ],
     "deny": [
-      "Read(azuracast/azuracast.env)",
+      "Read(/azuracast/azuracast.env)",
+      "Read(//media/musique/**)",
       "Edit(/musilogy/tests/fixtures/**)"
     ],
     "ask": [
-      "Bash(uv run musilogy run*)",
+      "Bash(*musilogy run musilogy run*)",
       "Edit(~/aubesonore/**)",
       "Bash(*docker compose down*)",
       "Bash(*docker compose stop*)",
       "Bash(*systemctl --user stop*)",
-      "Bash(*systemctl --user disable*)",
-      "Bash(*uv publish*)"
+      "Bash(*systemctl --user disable*)"
     ]
   },
   "sandbox": {
@@ -51,7 +43,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -e .stop_hook_active >/dev/null && exit 0; cd \"$CLAUDE_PROJECT_DIR\" && { pnpm -C site typecheck && uv --directory pipeline run ruff check && uv --directory musilogy run ruff check; } 1>&2 || exit 2",
+            "command": "jq -e .stop_hook_active >/dev/null && exit 0; cd \"$CLAUDE_PROJECT_DIR\" && { pnpm -C site typecheck && uv --directory pipeline run ruff check && uv --directory musilogy run ruff check && uv --directory pipeline run mypy && uv --directory musilogy run mypy; } 1>&2 || exit 2",
             "timeout": 120
           }
         ]
