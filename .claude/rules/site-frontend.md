@@ -1,38 +1,51 @@
 ---
-description: Frontend design system — loaded when opening a file under site/apps/frontend/
 paths:
   - "site/apps/frontend/**"
 ---
 
-# site frontend — design system
+# site frontend
 
 Paths below are relative to `site/apps/frontend/`.
 
-## Where code lives (`src/`)
+## Structure
 
-- One folder per feature, its views, stores and helpers together. Code moves to `shell/`, `design/`, `stores/`, `hooks/` or `lib/` only when several features share it; a store one feature alone reads stays in it.
+One folder per feature, its views, stores and helpers together. Code moves to `shell/`, `design/`,
+`stores/`, `hooks/` or `lib/` once several features share it.
 
-## Tailwind v4 syntax only
+## Tailwind v4 and tokens
 
-- No `tailwind.config.js`, no `@tailwind base/components/utilities`, no `theme.extend`.
-- Tokens live in `src/design/tokens.css` (`@theme inline`). New utilities via `@utility`, new variants via `@custom-variant`, in that file only.
+- Tailwind v4 syntax: tokens are in `src/design/tokens.css` (`@theme inline`), new utilities via
+  `@utility` and new variants via `@custom-variant`, in that file. No `tailwind.config.js` or
+  `@tailwind` directives.
+- Colors, text sizes and radii come from those tokens rather than arbitrary values (`bg-[#fff]`,
+  `p-[13px]`, `text-[17px]`).
+- A token that changes by night is written once, on the day and night switch of `tokens.css`
+  (`--by-day`, `--by-night`), not as a second palette or a `dark:` variant. Code that draws with a
+  token follows the night through `onColorSchemeChange` (`src/stores/themeStore.ts`), since the night
+  can be the listener's choice as well as the device's.
+- The apricot `dawn` light is decoration only, not under text.
+- A new text size goes in `tokens.css` and in the `extendTailwindMerge` list of `src/lib/utils.ts`,
+  or `cn()` drops it next to a text color.
+- A new color token gets its pair in `scripts/check-contrast.mjs`, and the script passes by day and
+  by night.
 
-## Tokens
+## Components
 
-- Colors, text sizes and radii come only from the tokens of `src/design/tokens.css`. No hex/hsl/oklch value outside that file, no arbitrary value for color, spacing or typography (`bg-[#fff]`, `p-[13px]`, `text-[17px]`).
-- A token that changes by night is written once, on the day and night switch of `tokens.css` (`--by-day`, `--by-night`): no second palette, no `dark:` variant. The night is the device's or the listener's (`src/design/theme.ts`); code that draws with a token follows it through `onColorSchemeChange` (`src/stores/themeStore.ts`), never its own `matchMedia`.
-- The apricot `dawn` light is decoration only, never under text.
-- A new text size goes in `tokens.css` and in the `extendTailwindMerge` list of `src/lib/utils.ts`, or `cn()` drops it next to a text color.
-- A new color token gets its pair in `scripts/check-contrast.mjs`, and the script passes by day and by night (wired in CI Quality).
-
-## Non-negotiables
-
-- Every interactive element: hover, focus-visible, active, disabled states; touch target ≥ 44px.
-- Decorative motion only under `prefers-reduced-motion: no-preference` (`motion-safe:` or the `reveal` utility), never a shift that opens gaps between rows.
-- Never ship UI blind: `.claude/rules/site.md`, Workflow rules.
-- The home page is pre-rendered in French (`/`) and English (`/en/`) and hydrated: no browser API (`window`, `document`, `navigator`, `localStorage`, `Audio`) at module import or during render, only in effects and handlers. `src/entry-server.test.tsx` renders the app without a window and fails otherwise.
-- Locale comes from the URL (Paraglide `url` strategy); `useLocaleStore.setLocale` swaps the URL without reloading so the stream keeps playing. A language switch is a navigation (`useSwitchLocale`), so the page's data loads again.
-- Store-coupled components ship a presentational unit (props in) + a thin store container, so the unit is testable without stores.
-- A screen's component has its Storybook story beside it (`*.stories.tsx`), one story per state the listener can meet (README « Le catalogue »). Storybook shows what is built until the charter generated from the code replaces it. Mockups are explored and validated on the site's single Claude Design canvas; a validated decision enters the code by a PR.
-- A design change proves it changes nothing else: `test:visual` (README « Captures et accessibilité »: every page, day and night, 390 and 1280, with axe) passes, and a new page or state gets its capture. Fix the element that is wrong, never the shared utility or token every block uses (a variant class, a local override, a scoped range).
-- Routing is React Router's data mode (`src/routes.tsx`): a page's data comes from its route's `loader`, read with `useLoaderData`, never fetched in an effect. The server renders with `hydrate={false}` (no inline script, CSP) and runs no loader; `main.tsx` hydrates from the data it was given.
+- Every interactive element has hover, focus-visible, active and disabled states and a touch target
+  of at least 44px.
+- Decorative motion runs under `prefers-reduced-motion: no-preference` (`motion-safe:` or the `reveal`
+  utility), and doesn't shift rows apart.
+- The home page is pre-rendered (`/`, `/en/`) and hydrated, so browser APIs (`window`, `document`,
+  `navigator`, `localStorage`, `Audio`) belong in effects and handlers, not at module import or during
+  render. `src/entry-server.test.tsx` fails otherwise.
+- A language switch is a navigation (`useSwitchLocale`), so the page's data loads again;
+  `useLocaleStore.setLocale` swaps the URL without reloading so the stream keeps playing.
+- Store-coupled components ship a presentational unit (props in) and a thin store container.
+- Mockups are explored and validated on the site's single Claude Design canvas; a validated decision
+  enters the code by a PR.
+- A design change proves it changes nothing else: `test:visual` (README « Captures et
+  accessibilité ») passes, and a new page or state gets its capture. Fix the element that is wrong
+  rather than the shared utility or token every block uses.
+- A page's data comes from its route's `loader` (`src/routes.tsx`), read with `useLoaderData`. The
+  server renders with `hydrate={false}` (no inline script, CSP) and runs no loader; `main.tsx`
+  hydrates from the data it was given.
