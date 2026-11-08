@@ -107,8 +107,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/shared-types
       '@elysiajs/cors':
-        specifier: ^1.4.2
-        version: 1.4.2(elysia@1.4.31(@sinclair/typebox@0.34.47)(@types/bun@1.4.4)(exact-mirror@0.2.6(@sinclair/typebox@0.34.47))(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3))
+        specifier: ^1.4.3
+        version: 1.4.3(elysia@1.4.31(@sinclair/typebox@0.34.47)(@types/bun@1.4.4)(exact-mirror@0.2.6(@sinclair/typebox@0.34.47))(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3))
       better-auth:
         specifier: ^1.7.17
         version: 1.7.18(drizzle-kit@0.31.11)(drizzle-orm@0.45.4(@types/pg@8.20.0)(bun-types@1.4.4)(kysely@0.29.4)(pg@8.20.0))(pg@8.20.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vitest@4.1.12)
@@ -1161,8 +1161,8 @@ packages:
   '@drizzle-team/brocli@0.10.2':
     resolution: {integrity: sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w==}
 
-  '@elysiajs/cors@1.4.2':
-    resolution: {integrity: sha512-FTCcbH35brTLigF1W7BYySRZomgI/dBEMK9BgK9RP9Nez7zmpGh4koL/Yr1BFv8nYz7CfhRvcM8d/c+XnwMaVQ==}
+  '@elysiajs/cors@1.4.3':
+    resolution: {integrity: sha512-UgsFfmR50A46QBa4WumJuLNA5yTTrNTyfegpI1BjA+i/PlrkWd15QWqeOzlvqD2P4AZdIty9zUTuRDSSs0XJNA==}
     peerDependencies:
       elysia: '>= 1.4.0'
 
@@ -7134,7 +7134,7 @@ snapshots:
 
   '@drizzle-team/brocli@0.10.2': {}
 
-  '@elysiajs/cors@1.4.2(elysia@1.4.31(@sinclair/typebox@0.34.47)(@types/bun@1.4.4)(exact-mirror@0.2.6(@sinclair/typebox@0.34.47))(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3))':
+  '@elysiajs/cors@1.4.3(elysia@1.4.31(@sinclair/typebox@0.34.47)(@types/bun@1.4.4)(exact-mirror@0.2.6(@sinclair/typebox@0.34.47))(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3))':
     dependencies:
       elysia: 1.4.31(@sinclair/typebox@0.34.47)(@types/bun@1.4.4)(exact-mirror@0.2.6(@sinclair/typebox@0.34.47))(file-type@22.0.1)(openapi-types@12.1.3)(typescript@5.9.3)
 
