@@ -43,8 +43,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -e .stop_hook_active >/dev/null && exit 0; cd \"$CLAUDE_PROJECT_DIR\" && { pnpm -C site typecheck && uv --directory pipeline run ruff check && uv --directory musilogy run ruff check && uv --directory pipeline run mypy && uv --directory musilogy run mypy; } 1>&2 || exit 2",
-            "timeout": 120
+            "command": "jq -e .stop_hook_active >/dev/null && exit 0; cd \"$CLAUDE_PROJECT_DIR\" && { pnpm -C site typecheck && pnpm -C site lint && uv --directory pipeline run ruff check && uv --directory musilogy run ruff check && uv --directory pipeline run mypy && uv --directory musilogy run mypy; } 1>&2 || exit 2",
+            "timeout": 300
           }
         ]
       }
