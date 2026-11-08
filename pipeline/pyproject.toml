@@ -13,7 +13,7 @@ dependencies = [
     "plexapi>=4.18.3",
     "numpy>=2.5.4",
     "essentia-tensorflow==2.1b6.dev1389",
-    "scikit-learn>=1.9",
+    "scikit-learn>=1.9.1",
     "scipy>=1.18",
     "joblib>=1.6",
     "fastapi>=0.141.1",
