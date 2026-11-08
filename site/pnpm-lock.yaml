@@ -210,8 +210,8 @@ importers:
         specifier: ^5.2.0
         version: 5.2.0
       zustand:
-        specifier: ^5.0.13
-        version: 5.0.13(@types/react@19.2.14)(react@19.3.0)(use-sync-external-store@1.6.0(react@19.3.0))
+        specifier: ^5.0.16
+        version: 5.1.0(@types/react@19.2.14)(react@19.3.0)(use-sync-external-store@1.6.0(react@19.3.0))
     devDependencies:
       '@axe-core/playwright':
         specifier: 4.14.0
@@ -6045,8 +6045,8 @@ packages:
   zod@4.6.7:
     resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
-  zustand@5.0.13:
-    resolution: {integrity: sha512-efI2tVaVQPqtOh114loML/Z80Y4NP3yc+Ff0fYiZJPauNeWZeIp/bRFD7I9bfmCOYBh/PHxlglQ9+wvlwnPikQ==}
+  zustand@5.1.0:
+    resolution: {integrity: sha512-ciJZlP48M1PTQbVQq81CGVFxHTLpZNrFjKqwjtCU34AWuXTZT/jrF3p9+fI84Cf1eSCMLapxqBy/SNTfwOBuqA==}
     engines: {node: '>=12.20.0'}
     peerDependencies:
       '@types/react': '>=18.0.0'
@@ -11807,7 +11807,7 @@ snapshots:
 
   zod@4.6.7: {}
 
-  zustand@5.0.13(@types/react@19.2.14)(react@19.3.0)(use-sync-external-store@1.6.0(react@19.3.0)):
+  zustand@5.1.0(@types/react@19.2.14)(react@19.3.0)(use-sync-external-store@1.6.0(react@19.3.0)):
     optionalDependencies:
       '@types/react': 19.2.14
       react: 19.3.0
