@@ -23,7 +23,7 @@ overrides:
   defu: '>=6.1.7'
   '@xmldom/xmldom': '>=0.8.13'
   eslint>ajv: ^6.14.0
-  '@eslint/eslintrc>ajv': ^6.14.0
+  '@eslint/eslintrc>ajv': ^6.15.0
   ajv: '>=8.18.0'
   rollup: '>=2.80.0'
   lodash: '>=4.18.0'
