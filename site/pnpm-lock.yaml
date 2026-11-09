@@ -210,7 +210,7 @@ importers:
         specifier: ^5.2.0
         version: 5.2.0
       zustand:
-        specifier: ^5.0.16
+        specifier: ^5.1.0
         version: 5.1.0(@types/react@19.2.14)(react@19.3.0)(use-sync-external-store@1.6.0(react@19.3.0))
     devDependencies:
       '@axe-core/playwright':
