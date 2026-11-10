@@ -24,7 +24,7 @@ overrides:
   '@xmldom/xmldom': '>=0.8.13'
   eslint>ajv: ^6.14.0
   '@eslint/eslintrc>ajv': ^6.15.0
-  ajv: '>=8.18.0'
+  ajv: '>=8.20.0'
   rollup: '>=2.80.0'
   lodash: '>=4.18.0'
   '@babel/plugin-transform-modules-systemjs': '>=7.29.8'
@@ -307,7 +307,7 @@ packages:
     resolution: {integrity: sha512-TajUJwGWbDwkCx/CZi7tRE8PVB7simCvKJfHUsSdvps+aTM/PDPP4gkLmKnc+x3CE//y9i/nj74GqdL/hwk7Iw==}
     engines: {node: '>=10'}
     peerDependencies:
-      ajv: '>=8.18.0'
+      ajv: '>=8.20.0'
 
   '@asamuzakjp/css-color@5.1.11':
     resolution: {integrity: sha512-KVw6qIiCTUQhByfTd78h2yD1/00waTmm9uy/R7Ck/ctUyAPj+AEDLkQIdJW0T8+qGgj3j5bpNKK7Q3G+LedJWg==}
