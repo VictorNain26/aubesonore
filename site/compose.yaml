@@ -126,6 +126,36 @@ services:
     logging:
       options: { max-size: '10m', max-file: '3' }
 
+  # Musilogy's own role, which `musilogy load` signs in as from the host: it owns the `musilogy`
+  # schema and nothing of the site's (scripts/db-roles.sql). Nothing waits for it: without
+  # MUSILOGY_DB_PASSWORD this container fails alone, the site starts, and the next load is refused
+  # at sign-in.
+  db-roles-init:
+    image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+    container_name: aubesonore-db-roles-init
+    restart: 'no'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-aubesonore}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-aubesonore}
+      PGSSLMODE: verify-full
+      PGSSLROOTCERT: /certs/ca.crt
+      MUSILOGY_DB_PASSWORD: ${MUSILOGY_DB_PASSWORD:-}
+    volumes:
+      - pg_certs:/certs:ro
+      - ./scripts/db-roles.sql:/db-roles.sql:ro
+    command:
+      - sh
+      - -c
+      - >-
+        [ -n "$$MUSILOGY_DB_PASSWORD" ] ||
+        { echo 'MUSILOGY_DB_PASSWORD is not set in .env: the musilogy role is left as it is' >&2; exit 1; };
+        exec psql -v ON_ERROR_STOP=1 -f /db-roles.sql
+
   backend:
     build:
       context: .
