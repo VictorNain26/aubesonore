@@ -25,7 +25,7 @@ if [[ "$input" == *pg_control_system* ]]; then echo "$LOCAL_ID"; else printf '%s
 EOF
 cat >"$tmp/bin/uv" <<'EOF'
 #!/usr/bin/env bash
-echo "$*" >>"$SENT"
+echo "${PGUSER:-} $*" >>"$SENT"
 EOF
 chmod +x "$tmp/bin/"*
 cp "$here/musilogy-sample.sh" "$tmp/site/scripts/"
@@ -57,7 +57,7 @@ first=$(grep -n -m1 -E 'LOCK TABLE|DELETE FROM' "$tmp/sent" | cut -d: -f2-)
 check 'pull locks the tables before emptying them' "${first%% *}" LOCK
 
 sample() {
-  printf 'NODE_ENV=%s\nPOSTGRES_USER=u\nPOSTGRES_PASSWORD=p\nPOSTGRES_DB=d\n' "$1" >"$tmp/site/.env"
+  printf 'NODE_ENV=%s\nPOSTGRES_USER=u\nPOSTGRES_PASSWORD=p\nPOSTGRES_DB=d\nMUSILOGY_DB_PASSWORD=m\n' "$1" >"$tmp/site/.env"
   : >"$tmp/sent"
   status=0
   SENT="$tmp/sent" PATH="$tmp/bin:$PATH" \
@@ -76,5 +76,7 @@ if grep -q 'load --sample' "$tmp/sent"; then loaded=yes; else loaded=no; fi
 check 'sample refuses without a .env' "$loaded/$status" no/1
 sample development
 check 'sample loads a workstation' "$loaded/$status" yes/0
+# The load signs in as Musilogy's own role, which holds no right over the site's tables.
+check 'sample signs in as the musilogy role' "$(cut -d' ' -f1 "$tmp/sent")" musilogy
 
 [ "$failures" -eq 0 ]
