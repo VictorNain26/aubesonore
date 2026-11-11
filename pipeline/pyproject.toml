@@ -27,7 +27,7 @@ radio = "radio.cli:app"
 
 [dependency-groups]
 dev = [
-    "pytest>=9.1.1",
+    "pytest>=9.2.0",
     "responses>=0.26.3",
     "mypy>=2.3",
     "ruff>=0.16",
