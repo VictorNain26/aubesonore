@@ -11,6 +11,11 @@
 SELECT 'CREATE ROLE musilogy LOGIN'
 WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'musilogy') \gexec
 
+-- The password travels in the statement: the server logs neither a slow statement (compose.yaml,
+-- log_min_duration_statement) nor a failed one for this session
+-- (postgresql.org/docs/16/runtime-config-logging.html).
+SET log_min_duration_statement = -1;
+SET log_min_error_statement = 'panic';
 ALTER ROLE musilogy PASSWORD :'password';
 
 SELECT format('GRANT CREATE ON DATABASE %I TO musilogy', current_database()) \gexec
