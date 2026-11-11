@@ -57,7 +57,7 @@ first=$(grep -n -m1 -E 'LOCK TABLE|DELETE FROM' "$tmp/sent" | cut -d: -f2-)
 check 'pull locks the tables before emptying them' "${first%% *}" LOCK
 
 sample() {
-  printf 'NODE_ENV=%s\nPOSTGRES_USER=u\nPOSTGRES_PASSWORD=p\nPOSTGRES_DB=d\nMUSILOGY_DB_PASSWORD=m\n' "$1" >"$tmp/site/.env"
+  printf 'NODE_ENV=%s\nPOSTGRES_USER=u\nPOSTGRES_PASSWORD=p\nPOSTGRES_DB=d\nMUSILOGY_DB_PASSWORD=%s\n' "$1" "${2-m}" >"$tmp/site/.env"
   : >"$tmp/sent"
   status=0
   SENT="$tmp/sent" PATH="$tmp/bin:$PATH" \
@@ -74,6 +74,9 @@ SENT="$tmp/sent" PATH="$tmp/bin:$PATH" bash "$tmp/site/scripts/musilogy-sample.s
   </dev/null >/dev/null 2>&1 || status=$?
 if grep -q 'load --sample' "$tmp/sent"; then loaded=yes; else loaded=no; fi
 check 'sample refuses without a .env' "$loaded/$status" no/1
+# A .env copied before the role existed: the script says which key is missing, libpq would not.
+sample development ''
+check 'sample refuses a .env without the role password' "$loaded/$status" no/1
 sample development
 check 'sample loads a workstation' "$loaded/$status" yes/0
 # The load signs in as Musilogy's own role, which holds no right over the site's tables.
