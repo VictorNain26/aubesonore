@@ -249,6 +249,61 @@ def pg_query(conninfo, sql):
     return con.execute("SELECT * FROM postgres_query('pg', ?)", [sql]).fetchall()
 
 
+def pg_execute(conninfo, sql):
+    con = duckdb.connect()
+    con.execute("LOAD postgres")
+    escaped = conninfo.replace("'", "''")
+    con.execute(f"ATTACH '{escaped}' AS pg (TYPE postgres)")
+    con.execute("CALL postgres_execute('pg', ?)", [sql])
+
+
+LOADER = "musilogy_loader"
+READER = "musilogy_reader"
+SITE_TABLE = "public.site_kept"
+
+
+def as_role(conninfo, role):
+    """The same database, signed in as another role whose password is its
+    name. The connection string is in keyword form, as the CI gives it."""
+    kept = [part for part in conninfo.split() if not part.startswith(("user=", "password="))]
+    return " ".join([*kept, f"user={role}", f"password={role}"])
+
+
+def hand_over_schemas(conninfo):
+    """Gives the loading role the musilogy schemas a previous load left, as the
+    site's database does once (site/compose.yaml, db-roles-init). The tables
+    inside keep their owner."""
+    pg_execute(
+        conninfo,
+        "DO $$ DECLARE s text; BEGIN "
+        "FOR s IN SELECT nspname FROM pg_namespace "
+        "WHERE nspname IN ('musilogy', 'musilogy_next') LOOP "
+        f"EXECUTE format('ALTER SCHEMA %I OWNER TO {LOADER}', s); "
+        "END LOOP; END $$",
+    )
+
+
+@pytest.fixture
+def roles(pg):
+    """What the site's database gives Musilogy: a loading role that may create
+    schemas and owns the musilogy ones, nothing else. Beside it, a reader with
+    no privilege at all and a table that belongs to the site. Returns the
+    connection strings of the loading role and of the reader."""
+    pg_execute(
+        pg,
+        "DO $$ BEGIN "
+        f"IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{LOADER}') THEN "
+        f"CREATE ROLE {LOADER} LOGIN PASSWORD '{LOADER}'; END IF; "
+        f"IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{READER}') THEN "
+        f"CREATE ROLE {READER} LOGIN PASSWORD '{READER}'; END IF; "
+        f"EXECUTE format('GRANT CREATE ON DATABASE %I TO {LOADER}', current_database()); "
+        "END $$; "
+        f"CREATE TABLE IF NOT EXISTS {SITE_TABLE} (title text)",
+    )
+    hand_over_schemas(pg)
+    return as_role(pg, LOADER), as_role(pg, READER)
+
+
 def loaded(
     tmp_path,
     conninfo,
