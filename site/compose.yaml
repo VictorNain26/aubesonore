@@ -266,7 +266,7 @@ services:
   # today's plays, the trends) come from that API instead of the local database (vite.config.ts).
   frontend-dev:
     profiles: [dev]
-    image: node:22-slim
+    image: node:22.23.3-slim@sha256:3ed98443660ff48413b5af19ecefce3b9d50845a901a43420d47cc63a9fddbe9
     working_dir: /app
     depends_on:
       backend:
