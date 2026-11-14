@@ -42,7 +42,7 @@
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-testing-library": "7.16.2",
     "husky": "9.1.7",
-    "knip": "6.45.0",
+    "knip": "6.45.1",
     "lint-staged": "17.6.0",
     "prettier": "3.8.0",
     "prettier-plugin-tailwindcss": "0.8.1",
