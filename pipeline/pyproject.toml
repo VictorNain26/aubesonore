@@ -6,7 +6,7 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "typer>=0.27.3",
     "pydantic>=2.14.2",
-    "pydantic-settings>=2.15",
+    "pydantic-settings>=2.16.2",
     "requests>=2.34.2",
     "stamina>=26.1",
     "pyrate-limiter>=4.5.1,<5",
