@@ -75,7 +75,7 @@
       "fast-uri": ">=3.1.8 <4",
       "serialize-javascript": ">=7.1.4",
       "flatted": ">=3.4.4",
-      "file-type": ">=21.3.2",
+      "file-type": ">=21.3.4",
       "minimatch@3": "^3.1.5",
       "minimatch@10": "^10.2.6",
       "brace-expansion@1": "^1.1.22",
