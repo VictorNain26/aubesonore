@@ -26,7 +26,7 @@
     "nodemailer": "^10.5.0",
     "pg": "^8.23.1",
     "sharp": "^0.35.5",
-    "valibot": "^1.4.2"
+    "valibot": "^1.5.0"
   },
   "devDependencies": {
     "@types/bun": "1.4.4",
