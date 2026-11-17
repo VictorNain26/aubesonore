@@ -1,0 +1,37 @@
+# A merged migration is deployed (merging to master deploys) and never runs again: the backend
+# applies only new drizzle/*.sql files at boot (src/db/migrate.ts), the pipeline only versions
+# above PRAGMA user_version (radio/core/db.py, _migrate). Editing, renaming or deleting one would
+# leave production's schema silently different from the code, so a change goes in a new file.
+name: Migrations
+
+on:
+  pull_request:
+    branches: [master]
+
+concurrency:
+  group: migrations-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  append-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Merged migrations are left unchanged
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          changed=$(git diff --name-only --diff-filter=MDR "$BASE...HEAD" -- \
+            'site/apps/backend/drizzle/*.sql' 'pipeline/radio/core/migrations/*.sql')
+          if [ -n "$changed" ]; then
+            echo "::error::Merged migrations changed; write a new migration instead:"
+            echo "$changed"
+            exit 1
+          fi
