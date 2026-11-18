@@ -109,11 +109,31 @@ export default tseslint.config(
       },
     },
     rules: {
-      'better-tailwindcss/no-unknown-classes': 'warn',
+      'better-tailwindcss/no-unknown-classes': 'error',
       'better-tailwindcss/no-duplicate-classes': 'warn',
       'better-tailwindcss/no-conflicting-classes': 'warn',
       'better-tailwindcss/no-deprecated-classes': 'warn',
       'better-tailwindcss/no-unnecessary-whitespace': 'warn',
+    },
+  },
+  // Beyond the defaults (class attributes, cn(), clsx()…), the class strings the components keep
+  // in UPPER_CASE constants (design/classes.ts, PlayerBar's ICON_BUTTON…). The few such constants
+  // that hold no classes are named here; any other one is read as classes.
+  {
+    files: ['apps/frontend/src/**/*.tsx', 'apps/frontend/src/design/classes.ts'],
+    ignores: ['apps/frontend/src/**/*.test.tsx'],
+    settings: {
+      'better-tailwindcss': {
+        selectors: {
+          extends: [
+            {
+              kind: 'variable',
+              name: '^(?!(?:BAR_COVER_SIZES|CONTACT|PAINT_FILTER|SORT_KEYS|SPEAKER|STATES)$)[A-Z][A-Z0-9_]*$',
+              match: [{ type: 'strings' }],
+            },
+          ],
+        },
+      },
     },
   },
 
