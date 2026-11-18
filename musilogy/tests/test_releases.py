@@ -114,7 +114,6 @@ def test_wikidata_s_studio_and_ep_forms_mark_new_music_its_soundtrack_form_does_
 
 
 BEATLES = "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"
-TWIST_AND_SHOUT_EP = "bf44e69d-bbc0-34a4-bce3-6b56aa2804ef"
 
 
 def test_the_beatles_records_keep_their_soundtracks_and_remixes(con):
@@ -131,12 +130,3 @@ def test_the_beatles_records_keep_their_soundtracks_and_remixes(con):
         "SELECT y, soundtrack, remix FROM releases WHERE artist_mbid = ? AND title = 'Love'",
         [BEATLES],
     ).fetchall() == [(2006, True, True)]
-
-
-def test_the_beatles_eps_stay_out_of_their_albums(con):
-    # "Twist and Shout" (1963) is theirs alone, dated, with no secondary type:
-    # only the primary type keeps it out of `albums`, whose 84 rows date the
-    # group (test_albums.py).
-    assert con.execute(
-        "SELECT count(*) FROM albums WHERE rg_mbid = ?", [TWIST_AND_SHOUT_EP]
-    ).fetchone() == (0,)

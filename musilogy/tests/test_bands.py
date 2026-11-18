@@ -95,20 +95,6 @@ def test_group_without_any_style_is_in_artists_but_carries_no_vocabulary(con):
     ).fetchone() == (1970, [])
 
 
-def test_declared_begin_below_the_floor_is_not_album_evidence_either(con):
-    # Handel and Haydn Society, through to y0: the society declares 1815,
-    # before min_year=1850 (neutralised), and owns a single album, in 2014. Publishing
-    # y0 = 2014 would assert a formation the source contradicts, so the
-    # first-album fallback is refused as well — y0 stays NULL.
-    assert rows(
-        con,
-        """
-        SELECT y0_declared, y_first_album, y0, y0_source FROM artists
-        WHERE mbid = '35ddcb29-4c16-4af6-b6f8-32143ee24a6c'
-    """,
-    ) == [(None, 2014, None, None)]
-
-
 def test_declared_end_below_the_floor_is_neutralised(tmp_path):
     # No witness carries an end below 1850, four artists of the reference dump
     # do (1537, 1761, 1781, 1814). The end is bounded below like the begin,

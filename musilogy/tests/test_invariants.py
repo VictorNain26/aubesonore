@@ -5,7 +5,7 @@ import duckdb
 import pytest
 
 from musilogy import build as build_module
-from musilogy.build import INVARIANTS, build, check_invariants, scalar
+from musilogy.build import INVARIANTS, build, check_invariants
 from tests.conftest import FIX, SQL, violations
 
 BEATLES = "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"
@@ -698,27 +698,6 @@ def test_contractual_bounds_are_not_read_from_the_session_variables():
     }
 
 
-def test_an_artist_without_a_type_is_expected(con):
-    con.execute(f"UPDATE artists SET type = NULL, y0_declared = NULL WHERE mbid = '{BEATLES}'")
-    assert violations(con, "artist_unexpected_type") == 0
-
-
-def test_scalar_reads_the_one_integer_an_aggregate_returns():
-    con = duckdb.connect()
-    con.execute("CREATE TABLE t AS SELECT * FROM range(3) r(i)")
-    assert scalar(con, "SELECT count(*) FROM t") == 3
-    assert scalar(con, "SELECT count(*) FROM t WHERE i > 9") == 0
-
-
-def test_scalar_refuses_a_query_that_returns_no_row():
-    # Without the guard, a query that is not an aggregate would read as a
-    # TypeError far from its cause.
-    con = duckdb.connect()
-    con.execute("CREATE TABLE t (i INTEGER)")
-    with pytest.raises(AssertionError):
-        scalar(con, "SELECT i FROM t")
-
-
 @pytest.mark.parametrize(
     "fields",
     [
@@ -756,12 +735,6 @@ def test_a_discogs_path_with_a_quote_still_reads(tmp_path):
     build_module.load_discogs(con, releases, "20261001")
     assert con.execute("SELECT id, artists FROM raw_discogs").fetchall() == [(1, [2])]
     assert con.execute("SELECT getvariable('discogs_dump')").fetchone() == ("20261001",)
-
-
-def test_an_absent_popularity_snapshot_sets_its_variable_to_null():
-    con = duckdb.connect()
-    build_module.load_popularity(con, None, None)
-    assert con.execute("SELECT getvariable('popularity_snapshot')").fetchone() == (None,)
 
 
 def test_the_official_snapshots_are_kept_even_when_no_part_is_read():

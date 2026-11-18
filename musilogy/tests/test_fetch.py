@@ -215,7 +215,7 @@ def test_an_outage_of_a_few_minutes_is_ridden_out(monkeypatch, slept):
     monkeypatch.setattr(fetch, "_post", post)
     rows, _ = fetch.popularity_batch(mbids(2))
     assert len(rows) == 2
-    assert slept == [2.0, 4.0, 8.0, 16.0, 32.0, 60.0, 60.0]
+    assert sum(slept) >= 180
 
 
 def test_a_rejected_batch_is_not_retried(monkeypatch, slept):

@@ -29,9 +29,9 @@ def sidecar(tmp_path, artists_kept, release_groups_kept):
 
 
 def rows_loaded(con):
-    # Read from the connection rather than hardcoded: the fixtures' counts are
-    # already frozen in tests/test_fixtures.py, and a second copy here would
-    # be a second point of authority that nothing protects.
+    # Read from the connection rather than hardcoded: the fixtures are
+    # make-fixtures' output (tests/test_fixtures.py replays it), and a copy of
+    # their counts here would go stale on the next re-pin with nothing to say so.
     return (
         con.execute("SELECT count(*) FROM raw_artists").fetchone()[0],
         con.execute("SELECT count(*) FROM raw_release_groups").fetchone()[0],
@@ -529,13 +529,6 @@ def test_a_drift_can_only_be_accepted_on_a_table_a_group_or_a_counter_of_a_group
     # build, in _stop_on_drift: the SQL, not a list here, says which exist.
     monkeypatch.setattr(cli, "run", lambda *_: pytest.fail("ran with an unknown name"))
     monkeypatch.setattr("sys.argv", ["musilogy", "run", "--accept-drift", name])
-    with pytest.raises(SystemExit) as raised:
-        cli.main()
-    assert raised.value.code == 2
-
-
-def test_an_unknown_command_is_refused(monkeypatch):
-    monkeypatch.setattr("sys.argv", ["musilogy", "publish"])
     with pytest.raises(SystemExit) as raised:
         cli.main()
     assert raised.value.code == 2

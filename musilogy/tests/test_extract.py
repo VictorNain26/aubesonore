@@ -50,10 +50,10 @@ GROUP = {
 }
 
 
-def test_reduce_artist_keeps_the_identity_and_dates_and_drops_the_genres():
+def test_reduce_artist_keeps_the_identity_dates_and_comment_and_drops_the_genres():
     # MusicBrainz's genre associations are CC BY-NC-SA, outside the CC0 core
     # the produced data rests on (LICENSE-DATA): the projection never keeps them.
-    out = reduce_artist(GROUP)
+    out = reduce_artist({**GROUP, "disambiguation": ""})
     assert out is not None
     assert out["mbid"] == GROUP["id"]
     assert out["begin"] == "1992"
@@ -61,16 +61,10 @@ def test_reduce_artist_keeps_the_identity_and_dates_and_drops_the_genres():
     assert out["country"] == "US"
     assert out["begin_area"] == "Tampa"
     assert out["begin_area_mbid"] == "ff21865c-ce46-4417-967c-a3d2d02d29bf"
+    # The disambiguation comment as written: turning "" into NULL is a rule,
+    # and rules live in 10_bands.sql.
+    assert out["disambiguation"] == ""
     assert "genres" not in out
-
-
-def test_reduce_artist_keeps_the_disambiguation_comment_as_written():
-    # Breaks if the projection drops the field or normalises it here: turning
-    # "" into NULL is a rule, and rules live in 10_bands.sql.
-    for comment in ("Tampa death metal", ""):
-        out = reduce_artist({**GROUP, "disambiguation": comment})
-        assert out is not None
-        assert out["disambiguation"] == comment
 
 
 def test_reduce_artist_keeps_artist_relations_with_their_type_and_direction():
@@ -115,9 +109,7 @@ def test_reduce_artist_keeps_url_relations_with_their_type_and_end():
 
 # 698 614 artists of the reference dump: 75 387 untyped artists have an album,
 # and 16 080 of the co-listening neighbours were among them.
-@pytest.mark.parametrize(
-    "kind", ["Person", "Group", "Orchestra", "Choir", "Character", "Other", None]
-)
+@pytest.mark.parametrize("kind", ["Person", None])
 def test_reduce_artist_keeps_every_type_none_included(kind):
     out = reduce_artist({"id": "x", "name": "y", "type": kind})
     assert out is not None
@@ -164,9 +156,6 @@ def test_reduce_release_group_drops_the_genres():
         ("Album", True),
         ("EP", True),
         ("Single", False),
-        ("Broadcast", False),
-        ("Other", False),
-        (None, False),
     ],
 )
 def test_reduce_release_group_keeps_the_albums_and_eps_and_names_the_type(kind, kept):

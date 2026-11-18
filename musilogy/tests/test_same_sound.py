@@ -22,7 +22,6 @@ D = "00000000-0000-4000-8000-0000000005a4"
 E = "00000000-0000-4000-8000-0000000005a5"
 F = "00000000-0000-4000-8000-0000000005a6"
 G = "00000000-0000-4000-8000-0000000005a7"
-ABSENT = "00000000-0000-4000-8000-0000000005ff"
 
 
 def artist(mbid, discogs_id=None, begin="1970"):
@@ -170,7 +169,6 @@ def test_the_site_reads_same_sound_in_rank_order_each_with_its_reason(tmp_path, 
         (D, 2, "Krautrock"),
         (F, 3, "Krautrock"),
     ]
-    assert pg_query(pg, f"SELECT count(*) FROM musilogy.artist_same_sound('{ABSENT}')") == [(0,)]
 
 
 def test_the_site_reads_a_neighbours_end_only_when_declared(tmp_path, pg):

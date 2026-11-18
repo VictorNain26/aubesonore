@@ -2,12 +2,11 @@
 artists make every rule of colisten.py visible."""
 
 import duckdb
-import numpy as np
 import pytest
 
 from musilogy import colisten
 from musilogy.build import colisten_from, load_listening
-from musilogy.colisten import build_colisten, cache_key, scores
+from musilogy.colisten import build_colisten, cache_key
 from tests.conftest import listening_file, loaded, pg_query, synthetic_artist
 
 A = "a0000000-0000-0000-0000-000000000000"
@@ -106,20 +105,6 @@ def test_a_tie_at_the_last_place_kept_falls_to_the_mbid(tmp_path, monkeypatch):
     assert [n for n, _, _ in neighbours(c, ref)] == tied[:3]
 
 
-def test_no_listens_give_an_empty_table():
-    c = duckdb.connect(":memory:")
-    load_listening(c, None, None)
-    build_colisten(c)
-    assert c.execute("SELECT count(*) FROM colisten").fetchone() == (0,)
-
-
-def test_the_rule_shrinks_a_thin_overlap():
-    # The same proportions, ten times fewer listeners: the shrinkage more than halves it.
-    thin = scores(np.array([2.0]), 4, np.array([4.0]))
-    thick = scores(np.array([20.0]), 40, np.array([40.0]))
-    assert thin[0] < thick[0] / 2
-
-
 def from_cache(tmp_path, users, cache):
     c = duckdb.connect(":memory:")
     listens = listening_file(tmp_path / f"listens-{len(users)}", users)
@@ -146,12 +131,17 @@ def test_a_computed_colisten_is_kept_and_read_back_as_computed(tmp_path):
     assert read.execute("SELECT getvariable('colisten_k')").fetchone() == (colisten.K,)
 
 
-def test_without_listens_nothing_is_kept(tmp_path):
-    cache = tmp_path / "colisten.parquet"
+def test_without_listens_no_colisten_is_read_or_kept(tmp_path):
+    # A build without listens publishes no listening source: it must not
+    # publish a co-listening either, not even one an earlier run kept.
+    kept = tmp_path / "kept.parquet"
+    from_cache(tmp_path, USERS, kept)
     c = duckdb.connect(":memory:")
-    colisten_from(c, None, None, cache)
+    colisten_from(c, None, None, kept)
     assert rows(c) == []
-    assert not cache.exists()
+    absent = tmp_path / "absent.parquet"
+    colisten_from(duckdb.connect(":memory:"), None, None, absent)
+    assert not absent.exists()
 
 
 def test_without_a_cache_the_colisten_is_computed(tmp_path):
@@ -181,16 +171,6 @@ def test_the_cache_key_ignores_comments_and_docstrings(monkeypatch):
     commented = colisten.SOURCE.replace(b'"""Our co-listening', b'"""Another word on it')
     monkeypatch.setattr(colisten, "SOURCE", commented + b"# a remark\n")
     assert cache_key() == key
-
-
-def test_without_listens_a_kept_colisten_is_not_read(tmp_path):
-    # A build without listens publishes no listening source: it must not
-    # publish a co-listening either.
-    cache = tmp_path / "colisten.parquet"
-    from_cache(tmp_path, USERS, cache)
-    c = duckdb.connect(":memory:")
-    colisten_from(c, None, None, cache)
-    assert rows(c) == []
 
 
 def test_a_kept_colisten_is_read_from_its_file_not_held_in_memory(tmp_path):

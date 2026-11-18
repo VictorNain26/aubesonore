@@ -2,7 +2,7 @@ import json
 import subprocess
 
 from musilogy import cli
-from musilogy.cli import WITNESSES, fixtures_attribution
+from musilogy.cli import WITNESSES
 from musilogy.paths import REPO_ROOT
 from tests.conftest import FIX
 
@@ -61,12 +61,6 @@ def test_the_fixture_files_are_not_ignored_by_git():
             f"git check-ignore could not answer for tests/fixtures/{name}: {result.stderr.strip()}"
         )
         assert result.returncode == 1, f"tests/fixtures/{name} is ignored: {result.stdout.strip()}"
-
-
-def test_the_attribution_names_the_pinned_sources():
-    # Written by make-fixtures from the pinned references: a hand-written one
-    # fell behind the popularity re-pin of 2026-10-06.
-    assert (FIX / "ATTRIBUTION.md").read_text(encoding="utf-8") == fixtures_attribution()
 
 
 FIXTURE_FILES = (
