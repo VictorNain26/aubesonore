@@ -40,6 +40,7 @@ fi
 # The radio-* units run pipeline/.venv directly. Syncing it on every pass, not only when
 # uv.lock moves, also repairs a sync that failed after its code was already promoted.
 uv="${UV:-$HOME/.local/bin/uv}"
+backup_db="${BACKUP_DB:-$REPO_DIR/site/scripts/backup-db.sh}"
 health_timeout="${HEALTH_TIMEOUT_S:-300}"
 (cd pipeline && "$uv" sync --locked --quiet)
 
@@ -143,6 +144,15 @@ rollback() {
   fi
   exit 1
 }
+
+# The new backend applies its migrations at boot, and a rollback brings back the code, not the
+# schema it had: dump the database before a range that adds one, or wait for the next run.
+if [ -n "$(git diff --name-only --diff-filter=A "$current" "$target" -- 'site/apps/backend/drizzle/*.sql')" ]; then
+  "$backup_db" || {
+    echo "no dump before the migrations of ${target:0:8}, deploy deferred"
+    exit 1
+  }
+fi
 
 git merge --ff-only "$target"
 

@@ -1,6 +1,6 @@
 import { app } from './app';
 import { env } from './config/env';
-import { pool } from './db';
+import { migrationPool, pool } from './db';
 import { runMigrations } from './db/migrate';
 import { logger } from './lib/logger';
 import { linksCache, itunesCache } from './services/trackLinksService';
@@ -29,11 +29,14 @@ try {
 // Apply pending DB migrations BEFORE serving traffic. The runner tracks
 // applied migrations in __app_migrations and is idempotent across restarts.
 // Refusing to start with a stale schema is safer than serving 500s.
+const migrations = migrationPool();
 try {
-  await runMigrations(pool);
+  await runMigrations(migrations);
 } catch (err) {
   logger.error('migrations failed, aborting boot', { err: (err as Error).message });
   process.exit(1);
+} finally {
+  await migrations.end();
 }
 
 // The kept tracks' old copies of the antenna's art (Deezer's) leave the volume, once migration
