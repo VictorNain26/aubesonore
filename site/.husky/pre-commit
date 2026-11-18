@@ -1,3 +1,11 @@
 # Husky runs hooks from the repository root (README: project not in git root).
+# Secrets first, for every piece of the repository: a committed secret stays in the history.
+# gitleaks is installed on the workstation by mise (`mise use -g gitleaks`); .gitleaksignore
+# lists the reviewed false positives.
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "gitleaks is not installed: run \`mise use -g gitleaks\`, then commit again." >&2
+  exit 1
+fi
+gitleaks git --pre-commit --staged --redact --no-banner || exit 1
 cd site
 pnpm lint-staged

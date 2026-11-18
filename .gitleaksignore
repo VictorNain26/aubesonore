@@ -1,0 +1,8 @@
+# Reviewed gitleaks findings that are not secrets (gitleaks fingerprints: commit:file:rule:line).
+# Fake Plex token of the test that checks the token never leaks into error messages.
+c3633914f4202866ca85c18aedcf2a7ab48ad4af:tests_radio/test_cli.py:generic-api-key:129
+c3633914f4202866ca85c18aedcf2a7ab48ad4af:tests_radio/test_cli.py:generic-api-key:135
+# Dummy VAPID public key served by the frontend's API mock.
+b50b2750cec0f02612a88ec77cfaea09c7d9bca2:apps/frontend/src/mocks/handlers.ts:generic-api-key:57
+# Auth0 SPA client ID (public by design, shipped to the browser) of the old frontend, February 2025.
+13d56d3b15b2e2673b5db7afb2786ba0565d1d9b:frontend/.env:generic-api-key:2
