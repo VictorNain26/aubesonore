@@ -18,7 +18,7 @@ Santé : `/health`.
 
 ## Base de données
 
-Le schéma est `src/db/schema.ts`. Un changement de schéma part avec une migration écrite à la main, idempotente, dans `drizzle/`, que le backend applique au démarrage ; `db:push` ne sert qu'à une base de développement ou de test (`.claude/rules/site.md`, « Working with Drizzle »).
+Le schéma est `src/db/schema.ts`. Après l'avoir changé, `pnpm -C site --filter @aubesonore/backend exec drizzle-kit generate` écrit la migration dans `drizzle/` ; une migration de données s'écrit dans le fichier vide que crée `drizzle-kit generate --custom`. La CI échoue quand `schema.ts` change sans sa migration. Le backend applique les migrations au démarrage ; `bun run db:migrate` les applique à une base de développement ou de test.
 
 ## Licence
 

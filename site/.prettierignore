@@ -15,3 +15,6 @@ apps/frontend/project.inlang/README.md
 
 # Written by brand/build.py from the mark's rules: committed as the script writes it.
 apps/frontend/src/design/logoArt.ts
+
+# Written by drizzle-kit generate: committed as it writes them, or the next run rewrites them.
+apps/backend/drizzle/meta/

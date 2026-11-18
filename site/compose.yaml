@@ -257,7 +257,7 @@ services:
     command:
       - sh
       - -c
-      - DATABASE_URL="$$DATABASE_URL?sslmode=verify-full&sslrootcert=/certs/ca.crt" bun run db:push && bun run seed:dev
+      - DATABASE_URL="$$DATABASE_URL?sslmode=verify-full&sslrootcert=/certs/ca.crt" bun run db:migrate && bun run seed:dev
     restart: 'no'
 
   # The SPA from source, with hot reload. The workspace is mounted; what the container installs

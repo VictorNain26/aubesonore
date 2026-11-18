@@ -78,29 +78,6 @@ fi
 
 echo "deploying ${current:0:8} -> ${target:0:8}"
 
-# The backend applies new drizzle/*.sql migrations at boot (src/db/migrate.ts).
-# A schema.ts change that ships without one would boot the new code against the
-# old tables, so it waits for the operator. Each change on master (a squash or a
-# merge commit, diffed against its first parent) must add its own migration: an
-# unrelated one landing in the same range does not count. HEAD only moves once
-# the gate opens, so the operator records the schema.ts blob they applied.
-schema=site/apps/backend/src/db/schema.ts
-running_schema=$(git rev-parse -q --verify "HEAD:$schema" || echo absent)
-target_schema=$(git rev-parse -q --verify "$target:$schema" || echo absent)
-applied_schema=$(git config --get aubesonore.appliedSchema || true)
-unmigrated=""
-for c in $(git rev-list --first-parent "$current..$target"); do
-  git diff --quiet "$c^" "$c" -- "$schema" && continue
-  [ -n "$(git diff --name-only --diff-filter=A "$c^" "$c" -- 'site/apps/backend/drizzle/*.sql')" ] && continue
-  unmigrated="$unmigrated ${c:0:8}"
-done
-if [ -n "$unmigrated" ] && [ "$target_schema" != "$running_schema" ] && [ "$target_schema" != "$applied_schema" ]; then
-  echo "schema.ts changed without a migration in:$unmigrated — apply it by hand from ${target:0:8}, then:"
-  echo "  git -C $REPO_DIR config aubesonore.appliedSchema $target_schema"
-  echo "  systemctl --user start aubesonore-deploy"
-  exit 1
-fi
-
 # Every container with a healthcheck healthy within the timeout, or the others named.
 wait_healthy() {
   local deadline=$((SECONDS + health_timeout)) pending cid health
