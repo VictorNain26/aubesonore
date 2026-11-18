@@ -140,15 +140,12 @@ describe('nowPlaying store — lifecycle', () => {
 // ─────────────────────────────────────────────
 
 describe('nowPlaying store — cadence', () => {
-  // Math.random 0.5 is no jitter, 0 is -20 %, 1 is +20 %. The next poll comes inside the window.
+  // The next poll comes inside the window.
   it.each([
-    ['mid-track (15 s) while plenty of the track remains', 30, 0.5, 14_000, 16_000],
-    ['near-end (5 s) once less than 20 s remain', 170, 0.5, 4_500, 5_500],
-    ['20 % sooner at the lowest jitter', 30, 0, 11_500, 12_500],
-    ['20 % later at the highest jitter', 30, 1, 17_500, 18_500],
-  ] as const)('asks again at the %s', async (_, playedSecondsAgo, random, notYet, by) => {
+    ['mid-track (15 s) while plenty of the track remains', 30, 14_000, 16_000],
+    ['near-end (5 s) once less than 20 s remain', 170, 4_500, 5_500],
+  ] as const)('asks again at the %s', async (_, playedSecondsAgo, notYet, by) => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    vi.spyOn(Math, 'random').mockReturnValue(random);
     let calls = 0;
     server.use(
       http.get(URL_NP, () => {

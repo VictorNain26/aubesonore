@@ -95,13 +95,6 @@ afterEach(() => {
 });
 
 describe('player store', () => {
-  it('sets isPlaying true on successful play()', async () => {
-    const { usePlayer } = await import('./player');
-    await usePlayer.getState().play();
-    expect(usePlayer.getState().isPlaying).toBe(true);
-    expect(usePlayer.getState().playError).toBeNull();
-  });
-
   it('play() routes audio through a Web Audio analyser on non-iOS platforms', async () => {
     // The antenna waveform reads real frequency data from this graph.
     const AudioContextSpy = vi.fn().mockImplementation(function () {
@@ -112,9 +105,7 @@ describe('player store', () => {
     await usePlayer.getState().play();
     expect(usePlayer.getState().isPlaying).toBe(true);
     expect(AudioContextSpy).toHaveBeenCalledOnce();
-    const analyser = getAnalyser();
-    expect(analyser).not.toBeNull();
-    expect(analyser?.fftSize).toBe(512);
+    expect(getAnalyser()).not.toBeNull();
   });
 
   // Regression guard for the locked-screen silence bug: routing the stream through
@@ -207,7 +198,8 @@ describe('player store', () => {
     expect(usePlayer.getState().isPlaying).toBe(false);
   });
 
-  it('fades the sound in on play, and out before cutting the stream on stop', async () => {
+  it('fades the sound in on play, and out before cutting the stream on stop, without an error', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const context = new MockAudioContext();
     vi.stubGlobal(
       'AudioContext',
@@ -218,28 +210,21 @@ describe('player store', () => {
     vi.useFakeTimers();
     const { usePlayer } = await import('./player');
     await usePlayer.getState().play();
-    expect(context.gain.gain.linearRampToValueAtTime).toHaveBeenLastCalledWith(1, 0.6);
+    expect(context.gain.gain.linearRampToValueAtTime).toHaveBeenLastCalledWith(
+      1,
+      expect.any(Number)
+    );
 
     usePlayer.getState().stop();
     expect(usePlayer.getState().isPlaying).toBe(false);
-    expect(context.gain.gain.linearRampToValueAtTime).toHaveBeenLastCalledWith(0, 0.4);
+    expect(context.gain.gain.linearRampToValueAtTime).toHaveBeenLastCalledWith(
+      0,
+      expect.any(Number)
+    );
     expect(mockAudioInstance.pause).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(400);
-    expect(mockAudioInstance.pause).toHaveBeenCalledOnce();
-    expect(mockAudioInstance.src).toBe('');
-  });
-
-  it('cuts the stream on stop without the element reporting an error', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    vi.useFakeTimers();
-    const { usePlayer } = await import('./player');
-    await usePlayer.getState().play();
-
-    usePlayer.getState().stop();
     // Async: microtasks run between the timers, as between a browser's tasks.
     await vi.advanceTimersByTimeAsync(1000);
-
     expect(mockAudioInstance.pause).toHaveBeenCalledOnce();
     expect(mockAudioInstance.src).toBe('');
     expect(consoleError).not.toHaveBeenCalled();

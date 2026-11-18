@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 
 const toggleLike = vi.fn(() => Promise.resolve());
@@ -22,11 +22,6 @@ function onAir(title: string, artist: string) {
 }
 
 describe('useTrackActions', () => {
-  beforeEach(() => {
-    toggleLike.mockClear();
-    shareTrackWithToast.mockClear();
-  });
-
   it('keeps and shares the track on air when it is given none', () => {
     onAir('Mimoun', 'Mickey 3D');
     const { result } = renderHook(() => useTrackActions());

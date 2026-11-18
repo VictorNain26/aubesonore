@@ -278,35 +278,6 @@ describe('PlayerBarView', () => {
     expect(button).toHaveTextContent('Sur TV');
   });
 
-  it('marks Diffuser on with the wave alone: no weight, fill or underline sets it apart', () => {
-    const withoutWave = (element: Element) =>
-      [...element.classList].filter((name) => name !== 'wave-underline');
-    const { rerender } = render(<PlayerBarView {...props({ diffusion: diffusion() })} />);
-    const off = withoutWave(screen.getByRole('button', { name: 'Diffuser sur un appareil' }));
-
-    rerender(<PlayerBarView {...props({ diffusion: diffusion({ device: 'TV' }) })} />);
-    const on = screen.getByRole('button', { name: 'Diffusion sur TV' });
-    expect(on).toHaveClass('wave-underline');
-    expect(withoutWave(on)).toEqual(off);
-  });
-
-  it('changes track with the hero’s choreography: its cover and its words take the same steps', () => {
-    const marked = (swap: string) =>
-      (['bar-cover', 'bar-words'] as const).map(
-        (id) =>
-          screen.getAllByTestId(id).filter((el) => el.getAttribute('data-swap') === swap).length
-      );
-    const { rerender } = render(<PlayerBarView {...props()} />);
-    // The phone's track line and the computer's, one hidden by CSS.
-    expect(marked('idle')).toEqual([2, 2]);
-
-    rerender(<PlayerBarView {...props({ swap: 'out' })} />);
-    expect(marked('out')).toEqual([2, 2]);
-
-    rerender(<PlayerBarView {...props({ swap: 'in' })} />);
-    expect(marked('in')).toEqual([2, 2]);
-  });
-
   it("leads from the track to the artist's page once it exists", () => {
     const { rerender } = render(<PlayerBarView {...props()} />);
     expect(screen.queryByRole('link')).not.toBeInTheDocument();

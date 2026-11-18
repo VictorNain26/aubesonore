@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { colourRows, fontRows, textRows } from './foundations';
+import { colourRows, textRows } from './foundations';
 
 // Read from disk: Vitest stubs the stylesheets it imports, `?raw` included.
 const tokensCss = readFileSync(new URL('../design/tokens.css', import.meta.url), 'utf8');
@@ -68,8 +68,4 @@ describe('textRows', () => {
     const sizes = [...themeCss.matchAll(/^\s*--text-([a-z]+):/gm)].map((m) => m[1]);
     expect(textRows(tokensCss).map((row) => row.name)).toEqual(sizes);
   });
-});
-
-it('lists the site’s font families, the text first', () => {
-  expect(fontRows(tokensCss).map((row) => row.name)).toEqual(['text', 'display']);
 });

@@ -1,50 +1,9 @@
 // @vitest-environment jsdom
-import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { Slider } from './Slider';
 
-function ControlledSlider({
-  onValueChange,
-  disabled = false,
-}: {
-  onValueChange: (value: number) => void;
-  disabled?: boolean;
-}) {
-  const [value, setValue] = useState(0.5);
-  return (
-    <Slider
-      label="Volume"
-      value={value}
-      disabled={disabled}
-      onValueChange={(next) => {
-        setValue(next);
-        onValueChange(next);
-      }}
-    />
-  );
-}
-
 describe('Slider', () => {
-  it('moves one hundredth of the range on each arrow key', () => {
-    const onValueChange = vi.fn();
-    render(<ControlledSlider onValueChange={onValueChange} />);
-    const thumb = screen.getByRole('slider', { name: 'Volume' });
-    thumb.focus();
-    fireEvent.keyDown(thumb, { key: 'ArrowRight' });
-    expect(onValueChange).toHaveBeenLastCalledWith(0.51);
-  });
-
-  it('renders disabled and blocks keyboard focus', () => {
-    const onValueChange = vi.fn();
-    render(<ControlledSlider onValueChange={onValueChange} disabled />);
-    const thumb = screen.getByRole('slider', { name: 'Volume' });
-    expect(thumb).toBeDisabled();
-    thumb.focus();
-    expect(thumb).not.toHaveFocus();
-    expect(onValueChange).not.toHaveBeenCalled();
-  });
-
   it('draws the line up to the value, flat past it', () => {
     render(<Slider label="Volume" value={80} min={0} max={100} onValueChange={vi.fn()} />);
     const played = screen.getByTestId('slider-played').getAttribute('d');

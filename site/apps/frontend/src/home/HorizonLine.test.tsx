@@ -297,43 +297,7 @@ describe('HorizonLine', () => {
     expect(cancelAnimationFrame).toHaveBeenCalled();
   });
 
-  it('rests while it is off screen, and moves again once seen', () => {
-    const scheduled = new Map<number, FrameRequestCallback>();
-    let next = 0;
-    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
-      scheduled.set(++next, cb);
-      return next;
-    });
-    vi.stubGlobal('cancelAnimationFrame', (id: number) => scheduled.delete(id));
-    let seen: IntersectionObserverCallback = () => undefined;
-    vi.stubGlobal(
-      'IntersectionObserver',
-      class {
-        constructor(callback: IntersectionObserverCallback) {
-          seen = callback;
-        }
-        observe = vi.fn();
-        disconnect = vi.fn();
-      }
-    );
-    const ctx = fakeContext();
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
-      ctx as unknown as CanvasRenderingContext2D
-    );
-    const entry = (isIntersecting: boolean) =>
-      [{ isIntersecting }] as unknown as IntersectionObserverEntry[];
-
-    render(<HorizonLine isPlaying />);
-    expect(scheduled.size).toBe(1);
-
-    seen(entry(false), {} as IntersectionObserver);
-    expect(scheduled.size).toBe(0);
-
-    seen(entry(true), {} as IntersectionObserver);
-    expect(scheduled.size).toBe(1);
-  });
-
-  it('follows the latest of several records handed at once', () => {
+  it('rests while it is off screen, and moves again once seen, by the latest of several records', () => {
     const scheduled = new Map<number, FrameRequestCallback>();
     let next = 0;
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
@@ -364,6 +328,8 @@ describe('HorizonLine', () => {
       })) as unknown as IntersectionObserverEntry[];
 
     render(<HorizonLine isPlaying />);
+    expect(scheduled.size).toBe(1);
+
     seen(records(false), {} as IntersectionObserver);
     expect(scheduled.size).toBe(0);
 

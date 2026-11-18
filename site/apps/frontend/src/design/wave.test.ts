@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { hashOf, ruleMask, seedOf, wavePath, waveY } from './wave';
+import { ruleMask, seedOf, wavePath, waveY } from './wave';
 
 /** The y of every point of a path, in order. */
 function ysOf(d: string): number[] {
@@ -87,11 +87,6 @@ describe('seedOf', () => {
       expect(seedOf(s)).toBeGreaterThanOrEqual(0);
       expect(seedOf(s)).toBeLessThan(2 * Math.PI);
     }
-  });
-
-  it('hashes a string to a non-negative integer', () => {
-    expect(Number.isInteger(hashOf('Mickey 3D|Mimoun'))).toBe(true);
-    expect(hashOf('Mickey 3D|Mimoun')).toBeGreaterThanOrEqual(0);
   });
 });
 

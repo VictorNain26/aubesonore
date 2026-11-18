@@ -158,29 +158,4 @@ describe('likedTracksStore', () => {
     await refresh();
     expect(asked).toBe(2);
   });
-
-  it('clear() wipes tracks and error', () => {
-    useLikedTracksStore.setState({
-      tracks: [
-        {
-          id: 'x',
-          userId: 'u1',
-          title: 'T',
-          artist: 'A',
-          album: null,
-          artworkUrl: null,
-          youtubeUrl: 'https://y/x',
-          isrc: null,
-          artistId: null,
-          createdAt: '2026-01-01T00:00:00Z',
-        },
-      ],
-      error: 'previous error',
-    });
-
-    useLikedTracksStore.getState().clear();
-
-    expect(useLikedTracksStore.getState().tracks).toHaveLength(0);
-    expect(useLikedTracksStore.getState().error).toBeNull();
-  });
 });

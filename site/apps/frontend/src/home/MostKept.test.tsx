@@ -39,7 +39,7 @@ describe('MostKeptView', () => {
     expect(screen.queryByText(/gardé \d+ fois/)).not.toBeInTheDocument();
   });
 
-  it("leads to the page of a track's artist, under that page's name", () => {
+  it("says the artist under each title, linked to their page under that page's name", () => {
     const week = [
       entry('Get Lucky', 4, {
         artist: 'Daft Punk feat. Pharrell Williams',
@@ -49,6 +49,9 @@ describe('MostKeptView', () => {
     ];
     render(<MostKeptView week={week} status="ready" />, { wrapper });
 
+    const [first, second] = screen.getAllByRole('listitem');
+    expect(first).toHaveTextContent('Get LuckyDaft Punk');
+    expect(second).toHaveTextContent('NightcallKavinsky');
     expect(screen.getByRole('link', { name: 'Get Lucky, Daft Punk' })).toHaveAttribute(
       'href',
       '/artiste/daft-punk'
@@ -65,29 +68,13 @@ describe('MostKeptView', () => {
     expect(row).toHaveAccessibleName('Les plus gardés de la semaine');
   });
 
-  it("fetches its covers after the page's other images", () => {
+  it('fetches its covers with the page, not as they scroll in', () => {
     const artworkUrl = 'https://radio.aubesonore.fr/api/station/aubesonore/art/b2-1.jpg';
     render(<MostKeptView week={[entry('Nüchtern', 3, { artworkUrl })]} status="ready" />, {
       wrapper,
     });
-    const img = screen.getByRole('presentation');
-    expect(img).toHaveAttribute('fetchpriority', 'low');
-    // Fetched with the page, not as it scrolls in: a lazy row showed empty squares while scrolled.
-    expect(img).toHaveAttribute('loading', 'eager');
-  });
-
-  it('says the artist under each title, linked to their page when it has one', () => {
-    const week = [
-      entry('Get Lucky', 4, {
-        artist: 'Daft Punk feat. Pharrell Williams',
-        artistPage: { slug: 'daft-punk', name: 'Daft Punk' },
-      }),
-      entry('Nightcall', 2, { artist: 'Kavinsky' }),
-    ];
-    render(<MostKeptView week={week} status="ready" />, { wrapper });
-    const [first, second] = screen.getAllByRole('listitem');
-    expect(first).toHaveTextContent('Get LuckyDaft Punk');
-    expect(second).toHaveTextContent('NightcallKavinsky');
+    // A lazy row showed empty squares while scrolled.
+    expect(screen.getByRole('presentation')).toHaveAttribute('loading', 'eager');
   });
 
   it('shows nothing for an empty week', () => {

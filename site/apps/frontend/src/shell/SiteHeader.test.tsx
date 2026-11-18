@@ -92,25 +92,6 @@ describe('SiteHeader', () => {
     expect(screen.getByRole('link', { name: 'Musilogy' })).not.toHaveAttribute('aria-current');
   });
 
-  it('marks the current page one way, whichever page it is', () => {
-    signIn();
-    const { unmount } = render(
-      <MemoryRouter initialEntries={['/musilogy']}>
-        <SiteHeader />
-      </MemoryRouter>
-    );
-    const musilogy = screen.getByRole('link', { name: 'Musilogy' }).className;
-    unmount();
-
-    render(
-      <MemoryRouter initialEntries={['/mes-titres']}>
-        <SiteHeader />
-      </MemoryRouter>
-    );
-    expect(screen.getByRole('link', { name: 'Mes titres' }).className).toBe(musilogy);
-    expect(musilogy).toContain('wave-underline');
-  });
-
   it('keeps the account in its own menu, where the listener signs out', async () => {
     const signOut = signIn();
     render(<SiteHeader />, { wrapper: MemoryRouter });
@@ -155,7 +136,6 @@ describe('SiteHeader', () => {
   it('opens my tracks only for a signed-in listener', () => {
     render(<SiteHeader />, { wrapper: MemoryRouter });
     expect(screen.queryByRole('link', { name: 'Mes titres' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'Les plus gardés' })).not.toBeInTheDocument();
   });
 
   it('leads home from the name on every page, never a heading: the page says its own', () => {

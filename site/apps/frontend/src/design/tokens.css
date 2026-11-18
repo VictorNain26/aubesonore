@@ -166,7 +166,7 @@
   --font-weight-semibold: 600;
 
   /* Seven sizes, from a phone (390 px) to a large screen; the charter's names in comments. The
-     figures are proportional: tabular-nums only in a column of numbers (design/typography.test.ts). */
+     figures are proportional: tabular-nums only in a column of numbers. */
   --text-*: initial;
   /* Nom: an artist's name, a page's largest words. 46 → 128. */
   --text-name: clamp(2.875rem, 8vw, 8rem);
@@ -205,9 +205,9 @@
 
   --radius-*: initial;
   /* Two shapes: the disc for the two main actions, Écouter and Garder, and the live's dot; the
-     right angle, Tailwind's default, for every other control. design/shapes.test.ts holds the
-     files allowed a disc, and the three control heights: 56 px (h-14, the hero's and the sheet's
-     actions), 48 (h-12, the bar's and the forms'), 44 (h-11, the smallest target, the rest). */
+     right angle, Tailwind's default, for every other control. Three control heights: 56 px (h-14,
+     the hero's and the sheet's actions), 48 (h-12, the bar's and the forms'), 44 (h-11, the
+     smallest target, the rest). */
   --radius-full: 9999px;
 
   --ease-out-quart: cubic-bezier(0.2, 0, 0, 1);
