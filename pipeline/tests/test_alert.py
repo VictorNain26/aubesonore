@@ -56,18 +56,17 @@ def relay(monkeypatch: pytest.MonkeyPatch) -> FakeRelay:
     return r
 
 
+LEAK = "api_key=cle-secrete-du-journal"
+
+
 @pytest.fixture(autouse=True)
 def journal(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    # Un faux journalctl en tête du PATH : il ne connaît que le journal de radio-weekly.service.
+    # Un faux journalctl en tête du PATH, dont la ligne porte un secret, comme une erreur qui
+    # écrirait l'URL qu'elle appelait : le courriel ne doit rien en montrer.
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     fake = bin_dir / "journalctl"
-    fake.write_text(
-        "#!/bin/sh\n"
-        'case " $* " in\n'
-        '  *" -u radio-weekly.service "*) echo "discover : Last.fm indisponible" ;;\n'
-        "esac\n"
-    )
+    fake.write_text(f'#!/bin/sh\necho "discover : GET https://ws.example.test/?{LEAK} 503"\n')
     fake.chmod(0o755)
     monkeypatch.setenv("PATH", f"{bin_dir}:/usr/bin:/bin")
 
@@ -94,7 +93,7 @@ SMTP = {
         (465, ["tls smtp.example.test:465"]),
     ],
 )
-def test_alert_mails_the_failed_unit_and_its_journal(
+def test_alert_mails_the_failed_unit_and_nothing_of_its_journal(
     relay: FakeRelay, monkeypatch: pytest.MonkeyPatch, port: int, connection: list[str]
 ) -> None:
     _settings(monkeypatch, **SMTP, smtp_port=port)
@@ -107,9 +106,9 @@ def test_alert_mails_the_failed_unit_and_its_journal(
     assert msg["To"] == "proprietaire@example.test"
     assert msg["From"] == "Radio <radio@example.test>"
     assert "radio-weekly.service" in msg["Subject"]
-    body = msg.get_content()
-    assert "discover : Last.fm indisponible" in body
-    assert PASSWORD not in msg.as_string() and PASSWORD not in result.output
+    assert "journalctl --user -u radio-weekly.service" in msg.get_content()
+    for secret in (PASSWORD, LEAK):
+        assert secret not in msg.as_string() and secret not in result.output
 
 
 def test_an_unconfigured_alert_fails_and_names_what_is_missing(
