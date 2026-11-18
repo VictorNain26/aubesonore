@@ -69,6 +69,9 @@ export default defineConfig(({ mode }) => {
   const publicApi = env.PUBLIC_API_PROXY_TARGET;
   const coverTarget = publicApi || apiTarget;
   const analyze = env.ANALYZE === 'true';
+  // The visual suite's server (playwright.config.ts): a file written during the run reloaded the
+  // page of a capture in progress, so it watches nothing.
+  const noWatch = env.NO_WATCH === 'true';
 
   return {
     base: '/',
@@ -159,6 +162,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: '0.0.0.0',
       port: 5173,
+      ...(noWatch ? { watch: null } : {}),
       proxy: {
         // First match wins (https://vite.dev/config/server-options#server-proxy): the public
         // reads before the rest of /api.
