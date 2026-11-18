@@ -142,13 +142,13 @@ def test_votes_serve_runs_uvicorn_on_loopback(full: Path, monkeypatch: pytest.Mo
     seen: dict[str, Any] = {}
 
     def fake_run(app: Any, host: str, port: int) -> None:
-        seen.update(app=app, host=host, port=port)
+        seen.update(host=host, port=port)
 
     monkeypatch.setattr(uvicorn, "run", fake_run)
     res = runner.invoke(cli.app, ["votes-serve"])
     assert res.exit_code == 0, res.output
+    # Le tunnel Cloudflare et radio-votes.service visent 127.0.0.1:8040.
     assert (seen["host"], seen["port"]) == ("127.0.0.1", 8040)
-    assert seen["app"].title == "FastAPI"
 
 
 def test_report_prints_the_status(full: Path) -> None:

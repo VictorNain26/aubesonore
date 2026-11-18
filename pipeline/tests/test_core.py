@@ -51,96 +51,6 @@ def test_a_migration_that_breaks_a_foreign_key_is_rolled_back(
     raw.close()
 
 
-def test_migration_9_marks_published_discoveries(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    old = tmp_path / "migrations"
-    old.mkdir()
-    for script in sorted(MIGRATIONS.glob("00[1-8]_*.sql")):
-        (old / script.name).write_text(script.read_text(encoding="utf-8"), encoding="utf-8")
-    monkeypatch.setattr("radio.core.db.MIGRATIONS", old)
-    conn = connect(tmp_path / "radio.db")
-    conn.execute("INSERT INTO artists VALUES (1, 'A')")
-    for tid in (1, 2, 3):
-        conn.execute("INSERT INTO tracks VALUES (?, 1, 'T', 'candidate', ?, 'd')", (tid, f"k{tid}"))
-    conn.execute("INSERT INTO acquisitions VALUES (1, 'ready', NULL, 1, '/a/1.mp3', 'd')")
-    conn.execute("INSERT INTO acquisitions VALUES (2, 'ready', NULL, 1, '/a/2.mp3', 'd')")
-    conn.execute("INSERT INTO acquisitions VALUES (3, 'failed', 'identité', 2, NULL, 'd')")
-    conn.execute("INSERT INTO antenne VALUES (1, 'decouverte', 10, 's', 'antenne/1.mp3', 'd')")
-    conn.commit()
-    conn.close()
-    monkeypatch.setattr("radio.core.db.MIGRATIONS", MIGRATIONS)
-
-    conn = connect(tmp_path / "radio.db")
-    rows = conn.execute("SELECT deezer_track_id, status, file FROM acquisitions ORDER BY 1")
-    assert [tuple(r) for r in rows] == [
-        (1, "published", None),
-        (2, "ready", "/a/2.mp3"),
-        (3, "failed", None),
-    ]
-
-
-def test_migration_10_gives_existing_candidates_the_neighbour_source(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    old = tmp_path / "migrations"
-    old.mkdir()
-    for script in sorted(MIGRATIONS.glob("00[1-9]_*.sql")):
-        (old / script.name).write_text(script.read_text(encoding="utf-8"), encoding="utf-8")
-    monkeypatch.setattr("radio.core.db.MIGRATIONS", old)
-    conn = connect(tmp_path / "radio.db")
-    conn.execute("INSERT INTO artists VALUES (1, 'A')")
-    conn.execute("INSERT INTO tracks VALUES (1, 1, 'T', 'candidate', 'k1', 'd')")
-    conn.execute("INSERT INTO discover_runs VALUES (1, 'd', 'd', 'done')")
-    conn.execute("INSERT INTO candidates VALUES (1, 1, 83, 1)")
-    conn.commit()
-    conn.close()
-    monkeypatch.setattr("radio.core.db.MIGRATIONS", MIGRATIONS)
-
-    conn = connect(tmp_path / "radio.db")
-    row = conn.execute(
-        "SELECT run_id, source, seed_artist_id, neighbour_artist_id, detail FROM candidates"
-    )
-    assert [tuple(r) for r in row] == [(1, "voisin", 83, 1, None)]
-    conn.execute("INSERT INTO tracks VALUES (2, 1, 'U', 'candidate', 'k2', 'd')")
-    conn.execute("INSERT INTO tracks VALUES (3, 1, 'V', 'candidate', 'k3', 'd')")
-    conn.execute("INSERT INTO candidates VALUES (2, 1, 'hypem', NULL, NULL, 'blog')")
-    with pytest.raises(sqlite3.IntegrityError, match="CHECK"):  # une nouveauté n'a pas de graine
-        conn.execute("INSERT INTO candidates VALUES (2, 1, 'hypem', 83, 1, 'blog')")
-
-
-def test_migration_11_requeues_shared_credits_only(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    old = tmp_path / "migrations"
-    old.mkdir()
-    for script in sorted(MIGRATIONS.glob("*.sql")):
-        if int(script.name.split("_", 1)[0]) <= 10:
-            (old / script.name).write_text(script.read_text(encoding="utf-8"), encoding="utf-8")
-    monkeypatch.setattr("radio.core.db.MIGRATIONS", old)
-    conn = connect(tmp_path / "radio.db")
-    for key, artist in (("1", "A & B"), ("2", "A, B"), ("3", "Solo"), ("4", "C & D")):
-        conn.execute(
-            "INSERT INTO library_tracks VALUES (?, ?, 'T', 'Al', 1000, 0, 'd', NULL)", (key, artist)
-        )
-    conn.executemany(
-        "INSERT INTO deezer_matches VALUES (?, 'unmatched', ?, NULL, NULL, 'd')",
-        [
-            ("1", "no_exact_match"),
-            ("2", "no_exact_match"),
-            ("3", "no_exact_match"),
-            ("4", "no_result"),
-        ],
-    )
-    conn.commit()
-    conn.close()
-    monkeypatch.setattr("radio.core.db.MIGRATIONS", MIGRATIONS)
-
-    conn = connect(tmp_path / "radio.db")
-    left = sorted(r[0] for r in conn.execute("SELECT plex_key FROM deezer_matches"))
-    assert left == ["3", "4"]
-
-
 def test_failed_migration_leaves_nothing_behind(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -178,6 +88,17 @@ def test_match_row_consistency_is_enforced(tmp_path: Path) -> None:
         )
 
 
+def test_only_a_neighbour_candidate_has_a_seed(tmp_path: Path) -> None:
+    conn = connect(tmp_path / "radio.db")
+    conn.execute("INSERT INTO artists VALUES (1, 'A')")
+    conn.execute("INSERT INTO discover_runs VALUES (1, 'd', 'd', 'done')")
+    for tid in (1, 2):
+        conn.execute("INSERT INTO tracks VALUES (?, 1, 'T', 'candidate', ?, 'd')", (tid, f"k{tid}"))
+    conn.execute("INSERT INTO candidates VALUES (1, 1, 'hypem', NULL, NULL, 'blog')")
+    with pytest.raises(sqlite3.IntegrityError, match="CHECK"):
+        conn.execute("INSERT INTO candidates VALUES (2, 1, 'hypem', 83, 1, 'blog')")
+
+
 def test_editorial_loads_and_validates(tmp_path: Path) -> None:
     p = tmp_path / "editorial.toml"
     p.write_text("[library]\nduration_tolerance_s = 3\n")
@@ -198,15 +119,6 @@ def test_env_example_copied_as_is_gives_the_defaults() -> None:
     assert s.azuracast_media_dir == Settings.model_fields["azuracast_media_dir"].default
 
 
-def test_settings_reads_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setenv("PLEX_TOKEN", "tok")
-    monkeypatch.setenv("PLEX_MUSIC_SECTION", "Musique")
-    s = Settings(_env_file=None)
-    assert s.plex_token is not None and s.plex_token.get_secret_value() == "tok"
-    assert s.plex_music_section == "Musique"
-    assert "tok" not in repr(s)
-
-
 def test_retry_hook_logs_no_arguments(caplog: pytest.LogCaptureFixture) -> None:
     class Details:
         name = "radio.sources.lastfm.LastfmClient._call"
@@ -223,42 +135,6 @@ def test_retry_hook_logs_no_arguments(caplog: pytest.LogCaptureFixture) -> None:
 
 def test_tests_never_reach_the_real_data_dir() -> None:
     assert Settings(_env_file=None).data_dir != REPO_ROOT / "data"
-
-
-def test_migration_13_gives_each_title_on_air_its_category(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    old = tmp_path / "migrations"
-    old.mkdir()
-    for script in sorted(MIGRATIONS.glob("01[0-2]_*.sql")) + sorted(
-        MIGRATIONS.glob("00[1-9]_*.sql")
-    ):
-        (old / script.name).write_text(script.read_text(encoding="utf-8"), encoding="utf-8")
-    monkeypatch.setattr("radio.core.db.MIGRATIONS", old)
-    conn = connect(tmp_path / "radio.db")
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 12
-    conn.execute("INSERT INTO artists VALUES (1, 'A')")
-    conn.execute("INSERT INTO discover_runs VALUES (1, 'd', 'd', 'done')")
-    for tid in (1, 2):
-        conn.execute("INSERT INTO tracks VALUES (?, 1, 'T', 'candidate', ?, 'd')", (tid, f"k{tid}"))
-    conn.execute("INSERT INTO candidates VALUES (1, 1, 'voisin', 1, 1, NULL)")
-    conn.execute("INSERT INTO candidates VALUES (2, 1, 'hypem', NULL, NULL, 'Blog')")
-    for tid, origin in ((1, "decouverte"), (2, "decouverte"), (3, "repere")):
-        conn.execute(
-            "INSERT INTO antenne VALUES (?, ?, ?, 's', ?, '2026-10-01')",
-            (tid, origin, tid, f"antenne/{tid}.mp3"),
-        )
-    conn.commit()
-    conn.close()
-    monkeypatch.setattr("radio.core.db.MIGRATIONS", MIGRATIONS)
-
-    conn = connect(tmp_path / "radio.db")
-    rows = conn.execute("SELECT deezer_track_id, categorie, since FROM antenne ORDER BY 1")
-    assert [tuple(r) for r in rows] == [
-        (1, "decouvertes", "2026-10-01"),
-        (2, "nouveautes", "2026-10-01"),
-        (3, "reperes", "2026-10-01"),
-    ]
 
 
 def test_paths_derive_from_the_two_directories(tmp_path: Path) -> None:

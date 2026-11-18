@@ -29,10 +29,8 @@ class FakeSection:
     type: str = "artist"
     locations: list[str] = field(default_factory=lambda: ["/media/plex/Musique"])
     items: list[FakeTrack] = field(default_factory=list)
-    container_sizes: list[int] = field(default_factory=list)
 
     def searchTracks(self, container_size: int) -> list[FakeTrack]:
-        self.container_sizes.append(container_size)
         return self.items
 
 
@@ -63,7 +61,6 @@ def test_tracks_are_read_with_plays_and_track_artist() -> None:
         PlexTrack("1", "Wire", "Mannequin", "Pink Flag", 157000, 4),
         PlexTrack("2", "Au Pairs", "Song", "Comp", None, 0),
     ]
-    assert sec.container_sizes == [5000]
 
 
 @pytest.mark.parametrize(

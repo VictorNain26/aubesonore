@@ -148,21 +148,7 @@ def test_no_similar_artist_for_any_seed_is_lastfm_down(tmp_path: Path) -> None:
     assert status(conn) == "running"
 
 
-def test_unavailable_keeps_work_and_resumes_same_run(tmp_path: Path) -> None:
-    conn = make_library(tmp_path)
-    dz, lf = FakeDeezer(), FakeLastfm()
-    lf.similar["Wire"] = LastfmUnavailable("code 29")
-    with pytest.raises(LastfmUnavailable):
-        discover_pass(conn, dz, lf, CFG, NOW, np.random.default_rng(0))
-    assert status(conn) == "running"
-    assert recently_used(conn, NOW, 30) == set()
-    lf = FakeLastfm()
-    rep = discover_pass(conn, dz, lf, CFG, NOW, np.random.default_rng(1))
-    assert rep.resumed and rep.run_id == 1
-    assert status(conn) == "done"
-
-
-def test_transient_error_logs_seed_and_propagates(
+def test_unavailable_logs_the_seed_keeps_work_and_resumes_same_run(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     caplog.set_level(logging.WARNING)
@@ -172,6 +158,12 @@ def test_transient_error_logs_seed_and_propagates(
     with pytest.raises(LastfmUnavailable):
         discover_pass(conn, dz, lf, CFG, NOW, np.random.default_rng(0))
     assert caplog.messages == ["discover: stopped at seed Wire (70)"]
+    assert status(conn) == "running"
+    assert recently_used(conn, NOW, 30) == set()
+    lf = FakeLastfm()
+    rep = discover_pass(conn, dz, lf, CFG, NOW, np.random.default_rng(1))
+    assert rep.resumed and rep.run_id == 1
+    assert status(conn) == "done"
 
 
 def test_transient_error_logs_neighbour_and_propagates(

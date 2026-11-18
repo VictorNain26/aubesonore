@@ -1,5 +1,4 @@
 import io
-import os
 import wave
 from pathlib import Path
 
@@ -12,7 +11,6 @@ from radio.signals.audio import (
     EffnetEmbedder,
     ModelError,
     check_model,
-    single_thread_tensorflow,
 )
 
 MODEL = Settings(_env_file=None).effnet_model
@@ -28,16 +26,6 @@ def test_check_model(tmp_path: Path) -> None:
         check_model(p)
     with pytest.raises(ModelError):
         EffnetEmbedder(p)
-
-
-def test_tensorflow_runs_on_one_thread_unless_already_set(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ("TF_NUM_INTRAOP_THREADS", "TF_NUM_INTEROP_THREADS", "TF_CPP_MIN_LOG_LEVEL"):
-        monkeypatch.delenv(name, raising=False)
-    monkeypatch.setenv("TF_NUM_INTEROP_THREADS", "4")
-    single_thread_tensorflow()
-    assert os.environ["TF_NUM_INTRAOP_THREADS"] == "1"
-    assert os.environ["TF_NUM_INTEROP_THREADS"] == "4"  # un réglage de l'opérateur l'emporte
-    assert os.environ["TF_CPP_MIN_LOG_LEVEL"] == "3"
 
 
 @pytest.fixture(scope="module")

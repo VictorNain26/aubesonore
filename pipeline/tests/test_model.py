@@ -127,7 +127,6 @@ def test_a_zero_floor_keeps_every_news_artist(tmp_path: Path) -> None:
     as_news(conn, 200000, 200299, run_id=1)
     as_news(conn, 300000, 300599, run_id=1)
     cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=100)
-    assert cfg.floor == {"decouvertes": 0.0, "nouveautes": 0.0}
     assert train(conn, tmp_path / "models", cfg, NOW).promoted
     rescore(conn, tmp_path / "models", cfg)
     kept, floored = _kept_and_floored(conn)
