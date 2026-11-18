@@ -8,7 +8,9 @@
   "platformAutomerge": true,
   "minimumReleaseAge": "14 days",
   "osvVulnerabilityAlerts": true,
-  "dependencyDashboardOSVVulnerabilitySummary": "all",
+  "dependencyDashboard": {
+    "osvVulnerabilitySummary": "all"
+  },
   "vulnerabilityAlerts": {
     "description": "Fixes skip the 14 days but wait 3, the age of security:minimumReleaseAgeNpm, so a fix published hours ago is not deployed by itself; then the packageRules decide: minor and patch merge once CI passes, majors wait for review",
     "labels": ["security"],
