@@ -19,5 +19,18 @@ export const pool = new Pool({
   ssl: sslConfig,
 });
 
+// Migrations run on their own connection, without the 5 s limit: an index build or a backfill
+// can take minutes. lock_timeout makes one that waits on a lock (a dump, a Musilogy load) fail
+// and retry at the next boot rather than hold the boot indefinitely.
+export function migrationPool(): Pool {
+  return new Pool({
+    connectionString: env.DATABASE_URL,
+    max: 1,
+    connectionTimeoutMillis: 5_000,
+    lock_timeout: 30_000,
+    ssl: sslConfig,
+  });
+}
+
 export const db = drizzle(pool, { schema });
 export { schema };

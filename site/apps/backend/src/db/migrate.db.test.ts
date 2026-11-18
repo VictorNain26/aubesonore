@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, expect, it, mock, spyOn } from 'bun:tes
 import { readdirSync } from 'fs';
 import { join } from 'path';
 import { sql } from 'drizzle-orm';
-import { db, pool } from '.';
+import { db, migrationPool, pool } from '.';
 import { logger } from '../lib/logger';
 import { assertTestDatabase } from '../test/pg';
 import { runMigrations } from './migrate';
@@ -50,4 +50,16 @@ it('runs and records every migration once, and a second run applies nothing', as
   await runMigrations(pool);
   expect(await recorded()).toEqual(first);
   expect(info.mock.calls.map(([message]) => message)).toEqual(['migrations: nothing to do']);
+});
+
+it("migrates without the request pool's 5 s statement limit, and gives up on a held lock", async () => {
+  const migrations = migrationPool();
+  try {
+    const { rows } = await migrations.query<{ statement: string; lock: string }>(
+      "SELECT current_setting('statement_timeout') AS statement, current_setting('lock_timeout') AS lock"
+    );
+    expect(rows[0]).toEqual({ statement: '0', lock: '30s' });
+  } finally {
+    await migrations.end();
+  }
 });

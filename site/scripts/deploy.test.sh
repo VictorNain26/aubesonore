@@ -81,12 +81,14 @@ cat >"$r/bin/systemctl" <<'EOF2'
 exit 0
 EOF2
 printf '#!/usr/bin/env bash\nexit 0\n' >"$r/bin/uv"
-chmod +x "$r/bin/docker" "$r/bin/systemctl" "$r/bin/uv"
+# The dump before migrations, which fails when $DUMP says so.
+printf '#!/usr/bin/env bash\necho dump >>"$DOCKER_LOG"\n[ "$DUMP" != fail ]\n' >"$r/bin/backup-db"
+chmod +x "$r/bin/docker" "$r/bin/systemctl" "$r/bin/uv" "$r/bin/backup-db"
 
 deploy() {
   status=0
-  output=$(PATH="$r/bin:$PATH" REPO_DIR="$r/repo" UV="$r/bin/uv" HEALTH_TIMEOUT_S=0 \
-    DOCKER_LOG="$r/docker.log" BAD="$BAD" FAIL="$FAIL" bash "$here/deploy.sh" 2>&1) || status=$?
+  output=$(PATH="$r/bin:$PATH" REPO_DIR="$r/repo" UV="$r/bin/uv" BACKUP_DB="$r/bin/backup-db" \
+    HEALTH_TIMEOUT_S=0 DOCKER_LOG="$r/docker.log" BAD="$BAD" FAIL="$FAIL" DUMP="${DUMP:-ok}" bash "$here/deploy.sh" 2>&1) || status=$?
 }
 passed() { echo "ok   $1"; }
 failed() {
@@ -133,9 +135,19 @@ commit_schema() { # <schema text> <migration file or ""> <message>
 BAD=none FAIL=none
 
 M=$(commit_schema "v1" 0001_v1.sql "schema with its migration")
+DUMP=fail
 deploy
-name="a schema change with its own migration deploys"
-if [ "$status" -eq 0 ] && head_is "$M"; then passed "$name"; else failed "$name"; fi
+DUMP=ok
+name="no dump, no migration: the deploy waits and is retried"
+if [ "$status" -ne 0 ] && ! head_is "$M" && ! failed_is "$M" &&
+  [[ "$output" == *"deploy deferred"* ]]; then passed "$name"; else failed "$name"; fi
+
+: >"$r/docker.log"
+deploy
+name="a schema change with its own migration deploys, after a dump"
+if [ "$status" -eq 0 ] && head_is "$M" && [ "$(head -1 "$r/docker.log")" = dump ]; then
+  passed "$name"
+else failed "$name"; fi
 
 U=$(commit_schema "v2" "" "schema without a migration")
 deploy
