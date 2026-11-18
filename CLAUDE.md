@@ -41,5 +41,4 @@ scheduling heavy work or moving data.
 
 - The broadcast runtime holds listener access logs: keep them out of diffs, pastes and reports.
 - Human documentation (`README.md` files and `docs/`) is in French in every piece, like the product.
-  `CLAUDE.md`, `SECURITY.md` and the workflow comments are in English; each `.claude/rules/<piece>.md`
-  keeps its own language.
+  `CLAUDE.md`, everything under `.claude/`, `SECURITY.md` and the workflow comments are in English.

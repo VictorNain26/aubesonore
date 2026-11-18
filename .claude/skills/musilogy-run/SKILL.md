@@ -1,36 +1,30 @@
 ---
 name: musilogy-run
-description: Lancer `musilogy run` ou une requête lourde sur les données complètes de victorserv, dans un scope mémoire plafonné. Utiliser avant tout calcul Musilogy sur le serveur.
+description: Run `musilogy run` or a heavy query on victorserv's full data, inside a memory-capped scope. Use before any Musilogy computation on the server.
 ---
 
-# Travaux lourds sur victorserv
+# Heavy jobs on victorserv
 
-`musilogy run` part dans un scope plafonné :
-`build.connect()` borne DuckDB, mais pas le cache disque ni Python, et les
-services de la machine en occupent déjà une bonne part. Une requête sans borne
-l'a déjà gelée.
+`musilogy run` starts in a capped scope: `build.connect()` bounds DuckDB, but not the disk cache nor
+Python, and the machine's services already take a good share. An unbounded query has frozen it before.
 
-Depuis le poste, une commande part sur victorserv par `victorserv claude '<commande>'` (compte
-restreint, sans demande ; il ne lit pas `/home/victormoi`) ou `victorserv admin '<commande>'`
-(victormoi, root par sudo, demande à chaque fois). Un `ssh` direct vers victorserv est refusé.
+From the workstation, a command reaches victorserv through `victorserv claude '<command>'` (restricted
+account, no prompt; it cannot read `/home/victormoi`) or `victorserv admin '<command>'` (victormoi, root
+through sudo, asks every time). A direct `ssh` to victorserv is denied.
 
 ```bash
 systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=0 \
   nice -n 10 uv --directory musilogy run musilogy run
 ```
 
-- La co-écoute sur toutes les écoutes demande plus : `musilogy run` part alors
-  dans un scope de 5,5 Go visés et 6 Go au plus, quand la passe hebdomadaire de
-  la radio ne tourne pas.
-- Un plafond visé (`MemoryHigh`) se pose au-dessus du pic mesuré, jamais
-  dessus : le noyau freine sinon le calcul pendant des heures. Après le
-  lancement, `memory.pressure` de l'unité le dit.
-- `data/tmp/`, où DuckDB déborde à des dizaines de Mo/s, pointe vers le SSD
-  externe (`/media/plex/.musilogy-tmp`), jamais vers le NVMe interne : celui-ci
-  porte le système, Docker, Postgres et la radio, et le débordement l'a saturé
-  au point de ralentir toute la machine. Ni `IOSchedulingClass=idle` (NVMe en
-  ordonnanceur `none`) ni `io.max` (non délégué aux unités utilisateur) ne le
-  bridaient.
-- Sur le SSD externe, le calcul part dès qu'il est prêt, sans attendre la nuit.
-  Une unité trop gourmande se gèle (`systemctl --user freeze`) et reprend où
-  elle était (`thaw`).
+- Co-listening over all listens needs more: `musilogy run` then starts in a scope aiming at 5.5 GB with
+  6 GB at most, while the radio's weekly pass is not running.
+- A target cap (`MemoryHigh`) sits above the measured peak, never on it: otherwise the kernel throttles
+  the computation for hours. After the start, the unit's `memory.pressure` tells.
+- `data/tmp/`, where DuckDB spills at tens of MB/s, points to the external SSD
+  (`/media/plex/.musilogy-tmp`), never to the internal NVMe: that one holds the system, Docker, Postgres
+  and the radio, and the spill once saturated it enough to slow the whole machine. Neither
+  `IOSchedulingClass=idle` (NVMe on the `none` scheduler) nor `io.max` (not delegated to user units)
+  throttled it.
+- On the external SSD, the job starts as soon as it is ready, without waiting for the night. A unit that
+  takes too much is frozen (`systemctl --user freeze`) and resumes where it was (`thaw`).

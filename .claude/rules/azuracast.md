@@ -5,11 +5,11 @@ paths:
 
 # azuracast
 
-Les chemins ci-dessous sont relatifs à `azuracast/`.
+Paths below are relative to `azuracast/`.
 
-- Tout sous `stations/*/config/` (Liquidsoap, Icecast, nginx) est réécrit par AzuraCast : une
-  modification à la main y est perdue au prochain changement fait depuis l'interface. Passer par
-  l'UI, et lire les `*.backup.json` comme des instantanés, pas comme des entrées.
-- Un changement de `docker-compose.yml` se teste avec `docker compose config` avant `up -d`, et
-  se commite avec sa raison.
-- Un `git status` propre ne veut pas dire que la station est sauvegardée : `RUNBOOK.md`.
+- AzuraCast rewrites everything under `stations/*/config/` (Liquidsoap, Icecast, nginx): a hand edit
+  there is lost at the next change made from the interface. Go through the UI, and read the
+  `*.backup.json` files as snapshots, not inputs.
+- A `docker-compose.yml` change is tested with `docker compose config` before `up -d`, and committed
+  with its reason.
+- A clean `git status` does not mean the station is backed up: `RUNBOOK.md`.
