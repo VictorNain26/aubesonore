@@ -18,7 +18,12 @@ export async function sendBetterAuthEmail({
 }): Promise<void> {
   const copy = mailCopy(kind, locale);
   if (env.DISABLE_EMAILS) {
-    logger.info('better_auth_email.skipped_debug_mode', { to, kind, locale, buttonLink });
+    // Off production the link is how a developer opens the account; in production it would let
+    // whoever reads the logs into it.
+    logger.info(
+      'better_auth_email.skipped_debug_mode',
+      env.IS_PROD ? { kind, locale } : { to, kind, locale, buttonLink }
+    );
     return;
   }
 
@@ -36,10 +41,9 @@ export async function sendBetterAuthEmail({
         ignore: copy.ignore,
       },
     });
-    logger.info('better_auth_email.sent', { to, kind, locale });
+    logger.info('better_auth_email.sent', { kind, locale });
   } catch (error) {
     logger.error('better_auth_email.failed', {
-      to,
       kind,
       message: error instanceof Error ? error.message : String(error),
     });

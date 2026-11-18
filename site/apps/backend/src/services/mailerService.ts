@@ -72,9 +72,9 @@ export async function sendMail({ to, subject, variables = {} }: SendMailOptions)
       text,
     });
 
-    logger.info('mailer.sent', { messageId: info.messageId, to, subject });
+    logger.info('mailer.sent', { messageId: info.messageId, subject });
   } catch (err: unknown) {
-    logger.error('mailer.send_failed', { message: (err as Error).message, to, subject });
+    logger.error('mailer.send_failed', { message: (err as Error).message, subject });
     throw new Error("Erreur lors de l'envoi de l'e-mail.");
   }
 }
