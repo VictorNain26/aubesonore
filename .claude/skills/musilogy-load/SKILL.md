@@ -1,21 +1,21 @@
 ---
 name: musilogy-load
-description: Charger la livraison Musilogy publiée dans la base de production du site, depuis victorserv.
+description: Load the published Musilogy delivery into the site's production database, from victorserv.
 disable-model-invocation: true
 ---
 
-# Charger Musilogy dans la base du site
+# Load Musilogy into the site's database
 
-Depuis victorserv, à la racine de la worktree du serveur qui porte la livraison (`musilogy/data` relié à
-`~/musilogy-data`, `.claude/rules/musilogy.md`). Ce que `musilogy load` vérifie et comment il bascule de
-schéma : `musilogy/README.md`, « Installation, tests, exécution ».
+From victorserv, at the root of the server worktree that holds the delivery (`musilogy/data` linked to
+`~/musilogy-data`, `.claude/rules/musilogy.md`). What `musilogy load` checks and how it switches schema:
+`musilogy/README.md`, « Installation, tests, exécution ».
 
-Depuis le poste, la commande passe par `victorserv admin '<commande>'` (victormoi, root par sudo,
-demande à chaque fois) : elle lit `~/aubesonore/site/.env`, que le compte restreint de
-`victorserv claude` ne lit pas. Un `ssh` direct vers victorserv est refusé.
+From the workstation, the command goes through `victorserv admin '<command>'` (victormoi, root through
+sudo, asks every time): it reads `~/aubesonore/site/.env`, which the restricted `victorserv claude`
+account cannot read. A direct `ssh` to victorserv is denied.
 
-Le port de `aubesonore-db` n'est publié que sur `127.0.0.1:5433`, et `pg_hba.conf` impose TLS ; le certificat
-couvre `localhost` :
+The `aubesonore-db` port is published only on `127.0.0.1:5433`, and `pg_hba.conf` requires TLS; the
+certificate covers `localhost`:
 
 ```bash
 PGPASSWORD="$(grep '^POSTGRES_PASSWORD=' ~/aubesonore/site/.env | cut -d= -f2-)" \
@@ -25,4 +25,4 @@ systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=
   nice -n 10 uv --directory musilogy run musilogy load
 ```
 
-Rapporter les comptes que la commande affiche. Un chargement raté laisse le précédent en place.
+Report the counts the command prints. A failed load leaves the previous one in place.

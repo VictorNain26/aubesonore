@@ -5,11 +5,10 @@ paths:
 
 # pipeline
 
-- `pipeline/docs/conception.md` est l'unique document de conception et d'exploitation : le lire
-  avant une modification, et le tenir à jour dans le même commit que le code.
-- Contrôles, depuis la racine : `uv --directory pipeline run ruff check`, `… ruff format --check`,
-  `… mypy`, `… pytest -q -W error -rs`. `pipeline/scripts/dev-setup.sh` une fois, sinon des tests se
-  sautent.
-- Le schéma en vigueur : `sqlite3 pipeline/data/radio.db .schema`.
-- `train` ne se lance pas pendant `signals`.
-- Un script de migration SQLite se passe de `BEGIN` et de `COMMIT` (`radio/core/db.py`, `_migrate`).
+- `pipeline/docs/conception.md` is the only design and operations document: read it before a change,
+  and update it in the same commit as the code.
+- Checks, from the repository root: `uv --directory pipeline run ruff check`, `… ruff format --check`,
+  `… mypy`, `… pytest -q -W error -rs`. Run `pipeline/scripts/dev-setup.sh` once, or some tests skip.
+- The current schema: `sqlite3 pipeline/data/radio.db .schema`.
+- `train` does not run while `signals` runs.
+- A SQLite migration script has no `BEGIN` or `COMMIT` (`radio/core/db.py`, `_migrate`).

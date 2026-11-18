@@ -7,12 +7,7 @@
       "Edit(/musilogy/tests/fixtures/**)"
     ],
     "ask": [
-      "Bash(*musilogy run musilogy run*)",
-      "Edit(~/aubesonore/**)",
-      "Bash(*docker compose down*)",
-      "Bash(*docker compose stop*)",
-      "Bash(*systemctl --user stop*)",
-      "Bash(*systemctl --user disable*)"
+      "Bash(*musilogy run musilogy run*)"
     ]
   },
   "sandbox": {
@@ -29,11 +24,6 @@
         "archive.org",
         "*.archive.org",
         "aubesonore.fr"
-      ]
-    },
-    "credentials": {
-      "files": [
-        { "path": "azuracast/azuracast.env", "mode": "deny" }
       ]
     }
   },

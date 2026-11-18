@@ -80,7 +80,7 @@ on its own.
 
 - Chromecast uses AubeSonore's Custom Web Receiver so the TV's title and cover follow the track on
   air; the Default Media Receiver can't.
-- `cast/receiver.html` plays the station as a LIVE stream without Pause, because resuming plays the
+- `apps/frontend/cast/receiver.html` plays the station as a LIVE stream without Pause, because resuming plays the
   buffer behind the antenna.
 - One Diffuser button (`CastControl`) for Cast and AirPlay, rather than Google's
   `<google-cast-launcher>`, which hides itself without a device and knows no AirPlay.
