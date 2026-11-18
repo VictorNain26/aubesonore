@@ -7,11 +7,6 @@ paths:
 
 Paths below are relative to `site/apps/frontend/`.
 
-## Structure
-
-One folder per feature, its views, stores and helpers together. Code moves to `shell/`, `design/`,
-`stores/`, `hooks/` or `lib/` once several features share it.
-
 ## Tailwind v4 and tokens
 
 - Tailwind v4 syntax: tokens are in `src/design/tokens.css` (`@theme inline`), new utilities via

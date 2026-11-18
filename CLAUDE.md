@@ -12,8 +12,6 @@ change truly spans them.
 - Every piece is developed on the workstation, in a git worktree per branch. `~/aubesonore` is the
   production clone on victorserv; the server is for runs on the real data only (Musilogy's build and
   its load into production, the radio's passes).
-- Start Claude Code at the worktree's root: `.claude/settings.json` is read only from the starting
-  directory.
 - Prefer `git -C`, `pnpm -C site …` and `uv --directory <piece> run …` to `cd`: every directory that
   becomes the working directory gets a `.claude/.cc-writes` folder from the sandbox, never cleaned up.
 - A sandboxed command's `localhost` is private to it, so a dev server started there is unreachable
