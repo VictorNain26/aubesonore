@@ -1,5 +1,4 @@
 import { useShallow } from 'zustand/react/shallow';
-import { isAirPlaySupported } from '../lib/cast/airplay';
 import { useAirPlayStore } from '../stores/airplayStore';
 import { useCastStore } from '../stores/castStore';
 
@@ -19,7 +18,12 @@ export interface Diffusion {
  */
 export function useDiffusion(): Diffusion | null {
   const airPlay = useAirPlayStore(
-    useShallow((s) => ({ available: s.available, isActive: s.isActive, open: s.openPicker }))
+    useShallow((s) => ({
+      supported: s.supported,
+      available: s.available,
+      isActive: s.isActive,
+      open: s.openPicker,
+    }))
   );
   const chromecast = useCastStore(
     useShallow((s) => ({
@@ -40,7 +44,7 @@ export function useDiffusion(): Diffusion | null {
       onOpen: chromecast.open,
     };
   }
-  if (typeof window !== 'undefined' && isAirPlaySupported()) {
+  if (airPlay.supported) {
     return {
       kind: 'airplay',
       found: airPlay.available,

@@ -10,6 +10,7 @@ import {
   retryNowPlaying,
   __resetNowPlayingStore,
 } from './store';
+import { usePlayer } from '../player';
 
 const URL_NP = 'https://radio.aubesonore.fr/api/nowplaying_static/aubesonore.json';
 
@@ -364,6 +365,43 @@ describe('nowPlaying store — visibility', () => {
     });
     expect(calls).toBe(1);
     act(() => fireVisibility(false));
+  });
+
+  it('keeps asking while the live plays in a hidden tab: the lock screen shows the track on air', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let calls = 0;
+    server.use(
+      http.get(URL_NP, () => {
+        calls++;
+        return HttpResponse.json(freshNowPlaying());
+      })
+    );
+    usePlayer.setState({ isPlaying: true });
+    start();
+    await vi.waitFor(() => expect(calls).toBe(1));
+    act(() => fireVisibility(true));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(calls).toBeGreaterThan(1);
+    usePlayer.setState({ isPlaying: false });
+  });
+
+  it('asks at once when the live starts in a hidden tab (from the lock screen)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let calls = 0;
+    server.use(
+      http.get(URL_NP, () => {
+        calls++;
+        return HttpResponse.json(freshNowPlaying());
+      })
+    );
+    start();
+    await vi.waitFor(() => expect(calls).toBe(1));
+    act(() => fireVisibility(true));
+    act(() => usePlayer.setState({ isPlaying: true }));
+    await vi.waitFor(() => expect(calls).toBe(2));
+    usePlayer.setState({ isPlaying: false });
   });
 
   it('resumes immediately on visibilitychange visible', async () => {

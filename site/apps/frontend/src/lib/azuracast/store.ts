@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { safeParse } from 'valibot';
 import { STATIC_NOWPLAYING_URL } from '../config';
+import { usePlayer } from '../player';
 import { NowPlayingSchema, type NowPlaying } from './validators';
 
 // ─────────────────────────────────────────────
@@ -140,21 +141,29 @@ function scheduleNext(): void {
   }, nextDelay());
 }
 
+/**
+ * The loop sleeps only when nobody sees the page and nobody listens: while the live plays in a
+ * hidden tab (a locked phone), the lock screen and the tab title follow the track on air.
+ */
+function asleep(): boolean {
+  return typeof document !== 'undefined' && document.hidden && !usePlayer.getState().isPlaying;
+}
+
 async function runPoll(): Promise<void> {
   if (!isStarted) return;
-  if (typeof document !== 'undefined' && document.hidden) return;
+  if (asleep()) return;
   await pollOnce();
   scheduleNext();
 }
 
 function handleVisibility(): void {
   if (!isStarted) return;
-  if (document.hidden) {
+  if (asleep()) {
     // Pause: cancel any in-flight fetch + timer, keep store data intact.
     clearTimer();
     cancelInflight();
     useNowPlayingStore.setState({ isConnected: false });
-  } else {
+  } else if (!document.hidden) {
     // Resume immediately on focus return.
     pollNow();
   }
@@ -191,12 +200,17 @@ export function startNowPlayingPolling(): () => void {
   if (isStarted) return () => {};
   isStarted = true;
   attachVisibilityListener();
-  if (!(typeof document !== 'undefined' && document.hidden)) {
+  // The live started from the lock screen wakes the loop that slept.
+  const stopWatchingPlayer = usePlayer.subscribe((player, previous) => {
+    if (player.isPlaying && !previous.isPlaying && document.hidden) pollNow();
+  });
+  if (!asleep()) {
     void runPoll();
   }
   return () => {
     if (!isStarted) return;
     isStarted = false;
+    stopWatchingPlayer();
     detachVisibilityListener();
     clearTimer();
     cancelInflight();
