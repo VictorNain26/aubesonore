@@ -507,8 +507,24 @@ l'unité `radio-weekly` est en échec (§8.2).
 
 ### 8.2 Pannes
 
-Aucune surveillance externe, aucune notification : AubeSonore n'envoie aucun message. Une panne se
-lit sur la machine :
+Aucune surveillance externe. Un seul message : un courriel au propriétaire quand `radio-weekly`,
+`radio-grille` ou `radio-backup` échoue, sans quoi une passe arrêtée à sa première étape en échec
+perdrait la semaine en silence. C'est le mécanisme documenté de systemd : chacune de ces unités
+déclare `OnFailure=radio-alert@%N.service` (`systemd.unit(5)`, « OnFailure= » et « Specifiers »),
+et le gabarit `radio-alert@.service` lance `radio alert <unité>`, qui envoie par `smtplib` un
+courriel en texte brut : l'unité en échec, l'heure, et les 50 dernières lignes de son journal
+(`journalctl --user -u <unité> -n 50 -o cat`). Il passe par le relais SMTP du site, avec ses
+`SMTP_*` (TLS implicite sur le port 465, STARTTLS sinon, comme
+`site/apps/backend/src/services/mailerService.ts`), vers `ALERT_EMAIL_TO` (`.env.example`).
+Sans `SMTP_HOST`, `SMTP_FROM` ou `ALERT_EMAIL_TO`, ou si le relais refuse le courriel,
+`radio alert` échoue (code 2 ou 1) et l'unité d'alerte reste en échec à côté de celle qu'elle
+signalait : une alerte qui ne part pas ne doit pas passer pour une alerte envoyée. Le gabarit n'a
+pas lui-même d'`OnFailure=`. `radio-votes` n'en a pas non plus : avec `Restart=on-failure`, chaque
+redémarrage passe par l'état « failed » (`RestartMode=normal`, `systemd.service(5)`), et un
+plantage en boucle enverrait un courriel toutes les 10 s ; une page de vote tombée se voit au
+vote. Essai d'envoi : `systemctl --user start radio-alert@essai.service`.
+
+Le reste se lit sur la machine :
 
 - `systemctl --user list-units --failed` : une unité `radio-*`, `aubesonore-*` ou
   `azuracast-backup` en échec (passe hebdomadaire jugée par `radio check`, grille du lendemain,
@@ -544,6 +560,7 @@ le dernier passage.
 | chaque jour 23:00 | `radio-grille` | grille du lendemain dans les 24 playlists horaires du jour |
 | chaque jour 04:30 | `radio-backup` | copie de `data/radio.db` (API de sauvegarde SQLite, `integrity_check` vérifié avant d'entrer dans son jour : une copie refusée ne laisse rien) et de `data/models/` dans `RADIO_BACKUP_DIR` (`/media/plex/.backups/radio`, autre disque physique), 14 jours gardés |
 | en continu | `radio-votes` | page de vote, `127.0.0.1:8040`, publiée sur `votes.aubesonore.fr` |
+| à l'échec de l'une des trois premières | `radio-alert@<unité>` | `radio alert <unité>.service` : courriel à `ALERT_EMAIL_TO`, avec la fin du journal (§8.2) |
 
 - Pannes : §8.2.
 - **Une commande à la fois.** Les commandes qui écrivent la base (les étapes de la passe,
@@ -554,7 +571,8 @@ le dernier passage.
   au lendemain la grille d'il y a une semaine. Le noyau rend le verrou à la fin du processus,
   même tué. Ne le prennent pas : la page de vote, qui doit toujours répondre (chaque vote est une
   courte transaction, que SQLite sérialise) ; `radio backup`, dont la copie est cohérente même
-  pendant une écriture et qui garde son heure ; `report` et `check`, qui ne font que lire.
+  pendant une écriture et qui garde son heure ; `report` et `check`, qui ne font que lire ;
+  `alert`, qui n'ouvre pas la base.
 - **Migrations.** La page de vote et une commande qui démarrent ensemble sur un nouveau code
   ouvrent la base en même temps : chaque migration prend le verrou d'écriture de SQLite
   (`BEGIN IMMEDIATE`) et relit `user_version` dessous, et ne passe qu'une fois.

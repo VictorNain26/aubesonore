@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     azuracast_station_id: int = 1
     sockseek_bin: Path = Path("~/.local/bin/sockseek").expanduser()
     rsgain_bin: Path = Path("~/.local/bin/rsgain").expanduser()
+    # Courriel d'alerte d'une unité en échec (`radio alert`), par le relais SMTP du site.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_user: str | None = None
+    smtp_password: SecretStr | None = Field(default=None, repr=False)
+    smtp_from: str | None = None
+    alert_email_to: str | None = None
 
     @property
     def db_path(self) -> Path:

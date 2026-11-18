@@ -1,6 +1,9 @@
 [Unit]
 Description=AubeSonore v3 : page de vote (127.0.0.1:8040, publiée par le tunnel Cloudflare derrière Access)
 After=network-online.target
+# Pas d'OnFailure= : avec Restart=, chaque redémarrage passe par l'état « failed »
+# (RestartMode=normal, systemd.service(5)) et un plantage en boucle enverrait un courriel
+# toutes les 10 s.
 
 [Service]
 WorkingDirectory=%h/aubesonore/pipeline
