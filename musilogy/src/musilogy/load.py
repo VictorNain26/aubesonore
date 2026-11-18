@@ -109,12 +109,16 @@ def load(published: Path, conninfo: str = "") -> dict[str, int]:
     expected = {table: manifest["counts"][table] for table in TABLES}
     if loaded != expected:
         raise LoadError(f"staging holds {loaded}, the delivery {expected}: nothing swapped")
+    # The schema is new at every load, so the right to read it is given again
+    # here: the load signs in as its own role, the site as another, and the
+    # functions run with their caller's rights.
     _execute(
         con,
         f"BEGIN; DROP SCHEMA IF EXISTS {SCHEMA} CASCADE; "
         f"ALTER SCHEMA {STAGING} RENAME TO {SCHEMA}; "
         + "; ".join(_sql(path.name) for path in sorted(PG_DIR.glob("90_*.sql")))
-        + "; COMMIT",
+        + f"; GRANT USAGE ON SCHEMA {SCHEMA} TO PUBLIC; "
+        f"GRANT SELECT ON ALL TABLES IN SCHEMA {SCHEMA} TO PUBLIC; COMMIT",
     )
     con.close()
     return loaded

@@ -9,4 +9,15 @@ CREATE INDEX ON urls (artist_mbid);
 CREATE INDEX ON same_sound (artist_mbid, rank);
 CREATE INDEX ON colisten (artist_mbid, rank);
 CREATE INDEX ON credits (artist_mbid);
-ANALYZE;
+-- Only the tables of the schema being loaded: a bare ANALYZE walks the whole
+-- database, and the load's role owns nothing else in it.
+DO $$
+DECLARE loaded regclass;
+BEGIN
+    FOR loaded IN
+        SELECT oid FROM pg_class
+        WHERE relnamespace = current_schema()::regnamespace AND relkind = 'r'
+    LOOP
+        EXECUTE format('ANALYZE %s', loaded);
+    END LOOP;
+END $$;
