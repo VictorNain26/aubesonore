@@ -170,7 +170,11 @@ La page de vote (FastAPI derrière Cloudflare Access) est en service depuis le
 La page `/semaine` relit les votes de la sélection en cours, avec leur extrait, et permet de
 corriger un geste malheureux jusqu'à la passe suivante : `train` apprend alors le vote corrigé,
 puis la nouvelle sélection le fige. Une correction garde l'heure du premier vote, pour que la
-fenêtre d'examen ne bouge pas.
+fenêtre d'examen ne bouge pas. Tant qu'un bulletin attend, aucune sélection n'est tirée : un vote
+déjà appris reste corrigeable d'une passe à l'autre. `train` réentraîne donc quand l'empreinte
+des votes (titre, examen ou leçon, réponse ; « passer » exclu) diffère de celle que le dernier
+modèle a vue (`params.votes_digest`), et non quand leur nombre change : une correction le laisse
+tel quel.
 
 ## 5. Acquisition (étape 5)
 

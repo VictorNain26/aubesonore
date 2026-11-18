@@ -9,6 +9,7 @@ Seuls les votes d'examen jugent : un nouveau modèle n'est mis en service que si
 n'est pas inférieure à celle du modèle en service.
 """
 
+import hashlib
 import json
 import sqlite3
 from collections.abc import Mapping
@@ -192,10 +193,20 @@ def votes_count(conn: sqlite3.Connection) -> int:
     return int(conn.execute("SELECT COUNT(*) FROM votes WHERE vote != 'passer'").fetchone()[0])
 
 
-def trained_on(conn: sqlite3.Connection) -> int | None:
-    """Nombre de votes vus par le dernier entraînement."""
+def votes_digest(conn: sqlite3.Connection) -> str:
+    """Empreinte des votes qui comptent : un vote corrigé la change comme un vote de plus, alors
+    que leur nombre, lui, ne bouge pas."""
+    rows = conn.execute(
+        "SELECT deezer_track_id, kind, vote FROM votes WHERE vote != 'passer' "
+        "ORDER BY deezer_track_id"
+    ).fetchall()
+    return hashlib.sha256(json.dumps([tuple(r) for r in rows]).encode()).hexdigest()
+
+
+def trained_on(conn: sqlite3.Connection) -> str | None:
+    """Empreinte des votes vus par le dernier entraînement (None avant qu'elle soit gardée)."""
     row = conn.execute("SELECT params FROM models ORDER BY model_id DESC LIMIT 1").fetchone()
-    return None if row is None else int(json.loads(row[0])["votes"])
+    return None if row is None else json.loads(row[0]).get("votes_digest")
 
 
 @dataclass(frozen=True)
@@ -225,6 +236,8 @@ def _decide(
 
 
 def train(conn: sqlite3.Connection, models_dir: Path, cfg: ModelConfig, now: str) -> TrainReport:
+    # Lue avant les exemples : un vote arrivé pendant l'entraînement relance le suivant.
+    digest = votes_digest(conn)
     table = load_signals(conn)
     labels = build_labels(conn, table, cfg.exam_window)
     model = fit(table, labels.train, cfg)
@@ -240,6 +253,7 @@ def train(conn: sqlite3.Connection, models_dir: Path, cfg: ModelConfig, now: str
         "embedding": MODEL_TAG,
         "sklearn": sklearn.__version__,
         "votes": labels.n_votes,
+        "votes_digest": digest,
     }
     metrics = {
         "counts": labels.train.counts(),

@@ -68,7 +68,7 @@ def test_votes_lifecycle_from_training_to_a_second_selection(env: Path) -> None:
     # 4. `radio train` : les nouveaux votes déclenchent un réentraînement, deux modèles en base.
     res = runner.invoke(cli.app, ["train"])
     assert res.exit_code == 0, res.output
-    assert "Aucun nouveau vote" not in res.output
+    assert "Aucun vote nouveau ni corrigé" not in res.output
     conn = connect(db_path)
     n_models = conn.execute("SELECT COUNT(*) FROM models").fetchone()[0]
     conn.close()

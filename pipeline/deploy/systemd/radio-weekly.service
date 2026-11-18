@@ -23,7 +23,7 @@ TimeoutStartSec=12h
 RuntimeDirectory=radio-weekly
 RuntimeDirectoryMode=0700
 # Une étape en échec arrête la suite : pas de sélection sur des notes périmées.
-# train ne réentraîne que s'il y a de nouveaux votes ; il note toujours les candidats.
+# train ne réentraîne que s'il y a des votes nouveaux ou corrigés ; il note toujours les candidats.
 # nouveautes, favoris et acquire préfixés de « - » : une source en panne n'arrête pas la
 # passe, et un échec d'acquire n'empêche pas antenne de publier ce qui est prêt
 # (systemd.service(5), « Command lines ») ; check fait échouer la passe en fin de course.
