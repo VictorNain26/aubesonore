@@ -15,11 +15,12 @@ sudo, asks every time): it reads `~/aubesonore/site/.env`, which the restricted 
 account cannot read. A direct `ssh` to victorserv is denied.
 
 The `aubesonore-db` port is published only on `127.0.0.1:5433`, and `pg_hba.conf` requires TLS; the
-certificate covers `localhost`:
+certificate covers `localhost`. The load signs in as the `musilogy` role, which owns its schemas and
+holds no right over the site's tables (`site/scripts/db-roles.sql`), never as the site's superuser:
 
 ```bash
-PGPASSWORD="$(grep '^POSTGRES_PASSWORD=' ~/aubesonore/site/.env | cut -d= -f2-)" \
-PGHOST=localhost PGPORT=5433 PGUSER=aubesonore PGDATABASE=aubesonore \
+PGPASSWORD="$(grep '^MUSILOGY_DB_PASSWORD=' ~/aubesonore/site/.env | cut -d= -f2-)" \
+PGHOST=localhost PGPORT=5433 PGUSER=musilogy PGDATABASE=aubesonore \
 PGSSLMODE=verify-full PGSSLROOTCERT=~/aubesonore/site/certs/ca.crt \
 systemd-run --user --scope -p MemoryHigh=3G -p MemoryMax=3584M -p MemorySwapMax=0 \
   nice -n 10 uv --directory musilogy run musilogy load
