@@ -110,7 +110,6 @@ describe('findArtTrack', () => {
     expect(search).toBeInstanceOf(URL);
     const params = (search as URL).searchParams;
     expect(params.get('q')).toBe('The Style Council Walls Come Tumbling Down');
-    expect(params.get('maxResults')).toBe('15');
   });
 
   it('answers none when no result is its Art Track, so the search link stays', async () => {

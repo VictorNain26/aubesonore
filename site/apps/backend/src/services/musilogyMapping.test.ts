@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import {
   deezerIdOf,
-  kindOf,
   firstCoverOf,
   toFacts,
   toLinks,
@@ -73,6 +72,28 @@ describe('toFacts', () => {
     expect([facts.place, facts.formed]).toEqual([null, null]);
   });
 
+  it('says no kind, place nor year for an artist without a type', () => {
+    expect(
+      toFacts(
+        card({
+          type: null,
+          country: 'FR',
+          begin_area: 'Strasbourg',
+          y0: 2012,
+          y0_source: 'declared',
+          ended: false,
+        })
+      )
+    ).toEqual({ kind: null, place: null, country: 'FR', formed: null, ended: null, active: false });
+  });
+
+  it('says no end it inferred, and an ongoing group is active', () => {
+    expect(toFacts(card({ y_end: 2024, y_end_source: 'last_album', ended: false }))).toMatchObject({
+      ended: null,
+      active: true,
+    });
+  });
+
   // Intl would read SU as Russia; XW is MusicBrainz's « [Worldwide] »; Kosovo is a country.
   it.each([
     ['SU', null],
@@ -81,18 +102,6 @@ describe('toFacts', () => {
     ['XK', 'XK'],
   ])('names the country %s as %p', (code, named) => {
     expect(toFacts(card({ country: code })).country).toBe(named);
-  });
-});
-
-describe('kindOf', () => {
-  it('words the four types the site names, and nothing for any other', () => {
-    expect(['Person', 'Group', 'Orchestra', 'Choir'].map(kindOf)).toEqual([
-      'person',
-      'group',
-      'orchestra',
-      'choir',
-    ]);
-    expect(['Character', 'Other', null].map(kindOf)).toEqual([null, null, null]);
   });
 });
 

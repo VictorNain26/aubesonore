@@ -96,8 +96,6 @@ describe('parseCoverKey', () => {
     ['station', ART_ID, '250.webp'],
     ['station', 'abc', '96.webp'],
     ['station', '../x-1', '96.webp'],
-    // The kept tracks' copies of the antenna's art are gone (keptTrackCovers.ts).
-    ['kept', 'a'.repeat(64), '768.webp'],
     ['photo', RG, '500.webp'],
     ['caa', RG, '0500.webp'],
   ])('refuses %s/%s/%s', (kind, id, file) => {
@@ -357,7 +355,6 @@ describe('the block list', () => {
     [`caa ${RG}/500.webp # request 2026-10-27`, 'a file, not a cover'],
     [`station ${RG} # request 2026-10-27`, 'an id of another kind'],
     [`photo ${RG} # request 2026-10-27`, 'an unknown kind'],
-    [`kept ${'c'.repeat(64)} # request 2026-10-27`, 'a kind no longer stored'],
     [`caa ${RG} extra # request 2026-10-27`, 'a third word'],
     [`https://coverartarchive.org/release-group/${RG} # request`, 'a URL'],
   ])('refuses %s (%s), naming its line', (line) => {

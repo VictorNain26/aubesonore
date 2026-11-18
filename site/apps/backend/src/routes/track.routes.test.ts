@@ -69,6 +69,7 @@ describe('POST /api/track/like', () => {
   });
 
   it.each([
+    'https://www.youtube.com/results?search_query=in+flight',
     'https://www.youtube.com/watch?v=x',
     'https://m.youtube.com/watch?v=x',
     'https://music.youtube.com/watch?v=x',
@@ -76,15 +77,6 @@ describe('POST /api/track/like', () => {
   ])('keeps a track whose link is YouTube: %s', async (youtubeUrl) => {
     const res = await like({ title: 'In Flight', artist: 'Sunflower Bean', youtubeUrl });
 
-    expect(res.status).toBe(200);
-  });
-
-  it('keeps a valid track', async () => {
-    const res = await like({
-      title: 'In Flight',
-      artist: 'Sunflower Bean',
-      youtubeUrl: 'https://www.youtube.com/results?search_query=in+flight',
-    });
     expect(res.status).toBe(200);
     expect(likeSpy).toHaveBeenCalled();
   });

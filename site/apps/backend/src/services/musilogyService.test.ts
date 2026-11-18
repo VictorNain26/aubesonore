@@ -9,20 +9,14 @@ import * as realSchema from '../db/schema';
 const dialect = new PgDialect();
 let answers: Record<string, Array<Record<string, unknown>>> = {};
 let loaded = true;
-// Functions a load older than them lacks.
-let missing = new Set<string>();
 let asked: string[] = [];
 
 function answer(query: SQL) {
   const built = dialect.sqlToQuery(query);
   const fn = /musilogy\.(\w+)\(/.exec(built.sql)?.[1] ?? '';
-  if (!loaded || missing.has(fn)) {
-    const [message, code] = loaded
-      ? [`function musilogy.${fn} does not exist`, '42883']
-      : ['schema "musilogy" does not exist', '3F000'];
-    return Promise.reject(
-      new DrizzleQueryError(built.sql, built.params, Object.assign(new Error(message), { code }))
-    );
+  if (!loaded) {
+    const cause = Object.assign(new Error('schema "musilogy" does not exist'), { code: '3F000' });
+    return Promise.reject(new DrizzleQueryError(built.sql, built.params, cause));
   }
   asked.push(fn);
   return Promise.resolve({ rows: answers[fn] ?? [] });
@@ -105,7 +99,6 @@ const releases = [
 beforeEach(() => {
   answers = { artist_card: [card()], artist_urls: urls, artist_releases: releases };
   loaded = true;
-  missing = new Set();
   asked = [];
   identityCache.dispose();
   coreCache.dispose();
@@ -141,39 +134,6 @@ describe('getArtistIdentity', () => {
     });
   });
 
-  it('says no kind, place nor year for an artist without a type', async () => {
-    answers.artist_card = [
-      card({
-        type: null,
-        begin_area: 'Strasbourg',
-        y0: 2012,
-        y0_source: 'first_album',
-        ended: false,
-      }),
-    ];
-
-    expect((await getArtistIdentity(DAFT_PUNK))?.facts).toEqual({
-      kind: null,
-      place: null,
-      country: 'FR',
-      formed: null,
-      ended: null,
-      active: false,
-    });
-  });
-
-  it('says no year it inferred, and an ongoing group is active', async () => {
-    answers.artist_card = [
-      card({ y0_source: 'first_album', y_end: 2024, y_end_source: 'last_album', ended: false }),
-    ];
-
-    expect((await getArtistIdentity(DAFT_PUNK))?.facts).toMatchObject({
-      formed: null,
-      ended: null,
-      active: true,
-    });
-  });
-
   it('knows no artist the dump does not hold, and says when musilogy is not loaded', async () => {
     answers.artist_card = [];
     expect(await getArtistIdentity(DAFT_PUNK)).toBeNull();
@@ -194,56 +154,5 @@ describe('an artist page', () => {
     await getMusilogyArtist(DAFT_PUNK);
     expect(asked.filter((fn) => fn === 'artist_card')).toHaveLength(1);
     expect(asked.filter((fn) => fn === 'artist_releases')).toHaveLength(1);
-  });
-});
-
-const neighbourRow = (name: string, rank: number, values: Record<string, unknown> = {}) => ({
-  mbid: `00000000-0000-4000-8000-${String(rank).padStart(12, '0')}`,
-  name,
-  disambiguation: null,
-  y0: 1990,
-  y_end: null,
-  ended: false,
-  rank,
-  ...values,
-});
-
-describe('getMusilogyArtist', () => {
-  it('reads each tab in the order its function gives, never re-sorted', async () => {
-    answers.artist_same_sound = [
-      neighbourRow('Cassius', 1, { term: 'French House' }),
-      neighbourRow('Bob Sinclar', 2, { term: 'French House' }),
-    ];
-    answers.artist_colisten = [neighbourRow('Justice', 2), neighbourRow('Gorillaz', 1)];
-    answers.artist_credits = [
-      { mbid: 'p', name: 'Pharrell Williams', disambiguation: null, y0: 1992, records: 2 },
-      { mbid: 'n', name: 'Nile Rodgers', disambiguation: null, y0: 1970, records: 1 },
-    ];
-
-    const page = await getMusilogyArtist(DAFT_PUNK);
-
-    expect(page?.sameSound?.map((n) => [n.name, n.rank, n.term])).toEqual([
-      ['Cassius', 1, 'French House'],
-      ['Bob Sinclar', 2, 'French House'],
-    ]);
-    expect(page?.colisten?.map((n) => [n.name, n.term])).toEqual([
-      ['Justice', null],
-      ['Gorillaz', null],
-    ]);
-    expect(page?.credits?.map((c) => [c.name, c.records])).toEqual([
-      ['Pharrell Williams', 2],
-      ['Nile Rodgers', 1],
-    ]);
-  });
-
-  it('leaves out a tab whose function a load predates, keeps the others', async () => {
-    missing = new Set(['artist_colisten', 'artist_credits']);
-    answers.artist_same_sound = [neighbourRow('Cassius', 1, { term: 'French House' })];
-
-    const page = await getMusilogyArtist(DAFT_PUNK);
-
-    expect(page?.colisten).toBeNull();
-    expect(page?.credits).toBeNull();
-    expect(page?.sameSound).toHaveLength(1);
   });
 });

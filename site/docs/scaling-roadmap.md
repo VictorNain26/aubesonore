@@ -24,7 +24,7 @@ Dès que **l'un** de ces cas se produit, tout ce qui suit migre dans une seule P
 - `circuitOpenUntil` (`services/deezerService.ts`) et `nextSlotAt`, la cadence de MusicBrainz (`services/musicbrainzService.ts`) ;
 - les compteurs de limitation de débit (`lib/rateLimit.ts`).
 
-L'interface `CacheStore<V>` n'expose que `get/set/delete` synchrones, pour ne rien changer aux appels. L'implémentation Redis se tiendra derrière une façade synchrone adossée à un miroir en mémoire : les écritures vers Redis se font en arrière-plan. Documenter la fenêtre de perte de données (en général < 1 s) lors de la migration.
+L'interface `CacheStore<V>` n'expose que `get/set` synchrones, pour ne rien changer aux appels. L'implémentation Redis se tiendra derrière une façade synchrone adossée à un miroir en mémoire : les écritures vers Redis se font en arrière-plan. Documenter la fenêtre de perte de données (en général < 1 s) lors de la migration.
 
 ## Ce qui reste en mémoire pour toujours
 
