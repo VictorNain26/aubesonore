@@ -1,14 +1,19 @@
+import fcntl
 import logging
+import threading
 from collections.abc import Callable
+from contextlib import closing
 from pathlib import Path
 
 import pytest
 import requests
+from click.testing import Result
 from plexapi.exceptions import Unauthorized
 from typer.testing import CliRunner
 
 import radio.cli as cli
 from radio.core.config import Settings
+from radio.core.db import connect
 from radio.core.report import last_stages
 from radio.signals import features
 from radio.signals.audio import ModelError
@@ -74,6 +79,32 @@ def test_library_sync_end_to_end(env: Path, monkeypatch: pytest.MonkeyPatch) -> 
     assert "Couverture : 1 / 2 titres rapprochés (50,0 %)" in res.stdout
     assert "Bibliothèque inscrite : 1 titres, 1 artistes (0 retirés)" in res.stdout
     assert (env / "data" / "radio.db").exists()
+
+
+def test_a_stage_waits_while_another_command_writes_the_base(
+    env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Breaks if two commands can write the base at once, e.g. a Persistent timer catching up
+    # after boot while the weekly pass runs.
+    monkeypatch.setattr(cli.gout, "PlexSource", lambda *a: FakePlex([]))
+    monkeypatch.setattr(cli.gout, "DeezerClient", lambda: FakeDeezer())
+    results: list[Result] = []
+    (env / "data").mkdir()
+    with (env / "data" / "radio.lock").open("w") as other_command:
+        fcntl.flock(other_command, fcntl.LOCK_EX)
+        stage = threading.Thread(
+            target=lambda: results.append(runner.invoke(cli.app, ["library-sync"]))
+        )
+        stage.start()
+        stage.join(timeout=1)
+        assert stage.is_alive()
+        assert not (env / "data" / "radio.db").exists()
+    stage.join(timeout=30)
+    assert not stage.is_alive()
+    # Une bibliothèque vide fait échouer l'étape : elle a bien tourné, et laissé son rapport.
+    assert "Plex n'a renvoyé aucun titre" in results[0].output
+    with closing(connect(env / "data" / "radio.db")) as conn:
+        assert [s[0] for s in last_stages(conn)] == ["library-sync"]
 
 
 def test_missing_config_exits_2(env: Path, monkeypatch: pytest.MonkeyPatch) -> None:

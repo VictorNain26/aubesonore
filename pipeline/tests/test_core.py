@@ -2,6 +2,8 @@ import ast
 import logging
 import shutil
 import sqlite3
+import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -75,6 +77,46 @@ def test_failed_migration_leaves_nothing_behind(
     assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
     assert [tuple(r) for r in conn.execute("SELECT x FROM partial")] == [(1,)]
     conn.close()
+
+
+def test_a_migration_running_in_another_process_is_not_replayed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Breaks if user_version is read outside the write lock: the vote page and a pass that start
+    # on new code both see the migration pending, and the later one replays it or fails.
+    migrations = tmp_path / "migrations"
+    migrations.mkdir()
+    (migrations / "001_t.sql").write_text("CREATE TABLE t (x INTEGER);\n")
+    monkeypatch.setattr("radio.core.db.MIGRATIONS", migrations)
+    db = tmp_path / "radio.db"
+    connect(db).close()
+    (migrations / "002_ligne.sql").write_text("INSERT INTO t VALUES (2);\n")
+
+    other = sqlite3.connect(db, isolation_level=None)
+    other.execute("BEGIN IMMEDIATE")
+    other.execute("INSERT INTO t VALUES (2)")
+    other.execute("PRAGMA user_version = 2")
+    outcome: list[object] = []
+
+    def late() -> None:
+        try:
+            connect(db).close()
+            outcome.append("ok")
+        except sqlite3.Error as e:
+            outcome.append(e)
+
+    second = threading.Thread(target=late)
+    second.start()
+    time.sleep(0.5)  # it sees version 1 and waits for the write lock
+    other.execute("COMMIT")
+    other.close()
+    second.join()
+
+    assert outcome == ["ok"]
+    check = sqlite3.connect(db)
+    assert check.execute("SELECT x FROM t").fetchall() == [(2,)]
+    assert check.execute("PRAGMA user_version").fetchone()[0] == 2
+    check.close()
 
 
 def test_match_row_consistency_is_enforced(tmp_path: Path) -> None:

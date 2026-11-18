@@ -1,13 +1,14 @@
 """Ce que partagent les commandes : l'application Typer, l'étape qui écrit son rapport même en
 échec, la lecture de la configuration et la mise en forme des nombres."""
 
+import fcntl
 import functools
 import logging
 import os
 import sqlite3
 import sys
-from collections.abc import Callable
-from contextlib import closing
+from collections.abc import Callable, Iterator
+from contextlib import closing, contextmanager, nullcontext
 from datetime import UTC, datetime
 from typing import NoReturn, ParamSpec, TypeVar
 
@@ -53,9 +54,27 @@ def _record_failure(stage: str, error: str) -> None:
         record_stage(conn, stage, False, {"erreur": error})
 
 
-def _stage(name: str) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
+@contextmanager
+def _exclusive() -> Iterator[None]:
+    """Les commandes qui écrivent la base ne se chevauchent pas, sous systemd comme à la main : la
+    seconde attend la fin de la première. Verrou flock(2) sur un fichier à côté de la base
+    (https://docs.python.org/3/library/fcntl.html#fcntl.flock), que le noyau rend à la fin du
+    processus, même tué. La page de vote ne le prend pas : elle doit toujours répondre."""
+    settings = _settings()
+    settings.data_dir.mkdir(parents=True, exist_ok=True)
+    with (settings.data_dir / "radio.lock").open("w") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            logging.info("Une autre commande écrit la base : attente de sa fin")
+            fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
+
+
+def _stage(name: str, *, exclusive: bool = True) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
     """Une étape de la passe qui échoue écrit quand même sa ligne de rapport (§8.1). D'une
-    exception imprévue, seul le type est gardé : son message peut porter une URL signée."""
+    exception imprévue, seul le type est gardé : son message peut porter une URL signée.
+    Une étape `exclusive` attend qu'aucune autre commande n'écrive la base (`_exclusive`)."""
 
     def wrap(fn: Callable[_P, _R]) -> Callable[_P, _R]:
         @functools.wraps(fn)
@@ -63,7 +82,8 @@ def _stage(name: str) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
             global _last_error, _stage_recorded
             _last_error, _stage_recorded = None, False
             try:
-                return fn(*args, **kwargs)
+                with _exclusive() if exclusive else nullcontext():
+                    return fn(*args, **kwargs)
             except typer.Exit as e:
                 if e.exit_code != 0 and not _stage_recorded:
                     _record_failure(name, _last_error or f"code {e.exit_code}")

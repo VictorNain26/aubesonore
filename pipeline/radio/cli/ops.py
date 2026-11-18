@@ -61,7 +61,9 @@ def check() -> None:
 
 
 @app.command("backup")
-@_stage("backup")
+# Sans le verrou des commandes : la copie est cohérente même pendant une écriture
+# (radio/core/backup.py), et la sauvegarde garde son heure, même pendant la passe du dimanche.
+@_stage("backup", exclusive=False)
 def backup_command() -> None:
     """Copie la base (API de sauvegarde SQLite, vérifiée) et les modèles dans RADIO_BACKUP_DIR."""
     settings = common._settings()

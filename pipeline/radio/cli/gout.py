@@ -17,6 +17,7 @@ from radio.cli.common import (
     _dec,
     _echo,
     _editorial,
+    _exclusive,
     _fail,
     _n,
     _now,
@@ -42,6 +43,7 @@ from radio.model.model import (
     train,
     trained_on,
     votes_count,
+    votes_digest,
 )
 from radio.signals.audio import EffnetEmbedder, ModelError
 from radio.signals.measure import measure_tracks
@@ -277,7 +279,7 @@ def negatives_sync() -> None:
         _fail(f"negatives.toml invalide : {e.error_count()} erreurs", 2)
     except ValueError as e:
         _fail(f"negatives.toml invalide : {e}", 2)
-    with _db(settings) as conn:
+    with _exclusive(), _db(settings) as conn:
         try:
             rep = import_negatives(
                 conn, DeezerClient(), negatives, editorial.discover.tracks_per_neighbour, _now()
@@ -352,15 +354,17 @@ def _train_lines(r: TrainReport) -> list[str]:
 @app.command("train")
 @_stage("train")
 def train_command() -> None:
-    """Entraîne le modèle s'il y a de nouveaux votes, puis note les candidats."""
+    """Entraîne le modèle s'il y a des votes nouveaux ou corrigés, puis note les candidats."""
     settings = common._settings()
     cfg = _editorial(settings).model
     models_dir = settings.trained_models_dir
     lines = []
     with _db(settings) as conn:
-        n = votes_count(conn)
-        if n == trained_on(conn):
-            lines.append(f"Aucun nouveau vote ({_n(n)} votes) : pas de réentraînement")
+        if votes_digest(conn) == trained_on(conn):
+            lines.append(
+                f"Aucun vote nouveau ni corrigé ({_n(votes_count(conn))} votes) : "
+                "pas de réentraînement"
+            )
         else:
             try:
                 lines += _train_lines(train(conn, models_dir, cfg, _now()))
