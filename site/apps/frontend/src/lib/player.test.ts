@@ -186,6 +186,27 @@ describe('player store', () => {
     expect(usePlayer.getState().isPlaying).toBe(false);
   });
 
+  it('a stop while the audio context wakes up starts no stream', async () => {
+    const context = new MockAudioContext();
+    context.state = 'suspended';
+    let wake: () => void = () => {};
+    context.resume.mockReturnValueOnce(new Promise<void>((r) => (wake = r)));
+    vi.stubGlobal(
+      'AudioContext',
+      vi.fn().mockImplementation(function () {
+        return context;
+      })
+    );
+    const { usePlayer } = await import('./player');
+
+    const playing = usePlayer.getState().play();
+    usePlayer.getState().stop();
+    wake();
+    await playing;
+    expect(mockAudioInstance.play).not.toHaveBeenCalled();
+    expect(usePlayer.getState().isPlaying).toBe(false);
+  });
+
   it('fades the sound in on play, and out before cutting the stream on stop', async () => {
     const context = new MockAudioContext();
     vi.stubGlobal(

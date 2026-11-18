@@ -262,6 +262,8 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
       initAudioContext(audio);
       if (audioContext?.state === 'suspended') {
         await audioContext.resume();
+        // A stop while the context woke up: no stream to start.
+        if (attempt !== playAttempt) return;
       }
       fadeTo(0, 0);
       audio.src = STREAM_URL;
