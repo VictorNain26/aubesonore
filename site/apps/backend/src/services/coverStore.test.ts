@@ -3,6 +3,7 @@ import { mkdtemp, readdir, readFile, rm, stat, writeFile, mkdir } from 'fs/promi
 import { tmpdir } from 'os';
 import { join } from 'path';
 import sharp from 'sharp';
+import { __resetRateLimits } from '../lib/rateLimit';
 import { coverStoreRoutes } from '../routes/coverStore.routes';
 import {
   createCoverStore,
@@ -60,6 +61,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  __resetRateLimits();
   root = await mkdtemp(join(tmpdir(), 'cover-store-'));
   seen = [];
   answers = new Map();
@@ -213,6 +215,27 @@ describe('a Cover Art Archive cover', () => {
     expect((await readdir(join(root, 'covers/caa', RG))).sort()).toEqual(['250.webp', '500.webp']);
     expect((await stat(join(root, 'covers/caa', RG, '500.webp'))).mode & 0o777).toBe(0o644);
   });
+
+  it('fetches 8 covers at once at most: past that, fails for now without asking', async () => {
+    const releases: Array<() => void> = [];
+    const ids = Array.from({ length: 9 }, (_, i) => `00000000-0000-4000-8000-00000000000${i}`);
+    for (const id of ids)
+      answers.set(
+        `https://coverartarchive.org/release-group/${id}/front-500`,
+        () => new Promise<Response>((resolve) => releases.push(() => resolve(image(jpeg100)())))
+      );
+
+    const first = ids.slice(0, 8).map((id) => store.get({ kind: 'caa', id, size: 500 }));
+    // Each looks for its file first: the 8 fetches start once those reads have failed.
+    while (seen.length < 8) await Bun.sleep(1);
+    expect(await store.get({ kind: 'caa', id: ids[8]!, size: 500 })).toBe('failed');
+    expect(seen).toHaveLength(8);
+
+    for (const release of releases) release();
+    await Promise.all(first);
+    answers.set(`https://coverartarchive.org/release-group/${ids[8]}/front-500`, image(jpeg100));
+    expect(Buffer.isBuffer(await store.get({ kind: 'caa', id: ids[8]!, size: 500 }))).toBe(true);
+  });
 });
 
 describe('fillReleaseGroup', () => {
@@ -332,6 +355,21 @@ describe('GET /api/cover-store/:kind/:id/:file', () => {
       expect((await ask(path)).status).toBe(404);
     }
     expect(seen).toEqual([]);
+  });
+
+  it('answers 429, kept nowhere, past 60 misses a minute from one listener, and only to them', async () => {
+    const from = (ip: string) =>
+      coverStoreRoutes(store).handle(
+        new Request(`http://localhost/api/cover-store/caa/${RG}/500.webp`, {
+          headers: { 'cf-connecting-ip': ip },
+        })
+      );
+    for (let i = 0; i < 60; i++) expect((await from('203.0.113.7')).status).toBe(404);
+
+    const refused = await from('203.0.113.7');
+    expect(refused.status).toBe(429);
+    expect(refused.headers.get('cache-control')).toBe('no-store');
+    expect((await from('203.0.113.8')).status).toBe(404);
   });
 });
 

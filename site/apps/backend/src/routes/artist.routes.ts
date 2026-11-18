@@ -3,6 +3,7 @@ import { getArtistProfile } from '../services/artistProfileService';
 import { MusilogyUnavailable } from '../services/musilogyService';
 import { resolveArtist } from '../services/artistResolver';
 import { isValidArtistSlug } from '../validators/artistValidator';
+import { MAX_NAME_LENGTH } from '../validators/trackValidator';
 import { checkRate, getClientIp, tooManyRequests } from '../lib/rateLimit';
 
 const ARTIST_LIMIT = 10;
@@ -22,6 +23,10 @@ export const artistRoutes = new Elysia({ prefix: '/api/artist' })
     if (!name) {
       set.status = 400;
       return { error: 'Paramètre "name" requis' };
+    }
+    if (name.length > MAX_NAME_LENGTH) {
+      set.status = 400;
+      return { error: 'Paramètre "name" trop long' };
     }
 
     const resolved = await resolveArtist(name);

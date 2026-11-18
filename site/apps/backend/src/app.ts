@@ -15,7 +15,12 @@ import { coverStoreRoutes } from './routes/coverStore.routes';
 import { coverStore } from './services/coverStore';
 
 /** The API as it serves: every plugin and route; index.ts boots it and listens. */
-export const app = new Elysia()
+export const app = new Elysia({
+  // No route takes more than a small JSON body. Bun's default is 128 MB, and api.aubesonore.fr
+  // reaches this server without nginx's 1 MB: the same 1 MB here
+  // (https://elysiajs.com/patterns/configuration.html#serve-maxrequestbodysize).
+  serve: { maxRequestBodySize: 1024 * 1024 },
+})
   .use(requestLog)
   .use(securityHeaders)
   .use(
