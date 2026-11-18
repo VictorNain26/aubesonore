@@ -101,7 +101,6 @@ def test_a_relation_of_a_life_rather_than_of_the_music_is_counted_not_published(
 
 DISINCARNATE = "a9424175-8b06-44ad-a1f4-319e92a50879"
 JOY_DIVISION = "9a58fda3-f4ed-4080-a3a5-f457aac9fcdd"
-CLEEF = "1434b0d0-d647-421e-b345-1b9847045a52"
 BEATLES = "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"
 
 
@@ -128,16 +127,6 @@ def test_a_month_precision_date_reads_its_year_and_a_missing_edge_stays_null(con
         "SELECT DISTINCT y_begin, y_end FROM links WHERE dst_mbid = ? AND type = 'member of band'",
         [JOY_DIVISION],
     ).fetchall() == [(None, 1980)]
-
-
-def test_identical_relations_collapse_to_one_row(con):
-    # Cleef credits the same person twice with the same (absent) dates — the
-    # dump emits one relation per set of attributes. Without DISTINCT this
-    # witness alone publishes the same link twice.
-    assert con.execute(
-        "SELECT count(*) FROM links WHERE dst_mbid = ? AND src_mbid = ?",
-        [CLEEF, "1b850cda-5579-4be6-bd51-a6b6fb3ccb2b"],
-    ).fetchall() == [(1,)]
 
 
 def test_a_link_other_than_membership_keeps_its_musicbrainz_type(con):

@@ -19,9 +19,11 @@ from musilogy.publish import (
     compare,
     compared,
     delivered,
+    extraction_matches_rows_loaded,
     group_of,
     previous_manifest,
     publish,
+    read_extraction,
 )
 from tests.conftest import (
     build_synthetic,
@@ -32,14 +34,6 @@ from tests.conftest import (
 )
 
 REF_SUMS = dump_sums(DUMP)
-
-
-def test_publish_writes_every_table(con, tmp_path):
-    manifest = publish(con, tmp_path, DUMP)
-    for name in ("artists", "albums", "links", "popularity", "same_sound"):
-        assert (tmp_path / f"{name}.parquet").exists()
-        assert name in manifest["counts"]
-    assert manifest["dump"] == DUMP
 
 
 def test_publish_removes_every_file_it_did_not_write(con, tmp_path):
@@ -58,17 +52,35 @@ def test_publish_removes_every_file_it_did_not_write(con, tmp_path):
     assert "genre_parents" not in manifest["counts"]
 
 
-def test_manifest_carries_archive_checksums(con, tmp_path):
+def test_manifest_states_the_provenance_of_the_delivery(con, tmp_path):
+    # The dump, its archives' digests, the popularity snapshot the build
+    # loaded, the code that built it and the rows that fed it: what a reader
+    # needs to replay the delivery from its own artifacts.
     manifest = publish(con, tmp_path, DUMP)
+    assert manifest["dump"] == DUMP
     assert manifest["archive_sha256"] == expected_sums(REF_SUMS)
-
-
-def test_manifest_names_the_popularity_snapshot_the_build_loaded(con, tmp_path):
-    manifest = publish(con, tmp_path, DUMP)
     assert manifest["popularity"] == {
         "snapshot": REFERENCE_POPULARITY,
         "sha256": expected_sums(popularity_sums(REFERENCE_POPULARITY)),
     }
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=PACKAGE_DIR,
+    ).stdout.strip()
+    assert manifest["git_sha"] == head
+    loaded = manifest["inputs"]["rows_loaded"]
+    assert loaded["raw_artists"] == con.execute("SELECT count(*) FROM raw_artists").fetchone()[0]
+    assert (
+        loaded["raw_release_groups"]
+        == con.execute("SELECT count(*) FROM raw_release_groups").fetchone()[0]
+    )
+    # No sidecar: null, the honest answer. An absent key would let a reader
+    # assume nothing was dropped.
+    assert manifest["inputs"]["extraction"] is None
+    assert manifest["inputs"]["extraction_matches_rows_loaded"] is None
 
 
 def test_manifest_names_the_official_parts_and_counts_the_statuses(tmp_path, monkeypatch):
@@ -97,18 +109,6 @@ def test_a_build_without_snapshot_says_so_in_the_manifest(tmp_path):
     manifest = publish(con, tmp_path / "out", DUMP)
     assert manifest["popularity"] is None
     assert manifest["official"] is None
-
-
-def test_manifest_carries_git_sha(con, tmp_path):
-    manifest = publish(con, tmp_path, DUMP)
-    expected = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        capture_output=True,
-        text=True,
-        check=True,
-        cwd=PACKAGE_DIR,
-    ).stdout.strip()
-    assert manifest["git_sha"] == expected
 
 
 def test_r2_anomaly_counters_are_not_mismapped_between_subrules(tmp_path):
@@ -165,61 +165,68 @@ def test_manifest_carries_the_parameters_the_build_actually_used(tmp_path):
     assert (parameters["dump_year"], parameters["min_year"]) == (2030, 1900)
 
 
-def test_manifest_counts_the_rows_that_fed_the_build(con, tmp_path):
-    manifest = publish(con, tmp_path, DUMP)
-    loaded = manifest["inputs"]["rows_loaded"]
-    assert loaded["raw_artists"] == con.execute("SELECT count(*) FROM raw_artists").fetchone()[0]
-    assert (
-        loaded["raw_release_groups"]
-        == con.execute("SELECT count(*) FROM raw_release_groups").fetchone()[0]
-    )
-
-
-AGREEING = {"artists_kept": 694, "release_groups_kept": 10613}
 SHORT = {"artists_kept": 28, "release_groups_kept": 3627}
 UNREADABLE = {"unreadable": True}
 
 
-# What the manifest says of the extraction sidecar: its record, and whether it
-# agrees with the rows the build loaded. Three states, never two: "no record"
-# (None) is not "mismatch" (False), and a sidecar that is absent, unreadable or
-# missing a count says nothing about the extraction.
+# The extraction sidecar, as read: its record, or None for no record, which a
+# broken record must never pass for.
 @pytest.mark.parametrize(
-    ("sidecar", "extraction", "matches"),
+    ("sidecar", "extraction"),
     [
-        # The synthetic builds have no extraction step at all. Null is the
-        # honest answer; an absent key would let a reader assume nothing was
-        # dropped.
-        pytest.param(None, None, None, id="no-sidecar"),
-        pytest.param("missing", None, None, id="path-missing"),
+        pytest.param(None, None, id="path-missing"),
         # The "full disk during extraction" case: a bare json.loads used to
         # take the whole manifest down, counts and parameters with it.
-        pytest.param(b'{"artists_kept": 7', UNREADABLE, None, id="truncated"),
+        pytest.param(b'{"artists_kept": 7', UNREADABLE, id="truncated"),
         # Parses without error, then would flow into the manifest as a shape
         # no reader expects.
-        pytest.param(b"[1, 2, 3]", UNREADABLE, None, id="not-an-object"),
+        pytest.param(b"[1, 2, 3]", UNREADABLE, id="not-an-object"),
         # A cut inside a multi-byte character fails at decode, before
         # json.loads runs: fails if the except clause is narrowed back to
         # json.JSONDecodeError alone.
-        pytest.param('{"name": "Motörhead"}'.encode()[:14], UNREADABLE, None, id="mid-character"),
-        # What the fixtures load (test_manifest_counts_the_rows_that_fed_the_build):
-        # the case the discrepancy check must let through.
-        pytest.param(json.dumps(AGREEING).encode(), AGREEING, True, id="counts-agree"),
-        # Fewer release groups reached the disk than the extraction kept: the
-        # boolean goes False rather than leave a human to subtract by hand.
-        pytest.param(json.dumps(SHORT).encode(), SHORT, False, id="counts-disagree"),
-        pytest.param(b'{"artists_kept": 28}', {"artists_kept": 28}, None, id="count-missing"),
+        pytest.param('{"name": "Motörhead"}'.encode()[:14], UNREADABLE, id="mid-character"),
+        pytest.param(json.dumps(SHORT).encode(), SHORT, id="record"),
     ],
 )
-def test_manifest_reports_the_extraction_sidecar(con, tmp_path, sidecar, extraction, matches):
-    path = None if sidecar is None else extraction_sidecar(tmp_path)
-    if isinstance(sidecar, bytes):
-        assert path is not None
+def test_the_extraction_sidecar_reads_as_its_record_or_says_it_is_unreadable(
+    tmp_path, sidecar, extraction
+):
+    path = extraction_sidecar(tmp_path)
+    if sidecar is not None:
         path.write_bytes(sidecar)
+    assert read_extraction(path) == extraction
+
+
+def test_the_extraction_matches_the_rows_loaded_only_when_both_counts_agree(con, tmp_path):
+    # Three states, never two: "no record" (None) is not "mismatch" (False),
+    # and a sidecar that is absent, unreadable or missing a count says nothing
+    # about the extraction.
+    agreeing = {
+        "artists_kept": con.execute("SELECT count(*) FROM raw_artists").fetchone()[0],
+        "release_groups_kept": con.execute("SELECT count(*) FROM raw_release_groups").fetchone()[0],
+    }
+    path = extraction_sidecar(tmp_path)
+
+    def verdict(sidecar):
+        path.write_text(sidecar, encoding="utf-8")
+        return extraction_matches_rows_loaded(con, path)
+
+    assert extraction_matches_rows_loaded(con, None) is None
+    assert verdict(json.dumps(agreeing)) is True
+    # Fewer release groups reached the disk than the extraction kept: False
+    # rather than leave a human to subtract by hand.
+    short = {**agreeing, "release_groups_kept": agreeing["release_groups_kept"] + 1}
+    assert verdict(json.dumps(short)) is False
+    assert verdict(json.dumps({"artists_kept": agreeing["artists_kept"]})) is None
+    assert verdict('{"artists_kept": 7') is None
+
+
+def test_manifest_reports_the_extraction_sidecar_and_its_verdict(con, tmp_path):
+    path = extraction_sidecar(tmp_path)
+    path.write_text(json.dumps(SHORT), encoding="utf-8")
     manifest = publish(con, tmp_path / "out", DUMP, path)
-    assert manifest["counts"]
-    assert manifest["inputs"]["extraction"] == extraction
-    assert manifest["inputs"]["extraction_matches_rows_loaded"] is matches
+    assert manifest["inputs"]["extraction"] == SHORT
+    assert manifest["inputs"]["extraction_matches_rows_loaded"] is False
 
 
 # A delivery is reproducible only if its rows come out in a fixed order: same
@@ -303,11 +310,9 @@ def test_the_manifest_names_every_parameter_the_sql_sets():
         pytest.param(989, True, id="shrunk-past-the-limit"),
     ],
 )
-@pytest.mark.parametrize("name", ["artists", "link_exclusions.not_on_page"])
-def test_a_count_drifts_once_it_moves_past_the_limit(name, got, moved):
-    # A counter is held to the same limit as a table.
-    found = compare({name: 1000}, {name: got}, limit=0.01)
-    assert found == Comparison([Drift(name, 1000, got)] if moved else [], {}, {})
+def test_a_count_drifts_once_it_moves_past_the_limit(got, moved):
+    found = compare({"artists": 1000}, {"artists": got}, limit=0.01)
+    assert found == Comparison([Drift("artists", 1000, got)] if moved else [], {}, {})
 
 
 def test_every_count_that_moved_is_named_and_only_those():

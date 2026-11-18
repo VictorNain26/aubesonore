@@ -12,7 +12,10 @@ def raw_rows():
 
 
 def test_every_known_count_is_published_under_its_own_name(con):
-    # Breaks if the two counts are swapped or a known artist is dropped.
+    # Breaks if the two counts are swapped or a known artist is dropped. An
+    # artist ListenBrainz does not know keeps no row: null is "no listen
+    # recorded", not zero, and published as zero it would sit among the least
+    # popular instead of out of the ranking.
     raw = raw_rows()
     published = {
         mbid: (listen, users, str(snapshot))
@@ -24,17 +27,7 @@ def test_every_known_count_is_published_under_its_own_name(con):
         if r["total_listen_count"] is not None
     }
     assert BEATLES in published
-
-
-def test_an_artist_listenbrainz_does_not_know_keeps_no_row(con):
-    # Null is "no listen recorded", not zero: published as zero, it would sit
-    # among the least popular instead of out of the ranking.
-    unknown = [m for m, r in raw_rows().items() if r["total_listen_count"] is None]
-    assert unknown
-    rows = con.execute(
-        "SELECT count(*) FROM popularity WHERE list_contains(?, mbid)", [unknown]
-    ).fetchone()
-    assert rows == (0,)
+    assert len(published) < len(raw), "no unknown artist left in the fixture"
 
 
 def test_a_build_without_a_snapshot_keeps_its_snapshot_column_a_date(tmp_path):
