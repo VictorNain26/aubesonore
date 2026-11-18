@@ -268,9 +268,11 @@ export const radioPlay = pgTable(
   },
   (table) => ({
     radioPlayShIdUnique: uniqueIndex('radio_play_sh_id_unique').on(table.shId),
+    // Postgres's own DESC (nulls first), the order of `desc(radioPlay.playedAt)`: an index serves a
+    // sort only in that exact order, and Drizzle's desc() alone is nulls last.
     radioPlayArtistPlayedAtIdx: index('radio_play_artist_played_at_idx').on(
       table.artistNormalized,
-      table.playedAt
+      table.playedAt.desc().nullsFirst()
     ),
   })
 );

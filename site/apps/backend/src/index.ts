@@ -1,7 +1,6 @@
 import { app } from './app';
 import { env } from './config/env';
-import { migrationPool, pool } from './db';
-import { runMigrations } from './db/migrate';
+import { migrateDatabase, pool } from './db';
 import { logger } from './lib/logger';
 import { linksCache, itunesCache } from './services/trackLinksService';
 import { deezerCache } from './services/deezerService';
@@ -26,21 +25,17 @@ try {
   logger.error('coverStore.blocked_not_removed', { err: (err as Error).message });
 }
 
-// Apply pending DB migrations BEFORE serving traffic. The runner tracks
-// applied migrations in __app_migrations and is idempotent across restarts.
-// Refusing to start with a stale schema is safer than serving 500s.
-const migrations = migrationPool();
+// Pending migrations before serving traffic: refusing to start with a stale schema is safer than
+// serving 500s.
 try {
-  await runMigrations(migrations);
+  await migrateDatabase();
 } catch (err) {
   logger.error('migrations failed, aborting boot', { err: (err as Error).message });
   process.exit(1);
-} finally {
-  await migrations.end();
 }
 
-// The kept tracks' old copies of the antenna's art (Deezer's) leave the volume, once migration
-// 0024 has cleared their addresses.
+// The kept tracks' old copies of the antenna's art (Deezer's) leave the volume, their addresses
+// cleared by a migration.
 try {
   if (await coverStore.removeKeptCopies()) logger.info('coverStore.kept_copies_removed');
 } catch (err) {

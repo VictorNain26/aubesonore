@@ -1,7 +1,8 @@
 # A merged migration is deployed (merging to master deploys) and never runs again: the backend
-# applies only new drizzle/*.sql files at boot (src/db/migrate.ts), the pipeline only versions
-# above PRAGMA user_version (radio/core/db.py, _migrate). Editing, renaming or deleting one would
-# leave production's schema silently different from the code, so a change goes in a new file.
+# applies only the drizzle/ migrations its database has not run (Drizzle's migrate, after the last
+# one recorded), the pipeline only versions above PRAGMA user_version (radio/core/db.py, _migrate).
+# Editing, renaming or deleting one would leave production's schema silently different from the
+# code, so a change goes in a new file.
 name: Migrations
 
 on:
@@ -24,14 +25,24 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # The site's migrations are those Drizzle's journal lists on master: their files stay as
+      # they are, and the journal only grows.
       - name: Merged migrations are left unchanged
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
+          JOURNAL: site/apps/backend/drizzle/meta/_journal.json
         run: |
+          merged=$(git show "$BASE:$JOURNAL" 2>/dev/null || echo '{"entries":[]}')
+          site=$(jq -r '.entries[].tag | "site/apps/backend/drizzle/\(.).sql"' <<<"$merged")
           changed=$(git diff --name-only --diff-filter=MDR "$BASE...HEAD" -- \
-            'site/apps/backend/drizzle/*.sql' 'pipeline/radio/core/migrations/*.sql')
+            $site 'pipeline/radio/core/migrations/*.sql')
           if [ -n "$changed" ]; then
             echo "::error::Merged migrations changed; write a new migration instead:"
             echo "$changed"
+            exit 1
+          fi
+          if ! jq -e --argjson merged "$(jq .entries <<<"$merged")" \
+            '.entries[:($merged | length)] == $merged' "$JOURNAL" >/dev/null; then
+            echo "::error::$JOURNAL changed its merged entries; only new ones are added"
             exit 1
           fi

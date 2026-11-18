@@ -145,8 +145,19 @@ jobs:
       - name: Run backend tests
         run: pnpm --filter=@aubesonore/backend test
 
-      - name: Push the schema to the test database
-        run: pnpm --filter=@aubesonore/backend db:push
+      # drizzle-kit writes nothing when the migrations already say what schema.ts says.
+      - name: Every schema.ts change has its migration
+        run: |
+          pnpm --filter=@aubesonore/backend exec drizzle-kit generate
+          if [ -n "$(git status --porcelain -- site/apps/backend/drizzle)" ]; then
+            echo "::error::schema.ts changed without its migration: run drizzle-kit generate"
+            git status --short -- site/apps/backend/drizzle
+            exit 1
+          fi
+
+      # The test database is built as production's is: by the migrations.
+      - name: Migrate the test database
+        run: pnpm --filter=@aubesonore/backend db:migrate
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/aubesonore_test
 

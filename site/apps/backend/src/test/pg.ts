@@ -3,7 +3,7 @@ import { db } from '../db';
 
 /**
  * For the tests against a real Postgres (`*.db.test.ts`, `bun run test:db`): a database whose
- * name ends in `_test`, its schema pushed from schema.ts (`bun run db:push`). Anything else is
+ * name ends in `_test`, its schema built by the migrations (`bun run db:migrate`). Anything else is
  * refused before a table is touched, so a wrong DATABASE_URL never empties a real database.
  */
 export async function assertTestDatabase(): Promise<void> {
