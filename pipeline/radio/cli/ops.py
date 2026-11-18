@@ -4,7 +4,6 @@ import os
 import smtplib
 import sqlite3
 import ssl
-import subprocess
 from datetime import UTC, datetime
 from email.message import EmailMessage
 from email.utils import format_datetime
@@ -103,21 +102,17 @@ def report() -> None:
 
 @app.command()
 def alert(unit: str) -> None:
-    """Envoie à ALERT_EMAIL_TO le courriel d'une unité en échec, avec la fin de son journal
-    (lancée par radio-alert@.service, l'OnFailure= des unités du pipeline). Sans relais
-    configuré, ou s'il refuse le courriel, elle échoue : une alerte perdue ne se tait pas."""
+    """Envoie à ALERT_EMAIL_TO le courriel d'une unité en échec (lancée par radio-alert@.service,
+    l'OnFailure= des unités du pipeline). Sans relais configuré, ou s'il refuse le courriel, elle
+    échoue : une alerte perdue ne se tait pas. Le courriel ne dit que l'unité, l'heure et où
+    regarder, jamais le journal : une erreur peut y écrire une URL signée ou une clé d'API, et le
+    courriel passe par le relais et la boîte du destinataire."""
     settings = common._settings()
     host, sender, to = settings.smtp_host, settings.smtp_from, settings.alert_email_to
     if host is None or sender is None or to is None:
         required = (("SMTP_HOST", host), ("SMTP_FROM", sender), ("ALERT_EMAIL_TO", to))
         missing = ", ".join(name for name, value in required if value is None)
         _fail(f"Alerte {unit} non envoyée : {missing} à définir dans .env", 2)
-    journal = subprocess.run(
-        ["journalctl", "--user", "-u", unit, "-n", "50", "--no-pager", "-o", "cat"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
     now = datetime.now().astimezone()
     msg = EmailMessage()
     msg["Subject"] = f"AubeSonore : {unit} en échec"
@@ -126,9 +121,8 @@ def alert(unit: str) -> None:
     msg["Date"] = format_datetime(now)
     msg.set_content(
         f"{unit} est en échec depuis le {now:%Y-%m-%d à %H:%M %Z}.\n"
-        f"Où regarder : systemctl --user status {unit}, journalctl --user -u {unit}, "
-        "radio report (docs/conception.md §8.2).\n\n"
-        f"Fin du journal :\n\n{journal.stdout or journal.stderr or '(vide)'}"
+        f"Où regarder, sur le serveur : systemctl --user status {unit}, "
+        f"journalctl --user -u {unit}, radio report (docs/conception.md §8.2).\n"
     )
     # Le site se connecte de même (site/apps/backend/src/services/mailerService.ts).
     implicit_tls = settings.smtp_port == 465

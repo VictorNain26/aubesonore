@@ -512,8 +512,9 @@ Aucune surveillance externe. Un seul message : un courriel au propriétaire quan
 perdrait la semaine en silence. C'est le mécanisme documenté de systemd : chacune de ces unités
 déclare `OnFailure=radio-alert@%N.service` (`systemd.unit(5)`, « OnFailure= » et « Specifiers »),
 et le gabarit `radio-alert@.service` lance `radio alert <unité>`, qui envoie par `smtplib` un
-courriel en texte brut : l'unité en échec, l'heure, et les 50 dernières lignes de son journal
-(`journalctl --user -u <unité> -n 50 -o cat`). Il passe par le relais SMTP du site, avec ses
+courriel en texte brut : l'unité en échec, l'heure et où regarder sur le serveur. Rien du
+journal : une erreur peut y écrire une URL signée ou une clé d'API, et le courriel passe par le
+relais et la boîte du destinataire. Il passe par le relais SMTP du site, avec ses
 `SMTP_*` (TLS implicite sur le port 465, STARTTLS sinon, comme
 `site/apps/backend/src/services/mailerService.ts`), vers `ALERT_EMAIL_TO` (`.env.example`).
 Sans `SMTP_HOST`, `SMTP_FROM` ou `ALERT_EMAIL_TO`, ou si le relais refuse le courriel,
@@ -560,7 +561,7 @@ le dernier passage.
 | chaque jour 23:00 | `radio-grille` | grille du lendemain dans les 24 playlists horaires du jour |
 | chaque jour 04:30 | `radio-backup` | copie de `data/radio.db` (API de sauvegarde SQLite, `integrity_check` vérifié avant d'entrer dans son jour : une copie refusée ne laisse rien) et de `data/models/` dans `RADIO_BACKUP_DIR` (`/media/plex/.backups/radio`, autre disque physique), 14 jours gardés |
 | en continu | `radio-votes` | page de vote, `127.0.0.1:8040`, publiée sur `votes.aubesonore.fr` |
-| à l'échec de l'une des trois premières | `radio-alert@<unité>` | `radio alert <unité>.service` : courriel à `ALERT_EMAIL_TO`, avec la fin du journal (§8.2) |
+| à l'échec de l'une des trois premières | `radio-alert@<unité>` | `radio alert <unité>.service` : courriel à `ALERT_EMAIL_TO`, l'unité et l'heure, rien du journal (§8.2) |
 
 - Pannes : §8.2.
 - **Une commande à la fois.** Les commandes qui écrivent la base (les étapes de la passe,
