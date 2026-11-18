@@ -17,6 +17,7 @@ from radio.cli.common import (
     _dec,
     _echo,
     _editorial,
+    _exclusive,
     _fail,
     _n,
     _now,
@@ -277,7 +278,7 @@ def negatives_sync() -> None:
         _fail(f"negatives.toml invalide : {e.error_count()} erreurs", 2)
     except ValueError as e:
         _fail(f"negatives.toml invalide : {e}", 2)
-    with _db(settings) as conn:
+    with _exclusive(), _db(settings) as conn:
         try:
             rep = import_negatives(
                 conn, DeezerClient(), negatives, editorial.discover.tracks_per_neighbour, _now()

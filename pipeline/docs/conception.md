@@ -542,8 +542,21 @@ le dernier passage.
 | en continu | `radio-votes` | page de vote, `127.0.0.1:8040`, publiée sur `votes.aubesonore.fr` |
 
 - Pannes : §8.2.
+- **Une commande à la fois.** Les commandes qui écrivent la base (les étapes de la passe,
+  `grille`, `negatives-sync`), sous systemd comme à la main, prennent un verrou `flock(2)` sur
+  `data/radio.lock` et attendent qu'il soit libre, ce que le journal signale : un timer
+  `Persistent=true` qui rattrape son heure au démarrage pendant la passe passe entre deux de ses
+  étapes au lieu d'écrire en même temps. Attendre plutôt que sauter : une grille sautée laisserait
+  au lendemain la grille d'il y a une semaine. Le noyau rend le verrou à la fin du processus,
+  même tué. Ne le prennent pas : la page de vote, qui doit toujours répondre (chaque vote est une
+  courte transaction, que SQLite sérialise) ; `radio backup`, dont la copie est cohérente même
+  pendant une écriture et qui garde son heure ; `report` et `check`, qui ne font que lire.
+- **Migrations.** La page de vote et une commande qui démarrent ensemble sur un nouveau code
+  ouvrent la base en même temps : chaque migration prend le verrou d'écriture de SQLite
+  (`BEGIN IMMEDIATE`) et relit `user_version` dessous, et ne passe qu'une fois.
 - Un gros rattrapage de `signals` (environ 3 s par titre) ou de `mesures` (environ 17 s par
-  titre) se lance à la main, en `nice`, jamais pendant `radio-weekly`.
+  titre) se lance à la main, en `nice`, jamais pendant `radio-weekly` : il ferait attendre
+  l'étape suivante de la passe jusqu'à sa fin.
 
 **Réglages.** Les secrets et les URL sont dans `.env` (modèle : `.env.example`, jamais commité).
 Le reste est dans `config/editorial.toml`.
