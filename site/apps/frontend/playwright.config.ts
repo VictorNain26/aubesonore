@@ -25,9 +25,12 @@ export default defineConfig({
     ? [['github'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
     : 'list',
   expect: {
-    // Pixel for pixel: in the same image the drawing is the same, and a token's small change of
-    // colour must show (the default threshold, 0.2, lets a slight shade through).
-    toHaveScreenshot: { animations: 'disabled', caret: 'hide', scale: 'css', threshold: 0 },
+    // Nearly pixel for pixel: a token's small change of colour must show (the default threshold,
+    // 0.2, lets a slight shade through). Chromium 159 composites the hero's light a unit of one
+    // channel apart from one browser to the next, its canvas the same: 0.005 (a YIQ distance,
+    // playwright.dev/docs/api/class-pageassertions) lets one unit pass and fails at two on every
+    // channel, still under what an eye tells apart.
+    toHaveScreenshot: { animations: 'disabled', caret: 'hide', scale: 'css', threshold: 0.005 },
   },
   use: {
     baseURL,
@@ -65,6 +68,8 @@ export default defineConfig({
       VITE_STATION_SHORTCODE: 'aubesonore',
       API_PROXY_TARGET: '',
       PUBLIC_API_PROXY_TARGET: '',
+      // A page under capture is never reloaded by a file that changes meanwhile (vite.config.ts).
+      NO_WATCH: 'true',
     },
   },
 });

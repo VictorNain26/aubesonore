@@ -76,6 +76,11 @@
       "schedule": ["before 6am on monday"]
     },
     {
+      "description": "The visual job runs in the official Playwright image whose tag is the version of @playwright/test (site/README.md « Captures et accessibilité »): one PR moves both, or the job finds no browser",
+      "matchPackageNames": ["@playwright/test", "mcr.microsoft.com/playwright"],
+      "groupName": "playwright"
+    },
+    {
       "description": "Tools pipeline/scripts/dev-setup.sh downloads: their pinned SHA-256 is replaced by hand in the same PR",
       "matchFileNames": ["pipeline/scripts/dev-setup.sh"],
       "automerge": false,

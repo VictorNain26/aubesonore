@@ -100,7 +100,7 @@ Redessiner les références après un changement voulu, au choix :
 
   ```bash
   docker run --rm --network none --user "$(id -u):$(id -g)" -v "$PWD":/work \
-    -w /work/site/apps/frontend mcr.microsoft.com/playwright:v1.64.1-noble \
+    -w /work/site/apps/frontend mcr.microsoft.com/playwright:v1.65.1-noble \
     node ../../node_modules/@playwright/test/cli.js test --update-snapshots
   ```
 
