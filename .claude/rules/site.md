@@ -89,6 +89,13 @@ on its own.
 The app has no URL guard: a route that must fetch a user-supplied URL needs one first, blocking
 private IPv4/IPv6 and link-local (`169.254.0.0/16` = cloud metadata) and enforcing `https` in prod.
 
+Anything a stranger can send has a bound, so no anonymous client can make the server call others
+or hold memory without limit: a public route that fetches another service has a per-IP limit
+(`checkRate`, and the cover store a cap on fetches at once), free text is capped
+(`MAX_NAME_LENGTH`), a body at 1 MB (`app.ts`), and every `TtlCache` at 5,000 entries. A route nginx
+proxies with `proxy_pass_request_headers off` must still pass `CF-Connecting-IP`, or its limit is
+shared by every listener.
+
 ## Track links and YouTube
 
 - Track links come from each platform's API; Odesli's keyless API is closed. A kept track's Deezer

@@ -109,6 +109,10 @@ const FETCH_TIMEOUT_MS = 15_000;
 const MAX_UPSTREAM_BYTES = 10 * 1024 * 1024;
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const MISSING_FOR_MS = 24 * 60 * 60 * 1000;
+// Fetches under way at once, the listeners' misses, coverFill's and the antenna's together: the
+// rate limit holds one client, this holds many. A fetch past it fails for now (a 502 kept
+// nowhere), and the next view asks again.
+const MAX_FETCHES = 8;
 const WEBP_QUALITY = 80;
 
 export function createCoverStore(options: CoverStoreOptions) {
@@ -121,6 +125,7 @@ export function createCoverStore(options: CoverStoreOptions) {
   // A flight hands every size it made to each caller, who takes its own: callers asking for
   // different sizes of one source share it.
   const flight = createSingleFlight<Map<number, Buffer> | 'missing' | 'failed'>();
+  let fetching = 0;
 
   const fileOf = (key: CoverKey) => join(root, 'covers', key.kind, key.id, `${key.size}.webp`);
 
@@ -246,7 +251,9 @@ export function createCoverStore(options: CoverStoreOptions) {
   ): Promise<Made> {
     if (missing.get(source)) return Promise.resolve('missing');
     const made = flight(source, async () => {
-      const image = await fetchSource();
+      if (fetching >= MAX_FETCHES) return 'failed';
+      fetching++;
+      const image = await fetchSource().finally(() => fetching--);
       if (image === 'missing') missing.set(source, true);
       if (!Buffer.isBuffer(image)) return image;
       try {

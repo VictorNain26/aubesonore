@@ -5,6 +5,7 @@ import { findTrackLinks } from '../services/trackLinksService';
 import { storedReleaseGroup } from '../services/keptTrackCovers';
 import { renderSharePage } from '../services/templates/sharePage';
 import { requestLocale } from '../lib/locale';
+import { MAX_NAME_LENGTH } from '../validators/trackValidator';
 
 const SHARE_LIMIT = 30;
 const SHARE_WINDOW_MS = 60_000;
@@ -25,6 +26,10 @@ export const shareRoutes = new Elysia().get('/t', async ({ request, query, set }
   if (!title || !artist) {
     set.status = 400;
     return { error: 'Paramètres "artist" et "title" requis' };
+  }
+  if (title.length > MAX_NAME_LENGTH || artist.length > MAX_NAME_LENGTH) {
+    set.status = 400;
+    return { error: 'Paramètres "artist" ou "title" trop longs' };
   }
 
   const failed = (event: string) => (error: unknown) => {

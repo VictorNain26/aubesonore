@@ -27,6 +27,19 @@ describe('TtlCache', () => {
     }
   });
 
+  it('holds 5,000 entries at most, dropping the oldest write first', () => {
+    const cache = new TtlCache<number>(60_000);
+    for (let i = 0; i < 5_000; i++) cache.set(`k${i}`, i);
+    cache.set('k0', 0); // rewritten: now the newest
+
+    cache.set('new', 1);
+
+    expect(cache.size()).toBe(5_000);
+    expect(cache.get('k1')).toBeUndefined();
+    expect(cache.get('k0')).toBe(0);
+    expect(cache.get('new')).toBe(1);
+  });
+
   it('stores null as a real value (distinguishes from missing)', () => {
     const cache = new TtlCache<string | null>(1000);
     cache.set('a', null);

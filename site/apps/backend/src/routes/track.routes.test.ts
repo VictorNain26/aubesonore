@@ -55,6 +55,15 @@ describe('POST /api/track/like', () => {
     expect(answer).not.toHaveProperty('status');
   });
 
+  // Past Postgres's btree limit, the insert into the unique index would fail with a 500.
+  it('refuses a title past 300 characters without keeping anything', async () => {
+    const youtubeUrl = 'https://youtu.be/x';
+    const res = await like({ title: 'a'.repeat(301), artist: 'Sunflower Bean', youtubeUrl });
+
+    expect(res.status).toBe(400);
+    expect(likeSpy).not.toHaveBeenCalled();
+  });
+
   // The link is served back as « play on YouTube »: any other host would be an open redirect.
   it.each([
     'https://evil.example/watch?v=x',

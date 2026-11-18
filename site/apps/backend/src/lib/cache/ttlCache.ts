@@ -5,8 +5,13 @@ export interface CacheStore<V> {
   set(key: string, value: V, ttlMsOverride?: number): void;
 }
 
+// Several caches are keyed by what a caller sends (a title, an artist name, an MBID): without a
+// cap, a client asking many distinct keys fills the backend's 1 GB.
+const MAX_ENTRIES = 5_000;
+
 /**
- * In-memory TTL cache with periodic sweep.
+ * In-memory TTL cache with periodic sweep, holding at most MAX_ENTRIES: a write into a full cache
+ * drops the oldest write.
  * Suitable for a single backend instance, which the site runs.
  * For multi-instance deployments, implement a Redis-backed `CacheStore<V>`
  * with the same surface and swap at the import site.
@@ -32,6 +37,12 @@ export class TtlCache<V> implements CacheStore<V> {
 
   set(key: string, value: V, ttlMsOverride?: number): void {
     const ttl = ttlMsOverride ?? this.ttlMs;
+    // A Map keeps insertion order: a rewritten key moves to the end, the first key is the oldest.
+    this.store.delete(key);
+    if (this.store.size >= MAX_ENTRIES) {
+      const oldest = this.store.keys().next().value;
+      if (oldest !== undefined) this.store.delete(oldest);
+    }
     this.store.set(key, { value, expiresAt: Date.now() + ttl });
   }
 
