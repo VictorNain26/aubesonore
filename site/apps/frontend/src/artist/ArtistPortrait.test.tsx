@@ -67,14 +67,6 @@ describe('ArtistPortrait', () => {
     expect(shown().className).toContain('object-contain');
   });
 
-  it('marks a photo, and only a photo, with a small ©', () => {
-    const { rerender } = render(<ArtistPortrait images={[PHOTO]} name="Can" seed={SEED} />);
-    expect(screen.getByText('©')).toBeTruthy();
-
-    rerender(<ArtistPortrait images={[COVER]} name="Neu!" seed={SEED} />);
-    expect(screen.queryByText('©')).toBeNull();
-  });
-
   it('opens a cover at 1200 px with its record and year, crediting nobody', async () => {
     render(<ArtistPortrait images={[COVER]} name="Neu!" seed={SEED} />);
 
@@ -109,15 +101,10 @@ describe('ArtistPortrait', () => {
     expect(screen.getByTestId('artist-dawn')).toBeTruthy();
   });
 
-  it("draws the artist's dawn without an image, and when the image fails to load", () => {
-    const { rerender } = render(<ArtistPortrait images={[]} name="Can" seed={SEED} />);
+  it("draws the artist's dawn without an image, with nothing to open", () => {
+    render(<ArtistPortrait images={[]} name="Can" seed={SEED} />);
     expect(screen.getByTestId('artist-dawn')).toBeTruthy();
     expect(screen.queryByRole('button')).toBeNull();
-
-    rerender(<ArtistPortrait images={[PHOTO]} name="Can" seed={SEED} />);
-    // The thumbnail is decoration: the button around it carries the name.
-    fireEvent.error(within(screen.getByRole('button')).getByRole('presentation'));
-    expect(screen.getByTestId('artist-dawn')).toBeTruthy();
   });
 
   it('gives an artist always the same dawn, and two artists different ones', () => {

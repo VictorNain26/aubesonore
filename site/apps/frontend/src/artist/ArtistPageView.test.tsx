@@ -100,19 +100,6 @@ describe('ArtistPageView', () => {
     expect(screen.queryByRole('navigation', { name: 'Votre parcours' })).not.toBeInTheDocument();
   });
 
-  it("carries Musilogy's sections that hold something, on the same page", () => {
-    render(
-      <ArtistPageView
-        state={{ status: 'ready', profile: makeArtistProfile() }}
-        musilogy={MUSILOGY}
-        thisYear={2026}
-      />,
-      { wrapper: MemoryRouter }
-    );
-
-    expect(screen.getByRole('heading', { name: 'Artistes proches' })).toBeInTheDocument();
-  });
-
   it("opens the next artist's close artists on its own first tab", () => {
     const withBands: MusilogyArtist = {
       ...MUSILOGY,
@@ -307,13 +294,11 @@ describe("the artist's own horizon", () => {
     return lines;
   }
 
-  it('draws the same line for the same artist, every time', () => {
+  it('draws the same line for the same artist, every time, and two artists two horizons', () => {
     const first = horizonOf({ mbid: BOWIE });
     expect(first.length).toBeGreaterThan(0);
     expect(horizonOf({ mbid: BOWIE })).toEqual(first);
-  });
-
-  it('draws it from the artist, not the name: two artists, two horizons', () => {
+    // From the artist, not the name.
     expect(horizonOf({ mbid: BOWIE })).not.toEqual(horizonOf({ mbid: RANI }));
     // Without an MBID, the page's own id seeds it.
     expect(horizonOf({ mbid: null, id: 'a-1' })).not.toEqual(horizonOf({ mbid: null, id: 'a-2' }));

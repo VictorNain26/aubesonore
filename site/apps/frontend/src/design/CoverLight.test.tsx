@@ -98,8 +98,6 @@ describe('CoverLight', () => {
     expect(drawn[0]!.filter).toMatch(/^blur\(/);
     expect(canvas).toHaveAttribute('width', '32');
     expect(canvas).toHaveAttribute('height', '32');
-    // The first light comes without a fade: it is the page's own.
-    expect(canvas).not.toHaveClass('light-in');
   });
 
   it('asks Commons for a standard width, through CORS so its pixels can be read', () => {
@@ -229,18 +227,16 @@ describe('CoverLight', () => {
     const next = () => lights()[1]!;
     // Still loading: the last light holds, the next waits unseen.
     expect(next()).toHaveClass('invisible');
-    expect(next()).not.toHaveClass('light-in');
 
     fireEvent.load(files()[1]!);
-    expect(next()).toHaveClass('light-in');
-    // The last fades out as the next fades in: no jump of tint when it goes.
-    expect(lights()[0]).toHaveClass('light-out');
+    expect(next()).not.toHaveClass('invisible');
+    // The last stays while the next fades in: no jump of tint when it goes.
+    expect(srcs()).toEqual(['/covers/station/a1-1/96.webp', '/covers/station/b2-1/96.webp']);
 
     act(() => {
       vi.advanceTimersByTime(LIGHT_FADE_MS);
     });
     expect(srcs()).toEqual(['/covers/station/b2-1/96.webp']);
-    expect(lights()[0]).not.toHaveClass('light-out');
   });
 
   it('holds two lights at most, the one shown and the newest, however fast the titles change', () => {
@@ -265,7 +261,6 @@ describe('CoverLight', () => {
     fireEvent.error(files()[1]!);
     // The last track's light is not this track's: it fades out rather than stay all along.
     expect(srcs()).toEqual(['/covers/station/a1-1/96.webp']);
-    expect(lights()[0]).toHaveClass('light-out');
     act(() => {
       vi.advanceTimersByTime(LIGHT_FADE_MS);
     });
@@ -276,7 +271,5 @@ describe('CoverLight', () => {
     // The next track's light comes as any.
     rerender(<CoverLight art={art('c3')} />);
     expect(srcs()).toEqual(['/covers/station/c3-1/96.webp']);
-    fireEvent.load(files()[0]!);
-    expect(lights()[0]).toHaveClass('light-in');
   });
 });

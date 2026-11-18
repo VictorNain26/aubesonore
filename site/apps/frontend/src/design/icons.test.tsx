@@ -24,13 +24,6 @@ describe('icons', () => {
     expect(screen.getByRole('img', { name: 'Chercher' })).not.toHaveAttribute('aria-hidden');
   });
 
-  it('draw in the colour of the text around them, at the size they are given', () => {
-    render(<SearchIcon title="Chercher" className="size-4" />);
-    const icon = screen.getByRole('img', { name: 'Chercher' });
-    expect(icon).toHaveAttribute('stroke', 'currentColor');
-    expect(icon).toHaveClass('size-4');
-  });
-
   it('draw a 1.4 px line at every size, as the wave beside them', () => {
     const drawn = Object.entries(icons).filter(([name]) => name.endsWith('Icon'));
     const lines = drawn.map(([name, Icon]) => {

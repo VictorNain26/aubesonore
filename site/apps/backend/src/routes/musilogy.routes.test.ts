@@ -110,7 +110,7 @@ beforeEach(() => {
 });
 
 describe('GET /api/musilogy/artist/:mbid', () => {
-  it('gives the close artists in the order musilogy ranks them, each with what it shares', async () => {
+  it('gives the close artists in the order musilogy gives them, never re-sorted, each with what it shares', async () => {
     answers = {
       artist_card: [card],
       artist_same_sound: [
@@ -119,6 +119,10 @@ describe('GET /api/musilogy/artist/:mbid', () => {
         neighbour(RAMONES, 'Ramones', 1974, 3),
         neighbour('0bfba3d3-6a04-4779-bb0a-df07df5b0558', 'Undated', null, 4),
       ],
+      artist_colisten: [
+        neighbour(RAMONES, 'Ramones', 1974, 2),
+        neighbour(KINKS, 'The Kinks', 1963, 1),
+      ],
     };
     pageRows = [{ id: 'a-bowie', slug: 'david-bowie', mbid: BOWIE }];
 
@@ -126,6 +130,7 @@ describe('GET /api/musilogy/artist/:mbid', () => {
     const body = (await res.json()) as {
       card: { name: string; styles: string[]; played: unknown };
       sameSound: Array<{ name: string; played: unknown; term: string; ended: boolean }>;
+      colisten: Array<{ name: string }>;
     };
 
     expect(res.status).toBe(200);
@@ -139,6 +144,7 @@ describe('GET /api/musilogy/artist/:mbid', () => {
       'Ramones',
       'Undated',
     ]);
+    expect(body.colisten.map((n) => n.name)).toEqual(['Ramones', 'The Kinks']);
     expect(body.sameSound[1]).toMatchObject({
       name: 'David Bowie',
       played: { id: 'a-bowie', slug: 'david-bowie' },
@@ -247,8 +253,6 @@ describe('GET /api/musilogy/artist/:mbid', () => {
     expect(body.sameSound).toBeNull();
     expect(body.colisten).toBeNull();
     expect(body.credits).toBeNull();
-    // Declared influences are not sound and left the page (docs/vision.md §2.2).
-    expect(body).not.toHaveProperty('influences');
     expect(body.releases).toBeNull();
     expect(body.bands).toBeNull();
     expect(body.memberProjects).toBeNull();

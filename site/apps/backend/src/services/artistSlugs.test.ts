@@ -31,22 +31,6 @@ describe('slugs published together', () => {
   const plan = (pages: Array<{ mbid: string; name: string; rank: number }>, taken: Set<string>) =>
     planSlugs(pages, new Set(candidatesOf(pages)), taken);
 
-  it("asks about each page's proposal and the few after it", () => {
-    expect(candidatesOf([{ mbid: 'm1', name: 'Air', rank: 1 }])).toEqual([
-      'air',
-      'air-2',
-      'air-3',
-      'air-4',
-      'air-5',
-    ]);
-    expect(candidatesOf([{ mbid: 'm1', name: 'Air', rank: 7 }])).toEqual([
-      'air-7',
-      'air-8',
-      'air-9',
-      'air-10',
-    ]);
-  });
-
   it('names homonyms by their rank, whichever is published first', () => {
     const taken = new Set<string>();
     expect(

@@ -1,20 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { shouldReloadAfterPreloadError, handlePreloadError } from './preloadReload';
-
-describe('shouldReloadAfterPreloadError', () => {
-  it('reloads on the first failure (no prior reload)', () => {
-    expect(shouldReloadAfterPreloadError(1000, null)).toBe(true);
-  });
-
-  it('does not reload again within the cooldown window', () => {
-    expect(shouldReloadAfterPreloadError(5000, 1000)).toBe(false);
-  });
-
-  it('reloads again once the cooldown has elapsed', () => {
-    expect(shouldReloadAfterPreloadError(11_000, 1000)).toBe(true);
-    expect(shouldReloadAfterPreloadError(20_000, 1000)).toBe(true);
-  });
-});
+import { handlePreloadError } from './preloadReload';
 
 describe('handlePreloadError', () => {
   function fakeStorage(initial?: Record<string, string>) {

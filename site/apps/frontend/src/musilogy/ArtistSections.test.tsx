@@ -109,16 +109,7 @@ describe('MusilogySections', () => {
     expect(screen.queryByRole('link', { name: 'T. Rex' })).not.toBeInTheDocument();
   });
 
-  it('leads straight to the page of a neighbour the antenna played, at its slug', () => {
-    show(artist());
-
-    expect(screen.getByRole('link', { name: 'David Bowie' })).toHaveAttribute(
-      'href',
-      '/artiste/david-bowie'
-    );
-  });
-
-  it('leads to the page of a neighbour never played at its slug too, else at its MBID', () => {
+  it('leads to the page of a neighbour at its slug, played on the antenna or not, else at its MBID', () => {
     const named = neighbour(40, { name: 'Gorillaz', slug: 'gorillaz' });
     const unnamed = neighbour(41, { name: 'Unnamed' });
     show(artist({ sameSound: [named, unnamed] }));

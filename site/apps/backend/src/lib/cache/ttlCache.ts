@@ -3,7 +3,6 @@
 export interface CacheStore<V> {
   get(key: string): V | undefined;
   set(key: string, value: V, ttlMsOverride?: number): void;
-  delete(key: string): void;
 }
 
 /**
@@ -34,10 +33,6 @@ export class TtlCache<V> implements CacheStore<V> {
   set(key: string, value: V, ttlMsOverride?: number): void {
     const ttl = ttlMsOverride ?? this.ttlMs;
     this.store.set(key, { value, expiresAt: Date.now() + ttl });
-  }
-
-  delete(key: string): void {
-    this.store.delete(key);
   }
 
   size(): number {

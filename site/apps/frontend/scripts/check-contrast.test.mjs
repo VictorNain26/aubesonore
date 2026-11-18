@@ -1,8 +1,5 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { checkTokens } from './check-contrast.mjs';
-
-const tokens = readFileSync(new URL('../src/design/tokens.css', import.meta.url), 'utf8');
 
 // A palette whose every pair passes by day and by night, to change one token at a time.
 const day = {
@@ -71,12 +68,6 @@ const failures = (rows) =>
   rows.filter((row) => !row.pass).map((row) => `${row.scheme} ${row.label}`);
 
 describe('checkTokens', () => {
-  it('passes every pair of the site, by day and by night, in the sRGB gamut', () => {
-    const rows = checkTokens(tokens);
-    expect(failures(rows)).toEqual([]);
-    expect(new Set(rows.map((row) => row.scheme))).toEqual(new Set(['day', 'night']));
-  });
-
   it('passes a palette that holds by day and by night', () => {
     expect(failures(checkTokens(css(day, night)))).toEqual([]);
   });

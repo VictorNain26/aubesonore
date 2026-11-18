@@ -133,7 +133,6 @@ function fakeCast() {
 
 beforeEach(() => {
   vi.resetModules();
-  toastError.mockClear();
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined);
 });
 

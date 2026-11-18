@@ -8,14 +8,10 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 mkdir "$tmp/bin" "$tmp/repo"
-# Answers like systemd 255: `is-active` succeeds for active and reloading only.
+# deploy.sh reads the unit's ActiveState with `systemctl show`.
 cat >"$tmp/bin/systemctl" <<'EOF'
 #!/usr/bin/env bash
 case " $* " in
-  *" is-active "*)
-    [[ " $* " == *" --quiet "* ]] || echo "$WEEKLY_STATE"
-    [[ "$WEEKLY_STATE" == active || "$WEEKLY_STATE" == reloading ]]
-    ;;
   *" show "*) echo "$WEEKLY_STATE" ;;
   *) exit 1 ;;
 esac

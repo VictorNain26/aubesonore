@@ -188,20 +188,12 @@ describe('the player bar beside the hero', { timeout: PAGE_TEST_TIMEOUT }, () =>
     expect(bar()).not.toHaveAttribute('inert');
   });
 
-  it('is there from the start on a page without a player at its top', async () => {
+  it('is there from the start on a page without a player at its top, first after the skip link', async () => {
     window.history.replaceState(null, '', '/mentions-legales');
     const router = createBrowserRouter(routes);
     render(<RouterProvider router={router} />);
     await settle(router);
-
     expect(bar()).not.toHaveAttribute('inert');
-  });
-
-  it('comes before the page in the keyboard order, right after the skip link', async () => {
-    window.history.replaceState(null, '', '/mentions-legales');
-    const router = createBrowserRouter(routes);
-    render(<RouterProvider router={router} />);
-    await settle(router);
 
     await userEvent.tab();
     expect(screen.getByRole('link', { name: 'Aller au contenu principal' })).toHaveFocus();

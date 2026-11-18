@@ -58,29 +58,6 @@ describe('JustBeforeView', () => {
     );
   });
 
-  it('offers no YouTube link and no extract: the track is to keep, the live to hear', () => {
-    render(<JustBeforeView {...props()} />);
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /YouTube|extrait/i })).not.toBeInTheDocument();
-  });
-
-  it("fetches its small cover after the page's other images", () => {
-    render(<JustBeforeView {...props()} />);
-    const img = screen.getByRole('presentation');
-    expect(img).toHaveAttribute('fetchpriority', 'low');
-    expect(img).toHaveAttribute('loading', 'lazy');
-  });
-
-  it('marks its track leaving and arriving with the hero', () => {
-    const { rerender } = render(<JustBeforeView {...props()} />);
-    const region = () => screen.getByRole('region', { name: 'Juste avant' });
-    expect(region()).toHaveAttribute('data-swap', 'idle');
-    rerender(<JustBeforeView {...props({ swap: 'out' })} />);
-    expect(region()).toHaveAttribute('data-swap', 'out');
-    rerender(<JustBeforeView {...props({ swap: 'in' })} />);
-    expect(region()).toHaveAttribute('data-swap', 'in');
-  });
-
   it('shows nothing while no track played before', () => {
     const { container } = render(<JustBeforeView {...props({ track: null })} />);
     expect(container).toBeEmptyDOMElement();

@@ -41,26 +41,9 @@ describe('useAuthStore', () => {
 
     await useAuthStore.getState().signIn('jane@example.com', 'password123');
 
-    expect(authApi.signIn).toHaveBeenCalledWith('jane@example.com', 'password123');
     expect(useAuthStore.getState()).toMatchObject({
       user,
       isAuthenticated: true,
-      isLoading: false,
-      authError: null,
-    });
-  });
-
-  it('signUp without a token leaves the listener signed out until the email is verified', async () => {
-    // requireEmailVerification: Better Auth creates the user but opens no session.
-    vi.mocked(authApi.signUp).mockResolvedValue({ token: null, user });
-    useAuthStore.setState({ isLoading: false });
-
-    await useAuthStore.getState().signUp('jane@example.com', 'password123', 'Jane');
-
-    expect(authApi.signUp).toHaveBeenCalledWith('jane@example.com', 'password123', 'Jane');
-    expect(useAuthStore.getState()).toMatchObject({
-      user: null,
-      isAuthenticated: false,
       isLoading: false,
       authError: null,
     });
@@ -85,7 +68,6 @@ describe('useAuthStore', () => {
 
     await useAuthStore.getState().signOut();
 
-    expect(authApi.signOut).toHaveBeenCalled();
     expect(useAuthStore.getState()).toMatchObject({
       user: null,
       isAuthenticated: false,

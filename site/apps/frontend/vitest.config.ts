@@ -33,19 +33,17 @@ export default defineConfig({
       exclude: [
         'src/**/*.test.{ts,tsx}',
         'src/mocks/**',
-        // Visual-only / heavily DOM-coupled — covered by manual QA, not unit tests
-        'src/App.tsx',
+        // Storybook's stories and their fixtures: documentation, not the site
+        'src/**/*.stories.tsx',
+        'src/stories/**',
+        // The browser's entry points and type declarations, which no test mounts
         'src/main.tsx',
         'src/sw.ts',
         'src/vite-env.d.ts',
-        'src/pages/**',
-        'src/shell/Layout.tsx',
         // Invisible hosts of side effects, mounted once in App
         'src/shell/AuthInit.tsx',
         'src/shell/NowPlayingPoller.tsx',
         'src/shell/PlayerSideEffects.tsx',
-        // External SDK wrappers — covered by browser, not unit tests
-        'src/lib/cast/**',
       ],
       // Floor thresholds — ratchet up as coverage grows (the CI's coverage report says where it is).
       thresholds: {

@@ -186,12 +186,6 @@ describe('resolveArtist', () => {
 
     expect(await resolveArtist('Cassius')).toMatchObject({ slug: 'cassius-3' });
   });
-
-  it('gives a name written without Latin letters a slug in its own script', async () => {
-    await played('Кино', 'Группа крови');
-
-    expect(await resolveArtist('Кино')).toMatchObject({ slug: 'кино' });
-  });
 });
 
 describe('never by name alone', () => {

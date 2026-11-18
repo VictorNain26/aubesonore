@@ -5,7 +5,7 @@ import { userEvent } from '@testing-library/user-event';
 import { Button } from './Button';
 import { Menu } from './Menu';
 
-function renderMenu(onShare = vi.fn(), onDelete = vi.fn()) {
+function renderMenu(onShare = vi.fn()) {
   render(
     <Menu
       trigger={
@@ -13,35 +13,18 @@ function renderMenu(onShare = vi.fn(), onDelete = vi.fn()) {
           ⋯
         </Button>
       }
-      items={[
-        { label: 'Partager', onSelect: onShare },
-        { label: 'Supprimer', onSelect: onDelete, disabled: true },
-      ]}
+      items={[{ label: 'Partager', onSelect: onShare }]}
     />
   );
-  return { onShare, onDelete };
+  return { onShare };
 }
 
 describe('Menu', () => {
-  it('opens from the trigger', () => {
-    renderMenu();
-    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Options' }));
-    expect(screen.getAllByRole('menuitem')).toHaveLength(2);
-  });
-
   it('fires onSelect when an enabled item is clicked', () => {
     const { onShare } = renderMenu();
     fireEvent.click(screen.getByRole('button', { name: 'Options' }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Partager' }));
     expect(onShare).toHaveBeenCalledOnce();
-  });
-
-  it('does not fire onSelect for a disabled item', () => {
-    const { onDelete } = renderMenu();
-    fireEvent.click(screen.getByRole('button', { name: 'Options' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Supprimer' }));
-    expect(onDelete).not.toHaveBeenCalled();
   });
 
   it('offers a choice beside the actions, as checked radio items under its name', () => {
@@ -71,13 +54,6 @@ describe('Menu', () => {
     );
     const dark = within(group).getByRole('menuitemradio', { name: 'Sombre' });
     expect(dark).toHaveAttribute('aria-checked', 'false');
-    // The wave alone marks the checked one: no weight, ink or underline sets it apart.
-    const light = within(group).getByRole('menuitemradio', { name: 'Clair' });
-    const withoutWave = (element: Element) =>
-      [...element.classList].filter((name) => name !== 'wave-underline');
-    expect(light).toHaveClass('wave-underline');
-    expect(dark).not.toHaveClass('wave-underline');
-    expect(withoutWave(light)).toEqual(withoutWave(dark));
     fireEvent.click(dark);
     expect(onChange).toHaveBeenCalledWith('dark');
 

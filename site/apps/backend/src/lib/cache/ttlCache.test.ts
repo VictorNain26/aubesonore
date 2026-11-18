@@ -2,12 +2,6 @@ import { describe, it, expect, spyOn } from 'bun:test';
 import { TtlCache } from './ttlCache';
 
 describe('TtlCache', () => {
-  it('stores and retrieves a value within TTL', () => {
-    const cache = new TtlCache<string>(1000);
-    cache.set('a', 'hello');
-    expect(cache.get('a')).toBe('hello');
-  });
-
   it('forgets every entry on clear, and keeps working', () => {
     const cache = new TtlCache<number>(60_000);
     cache.set('a', 1);
@@ -37,12 +31,5 @@ describe('TtlCache', () => {
     const cache = new TtlCache<string | null>(1000);
     cache.set('a', null);
     expect(cache.get('a')).toBeNull();
-  });
-
-  it('delete removes the entry', () => {
-    const cache = new TtlCache<string>(1000);
-    cache.set('a', 'x');
-    cache.delete('a');
-    expect(cache.get('a')).toBeUndefined();
   });
 });

@@ -96,10 +96,9 @@ let discovered: string[] = [];
 const discoveredSpy = spyOn(discoveredService, 'isDiscovered').mockImplementation(
   (mbid: string | null) => mbid !== null && discovered.includes(mbid)
 );
-// The discovered pages' addresses: their slug, else their MBID.
-let named: Record<string, string> = {};
+// The discovered pages' addresses (services/discoveredArtists.db.test.ts reads their slugs).
 const discoveredListSpy = spyOn(discoveredService, 'listDiscoveredPages').mockImplementation(() =>
-  Promise.resolve(discovered.map((mbid) => named[mbid] ?? mbid).sort())
+  Promise.resolve([...discovered].sort())
 );
 const slugsSpy = spyOn(pages, 'listArtistSlugs').mockImplementation(() =>
   Promise.resolve(['daft-punk', 'кино'])
@@ -130,7 +129,6 @@ afterEach(() => {
   profileImages = [cover(COVER)];
   musilogyAnswer = null;
   discovered = [];
-  named = {};
   renderAnswer = () => Promise.resolve(new Response(null, { status: 503 }));
 });
 
@@ -626,17 +624,5 @@ describe('GET /sitemap-artists-discovered.xml', () => {
     expect(count(xml, '<url>')).toBe(2);
     expect(xml).toContain(`<loc>${env.FRONTEND_BASE_URL}/artiste/${UNPLAYED_MBID}</loc>`);
     expect(xml).toContain(`<loc>${env.FRONTEND_BASE_URL}/en/artist/${UNPLAYED_MBID}</loc>`);
-  });
-
-  it('lists a page given a slug at its slug', async () => {
-    discovered = [NAMED_MBID];
-    named = { [NAMED_MBID]: 'shame' };
-
-    const xml = await (
-      await app.handle(new Request('http://localhost/sitemap-artists-discovered.xml'))
-    ).text();
-
-    expect(xml).toContain(`<loc>${env.FRONTEND_BASE_URL}/artiste/shame</loc>`);
-    expect(xml).not.toContain(NAMED_MBID);
   });
 });

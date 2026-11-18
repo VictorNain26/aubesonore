@@ -97,7 +97,7 @@ describe('findPlay', () => {
     expect(onAir).not.toHaveBeenCalled();
   });
 
-  it('turns to the track on air when the watcher has not recorded it yet, and finds no other', async () => {
+  it('turns to the track on air when the watcher has not recorded it yet', async () => {
     onAir.mockResolvedValue({
       sh_id: 1,
       title: 'F Major',
@@ -110,6 +110,5 @@ describe('findPlay', () => {
       title: 'F Major',
       isrc: 'DEN271800071',
     });
-    expect(await findPlay('Another Song', 'Hania Rani')).toBeNull();
   });
 });

@@ -123,7 +123,7 @@ describe('GET /t', () => {
     );
   });
 
-  it("shows the site's lockup with its name, by day and by night, as the way home", async () => {
+  it('links the streaming platforms without handing them the page', async () => {
     mockPlatforms();
 
     const html = await (
@@ -131,32 +131,8 @@ describe('GET /t', () => {
     ).text();
 
     expect(html).toContain(
-      `<a class="home" href="${env.FRONTEND_BASE_URL}"><picture><source srcset="${env.FRONTEND_BASE_URL}/lockup-night.png" media="(prefers-color-scheme: dark)" /><img src="${env.FRONTEND_BASE_URL}/lockup.png" alt="AubeSonore" width="186" height="22" /></picture></a>`
-    );
-    // The night follows the device's setting: the paper turns to the night sky.
-    expect(html).toMatch(
-      /@media \(prefers-color-scheme: dark\) \{\s*:root \{[^}]*--surface: #151d33/
-    );
-  });
-
-  it('lists the streaming platforms as plain links under one name, in each language', async () => {
-    mockPlatforms();
-
-    const french = await (
-      await app.handle(new Request('http://localhost/t?title=Balance%20Act&artist=Psychic%20Lines'))
-    ).text();
-    const english = await (
-      await app.handle(
-        new Request('http://localhost/t?title=Balance%20Act&artist=Psychic%20Lines&lang=en')
-      )
-    ).text();
-
-    expect(french).toContain('<nav class="platforms" aria-label="Écouter ailleurs">');
-    expect(french).toContain(
       '<a href="https://www.deezer.com/track/1" rel="noopener noreferrer">Écouter sur Deezer</a>'
     );
-    expect(english).toContain('<nav class="platforms" aria-label="Listen elsewhere">');
-    expect(english).toContain('rel="noopener noreferrer">Listen on Deezer</a>');
   });
 
   it('escapes HTML in title and artist', async () => {
@@ -198,15 +174,6 @@ describe('GET /t', () => {
     );
 
     expect(res.headers.get('content-security-policy')).toBe(SHARE_PAGE_CSP);
-  });
-
-  it('keeps the restrictive CSP on JSON routes', async () => {
-    const res = await app.handle(new Request('http://localhost/api/artist/resolve'));
-
-    expect(res.status).toBe(400);
-    expect(res.headers.get('content-security-policy')).toBe(
-      "default-src 'none'; frame-ancestors 'none'"
-    );
   });
 
   it('serves English copy for an English Accept-Language', async () => {

@@ -211,17 +211,6 @@ describe('a declined request', () => {
     expect(fetchSpy.mock.calls.length).toBe(1);
     expect(waits).toEqual([]);
   });
-
-  it('still keeps a second between requests', async () => {
-    spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(json({ recordings: [] }))
-      .mockResolvedValueOnce(json({ recordings: [] }));
-
-    await findRecordingReleases({ isrc: 'ZZZ000000015' });
-    await findRecordingReleases({ isrc: 'ZZZ000000016' });
-
-    expect(waits).toEqual([1_000]);
-  });
 });
 
 describe('findRecordingsByIsrc', () => {

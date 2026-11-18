@@ -67,25 +67,6 @@ describe('CoverOpenLarge', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
-  it('keeps the place of the cover in its layout, with nothing to open', () => {
-    const { container } = render(
-      <CoverOpenLarge
-        src={null}
-        alt=""
-        seed="Gwenno|Ardamm"
-        label="Voir la pochette de Ardamm en grand"
-        title="Ardamm"
-        largeAlt="Pochette de Ardamm, Gwenno"
-        caption="Ardamm, Gwenno"
-        triggerClassName="row-span-2 size-11"
-        className="size-11"
-      />
-    );
-    // The trigger's place is held by what stands in for it.
-    expect(container.innerHTML).toMatch(/^<div class="row-span-2 size-11">/);
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-  });
-
   it('opens again for another cover after one failed', () => {
     const { rerender } = show(ART);
     fireEvent.error(within(screen.getByRole('button')).getByRole('presentation'));

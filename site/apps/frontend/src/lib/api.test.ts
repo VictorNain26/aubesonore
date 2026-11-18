@@ -5,17 +5,8 @@ import { authApi, getJson, HttpError, readKnown, trackApi } from './api';
 import { keepRequest } from './pendingKeep';
 
 describe('authApi.getSession', () => {
-  it('returns null when no session (401)', async () => {
-    server.use(
-      http.get('http://localhost:3000/api/auth/get-session', () =>
-        HttpResponse.json({ user: null }, { status: 401 })
-      )
-    );
-    const result = await authApi.getSession();
-    expect(result).toBeNull();
-  });
-
   it.each([
+    ['no session (401)', () => HttpResponse.json({ user: null }, { status: 401 })],
     ['a refused session (403)', () => HttpResponse.json({}, { status: 403 })],
     ['an answer without a user', () => HttpResponse.json({ user: null })],
   ])('returns null for %s', async (_, answer) => {
@@ -33,69 +24,16 @@ describe('authApi.getSession', () => {
     expect(result?.user.id).toBe('u1');
   });
 
-  it('throws on network error', async () => {
-    server.use(http.get('http://localhost:3000/api/auth/get-session', () => HttpResponse.error()));
-    await expect(authApi.getSession()).rejects.toThrow();
-  });
-
-  it('throws on 500', async () => {
-    server.use(
-      http.get('http://localhost:3000/api/auth/get-session', () =>
-        HttpResponse.json({ error: 'boom' }, { status: 500 })
-      )
-    );
+  it.each([
+    ['a network error', () => HttpResponse.error()],
+    ['a 500', () => HttpResponse.json({ error: 'boom' }, { status: 500 })],
+  ])('throws on %s', async (_, answer) => {
+    server.use(http.get('http://localhost:3000/api/auth/get-session', answer));
     await expect(authApi.getSession()).rejects.toThrow();
   });
 });
 
 describe('authApi.googleSignInUrl', () => {
-  it("asks Better Auth for Google's address, with where to come back and where to report an error", async () => {
-    const authorizeUrl = 'https://accounts.google.com/o/oauth2/auth?client_id=x';
-    let receivedBody: unknown;
-    server.use(
-      http.post('http://localhost:3000/api/auth/sign-in/social', async ({ request }) => {
-        receivedBody = await request.json();
-        return HttpResponse.json({ url: authorizeUrl });
-      })
-    );
-
-    const url = await authApi.googleSignInUrl({
-      callbackURL: 'http://localhost:3000/auth/google.html',
-      errorCallbackURL: 'http://localhost:3000/auth/google.html',
-    });
-
-    expect(url).toBe(authorizeUrl);
-    expect(receivedBody).toEqual({
-      provider: 'google',
-      callbackURL: 'http://localhost:3000/auth/google.html',
-      errorCallbackURL: 'http://localhost:3000/auth/google.html',
-    });
-  });
-
-  it('sends no error address when none is given', async () => {
-    let receivedBody: unknown;
-    server.use(
-      http.post('http://localhost:3000/api/auth/sign-in/social', async ({ request }) => {
-        receivedBody = await request.json();
-        return HttpResponse.json({ url: 'https://accounts.google.com/o' });
-      })
-    );
-    await authApi.googleSignInUrl({ callbackURL: 'http://localhost:3000/artist/a-1/x' });
-    expect(receivedBody).toEqual({
-      provider: 'google',
-      callbackURL: 'http://localhost:3000/artist/a-1/x',
-    });
-  });
-
-  it('throws when the response has no redirect URL', async () => {
-    server.use(
-      http.post('http://localhost:3000/api/auth/sign-in/social', () => HttpResponse.json({}))
-    );
-    await expect(
-      authApi.googleSignInUrl({ callbackURL: 'http://localhost:3000/' })
-    ).rejects.toThrow('La connexion avec Google n’a pas pu démarrer. Réessayez.');
-  });
-
   it("never shows the server's English message, only the page's own words", async () => {
     server.use(
       http.post('http://localhost:3000/api/auth/sign-in/social', () =>

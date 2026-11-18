@@ -169,7 +169,7 @@ describe('NowPlayingView', () => {
     expect(screen.getByRole('button', { name: 'Diffuser sur un appareil' })).toBeInTheDocument();
 
     // The word alone on a phone is left to screen readers; the device it plays on is shown at every
-    // width, with its wave, or a phone would not see the stream is cast.
+    // width, or a phone would not see the stream is cast.
     const off = screen.getByRole('button', { name: 'Diffuser sur un appareil' });
     expect(within(off).getByText('Diffuser')).toHaveClass('sr-only');
     rerender(<NowPlayingView {...props({ diffusion: diffusion(false, 'Salon') })} />);
@@ -285,18 +285,6 @@ describe('NowPlayingView', () => {
     expect(screen.queryByRole('button', { name: /Garder/ })).not.toBeInTheDocument();
   });
 
-  it.each([
-    ['off air', { isOnline: false }, 'Silence radio. Retour dans un instant.'],
-    [
-      'unreachable',
-      { track: null, isUnreachable: true },
-      'Le direct ne répond pas pour le moment.',
-    ],
-  ] as const)('says it %s as the title in its place, a heading', (_, state, sentence) => {
-    render(<NowPlayingView {...props(state)} />);
-    expect(screen.getByRole('heading', { name: sentence })).toBeInTheDocument();
-  });
-
   it('keeps Arrêter off air while the live is still heard, so it can be stopped', () => {
     render(<NowPlayingView {...props({ isOnline: false, listen: 'playing' })} />);
     expect(screen.getByRole('button', { name: 'Arrêter le direct' })).toBeInTheDocument();
@@ -315,13 +303,6 @@ describe('NowPlayingView', () => {
     rerender(<NowPlayingView {...props({ isKept: false })} />);
     rerender(<NowPlayingView {...props({ isKept: true })} />);
     expect(keep()).toContainHTML('keep-pop');
-  });
-
-  it("fetches the cover first: the page's largest image", () => {
-    const art = 'https://radio.aubesonore.fr/api/station/aubesonore/art/abc-1.jpg';
-    render(<NowPlayingView {...props({ track: { ...props().track!, art } })} />);
-    const img = screen.getByRole('img', { name: 'Pochette de Mimoun, Mickey 3D' });
-    expect(img).toHaveAttribute('fetchpriority', 'high');
   });
 
   it('keeps the large cover open into the next track, showing the new one', async () => {

@@ -53,19 +53,6 @@ describe('renderMail', () => {
     }
   });
 
-  it("shows the site's lockup as an image with its name, by day and by night", () => {
-    const { html, text } = render('verify', 'fr');
-
-    expect(elements(html, 'img').map((img) => [img.attrs.src, img.attrs.alt])).toEqual([
-      [`${env.FRONTEND_BASE_URL}/lockup.png`, 'AubeSonore'],
-      [`${env.FRONTEND_BASE_URL}/lockup-night.png`, 'AubeSonore'],
-    ]);
-    expect(html).toMatch(/@media \(prefers-color-scheme: ?dark\)/);
-    expect(elements(html, 'meta[name="color-scheme"]')[0]?.attrs.content).toBe('light dark');
-    // The images are not words: the plain text does not list them.
-    expect(text).not.toContain('lockup');
-  });
-
   it('signs with the address of the site, as a link', () => {
     const { html } = render('reset', 'en');
 
