@@ -121,3 +121,17 @@ cd ~/aubesonore/pipeline && .venv/bin/pytest -q -W error && .venv/bin/radio repo
 
 Le vrai test de bout en bout reste une passe `radio-weekly` complète : elle touche
 l'API AzuraCast, le disque média et la base SQLite d'un seul coup.
+
+## Mettre AzuraCast à jour
+
+La version d'AzuraCast est fixée dans `docker-compose.yml` (tag et digest). Rien ne la met à jour
+seul : Renovate ouvre une PR à chaque version, relue à la main le lundi. Avant de la merger, lire le
+[changelog](https://github.com/AzuraCast/AzuraCast/blob/main/CHANGELOG.md) pour un changement de
+l'API que lit le pipeline (`pipeline/radio/sources/azuracast.py`). Le merge met le fichier à jour
+sur le serveur ; la nouvelle image ne tourne qu'une fois appliquée, hors de la passe du dimanche
+(`radio-weekly.timer`) : le redémarrage coupe le flux une minute.
+
+```bash
+cd ~/aubesonore/azuracast && docker compose up -d --wait web
+cd ~/aubesonore/pipeline && .venv/bin/radio report   # l'API répond, la station joue
+```

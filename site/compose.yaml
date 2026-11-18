@@ -3,7 +3,7 @@
 # Production (scripts/deploy.sh): `docker compose up -d --build` runs Postgres, the backend,
 # the static frontend and the renderer. Public exposure (aubesonore.fr / api / radio) is the
 # host-level cloudflared service's, not this file's. AzuraCast keeps its own compose
-# (azuracast/), which its updater manages and which a site deploy must never touch.
+# (azuracast/), updated by hand (azuracast/RUNBOOK.md), which a site deploy must never touch.
 #
 # Workstation (README): `pnpm stack` runs the same Postgres and backend, plus the services of
 # the `dev` profile: dev-init (schema and a test listener) and frontend-dev (Vite, hot reload).

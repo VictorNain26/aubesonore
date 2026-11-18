@@ -13,9 +13,10 @@ name: azuracast
 services:
   web:
     container_name: azuracast
-    image: "ghcr.io/azuracast/azuracast:${AZURACAST_VERSION:-stable}"
-    labels:
-      - "com.centurylinklabs.watchtower.scope=azuracast"
+    # A release, by tag and digest: the image changes only through a reviewed Renovate PR, applied
+    # by hand outside the Sunday pass (RUNBOOK.md, « Mettre AzuraCast à jour »). The pipeline's
+    # client follows AzuraCast's API (pipeline/radio/sources/azuracast.py).
+    image: ghcr.io/azuracast/azuracast:0.24.0@sha256:2a4aa1e0b2fdc93170ef1dbc51ae2ea036053f0a74931692b23d0d7c072e5c06
     # Loopback only: Docker's published ports bypass ufw
     # (docs.docker.com/engine/network/packet-filtering-firewalls/), and the box has a public IPv6.
     # Every client is on this host: the Cloudflare tunnel (localhost:8080), the pipeline;
@@ -74,20 +75,8 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  updater:
-    container_name: azuracast_updater
-    image: ghcr.io/azuracast/updater:latest@sha256:91a7c9cb31bf34f9cf019a718d427df1c665f33595721bccafbe850e1ffedd05
-    restart: unless-stopped
-    mem_limit: 128m
-    # Official default: serves only the "Update" button of the web UI. Scheduled
-    # updates of `web` are done by ~/mediaserver/update-stack.sh (Sunday 05:17,
-    # after checking last night's backup), like every other stack on this host.
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    logging:
-      options:
-        max-size: "10m"
-        max-file: "3"
+  # No `updater` (the official sample's): it served the web UI's "Update" button, which would
+  # bypass the pinned image above, and held the Docker socket.
 
 volumes:
   db_data: { }

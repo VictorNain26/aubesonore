@@ -30,8 +30,8 @@ everywhere.
 ## Deployment
 
 - Check a compose change with `docker compose config` against a production-like `.env` before
-  merging. AzuraCast keeps its own compose, separate from this one: its updater manages it, and a
-  site deploy must leave the radio running.
+  merging. AzuraCast keeps its own compose, separate from this one, updated by hand
+  (`azuracast/RUNBOOK.md`), and a site deploy must leave the radio running.
 - A restore is rehearsed into a throwaway database before production:
   `docker exec -i aubesonore-db pg_restore -U aubesonore -d <db> < <dump>`.
 - A data change (a backfill, a cleanup) goes in the file `drizzle-kit generate --custom` creates;
