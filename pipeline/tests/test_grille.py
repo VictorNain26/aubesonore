@@ -677,14 +677,6 @@ def _on_air(tmp_path: Path, n: int) -> None:
         )
 
 
-def test_grille_command_writes_a_full_day(tmp_path: Path, grille_env: FakeAzuracast) -> None:
-    _on_air(tmp_path, 400)
-    res = CliRunner().invoke(cli.app, ["grille"])
-    assert res.exit_code == 0, res.output
-    assert "heures courtes : 0" in res.stdout
-    assert len(grille_env.filled) == 24
-
-
 def test_a_short_hour_is_published_then_fails_the_grid(
     tmp_path: Path, grille_env: FakeAzuracast
 ) -> None:
@@ -717,7 +709,7 @@ def test_the_grid_empties_the_hour_missing_from_the_day(
     assert len(grille_env.filled) == 23 and 207 not in grille_env.filled
 
 
-def test_the_grid_counts_what_azuracast_has_already_queued(
+def test_the_grid_writes_a_full_day_around_what_azuracast_has_already_queued(
     tmp_path: Path, grille_env: FakeAzuracast
 ) -> None:
     # Breaks if the queue is ignored: AzuraCast queues ~20 min ahead, and a title already handed
@@ -727,6 +719,8 @@ def test_the_grid_counts_what_azuracast_has_already_queued(
     grille_env.queue = {"s1": WEDNESDAY.timestamp() + 600}  # jouera dans 10 min
     res = CliRunner().invoke(cli.app, ["grille"])
     assert res.exit_code == 0, res.output
+    assert "heures courtes : 0" in res.stdout
+    assert len(grille_env.filled) == 24
     day = "".join(grille_env.filled.values())
     assert "antenne/1.mp3\n" not in day
     assert "antenne/3.mp3\n" in day

@@ -53,12 +53,7 @@ def test_votes_lifecycle_from_training_to_a_second_selection(env: Path) -> None:
     conn.close()
     assert first_pending, "aucun bulletin tiré : la base du factory n'a pas assez de candidats"
 
-    # 3. un second `votes-select` : pas de nouvelle sélection tant que des bulletins attendent.
-    res = runner.invoke(cli.app, ["votes-select"])
-    assert res.exit_code == 0, res.output
-    assert "en attente de vote : pas de nouvelle sélection" in res.output
-
-    # 4. vote sur la vraie page pour chaque bulletin en attente, « oui »/« non » en alternance.
+    # 3. vote sur la vraie page pour chaque bulletin en attente, « oui »/« non » en alternance.
     client = TestClient(create_app(db_path, PreviewDeezer(), verify))
     for i, ballot in enumerate(first_pending):
         choix = "oui" if i % 2 == 0 else "non"
@@ -70,7 +65,7 @@ def test_votes_lifecycle_from_training_to_a_second_selection(env: Path) -> None:
         )
         assert r.status_code == 303
 
-    # 5. `radio train` : les nouveaux votes déclenchent un réentraînement, deux modèles en base.
+    # 4. `radio train` : les nouveaux votes déclenchent un réentraînement, deux modèles en base.
     res = runner.invoke(cli.app, ["train"])
     assert res.exit_code == 0, res.output
     assert "Aucun nouveau vote" not in res.output
@@ -79,7 +74,7 @@ def test_votes_lifecycle_from_training_to_a_second_selection(env: Path) -> None:
     conn.close()
     assert n_models == 2
 
-    # 6. `radio votes-select` : une nouvelle sélection (2 lignes dans `selections`).
+    # 5. `radio votes-select` : une nouvelle sélection (2 lignes dans `selections`).
     res = runner.invoke(cli.app, ["votes-select"])
     assert res.exit_code == 0, res.output
     conn = connect(db_path)

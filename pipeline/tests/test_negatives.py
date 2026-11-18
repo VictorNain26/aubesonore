@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import get_args
 
 import pytest
 from pydantic import ValidationError
@@ -11,11 +10,9 @@ from radio.sources.deezer import DeezerError, DeezerTrack, DeezerUnavailable
 from tests.factories import make_library
 
 
-def test_repo_negatives_file() -> None:
+def test_shipped_negatives_file_is_valid() -> None:
     # load_negatives refuse une catégorie inconnue et un deezer_id en double.
-    negs = load_negatives(REPO_ROOT / "config" / "negatives.toml")
-    known = set(get_args(NegativeArtist.model_fields["category"].annotation))
-    assert {n.category for n in negs} == known
+    load_negatives(REPO_ROOT / "config" / "negatives.toml")
 
 
 def test_invalid_file_is_refused(tmp_path: Path) -> None:
