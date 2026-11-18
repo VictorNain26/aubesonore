@@ -1,8 +1,13 @@
-"""L'exploitation : jugement de la passe, sauvegarde, rapport."""
+"""L'exploitation : jugement de la passe, sauvegarde, rapport, alerte."""
 
 import os
+import smtplib
 import sqlite3
+import ssl
+import subprocess
 from datetime import UTC, datetime
+from email.message import EmailMessage
+from email.utils import format_datetime
 
 from radio.cli import common
 from radio.cli.common import _db, _echo, _editorial, _fail, _n, _record, _stage, app
@@ -94,3 +99,52 @@ def report() -> None:
         suivi = load_suivi(conn, editorial.nouveautes)
     status = _status_lines(_status(settings, editorial), editorial.votes.quiet_days)
     _echo(["Dernières étapes :", *_stage_lines(stages), *status, *suivi_lines(suivi)])
+
+
+@app.command()
+def alert(unit: str) -> None:
+    """Envoie à ALERT_EMAIL_TO le courriel d'une unité en échec, avec la fin de son journal
+    (lancée par radio-alert@.service, l'OnFailure= des unités du pipeline). Sans relais
+    configuré, ou s'il refuse le courriel, elle échoue : une alerte perdue ne se tait pas."""
+    settings = common._settings()
+    host, sender, to = settings.smtp_host, settings.smtp_from, settings.alert_email_to
+    if host is None or sender is None or to is None:
+        required = (("SMTP_HOST", host), ("SMTP_FROM", sender), ("ALERT_EMAIL_TO", to))
+        missing = ", ".join(name for name, value in required if value is None)
+        _fail(f"Alerte {unit} non envoyée : {missing} à définir dans .env", 2)
+    journal = subprocess.run(
+        ["journalctl", "--user", "-u", unit, "-n", "50", "--no-pager", "-o", "cat"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    now = datetime.now().astimezone()
+    msg = EmailMessage()
+    msg["Subject"] = f"AubeSonore : {unit} en échec"
+    msg["From"] = sender
+    msg["To"] = to
+    msg["Date"] = format_datetime(now)
+    msg.set_content(
+        f"{unit} est en échec depuis le {now:%Y-%m-%d à %H:%M %Z}.\n"
+        f"Où regarder : systemctl --user status {unit}, journalctl --user -u {unit}, "
+        "radio report (docs/conception.md §8.2).\n\n"
+        f"Fin du journal :\n\n{journal.stdout or journal.stderr or '(vide)'}"
+    )
+    # Le site se connecte de même (site/apps/backend/src/services/mailerService.ts).
+    implicit_tls = settings.smtp_port == 465
+    context = ssl.create_default_context()
+    try:
+        smtp = (
+            smtplib.SMTP_SSL(host, settings.smtp_port, timeout=60, context=context)
+            if implicit_tls
+            else smtplib.SMTP(host, settings.smtp_port, timeout=60)
+        )
+        with smtp:
+            if not implicit_tls:
+                smtp.starttls(context=context)
+            if settings.smtp_user and settings.smtp_password:
+                smtp.login(settings.smtp_user, settings.smtp_password.get_secret_value())
+            smtp.send_message(msg)
+    except (smtplib.SMTPException, OSError) as e:
+        _fail(f"Alerte {unit} non envoyée : {e}", 1)
+    _echo([f"Alerte {unit} envoyée à ALERT_EMAIL_TO"])
