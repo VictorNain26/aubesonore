@@ -11,6 +11,8 @@ import { __resetRateLimits } from '../lib/rateLimit';
 const dialect = new PgDialect();
 let answers: Record<string, Array<Record<string, unknown>>> = {};
 let notLoaded = new Set<string>();
+// A failure of the database itself, not of musilogy's load (an SQLSTATE code).
+let broken: string | null = null;
 let pageRows: Array<{ id: string; slug: string; mbid: string | null }> = [];
 // The slug of each MBID's page already published (artistSlugs.slugsFor reads them first).
 let slugRows: Array<{ slug: string; mbid: string | null }> = [];
@@ -18,6 +20,15 @@ let slugRows: Array<{ slug: string; mbid: string | null }> = [];
 function answer(query: SQL) {
   const built = dialect.sqlToQuery(query);
   const fn = /musilogy\.(\w+)\(/.exec(built.sql)?.[1] ?? '';
+  if (broken) {
+    return Promise.reject(
+      new DrizzleQueryError(
+        built.sql,
+        built.params,
+        Object.assign(new Error('terminating connection'), { code: broken })
+      )
+    );
+  }
   if (notLoaded.has(fn)) {
     // What drizzle throws when Postgres knows no such function: code as cause.
     return Promise.reject(
@@ -54,6 +65,7 @@ const KINKS = '17b53d9f-5c63-4a09-a593-dde4608e0db9';
 const RAMONES = 'd6ed7887-a401-47a8-893c-34b967444d26';
 const BOLAN = '7c6ae5b6-1f46-4ed3-a3a5-f0d3d4a3b6c7';
 const TOOK = '3f2a1b4c-5d6e-4f70-8a9b-0c1d2e3f4a5b';
+const SUPERGROUP = '9e8d7c6b-5a49-4382-9170-6f5e4d3c2b1a';
 
 const card = {
   mbid: T_REX,
@@ -102,6 +114,7 @@ function get(path: string, ip = '203.0.113.1'): Promise<Response> {
 beforeEach(() => {
   answers = {};
   notLoaded = new Set();
+  broken = null;
   pageRows = [];
   slugRows = [];
   musilogyCache.dispose();
@@ -197,6 +210,7 @@ describe('GET /api/musilogy/artist/:mbid', () => {
       artist_bands: [
         { role: 'member', ...person(BOLAN, 'Marc Bolan', 1965), y_begin: 1967, y_end: 1977 },
         { role: 'member', ...person(TOOK, 'Steve Peregrine Took'), y_begin: 1967, y_end: 1969 },
+        { role: 'group', ...person(SUPERGROUP, 'A Supergroup', 1975), y_begin: 1975, y_end: 1976 },
       ],
       artist_member_projects: [
         { ...person(KINKS, 'Shagrat', 1970), via: ['Steve Peregrine Took'] },
@@ -230,7 +244,7 @@ describe('GET /api/musilogy/artist/:mbid', () => {
         { name: 'Marc Bolan', yBegin: 1967, yEnd: 1977, played: { slug: 'marc-bolan' } },
         { name: 'Steve Peregrine Took', yBegin: 1967, yEnd: 1969, played: null },
       ],
-      groups: [],
+      groups: [{ name: 'A Supergroup', yBegin: 1975, yEnd: 1976, played: null }],
     });
     expect(body.memberProjects).toMatchObject([{ name: 'Shagrat', via: ['Steve Peregrine Took'] }]);
     expect(body.otherNames).toMatchObject([{ name: 'Tyrannosaurus Rex', kind: 'former' }]);
@@ -266,6 +280,16 @@ describe('GET /api/musilogy/artist/:mbid', () => {
     notLoaded = new Set();
     expect((await get(`/artist/${BOWIE}`)).status).toBe(404);
     expect((await get('/artist/not-an-mbid')).status).toBe(400);
+  });
+
+  // Told apart, a real failure is logged as one, not as musilogy still loading.
+  it('answers 500, not « unavailable », when the database itself fails', async () => {
+    broken = '57P01';
+
+    const res = await get(`/artist/${T_REX}`);
+
+    expect(res.status).toBe(500);
+    expect(await res.text()).not.toContain("Musilogy n'est pas disponible");
   });
 
   it('limits a client to 120 artists a minute', async () => {

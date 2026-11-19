@@ -9,21 +9,23 @@ const resolver = await import('../services/artistResolver');
 
 const spies = [
   spyOn(profileService, 'getArtistProfile').mockImplementation((slug: string) =>
-    Promise.resolve(
-      slug === 'daft-punk'
-        ? {
-            id: VALID_ID,
-            name: 'Daft Punk',
-            slug: 'daft-punk',
-            mbid: null,
-            images: [],
-            facts: null,
-            summary: null,
-            links: [],
-            played: true,
-          }
-        : null
-    )
+    slug === 'broken'
+      ? Promise.reject(new Error('terminating connection'))
+      : Promise.resolve(
+          slug === 'daft-punk'
+            ? {
+                id: VALID_ID,
+                name: 'Daft Punk',
+                slug: 'daft-punk',
+                mbid: null,
+                images: [],
+                facts: null,
+                summary: null,
+                links: [],
+                played: true,
+              }
+            : null
+        )
   ),
   spyOn(resolver, 'resolveArtist').mockImplementation((name: string) =>
     Promise.resolve(name === 'Daft Punk' ? { id: VALID_ID, slug: 'daft-punk' } : null)
@@ -78,6 +80,12 @@ describe('GET /api/artist/page/:slug', () => {
     const res = await app.handle(new Request('http://localhost/api/artist/page/inconnu'));
 
     expect(res.status).toBe(404);
+  });
+
+  it('lets a failure other than Musilogy loading through, never as « unavailable »', async () => {
+    const res = await app.handle(new Request('http://localhost/api/artist/page/broken'));
+
+    expect(res.status).toBe(500);
   });
 
   it('rate limits once the per-IP budget is spent', async () => {

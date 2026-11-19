@@ -226,6 +226,28 @@ describe("a played artist's page", () => {
     expect((await stored())[0]?.photo).toEqual(PHOTO);
   });
 
+  // A photo deleted from Commons (its licence withdrawn) must leave the page at the next refresh.
+  it('drops a stored photo and opening once their source says there is none', async () => {
+    await playedAir();
+    await db.insert(artistProfile).values({
+      artistId: 'a-air',
+      photo: PHOTO,
+      summaryFr: summary('fr'),
+      summaryEn: null,
+      refreshedAt: new Date(Date.now() - 8 * DAY_MS),
+    });
+    photoAnswer = { status: 'none' };
+    // The refresh asks for both openings, French and English.
+    spies.summary
+      .mockImplementationOnce(() => Promise.resolve({ status: 'none' }))
+      .mockImplementationOnce(() => Promise.resolve({ status: 'none' }));
+
+    await getArtistProfile('air', 'fr');
+    await until(async () => (await stored())[0]?.photo === null);
+
+    expect((await stored())[0]).toMatchObject({ photo: null, summaryFr: null });
+  });
+
   it('keeps a section as stored when its source fails, and stays stale', async () => {
     await playedAir();
     const old = new Date(Date.now() - 8 * DAY_MS);
@@ -300,6 +322,16 @@ describe("a page the antenna never played (today's behaviour, which the profile'
     expect(spies.summary).toHaveBeenCalledTimes(2);
     expect(spies.summary.mock.calls.every(([, locale]) => locale === 'fr')).toBe(true);
     expect(await stored()).toEqual([]);
+  });
+
+  it("links the artist's Deezer page first, then the dump's links", async () => {
+    const bandcamp = { platform: 'bandcamp', url: 'https://blur.bandcamp.com/' } as const;
+    identities[UNPLAYED] = identity('Blur', { deezerId: '1503', links: [bandcamp] });
+
+    expect((await getArtistProfile(UNPLAYED, 'fr'))?.links).toEqual([
+      { platform: 'deezer', url: 'https://www.deezer.com/artist/1503' },
+      bandcamp,
+    ]);
   });
 
   it('answers at the slug it was given, which its MBID names too', async () => {

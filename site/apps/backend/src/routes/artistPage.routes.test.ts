@@ -65,6 +65,7 @@ const profileSpy = spyOn(profileService, 'getArtistProfile').mockImplementation(
     });
   if (slug === NOT_LOADED_MBID)
     return Promise.reject(new musilogyService.MusilogyUnavailable('3F000'));
+  if (slug === 'broken') return Promise.reject(new Error('terminating connection'));
   return Promise.resolve(
     slug === 'daft-punk' || slug === 'кино' || slug === DAFT_PUNK_MBID
       ? {
@@ -407,6 +408,15 @@ describe('GET /artiste/:slug', () => {
     const res = await app.handle(new Request(`http://localhost/artiste/${NOT_LOADED_MBID}`));
 
     expect(res.status).toBe(503);
+  });
+
+  // A real failure surfaces as one: a 503 would tell crawlers to come back, and hide the error.
+  it('lets any other failure through, never as « unavailable »', async () => {
+    mockShell();
+
+    const res = await app.handle(new Request('http://localhost/artiste/broken'));
+
+    expect(res.status).toBe(500);
   });
 
   it('answers 404 when the artist is unknown, the shell no longer naming the home page', async () => {
