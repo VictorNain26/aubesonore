@@ -104,6 +104,47 @@ def test_manifest_names_the_official_parts_and_counts_the_statuses(tmp_path, mon
     assert manifest["release_status"] == {"official": 1, "not_official": 1, "unknown": 0}
 
 
+def test_manifest_names_each_snapshot_the_build_read_with_its_digest(tmp_path, monkeypatch):
+    # Breaks if a source of the delivery goes unnamed: without its snapshot and digest, the
+    # delivery cannot be replayed from its own artifacts.
+    def sums(kind, digit):
+        # A digest of its own per source: one source's digest under another's name shows.
+        def path(ref):
+            p = tmp_path / f"{kind}-{ref}.SHA256SUMS"
+            p.write_text(f"{digit * 64}  {kind}.file\n", encoding="utf-8")
+            return p
+
+        return path
+
+    sidecar = tmp_path / "discogs-extraction.json"
+    sidecar.write_text(json.dumps({"releases": 3}), encoding="utf-8")
+    monkeypatch.setattr("musilogy.publish.discography_sums", sums("discography", "1"))
+    monkeypatch.setattr("musilogy.publish.listening_sums", sums("listening", "2"))
+    monkeypatch.setattr("musilogy.publish.discogs_sums", sums("discogs", "3"))
+    monkeypatch.setattr("musilogy.publish.discogs_extraction", lambda _dump: sidecar)
+    con = build_synthetic(
+        tmp_path,
+        [synthetic_artist("a", "1990", None)],
+        discography_snapshot="2026-10-01",
+        listening_snapshot="2026-09",
+        discogs_dump="20261001",
+    )
+    manifest = publish(con, tmp_path / "out", DUMP)
+    assert manifest["discography"] == {
+        "snapshot": "2026-10-01",
+        "sha256": {"discography.file": "1" * 64},
+    }
+    assert manifest["listening"] == {
+        "snapshot": "2026-09",
+        "sha256": {"listening.file": "2" * 64},
+    }
+    assert manifest["discogs"] == {
+        "dump": "20261001",
+        "sha256": {"discogs.file": "3" * 64},
+        "extraction": {"releases": 3},
+    }
+
+
 def test_a_build_without_snapshot_says_so_in_the_manifest(tmp_path):
     con = build_synthetic(tmp_path, [synthetic_artist("a", "1990", None)])
     manifest = publish(con, tmp_path / "out", DUMP)
