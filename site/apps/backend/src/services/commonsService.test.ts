@@ -119,6 +119,11 @@ describe('getPhoto', () => {
     });
 
     commonsCache.dispose();
+    serve(p18Can, licensedAt('http://creativecommons.org/licenses/by-sa/2.0/'));
+    const plain = await getPhoto('Q170132');
+    expect(plain.status === 'found' && plain.value.credit.licenceUrl).toBeNull();
+
+    commonsCache.dispose();
     serve(p18Can, licensedAt('//creativecommons.org/licenses/by-sa/2.0/'));
     const protocolRelative = await getPhoto('Q170132');
     expect(protocolRelative.status === 'found' && protocolRelative.value.credit.licenceUrl).toBe(
@@ -140,6 +145,16 @@ describe('getPhoto', () => {
     serve(p18Can, {
       query: {
         pages: [{ ...page, imageinfo: [{ ...info, thumburl: 'https://evil.example/a.jpg' }] }],
+      },
+    });
+    expect(await getPhoto('Q170132')).toEqual({ status: 'none' });
+
+    commonsCache.dispose();
+    serve(p18Can, {
+      query: {
+        pages: [
+          { ...page, imageinfo: [{ ...info, thumburl: 'http://upload.wikimedia.org/a.jpg' }] },
+        ],
       },
     });
     expect(await getPhoto('Q170132')).toEqual({ status: 'none' });

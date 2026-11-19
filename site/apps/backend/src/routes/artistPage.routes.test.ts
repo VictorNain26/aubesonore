@@ -626,3 +626,25 @@ describe('GET /sitemap-artists-discovered.xml', () => {
     expect(xml).toContain(`<loc>${env.FRONTEND_BASE_URL}/en/artist/${UNPLAYED_MBID}</loc>`);
   });
 });
+
+describe('per-IP limits', () => {
+  /** The status of the 61st request in a minute, after 60 that were not refused. */
+  async function sixtyFirst(path: string): Promise<number> {
+    const request = () =>
+      app.handle(
+        new Request(`http://localhost${path}`, { headers: { 'x-real-ip': '198.51.100.7' } })
+      );
+    for (let i = 0; i < 60; i += 1) expect((await request()).status).not.toBe(429);
+    return (await request()).status;
+  }
+
+  it('refuses a 61st artist page in a minute', async () => {
+    mockShell();
+
+    expect(await sixtyFirst('/artiste/daft-punk')).toBe(429);
+  });
+
+  it('refuses a 61st sitemap in a minute', async () => {
+    expect(await sixtyFirst('/sitemap-artists.xml')).toBe(429);
+  });
+});

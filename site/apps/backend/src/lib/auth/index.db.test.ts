@@ -67,6 +67,21 @@ describe('sign-up', () => {
     expect(await signIn.json()).toMatchObject({ code: 'EMAIL_NOT_VERIFIED' });
     expect(sent.map((mail) => mail.kind)).toContain('verify');
   });
+
+  // A script on the page could otherwise read the session; another site could send it along.
+  it('keeps the session cookie from the page scripts and from other sites', async () => {
+    await signUp('new@example.test', 'a-good-password');
+    const link = sent.find((mail) => mail.kind === 'verify')?.buttonLink ?? '';
+
+    // The confirmation link signs the listener in.
+    const confirmed = await auth.handler(new Request(link));
+    const session = confirmed.headers
+      .getSetCookie()
+      .find((cookie) => cookie.includes('session_token='));
+
+    expect(session).toContain('HttpOnly');
+    expect(session).toContain('SameSite=Lax');
+  });
 });
 
 describe('the lifetimes the mails promise', () => {

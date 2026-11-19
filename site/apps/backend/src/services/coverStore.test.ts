@@ -98,6 +98,8 @@ describe('parseCoverKey', () => {
     ['station', ART_ID, '250.webp'],
     ['station', 'abc', '96.webp'],
     ['station', '../x-1', '96.webp'],
+    ['station', '../a-1', '96.webp'],
+    ['caa', `../${RG}`, '500.webp'],
     ['photo', RG, '500.webp'],
     ['caa', RG, '0500.webp'],
   ])('refuses %s/%s/%s', (kind, id, file) => {
@@ -162,6 +164,7 @@ describe('a Cover Art Archive cover', () => {
     'http://archive.org/download/x.jpg',
     'https://archive.org.evil.example/x.jpg',
     'https://169.254.169.254/latest/meta-data',
+    'https://evil.example/?next=https://archive.org/x.jpg',
   ])('never follows a redirect off the archive: %s', async (location) => {
     answers.set(CAA_500, redirect(location));
 
@@ -192,6 +195,37 @@ describe('a Cover Art Archive cover', () => {
 
     expect(await store.get({ kind: 'caa', id: RG, size: 500 })).toBe('failed');
     expect(await readdir(root)).toEqual([]);
+  });
+
+  // sharp would render an SVG, a document that can point at other files and hosts.
+  it('refuses an SVG, though sharp could read it', async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500"></svg>';
+    answers.set(CAA_500, image(Buffer.from(svg), 'image/svg+xml'));
+
+    expect(await store.get({ kind: 'caa', id: RG, size: 500 })).toBe('failed');
+  });
+
+  it('refuses an image past 10 MB without decoding it', async () => {
+    answers.set(CAA_500, image(Buffer.concat([jpeg100, Buffer.alloc(10 * 1024 * 1024)])));
+
+    expect(await store.get({ kind: 'caa', id: RG, size: 500 })).toBe('failed');
+  });
+
+  it('follows five redirects, not a sixth', async () => {
+    const hops = Array.from({ length: 6 }, (_, i) => `https://archive.org/download/hop-${i}.jpg`);
+    answers.set(CAA_500, redirect(hops[0]!));
+    for (let i = 0; i < 4; i += 1) answers.set(hops[i]!, redirect(hops[i + 1]!));
+    answers.set(hops[4]!, image(jpeg100));
+
+    expect(await store.get({ kind: 'caa', id: RG, size: 500 })).toBeInstanceOf(Buffer);
+
+    await rm(join(root, 'covers'), { recursive: true });
+    seen = [];
+    answers.set(hops[4]!, redirect(hops[5]!));
+    answers.set(hops[5]!, image(jpeg100));
+
+    expect(await store.get({ kind: 'caa', id: RG, size: 500 })).toBe('failed');
+    expect(seen).not.toContain(hops[5]);
   });
 
   it('fetches once for two listeners asking at the same moment, each given the size it asked for', async () => {
@@ -287,6 +321,16 @@ describe("the station's covers", () => {
     expect(await widthOf(light)).toBe(96);
     expect(await widthOf(hero)).toBe(384);
     expect(await widthOf(large)).toBe(768);
+  });
+
+  // The id comes from AzuraCast's now-playing answer and becomes a path on the volume.
+  it('prepares nothing for an art id that is not one', async () => {
+    answers.set(`http://azuracast.test/api/station/aubesonore/art/../a-1.jpg`, image(jpeg1000));
+
+    await store.prepareStation('../a-1');
+
+    expect(seen).toEqual([]);
+    expect(await readdir(root)).toEqual([]);
   });
 
   it("counts AzuraCast's redirect to its generic image as no cover", async () => {

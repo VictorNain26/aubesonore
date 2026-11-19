@@ -324,4 +324,14 @@ describe('GET /api/musilogy/search', () => {
     expect((await get('/search?q=a')).status).toBe(400);
     expect((await get('/search')).status).toBe(400);
   });
+
+  it('limits a client to 60 searches a minute', async () => {
+    answers = { search_artists: [] };
+    for (let i = 0; i < 60; i += 1) await get('/search?q=t.%20rex', '198.51.100.7');
+
+    const res = await get('/search?q=t.%20rex', '198.51.100.7');
+
+    expect(res.status).toBe(429);
+    expect(res.headers.get('retry-after')).toBe('60');
+  });
 });

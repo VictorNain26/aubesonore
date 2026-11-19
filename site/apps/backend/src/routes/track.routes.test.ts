@@ -23,6 +23,7 @@ const unlikeSpy = spyOn(trackService, 'unlikeTrack').mockResolvedValue({
 afterEach(() => {
   signedIn = true;
   likeSpy.mockClear();
+  unlikeSpy.mockClear();
   __resetRateLimits();
 });
 afterAll(() => {
@@ -70,6 +71,7 @@ describe('POST /api/track/like', () => {
     'https://www.youtube.com.evil.example/watch?v=x',
     'http://www.youtube.com/watch?v=x',
     'javascript:alert(1)//www.youtube.com/',
+    'https://evil.example/?u=https://youtu.be/x',
   ])('refuses a link that is not YouTube: %s', async (youtubeUrl) => {
     const res = await like({ title: 'In Flight', artist: 'Sunflower Bean', youtubeUrl });
 
@@ -89,9 +91,37 @@ describe('POST /api/track/like', () => {
     expect(res.status).toBe(200);
     expect(likeSpy).toHaveBeenCalled();
   });
+
+  // Each keep asks iTunes and YouTube for the track: the cap keeps one account from spending them.
+  it('refuses a 61st keep in a minute from one listener', async () => {
+    const body = { title: 'In Flight', artist: 'Sunflower Bean', youtubeUrl: 'https://youtu.be/x' };
+    for (let i = 0; i < 60; i += 1) expect((await like(body)).status).toBe(200);
+
+    expect((await like(body)).status).toBe(429);
+    expect(likeSpy).toHaveBeenCalledTimes(60);
+  });
+});
+
+describe('GET /api/track/like', () => {
+  it('asks a listener who is not signed in to sign in', async () => {
+    signedIn = false;
+    const res = await trackRoutes.handle(new Request('http://localhost/api/track/like'));
+
+    expect(res.status).toBe(401);
+  });
 });
 
 describe('DELETE /api/track/like/:trackId', () => {
+  it('asks a listener who is not signed in to sign in, removing nothing', async () => {
+    signedIn = false;
+    const res = await trackRoutes.handle(
+      new Request('http://localhost/api/track/like/some-id', { method: 'DELETE' })
+    );
+
+    expect(res.status).toBe(401);
+    expect(unlikeSpy).not.toHaveBeenCalled();
+  });
+
   it("sets the service's status and keeps it out of the answer", async () => {
     const res = await trackRoutes.handle(
       new Request('http://localhost/api/track/like/unknown', { method: 'DELETE' })

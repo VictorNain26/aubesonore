@@ -5,6 +5,7 @@ import { artistRoutes } from './artist.routes';
 import { env } from '../config/env';
 
 const { shareRoutes } = await import('./share.routes');
+const { __resetRateLimits } = await import('../lib/rateLimit');
 const { linksCache, itunesCache } = await import('../services/trackLinksService');
 const { deezerCache, __resetDeezerCircuit } = await import('../services/deezerService');
 // The cover a kept copy of the track has: spied, the database is not there.
@@ -69,6 +70,19 @@ describe('GET /t', () => {
     const res = await app.handle(new Request('http://localhost/t?title=Balance%20Act'));
 
     expect(res.status).toBe(400);
+  });
+
+  // Each page asks iTunes and Deezer: the limit keeps a client from spending their quotas.
+  it('refuses a 31st page in a minute from one client', async () => {
+    __resetRateLimits();
+    const request = () =>
+      app.handle(new Request('http://localhost/t', { headers: { 'x-real-ip': '198.51.100.7' } }));
+    for (let i = 0; i < 30; i += 1) expect((await request()).status).toBe(400);
+
+    const res = await request();
+    __resetRateLimits();
+
+    expect(res.status).toBe(429);
   });
 
   it('renders an HTML page with title, artist and OG meta', async () => {
