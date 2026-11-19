@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
@@ -38,7 +38,6 @@ describe('MobileMenu', () => {
   });
 
   it('offers Mes titres and signing out to a listener signed in', async () => {
-    const signOut = vi.fn().mockResolvedValue(undefined);
     useAuthStore.setState({
       user: {
         id: 'u1',
@@ -49,7 +48,6 @@ describe('MobileMenu', () => {
         updatedAt: '2026-01-01T00:00:00.000Z',
       },
       isAuthenticated: true,
-      signOut,
     });
     await open();
 
@@ -60,7 +58,13 @@ describe('MobileMenu', () => {
     );
     expect(within(menu).getByText('jane@example.com')).toBeInTheDocument();
     await userEvent.click(within(menu).getByRole('button', { name: 'Se déconnecter' }));
-    expect(signOut).toHaveBeenCalledOnce();
+    // The menu closes, the server (MSW) ends the session: open again, it offers to sign in.
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() => expect(useAuthStore.getState().isAuthenticated).toBe(false));
+    await userEvent.click(screen.getByRole('button', { name: 'Menu' }));
+    expect(
+      within(screen.getByRole('dialog')).getByRole('link', { name: 'Se connecter' })
+    ).toBeInTheDocument();
   });
 
   it('offers the theme beside the language, to everyone', async () => {
