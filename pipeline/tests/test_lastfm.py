@@ -29,6 +29,7 @@ def test_similar_artists() -> None:
     p = responses.calls[0].request.params
     assert p["method"] == "artist.getSimilar" and p["artist"] == "A Certain Ratio"
     assert p["limit"] == "50" and p["autocorrect"] == "1" and p["format"] == "json"
+    assert p["api_key"] == KEY  # Last.fm refuses a call without it
 
 
 @responses.activate

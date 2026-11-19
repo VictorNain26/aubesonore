@@ -194,6 +194,43 @@ def test_a_title_gone_from_deezer_is_counted(tmp_path: Path, fake_audio: dict[in
     assert rep.n_wanted == 3
 
 
+def test_a_found_file_below_the_bar_is_refused_before_anything_else(
+    tmp_path: Path, fake_audio: dict[int, float], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Breaks if the pass publishes a file the probe would refuse: low bitrate, wrong length.
+    conn = make_model_db(tmp_path)
+    serve_scores(conn)
+    low, short, ok = pending(conn, CFG).tids[:3]
+    probes = {low: Probe("mp3", 200.0, 128), short: Probe("mp3", 150.0, 320)}
+    monkeypatch.setattr(
+        run_mod, "probe", lambda p: probes.get(int(p.stem), Probe("mp3", 200.0, 320))
+    )
+
+    rep = _pass(conn, tmp_path, {low, short, ok}, 1)
+
+    assert rep.n_ready == 1 and set(prepared) == {ok}
+    assert dict(rep.failures) == {"débit": 1, "durée": 1, "aucun résultat": 1}
+
+
+def test_a_file_without_a_deezer_preview_to_compare_is_refused(
+    tmp_path: Path, fake_audio: dict[int, float]
+) -> None:
+    # Without the preview, nothing says the file is the track: it is not published.
+    class NoPreview(FakeDeezer):
+        def track_page(self, tid: int) -> TrackPage | None:
+            page = super().track_page(tid)
+            return None if page is None else TrackPage(page.track, None, page.album)
+
+    conn = make_model_db(tmp_path)
+    serve_scores(conn)
+    found = pending(conn, CFG).tids[0]
+
+    rep = _pass(conn, tmp_path, {found}, 1, NoPreview())
+
+    assert rep.n_ready == 0 and prepared == {}
+    assert rep.failures["extrait Deezer indisponible"] == 1
+
+
 def test_one_track_request_per_title_after_the_wanted_list(
     tmp_path: Path, fake_audio: dict[int, float]
 ) -> None:

@@ -234,7 +234,35 @@ def test_extraits_never_outlive_the_app(db: Path) -> None:
 def test_the_follow_up_page_is_guarded_and_shows_each_source(db: Path) -> None:
     client = _client(db)
     assert client.get("/suivi").status_code == 403
+    conn = connect(db)
+    exam = next(b for b in pending_ballots(conn) if b.kind == "exam")
+    conn.close()
+    client.post("/vote", data={"tid": str(exam.deezer_track_id), "choix": "oui"}, headers=OK)
     page = client.get("/suivi", headers=OK)
     assert page.status_code == 200
-    assert "Suivi des sources" in page.text and "<td>voisin</td>" in page.text
+    assert "Suivi des sources" in page.text
     assert "hypem : rien de neuf" in page.text  # source attendue, absente de la fournée
+    # Each table has its rows: the batch's path per source, then the exam's « oui » per source.
+    flows, rates = page.text.split("<table>")[1:]
+    assert "<tr><td>voisin</td><td>48</td><td>24</td><td>0</td><td>0</td><td>0</td></tr>" in flows
+    assert "<td>voisin</td>" in rates and rates.split("</table>")[0].endswith("<td>1</td></tr>")
+
+
+def test_the_page_offers_the_three_answers_for_the_title_shown(db: Path) -> None:
+    b = _first(db)
+    page = _Elements()
+    page.feed(_client(db).get("/", headers=OK).text)
+    form = next(i for i, (tag, _, _) in enumerate(page.elements) if tag == "form")
+    assert page.elements[form][1] == {"method": "post", "action": "/vote"}
+    inside = page.elements[form + 1 : form + 5]
+    assert inside[0][1] == {"type": "hidden", "name": "tid", "value": str(b.deezer_track_id)}
+    assert [(tag, attrs["value"], text) for tag, attrs, text in inside[1:]] == [
+        ("button", "oui", "Oui"),
+        ("button", "non", "Non"),
+        ("button", "passer", "Passer"),
+    ]
+
+
+def test_the_week_page_says_when_nothing_was_voted(db: Path) -> None:
+    page = _client(db).get("/semaine", headers=OK).text
+    assert "Aucun vote cette semaine." in page and "<ol" not in page
