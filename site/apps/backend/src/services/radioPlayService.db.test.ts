@@ -111,4 +111,17 @@ describe('findPlay', () => {
       isrc: 'DEN271800071',
     });
   });
+
+  // Its ISRC would tie the kept track, and the artist's identity, to another artist's recording.
+  it('takes no title on air by another artist', async () => {
+    onAir.mockResolvedValue({
+      sh_id: 1,
+      title: 'Intro',
+      artist: 'The xx',
+      isrc: 'GBBKS0900213',
+      artId: null,
+    });
+
+    expect(await findPlay('Intro', 'M83')).toBeNull();
+  });
 });

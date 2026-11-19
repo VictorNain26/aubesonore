@@ -392,6 +392,26 @@ describe('identity by ISRC', () => {
     expect(await profiles()).toEqual([]);
   });
 
+  // Only a checked ISRC, or a first MBID, rewrites an identity: a title search can find a homonym.
+  it('keeps the MBID of a row bound by its name when its ISRC does not check out', async () => {
+    await known({
+      id: 'a-paul',
+      name: 'Paul McCartney',
+      mbid: 'mb-paul',
+      identifiedBy: 'name',
+      slug: 'paul-mccartney',
+    });
+    await played('Paul McCartney', 'Band on the Run', 'GBCCS1500158');
+    isrcLookup = found([recording('Band on the Run', ['mb-wings', 'Wings'])]);
+    titleLookup = found([recording('Band on the Run', ['mb-homonym', 'Paul McCartney'])]);
+
+    expect(await resolveArtist('Paul McCartney')).toEqual({ id: 'a-paul', slug: 'paul-mccartney' });
+    expect(await rowNamed('Paul McCartney')).toMatchObject({
+      mbid: 'mb-paul',
+      identifiedBy: 'name',
+    });
+  });
+
   it('leaves a row identified by its ISRC alone', async () => {
     await known({
       id: 'a-27',
