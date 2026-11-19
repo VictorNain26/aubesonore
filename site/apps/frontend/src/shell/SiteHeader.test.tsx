@@ -40,8 +40,7 @@ describe('SiteHeader', () => {
     );
   });
 
-  function signIn(): ReturnType<typeof vi.fn> {
-    const signOut = vi.fn().mockResolvedValue(undefined);
+  function signIn(): void {
     useAuthStore.setState({
       user: {
         id: '1',
@@ -54,9 +53,7 @@ describe('SiteHeader', () => {
       isAuthenticated: true,
       isLoading: false,
       authError: null,
-      signOut,
     });
-    return signOut;
   }
 
   it('leads to the Mes titres page, marked current once there', () => {
@@ -93,13 +90,15 @@ describe('SiteHeader', () => {
   });
 
   it('keeps the account in its own menu, where the listener signs out', async () => {
-    const signOut = signIn();
+    signIn();
     render(<SiteHeader />, { wrapper: MemoryRouter });
 
     await userEvent.click(screen.getByRole('button', { name: 'Mon compte' }));
     expect(await screen.findByText('jane@example.com')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('menuitem', { name: 'Se déconnecter' }));
-    expect(signOut).toHaveBeenCalled();
+    // Signed out through the server (MSW): the header offers to sign in again.
+    expect(await screen.findByRole('link', { name: 'Se connecter' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Mon compte' })).not.toBeInTheDocument();
   });
 
   it('offers the theme in the account menu, one choice with the footer’s', async () => {
