@@ -210,21 +210,17 @@ describe('player store', () => {
     vi.useFakeTimers();
     const { usePlayer } = await import('./player');
     await usePlayer.getState().play();
-    expect(context.gain.gain.linearRampToValueAtTime).toHaveBeenLastCalledWith(
-      1,
-      expect.any(Number)
-    );
+    expect(context.gain.gain.linearRampToValueAtTime).toHaveBeenLastCalledWith(1, 0.6);
 
     usePlayer.getState().stop();
     expect(usePlayer.getState().isPlaying).toBe(false);
-    expect(context.gain.gain.linearRampToValueAtTime).toHaveBeenLastCalledWith(
-      0,
-      expect.any(Number)
-    );
-    expect(mockAudioInstance.pause).not.toHaveBeenCalled();
+    expect(context.gain.gain.linearRampToValueAtTime).toHaveBeenLastCalledWith(0, 0.4);
 
+    // The stream is cut once the 0.4 s fade has run out, not during it: no abrupt silence.
     // Async: microtasks run between the timers, as between a browser's tasks.
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTimeAsync(399);
+    expect(mockAudioInstance.pause).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
     expect(mockAudioInstance.pause).toHaveBeenCalledOnce();
     expect(mockAudioInstance.src).toBe('');
     expect(consoleError).not.toHaveBeenCalled();

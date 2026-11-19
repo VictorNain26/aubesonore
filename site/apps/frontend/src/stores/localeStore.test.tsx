@@ -1,9 +1,16 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, render } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { getLocale, type Locale } from '@/paraglide/runtime.js';
+import { getLocale, setLocale as setParaglideLocale, type Locale } from '@/paraglide/runtime.js';
+import type * as Runtime from '@/paraglide/runtime.js';
 import { readLocaleChoice, useLocaleStore, useSwitchLocale } from './localeStore';
+
+// The real setLocale, its calls recorded.
+vi.mock('@/paraglide/runtime.js', async (importOriginal) => {
+  const runtime = await importOriginal<typeof Runtime>();
+  return { ...runtime, setLocale: vi.fn(runtime.setLocale) };
+});
 
 afterEach(() => {
   window.history.replaceState(null, '', '/');
@@ -42,6 +49,23 @@ describe('the language switch', () => {
 
     to('fr');
     expect(router.state.location.pathname).toBe('/');
+  });
+
+  // Paraglide's setLocale loads the other language's page unless told not to, which would cut the
+  // stream. jsdom cannot show a document navigation, so the call is what this test reads.
+  it('never lets Paraglide load another page, on a switch or on Back', () => {
+    const { to } = atPage('/');
+
+    to('en');
+    window.history.replaceState(null, '', '/');
+    useLocaleStore.getState().syncWithUrl();
+
+    expect(
+      vi.mocked(setParaglideLocale).mock.calls.map(([locale, options]) => [locale, options])
+    ).toEqual([
+      ['en', { reload: false }],
+      ['fr', { reload: false }],
+    ]);
   });
 
   it.each([

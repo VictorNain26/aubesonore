@@ -4,6 +4,20 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../mocks/server';
 import { useLikedTracksStore, isTrackLiked } from './likedTracksStore';
 
+// A track the listener kept earlier: a keep or its failure leaves it as it is.
+const KEPT = {
+  id: 'kept-1',
+  userId: 'u1',
+  title: 'Already Kept',
+  artist: 'K',
+  album: null,
+  artworkUrl: null,
+  youtubeUrl: 'https://y/k',
+  isrc: null,
+  artistId: null,
+  createdAt: '2026-01-01T00:00:00Z',
+};
+
 beforeEach(() => {
   useLikedTracksStore.setState({
     tracks: [],
@@ -15,6 +29,7 @@ beforeEach(() => {
 
 describe('likedTracksStore', () => {
   it('rolls back optimistic like on server error', async () => {
+    useLikedTracksStore.setState({ tracks: [KEPT] });
     server.use(
       http.post(
         'http://localhost:3000/api/track/like',
@@ -29,7 +44,7 @@ describe('likedTracksStore', () => {
     });
 
     expect(outcome).toBe('failed');
-    expect(useLikedTracksStore.getState().tracks).toHaveLength(0);
+    expect(useLikedTracksStore.getState().tracks).toEqual([KEPT]);
     expect(useLikedTracksStore.getState().error).not.toBeNull();
   });
 
@@ -51,6 +66,8 @@ describe('likedTracksStore', () => {
   });
 
   it('keeps optimistic track on success and replaces temp id with server id', async () => {
+    useLikedTracksStore.setState({ tracks: [KEPT] });
+
     const outcome = await useLikedTracksStore.getState().likeTrack({
       title: 'T',
       artist: 'A',
@@ -59,9 +76,10 @@ describe('likedTracksStore', () => {
 
     expect(outcome).toBe('done');
     const tracks = useLikedTracksStore.getState().tracks;
-    expect(tracks).toHaveLength(1);
-    expect(tracks[0]?.id).toBe('t1');
-    expect(tracks[0]?.title).toBe('T');
+    expect(tracks).toHaveLength(2);
+    expect(tracks[0]).toEqual(KEPT);
+    expect(tracks[1]?.id).toBe('t1');
+    expect(tracks[1]?.title).toBe('T');
   });
 
   it('rolls back optimistic unlike on server error', async () => {
