@@ -42,7 +42,9 @@ def test_every_page_requires_access(db: Path) -> None:
     assert c.get("/", headers={HEADER: "faux"}).status_code == 403
     assert c.post("/vote", data={"tid": "1", "choix": "oui"}).status_code == 403
     assert c.get("/extrait/1").status_code == 403
-    assert c.get("/docs").status_code == 404
+    # The API schema would list every route to anyone, token or not.
+    for doc in ("/docs", "/redoc", "/openapi.json"):
+        assert c.get(doc).status_code == 404
     assert c.get("/sante").status_code == 404
 
 

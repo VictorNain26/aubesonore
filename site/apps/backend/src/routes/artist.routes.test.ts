@@ -119,4 +119,17 @@ describe('GET /api/artist/resolve', () => {
 
     expect(res.status).toBe(404);
   });
+
+  // A name never seen adds an artist row: the limit keeps one client from filling the table.
+  it('refuses an 11th name in a minute from one client', async () => {
+    const request = () =>
+      app.handle(
+        new Request('http://localhost/api/artist/resolve?name=Daft%20Punk', {
+          headers: { 'x-real-ip': '198.51.100.7' },
+        })
+      );
+    for (let i = 0; i < 10; i += 1) expect((await request()).status).toBe(200);
+
+    expect((await request()).status).toBe(429);
+  });
 });

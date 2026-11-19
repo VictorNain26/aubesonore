@@ -398,6 +398,28 @@ def test_references_rotate_and_rest_before_coming_back(
     assert [r[0] for r in left] == [100010]
 
 
+def test_a_reference_is_read_only_under_the_plex_root(tmp_path: Path, no_tools: list[Tags]) -> None:
+    # Breaks if a library path outside the Plex root, relative, or climbing out with `..` is read.
+    conn = make_model_db(tmp_path)
+    conn.execute("UPDATE library_tracks SET file = NULL")
+    files = {
+        "p1-0": "/media/plex/Musique/p1-0.flac",
+        "p2-0": "/media/musique/p2-0.flac",
+        "p3-0": "media/plex/Musique/p3-0.flac",
+        "p4-0": "/media/plex/Musique/../../../etc/p4-0.flac",
+    }
+    conn.executemany(
+        "UPDATE library_tracks SET file = ? WHERE plex_key = ?", [(f, k) for k, f in files.items()]
+    )
+    conn.commit()
+
+    # Room for 8 references, one artist each: only the path guard can leave three out.
+    rep = _run(conn, FakeStation(), reperes=48)
+
+    assert [t.deezer_id for t in no_tools] == [100010]
+    assert rep.n_references == 1
+
+
 def test_upload_refusal_is_reported_and_file_kept(tmp_path: Path, no_tools: None) -> None:
     conn = make_model_db(tmp_path)
     _ready(conn, tmp_path, [200000])
