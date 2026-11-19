@@ -38,16 +38,25 @@ def test_backup_is_a_sound_copy_and_keeps_only_recent_days(tmp_path: Path) -> No
 
 
 def test_a_second_backup_the_same_day_replaces_the_first(tmp_path: Path) -> None:
+    # The day's folder already holds models/ the second time: the copy must go over it.
     db = tmp_path / "radio.db"
     conn = connect(db)
+    models = tmp_path / "models"
+    models.mkdir()
+    (models / "modele-0001.joblib").write_bytes(b"m1")
     dest = tmp_path / "sauvegardes"
-    backup(db, tmp_path / "absent", dest, TODAY, 14)
+    backup(db, models, dest, TODAY, 14)
     conn.execute("INSERT INTO votes VALUES (1, 'lesson', 'non', 'd', 'test')")
     conn.commit()
-    target = backup(db, tmp_path / "absent", dest, TODAY, 14)
+    (models / "modele-0002.joblib").write_bytes(b"m2")
+    target = backup(db, models, dest, TODAY, 14)
     assert sqlite3.connect(target / "radio.db").execute(
         "SELECT COUNT(*) FROM votes"
     ).fetchone() == (1,)
+    assert sorted(p.name for p in (target / "models").iterdir()) == [
+        "modele-0001.joblib",
+        "modele-0002.joblib",
+    ]
 
 
 def test_an_unsound_copy_is_refused_and_older_backups_are_kept(tmp_path: Path) -> None:

@@ -151,6 +151,50 @@ def test_each_title_goes_to_the_hour_that_resembles_it_and_the_hour_drifts() -> 
     assert order[:-1] == sorted(order[:-1], reverse=True)
 
 
+# 160 titres pour 384 créneaux par jour : un tour dure 10 h. Joués 8 h avant l'heure, ils sont
+# reposés (6 h), séparés de leur artiste (3 h) et à jour (moins de 1,5 tour) : seule la distance
+# à la cible de l'heure les départage.
+POOL = 160
+TURN_S = POOL / 384 * 86400
+
+
+def test_an_hour_takes_the_titles_closest_to_its_own_target() -> None:
+    # Breaks if the distance to the target is measured wrong: the party hour must prefer the
+    # lively titles over the calm ones, whichever side of its target they lie.
+    calm = [_titre(i, "decouvertes", 0.1) for i in range(POOL // 2)]
+    lively = [_titre(1000 + i, "decouvertes", 0.9) for i in range(POOL // 2)]
+    hour = MIDNIGHT + 21 * 3600
+    played = {t.song_id: hour - 8 * 3600 for t in calm + lively}
+    plan = plan_day(
+        calm + lively, played, _grille(decouvertes=POOL), FRIDAY, _spans([21]), MIDNIGHT, XF
+    )
+    assert len(plan.hours[21]) == 16 and {t.tid for t in plan.hours[21]} <= {t.tid for t in lively}
+
+
+def test_a_title_falling_behind_its_turn_goes_ahead_of_closer_ones() -> None:
+    # 16 titres sur la cible de la nuit remplissent l'heure ; un titre à 0,2 de la cible n'y entre
+    # qu'avec son avance : pas joué depuis 1,8 tour (entre l'avantage, 1,5, et le passage forcé,
+    # 2, qu'il n'atteint pas avant la fin de l'heure), elle lui retire 0,6 x 0,5 de distance.
+    night = np.array([0.25, 0.3, 0.25])
+    on_target = [replace(_titre(i, "decouvertes", 0), q=night) for i in range(1, 17)]
+    behind = replace(_titre(0, "decouvertes", 0), q=night + 0.2 / np.sqrt(3))
+    far = [_titre(i, "decouvertes", 0.9) for i in range(17, POOL)]
+    hour = MIDNIGHT + 3 * 3600
+    played = {f"s{i}": hour - 8 * 3600 for i in range(1, POOL)}
+    played["s0"] = hour - 1.8 * TURN_S
+    plan = plan_day(
+        [behind, *on_target, *far],
+        played,
+        _grille(decouvertes=POOL),
+        FRIDAY,
+        _spans([3]),
+        MIDNIGHT,
+        XF,
+    )
+    assert plan.late == 0  # pas un passage forcé : l'avance seule le place
+    assert 0 in {t.tid for t in plan.hours[3]}
+
+
 def _styled(tid: int, style: list[float]) -> Titre:
     v = np.array(style, dtype=np.float64)
     return replace(_titre(tid, "decouvertes", 0.5), style=v / np.linalg.norm(v))
@@ -568,20 +612,37 @@ def test_client_hour_playlists_history_and_import() -> None:
     assert responses.calls[0].request.params == {"start": "2026-10-01", "end": "2026-10-02"}
     assert c.playlists() == {"AubeSonore": 10}
     assert c.create_hour_playlist("Grille ven 23h", 5, 23) == 11
-    body = json.loads(responses.calls[2].request.body)
-    assert body["order"] == "sequential" and body["avoid_duplicates"] is False
-    assert body["schedule_items"] == [
-        {
-            "start_time": 2300,
-            "end_time": 0,
-            "start_date": None,
-            "end_date": None,
-            "days": [5],
-            "loop_once": True,
-        }
-    ]
+    # Enabled, in the written order, never offered to requests, played once in its hour.
+    assert json.loads(responses.calls[2].request.body) == {
+        "name": "Grille ven 23h",
+        "type": "default",
+        "source": "songs",
+        "order": "sequential",
+        "is_enabled": True,
+        "avoid_duplicates": False,
+        "include_in_requests": False,
+        "weight": 3,
+        "schedule_items": [
+            {
+                "start_time": 2300,
+                "end_time": 0,
+                "start_date": None,
+                "end_date": None,
+                "days": [5],
+                "loop_once": True,
+            }
+        ],
+    }
     assert c.fill_playlist(11, "#EXTM3U\na\nb\n") == 1
     assert b"playlist_file" in responses.calls[4].request.body
+    c.create_hour_playlist("Grille lun 07h", 1, 7)
+    schedule = json.loads(responses.calls[5].request.body)["schedule_items"][0]
+    assert (schedule["start_time"], schedule["end_time"]) == (700, 800)
+    c.empty_playlist(11)
+    assert (responses.calls[6].request.method, responses.calls[6].request.url) == (
+        "DELETE",
+        API + "/playlist/11/empty",
+    )
     assert c.timezone() == "Europe/Paris"
 
 

@@ -85,6 +85,26 @@ def test_weak_negatives_close_to_the_library_are_excluded(tmp_path: Path) -> Non
     assert lab.train.counts()["weak"] == 3
 
 
+def test_weak_negatives_that_are_another_version_of_a_voted_title_are_excluded(
+    tmp_path: Path,
+) -> None:
+    # A « non » by default on a version of a title voted « oui », or of an exam title, would
+    # teach the model against the vote, or reveal the exam to it.
+    conn = make_model_db(tmp_path, n_artists=3, per_artist=2)
+    add_vote(conn, 200000, "lesson", "oui")
+    add_vote(conn, 200100, "exam", "oui")
+    for weak, voted in ((400000, 200000), (400100, 200100)):
+        conn.execute(
+            "UPDATE tracks SET dedupe_key = (SELECT dedupe_key FROM tracks "
+            "WHERE deezer_track_id = ?) WHERE deezer_track_id = ?",
+            (voted, weak),
+        )
+    conn.commit()
+    lab = build_labels(conn, load_signals(conn), 60)
+    assert lab.n_weak_excluded == 2
+    assert lab.train.counts()["weak"] == 4
+
+
 def test_exam_window_keeps_the_latest_votes(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path, n_artists=3, per_artist=2)
     add_vote(conn, 200000, "exam", "oui", at="2026-09-24T10:00:00+00:00")
