@@ -21,7 +21,7 @@ overrides:
   picomatch: '>=2.3.2'
   node-forge: '>=1.4.3'
   defu: '>=6.1.7'
-  '@xmldom/xmldom': '>=0.8.13'
+  '@xmldom/xmldom': '>=0.9.12'
   eslint>ajv: ^6.15.0
   '@eslint/eslintrc>ajv': ^6.15.0
   ajv: '>=8.20.0'
