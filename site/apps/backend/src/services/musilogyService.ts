@@ -14,7 +14,7 @@ import {
   type MusilogyRelease,
   type MusilogySearchHit,
 } from '@aubesonore/shared-types/client';
-import { mbidSlug, ownSlug, pageSlug, slugsFor } from './artistSlugs';
+import { mbidSlug, ownSlug, pageSlug, pageSlugs } from './artistSlugs';
 import {
   deezerIdOf,
   firstCoverOf,
@@ -198,7 +198,8 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
     return null;
   }
 
-  // The page and every page it links to: their addresses are published here.
+  // The page and every page it links to, at the address each already has (slug, else MBID): a
+  // view writes nothing; slugs are given to the pages the site publishes (artistSlugs.slugsFor).
   const linked = [
     { mbid: card.mbid, name: card.name },
     ...[sameSoundRows, colistenRows, creditRows, bandRows, projectRows, nameRows].flatMap((rows) =>
@@ -207,7 +208,7 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
   ];
   const [played, slugs] = await Promise.all([
     playedByMbid(linked.map((page) => page.mbid)),
-    slugsFor(linked),
+    pageSlugs(linked.map((page) => page.mbid)),
   ]);
   const ref = (
     mbidOf: string,
@@ -297,7 +298,7 @@ export async function searchMusilogy(query: string): Promise<MusilogySearchHit[]
   const rows = await call<SearchRow>(
     sql`SELECT * FROM musilogy.search_artists(${query}, ${SEARCH_PAGE})`
   );
-  const slugs = await slugsFor(rows);
+  const slugs = await pageSlugs(rows.map((row) => row.mbid));
   return rows.map((row) => ({
     mbid: row.mbid,
     name: row.name,

@@ -306,14 +306,16 @@ describe("a played artist's page", () => {
 });
 
 describe("a page the antenna never played (today's behaviour, which the profile's refactor changes)", () => {
-  it('is made at each view from the live answers, in the page language; no profile is stored, its slug is', async () => {
+  // A crawler walking Musilogy would otherwise fill artist_slug: 1.29 million rows by 2026-11-20.
+  it('is made at each view from the live answers, in the page language, and writes nothing', async () => {
     await getArtistProfile(UNPLAYED, 'fr');
     const profile = await getArtistProfile(UNPLAYED, 'fr');
 
     expect(profile).toMatchObject({
       id: UNPLAYED,
       name: 'Blur',
-      slug: 'blur',
+      // No slug published for it (not played, not discovered): its address is its MBID.
+      slug: UNPLAYED,
       played: false,
       images: [{ kind: 'photo', ...PHOTO }],
       summary: summary('fr'),
@@ -322,6 +324,7 @@ describe("a page the antenna never played (today's behaviour, which the profile'
     expect(spies.summary).toHaveBeenCalledTimes(2);
     expect(spies.summary.mock.calls.every(([, locale]) => locale === 'fr')).toBe(true);
     expect(await stored()).toEqual([]);
+    expect(await db.select().from(artistSlug)).toEqual([]);
   });
 
   it("links the artist's Deezer page first, then the dump's links", async () => {

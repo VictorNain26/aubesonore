@@ -7,7 +7,7 @@ import type { Lookup } from '../lib/lookup';
 import { createSingleFlight } from '../lib/singleFlight';
 import { getPhoto } from './commonsService';
 import { deezerArtistUrl } from './deezerService';
-import { ownerOfSlug, slugOfArtistPage, slugsFor } from './artistSlugs';
+import { ownerOfSlug, slugOfArtistPage, pageSlugs } from './artistSlugs';
 import { getArtistIdentity, type ArtistIdentity } from './musilogyService';
 import { getSummary } from './wikipediaService';
 import { parseMbid } from '../validators/musilogyValidator';
@@ -137,9 +137,9 @@ async function unplayedProfile(mbid: string, locale: SiteLocale): Promise<Artist
   return {
     id: mbid,
     name: identity.name,
-    // Its address, published here: its slug, given now if it has none, else its MBID while
-    // Musilogy cannot rank it among its homonyms.
-    slug: (await slugsFor([{ mbid, name: identity.name }])).get(mbid) ?? mbid,
+    // Its slug when the site published one (a discovered page's), else its MBID: a view writes
+    // nothing.
+    slug: (await pageSlugs([mbid])).get(mbid) ?? mbid,
     mbid,
     played: false,
     images: imagesOf(photo.status === 'found' ? photo.value : null, identity.firstCover),
