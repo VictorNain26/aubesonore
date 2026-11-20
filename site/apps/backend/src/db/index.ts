@@ -28,8 +28,9 @@ export const pool = new Pool({
  * retry at the next boot rather than hold the boot indefinitely.
  */
 export async function migrateDatabase(): Promise<void> {
+  // As the owner: the role the backend serves as may not change the schema (scripts/db-roles.sql).
   const migrations = new Pool({
-    connectionString: env.DATABASE_URL,
+    connectionString: env.MIGRATION_DATABASE_URL,
     max: 1,
     connectionTimeoutMillis: 5_000,
     lock_timeout: 30_000,

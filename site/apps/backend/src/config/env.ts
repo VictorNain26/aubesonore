@@ -13,7 +13,10 @@ interface EnvConfig {
   IS_PROD: boolean;
 
   // Database
+  /** The role the backend serves as: rows only (scripts/db-roles.sql). */
   DATABASE_URL: string;
+  /** The owner's, for the migrations at start; DATABASE_URL where one role does both (tests, CI). */
+  MIGRATION_DATABASE_URL: string;
   /** CA of the stack's Postgres (PEM, single-line with \n, or DATABASE_CA_CERT_FILE); required whenever TLS is on. */
   DATABASE_CA_CERT: string | undefined;
   /** Optional pool size override. Defaults to 20, of the 100 connections Postgres allows. */
@@ -118,6 +121,7 @@ export const env: EnvConfig = {
   IS_PROD: isProd,
 
   DATABASE_URL: required('DATABASE_URL'),
+  MIGRATION_DATABASE_URL: optional('MIGRATION_DATABASE_URL') ?? required('DATABASE_URL'),
   DATABASE_CA_CERT: resolveCaCert(),
   DATABASE_POOL_MAX: parseInteger('DATABASE_POOL_MAX', 20),
   DATABASE_SSL: Bun.env.DATABASE_SSL ? Bun.env.DATABASE_SSL === 'true' : isProd,

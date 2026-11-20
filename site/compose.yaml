@@ -16,7 +16,10 @@ name: aubesonore
 x-backend-environment: &backend-environment
   NODE_ENV: ${NODE_ENV:-production}
   PORT: 3000
-  DATABASE_URL: postgresql://${POSTGRES_USER:-aubesonore}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aubesonore}
+  # The backend serves as aubesonore_app, rows only (scripts/db-roles.sql), and migrates at its
+  # start as the owner.
+  DATABASE_URL: postgresql://aubesonore_app:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB:-aubesonore}
+  MIGRATION_DATABASE_URL: postgresql://${POSTGRES_USER:-aubesonore}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aubesonore}
   DATABASE_SSL: 'true'
   DATABASE_CA_CERT_FILE: /certs/ca.crt
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
@@ -126,10 +129,10 @@ services:
     logging:
       options: { max-size: '10m', max-file: '3' }
 
-  # Musilogy's own role, which `musilogy load` signs in as from the host: it owns the `musilogy`
-  # schema and nothing of the site's (scripts/db-roles.sql). The backend waits for it, so the role
-  # exists wherever the site runs, and a .env without MUSILOGY_DB_PASSWORD stops the start here
-  # rather than at the next load.
+  # The roles besides the owner (scripts/db-roles.sql): Musilogy's, which `musilogy load` signs in
+  # as from the host, owning the `musilogy` schema and nothing of the site's; and the backend's,
+  # rows only. The backend waits for it, so both exist wherever the site runs, and a .env without
+  # their passwords stops the start here rather than at the next load or connection.
   db-roles-init:
     image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
     container_name: aubesonore-db-roles-init
@@ -145,6 +148,7 @@ services:
       PGSSLMODE: verify-full
       PGSSLROOTCERT: /certs/ca.crt
       MUSILOGY_DB_PASSWORD: ${MUSILOGY_DB_PASSWORD:-}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-}
     volumes:
       - pg_certs:/certs:ro
       - ./scripts/db-roles.sql:/db-roles.sql:ro
@@ -154,6 +158,8 @@ services:
       - >-
         [ -n "$$MUSILOGY_DB_PASSWORD" ] ||
         { echo 'MUSILOGY_DB_PASSWORD is not set in .env (see .env.example)' >&2; exit 1; };
+        [ -n "$$APP_DB_PASSWORD" ] ||
+        { echo 'APP_DB_PASSWORD is not set in .env (see .env.example)' >&2; exit 1; };
         exec psql -v ON_ERROR_STOP=1 -f /db-roles.sql
 
   backend:
@@ -278,6 +284,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      # Its seed signs in as aubesonore_app; the migrations, as the owner, grant it the tables.
+      db-roles-init:
+        condition: service_completed_successfully
     environment:
       <<: *backend-environment
       DEV_USER_EMAIL: ${DEV_USER_EMAIL:-}
@@ -289,7 +298,7 @@ services:
     command:
       - sh
       - -c
-      - DATABASE_URL="$$DATABASE_URL?sslmode=verify-full&sslrootcert=/certs/ca.crt" bun run db:migrate && bun run seed:dev
+      - DATABASE_URL="$$MIGRATION_DATABASE_URL?sslmode=verify-full&sslrootcert=/certs/ca.crt" bun run db:migrate && bun run seed:dev
     restart: 'no'
 
   # The SPA from source, with hot reload. The workspace is mounted; what the container installs
