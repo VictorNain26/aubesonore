@@ -97,7 +97,7 @@ Les polices et le lissage changent d'un système à l'autre : les références n
 Redessiner les références après un changement voulu, au choix :
 
 - **Par la CI** : Actions → Site → Run workflow, sur la branche ; l'artefact `visual-baselines` du run contient toutes les captures, à copier dans `apps/frontend/visual/__screenshots__/` et à commiter. Une capture nouvelle, sans référence, arrive aussi dans cet artefact quand le job échoue sur une PR.
-- **Avec Docker**, depuis la racine du worktree, dépendances installées (`pnpm -C site install`, puis `pnpm -C site turbo build --filter=@aubesonore/shared-types`), sans réseau :
+- **Avec Docker**, depuis la racine du worktree, dépendances installées (`pnpm -C site install`, puis `pnpm -C site exec turbo build --filter=@aubesonore/shared-types`), sans réseau :
 
   ```bash
   docker run --rm --network none --user "$(id -u):$(id -g)" -v "$PWD":/work \

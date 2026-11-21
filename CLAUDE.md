@@ -8,6 +8,9 @@ change truly spans them.
 
 - `site.yml`, `pipeline.yml` and `musilogy.yml` have no path filter on purpose: their jobs are required
   checks on `master`, on every PR.
+- Their jobs skip drafts (Actions quota; `site/.husky/pre-push` mirrors `site.yml` only, the
+  pipeline and Musilogy checks run in each piece's rules): a PR opens as a draft and is marked ready
+  (`gh pr ready`) once its work is done and checked locally, so CI runs before Victor reviews it.
 - Deploying is merging to `master` (`site/README.md` « Déploiement »): the server runs the images
   CI published for that commit once all its checks pass. Merged is not deployed: the site is once
   `curl -s https://api.aubesonore.fr/health | jq -r .version` equals the last commit that touched it,

@@ -55,7 +55,7 @@ export default defineConfig({
   ],
   webServer: {
     // Node itself, not pnpm: the Playwright image has Node and npm only (README « Captures et
-    // accessibilité »). The workspace's Vite, hoisted to site/node_modules (site/.npmrc).
+    // accessibilité »). The workspace's Vite, hoisted to site/node_modules (nodeLinker, site/pnpm-workspace.yaml).
     command: `node ../../node_modules/vite/bin/vite.js --port ${PORT} --strictPort --host 127.0.0.1`,
     url: baseURL,
     reuseExistingServer: false,
