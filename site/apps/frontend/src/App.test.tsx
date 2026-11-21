@@ -10,6 +10,9 @@ import { PAGE_TEST_TIMEOUT, settle } from './mocks/settle';
 vi.mock('./pages/ArtistPage', () => {
   throw new Error('Failed to fetch dynamically imported module');
 });
+vi.mock('./pages/AuthPage', () => {
+  throw new Error('Failed to fetch dynamically imported module');
+});
 
 describe('App', { timeout: PAGE_TEST_TIMEOUT }, () => {
   it('shows the artist page error state when its chunk fails to load', async () => {
@@ -22,6 +25,19 @@ describe('App', { timeout: PAGE_TEST_TIMEOUT }, () => {
     expect(screen.getByRole('link', { name: 'Revenir au direct' })).toBeInTheDocument();
     expect(screen.getByRole('contentinfo')).toBeInTheDocument();
   });
+
+  it.each(['/connexion', '/en/sign-in', '/reset-password'])(
+    'shows the error state in the frame when the sign-in chunk fails to load: %s',
+    async (path) => {
+      const router = createMemoryRouter(routes, { initialEntries: [path] });
+      render(<RouterProvider router={router} />);
+      await settle(router);
+
+      expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+      expect(screen.queryByText(/Unexpected Application Error/)).not.toBeInTheDocument();
+      expect(screen.getByRole('contentinfo')).toBeInTheDocument();
+    }
+  );
 });
 
 const at = (pathname: string, hash: string, key: string) => ({
