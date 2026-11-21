@@ -12,7 +12,7 @@ Paths below are relative to `site/`.
 From the repository root: `pnpm -C site lint`, `pnpm -C site typecheck`,
 `pnpm -C site --filter @aubesonore/frontend test --run` and
 `pnpm -C site --filter @aubesonore/backend test`. On a fresh worktree, build the shared types first:
-`pnpm -C site turbo build --filter=@aubesonore/shared-types`; without them lint reports errors
+`pnpm -C site exec turbo build --filter=@aubesonore/shared-types`; without them lint reports errors
 everywhere.
 
 ## Workflow

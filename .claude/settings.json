@@ -33,7 +33,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/checks.sh",
+            "command": "input=$(cat); root=$(git -C \"$(printf '%s' \"$input\" | jq -r .cwd)\" rev-parse --show-toplevel 2>/dev/null) || root=$CLAUDE_PROJECT_DIR; [ -f \"$root/.claude/hooks/checks.sh\" ] || exit 0; printf '%s' \"$input\" | bash \"$root/.claude/hooks/checks.sh\"",
             "timeout": 300
           }
         ]
