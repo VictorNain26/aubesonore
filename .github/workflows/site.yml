@@ -185,6 +185,7 @@ jobs:
           PGHOST: localhost
           PGUSER: postgres
           PGPASSWORD: postgres
+          DB_ROLES_TEST_THROWAWAY: "1"
 
   build:
     name: Build all

@@ -4,8 +4,15 @@
 #
 # Connects as a superuser through the libpq variables (PGHOST, PGPORT, PGUSER, PGPASSWORD), like
 # the owner db-roles-init signs in as, and works in a database of its own, dropped at the end.
-# The roles it creates are the cluster's: run it on a throwaway server (CI's service container).
+# The roles it creates are the cluster's, and it resets their passwords: it runs only on a
+# throwaway server (CI's service container), when DB_ROLES_TEST_THROWAWAY=1 says so.
 set -euo pipefail
+
+if [ "${DB_ROLES_TEST_THROWAWAY:-}" != 1 ]; then
+  echo "db-roles.test.sh resets the roles' passwords of the server it reaches:" >&2
+  echo "run it on a throwaway server, with DB_ROLES_TEST_THROWAWAY=1." >&2
+  exit 2
+fi
 
 here=$(cd "$(dirname "$0")" && pwd)
 db=db_roles_test
@@ -52,7 +59,9 @@ check "the backend reads a schema an older load left" aubesonore_app app-test \
   "SELECT musilogy.artist_name('a74b1b7f-71a5-4011-9441-d0b5e4122711')" Radiohead
 
 # The next load, as musilogy load runs it: a staging schema, renamed over the old one, with no
-# grant of its own and no db-roles run after it.
+# grant of its own and no db-roles run after it. It copies the swap of musilogy/src/musilogy/load.py
+# (signed in as the `musilogy` role, the one the default privileges name): a change there to the
+# role or the swap is changed here too.
 as musilogy musilogy-test "
   CREATE SCHEMA musilogy_next;
   CREATE TABLE musilogy_next.artists (mbid uuid PRIMARY KEY, name text NOT NULL);

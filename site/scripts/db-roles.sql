@@ -29,9 +29,10 @@ FROM pg_namespace
 WHERE nspname IN ('musilogy', 'musilogy_next') \gexec
 
 -- `aubesonore_app`: the backend's role while it serves. It reads and writes the rows of the site's
--- tables, reads Musilogy's (below), and nothing else: no schema change, no role, no other database; a flaw in a request
--- cannot drop a table nor read past the grants (postgresql.org/docs/16/ddl-priv.html). The
--- migrations run as the owner, at the backend's start (MIGRATION_DATABASE_URL).
+-- tables, reads Musilogy's (below), and nothing else: no schema change, no role, no other
+-- database; a flaw in a request cannot drop a table nor read past the grants
+-- (postgresql.org/docs/16/ddl-priv.html). The migrations run as the owner, at the backend's start
+-- (MIGRATION_DATABASE_URL).
 SELECT 'CREATE ROLE aubesonore_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT'
 WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'aubesonore_app') \gexec
 
