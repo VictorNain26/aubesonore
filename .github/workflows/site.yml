@@ -212,6 +212,83 @@ jobs:
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,scope=frontend,mode=max
 
+  # The images production runs, built once here from the commit that passed the jobs above, then
+  # pulled by the server (scripts/deploy.sh) instead of rebuilt there: what runs is what was
+  # tested ("only build your binaries once", Humble & Farley, Continuous Delivery, ch. 5).
+  # Master only, so no pull request's code ever holds a token that writes packages; the write
+  # permissions are this job's alone (docs.github.com/en/actions/reference/security/secure-use).
+  # Each image carries a signed SLSA provenance attestation, which the server verifies before it
+  # runs the image (docs.github.com, « Using artifact attestations to establish provenance »).
+  # Packages of a public repository cost nothing to store or pull (docs.github.com, « GitHub
+  # Packages billing »): no version is deleted, every past commit stays a rollback target.
+  publish:
+    name: Publish images
+    needs: [build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    strategy:
+      matrix:
+        include:
+          - image: backend
+            file: site/Dockerfile
+            target: runner
+          - image: frontend
+            file: site/apps/frontend/Dockerfile
+            target: runner
+          - image: renderer
+            file: site/apps/frontend/Dockerfile
+            target: renderer
+    env:
+      IMAGE: ghcr.io/victornain26/aubesonore-${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # sha-<full commit>: the tag deploy.sh asks for. The OCI labels name the repository, which
+      # links the package to it (docs.github.com, « Working with the Container registry »).
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE }}
+          tags: type=sha,format=long
+      # The VITE_* values are production's, compose.yaml's defaults; they are inlined into the
+      # bundle, public by nature (site/README.md).
+      - id: push
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: site
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            VITE_API_URL=https://api.aubesonore.fr
+            VITE_AZURACAST_BASE_URL=https://radio.aubesonore.fr
+            VITE_STATION_SHORTCODE=aubesonore
+          cache-from: |
+            type=gha,scope=${{ matrix.image }}
+            type=gha,scope=frontend
+          cache-to: type=gha,scope=${{ matrix.image }},mode=max
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
   visual:
     name: Visual captures and axe
     if: github.event.pull_request.draft != true

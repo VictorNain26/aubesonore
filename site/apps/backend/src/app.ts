@@ -42,7 +42,7 @@ export const app = new Elysia({
   .use(trendsRoutes)
   .use(shareRoutes)
   .use(coverStoreRoutes(coverStore))
-  .get('/health', () => ({ status: 'ok', uptime: process.uptime() }))
+  .get('/health', () => ({ status: 'ok', uptime: process.uptime(), version: env.GIT_SHA }))
   .get('/', () => ({ message: 'AubeSonore API' }))
   .onError(({ error, set, request }) => {
     logger.error('Unhandled error', {

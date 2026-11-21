@@ -38,6 +38,10 @@ RUN groupadd --system --gid 1001 bunjs && \
 WORKDIR /app
 
 ENV NODE_ENV=production
+# The commit CI builds from (site.yml, job build), which /health reports; empty elsewhere,
+# where the backend says `local`.
+ARG GIT_SHA=""
+ENV GIT_SHA=$GIT_SHA
 
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-workspace.yaml ./
