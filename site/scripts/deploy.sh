@@ -257,6 +257,16 @@ fi
 cd site
 IMAGE_TAG="sha-$target" docker compose up -d --no-build --remove-orphans || rollback "start"
 wait_healthy || rollback "healthchecks"
+# /health answers without the database's data: on 2026-11-21 it said ok while every artist page
+# failed, the backend's role unable to read Musilogy. A search reads it as listeners do. 503 means
+# Musilogy is not loaded (site.md, « Musilogy data »), which a deploy does not fix nor break.
+search=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
+  "${SEARCH_URL:-http://127.0.0.1:3001/api/musilogy/search?q=radiohead}") || true
+case "$search" in
+  200) ;;
+  503) echo "Musilogy is not loaded: the search answers 503" ;;
+  *) rollback "the search answered ${search:-nothing}" ;;
+esac
 git config --unset aubesonore.failedTarget || true
 echo "deployed ${target:0:8}, all healthchecks green"
 

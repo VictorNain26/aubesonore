@@ -110,9 +110,11 @@ cat >"$r/bin/systemctl" <<'EOF2'
 exit 0
 EOF2
 printf '#!/usr/bin/env bash\nexit 0\n' >"$r/bin/uv"
+# The backend's answer to the search after a start: the status code $SEARCH says.
+printf '#!/usr/bin/env bash\necho "curl $*" >>"$DOCKER_LOG"\nprintf %%s "$SEARCH"\n' >"$r/bin/curl"
 # The dump before migrations, which fails when $DUMP says so.
 printf '#!/usr/bin/env bash\necho dump >>"$DOCKER_LOG"\n[ "$DUMP" != fail ]\n' >"$r/bin/backup-db"
-chmod +x "$r/bin/docker" "$r/bin/gh" "$r/bin/systemctl" "$r/bin/uv" "$r/bin/backup-db"
+chmod +x "$r/bin/docker" "$r/bin/gh" "$r/bin/systemctl" "$r/bin/uv" "$r/bin/backup-db" "$r/bin/curl"
 echo token >"$r/gh-token"
 : >"$r/images"
 
@@ -121,7 +123,7 @@ deploy() {
   output=$(PATH="$r/bin:$PATH" REPO_DIR="$r/repo" UV="$r/bin/uv" BACKUP_DB="$r/bin/backup-db" \
     GH_TOKEN_FILE="${TOKEN_FILE-$r/gh-token}" IMAGES="$r/images" HEALTH_TIMEOUT_S=0 \
     DOCKER_LOG="$r/docker.log" BAD="$BAD" FAIL="$FAIL" DUMP="${DUMP:-ok}" CI="${CI:-success}" \
-    PULL="${PULL:-ok}" ATTEST="${ATTEST:-ok}" NORUN="${NORUN:-0}" bash "$here/deploy.sh" 2>&1) || status=$?
+    PULL="${PULL:-ok}" ATTEST="${ATTEST:-ok}" NORUN="${NORUN:-0}" SEARCH="${SEARCH:-200}" bash "$here/deploy.sh" 2>&1) || status=$?
 }
 passed() { echo "ok   $1"; }
 failed() {
@@ -245,6 +247,25 @@ NORUN=0
 name="a rollback without the previous images starts nothing"
 if [ "$status" -ne 0 ] && head_is "$C" && [[ "$output" == *"nothing restarted"* ]] &&
   ! logged "[rollback] compose up"; then passed "$name"; else failed "$name"; fi
+
+# Healthy containers can still fail every listener: a backend that cannot read Musilogy answered
+# 500 on each artist page while /health said ok (2026-11-21). The search runs after the start.
+BAD=none FAIL=none
+SEARCH=500
+S=$(push S)
+deploy
+SEARCH=200
+name="a backend whose Musilogy search fails rolls back"
+if [ "$status" -ne 0 ] && head_is "$C" && failed_is "$S" &&
+  [[ "$output" == *"search answered 500"* ]]; then passed "$name"; else failed "$name"; fi
+
+SEARCH=503
+U=$(push U)
+deploy
+SEARCH=200
+name="a search that says Musilogy is not loaded deploys, and says so"
+if [ "$status" -eq 0 ] && head_is "$U" && failed_is "" &&
+  [[ "$output" == *"Musilogy is not loaded"* ]]; then passed "$name"; else failed "$name"; fi
 
 # The backend applies new migrations at boot and a rollback does not undo them: a range that adds
 # one is dumped first, or waits.
