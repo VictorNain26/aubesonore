@@ -79,7 +79,9 @@ class HypemClient:
                 return tracks
             page += 1
 
-    @stamina.retry(on=HypemUnavailable, attempts=3, wait_initial=2.0, wait_max=30.0)
+    # Toutes les tentatives, quelle que soit leur durée : pas les 45 s au total par défaut de
+    # stamina (stamina.retry, `timeout`).
+    @stamina.retry(on=HypemUnavailable, timeout=None, attempts=3, wait_initial=2.0, wait_max=30.0)
     def _get(self, path: str, params: dict[str, Any]) -> list[Any]:
         try:
             r = self._session.get(

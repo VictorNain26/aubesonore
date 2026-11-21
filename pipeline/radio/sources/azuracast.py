@@ -164,8 +164,23 @@ class AzuracastClient:
             raise AzuracastUnavailable("invalid JSON")
         return body
 
-    @stamina.retry(on=AzuracastUnavailable, attempts=5, wait_initial=1.0, wait_max=30.0)
     def _request(self, method: str, path: str, **kw: Any) -> requests.Response:
+        # Un POST n'est jamais renvoyé : la station a pu l'exécuter avant de ne pas répondre, et un
+        # second enverrait un fichier, créerait une playlist ou importerait une liste deux fois
+        # (RFC 9110 §9.2.2 : un POST n'est pas idempotent).
+        if method == "POST":
+            return self._send(method, path, **kw)
+        return self._send_retried(method, path, **kw)
+
+    # Cinq tentatives, quelle que soit leur durée : les 45 s au total par défaut de stamina
+    # arrêteraient les relances après une seule requête expirée à 120 s (stamina.retry, `timeout`).
+    @stamina.retry(
+        on=AzuracastUnavailable, attempts=5, timeout=None, wait_initial=1.0, wait_max=30.0
+    )
+    def _send_retried(self, method: str, path: str, **kw: Any) -> requests.Response:
+        return self._send(method, path, **kw)
+
+    def _send(self, method: str, path: str, **kw: Any) -> requests.Response:
         try:
             r = self._session.request(
                 method, self._api + path, headers=self._headers, timeout=120, **kw
