@@ -8,6 +8,7 @@ import { PlayerBar } from './shell/PlayerBar';
 import { LiveTrackAnnouncer } from './shell/TrackAnnouncer';
 import { SiteFooter } from './shell/SiteFooter';
 import { Layout } from './shell/Layout';
+import { NavigationPending } from './shell/NavigationPending';
 import { useLocale, useLocaleStore } from './stores/localeStore';
 
 /**
@@ -56,6 +57,7 @@ export function App() {
             document, though fixed at the bottom: the keyboard reaches the player right after the
             skip link, not after every row of the page (it is skipped while away, inert). */}
         <PlayerBar />
+        <NavigationPending />
         <Outlet />
         <PlayerSideEffects />
         <LiveTrackAnnouncer />
