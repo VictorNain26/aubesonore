@@ -274,6 +274,9 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
       set({ isPlaying: true, isConnecting: false });
     } catch (error) {
       if (attempt !== playAttempt) return;
+      // A slow start the reconnect took over (a stall while play() waited): its load() rejects
+      // this play() (AbortError), and the reconnect, not this attempt, now says how it went.
+      if (reconnectAttempts > 0) return;
       wantsPlayback = false;
       const playError = classifyPlayError(error);
       console.error('[Player] Playback failed:', error);
