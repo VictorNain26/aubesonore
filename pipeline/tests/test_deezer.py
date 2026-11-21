@@ -1,8 +1,11 @@
 import logging
+import time
+from typing import Any
 
 import pytest
 import requests
 import responses
+import stamina
 from pyrate_limiter import Duration, Limiter, Rate
 
 from radio.sources.deezer import (
@@ -228,3 +231,24 @@ def test_editorial_selection_and_album_tracks() -> None:
     responses.replace(responses.GET, API + "/editorial/85/selection", json={"data": [{"x": 1}]})
     with pytest.raises(DeezerError):
         client().editorial_selection(85)
+
+
+@responses.activate
+def test_a_search_timing_out_is_tried_five_times_however_long(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Chaque tentative expire à 15 s ; une horloge simulée les compte sans les attendre. Les 45 s
+    # au total par défaut de stamina arrêteraient les relances avant la cinquième.
+    clock = [1_000.0]
+    monkeypatch.setattr(time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(time, "sleep", lambda s: clock.__setitem__(0, clock[0] + s))
+    stamina.set_testing(False)
+
+    def timeout(_: Any) -> Any:
+        clock[0] += 15
+        raise requests.Timeout
+
+    responses.add_callback(responses.GET, URL, callback=timeout)
+    with pytest.raises(DeezerUnavailable):
+        client().search_tracks("q")
+    assert len(responses.calls) == 5

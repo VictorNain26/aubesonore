@@ -1,11 +1,14 @@
 import json
+import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path, PurePosixPath
 from typing import Any
 
 import numpy as np
 import pytest
+import requests
 import responses
+import stamina
 
 import radio.antenna.sync as sync_mod
 from radio.antenna.sync import antenne_pass
@@ -589,3 +592,34 @@ def test_a_non_json_answer_to_a_write_is_not_sent_again() -> None:
     with pytest.raises(AzuracastUnavailable):
         AzuracastClient("http://127.0.0.1:8080", "k").upload("antenne/1.mp3", b"")
     assert len(responses.calls) == 1
+
+
+@responses.activate
+def test_a_write_that_fails_is_not_sent_again() -> None:
+    # Une panne n'est pas un refus : la station a pu écrire avant de tomber. Renvoyer l'envoi
+    # téléverserait le fichier deux fois.
+    responses.post(API + "/files", status=503)
+    with pytest.raises(AzuracastUnavailable):
+        AzuracastClient("http://127.0.0.1:8080", "k").upload("antenne/1.mp3", b"")
+    assert len(responses.calls) == 1
+
+
+@responses.activate
+def test_a_read_timing_out_is_tried_five_times_however_long(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Chaque tentative expire à 120 s ; une horloge simulée les compte sans les attendre. Les 45 s
+    # au total par défaut de stamina n'en laisseraient passer qu'une.
+    clock = [1_000.0]
+    monkeypatch.setattr(time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(time, "sleep", lambda s: clock.__setitem__(0, clock[0] + s))
+    stamina.set_testing(False)
+
+    def timeout(_: Any) -> Any:
+        clock[0] += 120
+        raise requests.Timeout
+
+    responses.add_callback(responses.GET, API + "/files", callback=timeout)
+    with pytest.raises(AzuracastUnavailable):
+        AzuracastClient("http://127.0.0.1:8080", "k").files()
+    assert len(responses.calls) == 5

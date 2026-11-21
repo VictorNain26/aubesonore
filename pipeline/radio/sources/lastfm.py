@@ -55,7 +55,9 @@ class LastfmClient:
         except (KeyError, TypeError, AttributeError):
             raise LastfmError("malformed similar artists") from None
 
-    @stamina.retry(on=LastfmUnavailable, attempts=5, wait_initial=1.0, wait_max=30.0)
+    # Toutes les tentatives, quelle que soit leur durée : pas les 45 s au total par défaut de
+    # stamina (stamina.retry, `timeout`).
+    @stamina.retry(on=LastfmUnavailable, timeout=None, attempts=5, wait_initial=1.0, wait_max=30.0)
     def _call(self, method: str, **params: Any) -> dict[str, Any]:
         self._limiter.try_acquire("lastfm")
         query = {
