@@ -1,5 +1,5 @@
 # =============================================================================
-# AubeSonore Backend — built by compose.yaml on the self-hosted box
+# AubeSonore Backend — built by CI (site.yml, job publish), pulled by the server
 # =============================================================================
 
 # -----------------------------------------------------------------------------

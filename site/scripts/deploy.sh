@@ -4,7 +4,10 @@
 #
 # The repository is the whole radio (~/aubesonore): site/, pipeline/ and azuracast/.
 # Fast-forwarding it also deploys the pipeline code, which the weekly pass loads
-# from this checkout; the site containers are only rebuilt when site/ changed.
+# from this checkout. A commit is promoted once every GitHub check on it has passed. The site
+# runs the images CI built from that commit (site.yml, job publish), pulled by their commit's tag
+# and started only once their provenance verifies; nothing is built here. They change only when
+# site/ changed.
 set -euo pipefail
 
 REPO_DIR="${REPO_DIR:-$HOME/aubesonore}"
@@ -42,6 +45,13 @@ fi
 uv="${UV:-$HOME/.local/bin/uv}"
 backup_db="${BACKUP_DB:-$REPO_DIR/site/scripts/backup-db.sh}"
 health_timeout="${HEALTH_TIMEOUT_S:-300}"
+repo=VictorNain26/aubesonore
+registry=ghcr.io/victornain26
+images=(backend frontend renderer)
+# A fine-grained token with no permission: `gh attestation verify` asks for one even for a public
+# image, and it lifts the API's anonymous limit. Written by hand, never committed (site/README.md,
+# « Déploiement »).
+gh_token_file="${GH_TOKEN_FILE:-$HOME/.config/aubesonore/gh-token}"
 (cd pipeline && "$uv" sync --locked --quiet)
 
 current=$(git rev-parse HEAD)
@@ -76,6 +86,69 @@ if [ "$target" = "$(git config --get aubesonore.failedTarget || true)" ]; then
   exit 1
 fi
 
+if ! GH_TOKEN=$(cat "$gh_token_file" 2>/dev/null) || [ -z "$GH_TOKEN" ]; then
+  echo "no GitHub token in $gh_token_file: deploy refused (site/README.md, « Déploiement »)"
+  exit 1
+fi
+export GH_TOKEN
+
+# Every check run GitHub holds for the commit (the push workflows: Site, Pipeline, musilogy,
+# CodeQL, Secrets): all done and none failed. The three images' (Publish images) must be among
+# them: the Site workflow runs on every master commit, and its last jobs may not exist yet while
+# the others are done.
+ci=$(gh api "repos/$repo/commits/$target/check-runs?per_page=100" | jq -r --argjson images "${#images[@]}" '
+  .check_runs
+  | if any(.status == "completed" and (.conclusion | IN("success", "skipped", "neutral") | not)) then "failure"
+    elif any(.status != "completed") then "pending"
+    elif ([.[] | select(.name | startswith("Publish images"))] | length) < $images then "pending"
+    else "success" end') || ci=unknown
+case "$ci" in
+  success) ;;
+  pending)
+    echo "waiting for CI on ${target:0:8}"
+    exit 0
+    ;;
+  failure)
+    echo "CI failed on ${target:0:8}: not deployed, waiting for a newer master"
+    exit 1
+    ;;
+  *)
+    echo "cannot read the CI of ${target:0:8}, retried next run"
+    exit 1
+    ;;
+esac
+
+site_changed() { ! git diff --quiet "$current" "$target" -- site/; }
+
+# The images of a commit, pulled under its tag ($IMAGE_TAG, compose.yaml).
+pull() { (cd site && IMAGE_TAG="sha-$1" docker compose pull --quiet "${images[@]}"); }
+
+# The digest pulled, not the tag, is what gets verified: a tag can move between the pull and the
+# check. Signed by site.yml on master, in this repository (docs.github.com, « Using artifact
+# attestations to establish provenance »; `gh attestation verify --help`).
+verified() {
+  local image digest
+  for image in "${images[@]}"; do
+    digest=$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' \
+      "$registry/aubesonore-$image:sha-$target" | grep -m1 "^$registry/aubesonore-$image@") || return 1
+    gh attestation verify "oci://$digest" --repo "$repo" --bundle-from-oci \
+      --signer-workflow "$repo/.github/workflows/site.yml" --source-ref refs/heads/master \
+      >/dev/null || return 1
+  done
+}
+
+if site_changed; then
+  if ! pull "$target"; then
+    echo "cannot pull the images of ${target:0:8}, retried next run"
+    exit 1
+  fi
+  if ! verified; then
+    echo "the images of ${target:0:8} do not verify as built by site.yml on master: not deployed"
+    git config aubesonore.failedTarget "$target"
+    exit 1
+  fi
+fi
+
 echo "deploying ${current:0:8} -> ${target:0:8}"
 
 # Every container with a healthcheck healthy within the timeout, or the others named.
@@ -98,9 +171,9 @@ wait_healthy() {
   done
 }
 
-# Back to the commit that ran before, rebuilt (the build cache still holds its layers), the
+# Back to the commit that ran before, on its own images (kept below, or pulled again), the
 # failed one recorded so that the next runs wait for a newer master. Without this, a failed
-# build left HEAD on the new commit and the containers on the old one, and the next run saw
+# start left HEAD on the new commit and the containers on the old one, and the next run saw
 # nothing to do. reset --keep stops rather than overwrite a local change (git-reset(1)); the
 # tree was checked clean above.
 rollback() {
@@ -112,8 +185,8 @@ rollback() {
   if ! git diff --quiet "$current" "$target" -- pipeline/; then
     systemctl --user try-restart radio-votes.service
   fi
-  if ! git diff --quiet "$current" "$target" -- site/; then
-    if (cd site && docker compose up -d --build --remove-orphans && wait_healthy); then
+  if site_changed; then
+    if pull "$current" && (cd site && IMAGE_TAG="sha-$current" docker compose up -d --no-build --remove-orphans && wait_healthy); then
       echo "rolled back to ${current:0:8}, all healthchecks green"
     else
       echo "rolled back to ${current:0:8}, which is not healthy either"
@@ -141,21 +214,25 @@ if ! git diff --quiet "$current" "$target" -- pipeline/; then
   echo "restarted radio-votes on ${target:0:8}"
 fi
 
-if git diff --quiet "$current" "$target" -- site/; then
+if ! site_changed; then
   git config --unset aubesonore.failedTarget || true
   echo "promoted ${target:0:8} (no change under site/, containers left as they are)"
   exit 0
 fi
 
 cd site
-docker compose up -d --build --remove-orphans || rollback "build"
+IMAGE_TAG="sha-$target" docker compose up -d --no-build --remove-orphans || rollback "start"
 wait_healthy || rollback "healthchecks"
 git config --unset aubesonore.failedTarget || true
 echo "deployed ${target:0:8}, all healthchecks green"
 
-docker image prune -f --filter "until=72h" >/dev/null
-# Each build adds to the build cache and nothing removed it: 28 GB on 2026-10-08, 22 of them
-# reclaimable, on a disk shared with other services. Past 10 GB the least recently used records
-# go first (docs.docker.com/reference/cli/docker/buildx/prune/), so the layers of the last
-# builds stay and the next deploy keeps its cache.
-docker buildx prune -f --max-used-space 10gb >/dev/null
+# The images of the running commit and of the one before it (the rollback's) stay; every other
+# commit's goes, on a disk shared with other services. GHCR keeps them all.
+docker image ls --format '{{.Repository}}:{{.Tag}}' --filter "reference=$registry/aubesonore-*" |
+  while read -r ref; do
+    case "${ref##*:}" in
+      "sha-$target" | "sha-$current") ;;
+      *) docker image rm "$ref" >/dev/null || true ;;
+    esac
+  done
+docker image prune -f >/dev/null

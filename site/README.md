@@ -122,15 +122,27 @@ Toute la stack est auto-hébergée sur le même serveur et exposée via Cloudfla
 - **Rendu serveur** : `renderer`, qui dessine les pages artistes pour le backend.
 - **Base de données** : PostgreSQL.
 
-Le déploiement est automatique et _pull-based_ : merger sur `master` suffit. Sur le serveur, le timer systemd utilisateur `aubesonore-deploy.timer` lance toutes les 2 minutes [`scripts/deploy.sh`](scripts/deploy.sh), qui compare le checkout à `origin/master` (`git ls-remote`) et, quand `master` a bougé, sur un checkout propre et hors de la passe hebdomadaire de la radio : avance le checkout (`git merge --ff-only`), aligne `pipeline/.venv` sur `uv.lock` quand `pipeline/` a changé, reconstruit les conteneurs seulement si `site/` a changé, attend leurs healthchecks (300 s), redémarre la page de vote quand `pipeline/` a changé, puis nettoie les vieilles images. Un échec revient au commit précédent (voir `scripts/deploy.sh`), mais pas au schéma précédent : les migrations déjà appliquées restent. C'est pourquoi le script fait d'abord un dump (`scripts/backup-db.sh`) quand la mise à jour apporte une migration, et attend le passage suivant si le dump échoue.
+Le déploiement est automatique et _pull-based_ : merger sur `master` suffit. Le serveur ne construit rien : il fait tourner les images que la CI a construites et testées.
 
-Aucun runner self-hosted ni webhook entrant : le dépôt est public, et le polling ne demande ni credential ni port ouvert. Le backend applique au démarrage les migrations de `apps/backend/drizzle/` qu'il n'a pas encore passées (le `migrate` de Drizzle, `src/db/index.ts`) ; elles sont générées depuis `src/db/schema.ts` par `drizzle-kit generate` (`apps/backend/README.md`).
+1. **CI** (`.github/workflows/site.yml`, job `publish`) : à chaque commit sur `master`, une fois tous les jobs passés, les images `ghcr.io/victornain26/aubesonore-{backend,frontend,renderer}` sont construites, poussées sous le tag `sha-<commit>` et signées (attestation de provenance SLSA, `actions/attest`). GHCR les garde toutes : chaque commit passé reste une cible de retour arrière.
+2. **Serveur** : le timer systemd utilisateur `aubesonore-deploy.timer` lance toutes les 2 minutes [`scripts/deploy.sh`](scripts/deploy.sh). Quand `master` a bougé, sur un checkout propre et hors de la passe hebdomadaire de la radio, il :
+   - attend que **toutes** les vérifications GitHub du commit soient passées (dont les 3 `Publish images`) ; une vérification en échec arrête le déploiement ;
+   - si `site/` a changé, tire les 3 images sous `sha-<commit>` et vérifie leur attestation sur le digest tiré (`gh attestation verify`, signée par `site.yml` sur `master`) ; une image qui ne se vérifie pas n'est jamais lancée ;
+   - fait un dump (`scripts/backup-db.sh`) si le commit apporte une migration, puis avance le checkout (`git merge --ff-only`) et aligne `pipeline/.venv` ;
+   - relance les conteneurs sur les nouvelles images, attend leurs healthchecks (300 s), redémarre la page de vote si `pipeline/` a changé ;
+   - supprime les images des autres commits, en gardant celles du commit précédent.
+
+Un échec revient au commit précédent et à ses images (voir `scripts/deploy.sh`), mais pas au schéma précédent : les migrations déjà appliquées restent, d'où le dump.
+
+**Constater un déploiement** : `curl -s https://api.aubesonore.fr/health | jq -r .version` donne le commit qui tourne ; il est déployé quand il vaut `git rev-parse origin/master`. Sur le serveur : `journalctl --user -u aubesonore-deploy` (`waiting for CI`, `deploying`, `deployed`, `rolling back`).
+
+Aucun runner self-hosted ni webhook entrant : le serveur interroge GitHub, sans port ouvert. Il lui faut un seul secret, un token GitHub _fine-grained_ **sans aucune permission** (accès « Public repositories »), dans `~/.config/aubesonore/gh-token` (600) : `gh attestation verify` en demande un même pour une image publique, et il relève la limite de l'API anonyme. Le créer et le déposer : [`azuracast/RUNBOOK.md`](../azuracast/RUNBOOK.md), section « 3. Application web ». Le backend applique au démarrage les migrations de `apps/backend/drizzle/` qu'il n'a pas encore passées (le `migrate` de Drizzle, `src/db/index.ts`) ; elles sont générées depuis `src/db/schema.ts` par `drizzle-kit generate` (`apps/backend/README.md`).
 
 L'installation sur le serveur, une fois, est dans [`azuracast/RUNBOOK.md`](../azuracast/RUNBOOK.md), section « 3. Application web ». Unités et script supposent le dépôt cloné dans `~/aubesonore` ; ailleurs, ajuster `ExecStart` et définir `REPO_DIR`. Les logs : `journalctl --user -u aubesonore-deploy`.
 
 `aubesonore-backup.timer` lance chaque nuit (03:30) [`scripts/backup-db.sh`](scripts/backup-db.sh) : un `pg_dump -Fc` vers un disque physiquement séparé de celui du volume Docker, vérifié par `pg_restore --list` et conservé 14 jours.
 
-Les variables `VITE_*` sont inlinées **au build** (ce ne sont pas des secrets) : changer l'URL de l'API impose un `--build`, pas un simple restart.
+Les variables `VITE_*` sont inlinées **au build** (ce ne sont pas des secrets) : celles de la production sont dans `IMAGE_BUILD_ARGS` de `.github/workflows/site.yml`, pas dans le `.env` du serveur.
 
 `master` est protégée : une PR ne merge que si les 5 checks CI requis passent (Quality, Backend tests et Build all pour le site, plus les checks de `pipeline/` et `musilogy/`, lancés sur toute PR). Voir [`.claude/rules/site.md`](../.claude/rules/site.md) pour les conventions et le workflow.
 

@@ -549,8 +549,9 @@ le dernier passage.
   `essentia-tensorflow` en est exclu : ses versions récentes ne publient que des roues
   cp314, et le projet est en Python 3.12.
 - **Déploiement** : merger sur `master` suffit. `aubesonore-deploy.timer` avance le checkout
-  `~/aubesonore`, jamais pendant une passe hebdomadaire, et redémarre `radio-votes` quand `pipeline/`
-  change : la page de vote garde sinon le code de son démarrage.
+  `~/aubesonore` une fois toutes les vérifications GitHub du commit passées, jamais pendant une passe
+  hebdomadaire, et redémarre `radio-votes` quand `pipeline/` change : la page de vote garde sinon le
+  code de son démarrage (`site/README.md`, « Déploiement »).
 - Les tests tournent sans réseau (~12 s). Tout bug corrigé reçoit son test.
 
 ## 9. Exploitation

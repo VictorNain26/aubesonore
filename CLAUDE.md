@@ -8,7 +8,9 @@ change truly spans them.
 
 - `site.yml`, `pipeline.yml` and `musilogy.yml` have no path filter on purpose: their jobs are required
   checks on `master`, on every PR.
-- Deploying is merging to `master` (`site/README.md` « Déploiement »).
+- Deploying is merging to `master` (`site/README.md` « Déploiement »): the server runs the images
+  CI published for that commit once all its checks pass. Merged is not deployed: it is once
+  `curl -s https://api.aubesonore.fr/health | jq -r .version` equals `git rev-parse origin/master`.
 - Every piece is developed on the workstation, in a git worktree per branch. `~/aubesonore` is the
   production clone on victorserv; the server is for runs on the real data only (Musilogy's build and
   its load into production, the radio's passes).
