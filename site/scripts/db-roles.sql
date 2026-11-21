@@ -29,9 +29,10 @@ FROM pg_namespace
 WHERE nspname IN ('musilogy', 'musilogy_next') \gexec
 
 -- `aubesonore_app`: the backend's role while it serves. It reads and writes the rows of the site's
--- tables, and nothing else: no schema change, no role, no other database; a flaw in a request
--- cannot drop a table nor read past the grants (postgresql.org/docs/16/ddl-priv.html). The
--- migrations run as the owner, at the backend's start (MIGRATION_DATABASE_URL).
+-- tables, reads Musilogy's (below), and nothing else: no schema change, no role, no other
+-- database; a flaw in a request cannot drop a table nor read past the grants
+-- (postgresql.org/docs/16/ddl-priv.html). The migrations run as the owner, at the backend's start
+-- (MIGRATION_DATABASE_URL).
 SELECT 'CREATE ROLE aubesonore_app LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT'
 WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'aubesonore_app') \gexec
 
@@ -46,3 +47,16 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO aubesonore_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO aubesonore_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO aubesonore_app;
+
+-- It reads Musilogy, through the functions the site calls (musilogy/docs/conception.md §4), which
+-- run with its rights and so need the tables too: USAGE and SELECT, never a write. Granted here
+-- on the schema in place, whatever load left it (one older than its grant to PUBLIC served none:
+-- 2026-11-21), and by default on what the `musilogy` role creates next, so the schema a load
+-- renames in is readable without this script running again
+-- (postgresql.org/docs/16/sql-alterdefaultprivileges.html).
+SELECT format('GRANT USAGE ON SCHEMA %I TO aubesonore_app', nspname),
+       format('GRANT SELECT ON ALL TABLES IN SCHEMA %I TO aubesonore_app', nspname)
+FROM pg_namespace
+WHERE nspname = 'musilogy' \gexec
+ALTER DEFAULT PRIVILEGES FOR ROLE musilogy GRANT USAGE ON SCHEMAS TO aubesonore_app;
+ALTER DEFAULT PRIVILEGES FOR ROLE musilogy GRANT SELECT ON TABLES TO aubesonore_app;

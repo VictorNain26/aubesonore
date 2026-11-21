@@ -177,6 +177,16 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/aubesonore_test
 
+      # The roles production's db-roles-init makes, on the same server, in a database of the
+      # test's own: the backend's role reads Musilogy, whatever load left the schema.
+      - name: Database roles guard
+        run: bash scripts/db-roles.test.sh
+        env:
+          PGHOST: localhost
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          DB_ROLES_TEST_THROWAWAY: "1"
+
   build:
     name: Build all
     needs: [quality, backend-test]
