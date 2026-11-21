@@ -21,6 +21,20 @@ export const app = new Elysia({
   // (https://elysiajs.com/patterns/configuration.html#serve-maxrequestbodysize).
   serve: { maxRequestBodySize: 1024 * 1024 },
 })
+  // First: a hook applies only to the routes and plugins registered after it
+  // (https://elysiajs.com/essential/life-cycle.html, « Order of code »). Registered last, it
+  // covered nothing, and an unhandled error answered with its message: drizzle's names the query
+  // and its parameters (2026-11-21).
+  .onError(({ error, set, request }) => {
+    logger.error('Unhandled error', {
+      method: request.method,
+      path: new URL(request.url).pathname,
+      err: error instanceof Error ? error.message : JSON.stringify(error),
+    });
+    applySecurityHeaders(set.headers);
+    set.status = 500;
+    return { error: 'Internal server error' };
+  })
   .use(requestLog)
   .use(securityHeaders)
   .use(
@@ -43,14 +57,4 @@ export const app = new Elysia({
   .use(shareRoutes)
   .use(coverStoreRoutes(coverStore))
   .get('/health', () => ({ status: 'ok', uptime: process.uptime(), version: env.GIT_SHA }))
-  .get('/', () => ({ message: 'AubeSonore API' }))
-  .onError(({ error, set, request }) => {
-    logger.error('Unhandled error', {
-      method: request.method,
-      path: new URL(request.url).pathname,
-      err: error instanceof Error ? error.message : JSON.stringify(error),
-    });
-    applySecurityHeaders(set.headers);
-    set.status = 500;
-    return { error: 'Internal server error' };
-  });
+  .get('/', () => ({ message: 'AubeSonore API' }));
