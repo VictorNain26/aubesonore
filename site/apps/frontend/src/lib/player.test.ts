@@ -459,4 +459,30 @@ describe('player resilience (stream auto-recovery)', () => {
     await vi.advanceTimersByTimeAsync(5_000);
     expect(mockAudioInstance.play.mock.calls.length).toBe(callsBefore);
   });
+
+  // A slow first start: play() waits on the network, and the element says `waiting` meanwhile
+  // (HTML, the play() steps). Past the stall's grace the reconnect loads the stream again, which
+  // rejects the first play() with AbortError (HTML, the load algorithm). The sound then plays.
+  it('says playing, not stopped, when a slow start is taken over by the reconnect', async () => {
+    vi.useFakeTimers();
+    const pending: Array<(err: Error) => void> = [];
+    mockAudioInstance.play.mockImplementationOnce(
+      () => new Promise<void>((_, reject) => pending.push(reject))
+    );
+    mockAudioInstance.load.mockImplementation(() => {
+      for (const reject of pending.splice(0)) reject(new DOMException('interrupted', 'AbortError'));
+    });
+    const { usePlayer } = await import('./player');
+
+    const playing = usePlayer.getState().play();
+    mockAudioInstance.emit('waiting');
+    await vi.advanceTimersByTimeAsync(1_500 + 500);
+    await playing;
+    mockAudioInstance.emit('playing');
+
+    expect(usePlayer.getState()).toMatchObject({ isPlaying: true, isConnecting: false });
+    // The button stops the sound it shows playing, rather than start it again.
+    usePlayer.getState().toggle();
+    expect(usePlayer.getState().isPlaying).toBe(false);
+  });
 });
