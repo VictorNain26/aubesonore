@@ -69,6 +69,9 @@ interface EnvConfig {
    * record the same plays and ask MusicBrainz and the Cover Art Archive again from the same address.
    */
   RECORD_ANTENNA: boolean;
+
+  /** The commit this backend's image was built from (CI's build-arg), or `local`. */
+  GIT_SHA: string;
 }
 
 function required(name: string): string {
@@ -152,6 +155,7 @@ export const env: EnvConfig = {
   SMTP_FROM: Bun.env.SMTP_FROM ?? 'AubeSonore <noreply@aubesonore.fr>',
   DISABLE_EMAILS: Bun.env.DISABLE_EMAILS === 'true',
   RECORD_ANTENNA: Bun.env.RECORD_ANTENNA !== 'false',
+  GIT_SHA: optional('GIT_SHA') ?? 'local',
 };
 
 // Cross-field validation: secrets must be coherent.

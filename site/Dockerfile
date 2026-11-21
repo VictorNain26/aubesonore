@@ -58,4 +58,9 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD bun -e "fetch('http://127.0.0.1:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
+# The commit CI builds from (site.yml, IMAGE_BUILD_ARGS), which /health reports; empty elsewhere,
+# where the backend says `local`. Last, so a new commit invalidates no layer above.
+ARG GIT_SHA=""
+ENV GIT_SHA=$GIT_SHA
+
 CMD ["bun", "run", "src/index.ts"]

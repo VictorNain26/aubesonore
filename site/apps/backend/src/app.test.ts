@@ -15,6 +15,16 @@ describe('the API', () => {
     );
   });
 
+  // The commit the image was built from (GIT_SHA, set by CI): what an agent or a human compares
+  // with origin/master to know a merge is live. A backend built elsewhere says `local`.
+  it('says on /health which commit it runs', async () => {
+    const res = await app.handle(new Request('http://localhost/health'));
+    const body = (await res.json()) as { status: string; version: string };
+
+    expect(body.status).toBe('ok');
+    expect(body.version).toBe(Bun.env.GIT_SHA?.trim() || 'local');
+  });
+
   it('sends them on a path no page holds', async () => {
     const res = await app.handle(new Request('http://localhost/nowhere'));
 
