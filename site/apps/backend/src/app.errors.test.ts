@@ -1,4 +1,4 @@
-import { describe, expect, it, mock } from 'bun:test';
+import { describe, expect, it, mock, spyOn } from 'bun:test';
 import { DrizzleQueryError, type SQL } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
 
@@ -24,8 +24,33 @@ void mock.module('./db/index', () => ({
 }));
 
 const { app } = await import('./app');
+const { logger } = await import('./lib/logger');
 
 describe('an error no route handles', () => {
+  it('leaves a body that does not parse to Elysia: 400, not 500', async () => {
+    const res = await app.handle(
+      new Request('http://localhost/api/track/like', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{bad',
+      })
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it('logs what Postgres said, not the query nor what the listener typed', async () => {
+    const logged = spyOn(logger, 'error');
+
+    await app.handle(new Request('http://localhost/api/musilogy/search?q=radiohead'));
+
+    const entry = JSON.stringify(logged.mock.calls.at(-1));
+    logged.mockRestore();
+    expect(entry).toContain('42501 permission denied for schema musilogy');
+    expect(entry).not.toContain('SELECT');
+    expect(entry).not.toContain('radiohead');
+  });
+
   it('answers 500 without the query, its parameters or the database error', async () => {
     const res = await app.handle(
       new Request('http://localhost/api/musilogy/search?q=radiohead', {

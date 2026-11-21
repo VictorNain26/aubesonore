@@ -110,8 +110,14 @@ cat >"$r/bin/systemctl" <<'EOF2'
 exit 0
 EOF2
 printf '#!/usr/bin/env bash\nexit 0\n' >"$r/bin/uv"
-# The backend's answer to the search after a start: the status code $SEARCH says.
-printf '#!/usr/bin/env bash\necho "curl $*" >>"$DOCKER_LOG"\nprintf %%s "$SEARCH"\n' >"$r/bin/curl"
+# The backend's answer to the search: $SEARCH_BEFORE the first time in a run, before the start,
+# then $SEARCH.
+cat >"$r/bin/curl" <<'EOF2'
+#!/usr/bin/env bash
+echo "curl $*" >>"$DOCKER_LOG"
+if [ -s "$SEARCHED" ]; then printf %s "$SEARCH"; else printf %s "$SEARCH_BEFORE"; fi
+echo x >>"$SEARCHED"
+EOF2
 # The dump before migrations, which fails when $DUMP says so.
 printf '#!/usr/bin/env bash\necho dump >>"$DOCKER_LOG"\n[ "$DUMP" != fail ]\n' >"$r/bin/backup-db"
 chmod +x "$r/bin/docker" "$r/bin/gh" "$r/bin/systemctl" "$r/bin/uv" "$r/bin/backup-db" "$r/bin/curl"
@@ -120,7 +126,8 @@ echo token >"$r/gh-token"
 
 deploy() {
   status=0
-  output=$(PATH="$r/bin:$PATH" REPO_DIR="$r/repo" UV="$r/bin/uv" BACKUP_DB="$r/bin/backup-db" \
+  : >"$r/searched"
+  output=$(SEARCHED="$r/searched" SEARCH_BEFORE="${SEARCH_BEFORE:-200}" PATH="$r/bin:$PATH" REPO_DIR="$r/repo" UV="$r/bin/uv" BACKUP_DB="$r/bin/backup-db" \
     GH_TOKEN_FILE="${TOKEN_FILE-$r/gh-token}" IMAGES="$r/images" HEALTH_TIMEOUT_S=0 \
     DOCKER_LOG="$r/docker.log" BAD="$BAD" FAIL="$FAIL" DUMP="${DUMP:-ok}" CI="${CI:-success}" \
     PULL="${PULL:-ok}" ATTEST="${ATTEST:-ok}" NORUN="${NORUN:-0}" SEARCH="${SEARCH:-200}" bash "$here/deploy.sh" 2>&1) || status=$?
@@ -253,11 +260,32 @@ if [ "$status" -ne 0 ] && head_is "$C" && [[ "$output" == *"nothing restarted"* 
 BAD=none FAIL=none
 SEARCH=500
 S=$(push S)
+: >"$r/docker.log"
 deploy
 SEARCH=200
-name="a backend whose Musilogy search fails rolls back"
+name="a backend whose Musilogy search fails rolls back to the images that ran before"
 if [ "$status" -ne 0 ] && head_is "$C" && failed_is "$S" &&
-  [[ "$output" == *"search answered 500"* ]]; then passed "$name"; else failed "$name"; fi
+  [[ "$output" == *"search answered 500"* ]] && logged "[rollback] compose up -d --no-build" &&
+  logged "CF-Connecting-IP: 127.0.0.1"; then passed "$name"; else failed "$name"; fi
+
+# Failing before the start too, the search says nothing of the commit, which may be the fix.
+SEARCH_BEFORE=500 SEARCH=500
+S2=$(push S2)
+deploy
+SEARCH_BEFORE=200 SEARCH=200
+name="a search that already failed before the deploy keeps the commit"
+if [ "$status" -eq 0 ] && head_is "$S2" && failed_is "" &&
+  [[ "$output" == *"as before this deploy"* ]]; then passed "$name"; else failed "$name"; fi
+C=$S2
+
+SEARCH=000
+S3=$(push S3)
+deploy
+SEARCH=200
+name="a search that gets no answer rolls back, and says so"
+if [ "$status" -ne 0 ] && head_is "$C" && [[ "$output" == *"search did not answer"* ]]; then
+  passed "$name"
+else failed "$name"; fi
 
 SEARCH=503
 U=$(push U)

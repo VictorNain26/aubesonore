@@ -176,6 +176,19 @@ if site_changed; then
   done
 fi
 
+# /health answers without the database's data: on 2026-11-21 it said ok while every artist page
+# failed, the backend's role unable to read Musilogy. A search reads it as listeners do, before
+# and after the start: a failure only after it is the commit's. 503 means Musilogy is not loaded
+# (site.md, « Musilogy data »), which a deploy neither fixes nor breaks. Its own client address,
+# or it shares the rate limit of every request that has none (rateLimit.ts, getClientIp).
+search() {
+  curl -s -o /dev/null -w '%{http_code}' --max-time 10 -H 'CF-Connecting-IP: 127.0.0.1' \
+    "${SEARCH_URL:-http://127.0.0.1:3001/api/musilogy/search?q=radiohead}" || true
+}
+answered() { if [ "$1" = 000 ] || [ -z "$1" ]; then echo "did not answer"; else echo "answered $1"; fi; }
+searched_before=
+if site_changed; then searched_before=$(search); fi
+
 echo "deploying ${current:0:8} -> ${target:0:8}"
 
 # Every container with a healthcheck healthy within the timeout, or the others named.
@@ -257,15 +270,16 @@ fi
 cd site
 IMAGE_TAG="sha-$target" docker compose up -d --no-build --remove-orphans || rollback "start"
 wait_healthy || rollback "healthchecks"
-# /health answers without the database's data: on 2026-11-21 it said ok while every artist page
-# failed, the backend's role unable to read Musilogy. A search reads it as listeners do. 503 means
-# Musilogy is not loaded (site.md, « Musilogy data »), which a deploy does not fix nor break.
-search=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
-  "${SEARCH_URL:-http://127.0.0.1:3001/api/musilogy/search?q=radiohead}") || true
-case "$search" in
+searched=$(search)
+case "$searched" in
   200) ;;
   503) echo "Musilogy is not loaded: the search answers 503" ;;
-  *) rollback "the search answered ${search:-nothing}" ;;
+  # Failing already before, it is not this commit's doing, which may be the fix: it stays.
+  *) if [ "$searched_before" = 200 ]; then
+    rollback "the search $(answered "$searched")"
+  else
+    echo "the search $(answered "$searched"), as before this deploy: kept, the cause is elsewhere"
+  fi ;;
 esac
 git config --unset aubesonore.failedTarget || true
 echo "deployed ${target:0:8}, all healthchecks green"
