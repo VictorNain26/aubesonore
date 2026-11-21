@@ -92,16 +92,25 @@ if ! GH_TOKEN=$(cat "$gh_token_file" 2>/dev/null) || [ -z "$GH_TOKEN" ]; then
 fi
 export GH_TOKEN
 
-# Every check run GitHub holds for the commit (the push workflows: Site, Pipeline, musilogy,
-# CodeQL, Secrets): all done and none failed. The three images' (Publish images) must be among
-# them: the Site workflow runs on every master commit, and its last jobs may not exist yet while
-# the others are done.
-ci=$(gh api "repos/$repo/commits/$target/check-runs?per_page=100" | jq -r --argjson images "${#images[@]}" '
-  .check_runs
-  | if any(.status == "completed" and (.conclusion | IN("success", "skipped", "neutral") | not)) then "failure"
-    elif any(.status != "completed") then "pending"
-    elif ([.[] | select(.name | startswith("Publish images"))] | length) < $images then "pending"
-    else "success" end') || ci=unknown
+# The commit's GitHub Actions checks: one check suite per workflow run (Site, Pipeline, musilogy,
+# CodeQL, Secrets), created as soon as the run is queued, so a workflow still waiting for a runner
+# is seen; and the check runs of its jobs, all pages. All done, none failed, and the three
+# `Publish images` runs succeeded: skipped (a workflow_dispatch on master) publishes nothing, and
+# those jobs may not exist yet while the others are done. Other apps' suites stay queued forever.
+ok='IN("success", "skipped", "neutral")'
+ci=$(
+  suites=$(gh api --paginate "repos/$repo/commits/$target/check-suites?per_page=100" \
+    --jq '.check_suites[] | select(.app.slug == "github-actions")' | jq -s .) &&
+    runs=$(gh api --paginate "repos/$repo/commits/$target/check-runs?per_page=100" \
+      --jq '.check_runs[]' | jq -s .) &&
+    jq -nr --argjson suites "$suites" --argjson runs "$runs" --argjson images "${#images[@]}" "
+    def failed: .status == \"completed\" and (.conclusion | $ok | not);
+    if (\$suites + \$runs) | any(failed) then \"failure\"
+    elif (\$suites + \$runs) | any(.status != \"completed\") then \"pending\"
+    elif ([\$runs[] | select((.name | startswith(\"Publish images\")) and .conclusion == \"success\")]
+      | length) < \$images then \"pending\"
+    else \"success\" end"
+) || ci=unknown
 case "$ci" in
   success) ;;
   pending)
@@ -120,8 +129,14 @@ esac
 
 site_changed() { ! git diff --quiet "$current" "$target" -- site/; }
 
-# The images of a commit, pulled under its tag ($IMAGE_TAG, compose.yaml).
-pull() { (cd site && IMAGE_TAG="sha-$1" docker compose pull --quiet "${images[@]}"); }
+# The images of a commit, under its tag ($IMAGE_TAG, compose.yaml). `docker pull`, not
+# `compose pull`: the latter only warns when an image of a service it could build fails to pull.
+pull() {
+  local image
+  for image in "${images[@]}"; do
+    docker pull --quiet "$registry/aubesonore-$image:sha-$1" >/dev/null || return 1
+  done
+}
 
 # The images of a commit, pulled, are the ones CI built from that very commit: signed by site.yml
 # on master in this repository, from that source commit (--source-digest; without it, any master
@@ -144,11 +159,21 @@ if site_changed; then
     echo "cannot pull the images of ${target:0:8}, retried next run"
     exit 1
   fi
+  # Nothing moved: the next run checks again. A verification that cannot reach GitHub or Sigstore
+  # fails the same way as a forged image, and must not bar a good commit for good.
   if ! verified "$target"; then
-    echo "the images of ${target:0:8} do not verify as built by site.yml on master: not deployed"
-    git config aubesonore.failedTarget "$target"
+    echo "the images of ${target:0:8} do not verify as built by site.yml on master: not deployed, checked again next run"
     exit 1
   fi
+fi
+
+# The images the site runs now, by ID: a rollback starts them again with no pull and no network.
+# They passed their own deploy (or were built here, before images were published).
+declare -A running=()
+if site_changed; then
+  for image in "${images[@]}"; do
+    running[$image]=$(docker inspect -f '{{.Image}}' "aubesonore-$image" 2>/dev/null || true)
+  done
 fi
 
 echo "deploying ${current:0:8} -> ${target:0:8}"
@@ -173,7 +198,7 @@ wait_healthy() {
   done
 }
 
-# Back to the commit that ran before, on its own images (kept below, or pulled again), the
+# Back to the commit that ran before, on the images that ran then (tagged `rollback`), the
 # failed one recorded so that the next runs wait for a newer master. Without this, a failed
 # start left HEAD on the new commit and the containers on the old one, and the next run saw
 # nothing to do. reset --keep stops rather than overwrite a local change (git-reset(1)); the
@@ -188,9 +213,14 @@ rollback() {
     systemctl --user try-restart radio-votes.service
   fi
   if site_changed; then
-    if ! { pull "$current" && verified "$current"; }; then
-      echo "the images of ${current:0:8} do not pull or verify: nothing restarted, the site needs a hand"
-    elif (cd site && IMAGE_TAG="sha-$current" docker compose up -d --no-build --remove-orphans && wait_healthy); then
+    local image ready=yes
+    for image in "${images[@]}"; do
+      [ -n "${running[$image]:-}" ] &&
+        docker tag "${running[$image]}" "$registry/aubesonore-$image:rollback" || ready=no
+    done
+    if [ "$ready" = no ]; then
+      echo "the images that ran before are gone: nothing restarted, the site needs a hand"
+    elif (cd site && IMAGE_TAG=rollback docker compose up -d --no-build --remove-orphans && wait_healthy); then
       echo "rolled back to ${current:0:8}, all healthchecks green"
     else
       echo "rolled back to ${current:0:8}, which is not healthy either"
@@ -230,13 +260,14 @@ wait_healthy || rollback "healthchecks"
 git config --unset aubesonore.failedTarget || true
 echo "deployed ${target:0:8}, all healthchecks green"
 
-# The images of the running commit and of the one before it (the rollback's) stay; every other
-# commit's goes, on a disk shared with other services. GHCR keeps them all.
+# Only the running commit's images stay, on a disk shared with other services: the next rollback
+# starts them by ID, and GHCR keeps every commit's.
 docker image ls --format '{{.Repository}}:{{.Tag}}' --filter "reference=$registry/aubesonore-*" |
   while read -r ref; do
     case "${ref##*:}" in
-      "sha-$target" | "sha-$current") ;;
+      "sha-$target") ;;
       *) docker image rm "$ref" >/dev/null || true ;;
     esac
   done
-docker image prune -f >/dev/null
+# Dangling images older than 72 h only: the box runs other services, whose fresh ones stay.
+docker image prune -f --filter "until=72h" >/dev/null

@@ -126,15 +126,15 @@ Le déploiement est automatique et _pull-based_ : merger sur `master` suffit. Le
 
 1. **CI** (`.github/workflows/site.yml`, job `publish`) : à chaque commit sur `master`, une fois tous les jobs passés, les images `ghcr.io/victornain26/aubesonore-{backend,frontend,renderer}` sont construites, poussées sous le tag `sha-<commit>` et signées (attestation de provenance SLSA, `actions/attest`). GHCR les garde toutes : chaque commit passé reste une cible de retour arrière.
 2. **Serveur** : le timer systemd utilisateur `aubesonore-deploy.timer` lance toutes les 2 minutes [`scripts/deploy.sh`](scripts/deploy.sh). Quand `master` a bougé, sur un checkout propre et hors de la passe hebdomadaire de la radio, il :
-   - attend que **toutes** les vérifications GitHub du commit soient passées (dont les 3 `Publish images`) ; une vérification en échec arrête le déploiement ;
-   - si `site/` a changé, tire les 3 images sous `sha-<commit>` et vérifie leur attestation sur le digest tiré (`gh attestation verify`, signée par `site.yml` sur `master`) ; une image qui ne se vérifie pas n'est jamais lancée ;
+   - attend que **toutes** les vérifications GitHub Actions du commit soient passées, workflows encore en file compris, et que les 3 `Publish images` aient réussi ; une vérification en échec arrête le déploiement ;
+   - si `site/` a changé, tire les 3 images sous `sha-<commit>` et vérifie l'attestation de chaque digest tiré (`gh attestation verify` : signée par `site.yml` sur `master`, construite depuis ce commit) ; une image qui ne se vérifie pas n'est jamais lancée, et le passage suivant revérifie ;
    - fait un dump (`scripts/backup-db.sh`) si le commit apporte une migration, puis avance le checkout (`git merge --ff-only`) et aligne `pipeline/.venv` ;
    - relance les conteneurs sur les nouvelles images, attend leurs healthchecks (300 s), redémarre la page de vote si `pipeline/` a changé ;
-   - supprime les images des autres commits, en gardant celles du commit précédent.
+   - ne garde que les images du commit qui tourne (GHCR les garde toutes).
 
-Un échec revient au commit précédent et à ses images (voir `scripts/deploy.sh`), mais pas au schéma précédent : les migrations déjà appliquées restent, d'où le dump.
+Un échec revient au commit précédent et aux images qui tournaient avant, relancées sans réseau (voir `scripts/deploy.sh`), mais pas au schéma précédent : les migrations déjà appliquées restent, d'où le dump.
 
-**Constater un déploiement** : `curl -s https://api.aubesonore.fr/health | jq -r .version` donne le commit qui tourne ; il est déployé quand il vaut `git rev-parse origin/master`. Sur le serveur : `journalctl --user -u aubesonore-deploy` (`waiting for CI`, `deploying`, `deployed`, `rolling back`).
+**Constater un déploiement** : `curl -s https://api.aubesonore.fr/health | jq -r .version` donne le commit des images qui tournent ; le site est à jour quand il vaut le dernier commit qui l'a touché, `git log -1 --format=%H origin/master -- site/` (un commit hors de `site/` garde les images). Sur le serveur : `journalctl --user -u aubesonore-deploy` (`waiting for CI`, `deploying`, `deployed`, `rolling back`).
 
 Aucun runner self-hosted ni webhook entrant : le serveur interroge GitHub, sans port ouvert. Il lui faut un seul secret, un token GitHub _fine-grained_ **sans aucune permission** (accès « Public repositories »), dans `~/.config/aubesonore/gh-token` (600) : `gh attestation verify` en demande un même pour une image publique, et il relève la limite de l'API anonyme. Le créer et le déposer : [`azuracast/RUNBOOK.md`](../azuracast/RUNBOOK.md), section « 3. Application web ». Le backend applique au démarrage les migrations de `apps/backend/drizzle/` qu'il n'a pas encore passées (le `migrate` de Drizzle, `src/db/index.ts`) ; elles sont générées depuis `src/db/schema.ts` par `drizzle-kit generate` (`apps/backend/README.md`).
 
