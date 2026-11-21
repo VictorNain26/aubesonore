@@ -176,4 +176,46 @@ describe('likedTracksStore', () => {
     await refresh();
     expect(asked).toBe(2);
   });
+
+  // A sign-in asks for the library while the listener may keep a track at once: the library's
+  // answer, read before the keep, would drop it until the next refresh.
+  it('keeps a track kept while the library was being read', async () => {
+    let answer: (tracks: unknown[]) => void = () => {};
+    server.use(
+      http.get(
+        'http://localhost:3000/api/track/like',
+        () => new Promise<Response>((resolve) => (answer = (t) => resolve(HttpResponse.json(t))))
+      )
+    );
+    const refreshing = useLikedTracksStore.getState().refresh();
+    await useLikedTracksStore.getState().likeTrack({
+      title: 'T',
+      artist: 'A',
+      youtubeUrl: 'https://youtube.com/x',
+    });
+
+    answer([]);
+    await refreshing;
+
+    expect(useLikedTracksStore.getState().tracks.map((t) => t.title)).toEqual(['T']);
+    expect(useLikedTracksStore.getState().isLoading).toBe(false);
+  });
+
+  it('keeps a track removed while the library was being read out of it', async () => {
+    useLikedTracksStore.setState({ tracks: [KEPT] });
+    let answer: (tracks: unknown[]) => void = () => {};
+    server.use(
+      http.get(
+        'http://localhost:3000/api/track/like',
+        () => new Promise<Response>((resolve) => (answer = (t) => resolve(HttpResponse.json(t))))
+      )
+    );
+    const refreshing = useLikedTracksStore.getState().refresh();
+    await useLikedTracksStore.getState().unlikeTrack(KEPT.id);
+
+    answer([KEPT]);
+    await refreshing;
+
+    expect(useLikedTracksStore.getState().tracks).toEqual([]);
+  });
 });
