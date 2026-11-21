@@ -63,6 +63,8 @@ export function isTrackLiked(
 type LikedTracksStore = LikedTracksState & LikedTracksActions;
 
 let refreshing: Promise<void> | null = null;
+// Keeps and removals made in this tab: a library read before one of them would undo it.
+let changes = 0;
 
 export const useLikedTracksStore = create<LikedTracksStore>((set, get) => ({
   tracks: [],
@@ -77,9 +79,11 @@ export const useLikedTracksStore = create<LikedTracksStore>((set, get) => ({
   refresh: () => {
     refreshing ??= (async () => {
       set({ isLoading: true, error: null });
+      const before = changes;
       try {
         const data = await trackApi.getLikedTracks();
-        set({ tracks: data, isLoading: false });
+        // Read before a keep or a removal of this tab: what the tab holds is newer.
+        set(changes === before ? { tracks: data, isLoading: false } : { isLoading: false });
       } catch (err) {
         set({
           isLoading: false,
@@ -97,6 +101,7 @@ export const useLikedTracksStore = create<LikedTracksStore>((set, get) => ({
   },
 
   likeTrack: async (data) => {
+    changes += 1;
     const tempId = `temp-${crypto.randomUUID()}`;
     const optimisticTrack: LikedTrack = {
       id: tempId,
@@ -130,6 +135,7 @@ export const useLikedTracksStore = create<LikedTracksStore>((set, get) => ({
   },
 
   unlikeTrack: async (trackId) => {
+    changes += 1;
     const current = get().tracks;
     const previousIndex = current.findIndex((t) => t.id === trackId);
     const trackToRemove = previousIndex >= 0 ? current[previousIndex] : undefined;

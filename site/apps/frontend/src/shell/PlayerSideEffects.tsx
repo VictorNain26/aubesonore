@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { useNowPlayingStore } from '../lib/azuracast';
 import { usePlayer } from '../lib/player';
 import { useMediaSession } from '../hooks/useMediaSession';
+import { useTabTitle } from '../hooks/usePageTitle';
 import * as m from '@/paraglide/messages.js';
 
 // Invisible component that hosts the player's side effects driven by outside state (the track on
@@ -25,14 +26,10 @@ export function PlayerSideEffects(): null {
 
   useMediaSession({ title, artist, album, artworkUrl: art }, isPlaying);
 
-  // While listening, the tab shows what plays (useful from another tab).
+  // While listening, the tab shows what plays (useful from another tab); then the page again.
   useEffect(() => {
-    if (!isPlaying || !title || !artist) return;
-    const previous = document.title;
-    document.title = `${title}, ${artist} · AubeSonore`;
-    return () => {
-      document.title = previous;
-    };
+    const track = isPlaying && title && artist ? `${title}, ${artist} · AubeSonore` : null;
+    useTabTitle.setState({ track });
   }, [isPlaying, title, artist]);
 
   useEffect(() => {

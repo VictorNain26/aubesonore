@@ -8,7 +8,7 @@ afterEach(() => {
 });
 
 describe('usePageTitle', () => {
-  it('names the page in the tab while it is shown, then gives the title back', () => {
+  it('names the page in the tab while it is shown, then the next page names its own', () => {
     document.title = 'AubeSonore · Radio de découverte';
     const { unmount, rerender } = renderHook(({ title }) => usePageTitle(title), {
       initialProps: { title: 'Kraftwerk' },
@@ -19,7 +19,8 @@ describe('usePageTitle', () => {
     expect(document.title).toBe('Neu! · AubeSonore');
 
     unmount();
-    expect(document.title).toBe('AubeSonore · Radio de découverte');
+    renderHook(() => usePageTitle('Cluster'));
+    expect(document.title).toBe('Cluster · AubeSonore');
   });
 
   it('leaves the tab alone while the name is not known', () => {
