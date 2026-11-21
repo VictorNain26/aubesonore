@@ -203,7 +203,7 @@ jobs:
 
       # The workspace build above never touches the Dockerfiles, so a broken
       # image shipped to master unnoticed (a COPY of a directory deleted months
-      # earlier). Deployment builds these images, so CI must too.
+      # earlier). Every PR builds the images master publishes (job publish), with the same arguments.
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
       - name: Build backend image
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
@@ -225,13 +225,12 @@ jobs:
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,scope=frontend,mode=max
 
-  # The images production is to run, built once here from a commit that passed the jobs above
-  # (visual included). For now the server still builds its own (scripts/deploy.sh); it is to pull
-  # these instead: what runs is then what was tested ("only build your binaries once", Humble &
-  # Farley, Continuous Delivery, ch. 5).
+  # The images production runs, built once here from a commit that passed the jobs above (visual
+  # included), then pulled by the server (scripts/deploy.sh), which builds nothing: what runs is
+  # what was tested ("only build your binaries once", Humble & Farley, Continuous Delivery, ch. 5).
   # Master only, so no pull request's code ever holds a token that writes packages; the write
   # permissions are this job's alone (docs.github.com/en/actions/reference/security/secure-use).
-  # Each image carries a signed SLSA provenance attestation, for the server to verify before it
+  # Each image carries a signed SLSA provenance attestation, which the server verifies before it
   # runs the image (docs.github.com, « Using artifact attestations to establish provenance »).
   # Packages of a public repository cost nothing to store or pull (docs.github.com, « GitHub
   # Packages billing »): no version is deleted, every past commit stays a rollback target.

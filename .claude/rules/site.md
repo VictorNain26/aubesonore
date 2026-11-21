@@ -29,6 +29,9 @@ everywhere.
 
 ## Deployment
 
+- The server builds nothing: it pulls the images `site.yml` (job `publish`) built for the commit and
+  runs them once their attestation verifies (`scripts/deploy.sh`, tested by `deploy.test.sh`). A
+  build argument production needs goes in `IMAGE_BUILD_ARGS` there, not in the server's `.env`.
 - Check a compose change with `docker compose config` against a production-like `.env` before
   merging. AzuraCast keeps its own compose, separate from this one, updated by hand
   (`azuracast/RUNBOOK.md`), and a site deploy must leave the radio running.

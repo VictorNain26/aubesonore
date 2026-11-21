@@ -87,7 +87,11 @@ n'existent nulle part ailleurs.
 cd ~/aubesonore/site
 ./scripts/make-certs.sh               # TLS de Postgres (certs/ n'est ni versionné ni sauvegardé)
 # .env : ta copie (sinon .env.example : secrets d'auth, SMTP, base, clé YouTube à recréer)
-docker compose up -d --build
+# Token GitHub fine-grained, sans aucune permission, accès « Public repositories » (github.com →
+# Settings → Developer settings → Fine-grained tokens) : deploy.sh vérifie les images avec.
+install -D -m 600 /dev/stdin ~/.config/aubesonore/gh-token   # coller le token, puis Ctrl-D
+IMAGE_TAG=sha-$(git rev-parse HEAD) docker compose pull backend frontend renderer
+IMAGE_TAG=sha-$(git rev-parse HEAD) docker compose up -d --no-build
 ln -s ~/aubesonore/site/scripts/systemd/* ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now aubesonore-deploy.timer aubesonore-backup.timer

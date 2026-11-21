@@ -3,7 +3,8 @@ Description=Deploy AubeSonore when origin/master moves
 
 [Service]
 Type=oneshot
-# The box is a shared homelab; a rebuild must not starve the other containers.
+# The box is a shared homelab; a deploy (uv sync, pulls, restarts) must not starve the other
+# containers.
 Nice=10
 ExecStart=%h/aubesonore/site/scripts/deploy.sh
 TimeoutStartSec=1800

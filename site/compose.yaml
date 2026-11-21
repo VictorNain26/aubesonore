@@ -1,11 +1,13 @@
 # AubeSonore's site: one stack for the production box and for a workstation.
 #
-# Production (scripts/deploy.sh): `docker compose up -d --build` runs Postgres, the backend,
-# the static frontend and the renderer. Public exposure (aubesonore.fr / api / radio) is the
+# Production (scripts/deploy.sh): Postgres, and the backend, the static frontend and the renderer
+# on the images CI built from the deployed commit (IMAGE_TAG=sha-<commit>, site.yml job publish),
+# pulled, never built there. Public exposure (aubesonore.fr / api / radio) is the
 # host-level cloudflared service's, not this file's. AzuraCast keeps its own compose
 # (azuracast/), updated by hand (azuracast/RUNBOOK.md), which a site deploy must never touch.
 #
-# Workstation (README): `pnpm stack` runs the same Postgres and backend, plus the services of
+# Workstation (README): `pnpm stack` builds the backend from source (tag `local`) and runs it with
+# the same Postgres, plus the services of
 # the `dev` profile: dev-init (schema and a test listener) and frontend-dev (Vite, hot reload).
 # Neither a profile nor `develop.watch` is ever active on the production box.
 # Both need certs/ (scripts/make-certs.sh) and .env (.env.example).
@@ -166,8 +168,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    # Named so dev-init runs this very image instead of building its own.
-    image: aubesonore-backend
+    # CI's image in production; on a workstation the build above, tagged `local`. dev-init runs this
+    # very image instead of building its own.
+    image: ghcr.io/victornain26/aubesonore-backend:${IMAGE_TAG:-local}
     container_name: aubesonore-backend
     restart: unless-stopped
     depends_on:
@@ -232,6 +235,7 @@ services:
       dockerfile: apps/frontend/Dockerfile
       target: runner
       args: *frontend-build-args
+    image: ghcr.io/victornain26/aubesonore-frontend:${IMAGE_TAG:-local}
     container_name: aubesonore-frontend
     restart: unless-stopped
     ports:
@@ -262,6 +266,7 @@ services:
       dockerfile: apps/frontend/Dockerfile
       target: renderer
       args: *frontend-build-args
+    image: ghcr.io/victornain26/aubesonore-renderer:${IMAGE_TAG:-local}
     container_name: aubesonore-renderer
     restart: unless-stopped
     # A render is ~100 ms of CPU: at 0.5 the quota throttles it to 285–485 ms,
@@ -279,7 +284,7 @@ services:
   # run: they predate this stack), then a verified test listener with a few kept tracks.
   dev-init:
     profiles: [dev]
-    image: aubesonore-backend
+    image: ghcr.io/victornain26/aubesonore-backend:${IMAGE_TAG:-local}
     pull_policy: never
     depends_on:
       postgres:
