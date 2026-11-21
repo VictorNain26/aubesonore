@@ -22,7 +22,7 @@ describe('the API', () => {
     const body = (await res.json()) as { status: string; version: string };
 
     expect(body.status).toBe('ok');
-    expect(body.version).toBe(Bun.env.GIT_SHA ?? 'local');
+    expect(body.version).toBe(Bun.env.GIT_SHA?.trim() || 'local');
   });
 
   it('sends them on a path no page holds', async () => {

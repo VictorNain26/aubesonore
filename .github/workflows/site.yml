@@ -28,10 +28,11 @@ on:
 # Cancel any in-flight run when a new push lands on the same PR / branch.
 # AI-agent iteration loops can push 5-10 times in a few minutes; without
 # cancellation each push stacks a fresh Quality/Build/Tests run and we
-# race the previous one to no purpose.
+# race the previous one to no purpose. Not on master: every commit there gets its images
+# (job publish), so two merges in a row queue instead of cancelling the first one's.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # The token reads the repository and nothing else
 # (docs.github.com/en/actions/reference/security/secure-use, "least privilege").
@@ -44,6 +45,16 @@ permissions:
 defaults:
   run:
     working-directory: site
+
+# The images' build arguments, the same in job build (every PR) and job publish (master), so a PR
+# builds what master publishes. The VITE_* values are production's, compose.yaml's defaults,
+# inlined into the bundle and public by nature (site/README.md).
+env:
+  IMAGE_BUILD_ARGS: |
+    GIT_SHA=${{ github.sha }}
+    VITE_API_URL=https://api.aubesonore.fr
+    VITE_AZURACAST_BASE_URL=https://radio.aubesonore.fr
+    VITE_STATION_SHORTCODE=aubesonore
 
 jobs:
   quality:
@@ -200,6 +211,7 @@ jobs:
           context: site
           file: site/Dockerfile
           push: false
+          build-args: ${{ env.IMAGE_BUILD_ARGS }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,scope=backend,mode=max
 
@@ -209,21 +221,23 @@ jobs:
           context: site
           file: site/apps/frontend/Dockerfile
           push: false
+          build-args: ${{ env.IMAGE_BUILD_ARGS }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,scope=frontend,mode=max
 
-  # The images production runs, built once here from the commit that passed the jobs above, then
-  # pulled by the server (scripts/deploy.sh) instead of rebuilt there: what runs is what was
-  # tested ("only build your binaries once", Humble & Farley, Continuous Delivery, ch. 5).
+  # The images production is to run, built once here from a commit that passed the jobs above
+  # (visual included). For now the server still builds its own (scripts/deploy.sh); it is to pull
+  # these instead: what runs is then what was tested ("only build your binaries once", Humble &
+  # Farley, Continuous Delivery, ch. 5).
   # Master only, so no pull request's code ever holds a token that writes packages; the write
   # permissions are this job's alone (docs.github.com/en/actions/reference/security/secure-use).
-  # Each image carries a signed SLSA provenance attestation, which the server verifies before it
+  # Each image carries a signed SLSA provenance attestation, for the server to verify before it
   # runs the image (docs.github.com, « Using artifact attestations to establish provenance »).
   # Packages of a public repository cost nothing to store or pull (docs.github.com, « GitHub
   # Packages billing »): no version is deleted, every past commit stays a rollback target.
   publish:
     name: Publish images
-    needs: [build]
+    needs: [build, visual]
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -263,8 +277,6 @@ jobs:
         with:
           images: ${{ env.IMAGE }}
           tags: type=sha,format=long
-      # The VITE_* values are production's, compose.yaml's defaults; they are inlined into the
-      # bundle, public by nature (site/README.md).
       - id: push
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
@@ -274,11 +286,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            GIT_SHA=${{ github.sha }}
-            VITE_API_URL=https://api.aubesonore.fr
-            VITE_AZURACAST_BASE_URL=https://radio.aubesonore.fr
-            VITE_STATION_SHORTCODE=aubesonore
+          build-args: ${{ env.IMAGE_BUILD_ARGS }}
           cache-from: |
             type=gha,scope=${{ matrix.image }}
             type=gha,scope=frontend
