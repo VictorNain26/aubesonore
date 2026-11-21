@@ -1,8 +1,13 @@
 [Unit]
 Description=Dump the AubeSonore database to a separate disk
+# On failure, a mail to the owner (pipeline/deploy/systemd/radio-alert@.service).
+OnFailure=radio-alert@%N.service
 
 [Service]
 Type=oneshot
 Nice=15
+# A missing disk fails the unit, and so mails, rather than write the off-disk copy onto the NVMe.
+# An Assert= would not do: an assertion fails the start job, never the unit (systemd.unit(5)).
+ExecStartPre=/usr/bin/mountpoint -q /media/plex
 ExecStart=%h/aubesonore/site/scripts/backup-db.sh
 TimeoutStartSec=30m
