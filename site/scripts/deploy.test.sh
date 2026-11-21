@@ -89,7 +89,8 @@ case "$1 $2" in
       # A job failed while another still runs: nothing will make this commit deployable.
       failure) echo '{"check_runs":[{"name":"Build all","status":"completed","conclusion":"failure"},{"name":"Visual","status":"in_progress","conclusion":null}]}' ;;
     esac ;;
-  "attestation verify") [ "$ATTEST" != fail ] ;;
+  # Fails for every image when $ATTEST=fail, or for the commit $ATTEST names.
+  "attestation verify") [ "$ATTEST" != fail ] && [[ " $* " != *" --source-digest $ATTEST "* ]] ;;
 esac
 EOF2
 cat >"$r/bin/systemctl" <<'EOF2'
@@ -168,7 +169,8 @@ deploy
 ATTEST=ok
 name="an image whose provenance does not verify is never started"
 if [ "$status" -ne 0 ] && head_is "$A" && failed_is "$P" && ! logged "compose up" &&
-  logged "attestation verify oci://ghcr.io/victornain26/aubesonore-backend@sha256:0000"; then
+  logged "attestation verify oci://ghcr.io/victornain26/aubesonore-backend@sha256:0000" &&
+  logged "--source-digest $P"; then
   passed "$name"
 else failed "$name"; fi
 
@@ -212,6 +214,15 @@ BAD=$(push D) FAIL=health
 deploy
 name="failed healthchecks roll back"
 if [ "$status" -ne 0 ] && head_is "$C" && failed_is "$BAD"; then passed "$name"; else failed "$name"; fi
+
+# A rollback runs the previous commit's images only once they verify too.
+BAD=$(push D2) FAIL=health ATTEST=$C
+: >"$r/docker.log"
+deploy
+ATTEST=ok
+name="a rollback never starts images that do not verify"
+if [ "$status" -ne 0 ] && head_is "$C" && [[ "$output" == *"nothing restarted"* ]] &&
+  ! logged "[sha-$C] compose up"; then passed "$name"; else failed "$name"; fi
 
 # The backend applies new migrations at boot and a rollback does not undo them: a range that adds
 # one is dumped first, or waits.

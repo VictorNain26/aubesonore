@@ -123,17 +123,19 @@ site_changed() { ! git diff --quiet "$current" "$target" -- site/; }
 # The images of a commit, pulled under its tag ($IMAGE_TAG, compose.yaml).
 pull() { (cd site && IMAGE_TAG="sha-$1" docker compose pull --quiet "${images[@]}"); }
 
-# The digest pulled, not the tag, is what gets verified: a tag can move between the pull and the
-# check. Signed by site.yml on master, in this repository (docs.github.com, « Using artifact
+# The images of a commit, pulled, are the ones CI built from that very commit: signed by site.yml
+# on master in this repository, from that source commit (--source-digest; without it, any master
+# image could be passed off under another commit's tag). The digest pulled, not the tag, is what
+# gets verified: a tag can move between the pull and the check (docs.github.com, « Using artifact
 # attestations to establish provenance »; `gh attestation verify --help`).
 verified() {
   local image digest
   for image in "${images[@]}"; do
     digest=$(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' \
-      "$registry/aubesonore-$image:sha-$target" | grep -m1 "^$registry/aubesonore-$image@") || return 1
+      "$registry/aubesonore-$image:sha-$1" | grep -m1 "^$registry/aubesonore-$image@") || return 1
     gh attestation verify "oci://$digest" --repo "$repo" --bundle-from-oci \
       --signer-workflow "$repo/.github/workflows/site.yml" --source-ref refs/heads/master \
-      >/dev/null || return 1
+      --source-digest "$1" >/dev/null || return 1
   done
 }
 
@@ -142,7 +144,7 @@ if site_changed; then
     echo "cannot pull the images of ${target:0:8}, retried next run"
     exit 1
   fi
-  if ! verified; then
+  if ! verified "$target"; then
     echo "the images of ${target:0:8} do not verify as built by site.yml on master: not deployed"
     git config aubesonore.failedTarget "$target"
     exit 1
@@ -186,7 +188,9 @@ rollback() {
     systemctl --user try-restart radio-votes.service
   fi
   if site_changed; then
-    if pull "$current" && (cd site && IMAGE_TAG="sha-$current" docker compose up -d --no-build --remove-orphans && wait_healthy); then
+    if ! { pull "$current" && verified "$current"; }; then
+      echo "the images of ${current:0:8} do not pull or verify: nothing restarted, the site needs a hand"
+    elif (cd site && IMAGE_TAG="sha-$current" docker compose up -d --no-build --remove-orphans && wait_healthy); then
       echo "rolled back to ${current:0:8}, all healthchecks green"
     else
       echo "rolled back to ${current:0:8}, which is not healthy either"
