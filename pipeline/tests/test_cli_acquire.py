@@ -51,7 +51,7 @@ def test_sockseek_failure_exits_1_and_reports_the_failed_stage(
         raise SockseekError("aucun index écrit")
 
     monkeypatch.setattr(cli.antenne, "acquire_pass", boom)
-    result = runner.invoke(cli.app, ["acquire"])
+    result = runner.invoke(cli.app, ["telechargement"])
     assert result.exit_code == 1
     assert "Sockseek en échec (aucun index écrit) : aucune tentative comptée" in result.output
     stage = _stage(db)
@@ -64,7 +64,7 @@ def test_interrupted_sockseek_fails_the_stage(
     db = _env(tmp_path, monkeypatch)
     rep = AcquireReport(n_wanted=4, n_ready=1, n_unindexed=3)
     monkeypatch.setattr(cli.antenne, "acquire_pass", _report(rep))
-    result = runner.invoke(cli.app, ["acquire"])
+    result = runner.invoke(cli.app, ["telechargement"])
     assert result.exit_code == 1
     assert "arrêté avant 3 titres" in result.output
     stage = _stage(db)
@@ -77,7 +77,7 @@ def test_success_rate_floor_comes_from_editorial(
     _env(tmp_path, monkeypatch, "[acquisition]\nmin_attempts_for_rate = 3\n")
     rep = AcquireReport(n_wanted=3, failures=Counter({"aucun résultat": 3}))
     monkeypatch.setattr(cli.antenne, "acquire_pass", _report(rep))
-    assert runner.invoke(cli.app, ["acquire"]).exit_code == 1
+    assert runner.invoke(cli.app, ["telechargement"]).exit_code == 1
 
 
 def test_missing_cover_is_reported_not_failed(
@@ -86,7 +86,7 @@ def test_missing_cover_is_reported_not_failed(
     db = _env(tmp_path, monkeypatch)
     rep = AcquireReport(n_wanted=2, n_ready=2, n_no_cover=1)
     monkeypatch.setattr(cli.antenne, "acquire_pass", _report(rep))
-    result = runner.invoke(cli.app, ["acquire"])
+    result = runner.invoke(cli.app, ["telechargement"])
     assert result.exit_code == 0
     assert "prêts sans pochette : 1" in result.output
     stage = _stage(db)
@@ -102,7 +102,7 @@ def test_an_unexpected_error_is_reported_without_its_message(
         raise RuntimeError("https://cdn.example/preview?hdnea=SECRET")
 
     monkeypatch.setattr(cli.antenne, "acquire_pass", boom)
-    result = runner.invoke(cli.app, ["acquire"])
+    result = runner.invoke(cli.app, ["telechargement"])
     assert result.exit_code == 1
     assert _stage(db) == (0, '{"erreur": "RuntimeError"}')
 
@@ -127,10 +127,14 @@ def _pass(**over: tuple[int, str]) -> list[tuple[str, str, int, str]]:
     ("rows", "code", "message"),
     [
         (_pass(), 0, "11 étapes, 0 en échec, 3 publiés"),
-        (_pass(acquire=(0, "{}")), 1, "Étapes en échec : acquire"),
+        (_pass(telechargement=(0, "{}")), 1, "Étapes en échec : telechargement"),
         (_pass(antenne=(1, '{"publiés": 0}')), 1, "Aucune découverte publiée"),
-        ([r for r in _pass() if r[1] != "acquire"], 1, "Étapes sans rapport (tuées ?) : acquire"),
-        ([("autre", "acquire", 0, "{}"), *_pass()], 0, ""),
+        (
+            [r for r in _pass() if r[1] != "telechargement"],
+            1,
+            "Étapes sans rapport (tuées ?) : telechargement",
+        ),
+        ([("autre", "telechargement", 0, "{}"), *_pass()], 0, ""),
     ],
 )
 def test_check_judges_only_the_current_pass(
@@ -141,10 +145,10 @@ def test_check_judges_only_the_current_pass(
     message: str,
 ) -> None:
     db = _env(tmp_path, monkeypatch)
-    runner.invoke(cli.app, ["report"])  # crée la base
+    runner.invoke(cli.app, ["rapport"])  # crée la base
     _stages(db, rows)
     monkeypatch.setenv("INVOCATION_ID", "p")
-    result = runner.invoke(cli.app, ["check"])
+    result = runner.invoke(cli.app, ["bilan"])
     assert result.exit_code == code
     assert message in result.output
 
@@ -161,7 +165,7 @@ def test_check_reads_what_antenne_published(
     assert result.exit_code == 0, result.output
     assert "Antenne : 0 titres (2 publiés" in result.output
     _stages(db, [r for r in _pass() if r[1] != "antenne"])
-    result = runner.invoke(cli.app, ["check"])
+    result = runner.invoke(cli.app, ["bilan"])
     assert result.exit_code == 0, result.output
     assert "11 étapes, 0 en échec, 2 publiés" in result.output
 
@@ -169,7 +173,7 @@ def test_check_reads_what_antenne_published(
 def test_check_needs_systemd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _env(tmp_path, monkeypatch)
     monkeypatch.delenv("INVOCATION_ID", raising=False)
-    assert runner.invoke(cli.app, ["check"]).exit_code == 2
+    assert runner.invoke(cli.app, ["bilan"]).exit_code == 2
 
 
 def test_pass_stages_are_the_weekly_units_commands() -> None:
@@ -181,4 +185,4 @@ def test_pass_stages_are_the_weekly_units_commands() -> None:
         for line in unit.splitlines()
         if line.startswith("ExecStart=")
     )
-    assert commands == (*cli.ops.PASS_STAGES, "check")
+    assert commands == (*cli.ops.PASS_STAGES, "bilan")

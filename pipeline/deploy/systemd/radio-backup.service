@@ -12,4 +12,4 @@ Nice=19
 # écrite sur le NVMe. Un Assert= ne suffirait pas : il fait échouer le démarrage, jamais l'unité
 # (systemd.unit(5)).
 ExecStartPre=/usr/bin/mountpoint -q /media/plex
-ExecStart=%h/aubesonore/pipeline/.venv/bin/radio backup
+ExecStart=%h/aubesonore/pipeline/.venv/bin/radio sauvegarde

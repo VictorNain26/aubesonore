@@ -30,7 +30,7 @@ def test_train_promotes_scores_then_skips_without_new_votes(env: Path) -> None:
     add_vote(conn, 300600, "exam", "non")
     conn.close()
 
-    res = runner.invoke(cli.app, ["train"])
+    res = runner.invoke(cli.app, ["gout"])
     assert res.exit_code == 0, res.output
     assert "Examen : 2 votes, AUC 1,000" in res.output
     assert "Modèle n°1 : promu — premier modèle" in res.output
@@ -45,7 +45,7 @@ def test_train_promotes_scores_then_skips_without_new_votes(env: Path) -> None:
     # La coupure (80) dépasse les 24 artistes : chacun entre son titre le mieux noté, un seul.
     assert sorted(tuple(r) for r in kept) == [(0, 12), (1, 12)]
 
-    res = runner.invoke(cli.app, ["train"])
+    res = runner.invoke(cli.app, ["gout"])
     assert res.exit_code == 0, res.output
     assert "Aucun vote nouveau ni corrigé (2 votes) : pas de réentraînement" in res.output
     assert "Candidats notés par le modèle n°1" in res.output
@@ -59,7 +59,7 @@ def test_train_learns_a_corrected_vote(env: Path) -> None:
     add_vote(conn, 200600, "exam", "oui")
     add_vote(conn, 300600, "exam", "non")
     conn.close()
-    assert runner.invoke(cli.app, ["train"]).exit_code == 0
+    assert runner.invoke(cli.app, ["gout"]).exit_code == 0
 
     conn = connect(env / "data" / "radio.db")
     with conn:
@@ -67,13 +67,13 @@ def test_train_learns_a_corrected_vote(env: Path) -> None:
         conn.execute("INSERT INTO ballots VALUES (200100, 1, 'lesson', 0, 1)")
     assert record_vote(conn, 200100, "oui", NOW)
     conn.close()
-    res = runner.invoke(cli.app, ["train"])
+    res = runner.invoke(cli.app, ["gout"])
     assert "Exemples : bibliothèque 48, oui 1, non 0" in res.output, res.output
 
     conn = connect(env / "data" / "radio.db")
     assert record_vote(conn, 200100, "non", NOW)
     conn.close()
-    res = runner.invoke(cli.app, ["train"])
+    res = runner.invoke(cli.app, ["gout"])
     assert res.exit_code == 0, res.output
     assert "Exemples : bibliothèque 48, oui 0, non 1" in res.output, res.output
 
@@ -86,7 +86,7 @@ def test_train_reports_the_news_kept_off_air_by_the_floor(env: Path) -> None:
     as_news(conn, 300000)
     conn.close()
 
-    res = runner.invoke(cli.app, ["train"])
+    res = runner.invoke(cli.app, ["gout"])
     assert res.exit_code == 0, res.output
     assert (
         "Dernière fournée (passe n°1) : 12 retenus sur 96 candidats, "
@@ -94,7 +94,7 @@ def test_train_reports_the_news_kept_off_air_by_the_floor(env: Path) -> None:
     ) in res.output
     conn = connect(env / "data" / "radio.db")
     counts = json.loads(
-        conn.execute("SELECT counts FROM stage_reports WHERE stage = 'train'").fetchone()[0]
+        conn.execute("SELECT counts FROM stage_reports WHERE stage = 'gout'").fetchone()[0]
     )
     conn.close()
     assert counts["retenus"] == 12 and counts["nouveautés sous le plancher"] == 12
@@ -102,7 +102,7 @@ def test_train_reports_the_news_kept_off_air_by_the_floor(env: Path) -> None:
 
 def test_first_training_without_exam_votes_is_promoted(env: Path) -> None:
     make_model_db(env / "data").close()
-    res = runner.invoke(cli.app, ["train"])
+    res = runner.invoke(cli.app, ["gout"])
     assert res.exit_code == 0, res.output
     assert "Examen : 0 votes, AUC —" in res.output
     assert "Modèle n°1 : promu — premier modèle" in res.output
@@ -113,6 +113,6 @@ def test_train_without_negatives_exits_1(env: Path) -> None:
     conn.execute("DELETE FROM track_measures WHERE deezer_track_id >= 300000")
     conn.commit()
     conn.close()
-    res = runner.invoke(cli.app, ["train"])
+    res = runner.invoke(cli.app, ["gout"])
     assert res.exit_code == 1
     assert "Exemples insuffisants" in res.output

@@ -1,7 +1,7 @@
 """Test de bout en bout de la couture modèle <-> votes : entraînement réel, sélection,
-vote sur la vraie page, réentraînement, deuxième sélection. `radio discover` est hors de portée
+vote sur la vraie page, réentraînement, deuxième sélection. `radio decouverte` est hors de portée
 d'un test sans réseau : la file de candidats est semée directement (mêmes tables que
-`radio discover` remplirait).
+`radio decouverte` remplirait).
 """
 
 from pathlib import Path
@@ -40,13 +40,13 @@ def test_votes_lifecycle_from_training_to_a_second_selection(env: Path) -> None:
     conn.close()
     db_path = env / "data" / "radio.db"
 
-    # 1. `radio train` : modèle n°1 promu, candidats notés.
-    res = runner.invoke(cli.app, ["train"])
+    # 1. `radio gout` : modèle n°1 promu, candidats notés.
+    res = runner.invoke(cli.app, ["gout"])
     assert res.exit_code == 0, res.output
     assert "Modèle n°1 : promu — premier modèle" in res.output
 
-    # 2. `radio votes-select` : des bulletins en attente.
-    res = runner.invoke(cli.app, ["votes-select"])
+    # 2. `radio tirage` : des bulletins en attente.
+    res = runner.invoke(cli.app, ["tirage"])
     assert res.exit_code == 0, res.output
     conn = connect(db_path)
     first_pending = pending_ballots(conn)
@@ -65,8 +65,8 @@ def test_votes_lifecycle_from_training_to_a_second_selection(env: Path) -> None:
         )
         assert r.status_code == 303
 
-    # 4. `radio train` : les nouveaux votes déclenchent un réentraînement, deux modèles en base.
-    res = runner.invoke(cli.app, ["train"])
+    # 4. `radio gout` : les nouveaux votes déclenchent un réentraînement, deux modèles en base.
+    res = runner.invoke(cli.app, ["gout"])
     assert res.exit_code == 0, res.output
     assert "Aucun vote nouveau ni corrigé" not in res.output
     conn = connect(db_path)
@@ -74,8 +74,8 @@ def test_votes_lifecycle_from_training_to_a_second_selection(env: Path) -> None:
     conn.close()
     assert n_models == 2
 
-    # 5. `radio votes-select` : une nouvelle sélection (2 lignes dans `selections`).
-    res = runner.invoke(cli.app, ["votes-select"])
+    # 5. `radio tirage` : une nouvelle sélection (2 lignes dans `selections`).
+    res = runner.invoke(cli.app, ["tirage"])
     assert res.exit_code == 0, res.output
     conn = connect(db_path)
     n_selections = conn.execute("SELECT COUNT(*) FROM selections").fetchone()[0]

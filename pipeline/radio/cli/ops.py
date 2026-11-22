@@ -27,27 +27,27 @@ def _stage_lines(stages: list[tuple[str, str, bool, dict[str, object]]]) -> list
 # Étapes de deploy/systemd/radio-weekly.service, dans son ordre (un test les compare) : chacune
 # doit avoir laissé sa ligne de rapport.
 PASS_STAGES = (
-    "library-sync",
-    "discover",
+    "bibliotheque",
+    "decouverte",
     "nouveautes",
     "favoris",
-    "signals",
-    "train",
-    "votes-select",
-    "acquire",
+    "empreintes",
+    "gout",
+    "tirage",
+    "telechargement",
     "antenne",
     "mesures",
     "grille",
 )
 
 
-@app.command()
+@app.command("bilan")
 def check() -> None:
     """Juge la passe systemd en cours : une étape en échec, ou aucune découverte publiée, la fait
     échouer (l'unité radio-weekly est alors en échec)."""
     invocation = os.environ.get("INVOCATION_ID")
     if not invocation:
-        _fail("INVOCATION_ID absent : radio check juge une passe lancée par systemd", 2)
+        _fail("INVOCATION_ID absent : radio bilan juge une passe lancée par systemd", 2)
     with _db(common._settings()) as conn:
         stages = invocation_stages(conn, invocation)
     failed = [s for s, ok, _ in stages if not ok]
@@ -57,17 +57,17 @@ def check() -> None:
         [f"Passe : {_n(len(stages))} étapes, {_n(len(failed))} en échec, {_n(published)} publiés"]
     )
     if failed:
-        _fail(f"Étapes en échec : {', '.join(failed)} (radio report)", 1)
+        _fail(f"Étapes en échec : {', '.join(failed)} (radio rapport)", 1)
     if missing:
         _fail(f"Étapes sans rapport (tuées ?) : {', '.join(missing)} (journal systemd)", 1)
     if published == 0:
-        _fail("Aucune découverte publiée cette semaine (radio report)", 1)
+        _fail("Aucune découverte publiée cette semaine (radio rapport)", 1)
 
 
-@app.command("backup")
+@app.command("sauvegarde")
 # Sans le verrou des commandes : la copie est cohérente même pendant une écriture
 # (radio/core/backup.py), et la sauvegarde garde son heure, même pendant la passe du dimanche.
-@_stage("backup", exclusive=False)
+@_stage("sauvegarde", exclusive=False)
 def backup_command() -> None:
     """Copie la base (API de sauvegarde SQLite, vérifiée) et les modèles dans RADIO_BACKUP_DIR."""
     settings = common._settings()
@@ -84,11 +84,11 @@ def backup_command() -> None:
     except (BackupError, sqlite3.Error, OSError) as e:
         _fail(f"Sauvegarde ratée : {e}", 1)
     with _db(settings) as conn:
-        _record(conn, "backup", True, {"copie": target.name})
+        _record(conn, "sauvegarde", True, {"copie": target.name})
     _echo([f"Sauvegarde : {target}"])
 
 
-@app.command()
+@app.command("rapport")
 def report() -> None:
     """État : dernières étapes, modèle en service, taux de oui, votes, dernière fournée."""
     settings = common._settings()
@@ -100,7 +100,7 @@ def report() -> None:
     _echo(["Dernières étapes :", *_stage_lines(stages), *status, *suivi_lines(suivi)])
 
 
-@app.command()
+@app.command("alerte")
 def alert(unit: str) -> None:
     """Envoie à ALERT_EMAIL_TO le courriel d'une unité en échec (lancée par radio-alert@.service,
     l'OnFailure= des unités du pipeline). Sans relais configuré, ou s'il refuse le courriel, elle
@@ -122,7 +122,7 @@ def alert(unit: str) -> None:
     msg.set_content(
         f"{unit} est en échec depuis le {now:%Y-%m-%d à %H:%M %Z}.\n"
         f"Où regarder, sur le serveur : systemctl --user status {unit}, "
-        f"journalctl --user -u {unit}, radio report (docs/conception.md §8.2).\n"
+        f"journalctl --user -u {unit}, radio rapport (docs/conception.md §8.2).\n"
     )
     # Le site se connecte de même (site/apps/backend/src/services/mailerService.ts).
     implicit_tls = settings.smtp_port == 465

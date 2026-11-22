@@ -26,23 +26,23 @@ TimeoutStartSec=12h
 RuntimeDirectory=radio-weekly
 RuntimeDirectoryMode=0700
 # Une étape en échec arrête la suite : pas de sélection sur des notes périmées.
-# train ne réentraîne que s'il y a des votes nouveaux ou corrigés ; il note toujours les candidats.
-# nouveautes, favoris et acquire préfixés de « - » : une source en panne n'arrête pas la
-# passe, et un échec d'acquire n'empêche pas antenne de publier ce qui est prêt
-# (systemd.service(5), « Command lines ») ; check fait échouer la passe en fin de course.
-ExecStart=%h/aubesonore/pipeline/.venv/bin/radio library-sync
-ExecStart=%h/aubesonore/pipeline/.venv/bin/radio discover
+# gout ne réentraîne que s'il y a des votes nouveaux ou corrigés ; il note toujours les candidats.
+# nouveautes, favoris et telechargement préfixés de « - » : une source en panne n'arrête pas la
+# passe, et un échec de telechargement n'empêche pas antenne de publier ce qui est prêt
+# (systemd.service(5), « Command lines ») ; bilan fait échouer la passe en fin de course.
+ExecStart=%h/aubesonore/pipeline/.venv/bin/radio bibliotheque
+ExecStart=%h/aubesonore/pipeline/.venv/bin/radio decouverte
 ExecStart=-%h/aubesonore/pipeline/.venv/bin/radio nouveautes
 ExecStart=-%h/aubesonore/pipeline/.venv/bin/radio favoris
-ExecStart=%h/aubesonore/pipeline/.venv/bin/radio signals
-ExecStart=%h/aubesonore/pipeline/.venv/bin/radio train
-ExecStart=%h/aubesonore/pipeline/.venv/bin/radio votes-select
-ExecStart=-%h/aubesonore/pipeline/.venv/bin/radio acquire
+ExecStart=%h/aubesonore/pipeline/.venv/bin/radio empreintes
+ExecStart=%h/aubesonore/pipeline/.venv/bin/radio gout
+ExecStart=%h/aubesonore/pipeline/.venv/bin/radio tirage
+ExecStart=-%h/aubesonore/pipeline/.venv/bin/radio telechargement
 ExecStart=%h/aubesonore/pipeline/.venv/bin/radio antenne
-# mesures préfixée de « - » : check tourne quand même et fait échouer la passe sur cette étape,
+# mesures préfixée de « - » : bilan tourne quand même et fait échouer la passe sur cette étape,
 # avec le résumé de toutes les autres.
 ExecStart=-%h/aubesonore/pipeline/.venv/bin/radio mesures
 # La passe a fait entrer, sortir ou mettre au repos des titres : la grille du jour est réécrite
 # pour les heures qui restent.
 ExecStart=-%h/aubesonore/pipeline/.venv/bin/radio grille --aujourdhui
-ExecStart=%h/aubesonore/pipeline/.venv/bin/radio check
+ExecStart=%h/aubesonore/pipeline/.venv/bin/radio bilan

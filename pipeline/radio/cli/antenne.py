@@ -31,8 +31,8 @@ from radio.sources.azuracast import AzuracastClient, AzuracastUnavailable
 from radio.sources.deezer import DeezerClient, DeezerUnavailable
 
 
-@app.command()
-@_stage("acquire")
+@app.command("telechargement")
+@_stage("telechargement")
 def acquire() -> None:
     """Télécharge les titres retenus sur Soulseek, prouve leur identité et les prépare."""
     settings = common._settings()
@@ -65,7 +65,7 @@ def acquire() -> None:
         rate_ok = rep.n_attempted < cfg.min_attempts_for_rate or rate >= cfg.min_success_rate
         _record(
             conn,
-            "acquire",
+            "telechargement",
             rate_ok and not rep.n_unindexed,
             {
                 "demandés": rep.n_wanted,
@@ -97,7 +97,7 @@ def acquire() -> None:
         _fail(f"Taux d'acquisition sous {_rate(cfg.min_success_rate)} : à examiner", 1)
 
 
-@app.command()
+@app.command("antenne")
 @_stage("antenne")
 def antenne() -> None:
     """Publie les titres prêts, fait vivre chaque titre (fin de séjour, promotion, repos,
@@ -179,7 +179,7 @@ def antenne() -> None:
         _fail(f"{_n(len(rep.errors))} erreurs de publication", 1)
 
 
-@app.command()
+@app.command("mesures")
 @_stage("mesures")
 def mesures() -> None:
     """Mesure les titres à l'antenne (dansabilité, arousal, valence, tempo ; titre entier, début,
@@ -213,7 +213,7 @@ def mesures() -> None:
         _fail(f"Fichiers d'antenne absents de {settings.azuracast_media_dir}", 1)
 
 
-@app.command()
+@app.command("grille")
 @_stage("grille")
 def grille(
     aujourdhui: bool = typer.Option(

@@ -61,8 +61,8 @@ _REASONS = (
 )
 
 
-@app.command("library-sync")
-@_stage("library-sync")
+@app.command("bibliotheque")
+@_stage("bibliotheque")
 def library_sync() -> None:
     """Lit la bibliothèque Plex et la rapproche de Deezer."""
     settings = common._settings()
@@ -93,7 +93,7 @@ def library_sync() -> None:
         done, total = coverage(conn)
         _record(
             conn,
-            "library-sync",
+            "bibliotheque",
             True,
             {
                 "titres": sync.n_tracks,
@@ -122,8 +122,8 @@ def library_sync() -> None:
     )
 
 
-@app.command()
-@_stage("discover")
+@app.command("decouverte")
+@_stage("decouverte")
 def discover() -> None:
     """Tire des graines dans la bibliothèque et découvre des titres candidats."""
     settings = common._settings()
@@ -141,13 +141,13 @@ def discover() -> None:
             )
         except NoLibraryArtistsError:
             _fail(
-                "Aucun artiste de la bibliothèque rapproché : lancer d'abord radio library-sync", 1
+                "Aucun artiste de la bibliothèque rapproché : lancer d'abord radio bibliotheque", 1
             )
         except (DeezerUnavailable, LastfmUnavailable) as e:
             _fail(_unavailable(e), 1)
         _record(
             conn,
-            "discover",
+            "decouverte",
             True,
             {
                 "graines": rep.n_seeds,
@@ -170,7 +170,7 @@ def discover() -> None:
     _echo(lines + [f"  sauté : {s}" for s in rep.skipped])
 
 
-@app.command()
+@app.command("nouveautes")
 @_stage("nouveautes")
 def nouveautes() -> None:
     """Ajoute à la dernière fournée des titres récents choisis par des humains (Hype Machine,
@@ -188,7 +188,7 @@ def nouveautes() -> None:
                 _now(),
             )
         except NoBatchError:
-            _fail("Aucune fournée de découverte : lancer d'abord radio discover", 1)
+            _fail("Aucune fournée de découverte : lancer d'abord radio decouverte", 1)
         except DeezerUnavailable as e:
             _fail(_unavailable(e), 1)
         _record(
@@ -221,7 +221,7 @@ def nouveautes() -> None:
         _fail("Une source de nouveautés est en panne : voir ci-dessus", 1)
 
 
-@app.command()
+@app.command("favoris")
 @_stage("favoris")
 def favoris() -> None:
     """Relit les favoris Hype Machine de Victor : déjà aimés, ils ne sont plus des découvertes."""
@@ -269,7 +269,7 @@ def favoris() -> None:
     )
 
 
-@app.command("negatives-sync")
+@app.command("negatifs")
 def negatives_sync() -> None:
     """Importe les titres des artistes négatifs de démarrage (config/negatives.toml)."""
     settings = common._settings()
@@ -297,8 +297,8 @@ def negatives_sync() -> None:
     )
 
 
-@app.command()
-@_stage("signals")
+@app.command("empreintes")
+@_stage("empreintes")
 def signals() -> None:
     """Mesure l'empreinte audio de tous les titres connus (bibliothèque, candidats, négatifs)."""
     settings = common._settings()
@@ -315,7 +315,7 @@ def signals() -> None:
         origins = Counter(load_signals(conn).origins)
         _record(
             conn,
-            "signals",
+            "empreintes",
             True,
             {
                 "à mesurer": meas.n_todo,
@@ -352,8 +352,8 @@ def _train_lines(r: TrainReport) -> list[str]:
     ]
 
 
-@app.command("train")
-@_stage("train")
+@app.command("gout")
+@_stage("gout")
 def train_command() -> None:
     """Entraîne le modèle s'il y a des votes nouveaux ou corrigés, puis note les candidats."""
     settings = common._settings()
@@ -372,7 +372,7 @@ def train_command() -> None:
             except MissingExamplesError:
                 _fail(
                     "Exemples insuffisants (il faut des titres de la bibliothèque et des négatifs "
-                    "mesurés) : lancer radio negatives-sync puis radio signals",
+                    "mesurés) : lancer radio negatifs puis radio empreintes",
                     1,
                 )
         model_id = rescore(conn, models_dir, cfg)
@@ -380,7 +380,7 @@ def train_command() -> None:
         favorites = favorites_retained(conn, models_dir)
         _record(
             conn,
-            "train",
+            "gout",
             model_id is not None,
             {
                 "modèle en service": model_id,

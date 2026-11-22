@@ -10,4 +10,4 @@ Description=AubeSonore : courriel d'alerte, %i.service en échec
 Type=oneshot
 WorkingDirectory=%h/aubesonore/pipeline
 EnvironmentFile=%h/aubesonore/pipeline/.env
-ExecStart=%h/aubesonore/pipeline/.venv/bin/radio alert %i.service
+ExecStart=%h/aubesonore/pipeline/.venv/bin/radio alerte %i.service

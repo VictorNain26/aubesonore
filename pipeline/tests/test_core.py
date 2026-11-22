@@ -30,6 +30,31 @@ def test_connect_applies_migrations(tmp_path: Path) -> None:
     again.close()
 
 
+def test_the_stage_reports_take_the_new_stage_names(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Breaks if a stage keeps its old name in stage_reports: `radio rapport` would show it next
+    # to the new one, and `radio bilan` would not count it in its pass.
+    before = tmp_path / "migrations"
+    before.mkdir()
+    for script in sorted(MIGRATIONS.glob("*.sql"))[:16]:
+        shutil.copy(script, before)
+    monkeypatch.setattr("radio.core.db.MIGRATIONS", before)
+    db = tmp_path / "radio.db"
+    with connect(db) as conn:
+        conn.executemany(
+            "INSERT INTO stage_reports (invocation, stage, finished_at, ok, counts) "
+            "VALUES ('passe', ?, 't', 1, '{}')",
+            [(s,) for s in ("library-sync", "votes-select", "acquire", "antenne", "check")],
+        )
+    conn.close()
+    monkeypatch.setattr("radio.core.db.MIGRATIONS", MIGRATIONS)
+    conn = connect(db)
+    stages = [r[0] for r in conn.execute("SELECT stage FROM stage_reports ORDER BY report_id")]
+    assert stages == ["bibliotheque", "tirage", "telechargement", "antenne", "bilan"]
+    conn.close()
+
+
 def test_a_migration_that_breaks_a_foreign_key_is_rolled_back(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

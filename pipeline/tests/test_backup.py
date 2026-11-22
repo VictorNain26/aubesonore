@@ -111,7 +111,7 @@ def test_a_refused_copy_keeps_the_sound_one_made_earlier_the_same_day(tmp_path: 
 def test_backup_needs_a_destination(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     settings = Settings(_env_file=None, RADIO_DATA_DIR=tmp_path)
     monkeypatch.setattr(cli.common, "_settings", lambda: settings)
-    result = CliRunner().invoke(cli.app, ["backup"])
+    result = CliRunner().invoke(cli.app, ["sauvegarde"])
     assert result.exit_code == 2
     assert "RADIO_BACKUP_DIR" in result.output
 
@@ -122,9 +122,9 @@ def test_backup_reports_its_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         _env_file=None, RADIO_DATA_DIR=tmp_path / "data", RADIO_BACKUP_DIR=tmp_path / "copies"
     )
     monkeypatch.setattr(cli.common, "_settings", lambda: settings)
-    assert CliRunner().invoke(cli.app, ["backup"]).exit_code == 0
+    assert CliRunner().invoke(cli.app, ["sauvegarde"]).exit_code == 0
     with cli.common._db(settings) as conn:
-        assert [(s, ok) for s, _, ok, _ in last_stages(conn)] == [("backup", True)]
+        assert [(s, ok) for s, _, ok, _ in last_stages(conn)] == [("sauvegarde", True)]
 
 
 def test_a_failed_backup_reports_its_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -133,7 +133,7 @@ def test_a_failed_backup_reports_its_stage(tmp_path: Path, monkeypatch: pytest.M
     blocked.write_text("un fichier là où la sauvegarde attend un dossier")
     settings = Settings(_env_file=None, RADIO_DATA_DIR=tmp_path / "data", RADIO_BACKUP_DIR=blocked)
     monkeypatch.setattr(cli.common, "_settings", lambda: settings)
-    result = CliRunner().invoke(cli.app, ["backup"])
+    result = CliRunner().invoke(cli.app, ["sauvegarde"])
     assert result.exit_code == 1, result.output
     with cli.common._db(settings) as conn:
-        assert [(s, ok) for s, _, ok, _ in last_stages(conn)] == [("backup", False)]
+        assert [(s, ok) for s, _, ok, _ in last_stages(conn)] == [("sauvegarde", False)]

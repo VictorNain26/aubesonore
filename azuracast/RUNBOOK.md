@@ -120,7 +120,7 @@ cd musilogy && uv sync
 docker ps                                   # azuracast, aubesonore-{db,backend,frontend,renderer}
 systemctl --user list-timers                # un par *.timer de pipeline/deploy/systemd, site/scripts/systemd et azuracast/scripts/systemd
 systemctl --user is-active radio-votes      # page de vote ; 127.0.0.1:8040 répond 403 sans Cloudflare Access
-cd ~/aubesonore/pipeline && .venv/bin/pytest -q -W error && .venv/bin/radio report
+cd ~/aubesonore/pipeline && .venv/bin/pytest -q -W error && .venv/bin/radio rapport
 ```
 
 Le vrai test de bout en bout reste une passe `radio-weekly` complète : elle touche
@@ -137,5 +137,5 @@ sur le serveur ; la nouvelle image ne tourne qu'une fois appliquée, hors de la 
 
 ```bash
 cd ~/aubesonore/azuracast && docker compose up -d --wait web
-cd ~/aubesonore/pipeline && .venv/bin/radio report   # l'API répond, la station joue
+cd ~/aubesonore/pipeline && .venv/bin/radio rapport   # l'API répond, la station joue
 ```

@@ -16,7 +16,7 @@
 - Un titre voté ou déjà présenté ne revient jamais. Tant qu'un bulletin attend, aucune nouvelle
   sélection : les semaines sans vote ne s'empilent pas.
 - Un vote se corrige tant que sa sélection est la dernière : la passe suivante l'apprend
-  (`train`), puis tire une nouvelle sélection qui le fige. Tous les bulletins en attente sont
+  (`gout`), puis tire une nouvelle sélection qui le fige. Tous les bulletins en attente sont
   dans la dernière sélection, puisqu'aucune n'est tirée tant qu'un bulletin attend.
 """
 

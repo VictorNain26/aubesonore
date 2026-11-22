@@ -126,7 +126,7 @@ def as_news(
 
 
 def seed_run(conn: sqlite3.Connection) -> None:
-    """Une fournée de découverte unique (`radio discover` a besoin du réseau) : tous les
+    """Une fournée de découverte unique (`radio decouverte` a besoin du réseau) : tous les
     candidats y entrent."""
     conn.execute("INSERT INTO discover_runs VALUES (1, 'd', 'd', 'done')")
     conn.execute(

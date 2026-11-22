@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     azuracast_station_id: int = 1
     sockseek_bin: Path = Path("~/.local/bin/sockseek").expanduser()
     rsgain_bin: Path = Path("~/.local/bin/rsgain").expanduser()
-    # Courriel d'alerte d'une unité en échec (`radio alert`), par le relais SMTP du site.
+    # Courriel d'alerte d'une unité en échec (`radio alerte`), par le relais SMTP du site.
     smtp_host: str | None = None
     smtp_port: int = 587
     smtp_user: str | None = None
@@ -72,7 +72,7 @@ class Settings(BaseSettings):
 
     @property
     def trained_models_dir(self) -> Path:
-        """Les modèles que `train` entraîne, à part des poids MTG de models_dir."""
+        """Les modèles que `gout` entraîne, à part des poids MTG de models_dir."""
         return self.data_dir / "models"
 
     @property

@@ -98,7 +98,7 @@ def test_alert_mails_the_failed_unit_and_nothing_of_its_journal(
 ) -> None:
     _settings(monkeypatch, **SMTP, smtp_port=port)
 
-    result = runner.invoke(cli.app, ["alert", "radio-weekly.service"])
+    result = runner.invoke(cli.app, ["alerte", "radio-weekly.service"])
 
     assert result.exit_code == 0, result.output
     assert relay.events == [*connection, "login relais", "send", "quit"]
@@ -118,7 +118,7 @@ def test_an_unconfigured_alert_fails_and_names_what_is_missing(
     # l'unité d'alerte échoue à son tour, visible dans `systemctl --user list-units --failed`.
     _settings(monkeypatch, smtp_host="smtp.example.test")
 
-    result = runner.invoke(cli.app, ["alert", "radio-weekly.service"])
+    result = runner.invoke(cli.app, ["alerte", "radio-weekly.service"])
 
     assert result.exit_code == 2
     assert "SMTP_FROM" in result.output and "ALERT_EMAIL_TO" in result.output
@@ -133,7 +133,7 @@ def test_a_refused_alert_fails_without_leaking_the_password(
     monkeypatch.setattr(smtplib, "SMTP", refusing.client(implicit_tls=False))
     _settings(monkeypatch, **SMTP)
 
-    result = runner.invoke(cli.app, ["alert", "radio-weekly.service"])
+    result = runner.invoke(cli.app, ["alerte", "radio-weekly.service"])
 
     assert result.exit_code == 1
     assert "radio-weekly.service" in result.output and "535" in result.output

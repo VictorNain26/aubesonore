@@ -2,8 +2,8 @@
 enregistre ses commandes sur l'application de `common` à son import ; `radio --help` les liste
 dans l'ordre des imports ci-dessous, où les étapes de la passe hebdomadaire suivent son ordre."""
 
-# L'ordre des imports est celui de l'aide : pas de tri. votes avant antenne : votes-select
-# tourne entre train et acquire.
+# L'ordre des imports est celui de l'aide : pas de tri. votes avant antenne : tirage
+# tourne entre gout et telechargement.
 from radio.cli import gout  # noqa: I001
 from radio.cli import votes
 from radio.cli import antenne, ops

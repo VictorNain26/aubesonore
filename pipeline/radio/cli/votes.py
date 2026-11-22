@@ -71,8 +71,8 @@ def _status_lines(st: Status, quiet_days: int) -> list[str]:
     return lines
 
 
-@app.command("votes-select")
-@_stage("votes-select")
+@app.command("tirage")
+@_stage("tirage")
 def votes_select() -> None:
     """Tire la sélection de la semaine : examen à parts égales par famille, leçon par
     incertitude."""
@@ -90,16 +90,16 @@ def votes_select() -> None:
                 floor=editorial.model.floor,
             )
         except PendingBallotsError as e:
-            _record(conn, "votes-select", True, {"en attente de vote": e.n})
+            _record(conn, "tirage", True, {"en attente de vote": e.n})
             typer.echo(f"{_n(e.n)} titres encore en attente de vote : pas de nouvelle sélection")
             return
         except NoServingModelError:
-            _fail("Aucun modèle en service : lancer radio train", 1)
+            _fail("Aucun modèle en service : lancer radio gout", 1)
         except NoScoresError:
-            _fail("Le modèle en service n'a noté aucun candidat : lancer radio train", 1)
+            _fail("Le modèle en service n'a noté aucun candidat : lancer radio gout", 1)
         _record(
             conn,
-            "votes-select",
+            "tirage",
             True,
             {"examen": len(sel.exam), "leçon": len(sel.lesson), "fournée": sel.n_batch},
         )
@@ -113,7 +113,7 @@ def votes_select() -> None:
     )
 
 
-@app.command("votes-serve")
+@app.command("page-votes")
 def votes_serve() -> None:
     """Sert la page de vote en local ; le tunnel Cloudflare la publie derrière Access."""
     settings = common._settings()

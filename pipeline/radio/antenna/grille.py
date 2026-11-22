@@ -104,7 +104,7 @@ class Plan:
 def load_titres(conn: sqlite3.Connection) -> list[Titre]:
     """Titres à l'antenne, chaque mesure (énergie = arousal, dansabilité, tempo) ramenée à son
     quantile parmi les titres mesurés : les cibles suivent la couleur de l'antenne. Un titre pas
-    encore mesuré est neutre (0,5). L'empreinte de style est celle de `signals`."""
+    encore mesuré est neutre (0,5). L'empreinte de style est celle de `empreintes`."""
     rows = conn.execute(
         """
         SELECT n.deezer_track_id, COALESCE(t.deezer_artist_id, -n.deezer_track_id), n.categorie,

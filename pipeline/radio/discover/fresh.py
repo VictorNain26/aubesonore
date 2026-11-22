@@ -19,7 +19,7 @@ from radio.sources.hypem import HypemClient, HypemError, HypemUnavailable
 
 
 class NoBatchError(Exception):
-    """Aucune fournée de découverte : les nouveautés s'y ajoutent, lancer radio discover."""
+    """Aucune fournée de découverte : les nouveautés s'y ajoutent, lancer radio decouverte."""
 
 
 @dataclass

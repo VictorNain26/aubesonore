@@ -60,7 +60,8 @@ techniques (`conn`, `path`, `client`, `retry`) et les noms des outils (`song_id`
 **Les noms, d'aujourd'hui à demain**
 
 Appliqués dans cet ordre, une PR à la fois : le code et les commandes, puis les unités, puis la
-base. Jusque-là, le reste de ce document emploie les noms actuels.
+base. Les commandes et les étapes portent déjà les leurs ; jusqu'aux PR suivantes, les unités,
+les paquets, les réglages et la base gardent leurs noms actuels dans ce document.
 
 | Aujourd'hui | Demain |
 |---|---|
@@ -173,7 +174,7 @@ familles de sources alimentent chaque fournée, et chaque candidat garde la sien
   - Un titre déjà dans la bibliothèque, même sous une autre version, n'est pas une nouveauté.
 
 **Jugement des sources.** L'examen tire uniformément dans la fournée : il juge donc la source
-elle-même, avant le modèle. `radio report` donne le taux de « oui » à l'examen par source et
+elle-même, avant le modèle. `radio rapport` donne le taux de « oui » à l'examen par source et
 par blog ou genre, avec son intervalle de Wilson. Une source qui reste nettement sous les
 autres après une vingtaine de votes est retirée ; une autre peut être essayée à sa place.
 
@@ -187,7 +188,7 @@ priorité.
 - **Plus des découvertes.** Un titre déjà aimé n'entre plus dans une fournée ni dans les
   nouveautés ; un candidat qui devient favori en sort. Un favori retiré retourne à sa fournée,
   ou est oublié.
-- **Mesure du goût.** `radio train` publie la part des favoris que le modèle en service
+- **Mesure du goût.** `radio gout` publie la part des favoris que le modèle en service
   retiendrait à la coupure des découvertes de la dernière fournée, et la part que le hasard en
   retiendrait (93 % contre 88 % au 2026-11-22 ; les 53 % contre 33 % du 2026-10-02 étaient
   mesurés à un autre seuil, celui du tiers retenu) : la part des découvertes notées à la coupure ou
@@ -209,7 +210,7 @@ priorité.
   L'empreinte seule donnait une AUC d'examen de 0,82, contre 0,76 pour l'ancien modèle empilé,
   sur un examen qui avait aussi servi au réglage, donc optimiste ; l'estimation propre, en
   validation croisée, est 0,727 (`recherches/2026-09-30-modele-audio-seul.md`). Sur l'examen
-  d'aujourd'hui (60 votes), le modèle en service a 0,751 (`radio report`, 2026-11-22).
+  d'aujourd'hui (60 votes), le modèle en service a 0,751 (`radio rapport`, 2026-11-22).
 - **Rétention.** Dans chaque fournée, découvertes et nouveautés ont chacune leur coupure : les
   `keep_decouvertes` et `keep_nouveautes` mieux notées sont retenues (80 et 80). Ces effectifs
   découlent de la grille d'antenne : ~70 entrées par semaine et par famille, plus les échecs
@@ -220,7 +221,7 @@ priorité.
   (`recherches/2026-10-19-plancher-nouveautes.md`) ; les nouveautés, peu nombreuses, passaient
   presque toutes. Une nouveauté sous le plancher ne prend pas la place de son artiste ; celles
   qu'il écarte sont comptées (`scores.floored`) une par artiste et dans la limite des places
-  restantes, ce que la fournée aurait retenu sans lui, dans le rapport de `train` et de
+  restantes, ce que la fournée aurait retenu sans lui, dans le rapport de `gout` et de
   `radio votes`. Tant qu'il écarte des titres, le plancher est la coupure de leçon de la famille.
   Les découvertes n'ont pas de plancher. Quand le stock de nouveautés
   baisse, la grille réduit leur part d'antenne en proportion et la rend aux autres (§7.3).
@@ -253,12 +254,12 @@ priorité.
   celle du modèle en service.
 
 La page de vote (FastAPI derrière Cloudflare Access) est en service depuis le
-2026-10-01 sur `votes.aubesonore.fr`. Chaque passe tire une nouvelle sélection après `train`.
+2026-10-01 sur `votes.aubesonore.fr`. Chaque passe tire une nouvelle sélection après `gout`.
 La page `/semaine` relit les votes de la sélection en cours, avec leur extrait, et permet de
-corriger un geste malheureux jusqu'à la passe suivante : `train` apprend alors le vote corrigé,
+corriger un geste malheureux jusqu'à la passe suivante : `gout` apprend alors le vote corrigé,
 puis la nouvelle sélection le fige. Une correction garde l'heure du premier vote, pour que la
 fenêtre d'examen ne bouge pas. Tant qu'un bulletin attend, aucune sélection n'est tirée : un vote
-déjà appris reste corrigeable d'une passe à l'autre. `train` réentraîne donc quand l'empreinte
+déjà appris reste corrigeable d'une passe à l'autre. `gout` réentraîne donc quand l'empreinte
 des votes (titre, examen ou leçon, réponse ; « passer » exclu) diffère de celle que le dernier
 modèle a vue (`params.votes_digest`), et non quand leur nombre change : une correction le laisse
 tel quel.
@@ -380,7 +381,7 @@ score choisit seulement qui est promu. La passe hebdomadaire applique ces règle
   à « publiée » dans la transaction de son entrée : sortie ensuite, elle n'est jamais republiée.
   Ici, « découverte » désigne tout titre acquis, nouveautés comprises : c'est la valeur
   `decouverte` de `antenne.origin`, qui ne change jamais. Un repère, titre de la bibliothèque,
-  y vaut `repere`. La catégorie, elle, suit le cycle de vie, et `radio check` compte toutes les
+  y vaut `repere`. La catégorie, elle, suit le cycle de vie, et `radio bilan` compte toutes les
   découvertes publiées, nouveautés comprises.
 - **Votes « non ».** Un titre voté « non » sort à la passe suivante, quelle que soit sa catégorie.
   Un fichier prêt voté « non » n'est jamais publié. Un repère voté « non » n'est jamais tiré.
@@ -569,9 +570,9 @@ Justification : `recherches/…-observabilite.md` §4.
 Chaque étape écrit une ligne en base (`stage_reports`) avec ses compteurs, rattachée à la passe
 par `$INVOCATION_ID` de systemd, y compris quand elle échoue : la ligne porte alors l'erreur (le
 message de la commande, ou seulement le type d'une exception imprévue, dont le texte peut
-contenir une URL signée). `radio report` affiche le dernier rapport de chaque étape.
+contenir une URL signée). `radio rapport` affiche le dernier rapport de chaque étape.
 
-**Suivi des sources** (`radio/votes/suivi.py`), dans `radio report`, sur la page `/suivi` de la
+**Suivi des sources** (`radio/votes/suivi.py`), dans `radio rapport`, sur la page `/suivi` de la
 page de vote :
 
 - le parcours de chaque source, et de chaque genre Deezer, dans la dernière fournée : candidats,
@@ -586,9 +587,9 @@ page de vote :
 Seuils, par étape : taux d'acquisition au-dessus de `min_success_rate` dès
 `min_attempts_for_rate` tentatives (`editorial.toml`) ; aucune erreur à l'antenne.
 
-`nouveautes`, `favoris`, `acquire`, `mesures` et `grille` sont préfixées de `-` dans l'unité :
-une source en panne n'arrête pas la passe, et un échec d'`acquire` n'empêche pas `antenne` de
-publier ce qui est prêt. La dernière étape, `radio check`, juge la passe entière : une étape en échec, ou aucune
+`nouveautes`, `favoris`, `telechargement`, `mesures` et `grille` sont préfixées de `-` dans l'unité :
+une source en panne n'arrête pas la passe, et un échec de `telechargement` n'empêche pas `antenne` de
+publier ce qui est prêt. La dernière étape, `radio bilan`, juge la passe entière : une étape en échec, ou aucune
 découverte publiée, ou une étape sans ligne de rapport (processus tué), la fait échouer, et
 l'unité `radio-weekly` est en échec (§8.2).
 
@@ -598,14 +599,14 @@ Aucune surveillance externe. Un seul message : un courriel au propriétaire quan
 `radio-grille` ou `radio-backup` échoue, sans quoi une passe arrêtée à sa première étape en échec
 perdrait la semaine en silence. C'est le mécanisme documenté de systemd : chacune de ces unités
 déclare `OnFailure=radio-alert@%N.service` (`systemd.unit(5)`, « OnFailure= » et « Specifiers »),
-et le gabarit `radio-alert@.service` lance `radio alert <unité>`, qui envoie par `smtplib` un
+et le gabarit `radio-alert@.service` lance `radio alerte <unité>`, qui envoie par `smtplib` un
 courriel en texte brut : l'unité en échec, l'heure et où regarder sur le serveur. Rien du
 journal : une erreur peut y écrire une URL signée ou une clé d'API, et le courriel passe par le
 relais et la boîte du destinataire. Il passe par le relais SMTP du site, avec ses
 `SMTP_*` (TLS implicite sur le port 465, STARTTLS sinon, comme
 `site/apps/backend/src/services/mailerService.ts`), vers `ALERT_EMAIL_TO` (`.env.example`).
 Sans `SMTP_HOST`, `SMTP_FROM` ou `ALERT_EMAIL_TO`, ou si le relais refuse le courriel,
-`radio alert` échoue (code 2 ou 1) et l'unité d'alerte reste en échec à côté de celle qu'elle
+`radio alerte` échoue (code 2 ou 1) et l'unité d'alerte reste en échec à côté de celle qu'elle
 signalait : une alerte qui ne part pas ne doit pas passer pour une alerte envoyée. Le gabarit n'a
 pas lui-même d'`OnFailure=`. `radio-votes` n'en a pas non plus : avec `Restart=on-failure`, chaque
 redémarrage passe par l'état « failed » (`RestartMode=normal`, `systemd.service(5)`), et un
@@ -615,9 +616,9 @@ vote. Essai d'envoi : `systemctl --user start radio-alert@essai.service`.
 Le reste se lit sur la machine :
 
 - `systemctl --user list-units --failed` : une unité `radio-*`, `aubesonore-*` ou
-  `azuracast-backup` en échec (passe hebdomadaire jugée par `radio check`, grille du lendemain,
+  `azuracast-backup` en échec (passe hebdomadaire jugée par `radio bilan`, grille du lendemain,
   sauvegardes, déploiement du site) ;
-- `.venv/bin/radio report` : le dernier rapport de chaque étape et ses lignes `ALERTE`
+- `.venv/bin/radio rapport` : le dernier rapport de chaque étape et ses lignes `ALERTE`
   (`_status_lines`, `radio/cli/votes.py`) ;
 - les journaux : `journalctl --user -u <unité>`.
 
@@ -645,27 +646,27 @@ le dernier passage.
 
 | Quand | Unité systemd utilisateur | Ce qui se passe |
 |---|---|---|
-| dimanche 03:00 | `radio-weekly` | `library-sync`, `discover`, `nouveautes`, `favoris`, `signals`, `train`, `votes-select`, `acquire`, `antenne`, `mesures`, `grille --aujourdhui`, `check` ; bornée à 12 h |
+| dimanche 03:00 | `radio-weekly` | `bibliotheque`, `decouverte`, `nouveautes`, `favoris`, `empreintes`, `gout`, `tirage`, `telechargement`, `antenne`, `mesures`, `grille --aujourdhui`, `bilan` ; bornée à 12 h |
 | chaque jour 23:00 | `radio-grille` | grille du lendemain dans les 24 playlists horaires du jour |
 | chaque jour 04:30 | `radio-backup` | copie de `data/radio.db` (API de sauvegarde SQLite, `integrity_check` vérifié avant d'entrer dans son jour : une copie refusée ne laisse rien) et de `data/models/` dans `RADIO_BACKUP_DIR` (`/media/plex/.backups/radio`, autre disque physique), 14 jours gardés |
 | en continu | `radio-votes` | page de vote, `127.0.0.1:8040`, publiée sur `votes.aubesonore.fr` |
-| à l'échec de l'une des trois premières | `radio-alert@<unité>` | `radio alert <unité>.service` : courriel à `ALERT_EMAIL_TO`, l'unité et l'heure, rien du journal (§8.2) |
+| à l'échec de l'une des trois premières | `radio-alert@<unité>` | `radio alerte <unité>.service` : courriel à `ALERT_EMAIL_TO`, l'unité et l'heure, rien du journal (§8.2) |
 
 - Pannes : §8.2.
 - **Une commande à la fois.** Les commandes qui écrivent la base (les étapes de la passe,
-  `grille`, `negatives-sync`), sous systemd comme à la main, prennent un verrou `flock(2)` sur
+  `grille`, `negatifs`), sous systemd comme à la main, prennent un verrou `flock(2)` sur
   `data/radio.lock` et attendent qu'il soit libre, ce que le journal signale : un timer
   `Persistent=true` qui rattrape son heure au démarrage pendant la passe passe entre deux de ses
   étapes au lieu d'écrire en même temps. Attendre plutôt que sauter : une grille sautée laisserait
   au lendemain la grille d'il y a une semaine. Le noyau rend le verrou à la fin du processus,
   même tué. Ne le prennent pas : la page de vote, qui doit toujours répondre (chaque vote est une
-  courte transaction, que SQLite sérialise) ; `radio backup`, dont la copie est cohérente même
-  pendant une écriture et qui garde son heure ; `report` et `check`, qui ne font que lire ;
-  `alert`, qui n'ouvre pas la base.
+  courte transaction, que SQLite sérialise) ; `radio sauvegarde`, dont la copie est cohérente même
+  pendant une écriture et qui garde son heure ; `rapport` et `bilan`, qui ne font que lire ;
+  `alerte`, qui n'ouvre pas la base.
 - **Migrations.** La page de vote et une commande qui démarrent ensemble sur un nouveau code
   ouvrent la base en même temps : chaque migration prend le verrou d'écriture de SQLite
   (`BEGIN IMMEDIATE`) et relit `user_version` dessous, et ne passe qu'une fois.
-- Un gros rattrapage de `signals` (environ 3 s par titre) ou de `mesures` (environ 17 s par
+- Un gros rattrapage de `empreintes` (environ 3 s par titre) ou de `mesures` (environ 17 s par
   titre) se lance à la main, en `nice`, jamais pendant `radio-weekly` : il ferait attendre
   l'étape suivante de la passe jusqu'à sa fin.
 
@@ -674,16 +675,16 @@ Le reste est dans `config/editorial.toml`.
 
 **Installer les unités** : `azuracast/RUNBOOK.md` (le linger en tête, les unités en « 2. Pipeline »).
 
-**Partir d'une base vide**, quand il n'y a pas de copie à restaurer. `negatives-sync` n'est pas
-dans la passe hebdomadaire : il se lance une fois, avant le premier `train`, qui exige des
+**Partir d'une base vide**, quand il n'y a pas de copie à restaurer. `negatifs` n'est pas
+dans la passe hebdomadaire : il se lance une fois, avant le premier `gout`, qui exige des
 négatifs mesurés.
 
 ```bash
-.venv/bin/radio library-sync
-.venv/bin/radio negatives-sync
-.venv/bin/radio discover
-nice .venv/bin/radio signals   # environ 3 s par titre : des heures
-.venv/bin/radio train
+.venv/bin/radio bibliotheque
+.venv/bin/radio negatifs
+.venv/bin/radio decouverte
+nice .venv/bin/radio empreintes   # environ 3 s par titre : des heures
+.venv/bin/radio gout
 ```
 
 La passe hebdomadaire prend ensuite le relais.
