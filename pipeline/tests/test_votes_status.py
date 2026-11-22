@@ -3,10 +3,10 @@ from pathlib import Path
 
 import numpy as np
 
-from radio.core.config import ModelConfig
-from radio.model.model import Batch, train
-from radio.votes.select import select_batch
-from radio.votes.status import load_status
+from radio.gout.modele import Batch, train
+from radio.socle.config import ModelConfig
+from radio.votes.etat import load_status
+from radio.votes.tirage import select_batch
 from tests.model_factory import NO_FLOOR, NOW, add_vote, make_model_db, serve_scores
 
 LATER = datetime(2026, 9, 26, tzinfo=UTC)

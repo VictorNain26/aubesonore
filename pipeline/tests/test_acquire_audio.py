@@ -6,10 +6,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from radio.acquire.audio import check, fingerprint, similarity
-from radio.core import media
-from radio.core.config import AcquisitionConfig
-from radio.core.media import (
+from radio.socle import media
+from radio.socle.config import AcquisitionConfig
+from radio.socle.media import (
     Cue,
     Probe,
     Tags,
@@ -20,6 +19,7 @@ from radio.core.media import (
     prepare,
     probe,
 )
+from radio.telechargement.controle import check, fingerprint, similarity
 
 CFG = AcquisitionConfig()
 TOOLS = all(shutil.which(t) for t in ("ffmpeg", "ffprobe", "fpcalc", "rsgain"))

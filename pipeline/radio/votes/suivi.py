@@ -14,8 +14,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from radio.core.config import FreshConfig
-from radio.model.model import YesRate, yes_rate
+from radio.gout.modele import YesRate, yes_rate
+from radio.socle.config import FreshConfig
 
 MIN_VOTES = 20
 MIN_TRIED = 10

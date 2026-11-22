@@ -11,4 +11,4 @@ paths:
   `… mypy`, `… pytest -q -W error -rs`. Run `pipeline/scripts/dev-setup.sh` once, or some tests skip.
 - The current schema: `sqlite3 pipeline/data/radio.db .schema`.
 - `gout` does not run while `empreintes` runs.
-- A SQLite migration script has no `BEGIN` or `COMMIT` (`radio/core/db.py`, `_migrate`).
+- A SQLite migration script has no `BEGIN` or `COMMIT` (`radio/socle/db.py`, `_migrate`).

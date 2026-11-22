@@ -7,11 +7,11 @@ import uvicorn
 from pydantic import ValidationError
 from typer.testing import CliRunner
 
-import radio.cli as cli
-from radio.core.config import Settings
-from radio.core.report import record_stage
-from radio.model.model import Batch, YesRate
-from radio.votes.status import Status
+import radio.commandes as commandes
+from radio.gout.modele import Batch, YesRate
+from radio.socle.config import Settings
+from radio.socle.rapports import record_stage
+from radio.votes.etat import Status
 from tests.model_factory import make_model_db, serve_scores
 
 runner = CliRunner()
@@ -31,7 +31,7 @@ def full(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         cf_access_team_domain="aube.cloudflareaccess.com",
         cf_access_aud="aud-tag",
     )
-    monkeypatch.setattr(cli.common, "_settings", lambda: s)
+    monkeypatch.setattr(commandes.commun, "_settings", lambda: s)
     return tmp_path
 
 
@@ -53,16 +53,16 @@ def _st(**kw: Any) -> Status:
 
 
 def test_status_lines() -> None:
-    lines = cli.votes._status_lines(_st(), 7)
+    lines = commandes.votes._status_lines(_st(), 7)
     assert "Modèle n°3 : AUC d'examen 0,800 sur 60" in lines
     assert "Taux de oui des retenus : 83,3 % [70,0 % - 91,0 %] sur 48 votes d'examen" in lines
     assert "Dernière fournée (passe n°7) : 133 retenus sur 400 candidats" in lines
-    floored = cli.votes._status_lines(_st(batch=Batch(7, 400, 133, 5)), 7)
+    floored = commandes.votes._status_lines(_st(batch=Batch(7, 400, 133, 5)), 7)
     assert (
         "Dernière fournée (passe n°7) : 133 retenus sur 400 candidats, "
         "5 nouveautés écartées sous le plancher de score"
     ) in floored
-    none = cli.votes._status_lines(_st(model_id=None, exam_auc=None, n_exam=0, yes=None), 7)
+    none = commandes.votes._status_lines(_st(model_id=None, exam_auc=None, n_exam=0, yes=None), 7)
     assert none[:2] == [
         "Aucun modèle en service",
         "Taux de oui des retenus : aucun vote d'examen sur la page",
@@ -70,21 +70,21 @@ def test_status_lines() -> None:
 
 
 def test_status_lines_alert_when_the_weekly_pass_seems_to_have_failed() -> None:
-    stale = cli.votes._status_lines(_st(pending=0, stale_selection_days=8), 7)
+    stale = commandes.votes._status_lines(_st(pending=0, stale_selection_days=8), 7)
     assert any(
         "ALERTE : aucune sélection depuis 8 jours (passe hebdomadaire en échec ?)" in line
         for line in stale
     )
 
-    fresh = cli.votes._status_lines(_st(pending=0, stale_selection_days=2), 7)
+    fresh = commandes.votes._status_lines(_st(pending=0, stale_selection_days=2), 7)
     assert not any("ALERTE : aucune sélection" in line for line in fresh)
 
-    never = cli.votes._status_lines(
+    never = commandes.votes._status_lines(
         _st(pending=0, last_selection=None, stale_selection_days=None), 7
     )
     assert "ALERTE : aucune sélection encore tirée (passe hebdomadaire en échec ?)" in never
 
-    waiting = cli.votes._status_lines(_st(pending=20, stale_selection_days=8), 7)
+    waiting = commandes.votes._status_lines(_st(pending=20, stale_selection_days=8), 7)
     assert not any("ALERTE : aucune sélection" in line for line in waiting)
 
 
@@ -92,13 +92,13 @@ def test_votes_select_draws_then_waits(full: Path) -> None:
     conn = make_model_db(full / "data")
     serve_scores(conn)
     conn.close()
-    res = runner.invoke(cli.app, ["tirage"])
+    res = runner.invoke(commandes.app, ["tirage"])
     assert res.exit_code == 0, res.output
     assert (
         "Sélection n°1 (modèle n°1, fournée n°2) : 10 d'examen parmi 48 titres de la fournée, "
         "10 de leçon" in res.output
     )
-    res = runner.invoke(cli.app, ["tirage"])
+    res = runner.invoke(commandes.app, ["tirage"])
     assert res.exit_code == 0, res.output
     assert "20 titres encore en attente de vote : pas de nouvelle sélection" in res.output
     stages = (
@@ -114,7 +114,7 @@ def test_votes_select_draws_then_waits(full: Path) -> None:
 
 def test_votes_select_without_model_fails(full: Path) -> None:
     make_model_db(full / "data").close()
-    res = runner.invoke(cli.app, ["tirage"])
+    res = runner.invoke(commandes.app, ["tirage"])
     assert res.exit_code == 1
     assert "Aucun modèle en service" in res.output
     row = (
@@ -128,8 +128,8 @@ def test_votes_select_without_model_fails(full: Path) -> None:
 def test_votes_serve_requires_access_settings(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(cli.common, "_settings", lambda: _settings(tmp_path))
-    res = runner.invoke(cli.app, ["page-votes"])
+    monkeypatch.setattr(commandes.commun, "_settings", lambda: _settings(tmp_path))
+    res = runner.invoke(commandes.app, ["page-votes"])
     assert res.exit_code == 2
     assert "CF_ACCESS_TEAM_DOMAIN et CF_ACCESS_AUD" in res.output
     with pytest.raises(ValidationError):
@@ -143,7 +143,7 @@ def test_votes_serve_runs_uvicorn_on_loopback(full: Path, monkeypatch: pytest.Mo
         seen.update(host=host, port=port)
 
     monkeypatch.setattr(uvicorn, "run", fake_run)
-    res = runner.invoke(cli.app, ["page-votes"])
+    res = runner.invoke(commandes.app, ["page-votes"])
     assert res.exit_code == 0, res.output
     # Le tunnel Cloudflare et radio-votes.service visent 127.0.0.1:8040.
     assert (seen["host"], seen["port"]) == ("127.0.0.1", 8040)
@@ -151,7 +151,7 @@ def test_votes_serve_runs_uvicorn_on_loopback(full: Path, monkeypatch: pytest.Mo
 
 def test_report_prints_the_status(full: Path) -> None:
     make_model_db(full / "data").close()
-    res = runner.invoke(cli.app, ["rapport"])
+    res = runner.invoke(commandes.app, ["rapport"])
     assert res.exit_code == 0, res.output
     assert "Aucun modèle en service" in res.output
     assert "Titres en attente de vote : 0 (dernière sélection : aucune)" in res.output
@@ -163,7 +163,7 @@ def test_report_shows_the_last_run_of_each_stage(full: Path) -> None:
     record_stage(conn, "telechargement", False, {"prêts": 0})
     record_stage(conn, "decouverte", True, {"ajoutés": 7})
     conn.close()
-    res = runner.invoke(cli.app, ["rapport"])
+    res = runner.invoke(commandes.app, ["rapport"])
     assert res.exit_code == 0, res.output
     lines = res.output.splitlines()
     assert lines[0] == "Dernières étapes :"
@@ -172,6 +172,6 @@ def test_report_shows_the_last_run_of_each_stage(full: Path) -> None:
 
 
 def test_acquire_requires_the_radio_soulseek_account(full: Path) -> None:
-    res = runner.invoke(cli.app, ["telechargement"])
+    res = runner.invoke(commandes.app, ["telechargement"])
     assert res.exit_code == 2
     assert "SOULSEEK_USER et SOULSEEK_PASSWORD" in res.output

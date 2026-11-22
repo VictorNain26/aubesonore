@@ -12,11 +12,11 @@ from pathlib import Path
 
 import numpy as np
 
-from radio.core.config import ModelConfig
-from radio.core.db import connect
-from radio.discover.candidates import add_tracks
-from radio.library.artists import register_library
-from radio.signals.audio import DIM, MODEL_TAG, to_blob
+from radio.bibliotheque.artistes import register_library
+from radio.decouverte.candidats import add_tracks
+from radio.empreintes.effnet import DIM, MODEL_TAG, to_blob
+from radio.socle.config import ModelConfig
+from radio.socle.db import connect
 from radio.sources.deezer import DeezerTrack
 
 NOW = "2026-09-25T00:00:00+00:00"

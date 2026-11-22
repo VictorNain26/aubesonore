@@ -5,10 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from radio.core.db import connect
-from radio.core.media import Cue
-from radio.core.pinned import ModelError
-from radio.signals.features import (
+from radio.mesures.musicnn import (
     FEATURES_TAG,
     MODELS,
     Features,
@@ -17,6 +14,9 @@ from radio.signals.features import (
     played,
     summarize,
 )
+from radio.socle.db import connect
+from radio.socle.epingles import ModelError
+from radio.socle.media import Cue
 
 NOW = "2026-10-02T12:00:00+00:00"
 

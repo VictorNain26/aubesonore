@@ -10,10 +10,10 @@ import requests
 import responses
 import stamina
 
-import radio.antenna.sync as sync_mod
-from radio.antenna.sync import antenne_pass
-from radio.core.config import AntenneConfig, Creneau, GrilleConfig
-from radio.core.media import Probe, Tags, ToolError
+import radio.antenne.publication as sync_mod
+from radio.antenne.publication import antenne_pass
+from radio.socle.config import AntenneConfig, Creneau, GrilleConfig
+from radio.socle.media import Probe, Tags, ToolError
 from radio.sources.azuracast import AzuracastClient, AzuracastError, AzuracastUnavailable, Media
 from radio.sources.deezer import DeezerAlbum, DeezerError, DeezerTrack, TrackPage
 from tests.model_factory import NOW, add_vote, make_model_db, serve_scores

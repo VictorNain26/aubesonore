@@ -5,12 +5,12 @@ from typing import Any
 import numpy as np
 import pytest
 
-import radio.acquire.run as run_mod
-from radio.acquire.run import acquire_pass, pending
-from radio.acquire.sockseek import SockseekError
-from radio.core.config import AcquisitionConfig
-from radio.core.media import Probe, Tags
+import radio.telechargement.telecharger as run_mod
+from radio.socle.config import AcquisitionConfig
+from radio.socle.media import Probe, Tags
 from radio.sources.deezer import DeezerAlbum, DeezerError, DeezerTrack, DeezerUnavailable, TrackPage
+from radio.telechargement.sockseek import SockseekError
+from radio.telechargement.telecharger import acquire_pass, pending
 from tests.model_factory import NOW, add_vote, make_model_db, serve_scores
 
 CFG = AcquisitionConfig(max_per_pass=4, max_attempts=2)

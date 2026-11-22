@@ -6,10 +6,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from radio.core.config import DiscoverConfig
-from radio.core.db import connect
-from radio.discover.run import NoLibraryArtistsError, discover_pass
-from radio.discover.seeds import recently_used
+from radio.decouverte.fournee import NoLibraryArtistsError, discover_pass
+from radio.decouverte.graines import recently_used
+from radio.socle.config import DiscoverConfig
+from radio.socle.db import connect
 from radio.sources.deezer import DeezerArtist, DeezerError, DeezerTrack, DeezerUnavailable
 from radio.sources.lastfm import LastfmUnavailable
 from tests.factories import make_library

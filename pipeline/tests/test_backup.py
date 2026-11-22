@@ -5,11 +5,11 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-import radio.cli as cli
-from radio.core.backup import BackupError, backup
-from radio.core.config import Settings
-from radio.core.db import connect
-from radio.core.report import last_stages
+import radio.commandes as commandes
+from radio.socle.config import Settings
+from radio.socle.db import connect
+from radio.socle.rapports import last_stages
+from radio.socle.sauvegarde import BackupError, backup
 from tests.model_factory import add_vote, make_model_db
 
 TODAY = date(2026, 10, 2)
@@ -110,8 +110,8 @@ def test_a_refused_copy_keeps_the_sound_one_made_earlier_the_same_day(tmp_path: 
 
 def test_backup_needs_a_destination(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     settings = Settings(_env_file=None, RADIO_DATA_DIR=tmp_path)
-    monkeypatch.setattr(cli.common, "_settings", lambda: settings)
-    result = CliRunner().invoke(cli.app, ["sauvegarde"])
+    monkeypatch.setattr(commandes.commun, "_settings", lambda: settings)
+    result = CliRunner().invoke(commandes.app, ["sauvegarde"])
     assert result.exit_code == 2
     assert "RADIO_BACKUP_DIR" in result.output
 
@@ -121,9 +121,9 @@ def test_backup_reports_its_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     settings = Settings(
         _env_file=None, RADIO_DATA_DIR=tmp_path / "data", RADIO_BACKUP_DIR=tmp_path / "copies"
     )
-    monkeypatch.setattr(cli.common, "_settings", lambda: settings)
-    assert CliRunner().invoke(cli.app, ["sauvegarde"]).exit_code == 0
-    with cli.common._db(settings) as conn:
+    monkeypatch.setattr(commandes.commun, "_settings", lambda: settings)
+    assert CliRunner().invoke(commandes.app, ["sauvegarde"]).exit_code == 0
+    with commandes.commun._db(settings) as conn:
         assert [(s, ok) for s, _, ok, _ in last_stages(conn)] == [("sauvegarde", True)]
 
 
@@ -132,8 +132,8 @@ def test_a_failed_backup_reports_its_stage(tmp_path: Path, monkeypatch: pytest.M
     blocked = tmp_path / "copies"
     blocked.write_text("un fichier là où la sauvegarde attend un dossier")
     settings = Settings(_env_file=None, RADIO_DATA_DIR=tmp_path / "data", RADIO_BACKUP_DIR=blocked)
-    monkeypatch.setattr(cli.common, "_settings", lambda: settings)
-    result = CliRunner().invoke(cli.app, ["sauvegarde"])
+    monkeypatch.setattr(commandes.commun, "_settings", lambda: settings)
+    result = CliRunner().invoke(commandes.app, ["sauvegarde"])
     assert result.exit_code == 1, result.output
-    with cli.common._db(settings) as conn:
+    with commandes.commun._db(settings) as conn:
         assert [(s, ok) for s, _, ok, _ in last_stages(conn)] == [("sauvegarde", False)]

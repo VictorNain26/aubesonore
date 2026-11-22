@@ -3,8 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from radio.core.db import connect
-from radio.library.match import (
+from radio.bibliotheque.rapprochement import (
     MatchReport,
     coverage,
     match_library,
@@ -12,7 +11,8 @@ from radio.library.match import (
     pick_match,
     search_query,
 )
-from radio.library.sync import sync_library
+from radio.bibliotheque.synchro import sync_library
+from radio.socle.db import connect
 from radio.sources.deezer import DeezerError, DeezerTrack, DeezerUnavailable
 from radio.sources.plex import PlexTrack
 

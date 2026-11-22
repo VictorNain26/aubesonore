@@ -6,13 +6,13 @@ import numpy as np
 import pytest
 import responses
 
-from radio.core.config import FreshConfig, ModelConfig
-from radio.discover.candidates import add_tracks
-from radio.discover.favorites import favorites_pass
-from radio.discover.fresh import fresh_pass
-from radio.library.artists import register_library
-from radio.model.model import FavoritesRetained, favorites_retained, rescore, train
-from radio.signals.audio import DIM, MODEL_TAG, to_blob
+from radio.bibliotheque.artistes import register_library
+from radio.decouverte.candidats import add_tracks
+from radio.decouverte.favoris import favorites_pass
+from radio.decouverte.nouveautes import fresh_pass
+from radio.empreintes.effnet import DIM, MODEL_TAG, to_blob
+from radio.gout.modele import FavoritesRetained, favorites_retained, rescore, train
+from radio.socle.config import FreshConfig, ModelConfig
 from radio.sources.deezer import DeezerTrack
 from radio.sources.hypem import API, HypemClient, HypemNotFound, HypemTrack
 from tests.factories import make_library

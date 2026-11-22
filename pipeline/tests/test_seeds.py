@@ -4,10 +4,10 @@ from pathlib import Path
 
 import numpy as np
 
-from radio.core.config import DiscoverConfig
-from radio.core.db import connect
-from radio.discover.seeds import draw_seeds, finish_run, recently_used, start_run
-from radio.library.artists import LibraryArtist
+from radio.bibliotheque.artistes import LibraryArtist
+from radio.decouverte.graines import draw_seeds, finish_run, recently_used, start_run
+from radio.socle.config import DiscoverConfig
+from radio.socle.db import connect
 
 A = [LibraryArtist(i, f"A{i}", plays) for i, plays in [(1, 0), (2, 100), (3, 5)]]
 NOW = datetime(2026, 9, 25, tzinfo=UTC)

@@ -11,8 +11,8 @@ import pytest
 import responses
 from typer.testing import CliRunner
 
-import radio.cli as cli
-from radio.antenna.grille import (
+import radio.commandes as commandes
+from radio.grille.plan import (
     Titre,
     bloc,
     hour_spans,
@@ -26,9 +26,9 @@ from radio.antenna.grille import (
     shares,
     with_published,
 )
-from radio.core.config import Categorie, Creneau, GrilleConfig, Settings
-from radio.core.db import connect
-from radio.core.report import last_stages
+from radio.socle.config import Categorie, Creneau, GrilleConfig, Settings
+from radio.socle.db import connect
+from radio.socle.rapports import last_stages
 from radio.sources.azuracast import AzuracastClient
 from tests.model_factory import make_model_db
 
@@ -702,7 +702,7 @@ def _clock(monkeypatch: pytest.MonkeyPatch, at: datetime) -> None:
         def now(cls, tz: tzinfo | None = None) -> "Fixed":
             return cls.fromtimestamp(at.timestamp(), tz)
 
-    monkeypatch.setattr(cli.antenne, "datetime", Fixed)
+    monkeypatch.setattr(commandes.antenne, "datetime", Fixed)
 
 
 WEDNESDAY = datetime(2026, 11, 4, 10, tzinfo=UTC)
@@ -724,9 +724,9 @@ def grille_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeAzuracast
         RADIO_DATA_DIR=tmp_path / "data",
         RADIO_CONFIG_DIR=cfg,
     )
-    monkeypatch.setattr(cli.common, "_settings", lambda: settings)
+    monkeypatch.setattr(commandes.commun, "_settings", lambda: settings)
     station = FakeAzuracast()
-    monkeypatch.setattr(cli.antenne, "AzuracastClient", lambda *a: station)
+    monkeypatch.setattr(commandes.antenne, "AzuracastClient", lambda *a: station)
     return station
 
 
@@ -744,7 +744,7 @@ def test_a_short_hour_is_published_then_fails_the_grid(
     # Breaks if a short hour passes in silence: it runs out and the fallback plays (conception §1),
     # and only a failed command shows it.
     _on_air(tmp_path, 10)
-    res = CliRunner().invoke(cli.app, ["grille"])
+    res = CliRunner().invoke(commandes.app, ["grille"])
     assert res.exit_code == 1
     assert len(grille_env.filled) == 24  # la grille publiée est gardée
     with connect(tmp_path / "data" / "radio.db") as conn:
@@ -764,7 +764,7 @@ def test_the_grid_empties_the_hour_missing_from_the_day(
     _clock(monkeypatch, datetime(2027, 3, 27, 10, tzinfo=UTC))
     _on_air(tmp_path, 400)
     grille_env.existing = {playlist_name(d, 2): 200 + d for d in range(1, 8)}
-    res = CliRunner().invoke(cli.app, ["grille"])
+    res = CliRunner().invoke(commandes.app, ["grille"])
     assert res.exit_code == 0, res.output
     assert grille_env.emptied == [207]  # « Grille dim 02h »
     assert len(grille_env.filled) == 23 and 207 not in grille_env.filled
@@ -778,7 +778,7 @@ def test_the_grid_writes_a_full_day_around_what_azuracast_has_already_queued(
     # 400 titres jamais joués pour moins de 400 créneaux : sans la file, s1 passerait demain.
     _on_air(tmp_path, 400)
     grille_env.queue = {"s1": WEDNESDAY.timestamp() + 600}  # jouera dans 10 min
-    res = CliRunner().invoke(cli.app, ["grille"])
+    res = CliRunner().invoke(commandes.app, ["grille"])
     assert res.exit_code == 0, res.output
     assert "heures courtes : 0" in res.stdout
     assert len(grille_env.filled) == 24

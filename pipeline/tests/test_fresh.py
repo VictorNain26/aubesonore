@@ -6,10 +6,10 @@ import requests
 import responses
 from typer.testing import CliRunner
 
-import radio.cli as cli
-from radio.core.config import FreshConfig, Settings
-from radio.discover.fresh import NoBatchError, fresh_pass
-from radio.library.artists import register_library
+import radio.commandes as commandes
+from radio.bibliotheque.artistes import register_library
+from radio.decouverte.nouveautes import NoBatchError, fresh_pass
+from radio.socle.config import FreshConfig, Settings
 from radio.sources.deezer import DeezerTrack
 from radio.sources.hypem import API, HypemClient, HypemError, HypemTrack, HypemUnavailable
 from radio.votes.suivi import yes_by_source
@@ -179,10 +179,12 @@ def test_cli_reports_the_fresh_stage_and_fails_on_a_broken_source(
         "[nouveautes]\nhypem_pages = 1\n[nouveautes.deezer_editorial]\nalternative = 85\n"
     )
     settings = Settings(_env_file=None, RADIO_DATA_DIR=tmp_path / "data", RADIO_CONFIG_DIR=cfg)
-    monkeypatch.setattr(cli.common, "_settings", lambda: settings)
-    monkeypatch.setattr(cli.gout, "DeezerClient", FakeDeezer)
-    monkeypatch.setattr(cli.gout, "HypemClient", lambda: FakeHypem(HypemUnavailable("HTTP 503")))
-    result = CliRunner().invoke(cli.app, ["nouveautes"])
+    monkeypatch.setattr(commandes.commun, "_settings", lambda: settings)
+    monkeypatch.setattr(commandes.gout, "DeezerClient", FakeDeezer)
+    monkeypatch.setattr(
+        commandes.gout, "HypemClient", lambda: FakeHypem(HypemUnavailable("HTTP 503"))
+    )
+    result = CliRunner().invoke(commandes.app, ["nouveautes"])
     assert result.exit_code == 1
     assert "source sautée : Hype Machine, page 1 (HypemUnavailable : HTTP 503)" in result.output
     rows = (

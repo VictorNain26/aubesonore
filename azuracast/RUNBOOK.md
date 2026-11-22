@@ -69,8 +69,8 @@ Points à ne pas rejouer de travers :
 cd ~/aubesonore/pipeline
 uv sync
 # sockseek et rsgain : binaires figés dans ~/.local/bin (versions et sha256 : docs/conception.md)
-# ffmpeg et fpcalc (libchromaprint-tools) : apt ; dans models/, le modèle EffNet (radio/signals/audio.py)
-# et les quatre modèles de mesure (MODELS de radio/signals/features.py, essentia.upf.edu/models, sha256 vérifiés)
+# ffmpeg et fpcalc (libchromaprint-tools) : apt ; dans models/, le modèle EffNet (radio/empreintes/effnet.py)
+# et les quatre modèles de mesure (MODELS de radio/mesures/musicnn.py, essentia.upf.edu/models, sha256 vérifiés)
 # .env : ta copie (sinon .env.example, secrets à recréer), avec la clé d'API AzuraCast régénérée
 for u in deploy/systemd/*; do systemctl --user link "$PWD/$u"; done
 systemctl --user daemon-reload

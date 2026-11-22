@@ -5,11 +5,11 @@ from pathlib import Path
 
 import jwt
 
-from radio.core.db import connect
-from radio.library.sync import sync_library
+from radio.bibliotheque.synchro import sync_library
+from radio.socle.db import connect
 from radio.sources.deezer import DeezerTrack
 from radio.sources.plex import PlexTrack
-from radio.votes.access import HEADER
+from radio.votes.acces import HEADER
 
 SIGNED = "https://cdnt-preview.dzcdn.net/api/1/1/a/b/c/0/x.mp3?hdnea=exp=1~acl=*~hmac=SIGNE"
 TOKEN = "bon-jeton"

@@ -23,7 +23,7 @@ dependencies = [
 ]
 
 [project.scripts]
-radio = "radio.cli:app"
+radio = "radio.commandes:app"
 
 [dependency-groups]
 dev = [
@@ -41,7 +41,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["radio"]
-artifacts = ["radio/core/migrations/*.sql"]
+artifacts = ["radio/socle/migrations/*.sql"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

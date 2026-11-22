@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from radio.acquire.sockseek import (
+from radio.socle.config import AcquisitionConfig
+from radio.telechargement.sockseek import (
     Outcome,
     SockseekError,
     Wanted,
@@ -16,7 +17,6 @@ from radio.acquire.sockseek import (
     run_command,
     time_limit,
 )
-from radio.core.config import AcquisitionConfig
 
 WANTED = [
     Wanted(111, "A Certain Ratio", "Crystal", 173),

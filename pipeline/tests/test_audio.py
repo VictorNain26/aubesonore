@@ -5,13 +5,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from radio.core.config import Settings
-from radio.core.pinned import ModelError
-from radio.signals.audio import (
+from radio.empreintes.effnet import (
     DIM,
     EffnetEmbedder,
     check_model,
 )
+from radio.socle.config import Settings
+from radio.socle.epingles import ModelError
 
 MODEL = Settings(_env_file=None).effnet_model
 needs_model = pytest.mark.skipif(not MODEL.exists(), reason="modèle EffNet absent")

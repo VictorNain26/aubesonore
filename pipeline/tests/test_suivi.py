@@ -1,7 +1,7 @@
 import sqlite3
 from pathlib import Path
 
-from radio.core.config import FreshConfig
+from radio.socle.config import FreshConfig
 from radio.votes.suivi import load_suivi, suivi_lines
 from tests.model_factory import add_vote, make_model_db, serve_scores
 

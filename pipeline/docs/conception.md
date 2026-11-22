@@ -60,8 +60,8 @@ techniques (`conn`, `path`, `client`, `retry`) et les noms des outils (`song_id`
 **Les noms, d'aujourd'hui à demain**
 
 Appliqués dans cet ordre, une PR à la fois : le code et les commandes, puis les unités, puis la
-base. Les commandes et les étapes portent déjà les leurs ; jusqu'aux PR suivantes, les unités,
-les paquets, les réglages et la base gardent leurs noms actuels dans ce document.
+base. Les commandes, les étapes et les paquets portent déjà les leurs ; jusqu'aux PR suivantes,
+les unités, les réglages et la base gardent leurs noms actuels dans ce document.
 
 | Aujourd'hui | Demain |
 |---|---|
@@ -619,7 +619,7 @@ Le reste se lit sur la machine :
   `azuracast-backup` en échec (passe hebdomadaire jugée par `radio bilan`, grille du lendemain,
   sauvegardes, déploiement du site) ;
 - `.venv/bin/radio rapport` : le dernier rapport de chaque étape et ses lignes `ALERTE`
-  (`_status_lines`, `radio/cli/votes.py`) ;
+  (`_status_lines`, `radio/commandes/votes.py`) ;
 - les journaux : `journalctl --user -u <unité>`.
 
 Angles morts acceptés, qui ne font échouer aucune unité : un flux coupé ou la playlist de secours

@@ -5,8 +5,8 @@ from typing import Any
 import numpy as np
 import pytest
 
-from radio.core.config import ModelConfig
-from radio.model.model import Batch, last_batch, rescore, train, yes_rate
+from radio.gout.modele import Batch, last_batch, rescore, train, yes_rate
+from radio.socle.config import ModelConfig
 from tests.model_factory import NOW, add_vote, as_news, make_model_db
 
 

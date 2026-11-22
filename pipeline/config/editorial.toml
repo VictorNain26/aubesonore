@@ -1,4 +1,4 @@
-# Réglages éditoriaux AubeSonore — validés au chargement (radio/core/config.py).
+# Réglages éditoriaux AubeSonore — validés au chargement (radio/socle/config.py).
 
 [library]
 # Écart maximal de durée (secondes) entre le titre Plex et le titre Deezer rapproché.

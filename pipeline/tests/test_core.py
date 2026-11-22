@@ -10,9 +10,9 @@ import pytest
 import requests
 from pydantic import ValidationError
 
-from radio.core.config import REPO_ROOT, Settings, load_editorial
-from radio.core.db import MIGRATIONS, connect
-from radio.core.http import check_status, log_retry
+from radio.socle.config import REPO_ROOT, Settings, load_editorial
+from radio.socle.db import MIGRATIONS, connect
+from radio.socle.http import check_status, log_retry
 
 N_MIGRATIONS = len(list(MIGRATIONS.glob("*.sql")))
 
@@ -39,7 +39,7 @@ def test_the_stage_reports_take_the_new_stage_names(
     before.mkdir()
     for script in sorted(MIGRATIONS.glob("*.sql"))[:16]:
         shutil.copy(script, before)
-    monkeypatch.setattr("radio.core.db.MIGRATIONS", before)
+    monkeypatch.setattr("radio.socle.db.MIGRATIONS", before)
     db = tmp_path / "radio.db"
     with connect(db) as conn:
         conn.executemany(
@@ -48,7 +48,7 @@ def test_the_stage_reports_take_the_new_stage_names(
             [(s,) for s in ("library-sync", "votes-select", "acquire", "antenne", "check")],
         )
     conn.close()
-    monkeypatch.setattr("radio.core.db.MIGRATIONS", MIGRATIONS)
+    monkeypatch.setattr("radio.socle.db.MIGRATIONS", MIGRATIONS)
     conn = connect(db)
     stages = [r[0] for r in conn.execute("SELECT stage FROM stage_reports ORDER BY report_id")]
     assert stages == ["bibliotheque", "tirage", "telechargement", "antenne", "bilan"]
@@ -62,7 +62,7 @@ def test_a_migration_that_breaks_a_foreign_key_is_rolled_back(
     # migration (official table rebuild), so only foreign_key_check sees the orphan.
     scripts = tmp_path / "migrations"
     shutil.copytree(MIGRATIONS, scripts)
-    monkeypatch.setattr("radio.core.db.MIGRATIONS", scripts)
+    monkeypatch.setattr("radio.socle.db.MIGRATIONS", scripts)
     db = tmp_path / "radio.db"
     connect(db).close()
     name = f"{N_MIGRATIONS + 1:03d}_orpheline.sql"
@@ -85,7 +85,7 @@ def test_failed_migration_leaves_nothing_behind(
     migrations.mkdir()
     script = migrations / "001_test.sql"
     script.write_text("CREATE TABLE partial (x INTEGER);\nINSERT INTO missing VALUES (1);\n")
-    monkeypatch.setattr("radio.core.db.MIGRATIONS", migrations)
+    monkeypatch.setattr("radio.socle.db.MIGRATIONS", migrations)
     db = tmp_path / "radio.db"
 
     with pytest.raises(sqlite3.OperationalError):
@@ -112,7 +112,7 @@ def test_a_migration_running_in_another_process_is_not_replayed(
     migrations = tmp_path / "migrations"
     migrations.mkdir()
     (migrations / "001_t.sql").write_text("CREATE TABLE t (x INTEGER);\n")
-    monkeypatch.setattr("radio.core.db.MIGRATIONS", migrations)
+    monkeypatch.setattr("radio.socle.db.MIGRATIONS", migrations)
     db = tmp_path / "radio.db"
     connect(db).close()
     (migrations / "002_ligne.sql").write_text("INSERT INTO t VALUES (2);\n")
@@ -248,6 +248,6 @@ def test_core_imports_no_other_layer() -> None:
         for name in (
             [a.name for a in node.names] if isinstance(node, ast.Import) else [node.module or ""]
         )
-        if name.startswith("radio.") and not name.startswith("radio.core")
+        if name.startswith("radio.") and not name.startswith("radio.socle")
     }
     assert upward == set()
