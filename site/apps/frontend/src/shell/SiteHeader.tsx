@@ -83,6 +83,11 @@ export function SiteHeader({ tagline = false }: { tagline?: boolean }) {
 
   return (
     <div ref={slot} style={height === null ? undefined : { height }}>
+      {/* onFocus catches the focus its links bubble up, to bring the hidden header back to a
+          keyboard: the header itself is no control, and no role fits an element that only
+          listens to its children (jsx-a11y, no-static-element-interactions, « Case: The event
+          handler is only being used to capture bubbled events »). */}
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions -- bubbled focus */}
       <header
         onFocus={onFocus}
         className={cn(
