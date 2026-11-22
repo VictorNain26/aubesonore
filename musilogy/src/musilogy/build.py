@@ -216,6 +216,7 @@ def build(
     sql_dir: Path,
     artists: Path,
     rgs: Path,
+    *,
     dump_year: int = 2026,
     min_year: int = 1850,
     popularity: Path | None = None,

@@ -211,10 +211,10 @@ def snapshot_popularity() -> None:
     _take_once(
         "ListenBrainz snapshot",
         _today(),
-        popularity_snapshot,
-        popularity_sums,
-        fetch,
-        "artists asked; pin it: REFERENCE_POPULARITY = {date!r}",
+        snapshot=popularity_snapshot,
+        sums=popularity_sums,
+        fetch=fetch,
+        pin="artists asked; pin it: REFERENCE_POPULARITY = {date!r}",
     )
 
 
@@ -252,16 +252,17 @@ def snapshot_official() -> None:
     _take_once(
         "MusicBrainz official status",
         _part_date(official_snapshot),
-        official_snapshot,
-        official_sums,
-        fetch,
-        "artists asked; pin it: add {date!r} to REFERENCE_OFFICIAL",
+        snapshot=official_snapshot,
+        sums=official_sums,
+        fetch=fetch,
+        pin="artists asked; pin it: add {date!r} to REFERENCE_OFFICIAL",
     )
 
 
 def _take_once(
     survey: str,
     date: str,
+    *,
     snapshot: Callable[[str], Path],
     sums: Callable[[str], Path],
     fetch: Callable[[Path], int],
@@ -337,10 +338,10 @@ def snapshot_discography() -> None:
     _take_once(
         "Wikidata discography",
         _today(),
-        discography_snapshot,
-        discography_sums,
-        fetch_discography,
-        "rows; pin it: REFERENCE_DISCOGRAPHY = {date!r}",
+        snapshot=discography_snapshot,
+        sums=discography_sums,
+        fetch=fetch_discography,
+        pin="rows; pin it: REFERENCE_DISCOGRAPHY = {date!r}",
     )
 
 
