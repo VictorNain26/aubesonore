@@ -218,22 +218,28 @@ wait_healthy() {
 # tree was checked clean above.
 # The systemd units are links into this clone (azuracast/RUNBOOK.md); systemd runs the
 # version it loaded until a daemon-reload (systemctl(1), « daemon-reload »), so a unit a merge
-# or a rollback changes would otherwise keep its old ExecStart.
+# or a rollback changes would otherwise keep its old ExecStart. Called once pipeline/.venv is
+# synced: a reloaded unit may call a command only the new venv has. A reload does not link a
+# unit the merge adds: that one is named, to be linked and enabled by hand (RUNBOOK).
 units=(pipeline/deploy/systemd site/scripts/systemd azuracast/scripts/systemd)
 reload_units() {
-  if ! git diff --quiet "$current" "$target" -- "${units[@]}"; then
-    systemctl --user daemon-reload
-    echo "reloaded the systemd units ${target:0:8} changes"
-  fi
+  git diff --quiet "$current" "$target" -- "${units[@]}" && return 0
+  systemctl --user daemon-reload || return 1
+  echo "reloaded the systemd units ${target:0:8} changes"
+  local added
+  added=$(git diff --name-only --diff-filter=A "$current" "$target" -- "${units[@]}")
+  [ -z "$added" ] || echo "new units, to link and enable by hand (azuracast/RUNBOOK.md): ${added//$'\n'/ }"
 }
 
 rollback() {
   echo "deploy of ${target:0:8} failed ($1): rolling back to ${current:0:8}"
   cd "$REPO_DIR"
   git config aubesonore.failedTarget "$target"
-  git reset --keep "$current"
-  reload_units
-  (cd pipeline && "$uv" sync --locked --quiet)
+  # Each step below may fail too (the cause of the rollback, again): none stops the containers'
+  # restore further down.
+  git reset --keep "$current" || echo "git reset --keep failed: the checkout needs a hand"
+  (cd pipeline && "$uv" sync --locked --quiet) || echo "uv sync failed on ${current:0:8}"
+  reload_units || echo "daemon-reload failed: the units need a hand"
   if ! git diff --quiet "$current" "$target" -- pipeline/; then
     systemctl --user try-restart radio-votes.service
   fi
@@ -264,12 +270,17 @@ if [ -n "$(git diff --name-only --diff-filter=A "$current" "$target" -- 'site/ap
 fi
 
 git merge --ff-only "$target"
-reload_units
+
+pipeline_changed=no
+git diff --quiet "$current" "$target" -- pipeline/ || pipeline_changed=yes
+if [ "$pipeline_changed" = yes ]; then
+  (cd pipeline && "$uv" sync --locked --quiet) || rollback "uv sync"
+fi
+reload_units || rollback "daemon-reload"
 
 # The vote page is a long-running process: it keeps serving the pipeline code it
-# was started with until it restarts (after reload_units, on its unit as merged).
-if ! git diff --quiet "$current" "$target" -- pipeline/; then
-  (cd pipeline && "$uv" sync --locked --quiet) || rollback "uv sync"
+# was started with until it restarts, now on its unit as merged.
+if [ "$pipeline_changed" = yes ]; then
   systemctl --user try-restart radio-votes.service
   echo "restarted radio-votes on ${target:0:8}"
 fi
