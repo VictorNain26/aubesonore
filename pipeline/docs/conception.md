@@ -8,6 +8,87 @@ ce document se corrige.
 État au 2026-10-13 : les étapes 1 à 7 tournent chaque semaine, la grille (étape 8) chaque soir ;
 la CI veille, la page de vote est en service. L'antenne ne diffuse que `antenne/`.
 
+## Vocabulaire
+
+Un mot par concept, le même dans ce document, les commandes, les unités, le code, la base et les
+réglages (« Ubiquitous Language », Evans, *Domain-Driven Design* ;
+<https://martinfowler.com/bliki/UbiquitousLanguage.html>). Les mots du métier sont en français ;
+les identifiants restent en ASCII, sans accents (PEP 8, « Source File Encoding ») ; les termes
+techniques (`conn`, `path`, `client`, `retry`) et les noms des outils (`song_id` d'AzuraCast,
+`plex_key`) gardent les leurs.
+
+**Les mots**
+
+| Mot | Ce qu'il désigne |
+|---|---|
+| passe | La passe hebdomadaire du dimanche, toutes étapes, rattachée par `$INVOCATION_ID`. Rien d'autre. |
+| étape | Une commande de la passe ; chacune écrit son rapport. |
+| fournée | Les candidats d'une semaine, numérotés (ex-« passe n° » de découverte, `discover_runs`, `Batch`). |
+| graine | Artiste de la bibliothèque tiré, selon l'écoute, pour chercher des voisins. |
+| voisin | Artiste proche d'une graine, confirmé par Deezer et Last.fm, hors bibliothèque. |
+| candidat | Titre d'une fournée, à noter. Sa *source* : `voisin`, `hypem`, `deezer_editorial`. |
+| famille | Découvertes (source `voisin`) ou nouveautés (`hypem`, `deezer_editorial`) ; chacune a sa coupure. |
+| découvertes | La famille des voisins, et la catégorie d'antenne du même nom. Rien d'autre. |
+| nouveautés | La famille des titres récents choisis par des humains, et sa catégorie d'antenne. |
+| favori | Favori Hype Machine de Victor : plus une découverte, mesure du goût. |
+| négatif | Titre d'un artiste de `config/negatives.toml`, exemple négatif faible. |
+| empreinte | Vecteur Discogs-EffNet de l'extrait Deezer de 30 s ; ce que le modèle lit. |
+| modèle | La régression logistique du goût ; *en service* ou non. |
+| note | Le score d'un candidat par le modèle en service. |
+| coupure | La note sous laquelle une famille ne retient plus. |
+| plancher | La note sous laquelle aucune nouveauté n'est retenue (`plancher_nouveautes`). Rien d'autre. |
+| retenu | Candidat au-dessus de la coupure, et du plancher pour une nouveauté. |
+| tirage | Les bulletins d'une semaine : examen et leçon (ex-« sélection »). |
+| bulletin | Un titre soumis au vote, d'examen ou de leçon. |
+| examen | Bulletins tirés au hasard, qui jugent le modèle et les sources, jamais l'entraînent. |
+| leçon | Bulletins proches de la coupure, qui entraînent le modèle. |
+| téléchargement | Recherche sur Soulseek, contrôle de l'identité, préparation du fichier. |
+| tentatives minimales | Tentatives avant de juger le taux de réussite (`tentatives_min_pour_taux`), ex-« plancher » du §5. |
+| antenne | La bibliothèque publiée sur AzuraCast, et l'étape qui la tient. |
+| provenance | D'où vient un titre à l'antenne : `telecharge` (ex-`decouverte`) ou `repere`. |
+| catégorie | Sa place dans la grille : `nouveautes`, `decouvertes`, `fond`, `repos`, `reperes`. |
+| séjour | Le premier passage d'un titre en nouveautés ou découvertes (6 semaines). |
+| fond | Titres promus en fin de séjour, qui alternent avec le repos. |
+| repos | Catégorie hors antenne, au moins 12 semaines. Rien d'autre. |
+| péremption | Sortie définitive, 78 semaines après la première diffusion. |
+| repère | Titre de la bibliothèque Plex diffusé, en rotation. |
+| mesures | Énergie, dansabilité et tempo d'un titre à l'antenne, que lit la grille. |
+| grille | Les 7 × 24 playlists horaires ; *créneau* : une place d'une heure. |
+| écart minimal | Repos minimal entre deux passages d'un titre dans la grille (`ecart_min`, ex-`repos`). |
+| rapport | La ligne d'une étape dans la base ; *bilan* : le jugement de la passe entière. |
+
+**Les noms, d'aujourd'hui à demain**
+
+Appliqués dans cet ordre, une PR à la fois : le code et les commandes, puis les unités, puis la
+base. Jusque-là, le reste de ce document emploie les noms actuels.
+
+| Aujourd'hui | Demain |
+|---|---|
+| unités `radio-weekly`, `radio-backup`, `radio-votes`, `radio-alert@` | `radio-passe`, `radio-sauvegarde`, `radio-page-votes`, `radio-alerte@` ; `radio-grille` reste |
+| `library-sync`, `discover`, `nouveautes`, `favoris`, `negatives-sync` | `bibliotheque`, `decouverte`, `nouveautes`, `favoris`, `negatifs` |
+| `signals`, `train`, `votes-select`, `votes-serve` | `empreintes`, `gout`, `tirage`, `page-votes` |
+| `acquire`, `antenne`, `mesures`, `grille` | `telechargement`, `antenne`, `mesures`, `grille` |
+| `check`, `report`, `backup`, `alert` | `bilan`, `rapport`, `sauvegarde`, `alerte` |
+| paquets `cli`, `core`, `library`, `discover`, `signals`, `model` | `commandes`, `socle`, `bibliotheque`, `decouverte`, `empreintes` et `mesures`, `gout` |
+| paquets `acquire`, `antenna`, `votes`, `sources` | `telechargement`, `antenne` et `grille`, `votes`, `sources` ; `check`, `report`, `backup`, `alert` dans `exploitation` |
+| réglages `[library]`, `[discover]`, `[model]`, `[acquisition]`, `[backup]` | `[bibliotheque]`, `[decouverte]`, `[gout]`, `[telechargement]`, `[sauvegarde]` |
+| `keep_decouvertes`, `keep_nouveautes`, `min_score_nouveautes` | `retenus_decouvertes`, `retenus_nouveautes`, `plancher_nouveautes` |
+| `min_attempts_for_rate`, `[grille] repos` | `tentatives_min_pour_taux`, `ecart_min` (les autres clés : même traduction, au fil du code) |
+| tables `library_tracks`, `deezer_matches`, `artists`, `tracks` | `bibliotheque`, `rapprochements`, `artistes`, `titres` |
+| `discover_runs`, `run_seeds`, `candidates`, `negative_artists` | `fournees`, `graines`, `candidats`, `artistes_negatifs` |
+| `track_measures`, `models`, `scores`, `selections`, `ballots`, `votes` | `empreintes`, `modeles`, `notes`, `tirages`, `bulletins`, `votes` |
+| `acquisitions`, `antenne`, `repere_sorties`, `track_features`, `grille`, `stage_reports` | `telechargements`, `antenne`, `reperes_sortis`, `mesures`, `grille`, `rapports` |
+| colonnes `deezer_track_id`, `deezer_artist_id`, `run_id`, `origin` | `titre_id`, `artiste_id` (identifiants Deezer), `fournee_id`, `provenance` |
+| `arousal*`, `bpm*`, `accepted`, `floored`, `kind` (`exam`, `lesson`) | `energie*`, `tempo*`, `retenu`, `sous_plancher`, `type` (`examen`, `lecon`) |
+| valeurs `library`, `candidate`, `negative`, `favorite` ; `decouverte` | `bibliotheque`, `candidat`, `negatif`, `favori` ; `telecharge` |
+| valeurs `ready`, `failed`, `published` ; `matched`, `unmatched` ; `no_preview`, `audio_failed`, `gone` | `pret`, `echec`, `publie` ; `trouve`, `non_trouve` ; `sans_extrait`, `audio_rate`, `disparu` |
+
+Une colonne que le code ne relit pas reste si elle garde l'historique que lisent les études
+(`docs/recherches/`) : les dates (`added_at`, `attempted_at`, `measured_at`…), la graine et le
+voisin d'un candidat, le verdict et les métriques de chaque modèle, l'identifiant AzuraCast
+(`media_id`), la valence mesurée. Seule `votes.source`, toujours `'page'`, ne porte rien : elle part
+avec la base.
+
 ## 1. But
 
 AubeSonore est une webradio de découverte dans la couleur de Victor : des titres qu'il ne connaît
@@ -43,6 +124,8 @@ Plex ─► 1 bibliothèque ─► 2 découverte ─► 3 empreinte ─► 4 go�
                                                            ▲             │
                                               votes ───────┘             ▼
                                                             6 préparation ─► 7 antenne ─► AzuraCast
+                                                                                 │
+                                                  8 mesures (passe) et grille (passe et chaque soir)
 ```
 
 Une passe hebdomadaire enchaîne les étapes. Chacune écrit ses compteurs dans le rapport de passe
@@ -106,7 +189,8 @@ priorité.
   ou est oublié.
 - **Mesure du goût.** `radio train` publie la part des favoris que le modèle en service
   retiendrait à la coupure des découvertes de la dernière fournée, et la part que le hasard en
-  retiendrait (53 % contre 33 % au 2026-10-02) : la part des découvertes notées à la coupure ou
+  retiendrait (93 % contre 88 % au 2026-11-22 ; les 53 % contre 33 % du 2026-10-02 étaient
+  mesurés à un autre seuil, celui du tiers retenu) : la part des découvertes notées à la coupure ou
   au-dessus, et non la part retenue, que la règle d'un titre par artiste réduit. Elle ne décide
   jamais d'une promotion.
 - **Pas à l'entraînement.** En exemples positifs, ils n'ont pas amélioré l'AUC d'examen (0,760
@@ -122,7 +206,10 @@ priorité.
 - **Poids des classes.** Chacune pèse 1 au total. C = 0,1. Les réglages ont été fixés sur les
   159 votes du banc.
 - **Signaux retirés.** Popularité, tags et proximité étaient au niveau du hasard (AUC 0,52 à 0,58).
-  L'empreinte seule donne une AUC d'examen de 0,82, contre 0,76 pour l'ancien modèle empilé.
+  L'empreinte seule donnait une AUC d'examen de 0,82, contre 0,76 pour l'ancien modèle empilé,
+  sur un examen qui avait aussi servi au réglage, donc optimiste ; l'estimation propre, en
+  validation croisée, est 0,727 (`recherches/2026-09-30-modele-audio-seul.md`). Sur l'examen
+  d'aujourd'hui (60 votes), le modèle en service a 0,751 (`radio report`, 2026-11-22).
 - **Rétention.** Dans chaque fournée, découvertes et nouveautés ont chacune leur coupure : les
   `keep_decouvertes` et `keep_nouveautes` mieux notées sont retenues (80 et 80). Ces effectifs
   découlent de la grille d'antenne : ~70 entrées par semaine et par famille, plus les échecs
@@ -199,7 +286,7 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
      `$XDG_RUNTIME_DIR`, effacé en fin de commande.
    - Une recherche à la fois, au plus 10 recherches par 220 s.
    - Le pipeline lit `_index.csv` : les échecs sont comptés par raison et ne sont pas relancés
-     avant la passe suivante.
+     avant la passe suivante. Après `max_attempts` tentatives (3), un titre n'est plus retenté.
    - **Panne de Sockseek.** Codes de sortie au tag v3.0.5 (`Sockseek.Cli/Program.cs`) : 0 tout
      réussi, 1 au moins un échec, 2 erreur d'usage, 130 annulé. L'index est réécrit à chaque titre
      terminé (`M3uEditor.Update`). Un code autre que 0 ou 1, ou l'absence d'index (connexion
@@ -229,7 +316,7 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
      paires ; la durée seule laissait passer un autre titre du même artiste pour 18 fichiers sur 38.
 4. **Pas de YouTube.** Un titre introuvable reste un échec compté, et on retente à la passe
    suivante.
-5. **Plancher.** Le taux de fichiers prêts n'est jugé qu'à partir de `min_attempts_for_rate`
+5. **Tentatives minimales.** Le taux de fichiers prêts n'est jugé qu'à partir de `min_attempts_for_rate`
    tentatives (`config/editorial.toml`, 20).
 6. **Le port d'écoute de Sockseek reste fermé** tant qu'un taux d'échec ne justifie pas de
    l'ouvrir (premier essai, 2026-09-30 : 10 retenus sur 10 prêts, identité Chromaprint de 0,925 à
@@ -299,7 +386,7 @@ score choisit seulement qui est promu. La passe hebdomadaire applique ces règle
   Un fichier prêt voté « non » n'est jamais publié. Un repère voté « non » n'est jamais tiré.
 - **Un titre par artiste.** Un artiste à plusieurs titres n'en garde qu'un : un « oui » d'abord,
   puis un titre en nouveautés ou découvertes, puis la note du modèle, puis le plus récent. Les
-  autres sortent ; un repère sorti n'est pas retiré avant 12 semaines. À la première passe, le
+  autres sortent ; un repère sorti n'est pas tiré de nouveau avant 12 semaines. À la première passe, le
   2026-10-11, cela fait sortir 191 titres (156 découvertes, 35 repères) et en laisse 511, un par
   artiste ; chaque titre passe donc plus souvent, jusqu'à ce que les entrées regarnissent le
   stock.
