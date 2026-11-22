@@ -19,7 +19,9 @@ change truly spans them.
   production clone on victorserv; the server is for runs on the real data only (Musilogy's build and
   its load into production, the radio's passes).
 - Prefer `git -C`, `pnpm -C site …` and `uv --directory <piece> run …` to `cd`: every directory that
-  becomes the working directory gets a `.claude/.cc-writes` folder from the sandbox, never cleaned up.
+  becomes the working directory gets a `.claude/.cc-writes` folder from the sandbox, never cleaned up,
+  and an empty `.mcp.json` (anthropics/claude-code#78419). knip's MCP plugin read that file and failed
+  the pre-push hook, so `site/knip.json` turns the plugin off: no piece declares an MCP server.
 - A sandboxed command's `localhost` is private to it, so a dev server started there is unreachable
   from the browser. The commands that start one are the `sandbox.excludedCommands` of
   `.claude/settings.json`, matched on their exact text: call them as listed, without a redirect or
