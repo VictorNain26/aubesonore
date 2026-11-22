@@ -9,12 +9,7 @@ import * as m from '@/paraglide/messages.js';
 import { PASSWORD_MIN_LENGTH } from '@aubesonore/shared-types/auth';
 
 export type AuthMode =
-  | 'signin'
-  | 'signup'
-  | 'forgot'
-  | 'reset-sent'
-  | 'verification-sent'
-  | 'reset-password';
+  'signin' | 'signup' | 'forgot' | 'reset-sent' | 'verification-sent' | 'reset-password';
 
 export interface AuthViewProps {
   /** Title the listener tried to keep: the sign-in heading names it. */

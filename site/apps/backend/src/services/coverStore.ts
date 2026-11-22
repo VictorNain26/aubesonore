@@ -30,8 +30,7 @@ type CaaSize = (typeof CAA_SIZES)[number];
 type StationSize = (typeof STATION_SIZES)[number];
 
 export type CoverKey =
-  | { kind: 'caa'; id: string; size: CaaSize }
-  | { kind: 'station'; id: string; size: StationSize };
+  { kind: 'caa'; id: string; size: CaaSize } | { kind: 'station'; id: string; size: StationSize };
 
 const RELEASE_GROUP = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const STATION_ART_ID = /^[0-9a-f]+-[0-9]+$/;

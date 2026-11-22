@@ -74,12 +74,7 @@ export interface LikeTrackRequest {
 export type SiteLocale = 'fr' | 'en';
 
 export type ArtistPlatform =
-  | 'deezer'
-  | 'spotify'
-  | 'appleMusic'
-  | 'bandcamp'
-  | 'soundcloud'
-  | 'official';
+  'deezer' | 'spotify' | 'appleMusic' | 'bandcamp' | 'soundcloud' | 'official';
 
 export interface ArtistLink {
   platform: ArtistPlatform;

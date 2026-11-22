@@ -260,12 +260,10 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
     colisten: colistenRows && colistenRows.map(neighbour),
     credits:
       creditRows &&
-      creditRows.map(
-        (row): MusilogyCredit => ({
-          ...ref(row.mbid, row.name, row.disambiguation, row.y0),
-          records: row.records,
-        })
-      ),
+      creditRows.map((row): MusilogyCredit => ({
+        ...ref(row.mbid, row.name, row.disambiguation, row.y0),
+        records: row.records,
+      })),
     releases: releaseRows && releaseRows.map(release),
     bands: bandRows && {
       members: bandRows.filter((row) => row.role === 'member').map(bandmate),
@@ -273,20 +271,16 @@ async function loadArtist(mbid: string): Promise<MusilogyArtist | null> {
     },
     memberProjects:
       projectRows &&
-      projectRows.map(
-        (row): MusilogyProject => ({
-          ...ref(row.mbid, row.name, row.disambiguation, row.y0),
-          via: row.via,
-        })
-      ),
+      projectRows.map((row): MusilogyProject => ({
+        ...ref(row.mbid, row.name, row.disambiguation, row.y0),
+        via: row.via,
+      })),
     otherNames:
       nameRows &&
-      nameRows.map(
-        (row): MusilogyOtherName => ({
-          ...ref(row.mbid, row.name, row.disambiguation, row.y0),
-          kind: row.kind,
-        })
-      ),
+      nameRows.map((row): MusilogyOtherName => ({
+        ...ref(row.mbid, row.name, row.disambiguation, row.y0),
+        kind: row.kind,
+      })),
   };
   musilogyCache.set(mbid, result);
   return result;
