@@ -9,7 +9,7 @@
 # -----------------------------------------------------------------------------
 # Stage 1: install all workspace deps
 # -----------------------------------------------------------------------------
-FROM node:22-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392 AS deps
+FROM node:22.23.4-slim@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d AS deps
 RUN corepack enable pnpm
 
 WORKDIR /app
@@ -49,7 +49,7 @@ RUN pnpm --filter @aubesonore/shared-types build && \
 # Built from the same build as the static assets: the markup it writes is the
 # one the client hydrates. dist-ssr bundles its dependencies (vite.config.ts).
 # -----------------------------------------------------------------------------
-FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS renderer
+FROM node:22.23.4-alpine@sha256:0e1754758c2df4cfa3e68d59e2e1b7374bb7fd9ea6328eaaacf15cc934af8202 AS renderer
 
 WORKDIR /app
 COPY --from=builder /app/apps/frontend/dist-ssr ./dist-ssr
