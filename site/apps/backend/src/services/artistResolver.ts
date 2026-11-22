@@ -228,14 +228,7 @@ async function keptTrack(artistId: string): Promise<Played | null> {
 
 /** What identifying a known artist again did to its MBID. */
 export type Reidentified =
-  | 'same'
-  | 'changed'
-  | 'cleared'
-  | 'gained'
-  | 'none'
-  | 'held'
-  | 'unplayed'
-  | 'failed';
+  'same' | 'changed' | 'cleared' | 'gained' | 'none' | 'held' | 'unplayed' | 'failed';
 
 /**
  * Identifies a known artist again from scratch, from its latest play, else a
