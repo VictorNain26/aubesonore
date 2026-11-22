@@ -2,8 +2,8 @@
 # applies only the drizzle/ migrations its database has not run (Drizzle's migrate, after the last
 # one recorded), the pipeline only versions above PRAGMA user_version (radio/socle/db.py, _migrate).
 # Editing, renaming or deleting one would leave production's schema silently different from the
-# code, so a change goes in a new file. A pipeline migration may only move to another package
-# with its name and content unchanged: its version is its file name's number.
+# code, so a change goes in a new file. A pipeline migration may only move, with its name and
+# content unchanged (its version is its file name's number), into the folder _migrate reads.
 name: Migrations
 
 on:
@@ -39,7 +39,7 @@ jobs:
           changed=$(git diff --name-status -M100% --diff-filter=MDR "$BASE...HEAD" -- \
             $site 'pipeline/radio/*/migrations/*.sql' |
             awk -F'\t' '!($1 == "R100" && $2 ~ /^pipeline\/radio\/[a-z_]+\/migrations\// &&
-              $3 ~ /^pipeline\/radio\/[a-z_]+\/migrations\// &&
+              $3 ~ /^pipeline\/radio\/socle\/migrations\// &&
               substr($2, match($2, /[^\/]+$/)) == substr($3, match($3, /[^\/]+$/)))')
           if [ -n "$changed" ]; then
             echo "::error::Merged migrations changed; write a new migration instead:"

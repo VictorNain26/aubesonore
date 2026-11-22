@@ -1,5 +1,5 @@
 -- Artistes Deezer mesurés : bibliothèque, voisins, négatifs. Données brutes lues une fois ;
--- les signaux se calculent à la lecture (radio/empreintes/table.py).
+-- les signaux se calculent à la lecture (radio/signals/table.py).
 CREATE TABLE artists (
     deezer_artist_id INTEGER PRIMARY KEY,
     name             TEXT NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE artists (
 ) STRICT;
 
 -- Tous les titres mesurés, quelle que soit leur origine. La bibliothèque peut contenir deux
--- versions d'un même titre ; candidats et négatifs sont dédoublonnés dès l'entrée (radio/bibliotheque/doublons.py).
+-- versions d'un même titre ; candidats et négatifs sont dédoublonnés dès l'entrée (radio/library/dedupe.py).
 CREATE TABLE tracks (
     deezer_track_id  INTEGER PRIMARY KEY,
     deezer_artist_id INTEGER NOT NULL REFERENCES artists (deezer_artist_id),
