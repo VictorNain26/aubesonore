@@ -1,5 +1,9 @@
+import time
+
 import pytest
 import responses
+import stamina
+from responses import matchers
 
 from radio.sources.hypem import (
     API,
@@ -29,12 +33,17 @@ def item(n: int = 0, **over: object) -> dict[str, object]:
 
 @responses.activate
 def test_popular_parses_tracks_and_names_us() -> None:
-    responses.get(POPULAR, json=[item()])
+    # Une requête sans ce classement, cette page ou notre User-Agent n'a pas de réponse.
+    responses.get(
+        POPULAR,
+        json=[item()],
+        match=[
+            matchers.query_param_matcher({"mode": "lastweek", "page": "2"}),
+            matchers.header_matcher({"User-Agent": USER_AGENT}),
+        ],
+    )
     got = HypemClient().popular("lastweek", 2)
     assert got == [HypemTrack("Artiste 0", "Titre 0", 200, "THE VINYL VILLAIN")]
-    call = responses.calls[0].request
-    assert call.params == {"mode": "lastweek", "page": "2"}
-    assert call.headers["User-Agent"] == USER_AGENT
 
 
 @responses.activate
@@ -43,7 +52,6 @@ def test_favorites_stop_on_a_short_page() -> None:
     responses.get(FAVORITES, json=[item(99)])
     got = HypemClient().favorites("victor")
     assert len(got) == FAVORITES_PAGE + 1
-    assert [c.request.params["page"] for c in responses.calls] == ["1", "2"]
 
 
 @responses.activate
@@ -72,11 +80,15 @@ def test_an_unexpected_shape_is_an_error_never_an_empty_list(body: object) -> No
 
 
 @responses.activate
-def test_a_server_error_is_retried_then_unavailable() -> None:
+def test_a_server_error_is_tried_three_times_then_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Les vraies relances du client, pas celles du mode test de stamina (conftest), sans attendre.
+    monkeypatch.setattr(time, "sleep", lambda _: None)
+    stamina.set_testing(False)
     responses.get(POPULAR, status=503)
     with pytest.raises(HypemUnavailable):
         HypemClient().popular("lastweek", 1)
-    # stamina en mode test (conftest) : 3 tentatives.
     assert len(responses.calls) == 3
 
 

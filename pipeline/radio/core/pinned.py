@@ -12,5 +12,8 @@ class ModelError(Exception):
 def check_pinned(path: Path, sha256: str, url: str) -> None:
     if not path.is_file():
         raise ModelError(f"modèle absent : {path} (à télécharger depuis {url})")
-    if hashlib.sha256(path.read_bytes()).hexdigest() != sha256:
+    # Par blocs : un modèle tient des dizaines de Mo, inutile de le charger pour le hacher.
+    with path.open("rb") as f:
+        digest = hashlib.file_digest(f, "sha256").hexdigest()
+    if digest != sha256:
         raise ModelError(f"somme de contrôle inattendue : {path}")
