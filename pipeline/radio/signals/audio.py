@@ -8,7 +8,6 @@ par défaut (62) ne coûte rien de plus. Vecteur de titre = moyenne des patches 
 convention maison, non documentée par MTG (§2).
 """
 
-import hashlib
 import os
 import tempfile
 from pathlib import Path
@@ -17,16 +16,14 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
+from radio.core.pinned import check_pinned
+
 MODEL_URL = (
     "https://essentia.upf.edu/models/feature-extractors/discogs-effnet/discogs-effnet-bs64-1.pb"
 )
 MODEL_SHA256 = "3ed9af50d5367c0b9c795b294b00e7599e4943244f4cbd376869f3bfc87721b1"
 MODEL_TAG = "discogs-effnet-bs64-1/hop62/mean-l2"
 DIM = 1280
-
-
-class ModelError(Exception):
-    """Modèle absent, ou différent du modèle officiel épinglé."""
 
 
 def single_thread_tensorflow() -> None:
@@ -39,10 +36,7 @@ def single_thread_tensorflow() -> None:
 
 
 def check_model(path: Path) -> None:
-    if not path.is_file():
-        raise ModelError(f"modèle absent : {path} (à télécharger depuis {MODEL_URL})")
-    if hashlib.sha256(path.read_bytes()).hexdigest() != MODEL_SHA256:
-        raise ModelError(f"somme de contrôle inattendue : {path}")
+    check_pinned(path, MODEL_SHA256, MODEL_URL)
 
 
 def to_blob(v: npt.NDArray[np.float32]) -> bytes:

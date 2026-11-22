@@ -17,7 +17,7 @@ from datetime import datetime
 import numpy as np
 
 from radio.core.config import DiscoverConfig
-from radio.discover.candidates import add_tracks, keep_tracks
+from radio.discover.candidates import add_candidates, add_tracks, keep_tracks
 from radio.discover.neighbours import neighbours
 from radio.discover.seeds import finish_run, start_run
 from radio.library.artists import library_artists, library_names
@@ -97,10 +97,13 @@ def discover_pass(
             kept = keep_tracks(top, n.id)
             with conn:
                 added = add_tracks(conn, n.id, n.name, kept, "candidate", stamp)
-                conn.executemany(
-                    "INSERT INTO candidates (deezer_track_id, run_id, source, seed_artist_id, "
-                    "neighbour_artist_id) VALUES (?, ?, 'voisin', ?, ?)",
-                    [(tid, run.run_id, seed.deezer_artist_id, n.id) for tid in added],
+                add_candidates(
+                    conn,
+                    run.run_id,
+                    "voisin",
+                    added,
+                    seed_artist_id=seed.deezer_artist_id,
+                    neighbour_artist_id=n.id,
                 )
             rep.n_seen += len(top)
             rep.n_filtered += len(top) - len(kept)

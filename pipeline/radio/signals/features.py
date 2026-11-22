@@ -9,7 +9,6 @@ début du suivant. Le titre, c'est ce qui passe à l'antenne : entre ses points 
 fichier en porte, et sa durée en découle. Le fichier d'antenne est lu, jamais écrit.
 """
 
-import hashlib
 import json
 import logging
 import sqlite3
@@ -22,6 +21,7 @@ import numpy as np
 import numpy.typing as npt
 
 from radio.core.media import Cue, ToolError, cue_of
+from radio.core.pinned import check_pinned
 from radio.signals.audio import single_thread_tensorflow
 
 logger = logging.getLogger(__name__)
@@ -65,17 +65,9 @@ MUSICNN_HOP = 187
 Floats = npt.NDArray[np.float32]
 
 
-class ModelError(Exception):
-    """Modèle absent, ou différent du modèle officiel épinglé."""
-
-
 def check_models(models_dir: Path) -> None:
     for name, (folder, sha) in MODELS.items():
-        path = models_dir / name
-        if not path.is_file():
-            raise ModelError(f"modèle absent : {path} (à télécharger depuis {BASE_URL}{folder})")
-        if hashlib.sha256(path.read_bytes()).hexdigest() != sha:
-            raise ModelError(f"somme de contrôle inattendue : {path}")
+        check_pinned(models_dir / name, sha, f"{BASE_URL}{folder}")
 
 
 @dataclass(frozen=True)

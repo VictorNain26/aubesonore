@@ -7,10 +7,15 @@ clé Last.fm voyage dans l'URL, et les URL d'extraits Deezer sont signées.
 """
 
 import logging
-from typing import Any
+from collections.abc import Callable
+from typing import Any, ParamSpec, TypeVar
 
 import requests
+import stamina
 from stamina.instrumentation import RetryDetails, set_on_retry_hooks
+
+P = ParamSpec("P")
+T = TypeVar("T")
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +30,21 @@ def log_retry(details: RetryDetails) -> None:
 
 
 set_on_retry_hooks((log_retry,))
+
+
+def retried(
+    unavailable: type[Exception], *, attempts: int = 5, wait_initial: float = 1.0
+) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    """Relance sur `unavailable`, `attempts` tentatives quelle que soit leur durée : les 45 s au
+    total par défaut de stamina (`timeout`) arrêteraient les relances après une seule requête
+    expirée."""
+    return stamina.retry(
+        on=unavailable,
+        timeout=None,
+        attempts=attempts,
+        wait_initial=wait_initial,
+        wait_max=30.0,
+    )
 
 
 def check_status(
