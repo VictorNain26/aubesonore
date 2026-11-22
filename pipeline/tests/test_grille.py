@@ -702,7 +702,7 @@ def _clock(monkeypatch: pytest.MonkeyPatch, at: datetime) -> None:
         def now(cls, tz: tzinfo | None = None) -> "Fixed":
             return cls.fromtimestamp(at.timestamp(), tz)
 
-    monkeypatch.setattr(commandes.antenne, "datetime", Fixed)
+    monkeypatch.setattr(commandes.grille, "datetime", Fixed)
 
 
 WEDNESDAY = datetime(2026, 11, 4, 10, tzinfo=UTC)
@@ -726,7 +726,7 @@ def grille_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeAzuracast
     )
     monkeypatch.setattr(commandes.commun, "_settings", lambda: settings)
     station = FakeAzuracast()
-    monkeypatch.setattr(commandes.antenne, "AzuracastClient", lambda *a: station)
+    monkeypatch.setattr(commandes.grille, "AzuracastClient", lambda *a: station)
     return station
 
 

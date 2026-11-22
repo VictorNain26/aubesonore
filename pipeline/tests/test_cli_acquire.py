@@ -50,7 +50,7 @@ def test_sockseek_failure_exits_1_and_reports_the_failed_stage(
     def boom(*a: Any, **k: Any) -> AcquireReport:
         raise SockseekError("aucun index écrit")
 
-    monkeypatch.setattr(commandes.antenne, "acquire_pass", boom)
+    monkeypatch.setattr(commandes.telechargement, "acquire_pass", boom)
     result = runner.invoke(commandes.app, ["telechargement"])
     assert result.exit_code == 1
     assert "Sockseek en échec (aucun index écrit) : aucune tentative comptée" in result.output
@@ -63,7 +63,7 @@ def test_interrupted_sockseek_fails_the_stage(
 ) -> None:
     db = _env(tmp_path, monkeypatch)
     rep = AcquireReport(n_wanted=4, n_ready=1, n_unindexed=3)
-    monkeypatch.setattr(commandes.antenne, "acquire_pass", _report(rep))
+    monkeypatch.setattr(commandes.telechargement, "acquire_pass", _report(rep))
     result = runner.invoke(commandes.app, ["telechargement"])
     assert result.exit_code == 1
     assert "arrêté avant 3 titres" in result.output
@@ -76,7 +76,7 @@ def test_success_rate_floor_comes_from_editorial(
 ) -> None:
     _env(tmp_path, monkeypatch, "[acquisition]\nmin_attempts_for_rate = 3\n")
     rep = AcquireReport(n_wanted=3, failures=Counter({"aucun résultat": 3}))
-    monkeypatch.setattr(commandes.antenne, "acquire_pass", _report(rep))
+    monkeypatch.setattr(commandes.telechargement, "acquire_pass", _report(rep))
     assert runner.invoke(commandes.app, ["telechargement"]).exit_code == 1
 
 
@@ -85,7 +85,7 @@ def test_missing_cover_is_reported_not_failed(
 ) -> None:
     db = _env(tmp_path, monkeypatch)
     rep = AcquireReport(n_wanted=2, n_ready=2, n_no_cover=1)
-    monkeypatch.setattr(commandes.antenne, "acquire_pass", _report(rep))
+    monkeypatch.setattr(commandes.telechargement, "acquire_pass", _report(rep))
     result = runner.invoke(commandes.app, ["telechargement"])
     assert result.exit_code == 0
     assert "prêts sans pochette : 1" in result.output
@@ -101,7 +101,7 @@ def test_an_unexpected_error_is_reported_without_its_message(
     def boom(*a: Any, **k: Any) -> AcquireReport:
         raise RuntimeError("https://cdn.example/preview?hdnea=SECRET")
 
-    monkeypatch.setattr(commandes.antenne, "acquire_pass", boom)
+    monkeypatch.setattr(commandes.telechargement, "acquire_pass", boom)
     result = runner.invoke(commandes.app, ["telechargement"])
     assert result.exit_code == 1
     assert _stage(db) == (0, '{"erreur": "RuntimeError"}')

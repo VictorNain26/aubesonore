@@ -619,7 +619,7 @@ Le reste se lit sur la machine :
   `azuracast-backup` en échec (passe hebdomadaire jugée par `radio bilan`, grille du lendemain,
   sauvegardes, déploiement du site) ;
 - `.venv/bin/radio rapport` : le dernier rapport de chaque étape et ses lignes `ALERTE`
-  (`_status_lines`, `radio/commandes/votes.py`) ;
+  (`_status_lines`, `radio/commandes/exploitation.py`) ;
 - les journaux : `journalctl --user -u <unité>`.
 
 Angles morts acceptés, qui ne font échouer aucune unité : un flux coupé ou la playlist de secours

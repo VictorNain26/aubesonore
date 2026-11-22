@@ -180,9 +180,9 @@ def test_cli_reports_the_fresh_stage_and_fails_on_a_broken_source(
     )
     settings = Settings(_env_file=None, RADIO_DATA_DIR=tmp_path / "data", RADIO_CONFIG_DIR=cfg)
     monkeypatch.setattr(commandes.commun, "_settings", lambda: settings)
-    monkeypatch.setattr(commandes.gout, "DeezerClient", FakeDeezer)
+    monkeypatch.setattr(commandes.decouverte, "DeezerClient", FakeDeezer)
     monkeypatch.setattr(
-        commandes.gout, "HypemClient", lambda: FakeHypem(HypemUnavailable("HTTP 503"))
+        commandes.decouverte, "HypemClient", lambda: FakeHypem(HypemUnavailable("HTTP 503"))
     )
     result = CliRunner().invoke(commandes.app, ["nouveautes"])
     assert result.exit_code == 1
