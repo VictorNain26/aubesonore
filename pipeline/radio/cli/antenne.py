@@ -25,6 +25,7 @@ from radio.cli.common import (
     _unavailable,
     app,
 )
+from radio.core.pinned import ModelError
 from radio.signals import features
 from radio.sources.azuracast import AzuracastClient, AzuracastUnavailable
 from radio.sources.deezer import DeezerClient, DeezerUnavailable
@@ -186,7 +187,7 @@ def mesures() -> None:
     settings = common._settings()
     try:
         extractor = features.FeatureExtractor(settings.models_dir)
-    except features.ModelError as e:
+    except ModelError as e:
         _fail(f"Modèles de mesure refusés : {e}", 2)
     with _db(settings) as conn:
         rep = features.measure_antenna(conn, settings.azuracast_media_dir, extractor, _now())

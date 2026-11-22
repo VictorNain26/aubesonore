@@ -14,9 +14,9 @@ from typer.testing import CliRunner
 import radio.cli as cli
 from radio.core.config import Settings
 from radio.core.db import connect
+from radio.core.pinned import ModelError
 from radio.core.report import last_stages
 from radio.signals import features
-from radio.signals.audio import ModelError
 from radio.sources.deezer import DeezerArtist, DeezerTrack, DeezerUnavailable
 from radio.sources.hypem import HypemUnavailable
 from radio.sources.lastfm import LastfmUnavailable
@@ -320,7 +320,7 @@ def test_favoris_unreadable_fails_and_reports(env: Path, monkeypatch: pytest.Mon
 
 def test_mesures_refuses_missing_models(env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     def refuse(models_dir: Path) -> None:
-        raise features.ModelError("modèle absent : msd-musicnn-1.pb")
+        raise ModelError("modèle absent : msd-musicnn-1.pb")
 
     monkeypatch.setattr(features, "FeatureExtractor", refuse)
     res = runner.invoke(cli.app, ["mesures"])

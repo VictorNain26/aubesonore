@@ -7,11 +7,11 @@ import pytest
 
 from radio.core.db import connect
 from radio.core.media import Cue
+from radio.core.pinned import ModelError
 from radio.signals.features import (
     FEATURES_TAG,
     MODELS,
     Features,
-    ModelError,
     check_models,
     measure_antenna,
     played,

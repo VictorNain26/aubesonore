@@ -27,6 +27,7 @@ from radio.cli.common import (
     _unavailable,
     app,
 )
+from radio.core.pinned import ModelError
 from radio.discover.favorites import favorites_pass
 from radio.discover.fresh import NoBatchError, fresh_pass
 from radio.discover.negatives import import_negatives, load_negatives
@@ -45,7 +46,7 @@ from radio.model.model import (
     votes_count,
     votes_digest,
 )
-from radio.signals.audio import EffnetEmbedder, ModelError
+from radio.signals.audio import EffnetEmbedder
 from radio.signals.measure import measure_tracks
 from radio.signals.table import load_signals
 from radio.sources.deezer import DeezerClient, DeezerUnavailable

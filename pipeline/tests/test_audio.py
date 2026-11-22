@@ -6,10 +6,10 @@ import numpy as np
 import pytest
 
 from radio.core.config import Settings
+from radio.core.pinned import ModelError
 from radio.signals.audio import (
     DIM,
     EffnetEmbedder,
-    ModelError,
     check_model,
 )
 
