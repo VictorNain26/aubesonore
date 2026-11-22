@@ -12,9 +12,8 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 from radio.core.config import FreshConfig
-from radio.discover.candidates import add_tracks
+from radio.discover.candidates import add_candidates, add_tracks, on_deezer
 from radio.library.dedupe import dedupe_key
-from radio.library.match import pick_match, search_query
 from radio.sources.deezer import DeezerClient, DeezerError, DeezerTrack
 from radio.sources.hypem import HypemClient, HypemError, HypemUnavailable
 
@@ -59,10 +58,7 @@ def _add(
         return
     with conn:
         added = add_tracks(conn, track.artist_id, track.artist_name, [track], "candidate", now)
-        conn.executemany(
-            "INSERT INTO candidates (deezer_track_id, run_id, source, detail) VALUES (?, ?, ?, ?)",
-            [(tid, rep.run_id, source, detail) for tid in added],
-        )
+        add_candidates(conn, rep.run_id, source, added, detail=detail)
     rep.added[source] += len(added)
     if not added:
         rep.already[source] += 1
@@ -86,14 +82,8 @@ def _hypem(
             return
         for h in tracks:
             rep.seen["hypem"] += 1
-            found = pick_match(
-                h.artist,
-                h.title,
-                h.duration_s * 1000,
-                deezer.search_tracks(search_query(h.artist, h.title)),
-                tolerance_s,
-            )
-            if found is None or not found.has_preview:
+            found = on_deezer(deezer, h, tolerance_s)
+            if found is None:
                 rep.n_unmatched += 1
                 continue
             _add(conn, rep, known, found, "hypem", h.sitename, now)

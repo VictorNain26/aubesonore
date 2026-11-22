@@ -11,8 +11,7 @@ La bibliothèque garde la priorité : un favori déjà dans Plex reste `library`
 import sqlite3
 from dataclasses import dataclass
 
-from radio.discover.candidates import add_tracks
-from radio.library.match import pick_match, search_query
+from radio.discover.candidates import add_tracks, on_deezer
 from radio.sources.deezer import DeezerClient
 from radio.sources.hypem import HypemClient
 
@@ -38,14 +37,8 @@ def favorites_pass(
     rep = FavoritesReport(n_seen=len(favorites))
     kept: set[int] = set()
     for h in favorites:
-        found = pick_match(
-            h.artist,
-            h.title,
-            h.duration_s * 1000,
-            deezer.search_tracks(search_query(h.artist, h.title)),
-            tolerance_s,
-        )
-        if found is None or not found.has_preview:
+        found = on_deezer(deezer, h, tolerance_s)
+        if found is None:
             rep.n_unmatched += 1
             continue
         kept.add(found.id)
