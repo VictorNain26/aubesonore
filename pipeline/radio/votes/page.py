@@ -26,7 +26,7 @@ from fastapi import Depends, FastAPI, Form, Header, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from starlette.background import BackgroundTask
 
-from radio.socle.config import FreshConfig
+from radio.socle.config import NouveautesConfig
 from radio.socle.db import connect
 from radio.sources.deezer import DeezerError, DeezerTrack, DeezerUnavailable
 from radio.votes.acces import HEADER
@@ -175,7 +175,7 @@ def create_app(
     db_path: Path,
     deezer: PreviewSource,
     verify: Callable[[str], None],
-    fresh: FreshConfig | None = None,
+    fresh: NouveautesConfig | None = None,
 ) -> FastAPI:
     def access(
         cf_access_jwt_assertion: Annotated[str | None, Header(alias=HEADER)] = None,
@@ -220,7 +220,7 @@ def create_app(
     def suivi() -> str:
         conn = connect(db_path)
         try:
-            return _suivi_page(load_suivi(conn, fresh or FreshConfig()))
+            return _suivi_page(load_suivi(conn, fresh or NouveautesConfig()))
         finally:
             conn.close()
 

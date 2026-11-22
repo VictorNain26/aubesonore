@@ -1,7 +1,7 @@
 """Passe d'acquisition (docs/conception.md §5, §6) : retenus → Sockseek → contrôle → fichier prêt.
 
 Chaque issue est écrite dès qu'elle est connue : une panne de Deezer arrête la passe sans perdre
-le travail fait. Un titre en échec est retenté aux passes suivantes, jusqu'à `max_attempts`. Un
+le travail fait. Un titre en échec est retenté aux passes suivantes, jusqu'à `tentatives_max`. Un
 titre voté « non » n'est jamais acquis.
 
 Un artiste n'a qu'un titre à l'antenne, repos compris (décision du 2026-10-11 : la variété
@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import NamedTuple
 
-from radio.socle.config import AcquisitionConfig
+from radio.socle.config import TelechargementConfig
 from radio.socle.media import Tags, ToolError, prepare, probe
 from radio.sources.deezer import DeezerClient, DeezerError, tags_for
 from radio.telechargement.controle import check, fingerprint, similarity
@@ -47,7 +47,7 @@ class Pending(NamedTuple):
     waiting: int
 
 
-def pending(conn: sqlite3.Connection, cfg: AcquisitionConfig) -> Pending:
+def pending(conn: sqlite3.Connection, cfg: TelechargementConfig) -> Pending:
     """Retenus pas encore prêts ni abandonnés ni votés « non » : la dernière fournée d'abord, car
     une nouveauté vieillit, puis les mieux notés ; un seul par artiste libre."""
     rows = conn.execute(
@@ -61,7 +61,7 @@ def pending(conn: sqlite3.Connection, cfg: AcquisitionConfig) -> Pending:
           AND s.deezer_track_id NOT IN (SELECT deezer_track_id FROM votes WHERE vote = 'non')
         ORDER BY c.run_id DESC, s.score DESC, s.deezer_track_id
         """,
-        (cfg.max_attempts,),
+        (cfg.tentatives_max,),
     ).fetchall()
     # Un titre au repos revient au fond : son artiste n'est pas libre.
     taken = {
@@ -80,7 +80,7 @@ def pending(conn: sqlite3.Connection, cfg: AcquisitionConfig) -> Pending:
     for tid, artist in rows:
         if artist in taken:
             waiting += 1
-        elif len(tids) < cfg.max_per_pass:
+        elif len(tids) < cfg.max_par_passe:
             taken.add(int(artist))
             tids.append(int(tid))
     return Pending(tids, waiting)
@@ -107,7 +107,7 @@ def _verify_and_prepare(
     deezer: DeezerClient,
     ready_dir: Path,
     rsgain: Path,
-    cfg: AcquisitionConfig,
+    cfg: TelechargementConfig,
 ) -> tuple[Path | None, str | None, Tags | None]:
     p = probe(file)
     refusal = check(p, want.duration_s, cfg)
@@ -121,7 +121,7 @@ def _verify_and_prepare(
         preview.write(deezer.download(page.preview_url))
         preview.flush()
         score = similarity(fingerprint(file), fingerprint(Path(preview.name)))
-    if score < cfg.identity_threshold:
+    if score < cfg.seuil_identite:
         return None, "identité", None
     dest = ready_dir / f"{want.deezer_track_id}.mp3"
     tags = tags_for(deezer, want.deezer_track_id, want.artist, want.title, page)
@@ -135,7 +135,7 @@ def acquire_pass(
     dirs: tuple[Path, Path, Path],
     binaries: tuple[Path, Path],
     credentials: tuple[str, str],
-    cfg: AcquisitionConfig,
+    cfg: TelechargementConfig,
     now: str,
     run: Runner = run_command,
 ) -> AcquireReport:

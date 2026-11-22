@@ -168,9 +168,9 @@ def test_only_a_neighbour_candidate_has_a_seed(tmp_path: Path) -> None:
 
 def test_editorial_loads_and_validates(tmp_path: Path) -> None:
     p = tmp_path / "editorial.toml"
-    p.write_text("[library]\nduration_tolerance_s = 3\n")
-    assert load_editorial(p).library.duration_tolerance_s == 3
-    p.write_text("[library]\nduration_tolerance_s = 60\n")
+    p.write_text("[bibliotheque]\necart_duree_s = 3\n")
+    assert load_editorial(p).bibliotheque.ecart_duree_s == 3
+    p.write_text("[bibliotheque]\necart_duree_s = 60\n")
     with pytest.raises(ValidationError):
         load_editorial(p)
 

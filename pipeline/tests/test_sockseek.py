@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from radio.socle.config import AcquisitionConfig
+from radio.socle.config import TelechargementConfig
 from radio.telechargement.sockseek import (
     Outcome,
     SockseekError,
@@ -64,7 +64,7 @@ def test_download_passes_the_list_and_reads_the_index(tmp_path: Path) -> None:
         Path("/bin/sockseek"),
         "radio",
         "s3cret",
-        AcquisitionConfig(),
+        TelechargementConfig(),
         fake,
     )
 
@@ -93,7 +93,7 @@ def test_config_is_removed_even_if_sockseek_crashes(tmp_path: Path) -> None:
         raise OSError("exec")
 
     with pytest.raises(OSError):
-        download(WANTED, tmp_path, tmp_path, Path("/x"), "u", "p", AcquisitionConfig(), boom)
+        download(WANTED, tmp_path, tmp_path, Path("/x"), "u", "p", TelechargementConfig(), boom)
     assert not (tmp_path / "sockseek.conf").exists()
 
 
@@ -101,7 +101,7 @@ def test_no_index_is_a_sockseek_failure(tmp_path: Path) -> None:
     # Connexion refusée ou compte banni : Sockseek sort en 1 sans avoir écrit d'index.
     with pytest.raises(SockseekError, match="aucun index"):
         download(
-            WANTED, tmp_path, tmp_path, Path("/x"), "u", "p", AcquisitionConfig(), lambda *_: 1
+            WANTED, tmp_path, tmp_path, Path("/x"), "u", "p", TelechargementConfig(), lambda *_: 1
         )
 
 
@@ -112,7 +112,7 @@ def test_fatal_exit_code_is_a_sockseek_failure(tmp_path: Path, code: int) -> Non
         return code
 
     with pytest.raises(SockseekError, match=f"code de sortie {code}"):
-        download(WANTED, tmp_path, tmp_path, Path("/x"), "u", "p", AcquisitionConfig(), run)
+        download(WANTED, tmp_path, tmp_path, Path("/x"), "u", "p", TelechargementConfig(), run)
 
 
 def test_a_stuck_sockseek_is_stopped_and_its_finished_tracks_kept(
@@ -126,7 +126,7 @@ def test_a_stuck_sockseek_is_stopped_and_its_finished_tracks_kept(
         _index(tmp_path, [f"{tmp_path}/111.mp3,A Certain Ratio,,Crystal,173,0,1,0"])
         raise subprocess.TimeoutExpired(list(args), timeout)
 
-    cfg = AcquisitionConfig()
+    cfg = TelechargementConfig()
     with caplog.at_level(logging.WARNING):
         out = download(WANTED, tmp_path, tmp_path, Path("/x"), "u", "p", cfg, stuck)
 
@@ -146,7 +146,7 @@ def test_a_stuck_sockseek_is_stopped_and_its_finished_tracks_kept(
     ],
 )
 def test_time_limit_follows_the_search_pace(n_wanted: int, limit: float) -> None:
-    cfg = AcquisitionConfig(searches_per_time=10, searches_renew_s=220)
+    cfg = TelechargementConfig(recherches_par_fenetre=10, fenetre_recherches_s=220)
     assert time_limit(n_wanted, cfg) == limit
 
 

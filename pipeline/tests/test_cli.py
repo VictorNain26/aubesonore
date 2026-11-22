@@ -50,7 +50,7 @@ class FakeDeezer:
 def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     cfg = tmp_path / "config"
     cfg.mkdir()
-    (cfg / "editorial.toml").write_text("[library]\nduration_tolerance_s = 3\n")
+    (cfg / "editorial.toml").write_text("[bibliotheque]\necart_duree_s = 3\n")
     settings = Settings(
         _env_file=None,
         plex_token="tok",
@@ -307,12 +307,12 @@ def _stages(env: Path) -> list[tuple[str, bool, dict[str, object]]]:
 def test_favoris_without_an_account_says_so(env: Path) -> None:
     res = runner.invoke(commandes.app, ["favoris"])
     assert res.exit_code == 0, res.output
-    assert "aucun compte configuré (nouveautes.hypem_favorites_user)" in res.output
+    assert "aucun compte configuré (nouveautes.compte_favoris_hypem)" in res.output
     assert _stages(env) == [("favoris", True, {"compte": "aucun"})]
 
 
 def test_favoris_unreadable_fails_and_reports(env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    (env / "config" / "editorial.toml").write_text('[nouveautes]\nhypem_favorites_user = "u"\n')
+    (env / "config" / "editorial.toml").write_text('[nouveautes]\ncompte_favoris_hypem = "u"\n')
 
     def down(*a: object) -> None:
         raise HypemUnavailable("HTTP 503")

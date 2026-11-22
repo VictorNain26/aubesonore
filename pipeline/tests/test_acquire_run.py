@@ -6,14 +6,14 @@ import numpy as np
 import pytest
 
 import radio.telechargement.telecharger as run_mod
-from radio.socle.config import AcquisitionConfig
+from radio.socle.config import TelechargementConfig
 from radio.socle.media import Probe, Tags
 from radio.sources.deezer import DeezerAlbum, DeezerError, DeezerTrack, DeezerUnavailable, TrackPage
 from radio.telechargement.sockseek import SockseekError
 from radio.telechargement.telecharger import acquire_pass, pending
 from tests.model_factory import NOW, add_vote, make_model_db, serve_scores
 
-CFG = AcquisitionConfig(max_per_pass=4, max_attempts=2)
+CFG = TelechargementConfig(max_par_passe=4, tentatives_max=2)
 
 
 class FakeDeezer:
@@ -105,7 +105,7 @@ def test_acquire_prepares_verified_files_and_retries_failures(
     conn = make_model_db(tmp_path)
     serve_scores(conn)
     first = pending(conn, CFG).tids
-    assert len(first) == 4  # max_per_pass, la dernière fournée et les mieux notés d'abord
+    assert len(first) == 4  # max_par_passe, la dernière fournée et les mieux notés d'abord
     ok, wrong, missing = first[0], first[1], first[2:]
     fake_audio[wrong] = 0.55  # Chromaprint : un autre morceau
 
@@ -122,7 +122,7 @@ def test_acquire_prepares_verified_files_and_retries_failures(
     _pass(conn, tmp_path, set(), 2)
     rows = dict(conn.execute("SELECT deezer_track_id, attempts FROM acquisitions").fetchall())
     assert rows[wrong] == 2 and rows[ok] == 1
-    assert wrong not in pending(conn, CFG).tids  # abandonné après max_attempts
+    assert wrong not in pending(conn, CFG).tids  # abandonné après tentatives_max
 
 
 def _artist(conn: Any, tid: int) -> int:
@@ -148,7 +148,7 @@ def test_one_title_per_artist_enters_and_the_next_waits_its_turn(
     # waiting title is not counted.
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    cfg = AcquisitionConfig(max_per_pass=100, max_attempts=2)
+    cfg = TelechargementConfig(max_par_passe=100, tentatives_max=2)
     first = pending(conn, cfg)
     artists = [_artist(conn, t) for t in first.tids]
     assert len(artists) == len(set(artists)) and first.waiting > 0

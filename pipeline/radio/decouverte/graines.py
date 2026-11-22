@@ -1,7 +1,7 @@
 """Graines : tirage pondéré sans remise parmi les artistes de la bibliothèque.
 
 Poids d'un artiste : 1 + log(1 + ses écoutes), plafonné à 4 ; chacun garde une chance. Un artiste
-tiré lors d'une passe terminée n'est plus tiré pendant `seed_cooldown_days`. Une passe n'est
+tiré lors d'une passe terminée n'est plus tiré pendant `repos_graine_jours`. Une passe n'est
 terminée (graines « utilisées ») que si elle a réussi en entier ; interrompue, elle reprend avec
 les mêmes graines.
 """
@@ -14,7 +14,7 @@ import numpy as np
 
 from radio.bibliotheque.artistes import LibraryArtist
 from radio.bibliotheque.poids import play_weight
-from radio.socle.config import DiscoverConfig
+from radio.socle.config import DecouverteConfig
 
 
 @dataclass(frozen=True)
@@ -53,7 +53,7 @@ def draw_seeds(
 def start_run(
     conn: sqlite3.Connection,
     artists: list[LibraryArtist],
-    cfg: DiscoverConfig,
+    cfg: DecouverteConfig,
     now: datetime,
     rng: np.random.Generator,
 ) -> Run:
@@ -70,7 +70,7 @@ def start_run(
         seeds = [by_id[i] for i in seed_ids if i in by_id]
         return Run(running[0], seeds, resumed=True, n_dropped=len(seed_ids) - len(seeds))
     seeds = draw_seeds(
-        artists, recently_used(conn, now, cfg.seed_cooldown_days), cfg.seeds_per_run, rng
+        artists, recently_used(conn, now, cfg.repos_graine_jours), cfg.graines_par_fournee, rng
     )
     with conn:
         cur = conn.execute(

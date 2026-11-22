@@ -12,7 +12,7 @@ from radio.decouverte.favoris import favorites_pass
 from radio.decouverte.nouveautes import fresh_pass
 from radio.empreintes.effnet import DIM, MODEL_TAG, to_blob
 from radio.gout.modele import FavoritesRetained, favorites_retained, rescore, train
-from radio.socle.config import FreshConfig, ModelConfig
+from radio.socle.config import GoutConfig, NouveautesConfig
 from radio.sources.deezer import DeezerTrack
 from radio.sources.hypem import API, HypemClient, HypemNotFound, HypemTrack
 from tests.factories import make_library
@@ -151,7 +151,7 @@ def test_a_favorite_is_not_a_fresh_title(tmp_path: Path) -> None:
         conn,
         FakeDeezer(),  # type: ignore[arg-type]
         FakeHypem([], popular=[fine]),  # type: ignore[arg-type]
-        FreshConfig(hypem_pages=1, deezer_editorial={}),
+        NouveautesConfig(pages_hypem=1, deezer_editorial={}),
         3,
         NOW,
     )
@@ -162,7 +162,7 @@ def test_a_favorite_is_not_a_fresh_title(tmp_path: Path) -> None:
 def test_the_share_of_favorites_the_model_would_keep(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     seed_run(conn)
-    cfg = ModelConfig(keep_decouvertes=32)
+    cfg = GoutConfig(retenus_decouvertes=32)
     assert train(conn, tmp_path / "models", cfg, NOW).promoted
     rescore(conn, tmp_path / "models", cfg)
     assert favorites_retained(conn, tmp_path / "models") is None  # pas encore de favori

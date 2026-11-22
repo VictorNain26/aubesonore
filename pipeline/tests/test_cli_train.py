@@ -17,7 +17,7 @@ runner = CliRunner()
 def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     cfg = tmp_path / "config"
     cfg.mkdir()
-    (cfg / "editorial.toml").write_text("[model]\nkeep_decouvertes = 32\n")
+    (cfg / "editorial.toml").write_text("[gout]\nretenus_decouvertes = 32\n")
     settings = Settings(_env_file=None, RADIO_DATA_DIR=tmp_path / "data", RADIO_CONFIG_DIR=cfg)
     monkeypatch.setattr(commandes.commun, "_settings", lambda: settings)
     return tmp_path
@@ -79,7 +79,7 @@ def test_train_learns_a_corrected_vote(env: Path) -> None:
 
 
 def test_train_reports_the_news_kept_off_air_by_the_floor(env: Path) -> None:
-    (env / "config" / "editorial.toml").write_text("[model]\nmin_score_nouveautes = 0.5\n")
+    (env / "config" / "editorial.toml").write_text("[gout]\nplancher_nouveautes = 0.5\n")
     conn = make_model_db(env / "data")
     seed_run(conn)
     # Les 12 artistes rejetés (3000 à 3011) deviennent des nouveautés : toutes sous le plancher.

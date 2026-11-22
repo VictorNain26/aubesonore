@@ -1,7 +1,7 @@
 import sqlite3
 from pathlib import Path
 
-from radio.socle.config import FreshConfig
+from radio.socle.config import NouveautesConfig
 from radio.votes.suivi import load_suivi, suivi_lines
 from tests.model_factory import add_vote, make_model_db, serve_scores
 
@@ -33,7 +33,7 @@ def test_the_flow_of_each_source_from_batch_to_antenna(tmp_path: Path) -> None:
         "'antenne/1.mp3', 'd', 'd')"
     )
     conn.commit()
-    s = load_suivi(conn, FreshConfig(hypem_pages=0, deezer_editorial={"jazz": 129}))
+    s = load_suivi(conn, NouveautesConfig(pages_hypem=0, deezer_editorial={"jazz": 129}))
     flows = {f.key: f for f in s.flows}
     assert s.run_id == 2
     v = flows["voisin"]
@@ -56,7 +56,9 @@ def test_what_needs_adjusting_is_named_with_its_rule(tmp_path: Path) -> None:
         [(a * 100 + k,) for a in range(2006, 2009) for k in range(4)][:10],
     )
     conn.commit()
-    s = load_suivi(conn, FreshConfig(hypem_pages=3, deezer_editorial={"jazz": 129, "rock": 152}))
+    s = load_suivi(
+        conn, NouveautesConfig(pages_hypem=3, deezer_editorial={"jazz": 129, "rock": 152})
+    )
     assert (
         "deezer_editorial · jazz : 2 oui sur 24 votes d'examen, nettement sous le reste "
         "(90 %) : à retirer ou remplacer" in s.to_adjust

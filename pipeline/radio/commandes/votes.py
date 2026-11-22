@@ -34,10 +34,10 @@ def tirage() -> None:
             sel = select_batch(
                 conn,
                 np.random.default_rng(),
-                v.exam_per_selection,
-                v.lesson_per_selection,
+                v.examen_par_tirage,
+                v.lecon_par_tirage,
                 _now(),
-                floor=editorial.model.floor,
+                floor=editorial.gout.planchers,
             )
         except PendingBallotsError as e:
             _record(conn, "tirage", True, {"en attente de vote": e.n})

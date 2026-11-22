@@ -217,7 +217,8 @@ def one_per_artist(
 ) -> None:
     """Un artiste à plusieurs titres n'en garde qu'un : un « oui » d'abord, puis un titre en
     rotation, puis la note du modèle, puis le plus récent. Les autres sortent ; un repère sorti
-    n'est pas retiré avant `rest_weeks`. Un titre en cours ou en file attend la passe suivante."""
+    n'est pas tiré de nouveau avant `repos_semaines`. Un titre en cours ou en file attend la passe
+    suivante."""
     rows = conn.execute(
         """
         SELECT n.deezer_track_id, n.path, n.song_id, n.origin, t.deezer_artist_id FROM antenne n
@@ -258,7 +259,7 @@ def end_first_stay(
     now: datetime,
     rep: AntenneReport,
 ) -> None:
-    """Après `stay_weeks` semaines, la part `promotion_share` la meilleure d'une cohorte (un
+    """Après `sejour_semaines` semaines, la part `part_promue` la meilleure d'une cohorte (un
     « oui » d'abord, puis la note du modèle) part au repos avant le fond ; le reste sort. Un
     titre dont l'artiste a un autre titre à l'antenne n'est pas promu : il est compté et sa place
     va au suivant de la cohorte."""
@@ -271,7 +272,7 @@ def end_first_stay(
         WHERE n.categorie IN ('nouveautes', 'decouvertes') AND n.since <= ?
         ORDER BY v.deezer_track_id IS NULL, COALESCE(s.score, 0) DESC, n.deezer_track_id
         """,
-        (_weeks_ago(now, cfg.stay_weeks),),
+        (_weeks_ago(now, cfg.sejour_semaines),),
     ).fetchall()
     due = [(str(p), int(a)) for p, song, a in rows if song not in busy]
     leaving = {p for p, _ in due}
@@ -282,7 +283,7 @@ def end_first_stay(
         )
         if p not in leaving
     }
-    k = round(cfg.promotion_share * len(due))
+    k = round(cfg.part_promue * len(due))
     promoted: list[str] = []
     for path, artist in due:
         if len(promoted) == k:
@@ -304,11 +305,11 @@ def expire(
     now: datetime,
     rep: AntenneReport,
 ) -> None:
-    """Un recurrent sort pour de bon `life_weeks` semaines après sa première diffusion."""
+    """Un recurrent sort pour de bon `vie_semaines` semaines après sa première diffusion."""
     rows = conn.execute(
         "SELECT path, song_id FROM antenne WHERE categorie IN ('fond', 'repos') "
         "AND published_at <= ? ORDER BY deezer_track_id",
-        (_weeks_ago(now, cfg.life_weeks),),
+        (_weeks_ago(now, cfg.vie_semaines),),
     ).fetchall()
     rep.n_expired = _remove(conn, station, [str(p) for p, s in rows if s not in busy], rep)
 
@@ -322,14 +323,14 @@ def platoon(
     now: datetime,
     rep: AntenneReport,
 ) -> None:
-    """Auto-platooning (MusicMaster) : un recurrent présent au fond depuis `stay_weeks` semaines
-    part au repos ; les places libres reviennent à ceux qui se reposent depuis le plus
-    longtemps, au moins `rest_weeks` semaines."""
+    """Auto-platooning (MusicMaster) : un recurrent présent au fond depuis `sejour_semaines`
+    semaines part au repos ; les places libres reviennent à ceux qui se reposent depuis le plus
+    longtemps, au moins `repos_semaines` semaines."""
     stamp = now.isoformat()
     tired = conn.execute(
         "SELECT path, song_id FROM antenne WHERE categorie = 'fond' AND since <= ? "
         "ORDER BY since, deezer_track_id",
-        (_weeks_ago(now, cfg.stay_weeks),),
+        (_weeks_ago(now, cfg.sejour_semaines),),
     ).fetchall()
     rep.n_rested = _move(
         conn, station, [str(p) for p, s in tired if s not in busy], REST, "repos", stamp, rep
@@ -338,7 +339,7 @@ def platoon(
     rested = conn.execute(
         "SELECT path FROM antenne WHERE categorie = 'repos' AND since <= ? "
         "ORDER BY since, deezer_track_id LIMIT ?",
-        (_weeks_ago(now, cfg.rest_weeks), max(0, stock - on_air)),
+        (_weeks_ago(now, cfg.repos_semaines), max(0, stock - on_air)),
     ).fetchall()
     rep.n_returned = _move(conn, station, [str(r[0]) for r in rested], FOLDER, "fond", stamp, rep)
 
@@ -351,12 +352,13 @@ def _retire_references(
     now: datetime,
     rep: AntenneReport,
 ) -> None:
-    """Les repères restés `stay_weeks` semaines sortent, sauf ceux en cours ou en file d'attente ;
+    """Les repères restés `sejour_semaines` semaines sortent, sauf ceux en cours ou en file
+    d'attente ;
     leur sortie est datée pour le repos."""
     tired = conn.execute(
         "SELECT deezer_track_id, path, song_id FROM antenne WHERE categorie = 'reperes' "
         "AND since <= ? ORDER BY deezer_track_id",
-        (_weeks_ago(now, cfg.stay_weeks),),
+        (_weeks_ago(now, cfg.sejour_semaines),),
     ).fetchall()
     out = [(int(t), str(p)) for t, p, s in tired if s not in busy]
     removed = _remove(conn, station, [p for _, p in out], rep)
@@ -375,7 +377,7 @@ def _reference_pool(
     conn: sqlite3.Connection, cfg: AntenneConfig, now: datetime, root: PurePosixPath
 ) -> list[Any]:
     """Les titres Plex appariés qui peuvent devenir repères : lisibles sous `root`, pas à
-    l'antenne, reposés depuis `rest_weeks` semaines, jamais votés « non »."""
+    l'antenne, reposés depuis `repos_semaines` semaines, jamais votés « non »."""
     return [
         r
         for r in conn.execute(
@@ -391,7 +393,7 @@ def _reference_pool(
               AND m.deezer_track_id NOT IN (SELECT deezer_track_id FROM votes WHERE vote = 'non')
             GROUP BY m.deezer_track_id ORDER BY m.deezer_track_id
             """,
-            (_weeks_ago(now, cfg.rest_weeks),),
+            (_weeks_ago(now, cfg.repos_semaines),),
         )
         if _under(root, str(r[3]))
     ]
@@ -410,15 +412,15 @@ def rotate_references(
     now: datetime,
     rep: AntenneReport,
 ) -> None:
-    """Les repères tournent aussi : chacun reste `stay_weeks` semaines, puis cède sa place à un
-    autre, tiré selon l'écoute parmi ceux qui ne sont pas passés depuis `rest_weeks` semaines.
-    Au plus `stock / stay_weeks` entrées par passe : le stock se remplit au rythme où il se
+    """Les repères tournent aussi : chacun reste `sejour_semaines` semaines, puis cède sa place à un
+    autre, tiré selon l'écoute parmi ceux qui ne sont pas passés depuis `repos_semaines` semaines.
+    Au plus `stock / sejour_semaines` entrées par passe : le stock se remplit au rythme où il se
     renouvelle. Un tirage dont l'artiste a déjà un titre à l'antenne, ou dont l'artiste est
     inconnu, est écarté et compté. Le fichier Plex n'est que lu ; la copie préparée est déposée
     puis effacée."""
     _retire_references(conn, station, cfg, busy, now, rep)
     on_air = conn.execute("SELECT COUNT(*) FROM antenne WHERE categorie = 'reperes'").fetchone()[0]
-    need = min(stock - on_air, math.ceil(stock / cfg.stay_weeks))
+    need = min(stock - on_air, math.ceil(stock / cfg.sejour_semaines))
     if need <= 0:
         return
     pool = _reference_pool(conn, cfg, now, root)

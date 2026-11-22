@@ -41,7 +41,7 @@ def decouverte() -> None:
                 conn,
                 DeezerClient(),
                 lastfm,
-                editorial.discover,
+                editorial.decouverte,
                 datetime.now(UTC),
                 np.random.default_rng(),
             )
@@ -90,7 +90,7 @@ def nouveautes() -> None:
                 DeezerClient(),
                 HypemClient(),
                 editorial.nouveautes,
-                editorial.library.duration_tolerance_s,
+                editorial.bibliotheque.ecart_duree_s,
                 _now(),
             )
         except NoBatchError:
@@ -133,12 +133,12 @@ def favoris() -> None:
     """Relit les favoris Hype Machine de Victor : déjà aimés, ils ne sont plus des découvertes."""
     settings = commun._settings()
     editorial = _editorial(settings)
-    user = editorial.nouveautes.hypem_favorites_user
+    user = editorial.nouveautes.compte_favoris_hypem
     with _db(settings) as conn:
         if user is None:
             _record(conn, "favoris", True, {"compte": "aucun"})
             _echo(
-                ["Favoris Hype Machine : aucun compte configuré (nouveautes.hypem_favorites_user)"]
+                ["Favoris Hype Machine : aucun compte configuré (nouveautes.compte_favoris_hypem)"]
             )
             return
         try:
@@ -147,7 +147,7 @@ def favoris() -> None:
                 DeezerClient(),
                 HypemClient(),
                 user,
-                editorial.library.duration_tolerance_s,
+                editorial.bibliotheque.ecart_duree_s,
                 _now(),
             )
         except (HypemError, HypemUnavailable) as e:
@@ -189,7 +189,7 @@ def negatifs() -> None:
     with _exclusive(), _db(settings) as conn:
         try:
             rep = import_negatives(
-                conn, DeezerClient(), negatives, editorial.discover.tracks_per_neighbour, _now()
+                conn, DeezerClient(), negatives, editorial.decouverte.titres_par_voisin, _now()
             )
         except DeezerUnavailable as e:
             _fail(_unavailable(e), 1)

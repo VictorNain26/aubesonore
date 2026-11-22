@@ -11,7 +11,7 @@ import numpy as np
 import numpy.typing as npt
 from numpy.lib.stride_tricks import sliding_window_view
 
-from radio.socle.config import AcquisitionConfig
+from radio.socle.config import TelechargementConfig
 from radio.socle.media import Probe, run_tool
 
 Fingerprint = npt.NDArray[np.uint32]
@@ -19,13 +19,13 @@ Fingerprint = npt.NDArray[np.uint32]
 _FADE_FRAMES = 16
 
 
-def check(p: Probe, expected_s: int, cfg: AcquisitionConfig) -> str | None:
+def check(p: Probe, expected_s: int, cfg: TelechargementConfig) -> str | None:
     """Raison du refus, ou None."""
     if p.codec not in ("mp3", "flac"):
         return f"format {p.codec or 'inconnu'}"
     if abs(p.duration_s - expected_s) > 3:
         return "durée"
-    if p.codec == "mp3" and (p.kbps is None or p.kbps < cfg.min_mp3_kbps):
+    if p.codec == "mp3" and (p.kbps is None or p.kbps < cfg.debit_mp3_min_kbps):
         return "débit"
     return None
 

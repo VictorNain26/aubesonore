@@ -15,7 +15,7 @@ class BackupError(Exception):
     """La copie n'est pas une base saine."""
 
 
-def backup(db: Path, models: Path, dest: Path, today: date, keep_days: int) -> Path:
+def backup(db: Path, models: Path, dest: Path, today: date, jours_gardes: int) -> Path:
     # The copy is made beside the days and enters its day only once sound: a refused copy leaves
     # nothing, so the newest day stays one to restore, even a sound copy made earlier today.
     dest.mkdir(parents=True, exist_ok=True)
@@ -35,7 +35,7 @@ def backup(db: Path, models: Path, dest: Path, today: date, keep_days: int) -> P
         partial.unlink(missing_ok=True)
     if models.exists():
         shutil.copytree(models, target / "models", dirs_exist_ok=True)
-    oldest = (today - timedelta(days=keep_days)).isoformat()
+    oldest = (today - timedelta(days=jours_gardes)).isoformat()
     for old in dest.iterdir():
         if old.is_dir() and old.name < oldest:
             shutil.rmtree(old)

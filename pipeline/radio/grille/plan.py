@@ -256,7 +256,7 @@ def plan_day(
 
     def allowed(t: Titre, now: float, hour_start: float) -> bool:
         last = clock[t.tid]
-        rested = last is None or now - last >= grille.repos * turn[t.categorie]
+        rested = last is None or now - last >= grille.ecart_min * turn[t.categorie]
         return rested and hour_start - artist_clock.get(t.artist, -math.inf) >= separation
 
     def score(t: Titre, now: float, target: Vector) -> float:

@@ -71,7 +71,7 @@ def _plays(conn: sqlite3.Connection) -> dict[int, int]:
     }
 
 
-def build_labels(conn: sqlite3.Connection, table: SignalTable, exam_window: int) -> Labels:
+def build_labels(conn: sqlite3.Connection, table: SignalTable, fenetre_examen: int) -> Labels:
     index = {int(t): i for i, t in enumerate(table.track_ids)}
     votes = conn.execute(
         """
@@ -81,7 +81,7 @@ def build_labels(conn: sqlite3.Connection, table: SignalTable, exam_window: int)
     ).fetchall()
     unmeasured = sum(1 for v in votes if v["tid"] not in index)
     exam_ids = {v["tid"] for v in votes if v["kind"] == "exam"}
-    exam = [v for v in votes if v["kind"] == "exam" and v["tid"] in index][-exam_window:]
+    exam = [v for v in votes if v["kind"] == "exam" and v["tid"] in index][-fenetre_examen:]
     lesson = {v["tid"]: v["vote"] for v in votes if v["kind"] == "lesson" and v["tid"] in index}
     keys = {
         int(r[0]): str(r[1]) for r in conn.execute("SELECT deezer_track_id, dedupe_key FROM tracks")
@@ -138,11 +138,11 @@ def build_labels(conn: sqlite3.Connection, table: SignalTable, exam_window: int)
     return Labels(train, exam_set, unmeasured, excluded, len(votes))
 
 
-def weights(ds: Dataset, weak_weight: float) -> Floats:
+def weights(ds: Dataset, poids_negatifs_faibles: float) -> Floats:
     """Négatifs faibles sous-pondérés, puis chaque classe ramenée à un poids total de 1 : le C
     de la régression ne dépend pas de la taille de la bibliothèque."""
     w = ds.base_weights.copy()
-    w[ds.categories == WEAK] *= weak_weight
+    w[ds.categories == WEAK] *= poids_negatifs_faibles
     pos, neg = w[ds.labels == 1].sum(), w[ds.labels == 0].sum()
     if pos == 0 or neg == 0:
         raise MissingExamplesError("il faut des exemples positifs et négatifs")

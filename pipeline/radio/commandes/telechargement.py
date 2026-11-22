@@ -25,7 +25,7 @@ from radio.telechargement.telecharger import acquire_pass
 def telechargement() -> None:
     """Télécharge les titres retenus sur Soulseek, prouve leur identité et les prépare."""
     settings = commun._settings()
-    cfg = _editorial(settings).acquisition
+    cfg = _editorial(settings).telechargement
     if not settings.soulseek_user or settings.soulseek_password is None:
         _fail("SOULSEEK_USER et SOULSEEK_PASSWORD doivent être définis dans .env", 2)
     if settings.runtime_dir is None:
@@ -51,7 +51,7 @@ def telechargement() -> None:
         except SockseekError as e:
             _fail(f"Sockseek en échec ({e}) : aucune tentative comptée, relancer plus tard", 1)
         rate = rep.n_ready / rep.n_attempted if rep.n_attempted else 1.0
-        rate_ok = rep.n_attempted < cfg.min_attempts_for_rate or rate >= cfg.min_success_rate
+        rate_ok = rep.n_attempted < cfg.tentatives_min_pour_taux or rate >= cfg.taux_reussite_min
         _record(
             conn,
             "telechargement",
@@ -83,4 +83,4 @@ def telechargement() -> None:
             1,
         )
     if not rate_ok:
-        _fail(f"Taux d'acquisition sous {_rate(cfg.min_success_rate)} : à examiner", 1)
+        _fail(f"Taux d'acquisition sous {_rate(cfg.taux_reussite_min)} : à examiner", 1)

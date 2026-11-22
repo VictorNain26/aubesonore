@@ -74,7 +74,7 @@ def test_interrupted_sockseek_fails_the_stage(
 def test_success_rate_floor_comes_from_editorial(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _env(tmp_path, monkeypatch, "[acquisition]\nmin_attempts_for_rate = 3\n")
+    _env(tmp_path, monkeypatch, "[telechargement]\ntentatives_min_pour_taux = 3\n")
     rep = AcquireReport(n_wanted=3, failures=Counter({"aucun résultat": 3}))
     monkeypatch.setattr(commandes.telechargement, "acquire_pass", _report(rep))
     assert runner.invoke(commandes.app, ["telechargement"]).exit_code == 1

@@ -18,7 +18,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from radio.socle.config import AcquisitionConfig
+from radio.socle.config import TelechargementConfig
 
 logger = logging.getLogger(__name__)
 
@@ -67,12 +67,12 @@ def run_command(args: Sequence[str], timeout: float, log: Path) -> int:
         ).returncode
 
 
-def time_limit(n_wanted: int, cfg: AcquisitionConfig) -> float:
+def time_limit(n_wanted: int, cfg: TelechargementConfig) -> float:
     """Deux fois le temps que le rythme de recherche impose à la liste, plus une demi-heure pour
     les derniers téléchargements : au-delà, Sockseek est bloqué, et sans limite il gèlerait la
     passe jusqu'à son délai de 12 h."""
-    windows = math.ceil(n_wanted / cfg.searches_per_time)
-    return 2.0 * windows * cfg.searches_renew_s + 1800.0
+    windows = math.ceil(n_wanted / cfg.recherches_par_fenetre)
+    return 2.0 * windows * cfg.fenetre_recherches_s + 1800.0
 
 
 def _write_config(path: Path, user: str, password: str) -> None:
@@ -89,7 +89,7 @@ def download(
     binary: Path,
     user: str,
     password: str,
-    cfg: AcquisitionConfig,
+    cfg: TelechargementConfig,
     run: Runner = run_command,
 ) -> list[Outcome]:
     listing = workdir / "retenus.csv"
@@ -123,9 +123,9 @@ def download(
                 "--concurrent-searches",
                 "1",
                 "--searches-per-time",
-                str(cfg.searches_per_time),
+                str(cfg.recherches_par_fenetre),
                 "--searches-renew-time",
-                str(cfg.searches_renew_s),
+                str(cfg.fenetre_recherches_s),
             ],
             limit,
             log,

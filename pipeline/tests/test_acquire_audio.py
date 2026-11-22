@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from radio.socle import media
-from radio.socle.config import AcquisitionConfig
+from radio.socle.config import TelechargementConfig
 from radio.socle.media import (
     Cue,
     Probe,
@@ -21,7 +21,7 @@ from radio.socle.media import (
 )
 from radio.telechargement.controle import check, fingerprint, similarity
 
-CFG = AcquisitionConfig()
+CFG = TelechargementConfig()
 TOOLS = all(shutil.which(t) for t in ("ffmpeg", "ffprobe", "fpcalc", "rsgain"))
 
 
@@ -86,8 +86,8 @@ def test_the_preview_identifies_its_own_file_only(full: Path, tmp_path: Path) ->
     # L'extrait Deezer : 30 s prises au milieu du titre, en MP3.
     _ffmpeg("-ss", "20", "-t", "30", "-i", str(full), str(excerpt))
     preview = fingerprint(excerpt)
-    assert similarity(fingerprint(full), preview) >= CFG.identity_threshold
-    assert similarity(fingerprint(other), preview) < CFG.identity_threshold
+    assert similarity(fingerprint(full), preview) >= CFG.seuil_identite
+    assert similarity(fingerprint(other), preview) < CFG.seuil_identite
 
 
 @needs_tools

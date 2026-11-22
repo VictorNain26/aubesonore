@@ -20,7 +20,7 @@ from radio.bibliotheque.artistes import library_artists, library_names
 from radio.decouverte.candidats import add_candidates, add_tracks, keep_tracks
 from radio.decouverte.graines import finish_run, start_run
 from radio.decouverte.voisins import neighbours
-from radio.socle.config import DiscoverConfig
+from radio.socle.config import DecouverteConfig
 from radio.sources.deezer import DeezerClient, DeezerError, DeezerUnavailable
 from radio.sources.lastfm import LastfmClient, LastfmError, LastfmUnavailable
 
@@ -49,7 +49,7 @@ def discover_pass(
     conn: sqlite3.Connection,
     deezer: DeezerClient,
     lastfm: LastfmClient,
-    cfg: DiscoverConfig,
+    cfg: DecouverteConfig,
     now: datetime,
     rng: np.random.Generator,
 ) -> DiscoverReport:
@@ -67,7 +67,7 @@ def discover_pass(
         logger.info("discover: seed %d/%d", i, len(run.seeds))
         try:
             found = neighbours(
-                seed, deezer, lastfm, cfg.lastfm_similar_limit, exclude_ids, exclude_names
+                seed, deezer, lastfm, cfg.similaires_lastfm, exclude_ids, exclude_names
             )
         except (DeezerUnavailable, LastfmUnavailable):
             logger.warning("discover: stopped at seed %s (%d)", seed.name, seed.deezer_artist_id)
@@ -84,7 +84,7 @@ def discover_pass(
             seen.add(n.id)
             rep.n_neighbours += 1
             try:
-                top = deezer.top(n.id, cfg.tracks_per_neighbour)
+                top = deezer.top(n.id, cfg.titres_par_voisin)
             except DeezerUnavailable:
                 logger.warning("discover: stopped at neighbour %s (%d)", n.name, n.id)
                 raise

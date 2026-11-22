@@ -15,12 +15,12 @@ import numpy as np
 from radio.bibliotheque.artistes import register_library
 from radio.decouverte.candidats import add_tracks
 from radio.empreintes.effnet import DIM, MODEL_TAG, to_blob
-from radio.socle.config import ModelConfig
+from radio.socle.config import GoutConfig
 from radio.socle.db import connect
 from radio.sources.deezer import DeezerTrack
 
 NOW = "2026-09-25T00:00:00+00:00"
-NO_FLOOR = ModelConfig().floor
+NO_FLOOR = GoutConfig().planchers
 LIKED = np.eye(DIM, dtype=np.float32)[0]
 DISLIKED = np.eye(DIM, dtype=np.float32)[1]
 

@@ -4,7 +4,7 @@ docs/recherches/2026-09-30-modele-audio-seul.md).
 Chaque fournée de candidats est classée famille par famille (découvertes, nouveautés) ; les
 mieux notés de chaque famille sont retenus, en nombre fixé par la grille d'antenne
 (docs/recherches/2026-10-02-cycle-de-vie.md), et jamais sous le plancher de score de leur famille
-(décision du 2026-10-19 pour les nouveautés : `min_score_nouveautes`).
+(décision du 2026-10-19 pour les nouveautés : `plancher_nouveautes`).
 Seuls les votes d'examen jugent : un nouveau modèle n'est mis en service que si son AUC d'examen
 n'est pas inférieure à celle du modèle en service.
 """
@@ -30,7 +30,7 @@ from radio.decouverte.familles import FAMILY
 from radio.empreintes.effnet import MODEL_TAG
 from radio.empreintes.table import SignalTable, load_signals
 from radio.gout.exemples import Dataset, build_labels, weights
-from radio.socle.config import ModelConfig
+from radio.socle.config import GoutConfig
 
 Floats = npt.NDArray[np.float64]
 Ints = npt.NDArray[np.int64]
@@ -63,12 +63,12 @@ def auc(labels: Ints, scores: Floats) -> float | None:
     return float(roc_auc_score(labels, scores))
 
 
-def fit(table: SignalTable, ds: Dataset, cfg: ModelConfig) -> Pipeline:
+def fit(table: SignalTable, ds: Dataset, cfg: GoutConfig) -> Pipeline:
     model = make_pipeline(StandardScaler(), LogisticRegression(C=cfg.c, max_iter=3000))
     return model.fit(
         table.audio[ds.rows],
         ds.labels,
-        logisticregression__sample_weight=weights(ds, cfg.weak_weight),
+        logisticregression__sample_weight=weights(ds, cfg.poids_negatifs_faibles),
     )
 
 
@@ -235,11 +235,11 @@ def _decide(
     return None
 
 
-def train(conn: sqlite3.Connection, models_dir: Path, cfg: ModelConfig, now: str) -> TrainReport:
+def train(conn: sqlite3.Connection, models_dir: Path, cfg: GoutConfig, now: str) -> TrainReport:
     # Lue avant les exemples : un vote arrivé pendant l'entraînement relance le suivant.
     digest = votes_digest(conn)
     table = load_signals(conn)
-    labels = build_labels(conn, table, cfg.exam_window)
+    labels = build_labels(conn, table, cfg.fenetre_examen)
     model = fit(table, labels.train, cfg)
     exam = labels.exam
     new_auc = auc(exam.labels, predict(model, table, exam.rows))
@@ -249,7 +249,7 @@ def train(conn: sqlite3.Connection, models_dir: Path, cfg: ModelConfig, now: str
     verdict = refusal or ("premier modèle" if current is None else "AUC d'examen au moins égale")
     params = {
         "c": cfg.c,
-        "weak_weight": cfg.weak_weight,
+        "poids_negatifs_faibles": cfg.poids_negatifs_faibles,
         "embedding": MODEL_TAG,
         "sklearn": sklearn.__version__,
         "votes": labels.n_votes,
@@ -284,13 +284,13 @@ def train(conn: sqlite3.Connection, models_dir: Path, cfg: ModelConfig, now: str
     )
 
 
-def rescore(conn: sqlite3.Connection, models_dir: Path, cfg: ModelConfig) -> int | None:
+def rescore(conn: sqlite3.Connection, models_dir: Path, cfg: GoutConfig) -> int | None:
     """Note les candidats avec le modèle en service ; renvoie son numéro, None s'il n'y en a pas."""
     current = serving(conn, models_dir)
     if current is None:
         return None
     model_id, model = current
-    write_scores(conn, model_id, model, load_signals(conn), cfg.keep, cfg.floor)
+    write_scores(conn, model_id, model, load_signals(conn), cfg.retenus, cfg.planchers)
     return model_id
 
 

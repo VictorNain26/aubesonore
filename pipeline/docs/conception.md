@@ -60,8 +60,8 @@ techniques (`conn`, `path`, `client`, `retry`) et les noms des outils (`song_id`
 **Les noms, d'aujourd'hui à demain**
 
 Appliqués dans cet ordre, une PR à la fois : le code et les commandes, puis les unités, puis la
-base. Les commandes, les étapes et les paquets portent déjà les leurs ; jusqu'aux PR suivantes,
-les unités, les réglages et la base gardent leurs noms actuels dans ce document.
+base. Les commandes, les étapes, les paquets et les réglages portent déjà les leurs ; jusqu'aux PR
+suivantes, les unités et la base gardent leurs noms actuels dans ce document.
 
 | Aujourd'hui | Demain |
 |---|---|
@@ -155,7 +155,7 @@ familles de sources alimentent chaque fournée, et chaque candidat garde la sien
 - **Voisins** (découverte) : voisins confirmés de tes artistes, leurs titres les plus écoutés.
 - **Nouveautés** : des titres récents choisis par des humains, pour un mélange de découverte et
   de nouveauté (décision de Victor, 2026-10-01).
-  - **Hype Machine**, classement « lastweek » des blogs (`hypem_pages`), retrouvé sur Deezer
+  - **Hype Machine**, classement « lastweek » des blogs (`pages_hypem`), retrouvé sur Deezer
     par la règle stricte de la bibliothèque. L'API v2 n'a pas de documentation publique et
     `api.hypem.com/robots.txt` refuse les robots : usage choisi en connaissance de cause, à
     quelques requêtes par semaine, User-Agent identifié ; une réponse hors format est une
@@ -164,7 +164,7 @@ familles de sources alimentent chaque fournée, et chaque candidat garde la sien
     `deezer_editorial` (depuis le 2026-10-02 : alternative, electro, dance, jazz, classique,
     rock, folk, blues et brésilienne, choisis sur les notes du modèle ; pop, rap, R&B,
     asiatique et soul & funk à l'essai, goûts de Victor ; `recherches/2026-10-02-cycle-de-vie.md`
-    §9), les `tracks_per_album` titres les plus écoutés de chaque album. Le modèle trie titre
+    §9), les `titres_par_album` titres les plus écoutés de chaque album. Le modèle trie titre
     par titre : la K-pop ou le rap grand public d'une sélection ne passent pas la coupure.
     Deezer exclut la musique générée par IA de ses playlists éditoriales (page « AI-generated
     music labelling », consultée le 2026-10-01).
@@ -181,7 +181,7 @@ autres après une vingtaine de votes est retirée ; une autre peut être essayé
 ### 3.2 Favoris Hype Machine
 
 `radio favoris` relit chaque semaine les favoris publics de Victor sur Hype Machine
-(`nouveautes.hypem_favorites_user`, même API v2 que les nouveautés), retrouvés sur Deezer par la
+(`nouveautes.compte_favoris_hypem`, même API v2 que les nouveautés), retrouvés sur Deezer par la
 règle stricte de la bibliothèque. Ils prennent l'origine `favorite` ; la bibliothèque garde la
 priorité.
 
@@ -212,12 +212,12 @@ priorité.
   validation croisée, est 0,727 (`recherches/2026-09-30-modele-audio-seul.md`). Sur l'examen
   d'aujourd'hui (60 votes), le modèle en service a 0,751 (`radio rapport`, 2026-11-22).
 - **Rétention.** Dans chaque fournée, découvertes et nouveautés ont chacune leur coupure : les
-  `keep_decouvertes` et `keep_nouveautes` mieux notées sont retenues (80 et 80). Ces effectifs
+  `retenus_decouvertes` et `retenus_nouveautes` mieux notées sont retenues (80 et 80). Ces effectifs
   découlent de la grille d'antenne : ~70 entrées par semaine et par famille, plus les échecs
   d'acquisition (`recherches/2026-10-02-cycle-de-vie.md` §3 à §5). Un candidat entré depuis dans
   la bibliothèque n'est plus noté : ce n'est plus une découverte.
-- **Plancher des nouveautés.** Au plus `keep_nouveautes`, et jamais une nouveauté notée sous
-  `min_score_nouveautes` (`config/editorial.toml`) : décision du 2026-10-19
+- **Plancher des nouveautés.** Au plus `retenus_nouveautes`, et jamais une nouveauté notée sous
+  `plancher_nouveautes` (`config/editorial.toml`) : décision du 2026-10-19
   (`recherches/2026-10-19-plancher-nouveautes.md`) ; les nouveautés, peu nombreuses, passaient
   presque toutes. Une nouveauté sous le plancher ne prend pas la place de son artiste ; celles
   qu'il écarte sont comptées (`scores.floored`) une par artiste et dans la limite des places
@@ -270,7 +270,7 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
 §2.
 
 1. **Entrée.** Les titres retenus pas encore acquis, la dernière fournée d'abord (une nouveauté
-   vieillit), puis par note, au plus `max_per_pass` (160 : les deux familles d'une fournée ;
+   vieillit), puis par note, au plus `max_par_passe` (160 : les deux familles d'une fournée ;
    un plafond, que le plancher des nouveautés laisse souvent sous-employé, §4), écrits en CSV
    (Artist, Title, Length).
    Un titre voté « non » (examen ou leçon) n'est jamais acquis.
@@ -287,7 +287,7 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
      `$XDG_RUNTIME_DIR`, effacé en fin de commande.
    - Une recherche à la fois, au plus 10 recherches par 220 s.
    - Le pipeline lit `_index.csv` : les échecs sont comptés par raison et ne sont pas relancés
-     avant la passe suivante. Après `max_attempts` tentatives (3), un titre n'est plus retenté.
+     avant la passe suivante. Après `tentatives_max` tentatives (3), un titre n'est plus retenté.
    - **Panne de Sockseek.** Codes de sortie au tag v3.0.5 (`Sockseek.Cli/Program.cs`) : 0 tout
      réussi, 1 au moins un échec, 2 erreur d'usage, 130 annulé. L'index est réécrit à chaque titre
      terminé (`M3uEditor.Update`). Un code autre que 0 ou 1, ou l'absence d'index (connexion
@@ -317,7 +317,7 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
      paires ; la durée seule laissait passer un autre titre du même artiste pour 18 fichiers sur 38.
 4. **Pas de YouTube.** Un titre introuvable reste un échec compté, et on retente à la passe
    suivante.
-5. **Tentatives minimales.** Le taux de fichiers prêts n'est jugé qu'à partir de `min_attempts_for_rate`
+5. **Tentatives minimales.** Le taux de fichiers prêts n'est jugé qu'à partir de `tentatives_min_pour_taux`
    tentatives (`config/editorial.toml`, 20).
 6. **Le port d'écoute de Sockseek reste fermé** tant qu'un taux d'échec ne justifie pas de
    l'ouvrir (premier essai, 2026-09-30 : 10 retenus sur 10 prêts, identité Chromaprint de 0,925 à
@@ -391,14 +391,14 @@ score choisit seulement qui est promu. La passe hebdomadaire applique ces règle
   2026-10-11, cela fait sortir 191 titres (156 découvertes, 35 repères) et en laisse 511, un par
   artiste ; chaque titre passe donc plus souvent, jusqu'à ce que les entrées regarnissent le
   stock.
-- **Fin du premier séjour** (`stay_weeks`, 6 semaines, KEXP) : la part `promotion_share` (12 %)
+- **Fin du premier séjour** (`sejour_semaines`, 6 semaines, KEXP) : la part `part_promue` (12 %)
   la meilleure de la cohorte, un « oui » d'abord puis la note du modèle, part au repos ; le reste
   sort. Un titre dont l'artiste a encore un autre titre à l'antenne (un titre en trop qui jouait
   à la passe et attend la suivante) n'est pas promu : il est compté et sa place va au suivant.
 - **Fond, par auto-platooning** (MusicMaster) : un recurrent présent au fond depuis 6 semaines
   part au repos ; les places libres du fond reviennent à ceux qui se reposent depuis le plus
-  longtemps, au moins `rest_weeks` (12 semaines).
-- **Péremption** (`life_weeks`, 78 semaines, BBC Radio 2) : un recurrent sort pour de bon 18 mois
+  longtemps, au moins `repos_semaines` (12 semaines).
+- **Péremption** (`vie_semaines`, 78 semaines, BBC Radio 2) : un recurrent sort pour de bon 18 mois
   après sa première diffusion.
 - **Repères** : chacun reste 6 semaines, puis cède sa place à un autre, tiré selon l'écoute parmi
   ceux qui ne sont pas passés depuis 12 semaines (`repere_sorties`). Au plus `stock / 6` entrées
@@ -475,7 +475,7 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
   une fenêtre de `marge − 1` fois les passages du jour. Le retard d'un titre se compte en tours de
   sa catégorie (le temps de la jouer en entier) depuis son dernier passage, ou depuis son entrée
   s'il n'a jamais joué.
-  - **Deux règles incassables.** Repos minimum : `repos` (60 %) d'un tour, le conseil de
+  - **Deux règles incassables.** Écart minimal : `ecart_min` (60 %) d'un tour, le conseil de
     MusicMaster, soit ~2,2 jours en nouveautés et découvertes. Séparation d'artiste :
     `separation_h` (3 h), la fenêtre de la règle DMCA et celle de l'anti-doublon de la station.
   - **L'ambiance est un objectif, jamais une condition** (objectifs et règles de GSelector) :
@@ -584,8 +584,8 @@ page de vote :
   (dès 10 tentatives). `radio nouveautes` compte aussi les titres « déjà vus » par source : une
   sélection qui ne se renouvelle pas.
 
-Seuils, par étape : taux d'acquisition au-dessus de `min_success_rate` dès
-`min_attempts_for_rate` tentatives (`editorial.toml`) ; aucune erreur à l'antenne.
+Seuils, par étape : taux d'acquisition au-dessus de `taux_reussite_min` dès
+`tentatives_min_pour_taux` tentatives (`editorial.toml`) ; aucune erreur à l'antenne.
 
 `nouveautes`, `favoris`, `telechargement`, `mesures` et `grille` sont préfixées de `-` dans l'unité :
 une source en panne n'arrête pas la passe, et un échec de `telechargement` n'empêche pas `antenne` de

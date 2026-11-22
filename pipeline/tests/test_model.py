@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from radio.gout.modele import Batch, last_batch, rescore, train, yes_rate
-from radio.socle.config import ModelConfig
+from radio.socle.config import GoutConfig
 from tests.model_factory import NOW, add_vote, as_news, make_model_db
 
 
@@ -59,7 +59,7 @@ def test_each_batch_and_family_keeps_its_best_and_library_titles_are_not_discove
     as_news(conn, 300000, 300599, run_id=1)
     conn.execute("UPDATE tracks SET origin = 'library' WHERE deezer_track_id = 200000")
     conn.commit()
-    cfg = ModelConfig(keep_decouvertes=10, keep_nouveautes=5)
+    cfg = GoutConfig(retenus_decouvertes=10, retenus_nouveautes=5)
     assert train(conn, tmp_path / "models", cfg, NOW).promoted
     rescore(conn, tmp_path / "models", cfg)
     scores = _scores(conn)
@@ -102,7 +102,7 @@ def test_the_floor_keeps_low_scored_news_off_air_and_counts_them_once_per_artist
     # deviennent des nouveautés ; le quota de 100 n'est jamais épuisé.
     as_news(conn, 200000, 200299, run_id=1)
     as_news(conn, 300000, 300599, run_id=1)
-    cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=100, min_score_nouveautes=0.5)
+    cfg = GoutConfig(retenus_decouvertes=100, retenus_nouveautes=100, plancher_nouveautes=0.5)
     assert train(conn, tmp_path / "models", cfg, NOW).promoted
     rescore(conn, tmp_path / "models", cfg)
     kept, floored = _kept_and_floored(conn)
@@ -126,7 +126,7 @@ def test_a_zero_floor_keeps_every_news_artist(tmp_path: Path) -> None:
     _two_batches(conn)
     as_news(conn, 200000, 200299, run_id=1)
     as_news(conn, 300000, 300599, run_id=1)
-    cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=100)
+    cfg = GoutConfig(retenus_decouvertes=100, retenus_nouveautes=100)
     assert train(conn, tmp_path / "models", cfg, NOW).promoted
     rescore(conn, tmp_path / "models", cfg)
     kept, floored = _kept_and_floored(conn)
@@ -137,7 +137,7 @@ def test_no_news_above_the_floor_retains_none_and_names_them_all(tmp_path: Path)
     conn = make_model_db(tmp_path)
     _two_batches(conn)
     as_news(conn, 300000, 300599, run_id=1)
-    cfg = ModelConfig(keep_decouvertes=10, keep_nouveautes=100, min_score_nouveautes=0.5)
+    cfg = GoutConfig(retenus_decouvertes=10, retenus_nouveautes=100, plancher_nouveautes=0.5)
     assert train(conn, tmp_path / "models", cfg, NOW).promoted
     rescore(conn, tmp_path / "models", cfg)
     kept, floored = _kept_and_floored(conn)
@@ -150,7 +150,7 @@ def test_news_stopped_by_an_exhausted_quota_are_not_counted_as_floored(tmp_path:
     _two_batches(conn)
     as_news(conn, 200000, 200299, run_id=1)
     as_news(conn, 300000, 300599, run_id=1)
-    cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=3, min_score_nouveautes=0.5)
+    cfg = GoutConfig(retenus_decouvertes=100, retenus_nouveautes=3, plancher_nouveautes=0.5)
     assert train(conn, tmp_path / "models", cfg, NOW).promoted
     rescore(conn, tmp_path / "models", cfg)
     kept, floored = _kept_and_floored(conn)
@@ -163,7 +163,7 @@ def test_floored_news_are_counted_only_up_to_the_quota_left(tmp_path: Path) -> N
     _two_batches(conn)
     as_news(conn, 200000, 200299, run_id=1)
     as_news(conn, 300000, 300599, run_id=1)
-    cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=5, min_score_nouveautes=0.5)
+    cfg = GoutConfig(retenus_decouvertes=100, retenus_nouveautes=5, plancher_nouveautes=0.5)
     assert train(conn, tmp_path / "models", cfg, NOW).promoted
     rescore(conn, tmp_path / "models", cfg)
     kept, floored = _kept_and_floored(conn)
@@ -175,7 +175,7 @@ def test_a_floored_news_does_not_take_its_artist_away_from_discoveries(tmp_path:
     conn = make_model_db(tmp_path)
     _two_batches(conn)
     as_news(conn, 300000, 300599, run_id=1)
-    cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=100, min_score_nouveautes=0.5)
+    cfg = GoutConfig(retenus_decouvertes=100, retenus_nouveautes=100, plancher_nouveautes=0.5)
     assert train(conn, tmp_path / "models", cfg, NOW).promoted
     rescore(conn, tmp_path / "models", cfg)
     # Le moins bien noté de chaque artiste rejeté redevient une découverte : ses nouveautés,
@@ -209,7 +209,7 @@ def test_last_batch_counts_the_floored_news_of_the_latest_run(tmp_path: Path) ->
     conn = make_model_db(tmp_path)
     _two_batches(conn)
     as_news(conn, 300600, 300899, source="deezer_editorial", detail="electro")
-    cfg = ModelConfig(keep_decouvertes=100, keep_nouveautes=100, min_score_nouveautes=0.5)
+    cfg = GoutConfig(retenus_decouvertes=100, retenus_nouveautes=100, plancher_nouveautes=0.5)
     assert train(conn, tmp_path / "models", cfg, NOW).promoted
     rescore(conn, tmp_path / "models", cfg)
     # Fournée 2 : 12 artistes rejetés de 4 titres ; les nouveautés de 3006 à 3008 sont sous le
@@ -230,7 +230,7 @@ def _exam(conn: Any, no: tuple[int, ...] = EXAM_NO) -> None:
 def test_a_model_as_good_as_the_serving_one_is_promoted(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     _two_batches(conn)
-    cfg = ModelConfig()
+    cfg = GoutConfig()
     train(conn, tmp_path / "models", cfg, NOW)
     _exam(conn)
     # Mêmes exemples : les deux modèles classent l'examen sans faute, AUC 1 contre 1. L'égalité
@@ -244,7 +244,7 @@ def test_a_model_as_good_as_the_serving_one_is_promoted(tmp_path: Path) -> None:
 def test_a_worse_model_is_kept_out_of_service(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     _two_batches(conn)
-    cfg = ModelConfig()
+    cfg = GoutConfig()
     first = train(conn, tmp_path / "models", cfg, NOW)
     _exam(conn)
     # Des leçons qui contredisent tout le goût : « non » aux candidats aimés, « oui » aux rejetés.
@@ -264,7 +264,7 @@ def test_a_worse_model_is_kept_out_of_service(tmp_path: Path) -> None:
 def test_an_exam_without_both_answers_keeps_the_serving_model(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     _two_batches(conn)
-    cfg = ModelConfig()
+    cfg = GoutConfig()
     first = train(conn, tmp_path / "models", cfg, NOW)
     _exam(conn, no=())
     # Que des « oui » : aucune AUC, donc rien ne prouve que le nouveau modèle vaut l'ancien.

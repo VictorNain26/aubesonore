@@ -80,65 +80,65 @@ class Settings(BaseSettings):
         return self.models_dir / "discogs-effnet-bs64-1.pb"
 
 
-class LibraryConfig(BaseModel):
+class BibliothequeConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    duration_tolerance_s: int = Field(default=3, ge=0, le=10)
+    ecart_duree_s: int = Field(default=3, ge=0, le=10)
 
 
-class DiscoverConfig(BaseModel):
+class DecouverteConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    seeds_per_run: int = Field(default=15, ge=1, le=200)
-    seed_cooldown_days: int = Field(default=30, ge=0, le=365)
-    tracks_per_neighbour: int = Field(default=10, ge=1, le=100)
-    lastfm_similar_limit: int = Field(default=100, ge=1, le=250)
+    graines_par_fournee: int = Field(default=15, ge=1, le=200)
+    repos_graine_jours: int = Field(default=30, ge=0, le=365)
+    titres_par_voisin: int = Field(default=10, ge=1, le=100)
+    similaires_lastfm: int = Field(default=100, ge=1, le=250)
 
 
-class FreshConfig(BaseModel):
+class NouveautesConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    hypem_pages: int = Field(default=3, ge=0, le=5)
+    pages_hypem: int = Field(default=3, ge=0, le=5)
     deezer_editorial: dict[str, int] = Field(
         default_factory=lambda: {"alternative": 85, "electro": 106}
     )
-    tracks_per_album: int = Field(default=3, ge=1, le=20)
-    hypem_favorites_user: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,64}$")
+    titres_par_album: int = Field(default=3, ge=1, le=20)
+    compte_favoris_hypem: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{1,64}$")
 
 
-class ModelConfig(BaseModel):
+class GoutConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
     c: float = Field(default=0.1, gt=0)
-    weak_weight: float = Field(default=0.1, ge=0, le=1)
-    keep_decouvertes: int = Field(default=80, ge=1)
-    keep_nouveautes: int = Field(default=80, ge=1)
-    min_score_nouveautes: float = Field(default=0.0, ge=0, le=1)
-    exam_window: int = Field(default=60, ge=10, le=1000)
+    poids_negatifs_faibles: float = Field(default=0.1, ge=0, le=1)
+    retenus_decouvertes: int = Field(default=80, ge=1)
+    retenus_nouveautes: int = Field(default=80, ge=1)
+    plancher_nouveautes: float = Field(default=0.0, ge=0, le=1)
+    fenetre_examen: int = Field(default=60, ge=10, le=1000)
 
     @property
-    def keep(self) -> dict[str, int]:
-        return {"decouvertes": self.keep_decouvertes, "nouveautes": self.keep_nouveautes}
+    def retenus(self) -> dict[str, int]:
+        return {"decouvertes": self.retenus_decouvertes, "nouveautes": self.retenus_nouveautes}
 
     @property
-    def floor(self) -> dict[str, float]:
-        return {"decouvertes": 0.0, "nouveautes": self.min_score_nouveautes}
+    def planchers(self) -> dict[str, float]:
+        return {"decouvertes": 0.0, "nouveautes": self.plancher_nouveautes}
 
 
-class AcquisitionConfig(BaseModel):
+class TelechargementConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    max_per_pass: int = Field(default=160, ge=1, le=5000)
-    max_attempts: int = Field(default=3, ge=1, le=20)
-    min_mp3_kbps: int = Field(default=200, ge=96, le=320)
-    identity_threshold: float = Field(default=0.70, gt=0.5, lt=1)
-    searches_per_time: int = Field(default=10, ge=1, le=34)
-    searches_renew_s: int = Field(default=220, ge=60)
-    min_success_rate: float = Field(default=0.2, ge=0, le=1)
-    min_attempts_for_rate: int = Field(default=20, ge=1)
+    max_par_passe: int = Field(default=160, ge=1, le=5000)
+    tentatives_max: int = Field(default=3, ge=1, le=20)
+    debit_mp3_min_kbps: int = Field(default=200, ge=96, le=320)
+    seuil_identite: float = Field(default=0.70, gt=0.5, lt=1)
+    recherches_par_fenetre: int = Field(default=10, ge=1, le=34)
+    fenetre_recherches_s: int = Field(default=220, ge=60)
+    taux_reussite_min: float = Field(default=0.2, ge=0, le=1)
+    tentatives_min_pour_taux: int = Field(default=20, ge=1)
 
 
 class AntenneConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    stay_weeks: int = Field(default=6, ge=1)
-    rest_weeks: int = Field(default=12, ge=1)
-    life_weeks: int = Field(default=78, ge=1)
-    promotion_share: float = Field(default=0.12, ge=0, le=1)
+    sejour_semaines: int = Field(default=6, ge=1)
+    repos_semaines: int = Field(default=12, ge=1)
+    vie_semaines: int = Field(default=78, ge=1)
+    part_promue: float = Field(default=0.12, ge=0, le=1)
 
 
 Categorie = Literal["nouveautes", "decouvertes", "fond", "reperes"]
@@ -185,7 +185,7 @@ class GrilleConfig(BaseModel):
     titres_par_heure: float = Field(default=14.6, gt=0)
     marge: float = Field(default=1.4, ge=1)
     retard: float = Field(default=0.5, ge=0)
-    repos: float = Field(default=0.6, ge=0, lt=1)
+    ecart_min: float = Field(default=0.6, ge=0, lt=1)
     separation_h: float = Field(default=3, ge=0, le=24)
     avantage: float = Field(default=1.5, gt=1)
     force: float = Field(default=2.0, gt=1)
@@ -216,27 +216,27 @@ class GrilleConfig(BaseModel):
 
 class VotesConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    exam_per_selection: int = Field(default=10, ge=1, le=100)
-    lesson_per_selection: int = Field(default=10, ge=0, le=100)
-    quiet_days: int = Field(default=7, ge=1, le=60)
+    examen_par_tirage: int = Field(default=10, ge=1, le=100)
+    lecon_par_tirage: int = Field(default=10, ge=0, le=100)
+    jours_silence: int = Field(default=7, ge=1, le=60)
 
 
-class BackupConfig(BaseModel):
+class SauvegardeConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    keep_days: int = Field(default=14, ge=1)
+    jours_gardes: int = Field(default=14, ge=1)
 
 
 class Editorial(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    library: LibraryConfig = LibraryConfig()
-    discover: DiscoverConfig = DiscoverConfig()
-    nouveautes: FreshConfig = FreshConfig()
-    model: ModelConfig = ModelConfig()
-    acquisition: AcquisitionConfig = AcquisitionConfig()
+    bibliotheque: BibliothequeConfig = BibliothequeConfig()
+    decouverte: DecouverteConfig = DecouverteConfig()
+    nouveautes: NouveautesConfig = NouveautesConfig()
+    gout: GoutConfig = GoutConfig()
+    telechargement: TelechargementConfig = TelechargementConfig()
     antenne: AntenneConfig = AntenneConfig()
     grille: GrilleConfig = GrilleConfig()
     votes: VotesConfig = VotesConfig()
-    backup: BackupConfig = BackupConfig()
+    sauvegarde: SauvegardeConfig = SauvegardeConfig()
 
 
 def load_editorial(path: Path) -> Editorial:

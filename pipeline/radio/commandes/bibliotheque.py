@@ -55,7 +55,7 @@ def bibliotheque() -> None:
     with _db(settings) as conn:
         try:
             sync = sync_library(conn, tracks, now)
-            rep = match_library(conn, DeezerClient(), editorial.library.duration_tolerance_s, now)
+            rep = match_library(conn, DeezerClient(), editorial.bibliotheque.ecart_duree_s, now)
         except EmptyLibraryError:
             _fail("Plex n'a renvoyé aucun titre : rien n'a été modifié", 1)
         except DeezerUnavailable as e:

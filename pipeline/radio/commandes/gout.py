@@ -45,7 +45,7 @@ def _train_lines(r: TrainReport) -> list[str]:
 def gout() -> None:
     """Entraîne le modèle s'il y a des votes nouveaux ou corrigés, puis note les candidats."""
     settings = commun._settings()
-    cfg = _editorial(settings).model
+    cfg = _editorial(settings).gout
     models_dir = settings.trained_models_dir
     lines = []
     with _db(settings) as conn:

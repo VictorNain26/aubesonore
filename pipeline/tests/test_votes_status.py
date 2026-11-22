@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 from radio.gout.modele import Batch, train
-from radio.socle.config import ModelConfig
+from radio.socle.config import GoutConfig
 from radio.votes.etat import load_status
 from radio.votes.tirage import select_batch
 from tests.model_factory import NO_FLOOR, NOW, add_vote, make_model_db, serve_scores
@@ -24,7 +24,7 @@ def test_status_measures_the_serving_model_and_the_page_yes_rate(tmp_path: Path)
     conn.execute("INSERT INTO votes VALUES (200700, 'exam', 'non', '2026-09-24T12:00:00', 'page')")
     conn.execute("INSERT INTO votes VALUES (300800, 'exam', 'non', '2026-09-24T12:00:00', 'page')")
     conn.commit()
-    report = train(conn, tmp_path / "models", ModelConfig(), NOW)
+    report = train(conn, tmp_path / "models", GoutConfig(), NOW)
 
     st = load_status(conn, tmp_path / "models", 60, 7, LATER)
     assert st.model_id == report.model_id

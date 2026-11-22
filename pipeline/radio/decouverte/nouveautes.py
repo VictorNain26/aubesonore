@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 
 from radio.bibliotheque.doublons import dedupe_key
 from radio.decouverte.candidats import add_candidates, add_tracks, on_deezer
-from radio.socle.config import FreshConfig
+from radio.socle.config import NouveautesConfig
 from radio.sources.deezer import DeezerClient, DeezerError, DeezerTrack
 from radio.sources.hypem import HypemClient, HypemError, HypemUnavailable
 
@@ -70,11 +70,11 @@ def _hypem(
     known: set[str],
     deezer: DeezerClient,
     hypem: HypemClient,
-    cfg: FreshConfig,
+    cfg: NouveautesConfig,
     tolerance_s: int,
     now: str,
 ) -> None:
-    for page in range(1, cfg.hypem_pages + 1):
+    for page in range(1, cfg.pages_hypem + 1):
         try:
             tracks = hypem.popular("lastweek", page)
         except (HypemError, HypemUnavailable) as e:
@@ -94,7 +94,7 @@ def _deezer_editorial(
     rep: FreshReport,
     known: set[str],
     deezer: DeezerClient,
-    cfg: FreshConfig,
+    cfg: NouveautesConfig,
     now: str,
 ) -> None:
     for name, genre_id in cfg.deezer_editorial.items():
@@ -106,7 +106,7 @@ def _deezer_editorial(
         for album_id in albums:
             tracks = [t for t in deezer.album_tracks(album_id) if t.has_preview]
             rep.seen["deezer_editorial"] += len(tracks)
-            for t in sorted(tracks, key=lambda t: -t.rank)[: cfg.tracks_per_album]:
+            for t in sorted(tracks, key=lambda t: -t.rank)[: cfg.titres_par_album]:
                 _add(conn, rep, known, t, "deezer_editorial", name, now)
 
 
@@ -114,7 +114,7 @@ def fresh_pass(
     conn: sqlite3.Connection,
     deezer: DeezerClient,
     hypem: HypemClient,
-    cfg: FreshConfig,
+    cfg: NouveautesConfig,
     tolerance_s: int,
     now: str,
 ) -> FreshReport:

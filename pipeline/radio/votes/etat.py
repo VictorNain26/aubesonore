@@ -34,15 +34,15 @@ class Status:
 def load_status(
     conn: sqlite3.Connection,
     models_dir: Path,
-    exam_window: int,
-    quiet_days: int,
+    fenetre_examen: int,
+    jours_silence: int,
     now: datetime,
 ) -> Status:
     current = serving(conn, models_dir)
     exam_auc, n_exam = None, 0
     if current is not None:
         table = load_signals(conn)
-        exam = build_labels(conn, table, exam_window).exam
+        exam = build_labels(conn, table, fenetre_examen).exam
         exam_auc, n_exam = auc(exam.labels, predict(current[1], table, exam.rows)), len(exam.rows)
     page = conn.execute(
         """
@@ -50,12 +50,12 @@ def load_status(
         WHERE v.kind = 'exam' AND b.retained = 1 AND v.vote != 'passer'
         ORDER BY v.voted_at DESC LIMIT ?
         """,
-        (exam_window,),
+        (fenetre_examen,),
     ).fetchall()
     last_exam = conn.execute(
         "SELECT MAX(voted_at) FROM votes WHERE kind = 'exam' AND vote != 'passer'"
     ).fetchone()[0]
-    since = (now - timedelta(days=quiet_days)).isoformat()
+    since = (now - timedelta(days=jours_silence)).isoformat()
     recent = conn.execute(
         "SELECT COUNT(*) FROM votes WHERE voted_at >= ? AND vote != 'passer'", (since,)
     ).fetchone()[0]
