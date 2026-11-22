@@ -19,7 +19,7 @@ FPCALC_VERSION=1.5.1
 FPCALC_URL="https://github.com/acoustid/chromaprint/releases/download/v$FPCALC_VERSION/chromaprint-fpcalc-$FPCALC_VERSION-linux-x86_64.tar.gz"
 FPCALC_SHA256=4d7433a7f778e5946d7225230681cbcd634e153316ecac87c538c33ac32387a5
 # L'URL et la somme du modèle n'existent qu'à un endroit : le code qui le vérifie.
-AUDIO_PY="$PIPELINE_DIR/radio/signals/audio.py"
+AUDIO_PY="$PIPELINE_DIR/radio/empreintes/effnet.py"
 MODEL_URL=$(grep -m1 -oE 'https://essentia\.upf\.edu/[^"]+\.pb' "$AUDIO_PY" || true)
 MODEL_SHA256=$(sed -nE 's/^MODEL_SHA256 = "([0-9a-f]{64})"$/\1/p' "$AUDIO_PY")
 MODEL="$PIPELINE_DIR/models/${MODEL_URL##*/}"

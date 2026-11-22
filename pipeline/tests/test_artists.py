@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from radio.library.artists import (
+from radio.bibliotheque.artistes import (
     LibraryArtist,
     RegisterReport,
     library_artists,

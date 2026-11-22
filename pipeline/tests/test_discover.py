@@ -6,16 +6,16 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from radio.core.config import DiscoverConfig
-from radio.core.db import connect
-from radio.discover.run import NoLibraryArtistsError, discover_pass
-from radio.discover.seeds import recently_used
+from radio.decouverte.fournee import NoLibraryArtistsError, discover_pass
+from radio.decouverte.graines import recently_used
+from radio.socle.config import DecouverteConfig
+from radio.socle.db import connect
 from radio.sources.deezer import DeezerArtist, DeezerError, DeezerTrack, DeezerUnavailable
 from radio.sources.lastfm import LastfmUnavailable
 from tests.factories import make_library
 
 NOW = datetime(2026, 9, 25, tzinfo=UTC)
-CFG = DiscoverConfig()
+CFG = DecouverteConfig()
 
 
 def dt(tid: int, aid: int, title: str, preview: bool = True) -> DeezerTrack:

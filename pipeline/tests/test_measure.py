@@ -6,9 +6,9 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-from radio.core.db import connect
-from radio.signals.audio import DIM, MODEL_TAG, from_blob
-from radio.signals.measure import measure_tracks
+from radio.empreintes.calcul import measure_tracks
+from radio.empreintes.effnet import DIM, MODEL_TAG, from_blob
+from radio.socle.db import connect
 from radio.sources.deezer import DeezerError, DeezerTrack, DeezerUnavailable
 
 URL = "https://cdnt-preview.dzcdn.net/x.mp3?hdnea=SIGNED-SECRET"

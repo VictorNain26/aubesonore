@@ -10,5 +10,5 @@ paths:
 - Checks, from the repository root: `uv --directory pipeline run ruff check`, `… ruff format --check`,
   `… mypy`, `… pytest -q -W error -rs`. Run `pipeline/scripts/dev-setup.sh` once, or some tests skip.
 - The current schema: `sqlite3 pipeline/data/radio.db .schema`.
-- `train` does not run while `signals` runs.
-- A SQLite migration script has no `BEGIN` or `COMMIT` (`radio/core/db.py`, `_migrate`).
+- `gout` does not run while `empreintes` runs.
+- A SQLite migration script has no `BEGIN` or `COMMIT` (`radio/socle/db.py`, `_migrate`).

@@ -3,9 +3,9 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from radio.core.config import REPO_ROOT
-from radio.core.db import connect
-from radio.discover.negatives import NegativeArtist, import_negatives, load_negatives
+from radio.decouverte.negatifs import NegativeArtist, import_negatives, load_negatives
+from radio.socle.config import REPO_ROOT
+from radio.socle.db import connect
 from radio.sources.deezer import DeezerError, DeezerTrack, DeezerUnavailable
 from tests.factories import make_library
 

@@ -3,7 +3,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from radio.model.dataset import (
+from radio.empreintes.table import load_signals
+from radio.gout.exemples import (
     LIBRARY,
     VOTE_NO,
     VOTE_YES,
@@ -12,7 +13,6 @@ from radio.model.dataset import (
     build_labels,
     weights,
 )
-from radio.signals.table import load_signals
 from tests.model_factory import add_vote, make_model_db
 
 

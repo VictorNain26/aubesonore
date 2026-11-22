@@ -1,5 +1,5 @@
-from radio.discover.neighbours import neighbours
-from radio.library.artists import LibraryArtist
+from radio.bibliotheque.artistes import LibraryArtist
+from radio.decouverte.voisins import neighbours
 from radio.sources.deezer import DeezerArtist
 
 SEED = LibraryArtist(83, "M83", 13)

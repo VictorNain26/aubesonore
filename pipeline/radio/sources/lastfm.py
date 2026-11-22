@@ -8,7 +8,7 @@ from typing import Any
 import requests
 from pyrate_limiter import Duration, Limiter, Rate
 
-from radio.core.http import check_status, json_or_none, retried
+from radio.socle.http import check_status, json_or_none, retried
 
 API = "https://ws.audioscrobbler.com/2.0/"
 _NOT_FOUND = 6

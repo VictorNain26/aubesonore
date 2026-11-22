@@ -1,6 +1,6 @@
 import pytest
 
-from radio.library.dedupe import dedupe_key
+from radio.bibliotheque.doublons import dedupe_key
 
 
 @pytest.mark.parametrize(

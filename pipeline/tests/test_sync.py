@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from radio.core.db import connect
-from radio.library.sync import EmptyLibraryError, SyncReport, sync_library
+from radio.bibliotheque.synchro import EmptyLibraryError, SyncReport, sync_library
+from radio.socle.db import connect
 from radio.sources.plex import PlexTrack
 
 

@@ -54,7 +54,7 @@ jobs:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: pipeline/models/discogs-effnet-bs64-1.pb
-          key: effnet-${{ hashFiles('pipeline/radio/signals/audio.py') }}
+          key: effnet-${{ hashFiles('pipeline/radio/empreintes/effnet.py') }}
       - run: |
           scripts/dev-setup.sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"

@@ -69,8 +69,8 @@ Points à ne pas rejouer de travers :
 cd ~/aubesonore/pipeline
 uv sync
 # sockseek et rsgain : binaires figés dans ~/.local/bin (versions et sha256 : docs/conception.md)
-# ffmpeg et fpcalc (libchromaprint-tools) : apt ; dans models/, le modèle EffNet (radio/signals/audio.py)
-# et les quatre modèles de mesure (MODELS de radio/signals/features.py, essentia.upf.edu/models, sha256 vérifiés)
+# ffmpeg et fpcalc (libchromaprint-tools) : apt ; dans models/, le modèle EffNet (radio/empreintes/effnet.py)
+# et les quatre modèles de mesure (MODELS de radio/mesures/musicnn.py, essentia.upf.edu/models, sha256 vérifiés)
 # .env : ta copie (sinon .env.example, secrets à recréer), avec la clé d'API AzuraCast régénérée
 for u in deploy/systemd/*; do systemctl --user link "$PWD/$u"; done
 systemctl --user daemon-reload
@@ -120,7 +120,7 @@ cd musilogy && uv sync
 docker ps                                   # azuracast, aubesonore-{db,backend,frontend,renderer}
 systemctl --user list-timers                # un par *.timer de pipeline/deploy/systemd, site/scripts/systemd et azuracast/scripts/systemd
 systemctl --user is-active radio-votes      # page de vote ; 127.0.0.1:8040 répond 403 sans Cloudflare Access
-cd ~/aubesonore/pipeline && .venv/bin/pytest -q -W error && .venv/bin/radio report
+cd ~/aubesonore/pipeline && .venv/bin/pytest -q -W error && .venv/bin/radio rapport
 ```
 
 Le vrai test de bout en bout reste une passe `radio-weekly` complète : elle touche
@@ -137,5 +137,5 @@ sur le serveur ; la nouvelle image ne tourne qu'une fois appliquée, hors de la 
 
 ```bash
 cd ~/aubesonore/azuracast && docker compose up -d --wait web
-cd ~/aubesonore/pipeline && .venv/bin/radio report   # l'API répond, la station joue
+cd ~/aubesonore/pipeline && .venv/bin/radio rapport   # l'API répond, la station joue
 ```

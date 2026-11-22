@@ -11,8 +11,8 @@ from typing import Any
 import requests
 from pyrate_limiter import Duration, Limiter, Rate
 
-from radio.core.http import check_status, json_or_none, retried
-from radio.core.media import Tags
+from radio.socle.http import check_status, json_or_none, retried
+from radio.socle.media import Tags
 
 API = "https://api.deezer.com"
 _TRANSIENT_CODES = frozenset({4, 700})

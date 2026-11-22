@@ -6,11 +6,11 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
-from radio.core.db import connect
+from radio.socle.db import connect
 from radio.sources.deezer import DeezerError, DeezerUnavailable
-from radio.votes.access import HEADER
-from radio.votes.app import create_app
-from radio.votes.select import Ballot, pending_ballots, select_batch
+from radio.votes.acces import HEADER
+from radio.votes.page import create_app
+from radio.votes.tirage import Ballot, pending_ballots, select_batch
 from tests.factories import OK, SIGNED, PreviewDeezer, verify
 from tests.model_factory import NO_FLOOR, NOW, make_model_db, serve_scores
 

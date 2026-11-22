@@ -12,15 +12,15 @@ from pathlib import Path
 
 import numpy as np
 
-from radio.core.config import ModelConfig
-from radio.core.db import connect
-from radio.discover.candidates import add_tracks
-from radio.library.artists import register_library
-from radio.signals.audio import DIM, MODEL_TAG, to_blob
+from radio.bibliotheque.artistes import register_library
+from radio.decouverte.candidats import add_tracks
+from radio.empreintes.effnet import DIM, MODEL_TAG, to_blob
+from radio.socle.config import GoutConfig
+from radio.socle.db import connect
 from radio.sources.deezer import DeezerTrack
 
 NOW = "2026-09-25T00:00:00+00:00"
-NO_FLOOR = ModelConfig().floor
+NO_FLOOR = GoutConfig().planchers
 LIKED = np.eye(DIM, dtype=np.float32)[0]
 DISLIKED = np.eye(DIM, dtype=np.float32)[1]
 
@@ -126,7 +126,7 @@ def as_news(
 
 
 def seed_run(conn: sqlite3.Connection) -> None:
-    """Une fournée de découverte unique (`radio discover` a besoin du réseau) : tous les
+    """Une fournée de découverte unique (`radio decouverte` a besoin du réseau) : tous les
     candidats y entrent."""
     conn.execute("INSERT INTO discover_runs VALUES (1, 'd', 'd', 'done')")
     conn.execute(

@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from radio.core.db import connect
-from radio.discover.candidates import add_tracks, keep_tracks
+from radio.decouverte.candidats import add_tracks, keep_tracks
+from radio.socle.db import connect
 from radio.sources.deezer import DeezerTrack
 
 

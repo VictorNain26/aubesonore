@@ -10,10 +10,10 @@ import requests
 import responses
 import stamina
 
-import radio.antenna.sync as sync_mod
-from radio.antenna.sync import antenne_pass
-from radio.core.config import AntenneConfig, Creneau, GrilleConfig
-from radio.core.media import Probe, Tags, ToolError
+import radio.antenne.publication as sync_mod
+from radio.antenne.publication import antenne_pass
+from radio.socle.config import AntenneConfig, Creneau, GrilleConfig
+from radio.socle.media import Probe, Tags, ToolError
 from radio.sources.azuracast import AzuracastClient, AzuracastError, AzuracastUnavailable, Media
 from radio.sources.deezer import DeezerAlbum, DeezerError, DeezerTrack, TrackPage
 from tests.model_factory import NOW, add_vote, make_model_db, serve_scores
@@ -248,7 +248,7 @@ def test_after_its_first_stay_the_best_rests_and_the_rest_leaves(
     add_vote(conn, ids[9], "exam", "oui")  # la moins bien notée, mais aimée
     station.busy = {f"s{ids[5]}"}
 
-    rep = _run(conn, station, promotion_share=0.2)
+    rep = _run(conn, station, part_promue=0.2)
 
     cats = _categories(conn)
     # 9 titres jugés (le titre en cours attend) : 0,2 x 9 arrondi = 2 promus, le « oui » d'abord.
@@ -273,7 +273,7 @@ def test_a_promotion_never_gives_an_artist_a_second_title(tmp_path: Path, no_too
     )
     station.media += old.media
 
-    rep = _run(conn, station, promotion_share=0.5)
+    rep = _run(conn, station, part_promue=0.5)
 
     # 2 promus sur 4, par note : 200003 (0,75) donnerait un second titre à l'artiste 2000, dont
     # 200001 joue ; sa place va au suivant.

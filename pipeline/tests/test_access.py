@@ -9,7 +9,7 @@ import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-from radio.votes.access import AccessVerifier
+from radio.votes.acces import AccessVerifier
 
 TEAM = "aube.cloudflareaccess.com"
 ISS = f"https://{TEAM}"

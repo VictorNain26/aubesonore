@@ -3,8 +3,8 @@ from pathlib import Path
 
 import numpy as np
 
-from radio.signals.audio import DIM, MODEL_TAG, to_blob
-from radio.signals.table import load_signals
+from radio.empreintes.effnet import DIM, MODEL_TAG, to_blob
+from radio.empreintes.table import load_signals
 from tests.factories import make_library
 
 VEC = np.full(DIM, 1 / np.sqrt(DIM), dtype=np.float32)

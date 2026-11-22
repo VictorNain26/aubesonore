@@ -7,11 +7,11 @@ import pytest
 from pydantic import SecretStr
 from typer.testing import CliRunner
 
-import radio.cli as cli
-from radio.acquire.run import AcquireReport
-from radio.acquire.sockseek import SockseekError
-from radio.antenna.sync import AntenneReport
-from radio.core.config import REPO_ROOT, Settings
+import radio.commandes as commandes
+from radio.antenne.publication import AntenneReport
+from radio.socle.config import REPO_ROOT, Settings
+from radio.telechargement.sockseek import SockseekError
+from radio.telechargement.telecharger import AcquireReport
 
 runner = CliRunner()
 
@@ -28,7 +28,7 @@ def _env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, editorial: str = "") -
         RADIO_DATA_DIR=tmp_path / "data",
         RADIO_CONFIG_DIR=cfg,
     )
-    monkeypatch.setattr(cli.common, "_settings", lambda: settings)
+    monkeypatch.setattr(commandes.commun, "_settings", lambda: settings)
     return tmp_path / "data" / "radio.db"
 
 
@@ -50,8 +50,8 @@ def test_sockseek_failure_exits_1_and_reports_the_failed_stage(
     def boom(*a: Any, **k: Any) -> AcquireReport:
         raise SockseekError("aucun index écrit")
 
-    monkeypatch.setattr(cli.antenne, "acquire_pass", boom)
-    result = runner.invoke(cli.app, ["acquire"])
+    monkeypatch.setattr(commandes.telechargement, "acquire_pass", boom)
+    result = runner.invoke(commandes.app, ["telechargement"])
     assert result.exit_code == 1
     assert "Sockseek en échec (aucun index écrit) : aucune tentative comptée" in result.output
     stage = _stage(db)
@@ -63,8 +63,8 @@ def test_interrupted_sockseek_fails_the_stage(
 ) -> None:
     db = _env(tmp_path, monkeypatch)
     rep = AcquireReport(n_wanted=4, n_ready=1, n_unindexed=3)
-    monkeypatch.setattr(cli.antenne, "acquire_pass", _report(rep))
-    result = runner.invoke(cli.app, ["acquire"])
+    monkeypatch.setattr(commandes.telechargement, "acquire_pass", _report(rep))
+    result = runner.invoke(commandes.app, ["telechargement"])
     assert result.exit_code == 1
     assert "arrêté avant 3 titres" in result.output
     stage = _stage(db)
@@ -74,10 +74,10 @@ def test_interrupted_sockseek_fails_the_stage(
 def test_success_rate_floor_comes_from_editorial(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _env(tmp_path, monkeypatch, "[acquisition]\nmin_attempts_for_rate = 3\n")
+    _env(tmp_path, monkeypatch, "[telechargement]\ntentatives_min_pour_taux = 3\n")
     rep = AcquireReport(n_wanted=3, failures=Counter({"aucun résultat": 3}))
-    monkeypatch.setattr(cli.antenne, "acquire_pass", _report(rep))
-    assert runner.invoke(cli.app, ["acquire"]).exit_code == 1
+    monkeypatch.setattr(commandes.telechargement, "acquire_pass", _report(rep))
+    assert runner.invoke(commandes.app, ["telechargement"]).exit_code == 1
 
 
 def test_missing_cover_is_reported_not_failed(
@@ -85,8 +85,8 @@ def test_missing_cover_is_reported_not_failed(
 ) -> None:
     db = _env(tmp_path, monkeypatch)
     rep = AcquireReport(n_wanted=2, n_ready=2, n_no_cover=1)
-    monkeypatch.setattr(cli.antenne, "acquire_pass", _report(rep))
-    result = runner.invoke(cli.app, ["acquire"])
+    monkeypatch.setattr(commandes.telechargement, "acquire_pass", _report(rep))
+    result = runner.invoke(commandes.app, ["telechargement"])
     assert result.exit_code == 0
     assert "prêts sans pochette : 1" in result.output
     stage = _stage(db)
@@ -101,8 +101,8 @@ def test_an_unexpected_error_is_reported_without_its_message(
     def boom(*a: Any, **k: Any) -> AcquireReport:
         raise RuntimeError("https://cdn.example/preview?hdnea=SECRET")
 
-    monkeypatch.setattr(cli.antenne, "acquire_pass", boom)
-    result = runner.invoke(cli.app, ["acquire"])
+    monkeypatch.setattr(commandes.telechargement, "acquire_pass", boom)
+    result = runner.invoke(commandes.app, ["telechargement"])
     assert result.exit_code == 1
     assert _stage(db) == (0, '{"erreur": "RuntimeError"}')
 
@@ -118,7 +118,9 @@ def _stages(db: Path, rows: list[tuple[str, str, int, str]]) -> None:
 
 
 def _pass(**over: tuple[int, str]) -> list[tuple[str, str, int, str]]:
-    stages = {name: (1, "{}") for name in cli.ops.PASS_STAGES} | {"antenne": (1, '{"publiés": 3}')}
+    stages = {name: (1, "{}") for name in commandes.exploitation.PASS_STAGES} | {
+        "antenne": (1, '{"publiés": 3}')
+    }
     stages |= {k.replace("_", "-"): v for k, v in over.items()}
     return [("p", name, ok, counts) for name, (ok, counts) in stages.items()]
 
@@ -127,10 +129,14 @@ def _pass(**over: tuple[int, str]) -> list[tuple[str, str, int, str]]:
     ("rows", "code", "message"),
     [
         (_pass(), 0, "11 étapes, 0 en échec, 3 publiés"),
-        (_pass(acquire=(0, "{}")), 1, "Étapes en échec : acquire"),
+        (_pass(telechargement=(0, "{}")), 1, "Étapes en échec : telechargement"),
         (_pass(antenne=(1, '{"publiés": 0}')), 1, "Aucune découverte publiée"),
-        ([r for r in _pass() if r[1] != "acquire"], 1, "Étapes sans rapport (tuées ?) : acquire"),
-        ([("autre", "acquire", 0, "{}"), *_pass()], 0, ""),
+        (
+            [r for r in _pass() if r[1] != "telechargement"],
+            1,
+            "Étapes sans rapport (tuées ?) : telechargement",
+        ),
+        ([("autre", "telechargement", 0, "{}"), *_pass()], 0, ""),
     ],
 )
 def test_check_judges_only_the_current_pass(
@@ -141,10 +147,10 @@ def test_check_judges_only_the_current_pass(
     message: str,
 ) -> None:
     db = _env(tmp_path, monkeypatch)
-    runner.invoke(cli.app, ["report"])  # crée la base
+    runner.invoke(commandes.app, ["rapport"])  # crée la base
     _stages(db, rows)
     monkeypatch.setenv("INVOCATION_ID", "p")
-    result = runner.invoke(cli.app, ["check"])
+    result = runner.invoke(commandes.app, ["bilan"])
     assert result.exit_code == code
     assert message in result.output
 
@@ -153,15 +159,17 @@ def test_check_reads_what_antenne_published(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     db = _env(tmp_path, monkeypatch)
-    settings = cli.common._settings().model_copy(update={"azuracast_api_key": SecretStr("k")})
-    monkeypatch.setattr(cli.common, "_settings", lambda: settings)
-    monkeypatch.setattr(cli.antenne, "antenne_pass", lambda *a, **k: AntenneReport(n_published=2))
+    settings = commandes.commun._settings().model_copy(update={"azuracast_api_key": SecretStr("k")})
+    monkeypatch.setattr(commandes.commun, "_settings", lambda: settings)
+    monkeypatch.setattr(
+        commandes.antenne, "antenne_pass", lambda *a, **k: AntenneReport(n_published=2)
+    )
     monkeypatch.setenv("INVOCATION_ID", "p")
-    result = runner.invoke(cli.app, ["antenne"])
+    result = runner.invoke(commandes.app, ["antenne"])
     assert result.exit_code == 0, result.output
     assert "Antenne : 0 titres (2 publiés" in result.output
     _stages(db, [r for r in _pass() if r[1] != "antenne"])
-    result = runner.invoke(cli.app, ["check"])
+    result = runner.invoke(commandes.app, ["bilan"])
     assert result.exit_code == 0, result.output
     assert "11 étapes, 0 en échec, 2 publiés" in result.output
 
@@ -169,7 +177,7 @@ def test_check_reads_what_antenne_published(
 def test_check_needs_systemd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     _env(tmp_path, monkeypatch)
     monkeypatch.delenv("INVOCATION_ID", raising=False)
-    assert runner.invoke(cli.app, ["check"]).exit_code == 2
+    assert runner.invoke(commandes.app, ["bilan"]).exit_code == 2
 
 
 def test_pass_stages_are_the_weekly_units_commands() -> None:
@@ -181,4 +189,4 @@ def test_pass_stages_are_the_weekly_units_commands() -> None:
         for line in unit.splitlines()
         if line.startswith("ExecStart=")
     )
-    assert commands == (*cli.ops.PASS_STAGES, "check")
+    assert commands == (*commandes.exploitation.PASS_STAGES, "bilan")

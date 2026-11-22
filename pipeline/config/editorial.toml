@@ -1,28 +1,28 @@
-# Réglages éditoriaux AubeSonore — validés au chargement (radio/core/config.py).
+# Réglages éditoriaux AubeSonore — validés au chargement (radio/socle/config.py).
 
-[library]
+[bibliotheque]
 # Écart maximal de durée (secondes) entre le titre Plex et le titre Deezer rapproché.
-duration_tolerance_s = 3
+ecart_duree_s = 3
 
-[discover]
+[decouverte]
 # Artistes de la bibliothèque tirés comme graines à chaque passe de découverte.
-seeds_per_run = 15
+graines_par_fournee = 15
 # Une graine n'est pas retirée avant ce délai (jours) après une passe réussie.
-seed_cooldown_days = 30
+repos_graine_jours = 30
 # Titres lus par voisin (Deezer artist/{id}/top), et par artiste négatif.
-tracks_per_neighbour = 10
+titres_par_voisin = 10
 # Similaires demandés à Last.fm pour chaque artiste.
-lastfm_similar_limit = 100
+similaires_lastfm = 100
 
 [nouveautes]
 # Titres récents choisis par des humains, ajoutés à la fournée de la semaine et jugés par le modèle.
 # Hype Machine : pages du classement « lastweek » des blogs (API v2 non documentée, cf. conception §3).
 # Le classement tient en 3 pages (50 titres) ; la page 4 répond 404 (mesuré le 2026-10-02).
-hypem_pages = 3
+pages_hypem = 3
 # Titres les plus écoutés retenus par album des sélections éditoriales Deezer.
-tracks_per_album = 3
+titres_par_album = 3
 # Compte Hype Machine dont les favoris publics ne sont plus des découvertes (conception §3.2).
-hypem_favorites_user = "GhostRAvage"
+compte_favoris_hypem = "GhostRAvage"
 
 [nouveautes.deezer_editorial]
 # Genres Deezer (/editorial) dont la sélection d'albums est lue ; nom = libellé du rapport.
@@ -44,50 +44,50 @@ rnb = 165
 asiatique = 16
 soul_funk = 169
 
-[model]
+[gout]
 # Régression logistique sur l'empreinte audio. C, poids des négatifs faibles : fixés le
 # 2026-09-30 par validation croisée groupée par artiste sur les 159 votes du banc
 # (docs/recherches/2026-09-30-modele-audio-seul.md).
 c = 0.1
-weak_weight = 0.1
+poids_negatifs_faibles = 0.1
 # Titres retenus par fournée et par famille, les mieux notés d'abord : ~70 entrées par semaine et
 # par famille tiennent la grille d'antenne (docs/recherches/2026-10-02-cycle-de-vie.md §3), plus
 # ~12 % d'échecs d'acquisition.
-keep_decouvertes = 80
-keep_nouveautes = 80
-# Plancher de note des nouveautés : au plus keep_nouveautes, jamais en dessous
+retenus_decouvertes = 80
+retenus_nouveautes = 80
+# Plancher de note des nouveautés : au plus retenus_nouveautes, jamais en dessous
 # (docs/recherches/2026-10-19-plancher-nouveautes.md).
 # 0 retient sans plancher.
-min_score_nouveautes = 0.6
+plancher_nouveautes = 0.6
 # Nombre de derniers votes d'examen qui jugent le modèle.
-exam_window = 60
+fenetre_examen = 60
 
-[acquisition]
+[telechargement]
 # Titres retenus tentés au plus par passe (les deux familles de la dernière fournée), et
 # tentatives par titre avant abandon.
-max_per_pass = 160
-max_attempts = 3
+max_par_passe = 160
+tentatives_max = 3
 # Débit moyen minimal d'un MP3 (kbit/s) : un V0 tourne autour de 220-260.
-min_mp3_kbps = 200
+debit_mp3_min_kbps = 200
 # Part de bits Chromaprint identiques entre le fichier et l'extrait Deezer
 # (docs/recherches/2026-09-30-acquisition-publication-observabilite.md §2).
-identity_threshold = 0.70
+seuil_identite = 0.70
 # Rythme des recherches Soulseek : le serveur bannit 30 min en cas de rafale.
-searches_per_time = 10
-searches_renew_s = 220
+recherches_par_fenetre = 10
+fenetre_recherches_s = 220
 # Sous ce taux de fichiers prêts, la passe échoue ; le taux n'est jugé qu'à partir
-# de min_attempts_for_rate tentatives.
-min_success_rate = 0.2
-min_attempts_for_rate = 20
+# de tentatives_min_pour_taux tentatives.
+taux_reussite_min = 0.2
+tentatives_min_pour_taux = 20
 
 [antenne]
 # Cycle de vie d'un titre (docs/recherches/2026-10-02-cycle-de-vie.md §4) : premier séjour et
 # séjour au fond de 6 semaines (KEXP), repos d'au moins 12 semaines (MusicMaster), péremption à
 # 78 semaines (18 mois, BBC Radio 2), ~12 % d'une cohorte promue au fond.
-stay_weeks = 6
-rest_weeks = 12
-life_weeks = 78
-promotion_share = 0.12
+sejour_semaines = 6
+repos_semaines = 12
+vie_semaines = 78
+part_promue = 0.12
 
 [grille]
 # Titres diffusés par heure, mesurés dans l'historique AzuraCast le 2026-10-02.
@@ -99,11 +99,11 @@ titres_par_heure = 14.6
 marge = 1.4
 retard = 0.5
 # Règles incassables (docs/recherches/2026-10-02-programmation.md §3) : un titre se repose au moins
-# `repos` tour de sa catégorie (60 %, MusicMaster) ; un artiste ne repasse pas avant
+# `ecart_min` tour de sa catégorie (60 %, MusicMaster) ; un artiste ne repasse pas avant
 # `separation_h` heures (fenêtre DMCA, anti-doublon de la station). Règle anti-famine de
 # GSelector : un titre en retard de `avantage` tours gagne jusqu'à `retard` contre la
 # ressemblance, à `force` tours il passe d'office.
-repos = 0.6
+ecart_min = 0.6
 separation_h = 3
 avantage = 1.5
 force = 2.0
@@ -169,13 +169,13 @@ tempo = 0.75
 
 [votes]
 # Titres d'examen par sélection hebdomadaire, tirés au hasard à parts égales par famille (découvertes, nouveautés).
-exam_per_selection = 10
+examen_par_tirage = 10
 # Titres de leçon par sélection : les plus proches de la coupure, un par artiste.
-lesson_per_selection = 10
+lecon_par_tirage = 10
 # Fenêtre des votes récents du rapport. Page de vote publiée et aucun titre en attente : une
 # sélection plus ancienne met une ligne ALERTE dans le rapport (passe hebdomadaire en échec ?).
-quiet_days = 7
+jours_silence = 7
 
-[backup]
+[sauvegarde]
 # Jours de copies quotidiennes de la base gardés dans RADIO_BACKUP_DIR.
-keep_days = 14
+jours_gardes = 14

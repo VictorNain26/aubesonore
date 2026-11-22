@@ -11,7 +11,7 @@ from typing import Any
 
 import requests
 
-from radio.core.http import check_status, json_or_none, retried
+from radio.socle.http import check_status, json_or_none, retried
 
 
 class AzuracastError(Exception):
