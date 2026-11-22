@@ -1,6 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignoreExportsUsedInFile": true,
+  "mcp": false,
   "workspaces": {
     "apps/frontend": {
       "entry": ["scripts/*.mjs", "src/entry-server.tsx"],
