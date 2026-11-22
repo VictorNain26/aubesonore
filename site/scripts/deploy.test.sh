@@ -106,10 +106,12 @@ esac
 EOF2
 cat >"$r/bin/systemctl" <<'EOF2'
 #!/usr/bin/env bash
+echo "systemctl $*" >>"$DOCKER_LOG"
 [[ " $* " == *" show "* ]] && echo inactive
 exit 0
 EOF2
-printf '#!/usr/bin/env bash\nexit 0\n' >"$r/bin/uv"
+# uv logs each call, so the order of a sync and a reload reads in the log.
+printf '#!/usr/bin/env bash\necho "uv $*" >>"$DOCKER_LOG"\n' >"$r/bin/uv"
 # The backend's answer to the search: $SEARCH_BEFORE the first time in a run, before the start,
 # then $SEARCH.
 cat >"$r/bin/curl" <<'EOF2'
@@ -324,6 +326,68 @@ up_line=$(grep -n -m1 "compose up" "$r/docker.log" | cut -d: -f1)
 name="a migration deploys after a dump"
 if [ "$status" -eq 0 ] && head_is "$M" && [ -n "$dump_line" ] && [ -n "$up_line" ] &&
   [ "$dump_line" -lt "$up_line" ]; then
+  passed "$name"
+else failed "$name"; fi
+
+# The units are links into the clone: systemd runs the version it loaded until a daemon-reload.
+commit_unit() { # <unit file under pipeline/deploy/systemd> <message>
+  mkdir -p "$r/dev/pipeline/deploy/systemd"
+  echo "$2" >"$r/dev/pipeline/deploy/systemd/$1"
+  git -C "$r/dev" add -A
+  git -C "$r/dev" commit -qm "$2"
+  git -C "$r/dev" push -q origin master
+  git -C "$r/dev" rev-parse HEAD
+}
+BAD=none FAIL=none
+
+U=$(commit_unit radio-test.service "a unit changes")
+: >"$r/docker.log"
+deploy
+# Reloaded once the venv is synced (a unit may call a command only it has), before the vote
+# page restarts, so it restarts on the new unit; the unit it adds is named, to link by hand.
+sync_line=$(grep -n "^uv sync" "$r/docker.log" | tail -1 | cut -d: -f1 || true)
+reload_line=$(grep -n -m1 "systemctl --user daemon-reload" "$r/docker.log" | cut -d: -f1 || true)
+restart_line=$(grep -n -m1 "try-restart radio-votes" "$r/docker.log" | cut -d: -f1 || true)
+name="a changed unit is reloaded after the sync, before the vote page restarts"
+if [ "$status" -eq 0 ] && head_is "$U" && [ -n "$sync_line" ] && [ -n "$reload_line" ] &&
+  [ -n "$restart_line" ] && [ "$sync_line" -lt "$reload_line" ] &&
+  [ "$reload_line" -lt "$restart_line" ] &&
+  [[ "$output" == *"new units, to link and enable by hand"*"radio-test.service"* ]]; then
+  passed "$name"
+else failed "$name"; fi
+
+N=$(push N)
+: >"$r/docker.log"
+deploy
+name="a deploy that changes no unit does not reload systemd"
+if [ "$status" -eq 0 ] && head_is "$N" && ! logged "daemon-reload"; then
+  passed "$name"
+else failed "$name"; fi
+
+# A rollback brings the old unit back: systemd reloads it again.
+V=$(commit_unit radio-test.service "the unit changes again")
+# uv sync fails on V only: the sync every run starts with, on the current commit, passes. The
+# reload comes after the rollback's own sync, so after the reset that brings the old unit back.
+printf '#!/usr/bin/env bash\necho "uv $* $(git rev-parse --short HEAD)" >>"$DOCKER_LOG"\n[ "$(git rev-parse HEAD)" != %s ]\n' "$V" >"$r/bin/uv"
+: >"$r/docker.log"
+deploy
+printf '#!/usr/bin/env bash\necho "uv $*" >>"$DOCKER_LOG"\n' >"$r/bin/uv"
+sync_back=$(grep -n "^uv sync.* $(git -C "$r/repo" rev-parse --short "$N")$" "$r/docker.log" | tail -1 | cut -d: -f1 || true)
+reload_back=$(grep -n "systemctl --user daemon-reload" "$r/docker.log" | tail -1 | cut -d: -f1 || true)
+name="a rolled-back unit change is reloaded again, once the old unit is back"
+if [ "$status" -ne 0 ] && head_is "$N" && failed_is "$V" && [ -n "$sync_back" ] &&
+  [ -n "$reload_back" ] && [ "$sync_back" -lt "$reload_back" ]; then
+  passed "$name"
+else failed "$name"; fi
+
+# A failed reload after the merge rolls back, rather than leave HEAD on a half-deployed commit.
+W=$(commit_unit radio-test.service "a unit that will not reload")
+printf '#!/usr/bin/env bash\necho "systemctl $*" >>"$DOCKER_LOG"\n[[ " $* " == *" show "* ]] && echo inactive\n[[ " $* " != *" daemon-reload "* ]] || [ "$(git -C "$REPO_DIR" rev-parse HEAD)" != %s ]\n' "$W" >"$r/bin/systemctl"
+deploy
+printf '#!/usr/bin/env bash\necho "systemctl $*" >>"$DOCKER_LOG"\n[[ " $* " == *" show "* ]] && echo inactive\nexit 0\n' >"$r/bin/systemctl"
+name="a failed daemon-reload rolls the deploy back"
+if [ "$status" -ne 0 ] && head_is "$N" && failed_is "$W" &&
+  [[ "$output" == *"failed (daemon-reload)"* ]]; then
   passed "$name"
 else failed "$name"; fi
 

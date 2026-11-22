@@ -129,6 +129,7 @@ Le déploiement est automatique et _pull-based_ : merger sur `master` suffit. Le
    - attend que **toutes** les vérifications GitHub Actions du commit soient passées, workflows encore en file compris, et que les 3 `Publish images` aient réussi ; une vérification en échec arrête le déploiement ;
    - si `site/` a changé, tire les 3 images sous `sha-<commit>` et vérifie l'attestation de chaque digest tiré (`gh attestation verify` : signée par `site.yml` sur `master`, construite depuis ce commit) ; une image qui ne se vérifie pas n'est jamais lancée, et le passage suivant revérifie ;
    - fait un dump (`scripts/backup-db.sh`) si le commit apporte une migration, puis avance le checkout (`git merge --ff-only`) et aligne `pipeline/.venv` ;
+   - recharge systemd (`systemctl --user daemon-reload`) si le commit change une unité de `pipeline/deploy/systemd/`, `scripts/systemd/` ou `azuracast/scripts/systemd/` : ce sont des liens vers le checkout, et systemd garderait sinon la version qu'il a chargée. Il le fait une fois `pipeline/.venv` aligné, et le retour arrière recharge de même. Une unité **ajoutée** n'est pas liée pour autant : le journal la nomme, à lier et activer à la main ([`azuracast/RUNBOOK.md`](../azuracast/RUNBOOK.md)) ;
    - relance les conteneurs sur les nouvelles images, attend leurs healthchecks (300 s), redémarre la page de vote si `pipeline/` a changé ;
    - ne garde que les images du commit qui tourne (GHCR les garde toutes).
 
