@@ -106,6 +106,7 @@ esac
 EOF2
 cat >"$r/bin/systemctl" <<'EOF2'
 #!/usr/bin/env bash
+echo "systemctl $*" >>"$DOCKER_LOG"
 [[ " $* " == *" show "* ]] && echo inactive
 exit 0
 EOF2
@@ -324,6 +325,50 @@ up_line=$(grep -n -m1 "compose up" "$r/docker.log" | cut -d: -f1)
 name="a migration deploys after a dump"
 if [ "$status" -eq 0 ] && head_is "$M" && [ -n "$dump_line" ] && [ -n "$up_line" ] &&
   [ "$dump_line" -lt "$up_line" ]; then
+  passed "$name"
+else failed "$name"; fi
+
+# The units are links into the clone: systemd runs the version it loaded until a daemon-reload.
+commit_unit() { # <unit file under pipeline/deploy/systemd> <message>
+  mkdir -p "$r/dev/pipeline/deploy/systemd"
+  echo "$2" >"$r/dev/pipeline/deploy/systemd/$1"
+  git -C "$r/dev" add -A
+  git -C "$r/dev" commit -qm "$2"
+  git -C "$r/dev" push -q origin master
+  git -C "$r/dev" rev-parse HEAD
+}
+BAD=none FAIL=none
+
+U=$(commit_unit radio-test.service "a unit changes")
+: >"$r/docker.log"
+deploy
+# Reloaded before the vote page restarts, so it restarts on the new unit.
+reload_line=$(grep -n -m1 "systemctl --user daemon-reload" "$r/docker.log" | cut -d: -f1 || true)
+restart_line=$(grep -n -m1 "try-restart radio-votes" "$r/docker.log" | cut -d: -f1 || true)
+name="a changed unit is reloaded before the vote page restarts"
+if [ "$status" -eq 0 ] && head_is "$U" && [ -n "$reload_line" ] && [ -n "$restart_line" ] &&
+  [ "$reload_line" -lt "$restart_line" ]; then
+  passed "$name"
+else failed "$name"; fi
+
+N=$(push N)
+: >"$r/docker.log"
+deploy
+name="a deploy that changes no unit does not reload systemd"
+if [ "$status" -eq 0 ] && head_is "$N" && ! logged "daemon-reload"; then
+  passed "$name"
+else failed "$name"; fi
+
+# A rollback brings the old unit back: systemd reloads it again.
+V=$(commit_unit radio-test.service "the unit changes again")
+# uv sync fails on V only: the sync every run starts with, on the current commit, passes.
+printf '#!/usr/bin/env bash\n[ "$(git rev-parse HEAD)" != %s ]\n' "$V" >"$r/bin/uv"
+: >"$r/docker.log"
+deploy
+printf '#!/usr/bin/env bash\nexit 0\n' >"$r/bin/uv"
+reloads=$(grep -c "systemctl --user daemon-reload" "$r/docker.log" || true)
+name="a rolled-back unit change is reloaded on the way back too"
+if [ "$status" -ne 0 ] && head_is "$N" && failed_is "$V" && [ "$reloads" -eq 2 ]; then
   passed "$name"
 else failed "$name"; fi
 

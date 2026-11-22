@@ -216,11 +216,23 @@ wait_healthy() {
 # start left HEAD on the new commit and the containers on the old one, and the next run saw
 # nothing to do. reset --keep stops rather than overwrite a local change (git-reset(1)); the
 # tree was checked clean above.
+# The systemd units are links into this clone (azuracast/RUNBOOK.md); systemd runs the
+# version it loaded until a daemon-reload (systemctl(1), « daemon-reload »), so a unit a merge
+# or a rollback changes would otherwise keep its old ExecStart.
+units=(pipeline/deploy/systemd site/scripts/systemd azuracast/scripts/systemd)
+reload_units() {
+  if ! git diff --quiet "$current" "$target" -- "${units[@]}"; then
+    systemctl --user daemon-reload
+    echo "reloaded the systemd units ${target:0:8} changes"
+  fi
+}
+
 rollback() {
   echo "deploy of ${target:0:8} failed ($1): rolling back to ${current:0:8}"
   cd "$REPO_DIR"
   git config aubesonore.failedTarget "$target"
   git reset --keep "$current"
+  reload_units
   (cd pipeline && "$uv" sync --locked --quiet)
   if ! git diff --quiet "$current" "$target" -- pipeline/; then
     systemctl --user try-restart radio-votes.service
@@ -252,9 +264,10 @@ if [ -n "$(git diff --name-only --diff-filter=A "$current" "$target" -- 'site/ap
 fi
 
 git merge --ff-only "$target"
+reload_units
 
 # The vote page is a long-running process: it keeps serving the pipeline code it
-# was started with until it restarts.
+# was started with until it restarts (after reload_units, on its unit as merged).
 if ! git diff --quiet "$current" "$target" -- pipeline/; then
   (cd pipeline && "$uv" sync --locked --quiet) || rollback "uv sync"
   systemctl --user try-restart radio-votes.service
