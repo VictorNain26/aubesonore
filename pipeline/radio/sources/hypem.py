@@ -10,9 +10,8 @@ from dataclasses import dataclass
 from typing import Any
 
 import requests
-import stamina
 
-from radio.core.http import check_status, json_or_none
+from radio.core.http import check_status, json_or_none, retried
 
 API = "https://api.hypem.com/v2"
 USER_AGENT = "AubeSonore/3 (+https://radio.aubesonore.fr)"
@@ -79,9 +78,7 @@ class HypemClient:
                 return tracks
             page += 1
 
-    # Toutes les tentatives, quelle que soit leur durée : pas les 45 s au total par défaut de
-    # stamina (stamina.retry, `timeout`).
-    @stamina.retry(on=HypemUnavailable, timeout=None, attempts=3, wait_initial=2.0, wait_max=30.0)
+    @retried(HypemUnavailable, attempts=3, wait_initial=2.0)
     def _get(self, path: str, params: dict[str, Any]) -> list[Any]:
         try:
             r = self._session.get(

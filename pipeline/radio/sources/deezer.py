@@ -9,10 +9,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import requests
-import stamina
 from pyrate_limiter import Duration, Limiter, Rate
 
-from radio.core.http import check_status, json_or_none
+from radio.core.http import check_status, json_or_none, retried
 from radio.core.media import Tags
 
 API = "https://api.deezer.com"
@@ -146,9 +145,7 @@ class DeezerClient:
             _track(body), str(preview) if preview else None, info, _isrc(body.get("isrc"))
         )
 
-    # Toutes les tentatives, quelle que soit leur durée : pas les 45 s au total par défaut de
-    # stamina (stamina.retry, `timeout`).
-    @stamina.retry(on=DeezerUnavailable, timeout=None, attempts=5, wait_initial=1.0, wait_max=30.0)
+    @retried(DeezerUnavailable)
     def download(self, url: str) -> bytes:
         try:
             r = self._session.get(url, timeout=30)
@@ -160,9 +157,7 @@ class DeezerClient:
             raise DeezerError(f"download HTTP {r.status_code}")
         return r.content
 
-    # Toutes les tentatives, quelle que soit leur durée : pas les 45 s au total par défaut de
-    # stamina (stamina.retry, `timeout`).
-    @stamina.retry(on=DeezerUnavailable, timeout=None, attempts=5, wait_initial=1.0, wait_max=30.0)
+    @retried(DeezerUnavailable)
     def _get(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
         self._limiter.try_acquire("deezer")
         try:

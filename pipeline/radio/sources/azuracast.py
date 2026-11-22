@@ -10,9 +10,8 @@ from dataclasses import dataclass
 from typing import Any
 
 import requests
-import stamina
 
-from radio.core.http import check_status, json_or_none
+from radio.core.http import check_status, json_or_none, retried
 
 
 class AzuracastError(Exception):
@@ -172,11 +171,7 @@ class AzuracastClient:
             return self._send(method, path, **kw)
         return self._send_retried(method, path, **kw)
 
-    # Cinq tentatives, quelle que soit leur durée : les 45 s au total par défaut de stamina
-    # arrêteraient les relances après une seule requête expirée à 120 s (stamina.retry, `timeout`).
-    @stamina.retry(
-        on=AzuracastUnavailable, attempts=5, timeout=None, wait_initial=1.0, wait_max=30.0
-    )
+    @retried(AzuracastUnavailable)
     def _send_retried(self, method: str, path: str, **kw: Any) -> requests.Response:
         return self._send(method, path, **kw)
 

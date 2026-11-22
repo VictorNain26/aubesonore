@@ -6,10 +6,9 @@ La clé voyage en paramètre de requête : aucun message d'exception ni log ne c
 from typing import Any
 
 import requests
-import stamina
 from pyrate_limiter import Duration, Limiter, Rate
 
-from radio.core.http import check_status, json_or_none
+from radio.core.http import check_status, json_or_none, retried
 
 API = "https://ws.audioscrobbler.com/2.0/"
 _NOT_FOUND = 6
@@ -55,9 +54,7 @@ class LastfmClient:
         except (KeyError, TypeError, AttributeError):
             raise LastfmError("malformed similar artists") from None
 
-    # Toutes les tentatives, quelle que soit leur durée : pas les 45 s au total par défaut de
-    # stamina (stamina.retry, `timeout`).
-    @stamina.retry(on=LastfmUnavailable, timeout=None, attempts=5, wait_initial=1.0, wait_max=30.0)
+    @retried(LastfmUnavailable)
     def _call(self, method: str, **params: Any) -> dict[str, Any]:
         self._limiter.try_acquire("lastfm")
         query = {
