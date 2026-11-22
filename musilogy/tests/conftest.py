@@ -55,6 +55,7 @@ def synthetic_artist(
     mbid: str,
     begin: str | None,
     end: str | None,
+    *,
     relations: list[dict[str, Any]] | None = None,
     name: str | None = None,
     kind: str | None = "Group",
@@ -81,6 +82,7 @@ def synthetic_release_group(
     mbid: str,
     artist: str,
     date: str,
+    *,
     secondary: list[str] | None = None,
     co_artists: list[str] | None = None,
     primary_type: str = "Album",
@@ -148,6 +150,7 @@ def discogs_release(
     master_id: int | None = 0,
     released: str | None = "2001",
     styles: Sequence[str] = (),
+    *,
     descriptions: Sequence[str] = (),
 ) -> dict[str, Any]:
     """A synthetic line of the Discogs projection (extract.reduce_discogs_release)."""
@@ -191,6 +194,7 @@ def discogs_url(discogs_id: int) -> dict[str, Any]:
 def published(
     tmp_path,
     artists,
+    *,
     popularity=None,
     release_groups=(),
     discography=None,
@@ -308,6 +312,7 @@ def loaded(
     tmp_path,
     conninfo,
     artists,
+    *,
     popularity=None,
     release_groups=(),
     discography=None,
@@ -319,12 +324,12 @@ def loaded(
         published(
             tmp_path,
             artists,
-            popularity,
-            release_groups,
-            discography,
-            official,
-            listening,
-            discogs,
+            popularity=popularity,
+            release_groups=release_groups,
+            discography=discography,
+            official=official,
+            listening=listening,
+            discogs=discogs,
         ),
         conninfo,
     )

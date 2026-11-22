@@ -140,7 +140,7 @@ def test_run_refuses_to_publish_when_the_extraction_disagrees(tmp_path, publishe
     ],
 )
 def test_run_stops_when_a_pinned_survey_is_missing(
-    tmp_path, monkeypatch, found, missing, survey, command
+    tmp_path, monkeypatch, *, found, missing, survey, command
 ):
     monkeypatch.setattr(cli, "ARTISTS_JSONL", FIX / "artists.jsonl")
     monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
@@ -546,7 +546,7 @@ def test_a_stopped_official_part_resumes_under_the_day_it_started(tmp_path, monk
     monkeypatch.setattr(cli, "official_snapshot", snapshot)
     monkeypatch.setattr(cli, "RELEASE_GROUPS_JSONL", FIX / "release_groups.jsonl")
     taken = []
-    monkeypatch.setattr(cli, "_take_once", lambda _survey, date, *_: taken.append(date))
+    monkeypatch.setattr(cli, "_take_once", lambda _survey, date, **_: taken.append(date))
     cli.snapshot_official()
     assert taken == ["2026-10-03"]
 
