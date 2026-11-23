@@ -26,6 +26,19 @@ case "$pass" in
     ;;
 esac
 
+# The vote page restarts on the code just merged. try-restart fails on a unit that is not loaded
+# (unlinked, or a server rebuilt before its units are linked): the deploy, or the rollback, would
+# stop there under set -e, before the site's containers.
+restart_votes() { # <the commit the page now runs>
+  if [ "$(systemctl --user show -P LoadState radio-page-votes.service)" != loaded ]; then
+    echo "radio-page-votes is not loaded: the vote page was not restarted (azuracast/RUNBOOK.md)"
+  elif systemctl --user try-restart radio-page-votes.service; then
+    echo "restarted radio-page-votes on ${1:0:8}"
+  else
+    echo "try-restart radio-page-votes failed on ${1:0:8}"
+  fi
+}
+
 # The checkout serves production: anything but a clean master is someone's work
 # in progress. A fast-forward would then move their branch, or fail on their
 # files every run; refuse loudly instead, and leave the tree to its owner.
@@ -241,7 +254,7 @@ rollback() {
   (cd pipeline && "$uv" sync --locked --quiet) || echo "uv sync failed on ${current:0:8}"
   reload_units || echo "daemon-reload failed: the units need a hand"
   if ! git diff --quiet "$current" "$target" -- pipeline/; then
-    systemctl --user try-restart radio-page-votes.service
+    restart_votes "$current"
   fi
   if site_changed; then
     local image ready=yes
@@ -281,8 +294,7 @@ reload_units || rollback "daemon-reload"
 # The vote page is a long-running process: it keeps serving the pipeline code it
 # was started with until it restarts, now on its unit as merged.
 if [ "$pipeline_changed" = yes ]; then
-  systemctl --user try-restart radio-page-votes.service
-  echo "restarted radio-page-votes on ${target:0:8}"
+  restart_votes "$target"
 fi
 
 if ! site_changed; then

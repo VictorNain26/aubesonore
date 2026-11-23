@@ -153,7 +153,9 @@ nuit :
    Puis `systemctl --user list-timers` ne montre que les nouveaux noms.
 3. Une seconde PR retire les anciens fichiers, fait passer les `OnFailure=` restants au nouveau
    gabarit et ôte l'ancien nom de `deploy.sh` ; une fois déployée,
-   `systemctl --user disable <ancien>@.service` retire le lien de l'ancien gabarit.
+   `systemctl --user disable <ancien>@.service` retire le lien de l'ancien gabarit. S'il répond
+   que le fichier n'existe plus, `rm ~/.config/systemd/user/<ancien>@.service`, puis
+   `systemctl --user daemon-reload`.
 
 ## Mettre AzuraCast à jour
 
