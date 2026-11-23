@@ -17,14 +17,29 @@ cd "$REPO_DIR"
 # tree under it. The next timer run promotes once the pass is over. A oneshot
 # stays "activating" for its whole run, which `is-active` reports as not active:
 # three deploys landed in the middle of the pass of 2026-10-04.
-weekly=$(systemctl --user show -P ActiveState radio-weekly.service)
-case "$weekly" in
-  inactive | failed) ;;
-  *)
-    echo "radio-weekly is $weekly, deferring the deploy"
-    exit 0
-    ;;
-esac
+# radio-weekly is the pass until the server switches to radio-passe by hand (azuracast/RUNBOOK.md,
+# « Renommer une unité »); `show` answers "inactive" for a unit that is not loaded.
+for unit in radio-passe radio-weekly; do
+  pass=$(systemctl --user show -P ActiveState "$unit.service")
+  case "$pass" in
+    inactive | failed) ;;
+    *)
+      echo "$unit is $pass, deferring the deploy"
+      exit 0
+      ;;
+  esac
+done
+
+# The vote page, radio-votes until the same switch, radio-page-votes after: restart whichever is
+# loaded. try-restart fails on a unit that is not.
+restart_votes() { # <the commit the page now runs>
+  local unit
+  for unit in radio-page-votes radio-votes; do
+    [ "$(systemctl --user show -P LoadState "$unit.service")" = loaded ] || continue
+    systemctl --user try-restart "$unit.service"
+    echo "restarted $unit on ${1:0:8}"
+  done
+}
 
 # The checkout serves production: anything but a clean master is someone's work
 # in progress. A fast-forward would then move their branch, or fail on their
@@ -241,7 +256,7 @@ rollback() {
   (cd pipeline && "$uv" sync --locked --quiet) || echo "uv sync failed on ${current:0:8}"
   reload_units || echo "daemon-reload failed: the units need a hand"
   if ! git diff --quiet "$current" "$target" -- pipeline/; then
-    systemctl --user try-restart radio-votes.service
+    restart_votes "$current"
   fi
   if site_changed; then
     local image ready=yes
@@ -281,8 +296,7 @@ reload_units || rollback "daemon-reload"
 # The vote page is a long-running process: it keeps serving the pipeline code it
 # was started with until it restarts, now on its unit as merged.
 if [ "$pipeline_changed" = yes ]; then
-  systemctl --user try-restart radio-votes.service
-  echo "restarted radio-votes on ${target:0:8}"
+  restart_votes "$target"
 fi
 
 if ! site_changed; then

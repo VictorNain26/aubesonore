@@ -20,7 +20,7 @@ reconstruire seule depuis un dépôt public.
 | `stations/` (médias, et `*/config/` dans la sauvegarde AzuraCast) | NVMe | restic | catalogue perdu, station à reconfigurer |
 | Base MariaDB d'AzuraCast | volume Docker | sauvegarde AzuraCast quotidienne | métadonnées, comptes, playlists |
 | Base PostgreSQL du site | volume Docker | `aubesonore-backup` (`site/scripts/backup-db.sh`) | comptes, titres gardés |
-| `pipeline/data/radio.db`, `data/models/` | NVMe | `radio-backup` | les votes, qui n'existent nulle part ailleurs |
+| `pipeline/data/radio.db`, `data/models/` | NVMe | `radio-sauvegarde` | les votes, qui n'existent nulle part ailleurs |
 | `site/.env`, `pipeline/.env` | hors git | **aucune** : une copie à garder soi-même (gestionnaire de mots de passe) | secrets à recréer : Plex, AzuraCast, YouTube, Google, SMTP |
 | `~/musilogy-data` | NVMe | **aucune** (choix du 2026-10-13 : 16 Go) | Musilogy se refait sur un dump MusicBrainz plus récent, une journée de calcul, des chiffres un peu différents |
 | Mot de passe du dépôt restic | `~/.config/restic/password` | une copie hors de la machine | le dépôt restic est illisible |
@@ -74,11 +74,11 @@ uv sync
 # .env : ta copie (sinon .env.example, secrets à recréer), avec la clé d'API AzuraCast régénérée
 for u in deploy/systemd/*; do systemctl --user link "$PWD/$u"; done
 systemctl --user daemon-reload
-systemctl --user enable --now radio-weekly.timer radio-backup.timer radio-grille.timer radio-votes.service
+systemctl --user enable --now radio-passe.timer radio-sauvegarde.timer radio-grille.timer radio-page-votes.service
 ```
 
 Restaurer `data/radio.db` et `data/models/` depuis la copie la plus récente de
-`/media/plex/.backups/radio` (`radio-backup`) : la base porte les votes, qui
+`/media/plex/.backups/radio` (`radio-sauvegarde`) : la base porte les votes, qui
 n'existent nulle part ailleurs.
 
 ## 3. Application web
@@ -119,12 +119,41 @@ cd musilogy && uv sync
 ```bash
 docker ps                                   # azuracast, aubesonore-{db,backend,frontend,renderer}
 systemctl --user list-timers                # un par *.timer de pipeline/deploy/systemd, site/scripts/systemd et azuracast/scripts/systemd
-systemctl --user is-active radio-votes      # page de vote ; 127.0.0.1:8040 répond 403 sans Cloudflare Access
+systemctl --user is-active radio-page-votes      # page de vote ; 127.0.0.1:8040 répond 403 sans Cloudflare Access
 cd ~/aubesonore/pipeline && .venv/bin/pytest -q -W error && .venv/bin/radio rapport
 ```
 
-Le vrai test de bout en bout reste une passe `radio-weekly` complète : elle touche
+Le vrai test de bout en bout reste une passe `radio-passe` complète : elle touche
 l'API AzuraCast, le disque média et la base SQLite d'un seul coup.
+
+## Renommer une unité
+
+Les unités sont des liens posés à la main : un fichier renommé dans le dépôt ne change rien sur le
+serveur. Le renommage se fait en trois temps, hors de la passe du dimanche et des sauvegardes de la
+nuit :
+
+1. Une PR ajoute l'unité sous son nouveau nom, à côté de l'ancienne. `deploy.sh` connaît les deux
+   noms le temps de la bascule ; les unités restées liées gardent leur `OnFailure=`. Le
+   déploiement recharge systemd sans rien activer.
+2. Le serveur bascule, une commande à la fois. Selon la sorte d'unité :
+
+   ```bash
+   D=~/aubesonore/pipeline/deploy/systemd
+   # Une tâche planifiée (un .timer et son .service) :
+   systemctl --user disable --now <ancien>.timer <ancien>.service   # retire aussi les liens
+   systemctl --user link $D/<nouveau>.service
+   systemctl --user enable --now $D/<nouveau>.timer
+   # Un service permanent (la page de vote) : quelques secondes sans page.
+   systemctl --user disable --now <ancien>.service
+   systemctl --user enable --now $D/<nouveau>.service
+   # Un gabarit (radio-alerte@) : le lier suffit, l'OnFailure= des unités l'instancie.
+   systemctl --user link $D/<nouveau>@.service
+   ```
+
+   Puis `systemctl --user list-timers` ne montre que les nouveaux noms.
+3. Une seconde PR retire les anciens fichiers, fait passer les `OnFailure=` restants au nouveau
+   gabarit et ôte l'ancien nom de `deploy.sh` ; une fois déployée,
+   `systemctl --user disable <ancien>@.service` retire le lien de l'ancien gabarit.
 
 ## Mettre AzuraCast à jour
 
@@ -133,7 +162,7 @@ seul : Renovate ouvre une PR à chaque version, relue à la main le lundi. Avant
 [changelog](https://github.com/AzuraCast/AzuraCast/blob/main/CHANGELOG.md) pour un changement de
 l'API que lit le pipeline (`pipeline/radio/sources/azuracast.py`). Le merge met le fichier à jour
 sur le serveur ; la nouvelle image ne tourne qu'une fois appliquée, hors de la passe du dimanche
-(`radio-weekly.timer`) : le redémarrage coupe le flux une minute.
+(`radio-passe.timer`) : le redémarrage coupe le flux une minute.
 
 ```bash
 cd ~/aubesonore/azuracast && docker compose up -d --wait web

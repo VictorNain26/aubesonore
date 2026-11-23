@@ -1,0 +1,15 @@
+[Unit]
+Description=AubeSonore : copie quotidienne de la base et des modèles sur un autre disque
+# En échec, un courriel au propriétaire (radio-alerte@.service ; systemd.unit(5), « OnFailure= »).
+OnFailure=radio-alerte@%N.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/aubesonore/pipeline
+EnvironmentFile=%h/aubesonore/pipeline/.env
+Nice=19
+# Un disque absent met l'unité en échec, donc un courriel, plutôt qu'une copie « sur un autre disque »
+# écrite sur le NVMe. Un Assert= ne suffirait pas : il fait échouer le démarrage, jamais l'unité
+# (systemd.unit(5)).
+ExecStartPre=/usr/bin/mountpoint -q /media/plex
+ExecStart=%h/aubesonore/pipeline/.venv/bin/radio sauvegarde
