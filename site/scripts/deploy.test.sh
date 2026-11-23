@@ -347,7 +347,7 @@ deploy
 # page restarts, so it restarts on the new unit; the unit it adds is named, to link by hand.
 sync_line=$(grep -n "^uv sync" "$r/docker.log" | tail -1 | cut -d: -f1 || true)
 reload_line=$(grep -n -m1 "systemctl --user daemon-reload" "$r/docker.log" | cut -d: -f1 || true)
-restart_line=$(grep -n -m1 "try-restart radio-votes" "$r/docker.log" | cut -d: -f1 || true)
+restart_line=$(grep -n -m1 "try-restart radio-page-votes" "$r/docker.log" | cut -d: -f1 || true)
 name="a changed unit is reloaded after the sync, before the vote page restarts"
 if [ "$status" -eq 0 ] && head_is "$U" && [ -n "$sync_line" ] && [ -n "$reload_line" ] &&
   [ -n "$restart_line" ] && [ "$sync_line" -lt "$reload_line" ] &&

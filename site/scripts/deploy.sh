@@ -17,11 +17,11 @@ cd "$REPO_DIR"
 # tree under it. The next timer run promotes once the pass is over. A oneshot
 # stays "activating" for its whole run, which `is-active` reports as not active:
 # three deploys landed in the middle of the pass of 2026-10-04.
-weekly=$(systemctl --user show -P ActiveState radio-weekly.service)
-case "$weekly" in
+pass=$(systemctl --user show -P ActiveState radio-passe.service)
+case "$pass" in
   inactive | failed) ;;
   *)
-    echo "radio-weekly is $weekly, deferring the deploy"
+    echo "radio-passe is $pass, deferring the deploy"
     exit 0
     ;;
 esac
@@ -241,7 +241,7 @@ rollback() {
   (cd pipeline && "$uv" sync --locked --quiet) || echo "uv sync failed on ${current:0:8}"
   reload_units || echo "daemon-reload failed: the units need a hand"
   if ! git diff --quiet "$current" "$target" -- pipeline/; then
-    systemctl --user try-restart radio-votes.service
+    systemctl --user try-restart radio-page-votes.service
   fi
   if site_changed; then
     local image ready=yes
@@ -281,8 +281,8 @@ reload_units || rollback "daemon-reload"
 # The vote page is a long-running process: it keeps serving the pipeline code it
 # was started with until it restarts, now on its unit as merged.
 if [ "$pipeline_changed" = yes ]; then
-  systemctl --user try-restart radio-votes.service
-  echo "restarted radio-votes on ${target:0:8}"
+  systemctl --user try-restart radio-page-votes.service
+  echo "restarted radio-page-votes on ${target:0:8}"
 fi
 
 if ! site_changed; then

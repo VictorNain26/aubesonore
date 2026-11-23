@@ -147,7 +147,7 @@ def test_votes_serve_runs_uvicorn_on_loopback(full: Path, monkeypatch: pytest.Mo
     monkeypatch.setattr(uvicorn, "run", fake_run)
     res = runner.invoke(commandes.app, ["page-votes"])
     assert res.exit_code == 0, res.output
-    # Le tunnel Cloudflare et radio-votes.service visent 127.0.0.1:8040.
+    # Le tunnel Cloudflare et radio-page-votes.service visent 127.0.0.1:8040.
     assert (seen["host"], seen["port"]) == ("127.0.0.1", 8040)
 
 

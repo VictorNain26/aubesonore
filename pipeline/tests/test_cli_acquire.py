@@ -183,7 +183,7 @@ def test_check_needs_systemd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
 def test_pass_stages_are_the_weekly_units_commands() -> None:
     # check juge la passe sur PASS_STAGES : une étape ajoutée à l'unité sans y figurer ne
     # serait jamais vérifiée, une étape retirée de l'unité la ferait échouer chaque semaine.
-    unit = (REPO_ROOT / "deploy" / "systemd" / "radio-weekly.service").read_text()
+    unit = (REPO_ROOT / "deploy" / "systemd" / "radio-passe.service").read_text()
     commands = tuple(
         line.split("/bin/radio ", 1)[1].split()[0]
         for line in unit.splitlines()

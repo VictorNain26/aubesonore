@@ -60,8 +60,8 @@ techniques (`conn`, `path`, `client`, `retry`) et les noms des outils (`song_id`
 **Les noms, d'aujourd'hui à demain**
 
 Appliqués dans cet ordre, une PR à la fois : le code et les commandes, puis les unités, puis la
-base. Les commandes, les étapes, les paquets et les réglages portent déjà les leurs ; jusqu'aux PR
-suivantes, les unités et la base gardent leurs noms actuels dans ce document.
+base. Les commandes, les étapes, les paquets, les réglages et les unités portent déjà les leurs ;
+jusqu'à la PR suivante, la base garde ses noms actuels dans ce document.
 
 | Aujourd'hui | Demain |
 |---|---|
@@ -281,7 +281,7 @@ Justification des choix : `recherches/2026-09-30-acquisition-publication-observa
    - Options : `--format mp3,flac --pref-format mp3 --length-tol 3 --name-format {uri}`, avec
      l'id Deezer en colonne URI du CSV : chaque fichier porte l'id du titre demandé.
    - Le mot de passe passe par un fichier de config en 0600, jamais par la ligne de commande.
-     Ce fichier est écrit sur tmpfs, dans le `RuntimeDirectory=` de `radio-weekly` (exporté en
+     Ce fichier est écrit sur tmpfs, dans le `RuntimeDirectory=` de `radio-passe` (exporté en
      `$RUNTIME_DIRECTORY`, 0700), que systemd supprime à l'arrêt de l'unité, même tuée au délai
      (`systemd.exec(5)`, vérifié sur une unité transitoire). À la main, il va dans
      `$XDG_RUNTIME_DIR`, effacé en fin de commande.
@@ -591,15 +591,15 @@ Seuils, par étape : taux d'acquisition au-dessus de `taux_reussite_min` dès
 une source en panne n'arrête pas la passe, et un échec de `telechargement` n'empêche pas `antenne` de
 publier ce qui est prêt. La dernière étape, `radio bilan`, juge la passe entière : une étape en échec, ou aucune
 découverte publiée, ou une étape sans ligne de rapport (processus tué), la fait échouer, et
-l'unité `radio-weekly` est en échec (§8.2).
+l'unité `radio-passe` est en échec (§8.2).
 
 ### 8.2 Pannes
 
-Aucune surveillance externe. Un seul message : un courriel au propriétaire quand `radio-weekly`,
-`radio-grille` ou `radio-backup` échoue, sans quoi une passe arrêtée à sa première étape en échec
+Aucune surveillance externe. Un seul message : un courriel au propriétaire quand `radio-passe`,
+`radio-grille` ou `radio-sauvegarde` échoue, sans quoi une passe arrêtée à sa première étape en échec
 perdrait la semaine en silence. C'est le mécanisme documenté de systemd : chacune de ces unités
-déclare `OnFailure=radio-alert@%N.service` (`systemd.unit(5)`, « OnFailure= » et « Specifiers »),
-et le gabarit `radio-alert@.service` lance `radio alerte <unité>`, qui envoie par `smtplib` un
+déclare `OnFailure=radio-alerte@%N.service` (`systemd.unit(5)`, « OnFailure= » et « Specifiers »),
+et le gabarit `radio-alerte@.service` lance `radio alerte <unité>`, qui envoie par `smtplib` un
 courriel en texte brut : l'unité en échec, l'heure et où regarder sur le serveur. Rien du
 journal : une erreur peut y écrire une URL signée ou une clé d'API, et le courriel passe par le
 relais et la boîte du destinataire. Il passe par le relais SMTP du site, avec ses
@@ -608,10 +608,10 @@ relais et la boîte du destinataire. Il passe par le relais SMTP du site, avec s
 Sans `SMTP_HOST`, `SMTP_FROM` ou `ALERT_EMAIL_TO`, ou si le relais refuse le courriel,
 `radio alerte` échoue (code 2 ou 1) et l'unité d'alerte reste en échec à côté de celle qu'elle
 signalait : une alerte qui ne part pas ne doit pas passer pour une alerte envoyée. Le gabarit n'a
-pas lui-même d'`OnFailure=`. `radio-votes` n'en a pas non plus : avec `Restart=on-failure`, chaque
+pas lui-même d'`OnFailure=`. `radio-page-votes` n'en a pas non plus : avec `Restart=on-failure`, chaque
 redémarrage passe par l'état « failed » (`RestartMode=normal`, `systemd.service(5)`), et un
 plantage en boucle enverrait un courriel toutes les 10 s ; une page de vote tombée se voit au
-vote. Essai d'envoi : `systemctl --user start radio-alert@essai.service`.
+vote. Essai d'envoi : `systemctl --user start radio-alerte@essai.service`.
 
 Le reste se lit sur la machine :
 
@@ -638,7 +638,7 @@ le dernier passage.
   cp314, et le projet est en Python 3.12.
 - **Déploiement** : merger sur `master` suffit. `aubesonore-deploy.timer` avance le checkout
   `~/aubesonore` une fois toutes les vérifications GitHub du commit passées, jamais pendant une passe
-  hebdomadaire, et redémarre `radio-votes` quand `pipeline/` change : la page de vote garde sinon le
+  hebdomadaire, et redémarre `radio-page-votes` quand `pipeline/` change : la page de vote garde sinon le
   code de son démarrage (`site/README.md`, « Déploiement »).
 - Les tests tournent sans réseau (~12 s). Tout bug corrigé reçoit son test.
 
@@ -646,11 +646,11 @@ le dernier passage.
 
 | Quand | Unité systemd utilisateur | Ce qui se passe |
 |---|---|---|
-| dimanche 03:00 | `radio-weekly` | `bibliotheque`, `decouverte`, `nouveautes`, `favoris`, `empreintes`, `gout`, `tirage`, `telechargement`, `antenne`, `mesures`, `grille --aujourdhui`, `bilan` ; bornée à 12 h |
+| dimanche 03:00 | `radio-passe` | `bibliotheque`, `decouverte`, `nouveautes`, `favoris`, `empreintes`, `gout`, `tirage`, `telechargement`, `antenne`, `mesures`, `grille --aujourdhui`, `bilan` ; bornée à 12 h |
 | chaque jour 23:00 | `radio-grille` | grille du lendemain dans les 24 playlists horaires du jour |
-| chaque jour 04:30 | `radio-backup` | copie de `data/radio.db` (API de sauvegarde SQLite, `integrity_check` vérifié avant d'entrer dans son jour : une copie refusée ne laisse rien) et de `data/models/` dans `RADIO_BACKUP_DIR` (`/media/plex/.backups/radio`, autre disque physique), 14 jours gardés |
-| en continu | `radio-votes` | page de vote, `127.0.0.1:8040`, publiée sur `votes.aubesonore.fr` |
-| à l'échec de l'une des trois premières | `radio-alert@<unité>` | `radio alerte <unité>.service` : courriel à `ALERT_EMAIL_TO`, l'unité et l'heure, rien du journal (§8.2) |
+| chaque jour 04:30 | `radio-sauvegarde` | copie de `data/radio.db` (API de sauvegarde SQLite, `integrity_check` vérifié avant d'entrer dans son jour : une copie refusée ne laisse rien) et de `data/models/` dans `RADIO_BACKUP_DIR` (`/media/plex/.backups/radio`, autre disque physique), 14 jours gardés |
+| en continu | `radio-page-votes` | page de vote, `127.0.0.1:8040`, publiée sur `votes.aubesonore.fr` |
+| à l'échec de l'une des trois premières | `radio-alerte@<unité>` | `radio alerte <unité>.service` : courriel à `ALERT_EMAIL_TO`, l'unité et l'heure, rien du journal (§8.2) |
 
 - Pannes : §8.2.
 - **Une commande à la fois.** Les commandes qui écrivent la base (les étapes de la passe,
@@ -667,7 +667,7 @@ le dernier passage.
   ouvrent la base en même temps : chaque migration prend le verrou d'écriture de SQLite
   (`BEGIN IMMEDIATE`) et relit `user_version` dessous, et ne passe qu'une fois.
 - Un gros rattrapage de `empreintes` (environ 3 s par titre) ou de `mesures` (environ 17 s par
-  titre) se lance à la main, en `nice`, jamais pendant `radio-weekly` : il ferait attendre
+  titre) se lance à la main, en `nice`, jamais pendant `radio-passe` : il ferait attendre
   l'étape suivante de la passe jusqu'à sa fin.
 
 **Réglages.** Les secrets et les URL sont dans `.env` (modèle : `.env.example`, jamais commité).

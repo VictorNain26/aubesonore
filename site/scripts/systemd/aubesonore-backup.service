@@ -1,7 +1,7 @@
 [Unit]
 Description=Dump the AubeSonore database to a separate disk
-# On failure, a mail to the owner (pipeline/deploy/systemd/radio-alert@.service).
-OnFailure=radio-alert@%N.service
+# On failure, a mail to the owner (pipeline/deploy/systemd/radio-alerte@.service).
+OnFailure=radio-alerte@%N.service
 
 [Service]
 Type=oneshot
