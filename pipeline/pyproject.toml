@@ -4,7 +4,7 @@ version = "3.0.0"
 description = "AubeSonore — goût, découverte, acquisition, antenne et votes"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "typer>=0.28.0",
+    "typer>=0.29.0",
     "pydantic>=2.14.3",
     "pydantic-settings>=2.16.2",
     "requests>=2.34.2",
