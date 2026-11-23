@@ -1,8 +1,8 @@
 [Unit]
 Description=AubeSonore : sauvegarde restic chiffrée des médias et de la configuration d'AzuraCast sur un autre disque
-# En échec, un courriel au propriétaire (pipeline/deploy/systemd/radio-alert@.service). Le script
+# En échec, un courriel au propriétaire (pipeline/deploy/systemd/radio-alerte@.service). Le script
 # refuse lui-même d'écrire si /media/plex n'est pas monté.
-OnFailure=radio-alert@%N.service
+OnFailure=radio-alerte@%N.service
 
 [Service]
 Type=oneshot

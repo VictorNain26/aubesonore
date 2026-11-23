@@ -36,24 +36,6 @@ for state in activating active deactivating reloading inactive failed; do
   fi
 done
 
-# Until the server switches to radio-passe by hand, the pass runs as radio-weekly: it defers too.
-cat >"$tmp/bin/systemctl" <<'EOF'
-#!/usr/bin/env bash
-case " $* " in
-  *" radio-weekly.service "*) echo activating ;;
-  *" show "*) echo inactive ;;
-  *) exit 1 ;;
-esac
-EOF
-status=0
-output=$(PATH="$tmp/bin:$PATH" REPO_DIR="$tmp/repo" bash "$here/deploy.sh" 2>&1) || status=$?
-if [[ "$output" == *"radio-weekly is activating, deferring"* ]] && [ "$status" -eq 0 ]; then
-  echo "ok   the pass under its old name defers the deploy"
-else
-  echo "FAIL the pass under its old name defers the deploy: exit $status: $output"
-  failures=$((failures + 1))
-fi
-
 # A deploy that fails is rolled back, and its commit is not tried again until master moves.
 export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.test
 export GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.test
@@ -122,18 +104,12 @@ case "$1 $2" in
   "attestation verify") [ "$ATTEST" != fail ] && [[ " $* " != *" --source-digest $ATTEST "* ]] ;;
 esac
 EOF2
-# Units in $LOADED are loaded, the others not found; every unit is inactive.
 cat >"$r/bin/systemctl" <<'EOF2'
 #!/usr/bin/env bash
 echo "systemctl $*" >>"$DOCKER_LOG"
-if [[ " $* " == *" LoadState "* ]]; then
-  [[ " $LOADED " == *" ${*: -1} "* ]] && echo loaded || echo not-found
-elif [[ " $* " == *" show "* ]]; then
-  echo inactive
-fi
+[[ " $* " == *" show "* ]] && echo inactive
 exit 0
 EOF2
-export LOADED="radio-page-votes.service"
 # uv logs each call, so the order of a sync and a reload reads in the log.
 printf '#!/usr/bin/env bash\necho "uv $*" >>"$DOCKER_LOG"\n' >"$r/bin/uv"
 # The backend's answer to the search: $SEARCH_BEFORE the first time in a run, before the start,
@@ -364,17 +340,6 @@ commit_unit() { # <unit file under pipeline/deploy/systemd> <message>
 }
 BAD=none FAIL=none
 
-# Until the same switch, the vote page runs as radio-votes: a pipeline change restarts it, and
-# never asks for radio-page-votes, which try-restart would fail on.
-T=$(commit_unit radio-avant.service "a pipeline change before the switch")
-: >"$r/docker.log"
-LOADED="radio-votes.service" deploy
-name="before the switch, the vote page restarts under its old name only"
-if [ "$status" -eq 0 ] && head_is "$T" && logged "try-restart radio-votes.service" &&
-  ! logged "try-restart radio-page-votes"; then
-  passed "$name"
-else failed "$name"; fi
-
 U=$(commit_unit radio-test.service "a unit changes")
 : >"$r/docker.log"
 deploy
@@ -417,8 +382,9 @@ else failed "$name"; fi
 
 # A failed reload after the merge rolls back, rather than leave HEAD on a half-deployed commit.
 W=$(commit_unit radio-test.service "a unit that will not reload")
-printf '#!/usr/bin/env bash\necho "systemctl $*" >>"$DOCKER_LOG"\n[[ " $* " == *" LoadState "* ]] && echo loaded\n[[ " $* " == *" ActiveState "* ]] && echo inactive\n[[ " $* " != *" daemon-reload "* ]] || [ "$(git -C "$REPO_DIR" rev-parse HEAD)" != %s ]\n' "$W" >"$r/bin/systemctl"
+printf '#!/usr/bin/env bash\necho "systemctl $*" >>"$DOCKER_LOG"\n[[ " $* " == *" show "* ]] && echo inactive\n[[ " $* " != *" daemon-reload "* ]] || [ "$(git -C "$REPO_DIR" rev-parse HEAD)" != %s ]\n' "$W" >"$r/bin/systemctl"
 deploy
+printf '#!/usr/bin/env bash\necho "systemctl $*" >>"$DOCKER_LOG"\n[[ " $* " == *" show "* ]] && echo inactive\nexit 0\n' >"$r/bin/systemctl"
 name="a failed daemon-reload rolls the deploy back"
 if [ "$status" -ne 0 ] && head_is "$N" && failed_is "$W" &&
   [[ "$output" == *"failed (daemon-reload)"* ]]; then
