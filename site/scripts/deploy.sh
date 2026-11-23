@@ -17,28 +17,26 @@ cd "$REPO_DIR"
 # tree under it. The next timer run promotes once the pass is over. A oneshot
 # stays "activating" for its whole run, which `is-active` reports as not active:
 # three deploys landed in the middle of the pass of 2026-10-04.
-# radio-weekly is the pass until the server switches to radio-passe by hand (azuracast/RUNBOOK.md,
-# « Renommer une unité »); `show` answers "inactive" for a unit that is not loaded.
-for unit in radio-passe radio-weekly; do
-  pass=$(systemctl --user show -P ActiveState "$unit.service")
-  case "$pass" in
-    inactive | failed) ;;
-    *)
-      echo "$unit is $pass, deferring the deploy"
-      exit 0
-      ;;
-  esac
-done
+pass=$(systemctl --user show -P ActiveState radio-passe.service)
+case "$pass" in
+  inactive | failed) ;;
+  *)
+    echo "radio-passe is $pass, deferring the deploy"
+    exit 0
+    ;;
+esac
 
-# The vote page, radio-votes until the same switch, radio-page-votes after: restart whichever is
-# loaded. try-restart fails on a unit that is not.
+# The vote page restarts on the code just merged. try-restart fails on a unit that is not loaded
+# (unlinked, or a server rebuilt before its units are linked): the deploy, or the rollback, would
+# stop there under set -e, before the site's containers.
 restart_votes() { # <the commit the page now runs>
-  local unit
-  for unit in radio-page-votes radio-votes; do
-    [ "$(systemctl --user show -P LoadState "$unit.service")" = loaded ] || continue
-    systemctl --user try-restart "$unit.service"
-    echo "restarted $unit on ${1:0:8}"
-  done
+  if [ "$(systemctl --user show -P LoadState radio-page-votes.service)" != loaded ]; then
+    echo "radio-page-votes is not loaded: the vote page was not restarted (azuracast/RUNBOOK.md)"
+  elif systemctl --user try-restart radio-page-votes.service; then
+    echo "restarted radio-page-votes on ${1:0:8}"
+  else
+    echo "try-restart radio-page-votes failed on ${1:0:8}"
+  fi
 }
 
 # The checkout serves production: anything but a clean master is someone's work

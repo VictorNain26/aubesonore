@@ -36,24 +36,6 @@ for state in activating active deactivating reloading inactive failed; do
   fi
 done
 
-# Until the server switches to radio-passe by hand, the pass runs as radio-weekly: it defers too.
-cat >"$tmp/bin/systemctl" <<'EOF'
-#!/usr/bin/env bash
-case " $* " in
-  *" radio-weekly.service "*) echo activating ;;
-  *" show "*) echo inactive ;;
-  *) exit 1 ;;
-esac
-EOF
-status=0
-output=$(PATH="$tmp/bin:$PATH" REPO_DIR="$tmp/repo" bash "$here/deploy.sh" 2>&1) || status=$?
-if [[ "$output" == *"radio-weekly is activating, deferring"* ]] && [ "$status" -eq 0 ]; then
-  echo "ok   the pass under its old name defers the deploy"
-else
-  echo "FAIL the pass under its old name defers the deploy: exit $status: $output"
-  failures=$((failures + 1))
-fi
-
 # A deploy that fails is rolled back, and its commit is not tried again until master moves.
 export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.test
 export GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.test
@@ -364,14 +346,14 @@ commit_unit() { # <unit file under pipeline/deploy/systemd> <message>
 }
 BAD=none FAIL=none
 
-# Until the same switch, the vote page runs as radio-votes: a pipeline change restarts it, and
-# never asks for radio-page-votes, which try-restart would fail on.
-T=$(commit_unit radio-avant.service "a pipeline change before the switch")
+# An unloaded vote page, or one whose restart fails, does not stop the deploy halfway: the
+# site's containers still start, and the commit is promoted.
+T=$(commit_unit radio-avant.service "a pipeline change with no vote page loaded")
 : >"$r/docker.log"
-LOADED="radio-votes.service" deploy
-name="before the switch, the vote page restarts under its old name only"
-if [ "$status" -eq 0 ] && head_is "$T" && logged "try-restart radio-votes.service" &&
-  ! logged "try-restart radio-page-votes"; then
+LOADED="" deploy
+name="a vote page that is not loaded does not stop the deploy"
+if [ "$status" -eq 0 ] && head_is "$T" && ! logged "try-restart" &&
+  [[ "$output" == *"radio-page-votes is not loaded"* ]]; then
   passed "$name"
 else failed "$name"; fi
 
