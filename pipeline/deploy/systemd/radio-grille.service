@@ -1,8 +1,8 @@
 [Unit]
 Description=AubeSonore : grille du lendemain dans les playlists horaires d'AzuraCast
 After=network-online.target
-# En échec, un courriel au propriétaire (radio-alerte@.service ; systemd.unit(5), « OnFailure= »).
-OnFailure=radio-alerte@%N.service
+# En échec, un courriel au propriétaire (radio-alert@.service ; systemd.unit(5), « OnFailure= »).
+OnFailure=radio-alert@%N.service
 
 [Service]
 Type=oneshot

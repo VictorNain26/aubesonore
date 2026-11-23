@@ -650,7 +650,7 @@ le dernier passage.
 | chaque jour 23:00 | `radio-grille` | grille du lendemain dans les 24 playlists horaires du jour |
 | chaque jour 04:30 | `radio-sauvegarde` | copie de `data/radio.db` (API de sauvegarde SQLite, `integrity_check` vérifié avant d'entrer dans son jour : une copie refusée ne laisse rien) et de `data/models/` dans `RADIO_BACKUP_DIR` (`/media/plex/.backups/radio`, autre disque physique), 14 jours gardés |
 | en continu | `radio-page-votes` | page de vote, `127.0.0.1:8040`, publiée sur `votes.aubesonore.fr` |
-| à l'échec de l'une des trois premières | `radio-alerte@<unité>` | `radio alerte <unité>.service` : courriel à `ALERT_EMAIL_TO`, l'unité et l'heure, rien du journal (§8.2) |
+| à l'échec d'une unité qui le déclare : les trois premières, `aubesonore-backup`, `azuracast-backup` | `radio-alerte@<unité>` | `radio alerte <unité>.service` : courriel à `ALERT_EMAIL_TO`, l'unité et l'heure, rien du journal (§8.2) |
 
 - Pannes : §8.2.
 - **Une commande à la fois.** Les commandes qui écrivent la base (les étapes de la passe,

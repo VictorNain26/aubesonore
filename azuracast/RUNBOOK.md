@@ -132,18 +132,28 @@ Les unités sont des liens posés à la main : un fichier renommé dans le dép�
 serveur. Le renommage se fait en trois temps, hors de la passe du dimanche et des sauvegardes de la
 nuit :
 
-1. Une PR ajoute l'unité sous son nouveau nom, à côté de l'ancienne ; `deploy.sh` et les
-   `OnFailure=` passent au nouveau nom. Le déploiement recharge systemd sans rien activer.
-2. Aussitôt déployée, avant toute autre fusion (`deploy.sh` vise déjà le nouveau nom) :
+1. Une PR ajoute l'unité sous son nouveau nom, à côté de l'ancienne. `deploy.sh` connaît les deux
+   noms le temps de la bascule ; les unités restées liées gardent leur `OnFailure=`. Le
+   déploiement recharge systemd sans rien activer.
+2. Le serveur bascule, une commande à la fois. Selon la sorte d'unité :
 
    ```bash
+   D=~/aubesonore/pipeline/deploy/systemd
+   # Une tâche planifiée (un .timer et son .service) :
    systemctl --user disable --now <ancien>.timer <ancien>.service   # retire aussi les liens
-   systemctl --user link ~/aubesonore/pipeline/deploy/systemd/<nouveau>.service
-   systemctl --user enable --now ~/aubesonore/pipeline/deploy/systemd/<nouveau>.timer
-   systemctl --user list-timers                                      # seul le nouveau nom
+   systemctl --user link $D/<nouveau>.service
+   systemctl --user enable --now $D/<nouveau>.timer
+   # Un service permanent (la page de vote) : quelques secondes sans page.
+   systemctl --user disable --now <ancien>.service
+   systemctl --user enable --now $D/<nouveau>.service
+   # Un gabarit (radio-alerte@) : le lier suffit, l'OnFailure= des unités l'instancie.
+   systemctl --user link $D/<nouveau>@.service
    ```
 
-3. Une seconde PR retire l'ancien fichier.
+   Puis `systemctl --user list-timers` ne montre que les nouveaux noms.
+3. Une seconde PR retire les anciens fichiers, fait passer les `OnFailure=` restants au nouveau
+   gabarit et ôte l'ancien nom de `deploy.sh` ; une fois déployée,
+   `systemctl --user disable <ancien>@.service` retire le lien de l'ancien gabarit.
 
 ## Mettre AzuraCast à jour
 
