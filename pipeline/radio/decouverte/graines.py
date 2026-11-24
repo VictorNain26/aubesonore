@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 import numpy as np
 
 from radio.bibliotheque.artistes import ArtisteBibliotheque
-from radio.bibliotheque.poids import play_weight
+from radio.bibliotheque.poids import poids_ecoute
 from radio.socle.config import DecouverteConfig
 
 
@@ -25,7 +25,7 @@ class Run:
     n_dropped: int
 
 
-def recently_used(conn: sqlite3.Connection, now: datetime, days: int) -> set[int]:
+def graines_recentes(conn: sqlite3.Connection, now: datetime, days: int) -> set[int]:
     since = (now - timedelta(days=days)).isoformat()
     return {
         r[0]
@@ -45,7 +45,7 @@ def tirer_graines(
     pool = [a for a in artists if a.deezer_artist_id not in exclude]
     if not pool:
         return []
-    w = np.array([play_weight(a.plays) for a in pool])
+    w = np.array([poids_ecoute(a.plays) for a in pool])
     picked = rng.choice(len(pool), size=min(k, len(pool)), replace=False, p=w / w.sum())
     return [pool[int(i)] for i in picked]
 
@@ -70,7 +70,7 @@ def start_run(
         seeds = [by_id[i] for i in seed_ids if i in by_id]
         return Run(running[0], seeds, resumed=True, n_dropped=len(seed_ids) - len(seeds))
     seeds = tirer_graines(
-        artists, recently_used(conn, now, cfg.repos_graine_jours), cfg.graines_par_fournee, rng
+        artists, graines_recentes(conn, now, cfg.repos_graine_jours), cfg.graines_par_fournee, rng
     )
     with conn:
         cur = conn.execute(

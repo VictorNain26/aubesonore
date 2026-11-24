@@ -21,7 +21,7 @@ from radio.gout.modele import (
     entraine_sur,
     entrainer,
     favoris_retenus,
-    rescore,
+    renoter,
     votes_count,
     votes_digest,
 )
@@ -63,7 +63,7 @@ def gout() -> None:
                     "mesurés) : lancer radio negatifs puis radio empreintes",
                     1,
                 )
-        model_id = rescore(conn, models_dir, cfg)
+        model_id = renoter(conn, models_dir, cfg)
         batch = derniere_fournee(conn)
         favorites = favoris_retenus(conn, models_dir)
         _record(

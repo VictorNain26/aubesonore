@@ -28,7 +28,7 @@ from typing import Any
 import numpy as np
 
 from radio.decouverte.familles import FAMILY
-from radio.gout.modele import serving_id
+from radio.gout.modele import id_en_service
 
 
 class AucunModeleEnServiceError(Exception):
@@ -56,7 +56,7 @@ class Bulletin:
 
 @dataclass(frozen=True)
 class VoteExprime:
-    ballot: Bulletin
+    bulletin: Bulletin
     vote: str
 
 
@@ -70,7 +70,7 @@ class Tirage:
     lesson: list[int]
 
 
-def pending_ballots(conn: sqlite3.Connection) -> list[Bulletin]:
+def bulletins_en_attente(conn: sqlite3.Connection) -> list[Bulletin]:
     rows = conn.execute(
         """
         SELECT b.deezer_track_id, b.kind, b.position, a.name, t.title
@@ -168,10 +168,10 @@ def tirer_bulletins(
     *,
     floor: Mapping[str, float],
 ) -> Tirage:
-    waiting = pending_ballots(conn)
+    waiting = bulletins_en_attente(conn)
     if waiting:
         raise BulletinsEnAttenteError(len(waiting))
-    model_id = serving_id(conn)
+    model_id = id_en_service(conn)
     if model_id is None:
         raise AucunModeleEnServiceError
     last_run = conn.execute(

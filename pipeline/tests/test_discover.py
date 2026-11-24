@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 from radio.decouverte.fournee import AucunArtisteBibliothequeError, decouvrir
-from radio.decouverte.graines import recently_used
+from radio.decouverte.graines import graines_recentes
 from radio.socle.config import DecouverteConfig
 from radio.socle.db import connect
 from radio.sources.deezer import DeezerArtist, DeezerError, DeezerTrack, DeezerUnavailable
@@ -81,7 +81,7 @@ def test_discover_pass(tmp_path: Path) -> None:
     ).fetchall()
     assert [(r[0], r[1], r[2]) for r in rows] == [(11, 1, 1), (21, 1, 2)]
     assert status(conn) == "done"
-    assert recently_used(conn, NOW, 30) == {70, 83}
+    assert graines_recentes(conn, NOW, 30) == {70, 83}
 
 
 def test_definitive_error_skips_and_names(tmp_path: Path) -> None:
@@ -114,7 +114,7 @@ def test_no_title_for_any_neighbour_is_deezer_down_and_keeps_the_seeds(tmp_path:
     with pytest.raises(DeezerUnavailable, match="aucun titre pour 2 voisins"):
         decouvrir(conn, dz, FakeLastfm(), CFG, NOW, np.random.default_rng(0))
     assert status(conn) == "running"
-    assert recently_used(conn, NOW, 30) == set()
+    assert graines_recentes(conn, NOW, 30) == set()
     rep = decouvrir(conn, FakeDeezer(), FakeLastfm(), CFG, NOW, np.random.default_rng(1))
     assert rep.resumed and rep.n_added == 2 and status(conn) == "done"
 
@@ -159,7 +159,7 @@ def test_unavailable_logs_the_seed_keeps_work_and_resumes_same_run(
         decouvrir(conn, dz, lf, CFG, NOW, np.random.default_rng(0))
     assert caplog.messages == ["discover: stopped at seed Wire (70)"]
     assert status(conn) == "running"
-    assert recently_used(conn, NOW, 30) == set()
+    assert graines_recentes(conn, NOW, 30) == set()
     lf = FakeLastfm()
     rep = decouvrir(conn, dz, lf, CFG, NOW, np.random.default_rng(1))
     assert rep.resumed and rep.run_id == 1

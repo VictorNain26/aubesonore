@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 
 from radio.bibliotheque.artistes import ArtisteBibliotheque
-from radio.decouverte.graines import finish_run, recently_used, start_run, tirer_graines
+from radio.decouverte.graines import finish_run, graines_recentes, start_run, tirer_graines
 from radio.socle.config import DecouverteConfig
 from radio.socle.db import connect
 
@@ -49,10 +49,10 @@ def test_run_lifecycle(tmp_path: Path) -> None:
 def test_cooldown_counts_only_finished_runs(tmp_path: Path) -> None:
     conn = connect(tmp_path / "radio.db")
     run = start_run(conn, A, CFG, NOW, np.random.default_rng(0))
-    assert recently_used(conn, NOW, 30) == set()
+    assert graines_recentes(conn, NOW, 30) == set()
     finish_run(conn, run.run_id, NOW)
-    assert recently_used(conn, NOW + timedelta(days=29), 30) == ids(run.seeds)
-    assert recently_used(conn, NOW + timedelta(days=31), 30) == set()
+    assert graines_recentes(conn, NOW + timedelta(days=29), 30) == ids(run.seeds)
+    assert graines_recentes(conn, NOW + timedelta(days=31), 30) == set()
 
 
 def test_resumed_run_drops_seeds_gone_from_library(tmp_path: Path) -> None:

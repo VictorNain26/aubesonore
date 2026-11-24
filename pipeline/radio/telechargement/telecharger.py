@@ -41,13 +41,13 @@ class RapportTelechargement:
         return self.n_ready + sum(self.failures.values())
 
 
-class Pending(NamedTuple):
+class ATelecharger(NamedTuple):
     tids: list[int]
     # Retenus mis en attente : leur artiste a déjà son titre à l'antenne, ou un titre prêt.
     waiting: int
 
 
-def pending(conn: sqlite3.Connection, cfg: TelechargementConfig) -> Pending:
+def a_telecharger(conn: sqlite3.Connection, cfg: TelechargementConfig) -> ATelecharger:
     """Retenus pas encore prêts ni abandonnés ni votés « non » : la dernière fournée d'abord, car
     une nouveauté vieillit, puis les mieux notés ; un seul par artiste libre."""
     rows = conn.execute(
@@ -83,7 +83,7 @@ def pending(conn: sqlite3.Connection, cfg: TelechargementConfig) -> Pending:
         elif len(tids) < cfg.max_par_passe:
             taken.add(int(artist))
             tids.append(int(tid))
-    return Pending(tids, waiting)
+    return ATelecharger(tids, waiting)
 
 
 def _save(
@@ -146,7 +146,7 @@ def telecharger_fournee(
     rep = RapportTelechargement()
     wanted: list[Wanted] = []
     keys: set[tuple[str, str, int]] = set()
-    todo = pending(conn, cfg)
+    todo = a_telecharger(conn, cfg)
     rep.n_artist_waiting = todo.waiting
     for tid in todo.tids:
         got = deezer.track(tid)

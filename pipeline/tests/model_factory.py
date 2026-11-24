@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 
 from radio.bibliotheque.artistes import enregistrer_bibliotheque
-from radio.decouverte.candidats import add_tracks
+from radio.decouverte.candidats import ajouter_titres
 from radio.empreintes.effnet import DIM, MODEL_TAG, to_blob
 from radio.socle.config import GoutConfig
 from radio.socle.db import connect
@@ -50,7 +50,7 @@ def make_model_db(
                 )
                 for k in range(per_artist)
             ]
-            add_tracks(conn, aid, f"Art {aid}", tracks, origin, NOW)
+            ajouter_titres(conn, aid, f"Art {aid}", tracks, origin, NOW)
     for tid, aid, origin in conn.execute(
         "SELECT deezer_track_id, deezer_artist_id, origin FROM tracks"
     ).fetchall():

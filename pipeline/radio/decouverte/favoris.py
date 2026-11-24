@@ -11,7 +11,7 @@ La bibliothèque garde la priorité : un favori déjà dans Plex reste `library`
 import sqlite3
 from dataclasses import dataclass
 
-from radio.decouverte.candidats import add_tracks, on_deezer
+from radio.decouverte.candidats import ajouter_titres, on_deezer
 from radio.sources.deezer import DeezerClient
 from radio.sources.hypem import HypemClient
 
@@ -43,7 +43,7 @@ def importer_favoris(
             continue
         kept.add(found.id)
         with conn:
-            add_tracks(conn, found.artist_id, found.artist_name, [found], "favorite", now)
+            ajouter_titres(conn, found.artist_id, found.artist_name, [found], "favorite", now)
             # Un candidat déjà aimé n'est plus une découverte. OR IGNORE : une autre version du
             # même titre est déjà favorite, celui-ci reste candidat.
             conn.execute(

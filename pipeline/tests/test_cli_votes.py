@@ -11,7 +11,7 @@ import radio.commandes as commandes
 from radio.gout.modele import Fournee, TauxOui
 from radio.socle.config import Settings
 from radio.socle.rapports import record_stage
-from radio.votes.etat import Status
+from radio.votes.etat import Etat
 from tests.model_factory import make_model_db, serve_scores
 
 runner = CliRunner()
@@ -35,7 +35,7 @@ def full(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path
 
 
-def _st(**kw: Any) -> Status:
+def _st(**kw: Any) -> Etat:
     base: dict[str, Any] = {
         "model_id": 3,
         "exam_auc": 0.8,
@@ -49,7 +49,7 @@ def _st(**kw: Any) -> Status:
         "batch": Fournee(7, 400, 133, 0),
     }
     base.update(kw)
-    return Status(**base)
+    return Etat(**base)
 
 
 def test_status_lines() -> None:

@@ -7,11 +7,11 @@ import pytest
 import responses
 
 from radio.bibliotheque.artistes import enregistrer_bibliotheque
-from radio.decouverte.candidats import add_tracks
+from radio.decouverte.candidats import ajouter_titres
 from radio.decouverte.favoris import importer_favoris
 from radio.decouverte.nouveautes import chercher_nouveautes
 from radio.empreintes.effnet import DIM, MODEL_TAG, to_blob
-from radio.gout.modele import FavorisRetenus, entrainer, favoris_retenus, rescore
+from radio.gout.modele import FavorisRetenus, entrainer, favoris_retenus, renoter
 from radio.socle.config import GoutConfig, NouveautesConfig
 from radio.sources.deezer import DeezerTrack
 from radio.sources.hypem import API, HypemClient, HypemNotFound, HypemTrack
@@ -87,7 +87,7 @@ def _db(tmp_path: Path) -> sqlite3.Connection:
     enregistrer_bibliotheque(conn, NOW)
     conn.execute("INSERT INTO discover_runs VALUES (4, 'd', 'd', 'done')")
     # Sea Calls Me Home est déjà candidat de la fournée 4.
-    add_tracks(
+    ajouter_titres(
         conn,
         60,
         "Julia Holter",
@@ -164,12 +164,12 @@ def test_the_share_of_favorites_the_model_would_keep(tmp_path: Path) -> None:
     seed_run(conn)
     cfg = GoutConfig(retenus_decouvertes=32)
     assert entrainer(conn, tmp_path / "models", cfg, NOW).promoted
-    rescore(conn, tmp_path / "models", cfg)
+    renoter(conn, tmp_path / "models", cfg)
     assert favoris_retenus(conn, tmp_path / "models") is None  # pas encore de favori
 
     for k, direction in enumerate([LIKED] * 3 + [DISLIKED] * 3):
         tid = 900000 + k
-        add_tracks(conn, 9000, "Fav", [dt(tid, 9000, "Fav", f"F{k}")], "favorite", NOW)
+        ajouter_titres(conn, 9000, "Fav", [dt(tid, 9000, "Fav", f"F{k}")], "favorite", NOW)
         v = 6 * direction + np.eye(DIM, dtype=np.float32)[2] * 0.1
         conn.execute(
             "INSERT INTO track_measures VALUES (?, 'ok', ?, ?, ?)",

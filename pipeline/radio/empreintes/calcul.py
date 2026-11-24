@@ -34,7 +34,7 @@ class RapportEmpreintes:
     errors: list[str] = field(default_factory=list)
 
 
-def measure_tracks(
+def calculer_empreintes(
     conn: sqlite3.Connection,
     deezer: DeezerClient,
     embedder: Embedder,

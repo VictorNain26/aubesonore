@@ -10,7 +10,7 @@ from radio.socle.config import TelechargementConfig
 from radio.socle.media import Probe, Tags
 from radio.sources.deezer import DeezerAlbum, DeezerError, DeezerTrack, DeezerUnavailable, TrackPage
 from radio.telechargement.sockseek import SockseekError
-from radio.telechargement.telecharger import pending, telecharger_fournee
+from radio.telechargement.telecharger import a_telecharger, telecharger_fournee
 from tests.model_factory import NOW, add_vote, make_model_db, serve_scores
 
 CFG = TelechargementConfig(max_par_passe=4, tentatives_max=2)
@@ -104,7 +104,7 @@ def test_acquire_prepares_verified_files_and_retries_failures(
 ) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    first = pending(conn, CFG).tids
+    first = a_telecharger(conn, CFG).tids
     assert len(first) == 4  # max_par_passe, la dernière fournée et les mieux notés d'abord
     ok, wrong, missing = first[0], first[1], first[2:]
     fake_audio[wrong] = 0.55  # Chromaprint : un autre morceau
@@ -117,12 +117,12 @@ def test_acquire_prepares_verified_files_and_retries_failures(
     assert prepared[ok].album == "Album" and prepared[ok].cover == b"jpeg"
 
     # Deuxième passe : les échecs sont retentés (1 tentative < 2), le prêt ne l'est plus.
-    again = pending(conn, CFG).tids
+    again = a_telecharger(conn, CFG).tids
     assert ok not in again and wrong in again and set(missing) <= set(again)
     _pass(conn, tmp_path, set(), 2)
     rows = dict(conn.execute("SELECT deezer_track_id, attempts FROM acquisitions").fetchall())
     assert rows[wrong] == 2 and rows[ok] == 1
-    assert wrong not in pending(conn, CFG).tids  # abandonné après tentatives_max
+    assert wrong not in a_telecharger(conn, CFG).tids  # abandonné après tentatives_max
 
 
 def _artist(conn: Any, tid: int) -> int:
@@ -149,7 +149,7 @@ def test_one_title_per_artist_enters_and_the_next_waits_its_turn(
     conn = make_model_db(tmp_path)
     serve_scores(conn)
     cfg = TelechargementConfig(max_par_passe=100, tentatives_max=2)
-    first = pending(conn, cfg)
+    first = a_telecharger(conn, cfg)
     artists = [_artist(conn, t) for t in first.tids]
     assert len(artists) == len(set(artists)) and first.waiting > 0
 
@@ -164,7 +164,7 @@ def test_one_title_per_artist_enters_and_the_next_waits_its_turn(
         (other, origin, categorie, NOW, NOW),
     )
     conn.commit()
-    again = pending(conn, cfg)
+    again = a_telecharger(conn, cfg)
     assert on_air not in {_artist(conn, t) for t in again.tids}
     assert again.waiting == first.waiting + 1
 
@@ -173,13 +173,13 @@ def test_the_latest_batch_is_acquired_first(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
     # Mêmes notes dans les deux fournées : la dernière (artistes 6 à 11) passe d'abord.
-    assert all(t // 100 % 100 >= 6 for t in pending(conn, CFG).tids)
+    assert all(t // 100 % 100 >= 6 for t in a_telecharger(conn, CFG).tids)
 
 
 def test_a_title_gone_from_deezer_is_counted(tmp_path: Path, fake_audio: dict[int, float]) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    gone = pending(conn, CFG).tids[0]
+    gone = a_telecharger(conn, CFG).tids[0]
     rep = telecharger_fournee(
         conn,
         FakeDeezer(frozenset({gone})),
@@ -200,7 +200,7 @@ def test_a_found_file_below_the_bar_is_refused_before_anything_else(
     # Breaks if the pass publishes a file the probe would refuse: low bitrate, wrong length.
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    low, short, ok = pending(conn, CFG).tids[:3]
+    low, short, ok = a_telecharger(conn, CFG).tids[:3]
     probes = {low: Probe("mp3", 200.0, 128), short: Probe("mp3", 150.0, 320)}
     monkeypatch.setattr(
         run_mod, "probe", lambda p: probes.get(int(p.stem), Probe("mp3", 200.0, 320))
@@ -223,7 +223,7 @@ def test_a_file_without_a_deezer_preview_to_compare_is_refused(
 
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    found = pending(conn, CFG).tids[0]
+    found = a_telecharger(conn, CFG).tids[0]
 
     rep = _pass(conn, tmp_path, {found}, 1, NoPreview())
 
@@ -236,7 +236,7 @@ def test_one_track_request_per_title_after_the_wanted_list(
 ) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    ok = pending(conn, CFG).tids[0]
+    ok = a_telecharger(conn, CFG).tids[0]
     deezer = FakeDeezer()
     _pass(conn, tmp_path, {ok}, 1, deezer)
     # Une lecture pour la liste, une seule ensuite : extrait frais, album et pochette ensemble.
@@ -246,10 +246,10 @@ def test_one_track_request_per_title_after_the_wanted_list(
 def test_a_title_voted_no_is_never_acquired(tmp_path: Path, fake_audio: dict[int, float]) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    first, second = pending(conn, CFG).tids[:2]
+    first, second = a_telecharger(conn, CFG).tids[:2]
     add_vote(conn, first, "exam", "non")
     add_vote(conn, second, "lesson", "non")
-    left = pending(conn, CFG).tids
+    left = a_telecharger(conn, CFG).tids
     assert first not in left and second not in left and len(left) == 4
 
 
@@ -258,7 +258,7 @@ def test_missing_cover_keeps_the_verified_file(
 ) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    ok = pending(conn, CFG).tids[0]
+    ok = a_telecharger(conn, CFG).tids[0]
     rep = _pass(conn, tmp_path, {ok}, 1, FakeDeezer(cover_status=404))
     assert (rep.n_ready, rep.n_no_cover) == (1, 1)
     assert (tmp_path / "antenne" / f"{ok}.mp3").exists()
@@ -283,7 +283,7 @@ def test_a_failed_sockseek_consumes_no_attempt(
 ) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    run = _sockseek(set(pending(conn, CFG).tids))
+    run = _sockseek(set(a_telecharger(conn, CFG).tids))
 
     def failing(args: Sequence[str], timeout: float, log: Path) -> int:
         if code == 2:
@@ -310,7 +310,7 @@ def test_titles_missing_from_a_partial_index_are_not_attempts(
 ) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    first = pending(conn, CFG).tids[0]
+    first = a_telecharger(conn, CFG).tids[0]
     run = _sockseek({first})
 
     def interrupted(args: Sequence[str], timeout: float, log: Path) -> int:
@@ -339,7 +339,7 @@ def test_deezer_outage_still_cleans_the_pass_folder(
 ) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    found = set(pending(conn, CFG).tids)
+    found = set(a_telecharger(conn, CFG).tids)
 
     class Outage(FakeDeezer):
         def track_page(self, tid: int) -> TrackPage | None:
@@ -361,7 +361,7 @@ def test_two_titles_with_the_same_sockseek_key_do_not_loop(
 ) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    first, second = pending(conn, CFG).tids[:2]
+    first, second = a_telecharger(conn, CFG).tids[:2]
 
     class SameKey(FakeDeezer):
         def track_page(self, tid: int) -> TrackPage | None:

@@ -17,7 +17,7 @@ from datetime import datetime
 import numpy as np
 
 from radio.bibliotheque.artistes import artistes_bibliotheque, noms_bibliotheque
-from radio.decouverte.candidats import add_tracks, ajouter_candidats, keep_tracks
+from radio.decouverte.candidats import ajouter_candidats, ajouter_titres, garder_titres
 from radio.decouverte.graines import finish_run, start_run
 from radio.decouverte.voisins import chercher_voisins
 from radio.socle.config import DecouverteConfig
@@ -94,9 +94,9 @@ def decouvrir(
             if not top:
                 rep.skipped.append(f"{n.name} (aucun titre sur Deezer)")
                 continue
-            kept = keep_tracks(top, n.id)
+            kept = garder_titres(top, n.id)
             with conn:
-                added = add_tracks(conn, n.id, n.name, kept, "candidate", stamp)
+                added = ajouter_titres(conn, n.id, n.name, kept, "candidate", stamp)
                 ajouter_candidats(
                     conn,
                     run.run_id,

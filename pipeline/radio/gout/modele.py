@@ -48,7 +48,7 @@ class TauxOui:
         return self.yes / self.n
 
 
-def yes_rate(labels: Ints) -> TauxOui | None:
+def taux_oui(labels: Ints) -> TauxOui | None:
     """Taux de oui, intervalle de Wilson à 95 %."""
     n, yes = len(labels), int(labels.sum())
     if n == 0:
@@ -85,12 +85,12 @@ def _serving_row(conn: sqlite3.Connection) -> sqlite3.Row | None:
     return row
 
 
-def serving_id(conn: sqlite3.Connection) -> int | None:
+def id_en_service(conn: sqlite3.Connection) -> int | None:
     row = _serving_row(conn)
     return None if row is None else int(row["model_id"])
 
 
-def serving(conn: sqlite3.Connection, models_dir: Path) -> tuple[int, Pipeline] | None:
+def en_service(conn: sqlite3.Connection, models_dir: Path) -> tuple[int, Pipeline] | None:
     row = _serving_row(conn)
     if row is None:
         return None
@@ -105,7 +105,7 @@ class Fournee:
     floored: int
 
 
-def write_scores(
+def ecrire_notes(
     conn: sqlite3.Connection,
     model_id: int,
     model: Pipeline,
@@ -243,7 +243,7 @@ def entrainer(conn: sqlite3.Connection, models_dir: Path, cfg: GoutConfig, now: 
     model = fit(table, labels.train, cfg)
     exam = labels.exam
     new_auc = auc(exam.labels, predict(model, table, exam.rows))
-    current = serving(conn, models_dir)
+    current = en_service(conn, models_dir)
     cur_auc = None if current is None else auc(exam.labels, predict(current[1], table, exam.rows))
     refusal = _decide(current, new_auc, cur_auc)
     verdict = refusal or ("premier modèle" if current is None else "AUC d'examen au moins égale")
@@ -284,13 +284,13 @@ def entrainer(conn: sqlite3.Connection, models_dir: Path, cfg: GoutConfig, now: 
     )
 
 
-def rescore(conn: sqlite3.Connection, models_dir: Path, cfg: GoutConfig) -> int | None:
+def renoter(conn: sqlite3.Connection, models_dir: Path, cfg: GoutConfig) -> int | None:
     """Note les candidats avec le modèle en service ; renvoie son numéro, None s'il n'y en a pas."""
-    current = serving(conn, models_dir)
+    current = en_service(conn, models_dir)
     if current is None:
         return None
     model_id, model = current
-    write_scores(conn, model_id, model, charger_empreintes(conn), cfg.retenus, cfg.planchers)
+    ecrire_notes(conn, model_id, model, charger_empreintes(conn), cfg.retenus, cfg.planchers)
     return model_id
 
 
@@ -307,7 +307,7 @@ def favoris_retenus(conn: sqlite3.Connection, models_dir: Path) -> FavorisRetenu
     découvertes notées à la coupure ou au-dessus (et non la part retenue : la règle d'un titre
     par artiste en écarte qui sont au-dessus). Une mesure de goût sur des centaines de titres que
     Victor aime ; elle ne décide jamais d'une promotion."""
-    current = serving(conn, models_dir)
+    current = en_service(conn, models_dir)
     row = conn.execute(
         """
         WITH latest AS (

@@ -16,7 +16,7 @@ import numpy as np
 import numpy.typing as npt
 
 from radio.bibliotheque.artistes import artistes_bibliotheque, noms_bibliotheque
-from radio.bibliotheque.poids import WEIGHT_CAP, play_weight
+from radio.bibliotheque.poids import WEIGHT_CAP, poids_ecoute
 from radio.empreintes.table import TableEmpreintes
 
 Floats = npt.NDArray[np.float64]
@@ -109,7 +109,7 @@ def build_labels(conn: sqlite3.Connection, table: TableEmpreintes, fenetre_exame
         elif origin == "library":
             if keys[tid] in exam_keys:
                 continue  # autre version d'un titre d'examen : elle le révélerait au modèle
-            label, weight, cat = 1, play_weight(plays.get(tid, 0)), LIBRARY
+            label, weight, cat = 1, poids_ecoute(plays.get(tid, 0)), LIBRARY
         elif origin == "negative":
             if (
                 int(table.artist_ids[i]) in lib_ids

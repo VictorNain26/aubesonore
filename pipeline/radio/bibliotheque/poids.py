@@ -8,5 +8,5 @@ import math
 WEIGHT_CAP = 4.0
 
 
-def play_weight(plays: int) -> float:
+def poids_ecoute(plays: int) -> float:
     return min(1.0 + math.log1p(plays), WEIGHT_CAP)

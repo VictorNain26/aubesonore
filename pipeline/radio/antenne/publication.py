@@ -23,7 +23,7 @@ from typing import Any, Protocol
 
 import numpy as np
 
-from radio.bibliotheque.poids import play_weight
+from radio.bibliotheque.poids import poids_ecoute
 from radio.decouverte.familles import FAMILY
 from radio.socle.config import AntenneConfig, GrilleConfig
 from radio.socle.media import ToolError, prepare, probe
@@ -92,7 +92,7 @@ def _insert(conn: sqlite3.Connection, tid: int, origin: str, m: Media, now: str)
             )
 
 
-def reconcile(conn: sqlite3.Connection, media: list[Media], rep: RapportAntenne) -> None:
+def realigner(conn: sqlite3.Connection, media: list[Media], rep: RapportAntenne) -> None:
     ours = {m.path for m in media if m.path.startswith((f"{FOLDER}/", f"{REST}/"))}
     known = {str(r[0]) for r in conn.execute("SELECT path FROM antenne")}
     gone = known - ours
@@ -134,7 +134,7 @@ def _remove(
     return len(done)
 
 
-def withdraw_rejected(conn: sqlite3.Connection, station: MediaStore, rep: RapportAntenne) -> None:
+def retirer_refuses(conn: sqlite3.Connection, station: MediaStore, rep: RapportAntenne) -> None:
     """Un titre voté « non » sort de l'antenne (repères compris), sauf s'il est en cours ou en
     file : il sortira à la passe suivante. Un fichier prêt voté « non » n'est jamais publié."""
     rows = conn.execute(
@@ -163,7 +163,7 @@ def withdraw_rejected(conn: sqlite3.Connection, station: MediaStore, rep: Rappor
         rep.n_voted_out += 1
 
 
-def publish_ready(
+def publier_prets(
     conn: sqlite3.Connection, station: MediaStore, now: str, rep: RapportAntenne
 ) -> None:
     rows = conn.execute(
@@ -212,7 +212,7 @@ def _move(
     return len(done)
 
 
-def one_per_artist(
+def un_par_artiste(
     conn: sqlite3.Connection,
     station: MediaStore,
     busy: set[str],
@@ -255,7 +255,7 @@ def _weeks_ago(now: datetime, weeks: int) -> str:
     return (now - timedelta(weeks=weeks)).isoformat()
 
 
-def end_first_stay(
+def finir_sejours(
     conn: sqlite3.Connection,
     station: MediaStore,
     cfg: AntenneConfig,
@@ -301,7 +301,7 @@ def end_first_stay(
     rep.n_ended = _remove(conn, station, [p for p, _ in due if p not in set(promoted)], rep)
 
 
-def expire(
+def perimer(
     conn: sqlite3.Connection,
     station: MediaStore,
     cfg: AntenneConfig,
@@ -403,7 +403,7 @@ def _reference_pool(
     ]
 
 
-def rotate_references(
+def tourner_reperes(
     conn: sqlite3.Connection,
     station: MediaStore,
     deezer: DeezerClient,
@@ -430,7 +430,7 @@ def rotate_references(
     pool = _reference_pool(conn, cfg, now, root)
     if not pool:
         return
-    w = np.array([play_weight(int(r[4])) for r in pool])
+    w = np.array([poids_ecoute(int(r[4])) for r in pool])
     picked = rng.choice(len(pool), size=min(need, len(pool)), replace=False, p=w / w.sum())
     taken = {
         int(r[0])
@@ -468,7 +468,7 @@ def rotate_references(
                     rep.n_references_no_cover += 1
 
 
-def antenne_pass(
+def tenir_antenne(
     conn: sqlite3.Connection,
     station: MediaStore,
     deezer: DeezerClient,
@@ -481,15 +481,15 @@ def antenne_pass(
 ) -> RapportAntenne:
     rep = RapportAntenne()
     stamp = now.isoformat()
-    reconcile(conn, station.files(), rep)
-    withdraw_rejected(conn, station, rep)
-    publish_ready(conn, station, stamp, rep)
+    realigner(conn, station.files(), rep)
+    retirer_refuses(conn, station, rep)
+    publier_prets(conn, station, stamp, rep)
     busy = station.busy_song_ids()
-    one_per_artist(conn, station, busy, now, rep)
-    end_first_stay(conn, station, cfg, busy, now, rep)
-    expire(conn, station, cfg, busy, now, rep)
+    un_par_artiste(conn, station, busy, now, rep)
+    finir_sejours(conn, station, cfg, busy, now, rep)
+    perimer(conn, station, cfg, busy, now, rep)
     platoon(conn, station, cfg, grille.stock("fond"), busy, now, rep)
-    rotate_references(
+    tourner_reperes(
         conn, station, deezer, cfg, grille.stock("reperes"), root, rsgain, rng, busy, now, rep
     )
     rep.n_total = conn.execute(

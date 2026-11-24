@@ -14,7 +14,7 @@ from radio.commandes.commun import (
     _unavailable,
     app,
 )
-from radio.empreintes.calcul import measure_tracks
+from radio.empreintes.calcul import calculer_empreintes
 from radio.empreintes.effnet import EffnetEmbedder
 from radio.empreintes.table import charger_empreintes
 from radio.socle.epingles import ModelError
@@ -33,7 +33,7 @@ def empreintes() -> None:
     now = _now()
     with _db(settings) as conn:
         try:
-            meas = measure_tracks(conn, DeezerClient(), embedder, now)
+            meas = calculer_empreintes(conn, DeezerClient(), embedder, now)
         except DeezerUnavailable as e:
             _fail(_unavailable(e), 1)
         origins = Counter(charger_empreintes(conn).origins)

@@ -34,8 +34,8 @@ from radio.votes.suivi import Suivi, load_suivi, pct
 from radio.votes.tirage import (
     Bulletin,
     VoteExprime,
+    bulletins_en_attente,
     enregistrer_vote,
-    pending_ballots,
     votes_semaine,
 )
 
@@ -128,18 +128,18 @@ def _page(ballots: list[Bulletin], n_voted: int) -> str:
 
 def _week_page(votes: list[VoteExprime]) -> str:
     def item(c: VoteExprime) -> str:
-        tid = c.ballot.deezer_track_id
+        tid = c.bulletin.deezer_track_id
         buttons = "".join(
             f'<button name="choix" value="{v}" class="{v}" '
             f'aria-pressed="{"true" if v == c.vote else "false"}">{label}</button>'
             for v, label in _CHOICES
         )
         return (
-            f'<li><p class="titre">{html.escape(c.ballot.title)}</p>'
-            f'<p class="artiste">{html.escape(c.ballot.artist)}</p>'
+            f'<li><p class="titre">{html.escape(c.bulletin.title)}</p>'
+            f'<p class="artiste">{html.escape(c.bulletin.artist)}</p>'
             f'<audio controls preload="none" src="/extrait/{tid}"></audio>'
             f'<form method="post" action="/vote" class="corriger" '
-            f'aria-label="{html.escape(c.ballot.title)}">'
+            f'aria-label="{html.escape(c.bulletin.title)}">'
             f'<input type="hidden" name="tid" value="{tid}">'
             f'<input type="hidden" name="retour" value="/semaine">{buttons}</form></li>'
         )
@@ -197,7 +197,7 @@ def create_app(
     def waiting() -> list[Bulletin]:
         conn = connect(db_path)
         try:
-            return pending_ballots(conn)
+            return bulletins_en_attente(conn)
         finally:
             conn.close()
 
@@ -254,7 +254,7 @@ def create_app(
     @app.get("/extrait/{tid}", dependencies=guarded)
     def extrait(tid: int) -> Response:
         if tid not in {b.deezer_track_id for b in waiting()} | {
-            c.ballot.deezer_track_id for c in week()
+            c.bulletin.deezer_track_id for c in week()
         }:
             raise HTTPException(404, "Titre inconnu")
         try:

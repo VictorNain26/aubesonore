@@ -14,7 +14,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from radio.bibliotheque.artistes import artistes_bibliotheque
-from radio.decouverte.candidats import add_tracks, keep_tracks
+from radio.decouverte.candidats import ajouter_titres, garder_titres
 from radio.sources.deezer import DeezerClient, DeezerError
 
 
@@ -72,9 +72,9 @@ def importer_negatifs(
         except DeezerError as e:
             rep.skipped.append(f"{n.name} ({type(e).__name__})")
             continue
-        kept = keep_tracks(top, n.deezer_id)
+        kept = garder_titres(top, n.deezer_id)
         with conn:
-            added = add_tracks(conn, n.deezer_id, n.name, kept, "negative", now)
+            added = ajouter_titres(conn, n.deezer_id, n.name, kept, "negative", now)
             conn.execute("INSERT INTO negative_artists VALUES (?, ?)", (n.deezer_id, n.category))
         rep.n_added += len(added)
         rep.n_duplicates += len(kept) - len(added)

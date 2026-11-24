@@ -11,7 +11,7 @@ import responses
 import stamina
 
 import radio.antenne.publication as sync_mod
-from radio.antenne.publication import antenne_pass
+from radio.antenne.publication import tenir_antenne
 from radio.socle.config import AntenneConfig, Creneau, GrilleConfig
 from radio.socle.media import Probe, Tags, ToolError
 from radio.sources.azuracast import AzuracastClient, AzuracastError, AzuracastUnavailable, Media
@@ -129,7 +129,7 @@ def _grille(fond: int = 0, reperes: int = 0) -> GrilleConfig:
 def _run(
     conn: Any, station: FakeStation, deezer: Any = None, fond: int = 0, reperes: int = 0, **cfg: Any
 ) -> Any:
-    return antenne_pass(
+    return tenir_antenne(
         conn,
         station,
         deezer or FakeDeezer(),

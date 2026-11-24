@@ -162,7 +162,7 @@ def test_check_reads_what_antenne_published(
     settings = commandes.commun._settings().model_copy(update={"azuracast_api_key": SecretStr("k")})
     monkeypatch.setattr(commandes.commun, "_settings", lambda: settings)
     monkeypatch.setattr(
-        commandes.antenne, "antenne_pass", lambda *a, **k: RapportAntenne(n_published=2)
+        commandes.antenne, "tenir_antenne", lambda *a, **k: RapportAntenne(n_published=2)
     )
     monkeypatch.setenv("INVOCATION_ID", "p")
     result = runner.invoke(commandes.app, ["antenne"])

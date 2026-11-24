@@ -18,7 +18,7 @@ from radio.grille.plan import (
     hour_spans,
     load_titres,
     m3u,
-    plan_day,
+    planifier_jour,
     playlist_name,
     publish,
     record,
@@ -130,7 +130,9 @@ def test_the_least_recently_played_pass_and_each_artist_once_a_day() -> None:
     titres = [_titre(i, "decouvertes", 0.5, artist=i // 2) for i in range(40)]
     played = {f"s{i}": 1000.0 + i for i in range(40)}
     played["s39"] = 0.0  # le plus ancien passage
-    plan = plan_day(titres, played, _grille(decouvertes=40), FRIDAY, _spans([8]), MIDNIGHT, XF)
+    plan = planifier_jour(
+        titres, played, _grille(decouvertes=40), FRIDAY, _spans([8]), MIDNIGHT, XF
+    )
     chosen = plan.hours[8]
     assert len(chosen) == 16  # 16 x 225 s d'antenne couvrent l'heure
     assert 39 in {t.tid for t in chosen}
@@ -140,7 +142,7 @@ def test_the_least_recently_played_pass_and_each_artist_once_a_day() -> None:
 def test_each_title_goes_to_the_hour_that_resembles_it_and_the_hour_drifts() -> None:
     calm = [_titre(i, "decouvertes", 0.1 + i / 1000) for i in range(16)]
     lively = [_titre(100 + i, "decouvertes", 0.9 - i / 1000) for i in range(16)]
-    plan = plan_day(
+    plan = planifier_jour(
         calm + lively, {}, _grille(decouvertes=32), FRIDAY, _spans([3, 21]), MIDNIGHT, XF
     )
     assert {t.tid for t in plan.hours[3]} == {t.tid for t in calm}  # nuit
@@ -165,7 +167,7 @@ def test_an_hour_takes_the_titles_closest_to_its_own_target() -> None:
     lively = [_titre(1000 + i, "decouvertes", 0.9) for i in range(POOL // 2)]
     hour = MIDNIGHT + 21 * 3600
     played = {t.song_id: hour - 8 * 3600 for t in calm + lively}
-    plan = plan_day(
+    plan = planifier_jour(
         calm + lively, played, _grille(decouvertes=POOL), FRIDAY, _spans([21]), MIDNIGHT, XF
     )
     assert len(plan.hours[21]) == 16 and {t.tid for t in plan.hours[21]} <= {t.tid for t in lively}
@@ -182,7 +184,7 @@ def test_a_title_falling_behind_its_turn_goes_ahead_of_closer_ones() -> None:
     hour = MIDNIGHT + 3 * 3600
     played = {f"s{i}": hour - 8 * 3600 for i in range(1, POOL)}
     played["s0"] = hour - 1.8 * TURN_S
-    plan = plan_day(
+    plan = planifier_jour(
         [behind, *on_target, *far],
         played,
         _grille(decouvertes=POOL),
@@ -206,7 +208,7 @@ def test_at_equal_mood_the_hour_keeps_the_style_of_the_title_before() -> None:
     folk = [_styled(100 + i, [1, 0.1 * (i % 3)]) for i in range(16)]
     techno = [_styled(i, [0.1 * (i % 3), 1]) for i in range(16)]
     before = _styled(999, [1, 0])
-    plan = plan_day(
+    plan = planifier_jour(
         techno + folk, {}, _grille(decouvertes=32), FRIDAY, _spans([3]), MIDNIGHT, XF, before
     )
     assert {t.tid for t in plan.hours[3]} == {t.tid for t in folk}
@@ -221,7 +223,9 @@ def test_the_thread_goes_to_the_closest_style_at_equal_mood() -> None:
         _styled(4, [1, 0.1]),
     ]
     before = _styled(999, [1, 0.05])
-    plan = plan_day(titres, {}, _grille(decouvertes=4), FRIDAY, _spans([3]), MIDNIGHT, XF, before)
+    plan = planifier_jour(
+        titres, {}, _grille(decouvertes=4), FRIDAY, _spans([3]), MIDNIGHT, XF, before
+    )
     assert [t.tid for t in plan.hours[3]][:2] in ([2, 4], [4, 2])
     assert {t.tid for t in plan.hours[3][2:]} == {1, 3}
 
@@ -230,7 +234,7 @@ def test_an_artist_waits_three_hours_and_a_title_goes_back_in_rotation() -> None
     # 20 titres d'artistes distincts pour 16 créneaux par heure.
     titres = [_titre(i, "decouvertes", 0.5) for i in range(20)]
     hours = [8, 9, 10, 11, 12]
-    plan = plan_day(titres, {}, _grille(decouvertes=20), FRIDAY, _spans(hours), MIDNIGHT, XF)
+    plan = planifier_jour(titres, {}, _grille(decouvertes=20), FRIDAY, _spans(hours), MIDNIGHT, XF)
     eight, nine, ten, eleven, noon = ({t.artist for t in plan.hours[h]} for h in hours)
     assert len(eight) == 16 and len(nine) == 4 and not eight & nine  # 4 artistes libres à 9 h
     # L'heure est réordonnée : placé à 8 h, un artiste peut passer jusqu'à 9 h, et revient à
@@ -248,7 +252,7 @@ def test_a_title_rests_whatever_its_mood() -> None:
     # autres ont joué 21 h avant : moins de deux tours, aucun passage forcé ne le masque.
     played = {f"s{i}": MIDNIGHT - 20 * 3600 for i in range(1, 200)} | {"s0": MIDNIGHT - 3 * 3600}
     grille = _grille(decouvertes=200).model_copy(update={"marge": 2.0})
-    plan = plan_day([near, *others], played, grille, FRIDAY, _spans([1]), MIDNIGHT, XF)
+    plan = planifier_jour([near, *others], played, grille, FRIDAY, _spans([1]), MIDNIGHT, XF)
     # Tour : 200 titres pour 16 x 24 créneaux, ~12,5 h ; repos minimum ~7,5 h.
     assert 0 not in {t.tid for t in plan.hours[1]}
 
@@ -260,7 +264,7 @@ def test_a_starved_title_plays_whatever_its_mood_and_ahead_of_closer_ones() -> N
     far = _titre(0, "decouvertes", 1.0)
     close = [_titre(i, "decouvertes", 0.25) for i in range(1, 100)]
     played = {f"s{i}": MIDNIGHT - 7 * 3600 for i in range(1, 100)} | {"s0": MIDNIGHT - 13 * 3600}
-    plan = plan_day(
+    plan = planifier_jour(
         [far, *close], played, _grille(decouvertes=100), FRIDAY, _spans([0]), MIDNIGHT, XF
     )
     assert 0 in {t.tid for t in plan.hours[0]}
@@ -287,7 +291,7 @@ def test_rotation_wins_over_mood_for_a_title_far_from_every_hour() -> None:
         DUREE,
     )
     played = {f"s{i}": MIDNIGHT - 3600 for i in range(32)} | {"s99": MIDNIGHT - 3 * 86400}
-    plan = plan_day(
+    plan = planifier_jour(
         [*titres, odd], played, _grille(decouvertes=33), FRIDAY, _spans([8, 9]), MIDNIGHT, XF
     )
     assert 99 in {t.tid for h in (8, 9) for t in plan.hours[h]}
@@ -299,7 +303,7 @@ def test_an_artist_heard_late_yesterday_waits_three_hours_after_midnight() -> No
     # never played) and was heard at 23:00 the day before: not before 2:00.
     titres = [_titre(i, "decouvertes", 0.5, artist=7 if i < 10 else 1000 + i) for i in range(400)]
     played = {"s0": MIDNIGHT - 3600}
-    plan = plan_day(
+    plan = planifier_jour(
         titres, played, _grille(decouvertes=400), FRIDAY, _spans([0, 1, 2]), MIDNIGHT, XF
     )
     assert 7 not in {t.artist for h in (0, 1) for t in plan.hours[h]}
@@ -311,12 +315,12 @@ def test_the_hour_published_but_not_yet_played_counts_for_the_next_day(tmp_path:
     conn = make_model_db(tmp_path)
     titres = [_titre(i, "decouvertes", 0.5) for i in range(400)]
     grille = _grille(decouvertes=400)
-    today = plan_day(titres, {}, grille, FRIDAY, _spans([23]), MIDNIGHT, XF)
+    today = planifier_jour(titres, {}, grille, FRIDAY, _spans([23]), MIDNIGHT, XF)
     record(conn, today)
     late = {t.artist for t in today.hours[23]}
 
     played = with_published(conn, {}, MIDNIGHT + 23 * 3600, _starts(range(24), MIDNIGHT + 86400))
-    tomorrow = plan_day(
+    tomorrow = planifier_jour(
         titres,
         played,
         grille,
@@ -337,20 +341,20 @@ def test_the_sunday_pass_frees_the_hours_it_rewrites(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     titres = [_titre(i, "decouvertes", 0.5) for i in range(400)]
     grille = _grille(decouvertes=400)
-    night = plan_day(titres, {}, grille, FRIDAY, _spans(list(range(24))), MIDNIGHT, XF)
+    night = planifier_jour(titres, {}, grille, FRIDAY, _spans(list(range(24))), MIDNIGHT, XF)
     record(conn, night)
     history = {t.song_id: MIDNIGHT + h * 3600 + 1800 for h in range(6) for t in night.hours[h]}
     now, rest = MIDNIGHT + 6.5 * 3600, list(range(7, 24))
 
     played = with_published(conn, history, now, _starts(rest))
-    plan = plan_day(titres, played, grille, FRIDAY, _spans(rest), MIDNIGHT, XF)
+    plan = planifier_jour(titres, played, grille, FRIDAY, _spans(rest), MIDNIGHT, XF)
 
     assert plan.empty_slots == 0 and all(len(plan.hours[h]) == 16 for h in rest)
     # L'heure en cours, publiée et pas réécrite, compte toujours.
     assert all(played[t.song_id] == MIDNIGHT + 7 * 3600 for t in night.hours[6])
     # Le même plan, quand les heures réécrites comptent, laisse le secours jouer.
     stale = with_published(conn, history, now, [])
-    assert plan_day(titres, stale, grille, FRIDAY, _spans(rest), MIDNIGHT, XF).short_hours > 0
+    assert planifier_jour(titres, stale, grille, FRIDAY, _spans(rest), MIDNIGHT, XF).short_hours > 0
 
 
 def test_a_published_hour_counts_until_it_ends_unless_the_plan_rewrites_it(
@@ -405,7 +409,9 @@ def test_the_repeated_hour_gets_two_hours_of_titles() -> None:
     # plays it once: one hour of titles would leave the fallback for the second.
     titres = [_titre(i, "decouvertes", 0.5) for i in range(400)]
     spans = hour_spans(FALL_BACK, [1, 2, 3], PARIS)
-    plan = plan_day(titres, {}, _grille(decouvertes=400), FALL_BACK, spans, _at(FALL_BACK, 0), XF)
+    plan = planifier_jour(
+        titres, {}, _grille(decouvertes=400), FALL_BACK, spans, _at(FALL_BACK, 0), XF
+    )
     assert [len(plan.hours[h]) for h in (1, 2, 3)] == [16, 32, 16]
     assert plan.empty_slots == 0
 
@@ -417,7 +423,7 @@ def test_the_sunday_pass_of_the_clock_change_counts_the_hour_in_progress(tmp_pat
     titres = [_titre(i, "decouvertes", 0.5) for i in range(400)]
     grille = _grille(decouvertes=400)
     spans = hour_spans(FALL_BACK, range(24), PARIS)
-    night = plan_day(titres, {}, grille, FALL_BACK, spans, _at(FALL_BACK, 0), XF)
+    night = planifier_jour(titres, {}, grille, FALL_BACK, spans, _at(FALL_BACK, 0), XF)
     record(conn, night)
 
     rest = hour_spans(FALL_BACK, range(7, 24), PARIS)
@@ -433,7 +439,7 @@ def test_the_sunday_pass_of_the_clock_change_counts_the_hour_in_progress(tmp_pat
 
 def test_missing_titles_leave_the_hour_short() -> None:
     titres = [_titre(i, "decouvertes", 0.5) for i in range(10)]
-    plan = plan_day(titres, {}, _grille(decouvertes=10), FRIDAY, _spans([8]), MIDNIGHT, XF)
+    plan = planifier_jour(titres, {}, _grille(decouvertes=10), FRIDAY, _spans([8]), MIDNIGHT, XF)
     assert len(plan.hours[8]) == 10 and plan.short_hours == 1
 
 
@@ -441,7 +447,7 @@ def test_an_hour_is_filled_to_its_length_not_to_a_count() -> None:
     # Breaks if an hour holds a fixed count: 16 short titles ran out before the end on 2026-10-04
     # at 5 h (3 585 s) and the fallback played; 16 long ones leave titles that never play.
     short = [replace(_titre(i, "decouvertes", 0.5), duration_s=153.0) for i in range(200)]
-    plan = plan_day(short, {}, _grille(decouvertes=200), FRIDAY, _spans([8]), MIDNIGHT, XF)
+    plan = planifier_jour(short, {}, _grille(decouvertes=200), FRIDAY, _spans([8]), MIDNIGHT, XF)
     assert len(plan.hours[8]) == 24 and plan.short_hours == 0  # 24 x 150 s = 3 600 s
 
 
@@ -449,7 +455,7 @@ def test_the_lead_of_the_next_title_shortens_each_one() -> None:
     # Breaks if the lead is ignored: 15 titles of 240 s make exactly an hour, but each one starts
     # 15 s before the end of the previous, and the hour would run out a minute early.
     titres = [replace(_titre(i, "decouvertes", 0.5), duration_s=240.0) for i in range(400)]
-    plan = plan_day(titres, {}, _grille(decouvertes=400), FRIDAY, _spans([8]), MIDNIGHT, 15.0)
+    plan = planifier_jour(titres, {}, _grille(decouvertes=400), FRIDAY, _spans([8]), MIDNIGHT, 15.0)
     assert len(plan.hours[8]) == 16  # 16 x 225 s
 
 
@@ -459,7 +465,9 @@ def test_an_hour_after_a_long_title_keeps_room_for_its_overrun() -> None:
     # least pressed (the first placed: never played, they are the least late) end the hour.
     long = replace(_titre(0, "decouvertes", 0.5), duration_s=1000.0)
     titres = [long, *(_titre(i, "decouvertes", 0.5) for i in range(1, 400))]
-    plan = plan_day(titres, {}, _grille(decouvertes=400), FRIDAY, _spans([8, 9]), MIDNIGHT, XF)
+    plan = planifier_jour(
+        titres, {}, _grille(decouvertes=400), FRIDAY, _spans([8, 9]), MIDNIGHT, XF
+    )
     assert 0 in {t.tid for t in plan.hours[8]}
     nine = [t.tid for t in plan.hours[9]]
     assert len(nine) == 16 and nine[-4:] == sorted(nine)[:4]
@@ -470,7 +478,7 @@ def test_the_turn_follows_the_measured_lengths() -> None:
     # title counts for the median length of the measured ones.
     titres = [replace(_titre(i, "decouvertes", 0.5), duration_s=303.0) for i in range(399)]
     titres.append(replace(_titre(399, "decouvertes", 0.5), duration_s=None, measured=False))
-    plan = plan_day(titres, {}, _grille(decouvertes=400), FRIDAY, _spans([8]), MIDNIGHT, XF)
+    plan = planifier_jour(titres, {}, _grille(decouvertes=400), FRIDAY, _spans([8]), MIDNIGHT, XF)
     assert abs(plan.turnover_days["decouvertes"] - 400 / 288) < 1e-9
 
 
@@ -482,7 +490,7 @@ def test_a_slot_given_away_is_counted_once() -> None:
     cues = [_titre(2000 + i, "reperes", 0.5) for i in range(100)]
     played = {t.song_id: MIDNIGHT + 8 * 3600 - 60 for t in new + disc}
     grille = _grille(nouveautes=100, decouvertes=100, reperes=100)
-    plan = plan_day([*new, *disc, *cues], played, grille, FRIDAY, _spans([8]), MIDNIGHT, XF)
+    plan = planifier_jour([*new, *disc, *cues], played, grille, FRIDAY, _spans([8]), MIDNIGHT, XF)
     assert {t.categorie for t in plan.hours[8]} == {"reperes"} and len(plan.hours[8]) == 16
     assert plan.empty_slots == 16
 
@@ -493,7 +501,7 @@ def test_the_category_with_nothing_allowed_gives_its_slot_away() -> None:
     titres = [_titre(i, "nouveautes", 0.5) for i in range(10)]
     titres += [_titre(1000 + i, "decouvertes", 0.5) for i in range(400)]
     grille = _grille(nouveautes=10, decouvertes=400)
-    plan = plan_day(titres, {}, grille, FRIDAY, _spans([8, 9]), MIDNIGHT, XF)
+    plan = planifier_jour(titres, {}, grille, FRIDAY, _spans([8, 9]), MIDNIGHT, XF)
     assert plan.short_hours == 0 and len(plan.hours[9]) == 16
 
 
@@ -565,7 +573,7 @@ def test_publish_empties_the_playlist_of_an_hour_that_does_not_exist() -> None:
     # Breaks if the missing hour keeps last week's grid: on 2027-03-28 AzuraCast still plays
     # « Grille dim 02h » once at 3 h, its start and end both falling on 03:00.
     titres = [_titre(i, "decouvertes", 0.5) for i in range(32)]
-    plan = plan_day(titres, {}, _grille(decouvertes=32), FRIDAY, _spans([9]), MIDNIGHT, XF)
+    plan = planifier_jour(titres, {}, _grille(decouvertes=32), FRIDAY, _spans([9]), MIDNIGHT, XF)
     station = FakeStation()
     publish(plan, station, [8, 10])
     assert station.emptied == [7]  # « Grille ven 08h » ; celle de 10 h n'existe pas encore
@@ -574,7 +582,7 @@ def test_publish_empties_the_playlist_of_an_hour_that_does_not_exist() -> None:
 
 def test_publish_writes_each_hour_into_its_playlist() -> None:
     titres = [_titre(i, "decouvertes", 0.5) for i in range(32)]
-    plan = plan_day(titres, {}, _grille(decouvertes=32), FRIDAY, _spans([8, 9]), MIDNIGHT, XF)
+    plan = planifier_jour(titres, {}, _grille(decouvertes=32), FRIDAY, _spans([8, 9]), MIDNIGHT, XF)
     station = FakeStation(found={"109": 3})
     errors = publish(plan, station, [])
     assert station.created == [("Grille ven 09h", 5, 9)]

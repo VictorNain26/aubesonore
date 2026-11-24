@@ -12,7 +12,7 @@ from radio.decouverte.nouveautes import AucuneFourneeError, chercher_nouveautes
 from radio.socle.config import NouveautesConfig, Settings
 from radio.sources.deezer import DeezerTrack
 from radio.sources.hypem import API, HypemClient, HypemError, HypemTrack, HypemUnavailable
-from radio.votes.suivi import yes_by_source
+from radio.votes.suivi import oui_par_source
 from tests.factories import make_library
 
 NOW = "2026-10-01T00:00:00+00:00"
@@ -123,7 +123,7 @@ def test_exam_yes_rate_by_source_and_blog(tmp_path: Path) -> None:
     for tid, vote in ((501, "oui"), (704, "non"), (703, "oui")):
         conn.execute("INSERT INTO votes VALUES (?, 'exam', ?, 'd', 'page')", (tid, vote))
     conn.commit()
-    rates = {key: (r.yes, r.n) for key, r in yes_by_source(conn)}
+    rates = {key: (r.yes, r.n) for key, r in oui_par_source(conn)}
     assert rates == {
         "deezer_editorial": (1, 2),
         "deezer_editorial · alternative": (1, 2),

@@ -12,7 +12,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 from radio.bibliotheque.doublons import dedupe_key
-from radio.decouverte.candidats import add_tracks, ajouter_candidats, on_deezer
+from radio.decouverte.candidats import ajouter_candidats, ajouter_titres, on_deezer
 from radio.socle.config import NouveautesConfig
 from radio.sources.deezer import DeezerClient, DeezerError, DeezerTrack
 from radio.sources.hypem import HypemClient, HypemError, HypemUnavailable
@@ -57,7 +57,7 @@ def _add(
         rep.n_known += 1
         return
     with conn:
-        added = add_tracks(conn, track.artist_id, track.artist_name, [track], "candidate", now)
+        added = ajouter_titres(conn, track.artist_id, track.artist_name, [track], "candidate", now)
         ajouter_candidats(conn, rep.run_id, source, added, detail=detail)
     rep.added[source] += len(added)
     if not added:

@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 import pytest
 
-from radio.gout.modele import Fournee, derniere_fournee, entrainer, rescore, yes_rate
+from radio.gout.modele import Fournee, derniere_fournee, entrainer, renoter, taux_oui
 from radio.socle.config import GoutConfig
 from tests.model_factory import NOW, add_vote, as_news, make_model_db
 
@@ -23,13 +23,13 @@ from tests.model_factory import NOW, add_vote, as_news, make_model_db
 )
 def test_yes_rate_is_the_wilson_interval(n: int, yes: int, low: float, high: float) -> None:
     labels = np.array([1] * yes + [0] * (n - yes), dtype=np.int64)
-    rate = yes_rate(labels)
+    rate = taux_oui(labels)
     assert rate is not None and (rate.n, rate.yes) == (n, yes)
     assert (round(rate.low, 4), round(rate.high, 4)) == (low, high)
 
 
 def test_no_vote_has_no_yes_rate() -> None:
-    assert yes_rate(np.zeros(0, dtype=np.int64)) is None
+    assert taux_oui(np.zeros(0, dtype=np.int64)) is None
 
 
 def _two_batches(conn: Any) -> None:
@@ -61,7 +61,7 @@ def test_each_batch_and_family_keeps_its_best_and_library_titles_are_not_discove
     conn.commit()
     cfg = GoutConfig(retenus_decouvertes=10, retenus_nouveautes=5)
     assert entrainer(conn, tmp_path / "models", cfg, NOW).promoted
-    rescore(conn, tmp_path / "models", cfg)
+    renoter(conn, tmp_path / "models", cfg)
     scores = _scores(conn)
     assert 200000 not in scores
     groups = {
@@ -104,7 +104,7 @@ def test_the_floor_keeps_low_scored_news_off_air_and_counts_them_once_per_artist
     as_news(conn, 300000, 300599, run_id=1)
     cfg = GoutConfig(retenus_decouvertes=100, retenus_nouveautes=100, plancher_nouveautes=0.5)
     assert entrainer(conn, tmp_path / "models", cfg, NOW).promoted
-    rescore(conn, tmp_path / "models", cfg)
+    renoter(conn, tmp_path / "models", cfg)
     kept, floored = _kept_and_floored(conn)
     # Les aimés passent le plancher, un titre par artiste ; les rejetés restent sous le plancher
     # et sont comptés une fois par artiste, comme ils auraient été retenus.
@@ -128,7 +128,7 @@ def test_a_zero_floor_keeps_every_news_artist(tmp_path: Path) -> None:
     as_news(conn, 300000, 300599, run_id=1)
     cfg = GoutConfig(retenus_decouvertes=100, retenus_nouveautes=100)
     assert entrainer(conn, tmp_path / "models", cfg, NOW).promoted
-    rescore(conn, tmp_path / "models", cfg)
+    renoter(conn, tmp_path / "models", cfg)
     kept, floored = _kept_and_floored(conn)
     assert kept[(1, "hypem")] == 9 and not floored
 
@@ -139,7 +139,7 @@ def test_no_news_above_the_floor_retains_none_and_names_them_all(tmp_path: Path)
     as_news(conn, 300000, 300599, run_id=1)
     cfg = GoutConfig(retenus_decouvertes=10, retenus_nouveautes=100, plancher_nouveautes=0.5)
     assert entrainer(conn, tmp_path / "models", cfg, NOW).promoted
-    rescore(conn, tmp_path / "models", cfg)
+    renoter(conn, tmp_path / "models", cfg)
     kept, floored = _kept_and_floored(conn)
     assert (1, "hypem") not in kept and floored == {(1, "hypem"): 6}
     assert kept[(1, "voisin")] == 10 and kept[(2, "voisin")] == 6
@@ -152,7 +152,7 @@ def test_news_stopped_by_an_exhausted_quota_are_not_counted_as_floored(tmp_path:
     as_news(conn, 300000, 300599, run_id=1)
     cfg = GoutConfig(retenus_decouvertes=100, retenus_nouveautes=3, plancher_nouveautes=0.5)
     assert entrainer(conn, tmp_path / "models", cfg, NOW).promoted
-    rescore(conn, tmp_path / "models", cfg)
+    renoter(conn, tmp_path / "models", cfg)
     kept, floored = _kept_and_floored(conn)
     # Les 3 aimés épuisent le quota avant que les rejetés n'atteignent le plancher.
     assert kept[(1, "hypem")] == 3 and not floored
@@ -165,7 +165,7 @@ def test_floored_news_are_counted_only_up_to_the_quota_left(tmp_path: Path) -> N
     as_news(conn, 300000, 300599, run_id=1)
     cfg = GoutConfig(retenus_decouvertes=100, retenus_nouveautes=5, plancher_nouveautes=0.5)
     assert entrainer(conn, tmp_path / "models", cfg, NOW).promoted
-    rescore(conn, tmp_path / "models", cfg)
+    renoter(conn, tmp_path / "models", cfg)
     kept, floored = _kept_and_floored(conn)
     # 3 aimés retenus, 2 places restaient : sans plancher, 2 rejetés seulement seraient entrés.
     assert kept[(1, "hypem")] == 3 and floored == {(1, "hypem"): 2}
@@ -177,7 +177,7 @@ def test_a_floored_news_does_not_take_its_artist_away_from_discoveries(tmp_path:
     as_news(conn, 300000, 300599, run_id=1)
     cfg = GoutConfig(retenus_decouvertes=100, retenus_nouveautes=100, plancher_nouveautes=0.5)
     assert entrainer(conn, tmp_path / "models", cfg, NOW).promoted
-    rescore(conn, tmp_path / "models", cfg)
+    renoter(conn, tmp_path / "models", cfg)
     # Le moins bien noté de chaque artiste rejeté redevient une découverte : ses nouveautés,
     # mieux notées mais sous le plancher, ne doivent pas lui prendre sa place.
     lowest = [
@@ -196,7 +196,7 @@ def test_a_floored_news_does_not_take_its_artist_away_from_discoveries(tmp_path:
         [(t // 100, t) for t in lowest],
     )
     conn.commit()
-    rescore(conn, tmp_path / "models", cfg)
+    renoter(conn, tmp_path / "models", cfg)
     accepted = {
         int(r[0]) for r in conn.execute("SELECT deezer_track_id FROM scores WHERE accepted")
     }
@@ -211,7 +211,7 @@ def test_last_batch_counts_the_floored_news_of_the_latest_run(tmp_path: Path) ->
     as_news(conn, 300600, 300899, source="deezer_editorial", detail="electro")
     cfg = GoutConfig(retenus_decouvertes=100, retenus_nouveautes=100, plancher_nouveautes=0.5)
     assert entrainer(conn, tmp_path / "models", cfg, NOW).promoted
-    rescore(conn, tmp_path / "models", cfg)
+    renoter(conn, tmp_path / "models", cfg)
     # Fournée 2 : 12 artistes rejetés de 4 titres ; les nouveautés de 3006 à 3008 sont sous le
     # plancher, les 9 voisins entrent (pas de plancher pour les découvertes).
     assert derniere_fournee(conn) == Fournee(2, 48, 9, 3)
@@ -238,7 +238,7 @@ def test_a_model_as_good_as_the_serving_one_is_promoted(tmp_path: Path) -> None:
     second = entrainer(conn, tmp_path / "models", cfg, NOW)
     assert (second.new_auc, second.current_auc) == (1.0, 1.0)
     assert second.promoted and second.verdict == "AUC d'examen au moins égale"
-    assert rescore(conn, tmp_path / "models", cfg) == second.model_id
+    assert renoter(conn, tmp_path / "models", cfg) == second.model_id
 
 
 def test_a_worse_model_is_kept_out_of_service(tmp_path: Path) -> None:
@@ -257,7 +257,7 @@ def test_a_worse_model_is_kept_out_of_service(tmp_path: Path) -> None:
     assert (second.new_auc, second.current_auc) == (0.0, 1.0)
     assert not second.promoted
     assert second.verdict == "AUC d'examen 0,000 < 1,000 (modèle en service)"
-    assert rescore(conn, tmp_path / "models", cfg) == first.model_id
+    assert renoter(conn, tmp_path / "models", cfg) == first.model_id
     assert {m for m, _ in _scores(conn).values()} == {first.model_id}
 
 
@@ -274,4 +274,4 @@ def test_an_exam_without_both_answers_keeps_the_serving_model(tmp_path: Path) ->
     assert second.verdict == (
         "comparaison impossible : l'examen n'a pas à la fois des « oui » et des « non »"
     )
-    assert rescore(conn, tmp_path / "models", cfg) == first.model_id
+    assert renoter(conn, tmp_path / "models", cfg) == first.model_id

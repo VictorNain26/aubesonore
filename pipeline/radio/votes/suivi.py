@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from radio.gout.modele import TauxOui, yes_rate
+from radio.gout.modele import TauxOui, taux_oui
 from radio.socle.config import NouveautesConfig
 
 MIN_VOTES = 20
@@ -28,13 +28,13 @@ def pct(x: float) -> str:
 @dataclass(frozen=True)
 class Suivi:
     run_id: int | None
-    flows: list["Flow"]
+    flows: list["Flux"]
     by_source: list[tuple[str, TauxOui]]
     to_adjust: list[str]
 
 
 @dataclass(frozen=True)
-class Flow:
+class Flux:
     source: str
     detail: str | None
     candidates: int
@@ -48,7 +48,7 @@ class Flow:
         return self.source if self.detail is None else f"{self.source} · {self.detail}"
 
 
-def last_flows(conn: sqlite3.Connection) -> tuple[int | None, list[Flow]]:
+def derniers_flux(conn: sqlite3.Connection) -> tuple[int | None, list[Flux]]:
     """Parcours de chaque source, et de chaque genre ou blog, dans la dernière fournée. Les blogs
     de Hype Machine sont trop nombreux pour un parcours chacun : la source suffit."""
     run = conn.execute("SELECT MAX(run_id) FROM candidates").fetchone()[0]
@@ -72,11 +72,11 @@ def last_flows(conn: sqlite3.Connection) -> tuple[int | None, list[Flow]]:
         (run,),
     ).fetchall()
     return int(run), [
-        Flow(str(r[0]), None if r[1] is None else str(r[1]), *(int(x) for x in r[2:])) for r in rows
+        Flux(str(r[0]), None if r[1] is None else str(r[1]), *(int(x) for x in r[2:])) for r in rows
     ]
 
 
-def yes_by_source(conn: sqlite3.Connection) -> list[tuple[str, TauxOui]]:
+def oui_par_source(conn: sqlite3.Connection) -> list[tuple[str, TauxOui]]:
     """Taux de oui à l'examen par source (docs/conception.md §3), puis par blog ou genre : l'examen
     tire uniformément dans chaque famille de la fournée, donc il juge la source elle-même, avant
     le modèle."""
@@ -91,12 +91,12 @@ def yes_by_source(conn: sqlite3.Connection) -> list[tuple[str, TauxOui]]:
         keys = [str(source)] + ([f"{source} · {detail}"] if detail is not None else [])
         for key in keys:
             groups.setdefault(key, []).append(int(vote == "oui"))
-    rates = {k: yes_rate(np.array(v, dtype=np.int64)) for k, v in groups.items()}
+    rates = {k: taux_oui(np.array(v, dtype=np.int64)) for k, v in groups.items()}
     return [(k, r) for k, r in sorted(rates.items()) if r is not None]
 
 
 def adjustments(
-    conn: sqlite3.Connection, flows: list[Flow], genres: list[str], sources: list[str]
+    conn: sqlite3.Connection, flows: list[Flux], genres: list[str], sources: list[str]
 ) -> list[str]:
     """Points à ajuster, chacun avec la règle qui le déclenche."""
     out = []
@@ -107,7 +107,7 @@ def adjustments(
         WHERE v.kind = 'exam' AND v.vote != 'passer'
         """
     ).fetchall()
-    for key, r in yes_by_source(conn):
+    for key, r in oui_par_source(conn):
         if r.n < MIN_VOTES:
             continue
         others = [
@@ -142,8 +142,8 @@ def load_suivi(conn: sqlite3.Connection, fresh: NouveautesConfig) -> Suivi:
         + (["hypem"] if fresh.pages_hypem else [])
         + (["deezer_editorial"] if genres else [])
     )
-    run_id, flows = last_flows(conn)
-    return Suivi(run_id, flows, yes_by_source(conn), adjustments(conn, flows, genres, sources))
+    run_id, flows = derniers_flux(conn)
+    return Suivi(run_id, flows, oui_par_source(conn), adjustments(conn, flows, genres, sources))
 
 
 def suivi_lines(s: Suivi) -> list[str]:
