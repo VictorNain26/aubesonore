@@ -192,13 +192,19 @@ def votes_count(conn: sqlite3.Connection) -> int:
     return int(conn.execute("SELECT COUNT(*) FROM votes WHERE vote != 'passer'").fetchone()[0])
 
 
+# Les types d'avant la migration 018 : l'empreinte les garde, pour rester comparable à celles
+# que les modèles entraînés avant elle ont enregistrées (un renommage ne vaut pas un vote).
+_TYPES_HACHES = {"examen": "exam", "lecon": "lesson"}
+
+
 def votes_digest(conn: sqlite3.Connection) -> str:
     """Empreinte des votes qui comptent : un vote corrigé la change comme un vote de plus, alors
     que leur nombre, lui, ne bouge pas."""
     rows = conn.execute(
         "SELECT titre_id, type, vote FROM votes WHERE vote != 'passer' ORDER BY titre_id"
     ).fetchall()
-    return hashlib.sha256(json.dumps([tuple(r) for r in rows]).encode()).hexdigest()
+    hashed = [(tid, _TYPES_HACHES[kind], vote) for tid, kind, vote in rows]
+    return hashlib.sha256(json.dumps(hashed).encode()).hexdigest()
 
 
 def entraine_sur(conn: sqlite3.Connection) -> str | None:

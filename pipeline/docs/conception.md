@@ -60,8 +60,10 @@ techniques (`conn`, `path`, `client`, `retry`) et les noms des outils (`song_id`
 **Les anciens noms**
 
 Appliqués une PR à la fois : le code et les commandes, puis les unités, puis la base (migration
-`018_noms_de_la_base.sql`). Tout porte aujourd'hui les noms de droite ; la colonne de gauche aide à
-lire les notes datées de `docs/recherches/` et les migrations figées.
+`018_noms_de_la_base.sql`). Les commandes, les unités, les paquets, les classes et fonctions du
+métier, les réglages et la base portent les noms de droite ; les champs Python qui reprennent une
+colonne (`Bulletin.deezer_track_id`, `Tirage.selection_id`…) gardent encore les anciens. La colonne
+de gauche aide à lire les notes datées de `docs/recherches/` et les migrations figées.
 
 | Avant | Aujourd'hui |
 |---|---|
@@ -80,6 +82,7 @@ lire les notes datées de `docs/recherches/` et les migrations figées.
 | `track_measures`, `models`, `scores`, `selections`, `ballots`, `votes` | `empreintes`, `modeles`, `notes`, `tirages`, `bulletins`, `votes` |
 | `acquisitions`, `antenne`, `repere_sorties`, `track_features`, `grille`, `stage_reports` | `telechargements`, `antenne`, `reperes_sortis`, `mesures`, `grille`, `rapports` |
 | colonnes `deezer_track_id`, `deezer_artist_id`, `run_id`, `origin` | `titre_id`, `artiste_id` (identifiants Deezer), `fournee_id`, `provenance` |
+| `selection_id`, `model_id`, `report_id`, `ballots.retained` | `tirage_id`, `modele_id`, `rapport_id`, `bulletins.retenu` |
 | `arousal*`, `bpm*`, `accepted`, `floored`, `kind` (`exam`, `lesson`) | `energie*`, `tempo*`, `retenu`, `sous_plancher`, `type` (`examen`, `lecon`) |
 | valeurs `library`, `candidate`, `negative`, `favorite` ; `decouverte` | `bibliotheque`, `candidat`, `negatif`, `favori` ; `telecharge` |
 | valeurs `ready`, `failed`, `published` ; `matched`, `unmatched` ; `no_preview`, `audio_failed`, `gone` | `pret`, `echec`, `publie` ; `trouve`, `non_trouve` ; `sans_extrait`, `audio_rate`, `disparu` |

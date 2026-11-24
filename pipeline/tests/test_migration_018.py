@@ -5,12 +5,15 @@ migrée ; chaque table d'après doit être la table d'avant passée par la corre
 vocabulaire, ligne à ligne. Ce fichier part une fois 018 passée en production
 (.claude/rules/tests.md)."""
 
+import hashlib
+import json
 import shutil
 import sqlite3
 from pathlib import Path
 
 import pytest
 
+from radio.gout.modele import votes_digest
 from radio.socle.db import MIGRATIONS, connect
 
 TABLES = {
@@ -207,3 +210,24 @@ def test_018_refuses_a_value_it_does_not_know(
     assert check.execute("PRAGMA user_version").fetchone()[0] == 17
     assert check.execute("SELECT origin FROM tracks").fetchall() == [("inconnue",)]
     check.close()
+
+
+def test_018_keeps_the_votes_digest_of_the_last_training(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Breaks if renaming exam/lesson changes the digest `radio gout` compares with the one saved by
+    # the last training: the first pass after 018 would retrain, and maybe promote, on no new vote.
+    db = _at_17(tmp_path, monkeypatch)
+    raw = sqlite3.connect(db)
+    raw.executescript(ROWS)
+    old = raw.execute(
+        "SELECT deezer_track_id, kind, vote FROM votes WHERE vote != 'passer' "
+        "ORDER BY deezer_track_id"
+    ).fetchall()
+    raw.close()
+    saved = hashlib.sha256(json.dumps([tuple(r) for r in old]).encode()).hexdigest()
+
+    monkeypatch.setattr("radio.socle.db.MIGRATIONS", MIGRATIONS)
+    conn = connect(db)
+    assert votes_digest(conn) == saved
+    conn.close()
