@@ -6,21 +6,23 @@ from dataclasses import dataclass
 from radio.sources.plex import PlexTrack
 
 
-class EmptyLibraryError(Exception):
+class BibliothequeVideError(Exception):
     """Plex n'a renvoyé aucun titre : on refuse d'effacer la bibliothèque connue."""
 
 
 @dataclass(frozen=True)
-class SyncReport:
+class RapportBibliotheque:
     n_tracks: int
     n_added: int
     n_changed: int
     n_removed: int
 
 
-def sync_library(conn: sqlite3.Connection, tracks: list[PlexTrack], now: str) -> SyncReport:
+def synchroniser_bibliotheque(
+    conn: sqlite3.Connection, tracks: list[PlexTrack], now: str
+) -> RapportBibliotheque:
     if not tracks:
-        raise EmptyLibraryError("Plex returned no track")
+        raise BibliothequeVideError("Plex returned no track")
     known = {
         r["plex_key"]: (r["artist"], r["title"], r["duration_ms"])
         for r in conn.execute("SELECT plex_key, artist, title, duration_ms FROM library_tracks")
@@ -51,4 +53,4 @@ def sync_library(conn: sqlite3.Connection, tracks: list[PlexTrack], now: str) ->
                 for t in tracks
             ],
         )
-    return SyncReport(len(tracks), len(added), len(changed), len(removed))
+    return RapportBibliotheque(len(tracks), len(added), len(changed), len(removed))

@@ -31,7 +31,13 @@ from radio.socle.db import connect
 from radio.sources.deezer import DeezerError, DeezerTrack, DeezerUnavailable
 from radio.votes.acces import HEADER
 from radio.votes.suivi import Suivi, load_suivi, pct
-from radio.votes.tirage import Ballot, CastVote, pending_ballots, record_vote, week_votes
+from radio.votes.tirage import (
+    Bulletin,
+    VoteExprime,
+    bulletins_en_attente,
+    enregistrer_vote,
+    votes_semaine,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +101,7 @@ def _week_link(n_voted: int) -> str:
     )
 
 
-def _page(ballots: list[Ballot], n_voted: int) -> str:
+def _page(ballots: list[Bulletin], n_voted: int) -> str:
     if not ballots:
         return _shell(
             "<h1>Rien à écouter</h1>"
@@ -120,20 +126,20 @@ def _page(ballots: list[Ballot], n_voted: int) -> str:
     )
 
 
-def _week_page(votes: list[CastVote]) -> str:
-    def item(c: CastVote) -> str:
-        tid = c.ballot.deezer_track_id
+def _week_page(votes: list[VoteExprime]) -> str:
+    def item(c: VoteExprime) -> str:
+        tid = c.bulletin.deezer_track_id
         buttons = "".join(
             f'<button name="choix" value="{v}" class="{v}" '
             f'aria-pressed="{"true" if v == c.vote else "false"}">{label}</button>'
             for v, label in _CHOICES
         )
         return (
-            f'<li><p class="titre">{html.escape(c.ballot.title)}</p>'
-            f'<p class="artiste">{html.escape(c.ballot.artist)}</p>'
+            f'<li><p class="titre">{html.escape(c.bulletin.title)}</p>'
+            f'<p class="artiste">{html.escape(c.bulletin.artist)}</p>'
             f'<audio controls preload="none" src="/extrait/{tid}"></audio>'
             f'<form method="post" action="/vote" class="corriger" '
-            f'aria-label="{html.escape(c.ballot.title)}">'
+            f'aria-label="{html.escape(c.bulletin.title)}">'
             f'<input type="hidden" name="tid" value="{tid}">'
             f'<input type="hidden" name="retour" value="/semaine">{buttons}</form></li>'
         )
@@ -188,17 +194,17 @@ def create_app(
             logger.warning("access token refused (%s)", type(e).__name__)
             raise HTTPException(403, "Accès réservé") from None
 
-    def waiting() -> list[Ballot]:
+    def waiting() -> list[Bulletin]:
         conn = connect(db_path)
         try:
-            return pending_ballots(conn)
+            return bulletins_en_attente(conn)
         finally:
             conn.close()
 
-    def week() -> list[CastVote]:
+    def week() -> list[VoteExprime]:
         conn = connect(db_path)
         try:
-            return week_votes(conn)
+            return votes_semaine(conn)
         finally:
             conn.close()
 
@@ -232,7 +238,7 @@ def create_app(
     ) -> Response:
         conn = connect(db_path)
         try:
-            recorded = record_vote(conn, tid, choix, datetime.now(UTC).isoformat())
+            recorded = enregistrer_vote(conn, tid, choix, datetime.now(UTC).isoformat())
         finally:
             conn.close()
         if not recorded:
@@ -248,7 +254,7 @@ def create_app(
     @app.get("/extrait/{tid}", dependencies=guarded)
     def extrait(tid: int) -> Response:
         if tid not in {b.deezer_track_id for b in waiting()} | {
-            c.ballot.deezer_track_id for c in week()
+            c.bulletin.deezer_track_id for c in week()
         }:
             raise HTTPException(404, "Titre inconnu")
         try:

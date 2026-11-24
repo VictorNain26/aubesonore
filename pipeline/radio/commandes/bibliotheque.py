@@ -5,9 +5,9 @@ from pathlib import PurePosixPath
 import requests
 from plexapi.exceptions import PlexApiException
 
-from radio.bibliotheque.artistes import register_library
-from radio.bibliotheque.rapprochement import coverage, match_library
-from radio.bibliotheque.synchro import EmptyLibraryError, sync_library
+from radio.bibliotheque.artistes import enregistrer_bibliotheque
+from radio.bibliotheque.rapprochement import coverage, rapprocher_bibliotheque
+from radio.bibliotheque.synchro import BibliothequeVideError, synchroniser_bibliotheque
 from radio.commandes import commun
 from radio.commandes.commun import (
     _db,
@@ -23,7 +23,7 @@ from radio.commandes.commun import (
     app,
 )
 from radio.sources.deezer import DeezerClient, DeezerUnavailable
-from radio.sources.plex import LibraryGuardError, PlexSource
+from radio.sources.plex import PlexSource, SectionInterditeError
 
 _REASONS = (
     ("no_duration", "sans durée"),
@@ -48,19 +48,21 @@ def bibliotheque() -> None:
             settings.plex_music_section,
             PurePosixPath(settings.plex_music_root),
         ).tracks()
-    except LibraryGuardError as e:
+    except SectionInterditeError as e:
         _fail(f"Bibliothèque refusée : {e}", 2)
     except (requests.RequestException, PlexApiException) as e:
         _fail(f"Plex en erreur ({type(e).__name__})", 1)
     with _db(settings) as conn:
         try:
-            sync = sync_library(conn, tracks, now)
-            rep = match_library(conn, DeezerClient(), editorial.bibliotheque.ecart_duree_s, now)
-        except EmptyLibraryError:
+            sync = synchroniser_bibliotheque(conn, tracks, now)
+            rep = rapprocher_bibliotheque(
+                conn, DeezerClient(), editorial.bibliotheque.ecart_duree_s, now
+            )
+        except BibliothequeVideError:
             _fail("Plex n'a renvoyé aucun titre : rien n'a été modifié", 1)
         except DeezerUnavailable as e:
             _fail(_unavailable(e), 1)
-        reg = register_library(conn, now)
+        reg = enregistrer_bibliotheque(conn, now)
         done, total = coverage(conn)
         _record(
             conn,

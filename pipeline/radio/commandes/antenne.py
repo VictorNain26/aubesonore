@@ -5,7 +5,7 @@ from pathlib import PurePosixPath
 
 import numpy as np
 
-from radio.antenne.publication import antenne_pass
+from radio.antenne.publication import tenir_antenne
 from radio.commandes import commun
 from radio.commandes.commun import (
     _db,
@@ -38,7 +38,7 @@ def antenne() -> None:
     )
     with _db(settings) as conn:
         try:
-            rep = antenne_pass(
+            rep = tenir_antenne(
                 conn,
                 station,
                 DeezerClient(),

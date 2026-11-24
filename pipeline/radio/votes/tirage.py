@@ -28,25 +28,25 @@ from typing import Any
 import numpy as np
 
 from radio.decouverte.familles import FAMILY
-from radio.gout.modele import serving_id
+from radio.gout.modele import id_en_service
 
 
-class NoServingModelError(Exception):
+class AucunModeleEnServiceError(Exception):
     """Aucun modèle promu : rien ne dit quels titres sont retenus."""
 
 
-class NoScoresError(Exception):
+class AucuneNoteError(Exception):
     """Le modèle en service n'a noté aucun candidat."""
 
 
-class PendingBallotsError(Exception):
+class BulletinsEnAttenteError(Exception):
     def __init__(self, n: int) -> None:
         super().__init__(f"{n} bulletins en attente")
         self.n = n
 
 
 @dataclass(frozen=True)
-class Ballot:
+class Bulletin:
     deezer_track_id: int
     kind: str
     position: int
@@ -55,13 +55,13 @@ class Ballot:
 
 
 @dataclass(frozen=True)
-class CastVote:
-    ballot: Ballot
+class VoteExprime:
+    bulletin: Bulletin
     vote: str
 
 
 @dataclass(frozen=True)
-class Selection:
+class Tirage:
     selection_id: int | None  # None : rien à présenter
     model_id: int
     run_id: int
@@ -70,7 +70,7 @@ class Selection:
     lesson: list[int]
 
 
-def pending_ballots(conn: sqlite3.Connection) -> list[Ballot]:
+def bulletins_en_attente(conn: sqlite3.Connection) -> list[Bulletin]:
     rows = conn.execute(
         """
         SELECT b.deezer_track_id, b.kind, b.position, a.name, t.title
@@ -82,10 +82,10 @@ def pending_ballots(conn: sqlite3.Connection) -> list[Ballot]:
         ORDER BY b.selection_id, b.position
         """
     ).fetchall()
-    return [Ballot(int(r[0]), str(r[1]), int(r[2]), str(r[3]), str(r[4])) for r in rows]
+    return [Bulletin(int(r[0]), str(r[1]), int(r[2]), str(r[3]), str(r[4])) for r in rows]
 
 
-def week_votes(conn: sqlite3.Connection) -> list[CastVote]:
+def votes_semaine(conn: sqlite3.Connection) -> list[VoteExprime]:
     """Votes de la dernière sélection, dans l'ordre de présentation : ceux qui se corrigent."""
     rows = conn.execute(
         """
@@ -99,12 +99,12 @@ def week_votes(conn: sqlite3.Connection) -> list[CastVote]:
         """
     ).fetchall()
     return [
-        CastVote(Ballot(int(r[0]), str(r[1]), int(r[2]), str(r[3]), str(r[4])), str(r[5]))
+        VoteExprime(Bulletin(int(r[0]), str(r[1]), int(r[2]), str(r[3]), str(r[4])), str(r[5]))
         for r in rows
     ]
 
 
-def record_vote(conn: sqlite3.Connection, track_id: int, vote: str, now: str) -> bool:
+def enregistrer_vote(conn: sqlite3.Connection, track_id: int, vote: str, now: str) -> bool:
     """Enregistre ou corrige le vote d'un bulletin de la dernière sélection. False sinon.
 
     Une correction garde l'heure du premier vote : la fenêtre d'examen, ordonnée par heure de
@@ -159,7 +159,7 @@ def _pick_lessons(
     return lesson
 
 
-def select_batch(
+def tirer_bulletins(
     conn: sqlite3.Connection,
     rng: np.random.Generator,
     n_exam: int,
@@ -167,20 +167,20 @@ def select_batch(
     now: str,
     *,
     floor: Mapping[str, float],
-) -> Selection:
-    waiting = pending_ballots(conn)
+) -> Tirage:
+    waiting = bulletins_en_attente(conn)
     if waiting:
-        raise PendingBallotsError(len(waiting))
-    model_id = serving_id(conn)
+        raise BulletinsEnAttenteError(len(waiting))
+    model_id = id_en_service(conn)
     if model_id is None:
-        raise NoServingModelError
+        raise AucunModeleEnServiceError
     last_run = conn.execute(
         "SELECT MAX(c.run_id) FROM scores s JOIN candidates c USING (deezer_track_id) "
         "WHERE s.model_id = ?",
         (model_id,),
     ).fetchone()[0]
     if last_run is None:
-        raise NoScoresError
+        raise AucuneNoteError
     run_id = int(last_run)
     rows = conn.execute(
         """
@@ -228,7 +228,7 @@ def select_batch(
     lesson = _pick_lessons(rows, cuts, examined, n_lesson)
     chosen = [(t, "exam") for t in exam] + [(t, "lesson") for t in lesson]
     if not chosen:
-        return Selection(None, model_id, run_id, sum(map(len, families.values())), [], [])
+        return Tirage(None, model_id, run_id, sum(map(len, families.values())), [], [])
     positions = rng.permutation(len(chosen))
     with conn:
         cur = conn.execute(
@@ -243,4 +243,4 @@ def select_batch(
                 for (tid, kind), p in zip(chosen, positions, strict=True)
             ],
         )
-    return Selection(selection_id, model_id, run_id, sum(map(len, families.values())), exam, lesson)
+    return Tirage(selection_id, model_id, run_id, sum(map(len, families.values())), exam, lesson)

@@ -211,16 +211,16 @@ class Extractor(Protocol):
 
 
 @dataclass
-class FeaturesReport:
+class RapportMesures:
     n_todo: int
     n_ok: int = 0
     n_failed: int = 0
     missing: list[str] = field(default_factory=list)
 
 
-def measure_antenna(
+def mesurer_antenne(
     conn: sqlite3.Connection, media_dir: Path, extractor: Extractor, now: str, batch: int = 20
-) -> FeaturesReport:
+) -> RapportMesures:
     """Mesure les titres pas encore mesurés, ou mesurés autrement (`FEATURES_TAG`), à l'antenne et
     au repos (ils reviendront au fond) ; une ancienne mesure reste en service jusqu'à son
     remplacement. Un fichier absent du dossier média n'est pas noté : il est nommé, et retenté à
@@ -233,7 +233,7 @@ def measure_antenna(
         """,
         (FEATURES_TAG,),
     ).fetchall()
-    rep = FeaturesReport(n_todo=len(todo))
+    rep = RapportMesures(n_todo=len(todo))
     rows: list[tuple[object, ...]] = []
 
     def flush() -> None:

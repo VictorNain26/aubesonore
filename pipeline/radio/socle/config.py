@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     backup_dir: Path | None = Field(default=None, validation_alias="RADIO_BACKUP_DIR")
     config_dir: Path = Field(default=REPO_ROOT / "config", validation_alias="RADIO_CONFIG_DIR")
     # Poids MTG téléchargés (scripts/dev-setup.sh) : l'EffNet et les modèles des mesures
-    # d'antenne (radio/mesures/musicnn.py). Les modèles entraînés sont dans trained_models_dir.
+    # d'antenne (radio/mesures/musicnn.py). Les modèles entraînés sont dans dossier_modeles.
     models_dir: Path = Field(default=REPO_ROOT / "models", validation_alias="RADIO_MODELS_DIR")
     # Dossier média de la station AzuraCast, lu par `radio mesures`, jamais écrit.
     azuracast_media_dir: Path = Field(
@@ -71,7 +71,7 @@ class Settings(BaseSettings):
         return self.data_dir / "radio.db"
 
     @property
-    def trained_models_dir(self) -> Path:
+    def dossier_modeles(self) -> Path:
         """Les modèles que `gout` entraîne, à part des poids MTG de models_dir."""
         return self.data_dir / "models"
 

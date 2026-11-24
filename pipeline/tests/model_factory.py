@@ -12,8 +12,8 @@ from pathlib import Path
 
 import numpy as np
 
-from radio.bibliotheque.artistes import register_library
-from radio.decouverte.candidats import add_tracks
+from radio.bibliotheque.artistes import enregistrer_bibliotheque
+from radio.decouverte.candidats import ajouter_titres
 from radio.empreintes.effnet import DIM, MODEL_TAG, to_blob
 from radio.socle.config import GoutConfig
 from radio.socle.db import connect
@@ -40,7 +40,7 @@ def make_model_db(
     conn.executemany("INSERT INTO library_tracks VALUES (?, ?, ?, ?, ?, ?, ?, NULL)", lib)
     conn.executemany("INSERT INTO deezer_matches VALUES (?, ?, ?, ?, ?, ?)", matches)
     conn.commit()
-    register_library(conn, NOW)
+    enregistrer_bibliotheque(conn, NOW)
     for base, origin in ((2000, "candidate"), (3000, "candidate"), (4000, "negative")):
         for a in range(n_artists):
             aid = base + a
@@ -50,7 +50,7 @@ def make_model_db(
                 )
                 for k in range(per_artist)
             ]
-            add_tracks(conn, aid, f"Art {aid}", tracks, origin, NOW)
+            ajouter_titres(conn, aid, f"Art {aid}", tracks, origin, NOW)
     for tid, aid, origin in conn.execute(
         "SELECT deezer_track_id, deezer_artist_id, origin FROM tracks"
     ).fetchall():

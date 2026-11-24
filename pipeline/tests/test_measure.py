@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 import pytest
 
-from radio.empreintes.calcul import measure_tracks
+from radio.empreintes.calcul import calculer_empreintes
 from radio.empreintes.effnet import DIM, MODEL_TAG, from_blob
 from radio.socle.db import connect
 from radio.sources.deezer import DeezerError, DeezerTrack, DeezerUnavailable
@@ -73,7 +73,7 @@ def test_statuses(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
         }
     )
     emb = FakeEmbedder()
-    rep = measure_tracks(conn, dz, emb, "d")
+    rep = calculer_empreintes(conn, dz, emb, "d")
     assert (rep.n_todo, rep.n_ok, rep.n_no_preview, rep.n_gone) == (5, 2, 1, 1)
     assert (rep.n_audio_failed, rep.errors) == (0, ["Knife — T (DeezerError)"])
     assert rows(conn) == {1: "ok", 2: "no_preview", 3: "gone", 5: "ok"}
@@ -83,15 +83,17 @@ def test_statuses(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
     dump = "\n".join(conn.iterdump())
     assert "SIGNED-SECRET" not in dump and "SIGNED-SECRET" not in caplog.text
     dz._tracks[4] = (dt(4), URL)
-    assert measure_tracks(conn, dz, emb, "d2").n_todo == 1
+    assert calculer_empreintes(conn, dz, emb, "d2").n_todo == 1
 
 
 def test_failed_audio(tmp_path: Path) -> None:
     # Téléchargement refusé, puis audio illisible : deux bases d'un titre chacune.
     conn = db(tmp_path / "a", n=1)
-    measure_tracks(conn, FakeDeezer({1: (dt(1), URL)}, fail_download=True), FakeEmbedder(), "d")
+    calculer_empreintes(
+        conn, FakeDeezer({1: (dt(1), URL)}, fail_download=True), FakeEmbedder(), "d"
+    )
     conn2 = db(tmp_path / "b", n=1)
-    measure_tracks(conn2, FakeDeezer({1: (dt(1), URL)}), FakeEmbedder(None), "d")
+    calculer_empreintes(conn2, FakeDeezer({1: (dt(1), URL)}), FakeEmbedder(None), "d")
     assert rows(conn) == {1: "audio_failed"}
     assert rows(conn2) == {1: "audio_failed"}
 
@@ -103,6 +105,6 @@ def test_unavailable_commits_work_done_and_names_track(
     conn = db(tmp_path, n=3)
     dz = FakeDeezer({1: (dt(1), URL), 2: (dt(2), None), 3: DeezerUnavailable("code 4")})
     with pytest.raises(DeezerUnavailable):
-        measure_tracks(conn, dz, FakeEmbedder(), "d")
+        calculer_empreintes(conn, dz, FakeEmbedder(), "d")
     assert set(rows(conn)) == {1, 2}
     assert caplog.messages == ["measure: stopped at track T (3)"]

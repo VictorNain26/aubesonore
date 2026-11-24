@@ -9,12 +9,12 @@ from radio.sources.deezer import DeezerClient, DeezerTrack
 from radio.sources.hypem import HypemTrack
 
 
-def keep_tracks(top: list[DeezerTrack], artist_id: int) -> list[DeezerTrack]:
+def garder_titres(top: list[DeezerTrack], artist_id: int) -> list[DeezerTrack]:
     """Seuls les titres dont l'artiste est l'artiste principal et qui ont un extrait."""
     return [t for t in top if t.artist_id == artist_id and t.has_preview]
 
 
-def add_tracks(
+def ajouter_titres(
     conn: sqlite3.Connection,
     artist_id: int,
     artist_name: str,
@@ -44,7 +44,7 @@ def add_tracks(
     return added
 
 
-def add_candidates(
+def ajouter_candidats(
     conn: sqlite3.Connection,
     run_id: int,
     source: str,

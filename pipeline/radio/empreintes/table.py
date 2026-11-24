@@ -11,7 +11,7 @@ from radio.empreintes.effnet import DIM, MODEL_TAG, from_blob
 
 
 @dataclass(frozen=True)
-class SignalTable:
+class TableEmpreintes:
     track_ids: npt.NDArray[np.int64]
     artist_ids: npt.NDArray[np.int64]
     artist_keys: list[str]
@@ -19,7 +19,7 @@ class SignalTable:
     audio: npt.NDArray[np.float32]
 
 
-def load_signals(conn: sqlite3.Connection) -> SignalTable:
+def charger_empreintes(conn: sqlite3.Connection) -> TableEmpreintes:
     rows = conn.execute(
         """
         SELECT t.deezer_track_id AS tid, t.deezer_artist_id AS aid, t.origin, m.embedding,
@@ -33,7 +33,7 @@ def load_signals(conn: sqlite3.Connection) -> SignalTable:
     audio = np.zeros((len(rows), DIM), dtype=np.float32)
     for i, r in enumerate(rows):
         audio[i] = from_blob(r["embedding"])
-    return SignalTable(
+    return TableEmpreintes(
         track_ids=np.array([r["tid"] for r in rows], dtype=np.int64),
         artist_ids=np.array([r["aid"] for r in rows], dtype=np.int64),
         artist_keys=[normalize(r["aname"]) or f"#{r['aid']}" for r in rows],

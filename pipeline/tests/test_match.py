@@ -4,14 +4,14 @@ from pathlib import Path
 import pytest
 
 from radio.bibliotheque.rapprochement import (
-    MatchReport,
+    RapportRapprochement,
     coverage,
-    match_library,
     normalize,
     pick_match,
+    rapprocher_bibliotheque,
     search_query,
 )
-from radio.bibliotheque.synchro import sync_library
+from radio.bibliotheque.synchro import synchroniser_bibliotheque
 from radio.socle.db import connect
 from radio.sources.deezer import DeezerError, DeezerTrack, DeezerUnavailable
 from radio.sources.plex import PlexTrack
@@ -173,7 +173,7 @@ class FakeDeezer:
 
 def setup(tmp_path: Path) -> sqlite3.Connection:
     conn = connect(tmp_path / "db")
-    sync_library(
+    synchroniser_bibliotheque(
         conn,
         [
             PlexTrack("1", "Wire", "Mannequin", "Pink Flag", 157000, 3),
@@ -197,8 +197,8 @@ def test_match_library_records_every_outcome(tmp_path: Path) -> None:
             search_query("Wire", "Broken"): DeezerError("code 501"),
         }
     )
-    rep = match_library(conn, fake, tolerance_s=3, now="d1")  # type: ignore[arg-type]
-    assert rep == MatchReport(
+    rep = rapprocher_bibliotheque(conn, fake, tolerance_s=3, now="d1")  # type: ignore[arg-type]
+    assert rep == RapportRapprochement(
         n_todo=5,
         n_matched=1,
         unmatched={"no_duration": 1, "no_result": 1, "no_exact_match": 1},
@@ -220,9 +220,9 @@ def test_second_pass_only_retries_errors(tmp_path: Path) -> None:
         search_query("Wire", "Fuzzy"): [],
         search_query("Wire", "Broken"): DeezerError("code 501"),
     }
-    match_library(conn, FakeDeezer(answers), 3, "d1")  # type: ignore[arg-type]
+    rapprocher_bibliotheque(conn, FakeDeezer(answers), 3, "d1")  # type: ignore[arg-type]
     fake2 = FakeDeezer({search_query("Wire", "Broken"): [dz(9, "Wire", "Broken", 120)]})
-    rep = match_library(conn, fake2, 3, "d2")  # type: ignore[arg-type]
+    rep = rapprocher_bibliotheque(conn, fake2, 3, "d2")  # type: ignore[arg-type]
     assert rep.n_todo == 1 and rep.n_matched == 1
     assert fake2.queries == [search_query("Wire", "Broken")]
 
@@ -236,7 +236,7 @@ def test_unavailable_commits_done_work_then_raises(tmp_path: Path) -> None:
         }
     )
     with pytest.raises(DeezerUnavailable):
-        match_library(conn, fake, 3, "d1", batch=50)  # type: ignore[arg-type]
+        rapprocher_bibliotheque(conn, fake, 3, "d1", batch=50)  # type: ignore[arg-type]
     # Seconde connexion : prouve que la validation a bien été écrite sur disque.
     reader = sqlite3.connect(tmp_path / "db")
     try:
@@ -249,7 +249,7 @@ def test_unavailable_commits_done_work_then_raises(tmp_path: Path) -> None:
 class BatchProbeDeezer:
     """Sonde, par sa PROPRE connexion SQLite, que le lot précédent est déjà sur
     disque au moment où le second titre échoue — donc pendant l'exécution de
-    match_library, avant même que l'exception ne remonte. Sans le flush en
+    rapprocher_bibliotheque, avant même que l'exception ne remonte. Sans le flush en
     cours de boucle (batch=1), la ligne du titre 1 ne serait pas encore visible
     ici et le test échouerait."""
 
@@ -278,7 +278,7 @@ def test_unavailable_with_batch_one_flushes_mid_loop(tmp_path: Path) -> None:
     conn = setup(tmp_path)
     fake = BatchProbeDeezer(tmp_path / "db")
     with pytest.raises(DeezerUnavailable):
-        match_library(conn, fake, 3, "d1", batch=1)  # type: ignore[arg-type]
+        rapprocher_bibliotheque(conn, fake, 3, "d1", batch=1)  # type: ignore[arg-type]
 
 
 def test_pick_accepts_one_artist_of_a_shared_credit() -> None:

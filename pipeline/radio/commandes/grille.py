@@ -39,7 +39,9 @@ def grille(
     )
     with _db(settings) as conn:
         try:
-            plan, errors = grille_mod.grille_pass(conn, station, cfg, aujourdhui, datetime.now(UTC))
+            plan, errors = grille_mod.programmer_grille(
+                conn, station, cfg, aujourdhui, datetime.now(UTC)
+            )
         except AzuracastUnavailable as e:
             _fail(f"AzuraCast indisponible ({e})", 1)
         _record(

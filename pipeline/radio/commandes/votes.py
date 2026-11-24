@@ -18,7 +18,12 @@ from radio.commandes.commun import (
 from radio.sources.deezer import DeezerClient
 from radio.votes.acces import AccessVerifier
 from radio.votes.page import create_app
-from radio.votes.tirage import NoScoresError, NoServingModelError, PendingBallotsError, select_batch
+from radio.votes.tirage import (
+    AucuneNoteError,
+    AucunModeleEnServiceError,
+    BulletinsEnAttenteError,
+    tirer_bulletins,
+)
 
 
 @app.command("tirage")
@@ -31,7 +36,7 @@ def tirage() -> None:
     v = editorial.votes
     with _db(settings) as conn:
         try:
-            sel = select_batch(
+            sel = tirer_bulletins(
                 conn,
                 np.random.default_rng(),
                 v.examen_par_tirage,
@@ -39,13 +44,13 @@ def tirage() -> None:
                 _now(),
                 floor=editorial.gout.planchers,
             )
-        except PendingBallotsError as e:
+        except BulletinsEnAttenteError as e:
             _record(conn, "tirage", True, {"en attente de vote": e.n})
             typer.echo(f"{_n(e.n)} titres encore en attente de vote : pas de nouvelle sélection")
             return
-        except NoServingModelError:
+        except AucunModeleEnServiceError:
             _fail("Aucun modèle en service : lancer radio gout", 1)
-        except NoScoresError:
+        except AucuneNoteError:
             _fail("Le modèle en service n'a noté aucun candidat : lancer radio gout", 1)
         _record(
             conn,

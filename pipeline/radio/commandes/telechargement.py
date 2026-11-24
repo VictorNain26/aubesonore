@@ -17,7 +17,7 @@ from radio.commandes.commun import (
 )
 from radio.sources.deezer import DeezerClient, DeezerUnavailable
 from radio.telechargement.sockseek import SockseekError
-from radio.telechargement.telecharger import acquire_pass
+from radio.telechargement.telecharger import telecharger_fournee
 
 
 @app.command("telechargement")
@@ -33,7 +33,7 @@ def telechargement() -> None:
     now = _now()
     with _db(settings) as conn:
         try:
-            rep = acquire_pass(
+            rep = telecharger_fournee(
                 conn,
                 DeezerClient(),
                 (

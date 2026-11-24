@@ -7,7 +7,7 @@ from typer.testing import CliRunner
 import radio.commandes as commandes
 from radio.socle.config import Settings
 from radio.socle.db import connect
-from radio.votes.tirage import record_vote
+from radio.votes.tirage import enregistrer_vote
 from tests.model_factory import NOW, add_vote, as_news, make_model_db, seed_run
 
 runner = CliRunner()
@@ -52,7 +52,7 @@ def test_train_promotes_scores_then_skips_without_new_votes(env: Path) -> None:
 
 
 def test_train_learns_a_corrected_vote(env: Path) -> None:
-    # Breaks if train decides on the number of votes alone: a vote corrected on /semaine, while
+    # Breaks if entrainer decides on the number of votes alone: a vote corrected on /semaine, while
     # its selection is still the latest, keeps that number.
     conn = make_model_db(env / "data")
     seed_run(conn)
@@ -65,13 +65,13 @@ def test_train_learns_a_corrected_vote(env: Path) -> None:
     with conn:
         conn.execute("INSERT INTO selections (selected_at, model_id) VALUES (?, 1)", (NOW,))
         conn.execute("INSERT INTO ballots VALUES (200100, 1, 'lesson', 0, 1)")
-    assert record_vote(conn, 200100, "oui", NOW)
+    assert enregistrer_vote(conn, 200100, "oui", NOW)
     conn.close()
     res = runner.invoke(commandes.app, ["gout"])
     assert "Exemples : bibliothèque 48, oui 1, non 0" in res.output, res.output
 
     conn = connect(env / "data" / "radio.db")
-    assert record_vote(conn, 200100, "non", NOW)
+    assert enregistrer_vote(conn, 200100, "non", NOW)
     conn.close()
     res = runner.invoke(commandes.app, ["gout"])
     assert res.exit_code == 0, res.output

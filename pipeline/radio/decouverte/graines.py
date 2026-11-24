@@ -12,20 +12,20 @@ from datetime import datetime, timedelta
 
 import numpy as np
 
-from radio.bibliotheque.artistes import LibraryArtist
-from radio.bibliotheque.poids import play_weight
+from radio.bibliotheque.artistes import ArtisteBibliotheque
+from radio.bibliotheque.poids import poids_ecoute
 from radio.socle.config import DecouverteConfig
 
 
 @dataclass(frozen=True)
 class Run:
     run_id: int
-    seeds: list[LibraryArtist]
+    seeds: list[ArtisteBibliotheque]
     resumed: bool
     n_dropped: int
 
 
-def recently_used(conn: sqlite3.Connection, now: datetime, days: int) -> set[int]:
+def graines_recentes(conn: sqlite3.Connection, now: datetime, days: int) -> set[int]:
     since = (now - timedelta(days=days)).isoformat()
     return {
         r[0]
@@ -39,20 +39,20 @@ def recently_used(conn: sqlite3.Connection, now: datetime, days: int) -> set[int
     }
 
 
-def draw_seeds(
-    artists: list[LibraryArtist], exclude: set[int], k: int, rng: np.random.Generator
-) -> list[LibraryArtist]:
+def tirer_graines(
+    artists: list[ArtisteBibliotheque], exclude: set[int], k: int, rng: np.random.Generator
+) -> list[ArtisteBibliotheque]:
     pool = [a for a in artists if a.deezer_artist_id not in exclude]
     if not pool:
         return []
-    w = np.array([play_weight(a.plays) for a in pool])
+    w = np.array([poids_ecoute(a.plays) for a in pool])
     picked = rng.choice(len(pool), size=min(k, len(pool)), replace=False, p=w / w.sum())
     return [pool[int(i)] for i in picked]
 
 
 def start_run(
     conn: sqlite3.Connection,
-    artists: list[LibraryArtist],
+    artists: list[ArtisteBibliotheque],
     cfg: DecouverteConfig,
     now: datetime,
     rng: np.random.Generator,
@@ -69,8 +69,8 @@ def start_run(
         ]
         seeds = [by_id[i] for i in seed_ids if i in by_id]
         return Run(running[0], seeds, resumed=True, n_dropped=len(seed_ids) - len(seeds))
-    seeds = draw_seeds(
-        artists, recently_used(conn, now, cfg.repos_graine_jours), cfg.graines_par_fournee, rng
+    seeds = tirer_graines(
+        artists, graines_recentes(conn, now, cfg.repos_graine_jours), cfg.graines_par_fournee, rng
     )
     with conn:
         cur = conn.execute(

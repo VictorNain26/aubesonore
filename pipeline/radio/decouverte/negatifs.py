@@ -13,12 +13,12 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from radio.bibliotheque.artistes import library_artists
-from radio.decouverte.candidats import add_tracks, keep_tracks
+from radio.bibliotheque.artistes import artistes_bibliotheque
+from radio.decouverte.candidats import ajouter_titres, garder_titres
 from radio.sources.deezer import DeezerClient, DeezerError
 
 
-class NegativeArtist(BaseModel):
+class ArtisteNegatif(BaseModel):
     model_config = ConfigDict(extra="ignore", frozen=True)
     name: str
     deezer_id: int = Field(gt=0)
@@ -27,11 +27,11 @@ class NegativeArtist(BaseModel):
 
 class _File(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    artist: list[NegativeArtist]
+    artist: list[ArtisteNegatif]
 
 
 @dataclass
-class NegativesReport:
+class RapportNegatifs:
     n_artists: int
     n_already: int = 0
     n_added: int = 0
@@ -40,7 +40,7 @@ class NegativesReport:
     skipped: list[str] = field(default_factory=list)
 
 
-def load_negatives(path: Path) -> list[NegativeArtist]:
+def charger_negatifs(path: Path) -> list[ArtisteNegatif]:
     with path.open("rb") as f:
         negatives = _File.model_validate(tomllib.load(f)).artist
     doubles = [i for i, n in Counter(a.deezer_id for a in negatives).items() if n > 1]
@@ -49,16 +49,16 @@ def load_negatives(path: Path) -> list[NegativeArtist]:
     return negatives
 
 
-def import_negatives(
+def importer_negatifs(
     conn: sqlite3.Connection,
     deezer: DeezerClient,
-    negatives: list[NegativeArtist],
+    negatives: list[ArtisteNegatif],
     per_artist: int,
     now: str,
-) -> NegativesReport:
+) -> RapportNegatifs:
     done = {r[0] for r in conn.execute("SELECT deezer_artist_id FROM negative_artists")}
-    library_ids = {a.deezer_artist_id for a in library_artists(conn)}
-    rep = NegativesReport(n_artists=len(negatives))
+    library_ids = {a.deezer_artist_id for a in artistes_bibliotheque(conn)}
+    rep = RapportNegatifs(n_artists=len(negatives))
     for n in negatives:
         if n.deezer_id in done:
             rep.n_already += 1
@@ -72,9 +72,9 @@ def import_negatives(
         except DeezerError as e:
             rep.skipped.append(f"{n.name} ({type(e).__name__})")
             continue
-        kept = keep_tracks(top, n.deezer_id)
+        kept = garder_titres(top, n.deezer_id)
         with conn:
-            added = add_tracks(conn, n.deezer_id, n.name, kept, "negative", now)
+            added = ajouter_titres(conn, n.deezer_id, n.name, kept, "negative", now)
             conn.execute("INSERT INTO negative_artists VALUES (?, ?)", (n.deezer_id, n.category))
         rep.n_added += len(added)
         rep.n_duplicates += len(kept) - len(added)

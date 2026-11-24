@@ -6,7 +6,7 @@ from xml.etree import ElementTree
 import pytest
 from plexapi.audio import Track
 
-from radio.sources.plex import LibraryGuardError, PlexSource, PlexTrack, check_section
+from radio.sources.plex import PlexSource, PlexTrack, SectionInterditeError, check_section
 
 ROOT = PurePosixPath("/media/plex/Musique")
 
@@ -74,7 +74,7 @@ def test_tracks_are_read_with_plays_and_track_artist() -> None:
     ],
 )
 def test_a_section_outside_the_guard_is_refused(section: FakeSection) -> None:
-    with pytest.raises(LibraryGuardError):
+    with pytest.raises(SectionInterditeError):
         source(section)
 
 
@@ -82,13 +82,13 @@ def test_a_section_outside_the_guard_is_refused(section: FakeSection) -> None:
     "loc", ["/media/plex/Musique/../x", "relative/path", "/media/plex/MusiqueBis"]
 )
 def test_suspicious_locations_are_refused(loc: str) -> None:
-    with pytest.raises(LibraryGuardError):
+    with pytest.raises(SectionInterditeError):
         check_section("Musique", [loc], ROOT)
 
 
 @pytest.mark.parametrize("root", ["/", "/media", "media/plex", "/media/plex/../x"])
 def test_bad_roots_are_refused(root: str) -> None:
-    with pytest.raises(LibraryGuardError):
+    with pytest.raises(SectionInterditeError):
         check_section("Musique", ["/media/plex/Musique"], PurePosixPath(root))
 
 

@@ -12,18 +12,18 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 from radio.bibliotheque.doublons import dedupe_key
-from radio.decouverte.candidats import add_candidates, add_tracks, on_deezer
+from radio.decouverte.candidats import ajouter_candidats, ajouter_titres, on_deezer
 from radio.socle.config import NouveautesConfig
 from radio.sources.deezer import DeezerClient, DeezerError, DeezerTrack
 from radio.sources.hypem import HypemClient, HypemError, HypemUnavailable
 
 
-class NoBatchError(Exception):
+class AucuneFourneeError(Exception):
     """Aucune fournée de découverte : les nouveautés s'y ajoutent, lancer radio decouverte."""
 
 
 @dataclass
-class FreshReport:
+class RapportNouveautes:
     run_id: int
     seen: Counter[str] = field(default_factory=Counter)
     added: Counter[str] = field(default_factory=Counter)
@@ -46,7 +46,7 @@ def _known_keys(conn: sqlite3.Connection) -> set[str]:
 
 def _add(
     conn: sqlite3.Connection,
-    rep: FreshReport,
+    rep: RapportNouveautes,
     known: set[str],
     track: DeezerTrack,
     source: str,
@@ -57,8 +57,8 @@ def _add(
         rep.n_known += 1
         return
     with conn:
-        added = add_tracks(conn, track.artist_id, track.artist_name, [track], "candidate", now)
-        add_candidates(conn, rep.run_id, source, added, detail=detail)
+        added = ajouter_titres(conn, track.artist_id, track.artist_name, [track], "candidate", now)
+        ajouter_candidats(conn, rep.run_id, source, added, detail=detail)
     rep.added[source] += len(added)
     if not added:
         rep.already[source] += 1
@@ -66,7 +66,7 @@ def _add(
 
 def _hypem(
     conn: sqlite3.Connection,
-    rep: FreshReport,
+    rep: RapportNouveautes,
     known: set[str],
     deezer: DeezerClient,
     hypem: HypemClient,
@@ -91,7 +91,7 @@ def _hypem(
 
 def _deezer_editorial(
     conn: sqlite3.Connection,
-    rep: FreshReport,
+    rep: RapportNouveautes,
     known: set[str],
     deezer: DeezerClient,
     cfg: NouveautesConfig,
@@ -110,18 +110,18 @@ def _deezer_editorial(
                 _add(conn, rep, known, t, "deezer_editorial", name, now)
 
 
-def fresh_pass(
+def chercher_nouveautes(
     conn: sqlite3.Connection,
     deezer: DeezerClient,
     hypem: HypemClient,
     cfg: NouveautesConfig,
     tolerance_s: int,
     now: str,
-) -> FreshReport:
+) -> RapportNouveautes:
     row = conn.execute("SELECT MAX(run_id) FROM discover_runs").fetchone()
     if row[0] is None:
-        raise NoBatchError
-    rep = FreshReport(int(row[0]))
+        raise AucuneFourneeError
+    rep = RapportNouveautes(int(row[0]))
     known = _known_keys(conn)
     _hypem(conn, rep, known, deezer, hypem, cfg, tolerance_s, now)
     _deezer_editorial(conn, rep, known, deezer, cfg, now)

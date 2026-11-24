@@ -197,7 +197,7 @@ def hour_spans(day: date, hours: Iterable[int], tz: tzinfo) -> dict[int, Span]:
     return out
 
 
-def plan_day(
+def planifier_jour(
     titres: list[Titre],
     last_played: dict[str, float],
     grille: GrilleConfig,
@@ -443,7 +443,7 @@ class Scheduler(Programmer, Protocol):
     def queued(self) -> dict[str, float]: ...
 
 
-def grille_pass(
+def programmer_grille(
     conn: sqlite3.Connection, station: Scheduler, cfg: GrilleConfig, today: bool, now: datetime
 ) -> tuple[Plan, list[str]]:
     """Planifie, publie et garde la grille de demain, ou des heures qui restent aujourd'hui ;
@@ -462,7 +462,7 @@ def grille_pass(
     rewritten = [begin for begin, _ in spans.values()]
     played = with_published(conn, history, now.timestamp(), rewritten)
     midnight = datetime.combine(day, time(0), tzinfo=tz).timestamp()
-    plan = plan_day(load_titres(conn), played, cfg, day, spans, midnight, start_next)
+    plan = planifier_jour(load_titres(conn), played, cfg, day, spans, midnight, start_next)
     errors = publish(plan, station, [h for h in hours if h not in spans])
     record(conn, plan)
     return plan, errors

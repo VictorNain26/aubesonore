@@ -11,37 +11,37 @@ from pathlib import Path
 
 import numpy as np
 
-from radio.empreintes.table import load_signals
+from radio.empreintes.table import charger_empreintes
 from radio.gout.exemples import build_labels
-from radio.gout.modele import Batch, YesRate, auc, last_batch, predict, serving, yes_rate
-from radio.votes.tirage import pending_ballots
+from radio.gout.modele import Fournee, TauxOui, auc, derniere_fournee, en_service, predict, taux_oui
+from radio.votes.tirage import bulletins_en_attente
 
 
 @dataclass(frozen=True)
-class Status:
+class Etat:
     model_id: int | None
     exam_auc: float | None
     n_exam: int
-    yes: YesRate | None
+    yes: TauxOui | None
     last_exam_vote: str | None
     pending: int
     last_selection: str | None
     stale_selection_days: int | None
     recent_votes: int
-    batch: Batch | None
+    batch: Fournee | None
 
 
-def load_status(
+def charger_etat(
     conn: sqlite3.Connection,
     models_dir: Path,
     fenetre_examen: int,
     jours_silence: int,
     now: datetime,
-) -> Status:
-    current = serving(conn, models_dir)
+) -> Etat:
+    current = en_service(conn, models_dir)
     exam_auc, n_exam = None, 0
     if current is not None:
-        table = load_signals(conn)
+        table = charger_empreintes(conn)
         exam = build_labels(conn, table, fenetre_examen).exam
         exam_auc, n_exam = auc(exam.labels, predict(current[1], table, exam.rows)), len(exam.rows)
     page = conn.execute(
@@ -60,17 +60,17 @@ def load_status(
         "SELECT COUNT(*) FROM votes WHERE voted_at >= ? AND vote != 'passer'", (since,)
     ).fetchone()[0]
     last_selection = conn.execute("SELECT MAX(selected_at) FROM selections").fetchone()[0]
-    return Status(
+    return Etat(
         model_id=None if current is None else current[0],
         exam_auc=exam_auc,
         n_exam=n_exam,
-        yes=yes_rate(np.array([int(r[0]) for r in page], dtype=np.int64)),
+        yes=taux_oui(np.array([int(r[0]) for r in page], dtype=np.int64)),
         last_exam_vote=last_exam,
-        pending=len(pending_ballots(conn)),
+        pending=len(bulletins_en_attente(conn)),
         last_selection=last_selection,
         stale_selection_days=None
         if last_selection is None
         else (now - datetime.fromisoformat(last_selection)).days,
         recent_votes=int(recent),
-        batch=last_batch(conn),
+        batch=derniere_fournee(conn),
     )

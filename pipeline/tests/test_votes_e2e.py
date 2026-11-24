@@ -14,7 +14,7 @@ import radio.commandes as commandes
 from radio.socle.config import Settings
 from radio.socle.db import connect
 from radio.votes.page import create_app
-from radio.votes.tirage import pending_ballots
+from radio.votes.tirage import bulletins_en_attente
 from tests.factories import OK, PreviewDeezer, verify
 from tests.model_factory import add_vote, make_model_db, seed_run
 
@@ -49,17 +49,17 @@ def test_votes_lifecycle_from_training_to_a_second_selection(env: Path) -> None:
     res = runner.invoke(commandes.app, ["tirage"])
     assert res.exit_code == 0, res.output
     conn = connect(db_path)
-    first_pending = pending_ballots(conn)
+    first_pending = bulletins_en_attente(conn)
     conn.close()
     assert first_pending, "aucun bulletin tiré : la base du factory n'a pas assez de candidats"
 
     # 3. vote sur la vraie page pour chaque bulletin en attente, « oui »/« non » en alternance.
     client = TestClient(create_app(db_path, PreviewDeezer(), verify))
-    for i, ballot in enumerate(first_pending):
+    for i, bulletin in enumerate(first_pending):
         choix = "oui" if i % 2 == 0 else "non"
         r = client.post(
             "/vote",
-            data={"tid": str(ballot.deezer_track_id), "choix": choix},
+            data={"tid": str(bulletin.deezer_track_id), "choix": choix},
             headers=OK,
             follow_redirects=False,
         )

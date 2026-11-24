@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from radio.decouverte.negatifs import NegativeArtist, import_negatives, load_negatives
+from radio.decouverte.negatifs import ArtisteNegatif, charger_negatifs, importer_negatifs
 from radio.socle.config import REPO_ROOT
 from radio.socle.db import connect
 from radio.sources.deezer import DeezerError, DeezerTrack, DeezerUnavailable
@@ -11,21 +11,21 @@ from tests.factories import make_library
 
 
 def test_shipped_negatives_file_is_valid() -> None:
-    # load_negatives refuse une catégorie inconnue et un deezer_id en double.
-    load_negatives(REPO_ROOT / "config" / "negatives.toml")
+    # charger_negatifs refuse une catégorie inconnue et un deezer_id en double.
+    charger_negatifs(REPO_ROOT / "config" / "negatives.toml")
 
 
 def test_invalid_file_is_refused(tmp_path: Path) -> None:
     p = tmp_path / "n.toml"
     p.write_text('[[artist]]\nname = "X"\ndeezer_id = 1\ncategory = "jazz"\n')
     with pytest.raises(ValidationError):
-        load_negatives(p)
+        charger_negatifs(p)
     p.write_text(
         '[[artist]]\nname = "X"\ndeezer_id = 1\ncategory = "metal"\n'
         '[[artist]]\nname = "Y"\ndeezer_id = 1\ncategory = "metal"\n'
     )
     with pytest.raises(ValueError, match="1"):
-        load_negatives(p)
+        charger_negatifs(p)
 
 
 class FakeDeezer:
@@ -46,8 +46,8 @@ def dt(tid: int, aid: int, title: str) -> DeezerTrack:
 
 
 NEGS = [
-    NegativeArtist(name="Jul", deezer_id=900, category="commercial_fr"),
-    NegativeArtist(name="Broken", deezer_id=901, category="metal"),
+    ArtisteNegatif(name="Jul", deezer_id=900, category="commercial_fr"),
+    ArtisteNegatif(name="Broken", deezer_id=901, category="metal"),
 ]
 
 
@@ -59,14 +59,14 @@ def test_import_negatives(tmp_path: Path) -> None:
             901: DeezerError("code 501"),
         }
     )
-    rep = import_negatives(conn, dz, NEGS, 10, "d")
+    rep = importer_negatifs(conn, dz, NEGS, 10, "d")
     assert (rep.n_artists, rep.n_already, rep.n_added) == (2, 0, 1)
     assert (rep.n_duplicates, rep.n_filtered, rep.skipped) == (1, 1, ["Broken (DeezerError)"])
     row = conn.execute("SELECT * FROM negative_artists").fetchone()
     assert (row["deezer_artist_id"], row["category"]) == (900, "commercial_fr")
     assert conn.execute("SELECT origin FROM tracks").fetchone()[0] == "negative"
     dz.calls.clear()
-    rep2 = import_negatives(conn, dz, NEGS, 10, "d")
+    rep2 = importer_negatifs(conn, dz, NEGS, 10, "d")
     assert rep2.n_already == 1 and dz.calls == [901]
 
 
@@ -76,10 +76,10 @@ def test_import_negatives_skips_library_artists(tmp_path: Path) -> None:
     conn = make_library(tmp_path)
     dz = FakeDeezer({901: [dt(1, 901, "Track")]})
     negs = [
-        NegativeArtist(name="M83 imposteur", deezer_id=83, category="metal"),
-        NegativeArtist(name="Broken", deezer_id=901, category="metal"),
+        ArtisteNegatif(name="M83 imposteur", deezer_id=83, category="metal"),
+        ArtisteNegatif(name="Broken", deezer_id=901, category="metal"),
     ]
-    rep = import_negatives(conn, dz, negs, 10, "d")
+    rep = importer_negatifs(conn, dz, negs, 10, "d")
     assert rep.skipped == ["M83 imposteur (dans la bibliothèque)"]
     assert (rep.n_added, dz.calls) == (1, [901])
     assert (
@@ -94,5 +94,5 @@ def test_import_stops_when_deezer_is_unavailable(tmp_path: Path) -> None:
     conn = connect(tmp_path / "radio.db")
     dz = FakeDeezer({900: [dt(1, 900, "Tchikita")], 901: DeezerUnavailable("code 4")})
     with pytest.raises(DeezerUnavailable):
-        import_negatives(conn, dz, NEGS, 10, "d")
+        importer_negatifs(conn, dz, NEGS, 10, "d")
     assert conn.execute("SELECT COUNT(*) FROM negative_artists").fetchone()[0] == 1

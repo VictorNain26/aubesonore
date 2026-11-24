@@ -10,7 +10,7 @@ from radio.socle.db import connect
 from radio.sources.deezer import DeezerError, DeezerUnavailable
 from radio.votes.acces import HEADER
 from radio.votes.page import create_app
-from radio.votes.tirage import Ballot, pending_ballots, select_batch
+from radio.votes.tirage import Bulletin, bulletins_en_attente, tirer_bulletins
 from tests.factories import OK, SIGNED, PreviewDeezer, verify
 from tests.model_factory import NO_FLOOR, NOW, make_model_db, serve_scores
 
@@ -19,7 +19,7 @@ from tests.model_factory import NO_FLOOR, NOW, make_model_db, serve_scores
 def db(tmp_path: Path) -> Path:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    select_batch(conn, np.random.default_rng(0), 10, 10, NOW, floor=NO_FLOOR)
+    tirer_bulletins(conn, np.random.default_rng(0), 10, 10, NOW, floor=NO_FLOOR)
     conn.close()
     return tmp_path / "radio.db"
 
@@ -28,10 +28,10 @@ def _client(db: Path, deezer: PreviewDeezer | None = None) -> TestClient:
     return TestClient(create_app(db, deezer or PreviewDeezer(), verify))
 
 
-def _first(db: Path) -> Ballot:
+def _first(db: Path) -> Bulletin:
     conn = connect(db)
     try:
-        return pending_ballots(conn)[0]
+        return bulletins_en_attente(conn)[0]
     finally:
         conn.close()
 
@@ -106,7 +106,7 @@ def test_vote_is_recorded_and_page_moves_on(db: Path) -> None:
         "SELECT kind, vote, source FROM votes WHERE deezer_track_id = ?", (b.deezer_track_id,)
     ).fetchone()
     assert tuple(row) == (b.kind, "non", "page")
-    assert len(pending_ballots(conn)) == 19
+    assert len(bulletins_en_attente(conn)) == 19
     conn.close()
     unknown = c.post("/vote", data={"tid": "400000", "choix": "oui"}, headers=OK)
     assert unknown.status_code == 409
@@ -151,7 +151,7 @@ def test_the_week_page_corrects_a_vote_blind(db: Path) -> None:
         ).fetchone()[0]
         == "oui"
     )
-    assert len(pending_ballots(conn)) == 19
+    assert len(bulletins_en_attente(conn)) == 19
     conn.close()
 
 
@@ -235,7 +235,7 @@ def test_the_follow_up_page_is_guarded_and_shows_each_source(db: Path) -> None:
     client = _client(db)
     assert client.get("/suivi").status_code == 403
     conn = connect(db)
-    exam = next(b for b in pending_ballots(conn) if b.kind == "exam")
+    exam = next(b for b in bulletins_en_attente(conn) if b.kind == "exam")
     conn.close()
     client.post("/vote", data={"tid": str(exam.deezer_track_id), "choix": "oui"}, headers=OK)
     page = client.get("/suivi", headers=OK)

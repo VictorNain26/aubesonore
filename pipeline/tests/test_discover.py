@@ -6,8 +6,8 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from radio.decouverte.fournee import NoLibraryArtistsError, discover_pass
-from radio.decouverte.graines import recently_used
+from radio.decouverte.fournee import AucunArtisteBibliothequeError, decouvrir
+from radio.decouverte.graines import graines_recentes
 from radio.socle.config import DecouverteConfig
 from radio.socle.db import connect
 from radio.sources.deezer import DeezerArtist, DeezerError, DeezerTrack, DeezerUnavailable
@@ -71,7 +71,7 @@ def status(conn: sqlite3.Connection) -> str:
 def test_discover_pass(tmp_path: Path) -> None:
     conn = make_library(tmp_path)
     dz, lf = FakeDeezer(), FakeLastfm()
-    rep = discover_pass(conn, dz, lf, CFG, NOW, np.random.default_rng(0))
+    rep = decouvrir(conn, dz, lf, CFG, NOW, np.random.default_rng(0))
     assert (rep.run_id, rep.resumed, rep.n_seeds, rep.n_dropped) == (1, False, 2, 0)
     assert (rep.n_neighbours, rep.n_seen, rep.n_added) == (2, 5, 2)
     assert (rep.n_duplicates, rep.n_filtered, rep.skipped) == (1, 2, [])
@@ -81,14 +81,14 @@ def test_discover_pass(tmp_path: Path) -> None:
     ).fetchall()
     assert [(r[0], r[1], r[2]) for r in rows] == [(11, 1, 1), (21, 1, 2)]
     assert status(conn) == "done"
-    assert recently_used(conn, NOW, 30) == {70, 83}
+    assert graines_recentes(conn, NOW, 30) == {70, 83}
 
 
 def test_definitive_error_skips_and_names(tmp_path: Path) -> None:
     conn = make_library(tmp_path)
     dz = FakeDeezer()
     dz.top_[2] = DeezerError("code 501")
-    rep = discover_pass(conn, dz, FakeLastfm(), CFG, NOW, np.random.default_rng(0))
+    rep = decouvrir(conn, dz, FakeLastfm(), CFG, NOW, np.random.default_rng(0))
     assert rep.skipped == ["The Fall (DeezerError)"]
     assert status(conn) == "done"
 
@@ -99,7 +99,7 @@ def test_a_neighbour_without_titles_is_skipped_and_named(tmp_path: Path) -> None
     conn = make_library(tmp_path)
     dz = FakeDeezer()
     dz.top_[2] = []
-    rep = discover_pass(conn, dz, FakeLastfm(), CFG, NOW, np.random.default_rng(0))
+    rep = decouvrir(conn, dz, FakeLastfm(), CFG, NOW, np.random.default_rng(0))
     assert rep.skipped == ["The Fall (aucun titre sur Deezer)"]
     assert rep.n_added == 1 and status(conn) == "done"
 
@@ -112,10 +112,10 @@ def test_no_title_for_any_neighbour_is_deezer_down_and_keeps_the_seeds(tmp_path:
     dz = FakeDeezer()
     dz.top_ = {1: [], 2: []}
     with pytest.raises(DeezerUnavailable, match="aucun titre pour 2 voisins"):
-        discover_pass(conn, dz, FakeLastfm(), CFG, NOW, np.random.default_rng(0))
+        decouvrir(conn, dz, FakeLastfm(), CFG, NOW, np.random.default_rng(0))
     assert status(conn) == "running"
-    assert recently_used(conn, NOW, 30) == set()
-    rep = discover_pass(conn, FakeDeezer(), FakeLastfm(), CFG, NOW, np.random.default_rng(1))
+    assert graines_recentes(conn, NOW, 30) == set()
+    rep = decouvrir(conn, FakeDeezer(), FakeLastfm(), CFG, NOW, np.random.default_rng(1))
     assert rep.resumed and rep.n_added == 2 and status(conn) == "done"
 
 
@@ -124,7 +124,7 @@ def test_a_seed_without_related_artists_is_no_outage(tmp_path: Path) -> None:
     conn = make_library(tmp_path)
     dz = FakeDeezer()
     dz._related[70] = []
-    rep = discover_pass(conn, dz, FakeLastfm(), CFG, NOW, np.random.default_rng(0))
+    rep = decouvrir(conn, dz, FakeLastfm(), CFG, NOW, np.random.default_rng(0))
     assert rep.n_added == 1 and status(conn) == "done"
 
 
@@ -135,7 +135,7 @@ def test_no_related_artist_for_any_seed_is_deezer_down(tmp_path: Path) -> None:
     dz = FakeDeezer()
     dz._related = {}
     with pytest.raises(DeezerUnavailable, match="aucun artiste relié pour 2 graines"):
-        discover_pass(conn, dz, FakeLastfm(), CFG, NOW, np.random.default_rng(0))
+        decouvrir(conn, dz, FakeLastfm(), CFG, NOW, np.random.default_rng(0))
     assert status(conn) == "running"
 
 
@@ -144,7 +144,7 @@ def test_no_similar_artist_for_any_seed_is_lastfm_down(tmp_path: Path) -> None:
     lf = FakeLastfm()
     lf.similar = {"M83": [], "Wire": []}
     with pytest.raises(LastfmUnavailable, match="aucun artiste similaire pour 2 graines"):
-        discover_pass(conn, FakeDeezer(), lf, CFG, NOW, np.random.default_rng(0))
+        decouvrir(conn, FakeDeezer(), lf, CFG, NOW, np.random.default_rng(0))
     assert status(conn) == "running"
 
 
@@ -156,12 +156,12 @@ def test_unavailable_logs_the_seed_keeps_work_and_resumes_same_run(
     dz, lf = FakeDeezer(), FakeLastfm()
     lf.similar["Wire"] = LastfmUnavailable("code 29")
     with pytest.raises(LastfmUnavailable):
-        discover_pass(conn, dz, lf, CFG, NOW, np.random.default_rng(0))
+        decouvrir(conn, dz, lf, CFG, NOW, np.random.default_rng(0))
     assert caplog.messages == ["discover: stopped at seed Wire (70)"]
     assert status(conn) == "running"
-    assert recently_used(conn, NOW, 30) == set()
+    assert graines_recentes(conn, NOW, 30) == set()
     lf = FakeLastfm()
-    rep = discover_pass(conn, dz, lf, CFG, NOW, np.random.default_rng(1))
+    rep = decouvrir(conn, dz, lf, CFG, NOW, np.random.default_rng(1))
     assert rep.resumed and rep.run_id == 1
     assert status(conn) == "done"
 
@@ -174,11 +174,11 @@ def test_transient_error_logs_neighbour_and_propagates(
     dz, lf = FakeDeezer(), FakeLastfm()
     dz.top_[1] = DeezerUnavailable("code 4")
     with pytest.raises(DeezerUnavailable):
-        discover_pass(conn, dz, lf, CFG, NOW, np.random.default_rng(0))
+        decouvrir(conn, dz, lf, CFG, NOW, np.random.default_rng(0))
     assert caplog.messages == ["discover: stopped at neighbour Knife (1)"]
 
 
 def test_no_library_artist(tmp_path: Path) -> None:
     conn = connect(tmp_path / "radio.db")
-    with pytest.raises(NoLibraryArtistsError):
-        discover_pass(conn, FakeDeezer(), FakeLastfm(), CFG, NOW, np.random.default_rng(0))
+    with pytest.raises(AucunArtisteBibliothequeError):
+        decouvrir(conn, FakeDeezer(), FakeLastfm(), CFG, NOW, np.random.default_rng(0))

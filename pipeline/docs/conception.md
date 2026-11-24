@@ -60,7 +60,8 @@ techniques (`conn`, `path`, `client`, `retry`) et les noms des outils (`song_id`
 **Les noms, d'aujourd'hui à demain**
 
 Appliqués dans cet ordre, une PR à la fois : le code et les commandes, puis les unités, puis la
-base. Les commandes, les étapes, les paquets, les réglages et les unités portent déjà les leurs ;
+base. Les commandes, les étapes, les paquets, les classes et fonctions du métier, les réglages
+et les unités portent déjà les leurs ;
 jusqu'à la PR suivante, la base garde ses noms actuels dans ce document.
 
 | Aujourd'hui | Demain |

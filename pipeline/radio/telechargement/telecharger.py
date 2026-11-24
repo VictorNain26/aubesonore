@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class AcquireReport:
+class RapportTelechargement:
     n_wanted: int = 0
     n_ready: int = 0
     n_no_cover: int = 0
@@ -41,13 +41,13 @@ class AcquireReport:
         return self.n_ready + sum(self.failures.values())
 
 
-class Pending(NamedTuple):
+class ATelecharger(NamedTuple):
     tids: list[int]
     # Retenus mis en attente : leur artiste a déjà son titre à l'antenne, ou un titre prêt.
     waiting: int
 
 
-def pending(conn: sqlite3.Connection, cfg: TelechargementConfig) -> Pending:
+def a_telecharger(conn: sqlite3.Connection, cfg: TelechargementConfig) -> ATelecharger:
     """Retenus pas encore prêts ni abandonnés ni votés « non » : la dernière fournée d'abord, car
     une nouveauté vieillit, puis les mieux notés ; un seul par artiste libre."""
     rows = conn.execute(
@@ -83,7 +83,7 @@ def pending(conn: sqlite3.Connection, cfg: TelechargementConfig) -> Pending:
         elif len(tids) < cfg.max_par_passe:
             taken.add(int(artist))
             tids.append(int(tid))
-    return Pending(tids, waiting)
+    return ATelecharger(tids, waiting)
 
 
 def _save(
@@ -129,7 +129,7 @@ def _verify_and_prepare(
     return dest, None, tags
 
 
-def acquire_pass(
+def telecharger_fournee(
     conn: sqlite3.Connection,
     deezer: DeezerClient,
     dirs: tuple[Path, Path, Path],
@@ -138,15 +138,15 @@ def acquire_pass(
     cfg: TelechargementConfig,
     now: str,
     run: Runner = run_command,
-) -> AcquireReport:
+) -> RapportTelechargement:
     """`dirs` : dossier de travail de la passe (supprimé à la fin, quoi qu'il arrive), dossier
     des fichiers prêts, dossier de la config Sockseek (tmpfs, effacé par systemd)."""
     workdir, ready_dir, conf_dir = dirs
     sockseek, rsgain = binaries
-    rep = AcquireReport()
+    rep = RapportTelechargement()
     wanted: list[Wanted] = []
     keys: set[tuple[str, str, int]] = set()
-    todo = pending(conn, cfg)
+    todo = a_telecharger(conn, cfg)
     rep.n_artist_waiting = todo.waiting
     for tid in todo.tids:
         got = deezer.track(tid)

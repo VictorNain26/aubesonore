@@ -20,7 +20,7 @@ from radio.socle.rapports import last_stages
 from radio.sources.deezer import DeezerArtist, DeezerTrack, DeezerUnavailable
 from radio.sources.hypem import HypemUnavailable
 from radio.sources.lastfm import LastfmUnavailable
-from radio.sources.plex import LibraryGuardError, PlexTrack
+from radio.sources.plex import PlexTrack, SectionInterditeError
 from tests.factories import make_library
 
 runner = CliRunner()
@@ -144,7 +144,7 @@ def _raise(exc: Exception) -> Callable[..., FakePlex]:
 
 def test_library_guard_error_exits_2(env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        commandes.bibliotheque, "PlexSource", _raise(LibraryGuardError("section interdite : X"))
+        commandes.bibliotheque, "PlexSource", _raise(SectionInterditeError("section interdite : X"))
     )
     res = runner.invoke(commandes.app, ["bibliotheque"])
     assert res.exit_code == 2
@@ -317,7 +317,7 @@ def test_favoris_unreadable_fails_and_reports(env: Path, monkeypatch: pytest.Mon
     def down(*a: object) -> None:
         raise HypemUnavailable("HTTP 503")
 
-    monkeypatch.setattr(commandes.decouverte, "favorites_pass", down)
+    monkeypatch.setattr(commandes.decouverte, "importer_favoris", down)
     res = runner.invoke(commandes.app, ["favoris"])
     assert res.exit_code == 1
     assert "Favoris Hype Machine illisibles (HypemUnavailable : HTTP 503)" in res.output
@@ -339,8 +339,8 @@ def test_mesures_names_missing_files_and_fails(env: Path, monkeypatch: pytest.Mo
     monkeypatch.setattr(musicnn, "FeatureExtractor", lambda models_dir: object())
     monkeypatch.setattr(
         musicnn,
-        "measure_antenna",
-        lambda *a: musicnn.FeaturesReport(n_todo=2, n_ok=1, missing=["antenne/a.mp3"]),
+        "mesurer_antenne",
+        lambda *a: musicnn.RapportMesures(n_todo=2, n_ok=1, missing=["antenne/a.mp3"]),
     )
     res = runner.invoke(commandes.app, ["mesures"])
     assert res.exit_code == 1

@@ -23,7 +23,7 @@ from typing import Any, Protocol
 
 import numpy as np
 
-from radio.bibliotheque.poids import play_weight
+from radio.bibliotheque.poids import poids_ecoute
 from radio.decouverte.familles import FAMILY
 from radio.socle.config import AntenneConfig, GrilleConfig
 from radio.socle.media import ToolError, prepare, probe
@@ -47,7 +47,7 @@ class MediaStore(Protocol):
 
 
 @dataclass
-class AntenneReport:
+class RapportAntenne:
     n_forgotten: int = 0
     n_unknown: int = 0
     n_voted_out: int = 0
@@ -92,7 +92,7 @@ def _insert(conn: sqlite3.Connection, tid: int, origin: str, m: Media, now: str)
             )
 
 
-def reconcile(conn: sqlite3.Connection, media: list[Media], rep: AntenneReport) -> None:
+def realigner(conn: sqlite3.Connection, media: list[Media], rep: RapportAntenne) -> None:
     ours = {m.path for m in media if m.path.startswith((f"{FOLDER}/", f"{REST}/"))}
     known = {str(r[0]) for r in conn.execute("SELECT path FROM antenne")}
     gone = known - ours
@@ -109,7 +109,7 @@ def _upload(
     origin: str,
     file: Path,
     now: str,
-    rep: AntenneReport,
+    rep: RapportAntenne,
 ) -> bool:
     try:
         m = station.upload(f"{FOLDER}/{tid}.mp3", file.read_bytes())
@@ -121,7 +121,7 @@ def _upload(
 
 
 def _remove(
-    conn: sqlite3.Connection, station: MediaStore, paths: list[str], rep: AntenneReport
+    conn: sqlite3.Connection, station: MediaStore, paths: list[str], rep: RapportAntenne
 ) -> int:
     """Supprime de l'antenne ; renvoie le nombre de retraits réussis."""
     if not paths:
@@ -134,7 +134,7 @@ def _remove(
     return len(done)
 
 
-def withdraw_rejected(conn: sqlite3.Connection, station: MediaStore, rep: AntenneReport) -> None:
+def retirer_refuses(conn: sqlite3.Connection, station: MediaStore, rep: RapportAntenne) -> None:
     """Un titre voté « non » sort de l'antenne (repères compris), sauf s'il est en cours ou en
     file : il sortira à la passe suivante. Un fichier prêt voté « non » n'est jamais publié."""
     rows = conn.execute(
@@ -163,8 +163,8 @@ def withdraw_rejected(conn: sqlite3.Connection, station: MediaStore, rep: Antenn
         rep.n_voted_out += 1
 
 
-def publish_ready(
-    conn: sqlite3.Connection, station: MediaStore, now: str, rep: AntenneReport
+def publier_prets(
+    conn: sqlite3.Connection, station: MediaStore, now: str, rep: RapportAntenne
 ) -> None:
     rows = conn.execute(
         """
@@ -195,7 +195,7 @@ def _move(
     directory: str,
     categorie: str,
     now: str,
-    rep: AntenneReport,
+    rep: RapportAntenne,
 ) -> int:
     """Déplace dans `directory` et change de catégorie ; renvoie le nombre de déplacements
     réussis."""
@@ -212,8 +212,12 @@ def _move(
     return len(done)
 
 
-def one_per_artist(
-    conn: sqlite3.Connection, station: MediaStore, busy: set[str], now: datetime, rep: AntenneReport
+def un_par_artiste(
+    conn: sqlite3.Connection,
+    station: MediaStore,
+    busy: set[str],
+    now: datetime,
+    rep: RapportAntenne,
 ) -> None:
     """Un artiste à plusieurs titres n'en garde qu'un : un « oui » d'abord, puis un titre en
     rotation, puis la note du modèle, puis le plus récent. Les autres sortent ; un repère sorti
@@ -251,13 +255,13 @@ def _weeks_ago(now: datetime, weeks: int) -> str:
     return (now - timedelta(weeks=weeks)).isoformat()
 
 
-def end_first_stay(
+def finir_sejours(
     conn: sqlite3.Connection,
     station: MediaStore,
     cfg: AntenneConfig,
     busy: set[str],
     now: datetime,
-    rep: AntenneReport,
+    rep: RapportAntenne,
 ) -> None:
     """Après `sejour_semaines` semaines, la part `part_promue` la meilleure d'une cohorte (un
     « oui » d'abord, puis la note du modèle) part au repos avant le fond ; le reste sort. Un
@@ -297,13 +301,13 @@ def end_first_stay(
     rep.n_ended = _remove(conn, station, [p for p, _ in due if p not in set(promoted)], rep)
 
 
-def expire(
+def perimer(
     conn: sqlite3.Connection,
     station: MediaStore,
     cfg: AntenneConfig,
     busy: set[str],
     now: datetime,
-    rep: AntenneReport,
+    rep: RapportAntenne,
 ) -> None:
     """Un recurrent sort pour de bon `vie_semaines` semaines après sa première diffusion."""
     rows = conn.execute(
@@ -321,7 +325,7 @@ def platoon(
     stock: int,
     busy: set[str],
     now: datetime,
-    rep: AntenneReport,
+    rep: RapportAntenne,
 ) -> None:
     """Auto-platooning (MusicMaster) : un recurrent présent au fond depuis `sejour_semaines`
     semaines part au repos ; les places libres reviennent à ceux qui se reposent depuis le plus
@@ -350,7 +354,7 @@ def _retire_references(
     cfg: AntenneConfig,
     busy: set[str],
     now: datetime,
-    rep: AntenneReport,
+    rep: RapportAntenne,
 ) -> None:
     """Les repères restés `sejour_semaines` semaines sortent, sauf ceux en cours ou en file
     d'attente ;
@@ -399,7 +403,7 @@ def _reference_pool(
     ]
 
 
-def rotate_references(
+def tourner_reperes(
     conn: sqlite3.Connection,
     station: MediaStore,
     deezer: DeezerClient,
@@ -410,7 +414,7 @@ def rotate_references(
     rng: np.random.Generator,
     busy: set[str],
     now: datetime,
-    rep: AntenneReport,
+    rep: RapportAntenne,
 ) -> None:
     """Les repères tournent aussi : chacun reste `sejour_semaines` semaines, puis cède sa place à un
     autre, tiré selon l'écoute parmi ceux qui ne sont pas passés depuis `repos_semaines` semaines.
@@ -426,7 +430,7 @@ def rotate_references(
     pool = _reference_pool(conn, cfg, now, root)
     if not pool:
         return
-    w = np.array([play_weight(int(r[4])) for r in pool])
+    w = np.array([poids_ecoute(int(r[4])) for r in pool])
     picked = rng.choice(len(pool), size=min(need, len(pool)), replace=False, p=w / w.sum())
     taken = {
         int(r[0])
@@ -464,7 +468,7 @@ def rotate_references(
                     rep.n_references_no_cover += 1
 
 
-def antenne_pass(
+def tenir_antenne(
     conn: sqlite3.Connection,
     station: MediaStore,
     deezer: DeezerClient,
@@ -474,18 +478,18 @@ def antenne_pass(
     rsgain: Path,
     rng: np.random.Generator,
     now: datetime,
-) -> AntenneReport:
-    rep = AntenneReport()
+) -> RapportAntenne:
+    rep = RapportAntenne()
     stamp = now.isoformat()
-    reconcile(conn, station.files(), rep)
-    withdraw_rejected(conn, station, rep)
-    publish_ready(conn, station, stamp, rep)
+    realigner(conn, station.files(), rep)
+    retirer_refuses(conn, station, rep)
+    publier_prets(conn, station, stamp, rep)
     busy = station.busy_song_ids()
-    one_per_artist(conn, station, busy, now, rep)
-    end_first_stay(conn, station, cfg, busy, now, rep)
-    expire(conn, station, cfg, busy, now, rep)
+    un_par_artiste(conn, station, busy, now, rep)
+    finir_sejours(conn, station, cfg, busy, now, rep)
+    perimer(conn, station, cfg, busy, now, rep)
     platoon(conn, station, cfg, grille.stock("fond"), busy, now, rep)
-    rotate_references(
+    tourner_reperes(
         conn, station, deezer, cfg, grille.stock("reperes"), root, rsgain, rng, busy, now, rep
     )
     rep.n_total = conn.execute(

@@ -6,12 +6,12 @@ import numpy as np
 import pytest
 import responses
 
-from radio.bibliotheque.artistes import register_library
-from radio.decouverte.candidats import add_tracks
-from radio.decouverte.favoris import favorites_pass
-from radio.decouverte.nouveautes import fresh_pass
+from radio.bibliotheque.artistes import enregistrer_bibliotheque
+from radio.decouverte.candidats import ajouter_titres
+from radio.decouverte.favoris import importer_favoris
+from radio.decouverte.nouveautes import chercher_nouveautes
 from radio.empreintes.effnet import DIM, MODEL_TAG, to_blob
-from radio.gout.modele import FavoritesRetained, favorites_retained, rescore, train
+from radio.gout.modele import FavorisRetenus, entrainer, favoris_retenus, renoter
 from radio.socle.config import GoutConfig, NouveautesConfig
 from radio.sources.deezer import DeezerTrack
 from radio.sources.hypem import API, HypemClient, HypemNotFound, HypemTrack
@@ -84,10 +84,10 @@ class FakeDeezer:
 
 def _db(tmp_path: Path) -> sqlite3.Connection:
     conn = make_library(tmp_path)
-    register_library(conn, NOW)
+    enregistrer_bibliotheque(conn, NOW)
     conn.execute("INSERT INTO discover_runs VALUES (4, 'd', 'd', 'done')")
     # Sea Calls Me Home est déjà candidat de la fournée 4.
-    add_tracks(
+    ajouter_titres(
         conn,
         60,
         "Julia Holter",
@@ -118,7 +118,7 @@ def test_a_favorite_is_no_longer_a_discovery_and_the_library_keeps_its_own(tmp_p
         HypemTrack("Nobody", "Not on Deezer", 200, "Blog"),
     ]
 
-    rep = favorites_pass(conn, FakeDeezer(), FakeHypem(favorites), "GhostRAvage", 3, NOW)  # type: ignore[arg-type]
+    rep = importer_favoris(conn, FakeDeezer(), FakeHypem(favorites), "GhostRAvage", 3, NOW)  # type: ignore[arg-type]
 
     origins = _origins(conn)
     assert origins[501] == "favorite" and origins[601] == "favorite"
@@ -132,9 +132,9 @@ def test_an_unfavorited_track_returns_to_its_batch_or_is_forgotten(tmp_path: Pat
         HypemTrack("Fine", "Sometimes i rush", 200, "Blog"),
         HypemTrack("Julia Holter", "Sea Calls Me Home", 200, "Blog"),
     ]
-    favorites_pass(conn, FakeDeezer(), FakeHypem(favorites), "GhostRAvage", 3, NOW)  # type: ignore[arg-type]
+    importer_favoris(conn, FakeDeezer(), FakeHypem(favorites), "GhostRAvage", 3, NOW)  # type: ignore[arg-type]
 
-    rep = favorites_pass(conn, FakeDeezer(), FakeHypem([]), "GhostRAvage", 3, NOW)  # type: ignore[arg-type]
+    rep = importer_favoris(conn, FakeDeezer(), FakeHypem([]), "GhostRAvage", 3, NOW)  # type: ignore[arg-type]
 
     origins = _origins(conn)
     assert origins[601] == "candidate"
@@ -145,9 +145,9 @@ def test_an_unfavorited_track_returns_to_its_batch_or_is_forgotten(tmp_path: Pat
 def test_a_favorite_is_not_a_fresh_title(tmp_path: Path) -> None:
     conn = _db(tmp_path)
     fine = HypemTrack("Fine", "Sometimes i rush", 200, "Blog")
-    favorites_pass(conn, FakeDeezer(), FakeHypem([fine]), "GhostRAvage", 3, NOW)  # type: ignore[arg-type]
+    importer_favoris(conn, FakeDeezer(), FakeHypem([fine]), "GhostRAvage", 3, NOW)  # type: ignore[arg-type]
 
-    rep = fresh_pass(
+    rep = chercher_nouveautes(
         conn,
         FakeDeezer(),  # type: ignore[arg-type]
         FakeHypem([], popular=[fine]),  # type: ignore[arg-type]
@@ -163,13 +163,13 @@ def test_the_share_of_favorites_the_model_would_keep(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     seed_run(conn)
     cfg = GoutConfig(retenus_decouvertes=32)
-    assert train(conn, tmp_path / "models", cfg, NOW).promoted
-    rescore(conn, tmp_path / "models", cfg)
-    assert favorites_retained(conn, tmp_path / "models") is None  # pas encore de favori
+    assert entrainer(conn, tmp_path / "models", cfg, NOW).promoted
+    renoter(conn, tmp_path / "models", cfg)
+    assert favoris_retenus(conn, tmp_path / "models") is None  # pas encore de favori
 
     for k, direction in enumerate([LIKED] * 3 + [DISLIKED] * 3):
         tid = 900000 + k
-        add_tracks(conn, 9000, "Fav", [dt(tid, 9000, "Fav", f"F{k}")], "favorite", NOW)
+        ajouter_titres(conn, 9000, "Fav", [dt(tid, 9000, "Fav", f"F{k}")], "favorite", NOW)
         v = 6 * direction + np.eye(DIM, dtype=np.float32)[2] * 0.1
         conn.execute(
             "INSERT INTO track_measures VALUES (?, 'ok', ?, ?, ?)",
@@ -180,4 +180,4 @@ def test_the_share_of_favorites_the_model_would_keep(tmp_path: Path) -> None:
     # Un titre par artiste : 24 retenus sur 96, mais 71 titres notés à la coupure ou au-dessus
     # (les autres titres des mêmes artistes). Le hasard se mesure à la coupure : 71 / 96, pas
     # 24 / 96, qui ferait battre le hasard à n'importe quel modèle.
-    assert favorites_retained(conn, tmp_path / "models") == FavoritesRetained(0.5, 6, 71 / 96)
+    assert favoris_retenus(conn, tmp_path / "models") == FavorisRetenus(0.5, 6, 71 / 96)

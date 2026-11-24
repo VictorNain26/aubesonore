@@ -19,10 +19,10 @@ from radio.commandes.commun import (
     _unavailable,
     app,
 )
-from radio.decouverte.favoris import favorites_pass
-from radio.decouverte.fournee import NoLibraryArtistsError, discover_pass
-from radio.decouverte.negatifs import import_negatives, load_negatives
-from radio.decouverte.nouveautes import NoBatchError, fresh_pass
+from radio.decouverte.favoris import importer_favoris
+from radio.decouverte.fournee import AucunArtisteBibliothequeError, decouvrir
+from radio.decouverte.negatifs import charger_negatifs, importer_negatifs
+from radio.decouverte.nouveautes import AucuneFourneeError, chercher_nouveautes
 from radio.sources.deezer import DeezerClient, DeezerUnavailable
 from radio.sources.hypem import HypemClient, HypemError, HypemUnavailable
 from radio.sources.lastfm import LastfmUnavailable
@@ -37,7 +37,7 @@ def decouverte() -> None:
     lastfm = commun._lastfm(settings)
     with _db(settings) as conn:
         try:
-            rep = discover_pass(
+            rep = decouvrir(
                 conn,
                 DeezerClient(),
                 lastfm,
@@ -45,7 +45,7 @@ def decouverte() -> None:
                 datetime.now(UTC),
                 np.random.default_rng(),
             )
-        except NoLibraryArtistsError:
+        except AucunArtisteBibliothequeError:
             _fail(
                 "Aucun artiste de la bibliothèque rapproché : lancer d'abord radio bibliotheque", 1
             )
@@ -85,7 +85,7 @@ def nouveautes() -> None:
     editorial = _editorial(settings)
     with _db(settings) as conn:
         try:
-            rep = fresh_pass(
+            rep = chercher_nouveautes(
                 conn,
                 DeezerClient(),
                 HypemClient(),
@@ -93,7 +93,7 @@ def nouveautes() -> None:
                 editorial.bibliotheque.ecart_duree_s,
                 _now(),
             )
-        except NoBatchError:
+        except AucuneFourneeError:
             _fail("Aucune fournée de découverte : lancer d'abord radio decouverte", 1)
         except DeezerUnavailable as e:
             _fail(_unavailable(e), 1)
@@ -142,7 +142,7 @@ def favoris() -> None:
             )
             return
         try:
-            rep = favorites_pass(
+            rep = importer_favoris(
                 conn,
                 DeezerClient(),
                 HypemClient(),
@@ -181,14 +181,14 @@ def negatifs() -> None:
     settings = commun._settings()
     editorial = _editorial(settings)
     try:
-        negatives = load_negatives(settings.config_dir / "negatives.toml")
+        negatives = charger_negatifs(settings.config_dir / "negatives.toml")
     except ValidationError as e:
         _fail(f"negatives.toml invalide : {e.error_count()} erreurs", 2)
     except ValueError as e:
         _fail(f"negatives.toml invalide : {e}", 2)
     with _exclusive(), _db(settings) as conn:
         try:
-            rep = import_negatives(
+            rep = importer_negatifs(
                 conn, DeezerClient(), negatives, editorial.decouverte.titres_par_voisin, _now()
             )
         except DeezerUnavailable as e:
