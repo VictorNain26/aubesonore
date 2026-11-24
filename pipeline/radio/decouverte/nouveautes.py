@@ -39,7 +39,7 @@ def _known_keys(conn: sqlite3.Connection) -> set[str]:
     return {
         str(r[0])
         for r in conn.execute(
-            "SELECT dedupe_key FROM tracks WHERE origin IN ('library', 'favorite')"
+            "SELECT dedupe_key FROM titres WHERE provenance IN ('bibliotheque', 'favori')"
         )
     }
 
@@ -57,7 +57,7 @@ def _add(
         rep.n_known += 1
         return
     with conn:
-        added = ajouter_titres(conn, track.artist_id, track.artist_name, [track], "candidate", now)
+        added = ajouter_titres(conn, track.artist_id, track.artist_name, [track], "candidat", now)
         ajouter_candidats(conn, rep.run_id, source, added, detail=detail)
     rep.added[source] += len(added)
     if not added:
@@ -118,7 +118,7 @@ def chercher_nouveautes(
     tolerance_s: int,
     now: str,
 ) -> RapportNouveautes:
-    row = conn.execute("SELECT MAX(run_id) FROM discover_runs").fetchone()
+    row = conn.execute("SELECT MAX(fournee_id) FROM fournees").fetchone()
     if row[0] is None:
         raise AucuneFourneeError
     rep = RapportNouveautes(int(row[0]))

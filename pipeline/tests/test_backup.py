@@ -17,7 +17,7 @@ TODAY = date(2026, 10, 2)
 
 def test_backup_is_a_sound_copy_and_keeps_only_recent_days(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path / "data")
-    add_vote(conn, 200000, "lesson", "oui")
+    add_vote(conn, 200000, "lecon", "oui")
     models = tmp_path / "data" / "models"
     models.mkdir()
     (models / "modele-0001.joblib").write_bytes(b"m")
@@ -46,7 +46,7 @@ def test_a_second_backup_the_same_day_replaces_the_first(tmp_path: Path) -> None
     (models / "modele-0001.joblib").write_bytes(b"m1")
     dest = tmp_path / "sauvegardes"
     sauvegarder(db, models, dest, TODAY, 14)
-    conn.execute("INSERT INTO votes VALUES (1, 'lesson', 'non', 'd', 'test')")
+    conn.execute("INSERT INTO votes VALUES (1, 'lecon', 'non', 'd')")
     conn.commit()
     (models / "modele-0002.joblib").write_bytes(b"m2")
     target = sauvegarder(db, models, dest, TODAY, 14)
@@ -64,7 +64,7 @@ def test_an_unsound_copy_is_refused_and_older_backups_are_kept(tmp_path: Path) -
     # ones: the copy keeps the defect of the source, so integrity_check must see it.
     db = tmp_path / "radio.db"
     conn = connect(db)
-    conn.execute("INSERT INTO votes VALUES (1, 'lesson', 'non', 'd', 'test')")
+    conn.execute("INSERT INTO votes VALUES (1, 'lecon', 'non', 'd')")
     conn.commit()
     conn.close()
     broken = sqlite3.connect(db)

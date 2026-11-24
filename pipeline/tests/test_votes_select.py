@@ -33,7 +33,7 @@ def test_exam_from_latest_batch_lesson_most_uncertain(tmp_path: Path) -> None:
     ballots = bulletins_en_attente(conn)
     assert sorted(b.position for b in ballots) == list(range(20))
     kinds = {b.deezer_track_id: b.kind for b in ballots}
-    assert kinds == {**dict.fromkeys(sel.exam, "exam"), **dict.fromkeys(sel.lesson, "lesson")}
+    assert kinds == {**dict.fromkeys(sel.exam, "examen"), **dict.fromkeys(sel.lesson, "lecon")}
     assert ballots[0].artist.startswith("Art ") and ballots[0].title.startswith("Titre ")
 
 
@@ -51,7 +51,7 @@ def test_lesson_measures_each_family_against_its_own_cut(tmp_path: Path) -> None
     # Les rejetés de la dernière fournée deviennent des nouveautés ; leur meilleur titre (k = 0,
     # note 0,4375) est retenu : c'est la coupure des nouveautés, loin de celle des découvertes.
     as_news(conn, 300600)
-    conn.execute("UPDATE scores SET accepted = 1 WHERE deezer_track_id >= 300600 AND score > 0.43")
+    conn.execute("UPDATE notes SET retenu = 1 WHERE titre_id >= 300600 AND score > 0.43")
     conn.commit()
     sel = tirer_bulletins(conn, _rng(), 0, 18, NOW, floor=NO_FLOOR)
     news = [(3000 + a) * 100 for a in range(6, 12)]
@@ -65,7 +65,7 @@ def test_a_family_without_retained_title_takes_its_floor_as_cut(tmp_path: Path) 
     # coupure, elles n'auraient aucune leçon ; le plancher en tient lieu, et les plus proches
     # sont les k = 1 (0,375), pas les k = 0 (0,4375).
     as_news(conn, 300600)
-    conn.execute("UPDATE scores SET floored = 1 WHERE deezer_track_id >= 300600 AND score > 0.43")
+    conn.execute("UPDATE notes SET sous_plancher = 1 WHERE titre_id >= 300600 AND score > 0.43")
     conn.commit()
     sel = tirer_bulletins(conn, _rng(), 0, 18, NOW, floor={"decouvertes": 0.0, "nouveautes": 0.4})
     news = [(3000 + a) * 100 + 1 for a in range(6, 12)]
@@ -81,8 +81,7 @@ def test_the_floor_is_the_cut_while_it_keeps_news_off_air(tmp_path: Path) -> Non
     as_news(conn, 200600, 200899)
     as_news(conn, 300600)
     conn.execute(
-        "UPDATE scores SET accepted = 0, floored = 1 "
-        "WHERE deezer_track_id >= 300600 AND score > 0.43"
+        "UPDATE notes SET retenu = 0, sous_plancher = 1 WHERE titre_id >= 300600 AND score > 0.43"
     )
     conn.commit()
     sel = tirer_bulletins(conn, _rng(), 0, 15, NOW, floor={"decouvertes": 0.0, "nouveautes": 0.45})
@@ -97,8 +96,8 @@ def test_a_family_without_floor_nor_retained_title_gets_no_lesson(tmp_path: Path
     # Aucune découverte retenue dans la dernière fournée, et pas de plancher : la famille n'a pas
     # de coupure ; une coupure à 0 enverrait en leçon ses rejets les plus nets.
     conn.execute(
-        "UPDATE scores SET accepted = 0 WHERE deezer_track_id IN "
-        "(SELECT deezer_track_id FROM candidates WHERE run_id = 2)"
+        "UPDATE notes SET retenu = 0 WHERE titre_id IN "
+        "(SELECT titre_id FROM candidats WHERE fournee_id = 2)"
     )
     conn.commit()
     sel = tirer_bulletins(conn, _rng(), 0, 10, NOW, floor=NO_FLOOR)
@@ -114,10 +113,10 @@ def test_exam_splits_evenly_between_discoveries_and_fresh_picks(tmp_path: Path) 
     sel = tirer_bulletins(conn, _rng(), 10, 0, NOW, floor=NO_FLOOR)
     assert sum(t >= 300600 for t in sel.exam) == 5 and len(sel.exam) == 10
 
-    conn.execute("DELETE FROM ballots")
+    conn.execute("DELETE FROM bulletins")
     conn.execute(
-        "UPDATE candidates SET source = 'voisin', seed_artist_id = 1000, detail = NULL, "
-        "neighbour_artist_id = deezer_track_id / 100 WHERE deezer_track_id >= 300602"
+        "UPDATE candidats SET source = 'voisin', seed_artist_id = 1000, detail = NULL, "
+        "neighbour_artist_id = titre_id / 100 WHERE titre_id >= 300602"
     )
     conn.commit()
     sel = tirer_bulletins(conn, _rng(), 10, 0, NOW, floor=NO_FLOOR)
@@ -152,11 +151,9 @@ def test_votes_empty_the_queue_and_titles_never_return(tmp_path: Path) -> None:
         assert enregistrer_vote(conn, b.deezer_track_id, "oui", NOW)
     assert bulletins_en_attente(conn) == []
     assert not enregistrer_vote(conn, 400000, "oui", NOW)  # jamais présenté
-    kinds = dict(
-        conn.execute("SELECT deezer_track_id, kind FROM votes WHERE source = 'page'").fetchall()
-    )
-    assert all(kinds[t] == "exam" for t in first.exam)
-    assert all(kinds[t] == "lesson" for t in first.lesson)
+    kinds = dict(conn.execute("SELECT titre_id, type FROM votes").fetchall())
+    assert all(kinds[t] == "examen" for t in first.exam)
+    assert all(kinds[t] == "lecon" for t in first.lesson)
     second = tirer_bulletins(conn, _rng(1), 10, 10, NOW, floor=NO_FLOOR)
     shown = set(first.exam) | set(first.lesson)
     assert not (set(second.exam) | set(second.lesson)) & shown
@@ -177,7 +174,7 @@ def test_exam_covers_the_whole_batch_and_remembers_the_verdict(tmp_path: Path) -
     conn = make_model_db(tmp_path)
     serve_scores(conn)
     sel = tirer_bulletins(conn, _rng(), 48, 0, NOW, floor=NO_FLOOR)
-    flags = dict(conn.execute("SELECT deezer_track_id, retained FROM ballots").fetchall())
+    flags = dict(conn.execute("SELECT titre_id, retenu FROM bulletins").fetchall())
     assert {t: flags[t] for t in sel.exam} == {t: int(t < 300000) for t in sel.exam}
     assert set(flags.values()) == {0, 1}
 
@@ -187,8 +184,8 @@ def test_lesson_takes_at_most_one_title_per_artist(tmp_path: Path) -> None:
     serve_scores(conn)
     # Deux titres de l'artiste 2000 exactement sur la coupure : sans la garde par artiste, les
     # deux seraient pris.
-    conn.execute("UPDATE scores SET score = 0.9 WHERE deezer_track_id = 200000")
-    conn.execute("UPDATE scores SET score = 0.5625 WHERE deezer_track_id IN (200001, 200002)")
+    conn.execute("UPDATE notes SET score = 0.9 WHERE titre_id = 200000")
+    conn.execute("UPDATE notes SET score = 0.5625 WHERE titre_id IN (200001, 200002)")
     conn.commit()
     sel = tirer_bulletins(conn, _rng(), 0, 10, NOW, floor=NO_FLOOR)
     assert 200001 in sel.lesson
@@ -199,7 +196,7 @@ def test_needs_a_serving_model_and_its_scores(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     with pytest.raises(AucunModeleEnServiceError):
         tirer_bulletins(conn, _rng(), 10, 10, NOW, floor=NO_FLOOR)
-    conn.execute("INSERT INTO models VALUES (1, 'd', 'f', 1, 'v', '{}', '{}')")
+    conn.execute("INSERT INTO modeles VALUES (1, 'd', 'f', 1, 'v', '{}', '{}')")
     conn.commit()
     with pytest.raises(AucuneNoteError):
         tirer_bulletins(conn, _rng(), 10, 10, NOW, floor=NO_FLOOR)
@@ -214,17 +211,14 @@ def test_a_vote_is_corrected_until_the_next_selection_freezes_it(tmp_path: Path)
     tid = first.lesson[0]
     assert enregistrer_vote(conn, tid, "non", "2026-10-11T12:00:00+00:00")
     row = conn.execute(
-        "SELECT kind, vote, voted_at FROM votes WHERE deezer_track_id = ?", (tid,)
+        "SELECT type, vote, voted_at FROM votes WHERE titre_id = ?", (tid,)
     ).fetchone()
-    assert tuple(row) == ("lesson", "non", NOW)  # l'heure du premier vote reste
+    assert tuple(row) == ("lecon", "non", NOW)  # l'heure du premier vote reste
     week = votes_semaine(conn)
     assert [c.bulletin.position for c in week] == list(range(20))
     assert {c.bulletin.deezer_track_id: c.vote for c in week}[tid] == "non"
 
     tirer_bulletins(conn, _rng(1), 10, 10, NOW, floor=NO_FLOOR)
     assert not enregistrer_vote(conn, tid, "oui", NOW)  # figé par la nouvelle sélection
-    assert (
-        conn.execute("SELECT vote FROM votes WHERE deezer_track_id = ?", (tid,)).fetchone()[0]
-        == "non"
-    )
+    assert conn.execute("SELECT vote FROM votes WHERE titre_id = ?", (tid,)).fetchone()[0] == "non"
     assert votes_semaine(conn) == []

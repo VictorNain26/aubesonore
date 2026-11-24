@@ -85,7 +85,7 @@ def test_titles_on_air_are_measured_once_and_missing_files_named(tmp_path: Path)
     _mp3(media / "repos" / "2.mp3")
     # Le titre au repos est mesuré aussi : il reviendra au fond.
     conn.executemany(
-        "INSERT INTO antenne VALUES (?, 'decouverte', ?, ?, ?, ?, 'd', 'd')",
+        "INSERT INTO antenne VALUES (?, 'telecharge', ?, ?, ?, ?, 'd', 'd')",
         [
             (1, "decouvertes", 1, "s1", "antenne/1.mp3"),
             (2, "repos", 2, "s2", "repos/2.mp3"),
@@ -98,10 +98,9 @@ def test_titles_on_air_are_measured_once_and_missing_files_named(tmp_path: Path)
     rep = mesurer_antenne(conn, media, fake, NOW)
     assert (rep.n_todo, rep.n_ok, rep.n_failed, rep.missing) == (3, 1, 1, ["antenne/3.mp3"])
     rows = {
-        r[0]: (r[1], r[2])
-        for r in conn.execute("SELECT deezer_track_id, status, bpm_end FROM track_features")
+        r[0]: (r[1], r[2]) for r in conn.execute("SELECT titre_id, status, tempo_end FROM mesures")
     }
-    assert rows == {1: ("ok", 122.0), 2: ("audio_failed", None)}
+    assert rows == {1: ("ok", 122.0), 2: ("audio_rate", None)}
 
     again = mesurer_antenne(conn, media, fake, NOW)
     assert (again.n_todo, again.missing) == (1, ["antenne/3.mp3"])  # seul l'absent est retenté
@@ -119,7 +118,7 @@ def test_a_file_whose_cues_cannot_be_read_is_a_failed_measure(tmp_path: Path) ->
     (media / "antenne" / "1.mp3").write_bytes(b"pas de l'audio")
     _mp3(media / "antenne" / "2.mp3")
     conn.executemany(
-        "INSERT INTO antenne VALUES (?, 'decouverte', 'decouvertes', ?, ?, ?, 'd', 'd')",
+        "INSERT INTO antenne VALUES (?, 'telecharge', 'decouvertes', ?, ?, ?, 'd', 'd')",
         [(1, 1, "s1", "antenne/1.mp3"), (2, 2, "s2", "antenne/2.mp3")],
     )
     conn.commit()
@@ -127,8 +126,8 @@ def test_a_file_whose_cues_cannot_be_read_is_a_failed_measure(tmp_path: Path) ->
     rep = mesurer_antenne(conn, media, fake, NOW)
     assert (rep.n_todo, rep.n_ok, rep.n_failed, rep.missing) == (2, 1, 1, [])
     assert fake.seen == ["2.mp3"]
-    rows = dict(conn.execute("SELECT deezer_track_id, status FROM track_features"))
-    assert rows == {1: "audio_failed", 2: "ok"}
+    rows = dict(conn.execute("SELECT titre_id, status FROM mesures"))
+    assert rows == {1: "audio_rate", 2: "ok"}
 
 
 def test_models_are_pinned(tmp_path: Path) -> None:
@@ -157,16 +156,16 @@ def test_a_measure_of_another_model_is_replaced_in_place(tmp_path: Path) -> None
     for tid in (1, 2):
         _mp3(media / "antenne" / f"{tid}.mp3")
     conn.executemany(
-        "INSERT INTO antenne VALUES (?, 'decouverte', 'decouvertes', ?, ?, ?, 'd', 'd')",
+        "INSERT INTO antenne VALUES (?, 'telecharge', 'decouvertes', ?, ?, ?, 'd', 'd')",
         [(1, 1, "s1", "antenne/1.mp3"), (2, 2, "s2", "antenne/2.mp3")],
     )
     conn.executemany(
-        "INSERT INTO track_features VALUES (?, 'ok', ?, 'd', 300.0, " + ", ".join("?" * 12) + ")",
+        "INSERT INTO mesures VALUES (?, 'ok', ?, 'd', 300.0, " + ", ".join("?" * 12) + ")",
         [(1, "", *([0.1] * 12)), (2, FEATURES_TAG, *([0.1] * 12))],
     )
     conn.commit()
     fake = FakeExtractor(set())
     rep = mesurer_antenne(conn, media, fake, NOW)
     assert (rep.n_todo, fake.seen) == (1, ["1.mp3"])
-    rows = dict(conn.execute("SELECT deezer_track_id, duration_s FROM track_features"))
+    rows = dict(conn.execute("SELECT titre_id, duration_s FROM mesures"))
     assert rows == {1: 200.0, 2: 300.0}

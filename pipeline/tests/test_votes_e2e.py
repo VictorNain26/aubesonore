@@ -35,8 +35,8 @@ def test_votes_lifecycle_from_training_to_a_second_selection(env: Path) -> None:
     conn = make_model_db(env / "data")
     seed_run(conn)
     for a in range(5):
-        add_vote(conn, (2000 + a) * 100, "lesson", "oui")
-        add_vote(conn, (3000 + a) * 100, "lesson", "non")
+        add_vote(conn, (2000 + a) * 100, "lecon", "oui")
+        add_vote(conn, (3000 + a) * 100, "lecon", "non")
     conn.close()
     db_path = env / "data" / "radio.db"
 
@@ -70,15 +70,15 @@ def test_votes_lifecycle_from_training_to_a_second_selection(env: Path) -> None:
     assert res.exit_code == 0, res.output
     assert "Aucun vote nouveau ni corrigé" not in res.output
     conn = connect(db_path)
-    n_models = conn.execute("SELECT COUNT(*) FROM models").fetchone()[0]
+    n_models = conn.execute("SELECT COUNT(*) FROM modeles").fetchone()[0]
     conn.close()
     assert n_models == 2
 
-    # 5. `radio tirage` : une nouvelle sélection (2 lignes dans `selections`).
+    # 5. `radio tirage` : une nouvelle sélection (2 lignes dans `tirages`).
     res = runner.invoke(commandes.app, ["tirage"])
     assert res.exit_code == 0, res.output
     conn = connect(db_path)
-    n_selections = conn.execute("SELECT COUNT(*) FROM selections").fetchone()[0]
+    n_selections = conn.execute("SELECT COUNT(*) FROM tirages").fetchone()[0]
     conn.close()
     assert n_selections == 2, (
         "pas assez de candidats restants dans la base du factory pour une deuxième sélection "

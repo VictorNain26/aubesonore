@@ -76,7 +76,7 @@ def _insert(conn: sqlite3.Connection, tid: int, origin: str, m: Media, now: str)
         # Toute acquisition vient d'un candidat (radio/telechargement/telecharger.py) : pas de
         # ligne, c'est un bug.
         (source,) = conn.execute(
-            "SELECT source FROM candidates WHERE deezer_track_id = ?", (tid,)
+            "SELECT source FROM candidats WHERE titre_id = ?", (tid,)
         ).fetchone()
         categorie = FAMILY[str(source)]
     with conn:
@@ -84,10 +84,9 @@ def _insert(conn: sqlite3.Connection, tid: int, origin: str, m: Media, now: str)
             "INSERT INTO antenne VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (tid, origin, categorie, m.id, m.song_id, m.path, now, now),
         )
-        if origin == "decouverte":
+        if origin == "telecharge":
             conn.execute(
-                "UPDATE acquisitions SET status = 'published', file = NULL "
-                "WHERE deezer_track_id = ?",
+                "UPDATE telechargements SET status = 'publie', file = NULL WHERE titre_id = ?",
                 (tid,),
             )
 
@@ -139,8 +138,8 @@ def retirer_refuses(conn: sqlite3.Connection, station: MediaStore, rep: RapportA
     file : il sortira à la passe suivante. Un fichier prêt voté « non » n'est jamais publié."""
     rows = conn.execute(
         """
-        SELECT n.path, n.song_id FROM antenne n JOIN votes v USING (deezer_track_id)
-        WHERE v.vote = 'non' ORDER BY n.deezer_track_id
+        SELECT n.path, n.song_id FROM antenne n JOIN votes v USING (titre_id)
+        WHERE v.vote = 'non' ORDER BY n.titre_id
         """
     ).fetchall()
     if rows:
@@ -148,15 +147,15 @@ def retirer_refuses(conn: sqlite3.Connection, station: MediaStore, rep: RapportA
         rep.n_voted_out += _remove(conn, station, [str(p) for p, s in rows if s not in busy], rep)
     ready = conn.execute(
         """
-        SELECT a.deezer_track_id, a.file FROM acquisitions a JOIN votes v USING (deezer_track_id)
-        WHERE a.status = 'ready' AND v.vote = 'non'
+        SELECT a.titre_id, a.file FROM telechargements a JOIN votes v USING (titre_id)
+        WHERE a.status = 'pret' AND v.vote = 'non'
         """
     ).fetchall()
     for tid, file in ready:
         with conn:
             conn.execute(
-                "UPDATE acquisitions SET status = 'failed', reason = 'voté non', file = NULL "
-                "WHERE deezer_track_id = ?",
+                "UPDATE telechargements SET status = 'echec', reason = 'voté non', file = NULL "
+                "WHERE titre_id = ?",
                 (tid,),
             )
         Path(file).unlink(missing_ok=True)
@@ -168,9 +167,9 @@ def publier_prets(
 ) -> None:
     rows = conn.execute(
         """
-        SELECT a.deezer_track_id, a.file FROM acquisitions a
-        LEFT JOIN antenne n USING (deezer_track_id)
-        WHERE a.status = 'ready' AND n.deezer_track_id IS NULL ORDER BY a.deezer_track_id
+        SELECT a.titre_id, a.file FROM telechargements a
+        LEFT JOIN antenne n USING (titre_id)
+        WHERE a.status = 'pret' AND n.titre_id IS NULL ORDER BY a.titre_id
         """
     ).fetchall()
     for tid, file in rows:
@@ -178,7 +177,7 @@ def publier_prets(
         if not path.exists():
             rep.errors.append(f"fichier prêt introuvable : {tid}")
             continue
-        if _upload(conn, station, int(tid), "decouverte", path, now, rep):
+        if _upload(conn, station, int(tid), "telecharge", path, now, rep):
             path.unlink()
             rep.n_published += 1
 
@@ -225,13 +224,13 @@ def un_par_artiste(
     suivante."""
     rows = conn.execute(
         """
-        SELECT n.deezer_track_id, n.path, n.song_id, n.origin, t.deezer_artist_id FROM antenne n
-        JOIN tracks t USING (deezer_track_id)
-        LEFT JOIN scores s USING (deezer_track_id)
-        LEFT JOIN votes v ON v.deezer_track_id = n.deezer_track_id AND v.vote = 'oui'
-        ORDER BY t.deezer_artist_id, v.deezer_track_id IS NULL,
+        SELECT n.titre_id, n.path, n.song_id, n.provenance, t.artiste_id FROM antenne n
+        JOIN titres t USING (titre_id)
+        LEFT JOIN notes s USING (titre_id)
+        LEFT JOIN votes v ON v.titre_id = n.titre_id AND v.vote = 'oui'
+        ORDER BY t.artiste_id, v.titre_id IS NULL,
                  n.categorie NOT IN ('nouveautes', 'decouvertes'), COALESCE(s.score, 0) DESC,
-                 n.published_at DESC, n.deezer_track_id
+                 n.published_at DESC, n.titre_id
         """
     ).fetchall()
     kept: set[int] = set()
@@ -242,11 +241,11 @@ def un_par_artiste(
         elif song not in busy:
             out.append((int(tid), str(path), str(origin)))
     rep.n_artist_doubles = _remove(conn, station, [p for _, p, _ in out], rep)
-    still = {int(r[0]) for r in conn.execute("SELECT deezer_track_id FROM antenne")}
+    still = {int(r[0]) for r in conn.execute("SELECT titre_id FROM antenne")}
     with conn:
         conn.executemany(
-            "INSERT INTO repere_sorties VALUES (?, ?) "
-            "ON CONFLICT (deezer_track_id) DO UPDATE SET left_at = excluded.left_at",
+            "INSERT INTO reperes_sortis VALUES (?, ?) "
+            "ON CONFLICT (titre_id) DO UPDATE SET left_at = excluded.left_at",
             [(t, now.isoformat()) for t, _, o in out if o == "repere" and t not in still],
         )
 
@@ -269,12 +268,12 @@ def finir_sejours(
     va au suivant de la cohorte."""
     rows = conn.execute(
         """
-        SELECT n.path, n.song_id, t.deezer_artist_id FROM antenne n
-        JOIN tracks t USING (deezer_track_id)
-        LEFT JOIN scores s USING (deezer_track_id)
-        LEFT JOIN votes v ON v.deezer_track_id = n.deezer_track_id AND v.vote = 'oui'
+        SELECT n.path, n.song_id, t.artiste_id FROM antenne n
+        JOIN titres t USING (titre_id)
+        LEFT JOIN notes s USING (titre_id)
+        LEFT JOIN votes v ON v.titre_id = n.titre_id AND v.vote = 'oui'
         WHERE n.categorie IN ('nouveautes', 'decouvertes') AND n.since <= ?
-        ORDER BY v.deezer_track_id IS NULL, COALESCE(s.score, 0) DESC, n.deezer_track_id
+        ORDER BY v.titre_id IS NULL, COALESCE(s.score, 0) DESC, n.titre_id
         """,
         (_weeks_ago(now, cfg.sejour_semaines),),
     ).fetchall()
@@ -283,7 +282,7 @@ def finir_sejours(
     taken = {
         int(a)
         for p, a in conn.execute(
-            "SELECT n.path, t.deezer_artist_id FROM antenne n JOIN tracks t USING (deezer_track_id)"
+            "SELECT n.path, t.artiste_id FROM antenne n JOIN titres t USING (titre_id)"
         )
         if p not in leaving
     }
@@ -312,7 +311,7 @@ def perimer(
     """Un recurrent sort pour de bon `vie_semaines` semaines après sa première diffusion."""
     rows = conn.execute(
         "SELECT path, song_id FROM antenne WHERE categorie IN ('fond', 'repos') "
-        "AND published_at <= ? ORDER BY deezer_track_id",
+        "AND published_at <= ? ORDER BY titre_id",
         (_weeks_ago(now, cfg.vie_semaines),),
     ).fetchall()
     rep.n_expired = _remove(conn, station, [str(p) for p, s in rows if s not in busy], rep)
@@ -333,7 +332,7 @@ def platoon(
     stamp = now.isoformat()
     tired = conn.execute(
         "SELECT path, song_id FROM antenne WHERE categorie = 'fond' AND since <= ? "
-        "ORDER BY since, deezer_track_id",
+        "ORDER BY since, titre_id",
         (_weeks_ago(now, cfg.sejour_semaines),),
     ).fetchall()
     rep.n_rested = _move(
@@ -342,7 +341,7 @@ def platoon(
     on_air = conn.execute("SELECT COUNT(*) FROM antenne WHERE categorie = 'fond'").fetchone()[0]
     rested = conn.execute(
         "SELECT path FROM antenne WHERE categorie = 'repos' AND since <= ? "
-        "ORDER BY since, deezer_track_id LIMIT ?",
+        "ORDER BY since, titre_id LIMIT ?",
         (_weeks_ago(now, cfg.repos_semaines), max(0, stock - on_air)),
     ).fetchall()
     rep.n_returned = _move(conn, station, [str(r[0]) for r in rested], FOLDER, "fond", stamp, rep)
@@ -360,18 +359,18 @@ def _retire_references(
     d'attente ;
     leur sortie est datée pour le repos."""
     tired = conn.execute(
-        "SELECT deezer_track_id, path, song_id FROM antenne WHERE categorie = 'reperes' "
-        "AND since <= ? ORDER BY deezer_track_id",
+        "SELECT titre_id, path, song_id FROM antenne WHERE categorie = 'reperes' "
+        "AND since <= ? ORDER BY titre_id",
         (_weeks_ago(now, cfg.sejour_semaines),),
     ).fetchall()
     out = [(int(t), str(p)) for t, p, s in tired if s not in busy]
     removed = _remove(conn, station, [p for _, p in out], rep)
-    still = {int(r[0]) for r in conn.execute("SELECT deezer_track_id FROM antenne")}
+    still = {int(r[0]) for r in conn.execute("SELECT titre_id FROM antenne")}
     stamp = now.isoformat()
     with conn:
         conn.executemany(
-            "INSERT INTO repere_sorties VALUES (?, ?) "
-            "ON CONFLICT (deezer_track_id) DO UPDATE SET left_at = excluded.left_at",
+            "INSERT INTO reperes_sortis VALUES (?, ?) "
+            "ON CONFLICT (titre_id) DO UPDATE SET left_at = excluded.left_at",
             [(t, stamp) for t, _ in out if t not in still],
         )
     rep.n_references_out = removed
@@ -386,16 +385,16 @@ def _reference_pool(
         r
         for r in conn.execute(
             """
-            SELECT m.deezer_track_id, t.artist, t.title, t.file, SUM(t.plays),
-                   tr.deezer_artist_id
-            FROM deezer_matches m JOIN library_tracks t USING (plex_key)
-            LEFT JOIN tracks tr ON tr.deezer_track_id = m.deezer_track_id
-            LEFT JOIN antenne n ON n.deezer_track_id = m.deezer_track_id
-            LEFT JOIN repere_sorties o ON o.deezer_track_id = m.deezer_track_id
-            WHERE m.status = 'matched' AND t.file IS NOT NULL AND n.deezer_track_id IS NULL
+            SELECT m.titre_id, t.artist, t.title, t.file, SUM(t.plays),
+                   tr.artiste_id
+            FROM rapprochements m JOIN bibliotheque t USING (plex_key)
+            LEFT JOIN titres tr ON tr.titre_id = m.titre_id
+            LEFT JOIN antenne n ON n.titre_id = m.titre_id
+            LEFT JOIN reperes_sortis o ON o.titre_id = m.titre_id
+            WHERE m.status = 'trouve' AND t.file IS NOT NULL AND n.titre_id IS NULL
               AND (o.left_at IS NULL OR o.left_at <= ?)
-              AND m.deezer_track_id NOT IN (SELECT deezer_track_id FROM votes WHERE vote = 'non')
-            GROUP BY m.deezer_track_id ORDER BY m.deezer_track_id
+              AND m.titre_id NOT IN (SELECT titre_id FROM votes WHERE vote = 'non')
+            GROUP BY m.titre_id ORDER BY m.titre_id
             """,
             (_weeks_ago(now, cfg.repos_semaines),),
         )
@@ -434,9 +433,7 @@ def tourner_reperes(
     picked = rng.choice(len(pool), size=min(need, len(pool)), replace=False, p=w / w.sum())
     taken = {
         int(r[0])
-        for r in conn.execute(
-            "SELECT t.deezer_artist_id FROM antenne n JOIN tracks t USING (deezer_track_id)"
-        )
+        for r in conn.execute("SELECT t.artiste_id FROM antenne n JOIN titres t USING (titre_id)")
     }
     with tempfile.TemporaryDirectory() as tmp:
         for i in picked:

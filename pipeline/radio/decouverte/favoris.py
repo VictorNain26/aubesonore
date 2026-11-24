@@ -43,37 +43,35 @@ def importer_favoris(
             continue
         kept.add(found.id)
         with conn:
-            ajouter_titres(conn, found.artist_id, found.artist_name, [found], "favorite", now)
+            ajouter_titres(conn, found.artist_id, found.artist_name, [found], "favori", now)
             # Un candidat déjà aimé n'est plus une découverte. OR IGNORE : une autre version du
             # même titre est déjà favorite, celui-ci reste candidat.
             conn.execute(
-                "UPDATE OR IGNORE tracks SET origin = 'favorite' "
-                "WHERE deezer_track_id = ? AND origin = 'candidate'",
+                "UPDATE OR IGNORE titres SET provenance = 'favori' "
+                "WHERE titre_id = ? AND provenance = 'candidat'",
                 (found.id,),
             )
     rep.n_matched = len(kept)
     library = {
         int(r[0])
-        for r in conn.execute("SELECT deezer_track_id FROM tracks WHERE origin = 'library'")
+        for r in conn.execute("SELECT titre_id FROM titres WHERE provenance = 'bibliotheque'")
     }
     rep.n_library = len(kept & library)
 
     # Un favori retiré : redevenu candidat s'il venait d'une fournée, sinon oublié.
     dropped = [
         int(r[0])
-        for r in conn.execute("SELECT deezer_track_id FROM tracks WHERE origin = 'favorite'")
+        for r in conn.execute("SELECT titre_id FROM titres WHERE provenance = 'favori'")
         if int(r[0]) not in kept
     ]
     with conn:
         for tid in dropped:
-            if conn.execute(
-                "SELECT 1 FROM candidates WHERE deezer_track_id = ?", (tid,)
-            ).fetchone():
+            if conn.execute("SELECT 1 FROM candidats WHERE titre_id = ?", (tid,)).fetchone():
                 conn.execute(
-                    "UPDATE OR IGNORE tracks SET origin = 'candidate' WHERE deezer_track_id = ?",
+                    "UPDATE OR IGNORE titres SET provenance = 'candidat' WHERE titre_id = ?",
                     (tid,),
                 )
             else:
-                conn.execute("DELETE FROM tracks WHERE deezer_track_id = ?", (tid,))
+                conn.execute("DELETE FROM titres WHERE titre_id = ?", (tid,))
     rep.n_dropped = len(dropped)
     return rep

@@ -33,11 +33,11 @@ def test_no_vote_has_no_yes_rate() -> None:
 
 
 def _two_batches(conn: Any) -> None:
-    conn.execute("INSERT INTO discover_runs VALUES (1, 'd', 'd', 'done'), (2, 'd', 'd', 'done')")
+    conn.execute("INSERT INTO fournees VALUES (1, 'd', 'd', 'done'), (2, 'd', 'd', 'done')")
     conn.execute(
-        "INSERT INTO candidates (deezer_track_id, run_id, source, seed_artist_id, "
-        "neighbour_artist_id) SELECT deezer_track_id, 1 + (deezer_artist_id >= 3000), "
-        "'voisin', 1000, deezer_artist_id FROM tracks WHERE origin = 'candidate'"
+        "INSERT INTO candidats (titre_id, fournee_id, source, seed_artist_id, "
+        "neighbour_artist_id) SELECT titre_id, 1 + (artiste_id >= 3000), "
+        "'voisin', 1000, artiste_id FROM titres WHERE provenance = 'candidat'"
     )
     conn.commit()
 
@@ -45,7 +45,7 @@ def _two_batches(conn: Any) -> None:
 def _scores(conn: Any) -> dict[int, tuple[int, int]]:
     return {
         int(r[0]): (int(r[1]), int(r[2]))
-        for r in conn.execute("SELECT deezer_track_id, model_id, accepted FROM scores")
+        for r in conn.execute("SELECT titre_id, modele_id, retenu FROM notes")
     }
 
 
@@ -57,7 +57,7 @@ def test_each_batch_and_family_keeps_its_best_and_library_titles_are_not_discove
     # Les nouveautés de la fournée 1 sont des titres rejetés : elles ne disputent pas la coupure
     # des découvertes, aimées, et gardent leur propre quota.
     as_news(conn, 300000, 300599, run_id=1)
-    conn.execute("UPDATE tracks SET origin = 'library' WHERE deezer_track_id = 200000")
+    conn.execute("UPDATE titres SET provenance = 'bibliotheque' WHERE titre_id = 200000")
     conn.commit()
     cfg = GoutConfig(retenus_decouvertes=10, retenus_nouveautes=5)
     assert entrainer(conn, tmp_path / "models", cfg, NOW).promoted
@@ -66,12 +66,12 @@ def test_each_batch_and_family_keeps_its_best_and_library_titles_are_not_discove
     assert 200000 not in scores
     groups = {
         int(t): (int(r), s)
-        for t, r, s in conn.execute("SELECT deezer_track_id, run_id, source FROM candidates")
+        for t, r, s in conn.execute("SELECT titre_id, fournee_id, source FROM candidats")
     }
     kept = Counter(groups[t] for t, (_, a) in scores.items() if a)
     # La fournée 2 n'a que 6 artistes voisins (3006 à 3011) : 6 retenus, un par artiste.
     assert kept == {(1, "voisin"): 10, (1, "hypem"): 5, (2, "voisin"): 6}
-    artist_of = dict(conn.execute("SELECT deezer_track_id, deezer_artist_id FROM tracks"))
+    artist_of = dict(conn.execute("SELECT titre_id, artiste_id FROM titres"))
     per_artist = Counter((groups[t][0], artist_of[t]) for t, (_, a) in scores.items() if a)
     assert max(per_artist.values()) == 1  # un titre par artiste et par fournée
     assert all(
@@ -85,8 +85,8 @@ def _kept_and_floored(conn: Any) -> tuple[Counter[tuple[int, str]], Counter[tupl
     kept: Counter[tuple[int, str]] = Counter()
     floored: Counter[tuple[int, str]] = Counter()
     for run, source, accepted, below in conn.execute(
-        "SELECT c.run_id, c.source, s.accepted, s.floored FROM scores s "
-        "JOIN candidates c USING (deezer_track_id)"
+        "SELECT c.fournee_id, c.source, s.retenu, s.sous_plancher FROM notes s "
+        "JOIN candidats c USING (titre_id)"
     ):
         kept[(int(run), str(source))] += int(accepted)
         floored[(int(run), str(source))] += int(below)
@@ -112,8 +112,8 @@ def test_the_floor_keeps_low_scored_news_off_air_and_counts_them_once_per_artist
     assert floored == {(1, "hypem"): 6}
     assert (
         conn.execute(
-            "SELECT MIN(score) >= 0.5 FROM scores JOIN candidates USING (deezer_track_id) "
-            "WHERE source = 'hypem' AND accepted = 1"
+            "SELECT MIN(score) >= 0.5 FROM notes JOIN candidats USING (titre_id) "
+            "WHERE source = 'hypem' AND retenu = 1"
         ).fetchone()[0]
         == 1
     )
@@ -183,23 +183,21 @@ def test_a_floored_news_does_not_take_its_artist_away_from_discoveries(tmp_path:
     lowest = [
         int(r[0])
         for r in conn.execute(
-            "SELECT deezer_track_id FROM scores s JOIN tracks t USING (deezer_track_id) "
-            "WHERE deezer_track_id BETWEEN 300000 AND 300599 "
-            "AND score = (SELECT MIN(score) FROM scores JOIN tracks u USING (deezer_track_id) "
-            "WHERE u.deezer_artist_id = t.deezer_artist_id)"
+            "SELECT titre_id FROM notes s JOIN titres t USING (titre_id) "
+            "WHERE titre_id BETWEEN 300000 AND 300599 "
+            "AND score = (SELECT MIN(score) FROM notes JOIN titres u USING (titre_id) "
+            "WHERE u.artiste_id = t.artiste_id)"
         )
     ]
     assert len(lowest) == 6
     conn.executemany(
-        "UPDATE candidates SET source = 'voisin', seed_artist_id = 1000, "
-        "neighbour_artist_id = ?, detail = NULL WHERE deezer_track_id = ?",
+        "UPDATE candidats SET source = 'voisin', seed_artist_id = 1000, "
+        "neighbour_artist_id = ?, detail = NULL WHERE titre_id = ?",
         [(t // 100, t) for t in lowest],
     )
     conn.commit()
     renoter(conn, tmp_path / "models", cfg)
-    accepted = {
-        int(r[0]) for r in conn.execute("SELECT deezer_track_id FROM scores WHERE accepted")
-    }
+    accepted = {int(r[0]) for r in conn.execute("SELECT titre_id FROM notes WHERE retenu")}
     assert set(lowest) <= accepted
     kept, floored = _kept_and_floored(conn)
     assert (1, "hypem") not in kept and floored == {(1, "hypem"): 6}
@@ -222,9 +220,9 @@ EXAM_YES, EXAM_NO = (200100, 200200, 200300), (300100, 300200, 300300)
 
 def _exam(conn: Any, no: tuple[int, ...] = EXAM_NO) -> None:
     for t in EXAM_YES:
-        add_vote(conn, t, "exam", "oui")
+        add_vote(conn, t, "examen", "oui")
     for t in no:
-        add_vote(conn, t, "exam", "non")
+        add_vote(conn, t, "examen", "non")
 
 
 def test_a_model_as_good_as_the_serving_one_is_promoted(tmp_path: Path) -> None:
@@ -252,7 +250,7 @@ def test_a_worse_model_is_kept_out_of_service(tmp_path: Path) -> None:
     for base, exam, vote in ((200000, EXAM_YES, "non"), (300000, EXAM_NO, "oui")):
         for t in range(base, base + 1200):
             if t % 100 < 4 and t not in exam:
-                add_vote(conn, t, "lesson", vote)
+                add_vote(conn, t, "lecon", vote)
     second = entrainer(conn, tmp_path / "models", cfg, NOW)
     assert (second.new_auc, second.current_auc) == (0.0, 1.0)
     assert not second.promoted

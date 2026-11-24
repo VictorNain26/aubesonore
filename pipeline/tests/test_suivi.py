@@ -11,8 +11,8 @@ def _db(tmp_path: Path) -> sqlite3.Connection:
     serve_scores(conn)
     # Dernière fournée : les rejetés deviennent la sélection jazz de Deezer.
     conn.execute(
-        "UPDATE candidates SET source = 'deezer_editorial', seed_artist_id = NULL, "
-        "neighbour_artist_id = NULL, detail = 'jazz' WHERE deezer_track_id >= 300600"
+        "UPDATE candidats SET source = 'deezer_editorial', seed_artist_id = NULL, "
+        "neighbour_artist_id = NULL, detail = 'jazz' WHERE titre_id >= 300600"
     )
     conn.commit()
     return conn
@@ -21,15 +21,15 @@ def _db(tmp_path: Path) -> sqlite3.Connection:
 def test_the_flow_of_each_source_from_batch_to_antenna(tmp_path: Path) -> None:
     conn = _db(tmp_path)
     conn.executemany(
-        "INSERT INTO acquisitions VALUES (?, ?, ?, 1, ?, 'd')",
+        "INSERT INTO telechargements VALUES (?, ?, ?, 1, ?, 'd')",
         [
-            (200600, "published", None, None),
-            (200601, "ready", None, "f"),
-            (200602, "failed", "x", None),
+            (200600, "publie", None, None),
+            (200601, "pret", None, "f"),
+            (200602, "echec", "x", None),
         ],
     )
     conn.execute(
-        "INSERT INTO antenne VALUES (200600, 'decouverte', 'decouvertes', 1, 's', "
+        "INSERT INTO antenne VALUES (200600, 'telecharge', 'decouvertes', 1, 's', "
         "'antenne/1.mp3', 'd', 'd')"
     )
     conn.commit()
@@ -47,12 +47,12 @@ def test_what_needs_adjusting_is_named_with_its_rule(tmp_path: Path) -> None:
     conn = _db(tmp_path)
     jazz = [a * 100 + k for a in range(3006, 3012) for k in range(4)]
     for i, t in enumerate(jazz):
-        add_vote(conn, t, "exam", "oui" if i < 2 else "non")
+        add_vote(conn, t, "examen", "oui" if i < 2 else "non")
     voisins = [a * 100 + k for a in range(2000, 2005) for k in range(4)]
     for i, t in enumerate(voisins):
-        add_vote(conn, t, "exam", "oui" if i < 18 else "non")
+        add_vote(conn, t, "examen", "oui" if i < 18 else "non")
     conn.executemany(
-        "INSERT INTO acquisitions VALUES (?, 'failed', 'aucun résultat', 1, NULL, 'd')",
+        "INSERT INTO telechargements VALUES (?, 'echec', 'aucun résultat', 1, NULL, 'd')",
         [(a * 100 + k,) for a in range(2006, 2009) for k in range(4)][:10],
     )
     conn.commit()

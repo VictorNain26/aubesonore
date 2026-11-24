@@ -509,19 +509,17 @@ def test_titles_on_air_are_read_with_their_measures_as_quantiles(tmp_path: Path)
     conn = make_model_db(tmp_path)
     for i, tid in enumerate((200000, 200001, 200002)):
         conn.execute(
-            "INSERT INTO antenne VALUES (?, 'decouverte', 'decouvertes', ?, ?, ?, ?, ?)",
+            "INSERT INTO antenne VALUES (?, 'telecharge', 'decouvertes', ?, ?, ?, ?, ?)",
             (tid, tid, f"s{tid}", f"antenne/{tid}.mp3", ENTERED, ENTERED),
         )
         if i < 2:
             values = [float(i + 1)] * 12
             conn.execute(
-                "INSERT INTO track_features VALUES (?, 'ok', 'm', 'd', 200, "
-                + ", ".join("?" * 12)
-                + ")",
+                "INSERT INTO mesures VALUES (?, 'ok', 'm', 'd', 200, " + ", ".join("?" * 12) + ")",
                 (tid, *values),
             )
     conn.execute(
-        "INSERT INTO antenne VALUES (200003, 'decouverte', 'repos', 9, 's9', 'repos/9.mp3', ?, ?)",
+        "INSERT INTO antenne VALUES (200003, 'telecharge', 'repos', 9, 's9', 'repos/9.mp3', ?, ?)",
         (ENTERED, ENTERED),
     )
     conn.commit()
@@ -537,11 +535,11 @@ def test_titles_on_air_are_read_with_their_measures_as_quantiles(tmp_path: Path)
 def test_a_title_without_style_print_reads_as_none(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     conn.execute(
-        "INSERT INTO antenne VALUES (200000, 'decouverte', 'decouvertes', 1, 's1', "
+        "INSERT INTO antenne VALUES (200000, 'telecharge', 'decouvertes', 1, 's1', "
         "'antenne/1.mp3', ?, ?)",
         (ENTERED, ENTERED),
     )
-    conn.execute("DELETE FROM track_measures WHERE deezer_track_id = 200000")
+    conn.execute("DELETE FROM empreintes WHERE titre_id = 200000")
     conn.commit()
     assert load_titres(conn)[0].style is None
 
@@ -741,7 +739,7 @@ def grille_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> FakeAzuracast
 def _on_air(tmp_path: Path, n: int) -> None:
     with connect(tmp_path / "data" / "radio.db") as conn:
         conn.executemany(
-            "INSERT INTO antenne VALUES (?, 'decouverte', 'decouvertes', ?, ?, ?, ?, ?)",
+            "INSERT INTO antenne VALUES (?, 'telecharge', 'decouvertes', ?, ?, ?, ?, ?)",
             [(i, i, f"s{i}", f"antenne/{i}.mp3", ENTERED, ENTERED) for i in range(1, n + 1)],
         )
 
@@ -757,7 +755,7 @@ def test_a_short_hour_is_published_then_fails_the_grid(
     assert len(grille_env.filled) == 24  # la grille publiée est gardée
     with connect(tmp_path / "data" / "radio.db") as conn:
         stages = [s for s in last_stages(conn) if s[0] == "grille"]
-        n_rows = conn.execute("SELECT COUNT(*) FROM stage_reports").fetchone()[0]
+        n_rows = conn.execute("SELECT COUNT(*) FROM rapports").fetchone()[0]
     assert n_rows == 1 and not stages[0][2]
     short = stages[0][3]["heures courtes"]
     assert isinstance(short, int) and short > 0

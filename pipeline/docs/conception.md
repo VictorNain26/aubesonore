@@ -57,14 +57,15 @@ techniques (`conn`, `path`, `client`, `retry`) et les noms des outils (`song_id`
 | écart minimal | Repos minimal entre deux passages d'un titre dans la grille (`ecart_min`, ex-`repos`). |
 | rapport | La ligne d'une étape dans la base ; *bilan* : le jugement de la passe entière. |
 
-**Les noms, d'aujourd'hui à demain**
+**Les anciens noms**
 
-Appliqués dans cet ordre, une PR à la fois : le code et les commandes, puis les unités, puis la
-base. Les commandes, les étapes, les paquets, les classes et fonctions du métier, les réglages
-et les unités portent déjà les leurs ;
-jusqu'à la PR suivante, la base garde ses noms actuels dans ce document.
+Appliqués une PR à la fois : le code et les commandes, puis les unités, puis la base (migration
+`018_noms_de_la_base.sql`). Les commandes, les unités, les paquets, les classes et fonctions du
+métier, les réglages et la base portent les noms de droite ; les champs Python qui reprennent une
+colonne (`Bulletin.deezer_track_id`, `Tirage.selection_id`…) gardent encore les anciens. La colonne
+de gauche aide à lire les notes datées de `docs/recherches/` et les migrations figées.
 
-| Aujourd'hui | Demain |
+| Avant | Aujourd'hui |
 |---|---|
 | unités `radio-weekly`, `radio-backup`, `radio-votes`, `radio-alert@` | `radio-passe`, `radio-sauvegarde`, `radio-page-votes`, `radio-alerte@` ; `radio-grille` reste |
 | `library-sync`, `discover`, `nouveautes`, `favoris`, `negatives-sync` | `bibliotheque`, `decouverte`, `nouveautes`, `favoris`, `negatifs` |
@@ -81,6 +82,7 @@ jusqu'à la PR suivante, la base garde ses noms actuels dans ce document.
 | `track_measures`, `models`, `scores`, `selections`, `ballots`, `votes` | `empreintes`, `modeles`, `notes`, `tirages`, `bulletins`, `votes` |
 | `acquisitions`, `antenne`, `repere_sorties`, `track_features`, `grille`, `stage_reports` | `telechargements`, `antenne`, `reperes_sortis`, `mesures`, `grille`, `rapports` |
 | colonnes `deezer_track_id`, `deezer_artist_id`, `run_id`, `origin` | `titre_id`, `artiste_id` (identifiants Deezer), `fournee_id`, `provenance` |
+| `selection_id`, `model_id`, `report_id`, `ballots.retained` | `tirage_id`, `modele_id`, `rapport_id`, `bulletins.retenu` |
 | `arousal*`, `bpm*`, `accepted`, `floored`, `kind` (`exam`, `lesson`) | `energie*`, `tempo*`, `retenu`, `sous_plancher`, `type` (`examen`, `lecon`) |
 | valeurs `library`, `candidate`, `negative`, `favorite` ; `decouverte` | `bibliotheque`, `candidat`, `negatif`, `favori` ; `telecharge` |
 | valeurs `ready`, `failed`, `published` ; `matched`, `unmatched` ; `no_preview`, `audio_failed`, `gone` | `pret`, `echec`, `publie` ; `trouve`, `non_trouve` ; `sans_extrait`, `audio_rate`, `disparu` |
@@ -88,8 +90,8 @@ jusqu'à la PR suivante, la base garde ses noms actuels dans ce document.
 Une colonne que le code ne relit pas reste si elle garde l'historique que lisent les études
 (`docs/recherches/`) : les dates (`added_at`, `attempted_at`, `measured_at`…), la graine et le
 voisin d'un candidat, le verdict et les métriques de chaque modèle, l'identifiant AzuraCast
-(`media_id`), la valence mesurée. Seule `votes.source`, toujours `'page'`, ne porte rien : elle part
-avec la base.
+(`media_id`), la valence mesurée. Seule `votes.source`, toujours `'page'`, ne portait rien : elle est partie
+avec la migration 018.
 
 ## 1. But
 
@@ -151,7 +153,7 @@ suivante reprend.
 
 La qualité des sources fait celle de l'antenne : le modèle trie, il n'invente rien. Deux
 familles de sources alimentent chaque fournée, et chaque candidat garde la sienne
-(`candidates.source`, avec le blog ou le genre dans `detail`) :
+(`candidats.source`, avec le blog ou le genre dans `detail`) :
 
 - **Voisins** (découverte) : voisins confirmés de tes artistes, leurs titres les plus écoutés.
 - **Nouveautés** : des titres récents choisis par des humains, pour un mélange de découverte et
@@ -183,7 +185,7 @@ autres après une vingtaine de votes est retirée ; une autre peut être essayé
 
 `radio favoris` relit chaque semaine les favoris publics de Victor sur Hype Machine
 (`nouveautes.compte_favoris_hypem`, même API v2 que les nouveautés), retrouvés sur Deezer par la
-règle stricte de la bibliothèque. Ils prennent l'origine `favorite` ; la bibliothèque garde la
+règle stricte de la bibliothèque. Ils prennent la provenance `favori` ; la bibliothèque garde la
 priorité.
 
 - **Plus des découvertes.** Un titre déjà aimé n'entre plus dans une fournée ni dans les
@@ -221,7 +223,7 @@ priorité.
   `plancher_nouveautes` (`config/editorial.toml`) : décision du 2026-10-19
   (`recherches/2026-10-19-plancher-nouveautes.md`) ; les nouveautés, peu nombreuses, passaient
   presque toutes. Une nouveauté sous le plancher ne prend pas la place de son artiste ; celles
-  qu'il écarte sont comptées (`scores.floored`) une par artiste et dans la limite des places
+  qu'il écarte sont comptées (`notes.sous_plancher`) une par artiste et dans la limite des places
   restantes, ce que la fournée aurait retenu sans lui, dans le rapport de `gout` et de
   `radio votes`. Tant qu'il écarte des titres, le plancher est la coupure de leçon de la famille.
   Les découvertes n'ont pas de plancher. Quand le stock de nouveautés
@@ -380,8 +382,8 @@ score choisit seulement qui est promu. La passe hebdomadaire applique ces règle
 - **Entrées.** Tout ce qui a été acquis est publié, dans la catégorie de sa famille :
   `nouveautes` (Hype Machine, Deezer éditorial) ou `decouvertes` (voisins). Une découverte passe
   à « publiée » dans la transaction de son entrée : sortie ensuite, elle n'est jamais republiée.
-  Ici, « découverte » désigne tout titre acquis, nouveautés comprises : c'est la valeur
-  `decouverte` de `antenne.origin`, qui ne change jamais. Un repère, titre de la bibliothèque,
+  Tout titre téléchargé, nouveautés comprises, porte dans `antenne.provenance` la valeur
+  `telecharge`, qui ne change jamais. Un repère, titre de la bibliothèque,
   y vaut `repere`. La catégorie, elle, suit le cycle de vie, et `radio bilan` compte toutes les
   découvertes publiées, nouveautés comprises.
 - **Votes « non ».** Un titre voté « non » sort à la passe suivante, quelle que soit sa catégorie.
@@ -402,7 +404,7 @@ score choisit seulement qui est promu. La passe hebdomadaire applique ces règle
 - **Péremption** (`vie_semaines`, 78 semaines, BBC Radio 2) : un recurrent sort pour de bon 18 mois
   après sa première diffusion.
 - **Repères** : chacun reste 6 semaines, puis cède sa place à un autre, tiré selon l'écoute parmi
-  ceux qui ne sont pas passés depuis 12 semaines (`repere_sorties`). Au plus `stock / 6` entrées
+  ceux qui ne sont pas passés depuis 12 semaines (`reperes_sortis`). Au plus `stock / 6` entrées
   par passe : le stock se remplit au rythme où il se renouvelle. Un tirage dont l'artiste a déjà
   un titre à l'antenne est écarté et compté.
 - **Stocks.** Ceux du fond et des repères découlent de la grille (`[grille]` de
@@ -460,7 +462,7 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
   par `start_next_s`). Un titre passe donc s'il commence avant la fin de l'heure, et l'heure
   suivante démarre après lui : mesuré le 2026-10-04, chaque heure a commencé 0 à 4 min après
   l'heure pile et a joué 13 à 16 titres. Une heure reçoit des titres, de la durée mesurée de
-  leur fichier (`track_features.duration_s`), jusqu'à couvrir toute sa durée ; avec 16 titres
+  leur fichier (`mesures.duration_s`), jusqu'à couvrir toute sa durée ; avec 16 titres
   fixes, une heure de titres courts s'épuisait (5 h le 2026-10-04 : 3 585 s) et le secours
   jouait. Les catégories se suivent par smooth weighted round-robin ; tant qu'une catégorie n'a
   pas son stock, sa part est réduite en proportion et rendue aux autres.
@@ -547,7 +549,7 @@ avoir fait entrer et sortir des titres (`--aujourdhui`, jamais l'heure en cours)
 **Mesures par titre** (`radio mesures`, depuis le 2026-10-02 ;
 `recherches/2026-10-02-mesures-titres.md`). Chaque titre de la table `antenne`, au repos compris
 (il reviendra au fond), est mesuré une fois sur son fichier du dossier média d'AzuraCast
-(`AZURACAST_MEDIA_DIR`, lu, jamais écrit), dans la table `track_features`, sur la partie jouée,
+(`AZURACAST_MEDIA_DIR`, lu, jamais écrit), dans la table `mesures`, sur la partie jouée,
 entre ses points de coupe, dont la durée est celle que la grille compte :
 
 - dansabilité (`danceability-msd-musicnn-1`), arousal et valence DEAM sur [1, 9]
@@ -558,7 +560,7 @@ entre ses points de coupe, dont la durée est celle que la grille compte :
 - chaque valeur sur le titre entier, sur ses 30 premières et sur ses 30 dernières secondes : la
   transition se joue entre la fin d'un titre et le début du suivant ;
 - ~17 s par titre sur un fil. Un fichier absent du dossier média est nommé, l'étape échoue, et
-  il est retenté à la passe suivante ; un audio illisible est noté `audio_failed`.
+  il est retenté à la passe suivante ; un audio illisible est noté `audio_rate`.
 - Modèles dans `models/`, à côté d'EffNet, épinglés par SHA-256 (MTG, CC BY-NC-SA 4.0 ;
   TempoCNN, AGPL v3).
 
@@ -568,7 +570,7 @@ Justification : `recherches/…-observabilite.md` §4.
 
 ### 8.1 Rapport de passe
 
-Chaque étape écrit une ligne en base (`stage_reports`) avec ses compteurs, rattachée à la passe
+Chaque étape écrit une ligne en base (`rapports`) avec ses compteurs, rattachée à la passe
 par `$INVOCATION_ID` de systemd, y compris quand elle échoue : la ligne porte alors l'erreur (le
 message de la commande, ou seulement le type d'une exception imprévue, dont le texte peut
 contenir une URL signée). `radio rapport` affiche le dernier rapport de chaque étape.

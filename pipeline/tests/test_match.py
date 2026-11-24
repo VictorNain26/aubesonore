@@ -204,9 +204,9 @@ def test_match_library_records_every_outcome(tmp_path: Path) -> None:
         unmatched={"no_duration": 1, "no_result": 1, "no_exact_match": 1},
         errors=["Wire — Broken (DeezerError)"],
     )
-    row = conn.execute("SELECT * FROM deezer_matches WHERE plex_key='1'").fetchone()
-    assert (row["status"], row["deezer_track_id"], row["deezer_artist_id"]) == ("matched", 7, 107)
-    assert conn.execute("SELECT COUNT(*) FROM deezer_matches").fetchone()[0] == 4
+    row = conn.execute("SELECT * FROM rapprochements WHERE plex_key='1'").fetchone()
+    assert (row["status"], row["titre_id"], row["artiste_id"]) == ("trouve", 7, 107)
+    assert conn.execute("SELECT COUNT(*) FROM rapprochements").fetchone()[0] == 4
     assert coverage(conn) == (1, 5)
     # Titre sans durée : aucune requête Deezer.
     assert search_query("Wire", "No Dur") not in fake.queries
@@ -240,10 +240,10 @@ def test_unavailable_commits_done_work_then_raises(tmp_path: Path) -> None:
     # Seconde connexion : prouve que la validation a bien été écrite sur disque.
     reader = sqlite3.connect(tmp_path / "db")
     try:
-        row = reader.execute("SELECT status FROM deezer_matches WHERE plex_key='1'").fetchone()
+        row = reader.execute("SELECT status FROM rapprochements WHERE plex_key='1'").fetchone()
     finally:
         reader.close()
-    assert row[0] == "matched"
+    assert row[0] == "trouve"
 
 
 class BatchProbeDeezer:
@@ -265,11 +265,11 @@ class BatchProbeDeezer:
             reader = sqlite3.connect(self.db_path)
             try:
                 row = reader.execute(
-                    "SELECT status FROM deezer_matches WHERE plex_key='1'"
+                    "SELECT status FROM rapprochements WHERE plex_key='1'"
                 ).fetchone()
             finally:
                 reader.close()
-            assert row is not None and row[0] == "matched"
+            assert row is not None and row[0] == "trouve"
             raise DeezerUnavailable("code 4")
         raise AssertionError(f"unexpected query: {query}")
 

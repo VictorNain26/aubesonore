@@ -105,7 +105,7 @@ def test_votes_select_draws_then_waits(full: Path) -> None:
     assert "20 titres encore en attente de vote : pas de nouvelle sélection" in res.output
     stages = (
         sqlite3.connect(full / "data" / "radio.db")
-        .execute("SELECT ok, counts FROM stage_reports WHERE stage = 'tirage' ORDER BY report_id")
+        .execute("SELECT ok, counts FROM rapports WHERE stage = 'tirage' ORDER BY rapport_id")
         .fetchall()
     )
     assert stages == [
@@ -121,7 +121,7 @@ def test_votes_select_without_model_fails(full: Path) -> None:
     assert "Aucun modèle en service" in res.output
     row = (
         sqlite3.connect(full / "data" / "radio.db")
-        .execute("SELECT ok, counts FROM stage_reports WHERE stage = 'tirage'")
+        .execute("SELECT ok, counts FROM rapports WHERE stage = 'tirage'")
         .fetchone()
     )
     assert row == (0, '{"erreur": "Aucun modèle en service : lancer radio gout"}')

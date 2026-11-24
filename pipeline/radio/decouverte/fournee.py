@@ -96,7 +96,7 @@ def decouvrir(
                 continue
             kept = garder_titres(top, n.id)
             with conn:
-                added = ajouter_titres(conn, n.id, n.name, kept, "candidate", stamp)
+                added = ajouter_titres(conn, n.id, n.name, kept, "candidat", stamp)
                 ajouter_candidats(
                     conn,
                     run.run_id,

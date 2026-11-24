@@ -31,7 +31,7 @@ def graines_recentes(conn: sqlite3.Connection, now: datetime, days: int) -> set[
         r[0]
         for r in conn.execute(
             """
-            SELECT s.deezer_artist_id FROM run_seeds s JOIN discover_runs r USING (run_id)
+            SELECT s.artiste_id FROM graines s JOIN fournees r USING (fournee_id)
             WHERE r.status = 'done' AND r.finished_at >= ?
             """,
             (since,),
@@ -57,13 +57,13 @@ def start_run(
     now: datetime,
     rng: np.random.Generator,
 ) -> Run:
-    running = conn.execute("SELECT run_id FROM discover_runs WHERE status = 'running'").fetchone()
+    running = conn.execute("SELECT fournee_id FROM fournees WHERE status = 'running'").fetchone()
     if running is not None:
         by_id = {a.deezer_artist_id: a for a in artists}
         seed_ids = [
             r[0]
             for r in conn.execute(
-                "SELECT deezer_artist_id FROM run_seeds WHERE run_id = ? ORDER BY rowid",
+                "SELECT artiste_id FROM graines WHERE fournee_id = ? ORDER BY rowid",
                 (running[0],),
             )
         ]
@@ -74,13 +74,13 @@ def start_run(
     )
     with conn:
         cur = conn.execute(
-            "INSERT INTO discover_runs (started_at, status) VALUES (?, 'running')",
+            "INSERT INTO fournees (started_at, status) VALUES (?, 'running')",
             (now.isoformat(),),
         )
         run_id = cur.lastrowid
         assert run_id is not None
         conn.executemany(
-            "INSERT INTO run_seeds VALUES (?, ?)", [(run_id, s.deezer_artist_id) for s in seeds]
+            "INSERT INTO graines VALUES (?, ?)", [(run_id, s.deezer_artist_id) for s in seeds]
         )
     return Run(run_id, seeds, resumed=False, n_dropped=0)
 
@@ -88,6 +88,6 @@ def start_run(
 def finish_run(conn: sqlite3.Connection, run_id: int, now: datetime) -> None:
     with conn:
         conn.execute(
-            "UPDATE discover_runs SET status = 'done', finished_at = ? WHERE run_id = ?",
+            "UPDATE fournees SET status = 'done', finished_at = ? WHERE fournee_id = ?",
             (now.isoformat(), run_id),
         )

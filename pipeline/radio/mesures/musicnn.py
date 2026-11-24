@@ -227,9 +227,9 @@ def mesurer_antenne(
     la passe suivante."""
     todo = conn.execute(
         """
-        SELECT n.deezer_track_id, n.path FROM antenne n
-        LEFT JOIN track_features f USING (deezer_track_id)
-        WHERE f.deezer_track_id IS NULL OR f.model != ? ORDER BY n.deezer_track_id
+        SELECT n.titre_id, n.path FROM antenne n
+        LEFT JOIN mesures f USING (titre_id)
+        WHERE f.titre_id IS NULL OR f.model != ? ORDER BY n.titre_id
         """,
         (FEATURES_TAG,),
     ).fetchall()
@@ -238,9 +238,7 @@ def mesurer_antenne(
 
     def flush() -> None:
         with conn:
-            conn.executemany(
-                f"INSERT OR REPLACE INTO track_features VALUES ({', '.join('?' * 17)})", rows
-            )
+            conn.executemany(f"INSERT OR REPLACE INTO mesures VALUES ({', '.join('?' * 17)})", rows)
         rows.clear()
 
     for i, (tid, rel) in enumerate(todo, 1):
@@ -254,12 +252,12 @@ def mesurer_antenne(
             cue = cue_of(path)
         except ToolError:
             rep.n_failed += 1
-            rows.append((tid, "audio_failed", FEATURES_TAG, now, *([None] * 13)))
+            rows.append((tid, "audio_rate", FEATURES_TAG, now, *([None] * 13)))
             continue
         feats = extractor.measure(path, cue)
         if feats is None:
             rep.n_failed += 1
-            rows.append((tid, "audio_failed", FEATURES_TAG, now, *([None] * 13)))
+            rows.append((tid, "audio_rate", FEATURES_TAG, now, *([None] * 13)))
         else:
             rep.n_ok += 1
             rows.append((tid, "ok", FEATURES_TAG, now, *astuple(feats)))

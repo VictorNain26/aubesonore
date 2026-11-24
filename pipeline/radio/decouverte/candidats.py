@@ -26,14 +26,14 @@ def ajouter_titres(
     de dédoublonnage pour cette origine) est écarté : on garde la première référence, la plus
     populaire puisque Deezer trie son top par rang."""
     conn.execute(
-        "INSERT INTO artists (deezer_artist_id, name) VALUES (?, ?) ON CONFLICT DO NOTHING",
+        "INSERT INTO artistes (artiste_id, name) VALUES (?, ?) ON CONFLICT DO NOTHING",
         (artist_id, artist_name),
     )
     added = []
     for t in tracks:
         cur = conn.execute(
             """
-            INSERT INTO tracks (deezer_track_id, deezer_artist_id, title, origin, dedupe_key,
+            INSERT INTO titres (titre_id, artiste_id, title, provenance, dedupe_key,
                                 added_at)
             VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING
             """,
@@ -56,7 +56,7 @@ def ajouter_candidats(
 ) -> None:
     """Inscrit des titres déjà ajoutés comme candidats de la fournée `run_id`, venus de `source`."""
     conn.executemany(
-        "INSERT INTO candidates (deezer_track_id, run_id, source, detail, seed_artist_id, "
+        "INSERT INTO candidats (titre_id, fournee_id, source, detail, seed_artist_id, "
         "neighbour_artist_id) VALUES (?, ?, ?, ?, ?, ?)",
         [(tid, run_id, source, detail, seed_artist_id, neighbour_artist_id) for tid in track_ids],
     )

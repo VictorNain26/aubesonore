@@ -4,7 +4,7 @@
   nouveautés), retenus ou non, à parts égales : sans cela, les ~300 nouveautés d'une fournée de
   ~1 100 titres ne recevraient que 3 votes par semaine, et aucune source ne serait jugée avant
   des mois. Les deux modèles comparés sont notés sur les mêmes votes, et le taux de oui des
-  retenus se lit sur les bulletins marqués `retained`. Un vote d'examen n'est jamais un exemple
+  retenus se lit sur les bulletins marqués `retenu`. Un vote d'examen n'est jamais un exemple
   d'entraînement (radio/gout/exemples.py).
 - Leçon : les titres les plus incertains (note la plus proche de la coupure de leur famille,
   découvertes ou nouveautés, dans la dernière fournée), au plus un par artiste : échantillonnage
@@ -73,13 +73,13 @@ class Tirage:
 def bulletins_en_attente(conn: sqlite3.Connection) -> list[Bulletin]:
     rows = conn.execute(
         """
-        SELECT b.deezer_track_id, b.kind, b.position, a.name, t.title
-        FROM ballots b
-        JOIN tracks t ON t.deezer_track_id = b.deezer_track_id
-        JOIN artists a ON a.deezer_artist_id = t.deezer_artist_id
-        LEFT JOIN votes v ON v.deezer_track_id = b.deezer_track_id
-        WHERE v.deezer_track_id IS NULL
-        ORDER BY b.selection_id, b.position
+        SELECT b.titre_id, b.type, b.position, a.name, t.title
+        FROM bulletins b
+        JOIN titres t ON t.titre_id = b.titre_id
+        JOIN artistes a ON a.artiste_id = t.artiste_id
+        LEFT JOIN votes v ON v.titre_id = b.titre_id
+        WHERE v.titre_id IS NULL
+        ORDER BY b.tirage_id, b.position
         """
     ).fetchall()
     return [Bulletin(int(r[0]), str(r[1]), int(r[2]), str(r[3]), str(r[4])) for r in rows]
@@ -89,12 +89,12 @@ def votes_semaine(conn: sqlite3.Connection) -> list[VoteExprime]:
     """Votes de la dernière sélection, dans l'ordre de présentation : ceux qui se corrigent."""
     rows = conn.execute(
         """
-        SELECT b.deezer_track_id, b.kind, b.position, a.name, t.title, v.vote
-        FROM ballots b
-        JOIN votes v ON v.deezer_track_id = b.deezer_track_id
-        JOIN tracks t ON t.deezer_track_id = b.deezer_track_id
-        JOIN artists a ON a.deezer_artist_id = t.deezer_artist_id
-        WHERE b.selection_id = (SELECT MAX(selection_id) FROM selections)
+        SELECT b.titre_id, b.type, b.position, a.name, t.title, v.vote
+        FROM bulletins b
+        JOIN votes v ON v.titre_id = b.titre_id
+        JOIN titres t ON t.titre_id = b.titre_id
+        JOIN artistes a ON a.artiste_id = t.artiste_id
+        WHERE b.tirage_id = (SELECT MAX(tirage_id) FROM tirages)
         ORDER BY b.position
         """
     ).fetchall()
@@ -112,15 +112,15 @@ def enregistrer_vote(conn: sqlite3.Connection, track_id: int, vote: str, now: st
     """
     with conn:
         row = conn.execute(
-            "SELECT kind FROM ballots WHERE deezer_track_id = ? "
-            "AND selection_id = (SELECT MAX(selection_id) FROM selections)",
+            "SELECT type FROM bulletins WHERE titre_id = ? "
+            "AND tirage_id = (SELECT MAX(tirage_id) FROM tirages)",
             (track_id,),
         ).fetchone()
         if row is None:
             return False
         conn.execute(
-            "INSERT INTO votes VALUES (?, ?, ?, ?, 'page') "
-            "ON CONFLICT (deezer_track_id) DO UPDATE SET vote = excluded.vote",
+            "INSERT INTO votes VALUES (?, ?, ?, ?) "
+            "ON CONFLICT (titre_id) DO UPDATE SET vote = excluded.vote",
             (track_id, row[0], vote, now),
         )
     return True
@@ -175,8 +175,8 @@ def tirer_bulletins(
     if model_id is None:
         raise AucunModeleEnServiceError
     last_run = conn.execute(
-        "SELECT MAX(c.run_id) FROM scores s JOIN candidates c USING (deezer_track_id) "
-        "WHERE s.model_id = ?",
+        "SELECT MAX(c.fournee_id) FROM notes s JOIN candidats c USING (titre_id) "
+        "WHERE s.modele_id = ?",
         (model_id,),
     ).fetchone()[0]
     if last_run is None:
@@ -184,14 +184,14 @@ def tirer_bulletins(
     run_id = int(last_run)
     rows = conn.execute(
         """
-        SELECT s.deezer_track_id, s.score, s.accepted, c.run_id, t.deezer_artist_id, c.source
-        FROM scores s
-        JOIN candidates c ON c.deezer_track_id = s.deezer_track_id
-        JOIN tracks t ON t.deezer_track_id = s.deezer_track_id
-        WHERE s.model_id = ?
-          AND s.deezer_track_id NOT IN (SELECT deezer_track_id FROM votes)
-          AND s.deezer_track_id NOT IN (SELECT deezer_track_id FROM ballots)
-        ORDER BY s.deezer_track_id
+        SELECT s.titre_id, s.score, s.retenu, c.fournee_id, t.artiste_id, c.source
+        FROM notes s
+        JOIN candidats c ON c.titre_id = s.titre_id
+        JOIN titres t ON t.titre_id = s.titre_id
+        WHERE s.modele_id = ?
+          AND s.titre_id NOT IN (SELECT titre_id FROM votes)
+          AND s.titre_id NOT IN (SELECT titre_id FROM bulletins)
+        ORDER BY s.titre_id
         """,
         (model_id,),
     ).fetchall()
@@ -205,8 +205,8 @@ def tirer_bulletins(
     # l'un ni l'autre n'a pas de coupure, donc pas de leçon.
     cuts: dict[str, float] = {}
     for source, lowest, any_floored in conn.execute(
-        "SELECT c.source, MIN(CASE WHEN s.accepted = 1 THEN s.score END), MAX(s.floored) "
-        "FROM scores s JOIN candidates c USING (deezer_track_id) WHERE c.run_id = ? "
+        "SELECT c.source, MIN(CASE WHEN s.retenu = 1 THEN s.score END), MAX(s.sous_plancher) "
+        "FROM notes s JOIN candidats c USING (titre_id) WHERE c.fournee_id = ? "
         "GROUP BY c.source",
         (run_id,),
     ):
@@ -221,23 +221,23 @@ def tirer_bulletins(
     examined = {int(r[4]) for r in rows if int(r[0]) in exam} | {
         int(r[0])
         for r in conn.execute(
-            "SELECT t.deezer_artist_id FROM ballots b JOIN tracks t USING (deezer_track_id) "
-            "WHERE b.kind = 'exam'"
+            "SELECT t.artiste_id FROM bulletins b JOIN titres t USING (titre_id) "
+            "WHERE b.type = 'examen'"
         )
     }
     lesson = _pick_lessons(rows, cuts, examined, n_lesson)
-    chosen = [(t, "exam") for t in exam] + [(t, "lesson") for t in lesson]
+    chosen = [(t, "examen") for t in exam] + [(t, "lecon") for t in lesson]
     if not chosen:
         return Tirage(None, model_id, run_id, sum(map(len, families.values())), [], [])
     positions = rng.permutation(len(chosen))
     with conn:
         cur = conn.execute(
-            "INSERT INTO selections (selected_at, model_id) VALUES (?, ?)", (now, model_id)
+            "INSERT INTO tirages (selected_at, modele_id) VALUES (?, ?)", (now, model_id)
         )
         selection_id = cur.lastrowid
         assert selection_id is not None
         conn.executemany(
-            "INSERT INTO ballots VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO bulletins VALUES (?, ?, ?, ?, ?)",
             [
                 (tid, selection_id, kind, int(p), int(tid in retained))
                 for (tid, kind), p in zip(chosen, positions, strict=True)

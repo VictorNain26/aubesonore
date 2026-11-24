@@ -120,24 +120,22 @@ def test_acquire_prepares_verified_files_and_retries_failures(
     again = a_telecharger(conn, CFG).tids
     assert ok not in again and wrong in again and set(missing) <= set(again)
     _pass(conn, tmp_path, set(), 2)
-    rows = dict(conn.execute("SELECT deezer_track_id, attempts FROM acquisitions").fetchall())
+    rows = dict(conn.execute("SELECT titre_id, attempts FROM telechargements").fetchall())
     assert rows[wrong] == 2 and rows[ok] == 1
     assert wrong not in a_telecharger(conn, CFG).tids  # abandonné après tentatives_max
 
 
 def _artist(conn: Any, tid: int) -> int:
-    row = conn.execute(
-        "SELECT deezer_artist_id FROM tracks WHERE deezer_track_id = ?", (tid,)
-    ).fetchone()
+    row = conn.execute("SELECT artiste_id FROM titres WHERE titre_id = ?", (tid,)).fetchone()
     return int(row[0])
 
 
 @pytest.mark.parametrize(
     ("origin", "categorie"),
     [
-        ("decouverte", "decouvertes"),
-        ("decouverte", "fond"),
-        ("decouverte", "repos"),
+        ("telecharge", "decouvertes"),
+        ("telecharge", "fond"),
+        ("telecharge", "repos"),
         ("repere", "reperes"),
     ],
 )
@@ -156,7 +154,7 @@ def test_one_title_per_artist_enters_and_the_next_waits_its_turn(
     # Le premier artiste a désormais un titre à l'antenne : son retenu attend.
     on_air = artists[0]
     other = conn.execute(
-        "SELECT deezer_track_id FROM tracks WHERE deezer_artist_id = ? AND deezer_track_id != ?",
+        "SELECT titre_id FROM titres WHERE artiste_id = ? AND titre_id != ?",
         (on_air, first.tids[0]),
     ).fetchone()[0]
     conn.execute(
@@ -247,8 +245,8 @@ def test_a_title_voted_no_is_never_acquired(tmp_path: Path, fake_audio: dict[int
     conn = make_model_db(tmp_path)
     serve_scores(conn)
     first, second = a_telecharger(conn, CFG).tids[:2]
-    add_vote(conn, first, "exam", "non")
-    add_vote(conn, second, "lesson", "non")
+    add_vote(conn, first, "examen", "non")
+    add_vote(conn, second, "lecon", "non")
     left = a_telecharger(conn, CFG).tids
     assert first not in left and second not in left and len(left) == 4
 
@@ -266,7 +264,7 @@ def test_missing_cover_keeps_the_verified_file(
 
 
 def _no_attempt_recorded(conn: Any) -> bool:
-    return conn.execute("SELECT COUNT(*) FROM acquisitions").fetchone()[0] == 0
+    return conn.execute("SELECT COUNT(*) FROM telechargements").fetchone()[0] == 0
 
 
 @pytest.mark.parametrize(
@@ -330,8 +328,8 @@ def test_titles_missing_from_a_partial_index_are_not_attempts(
         interrupted,
     )
     assert (rep.n_ready, rep.n_unindexed, rep.n_attempted) == (1, 3, 1)
-    rows = conn.execute("SELECT deezer_track_id, status FROM acquisitions").fetchall()
-    assert [tuple(r) for r in rows] == [(first, "ready")]
+    rows = conn.execute("SELECT titre_id, status FROM telechargements").fetchall()
+    assert [tuple(r) for r in rows] == [(first, "pret")]
 
 
 def test_deezer_outage_still_cleans_the_pass_folder(
@@ -373,5 +371,5 @@ def test_two_titles_with_the_same_sockseek_key_do_not_loop(
 
     rep = _pass(conn, tmp_path, {first, second}, 1, SameKey())
     assert rep.failures["doublon d'artiste, titre et durée"] == 1
-    status = dict(conn.execute("SELECT deezer_track_id, status FROM acquisitions").fetchall())
-    assert status[first] == "ready" and status[second] == "failed"
+    status = dict(conn.execute("SELECT titre_id, status FROM telechargements").fetchall())
+    assert status[first] == "pret" and status[second] == "echec"

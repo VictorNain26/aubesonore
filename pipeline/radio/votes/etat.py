@@ -46,20 +46,20 @@ def charger_etat(
         exam_auc, n_exam = auc(exam.labels, predict(current[1], table, exam.rows)), len(exam.rows)
     page = conn.execute(
         """
-        SELECT v.vote = 'oui' FROM votes v JOIN ballots b USING (deezer_track_id)
-        WHERE v.kind = 'exam' AND b.retained = 1 AND v.vote != 'passer'
+        SELECT v.vote = 'oui' FROM votes v JOIN bulletins b USING (titre_id)
+        WHERE v.type = 'examen' AND b.retenu = 1 AND v.vote != 'passer'
         ORDER BY v.voted_at DESC LIMIT ?
         """,
         (fenetre_examen,),
     ).fetchall()
     last_exam = conn.execute(
-        "SELECT MAX(voted_at) FROM votes WHERE kind = 'exam' AND vote != 'passer'"
+        "SELECT MAX(voted_at) FROM votes WHERE type = 'examen' AND vote != 'passer'"
     ).fetchone()[0]
     since = (now - timedelta(days=jours_silence)).isoformat()
     recent = conn.execute(
         "SELECT COUNT(*) FROM votes WHERE voted_at >= ? AND vote != 'passer'", (since,)
     ).fetchone()[0]
-    last_selection = conn.execute("SELECT MAX(selected_at) FROM selections").fetchone()[0]
+    last_selection = conn.execute("SELECT MAX(selected_at) FROM tirages").fetchone()[0]
     return Etat(
         model_id=None if current is None else current[0],
         exam_auc=exam_auc,

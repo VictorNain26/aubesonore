@@ -107,18 +107,18 @@ def load_titres(conn: sqlite3.Connection) -> list[Titre]:
     encore mesuré est neutre (0,5). L'empreinte de style est celle de `empreintes`."""
     rows = conn.execute(
         """
-        SELECT n.deezer_track_id, COALESCE(t.deezer_artist_id, -n.deezer_track_id), n.categorie,
+        SELECT n.titre_id, COALESCE(t.artiste_id, -n.titre_id), n.categorie,
                n.path, n.song_id, f.status = 'ok',
-               f.arousal, f.danceability, f.bpm,
-               f.arousal_start, f.danceability_start, f.bpm_start,
-               f.arousal_end, f.danceability_end, f.bpm_end, n.since, f.duration_s, m.embedding
+               f.energie, f.danceability, f.tempo,
+               f.energie_start, f.danceability_start, f.tempo_start,
+               f.energie_end, f.danceability_end, f.tempo_end, n.since, f.duration_s, m.embedding
         FROM antenne n
-        LEFT JOIN tracks t USING (deezer_track_id)
-        LEFT JOIN track_features f USING (deezer_track_id)
-        LEFT JOIN track_measures m
-               ON m.deezer_track_id = n.deezer_track_id AND m.status = 'ok' AND m.model = ?
+        LEFT JOIN titres t USING (titre_id)
+        LEFT JOIN mesures f USING (titre_id)
+        LEFT JOIN empreintes m
+               ON m.titre_id = n.titre_id AND m.status = 'ok' AND m.model = ?
         WHERE n.categorie != 'repos'
-        ORDER BY n.deezer_track_id
+        ORDER BY n.titre_id
         """,
         (MODEL_TAG,),
     ).fetchall()

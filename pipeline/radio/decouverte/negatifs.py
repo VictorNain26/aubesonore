@@ -56,7 +56,7 @@ def importer_negatifs(
     per_artist: int,
     now: str,
 ) -> RapportNegatifs:
-    done = {r[0] for r in conn.execute("SELECT deezer_artist_id FROM negative_artists")}
+    done = {r[0] for r in conn.execute("SELECT artiste_id FROM artistes_negatifs")}
     library_ids = {a.deezer_artist_id for a in artistes_bibliotheque(conn)}
     rep = RapportNegatifs(n_artists=len(negatives))
     for n in negatives:
@@ -74,8 +74,8 @@ def importer_negatifs(
             continue
         kept = garder_titres(top, n.deezer_id)
         with conn:
-            added = ajouter_titres(conn, n.deezer_id, n.name, kept, "negative", now)
-            conn.execute("INSERT INTO negative_artists VALUES (?, ?)", (n.deezer_id, n.category))
+            added = ajouter_titres(conn, n.deezer_id, n.name, kept, "negatif", now)
+            conn.execute("INSERT INTO artistes_negatifs VALUES (?, ?)", (n.deezer_id, n.category))
         rep.n_added += len(added)
         rep.n_duplicates += len(kept) - len(added)
         rep.n_filtered += len(top) - len(kept)

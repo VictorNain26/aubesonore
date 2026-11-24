@@ -47,9 +47,9 @@ class FakeEmbedder:
 
 def db(tmp_path: Path, n: int = 5) -> sqlite3.Connection:
     conn = connect(tmp_path / "radio.db")
-    conn.execute("INSERT INTO artists (deezer_artist_id, name) VALUES (1, 'Knife')")
+    conn.execute("INSERT INTO artistes (artiste_id, name) VALUES (1, 'Knife')")
     conn.executemany(
-        "INSERT INTO tracks VALUES (?, 1, 'T', 'candidate', ?, 'd')",
+        "INSERT INTO titres VALUES (?, 1, 'T', 'candidat', ?, 'd')",
         [(i, f"k{i}") for i in range(1, n + 1)],
     )
     conn.commit()
@@ -57,7 +57,7 @@ def db(tmp_path: Path, n: int = 5) -> sqlite3.Connection:
 
 
 def rows(conn: sqlite3.Connection) -> dict[int, str]:
-    return {r["deezer_track_id"]: r["status"] for r in conn.execute("SELECT * FROM track_measures")}
+    return {r["titre_id"]: r["status"] for r in conn.execute("SELECT * FROM empreintes")}
 
 
 def test_statuses(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
@@ -76,8 +76,8 @@ def test_statuses(tmp_path: Path, caplog: pytest.LogCaptureFixture) -> None:
     rep = calculer_empreintes(conn, dz, emb, "d")
     assert (rep.n_todo, rep.n_ok, rep.n_no_preview, rep.n_gone) == (5, 2, 1, 1)
     assert (rep.n_audio_failed, rep.errors) == (0, ["Knife — T (DeezerError)"])
-    assert rows(conn) == {1: "ok", 2: "no_preview", 3: "gone", 5: "ok"}
-    blob = conn.execute("SELECT embedding, model FROM track_measures WHERE deezer_track_id = 1")
+    assert rows(conn) == {1: "ok", 2: "sans_extrait", 3: "disparu", 5: "ok"}
+    blob = conn.execute("SELECT embedding, model FROM empreintes WHERE titre_id = 1")
     b, model = blob.fetchone()
     assert np.array_equal(from_blob(b), VEC) and model == MODEL_TAG
     dump = "\n".join(conn.iterdump())
@@ -94,8 +94,8 @@ def test_failed_audio(tmp_path: Path) -> None:
     )
     conn2 = db(tmp_path / "b", n=1)
     calculer_empreintes(conn2, FakeDeezer({1: (dt(1), URL)}), FakeEmbedder(None), "d")
-    assert rows(conn) == {1: "audio_failed"}
-    assert rows(conn2) == {1: "audio_failed"}
+    assert rows(conn) == {1: "audio_rate"}
+    assert rows(conn2) == {1: "audio_rate"}
 
 
 def test_unavailable_commits_work_done_and_names_track(

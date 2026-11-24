@@ -56,13 +56,13 @@ def make_library(directory: Path) -> sqlite3.Connection:
         "d1",
     )
     conn.executemany(
-        "INSERT INTO deezer_matches VALUES (?, ?, ?, ?, ?, 'd1')",
+        "INSERT INTO rapprochements VALUES (?, ?, ?, ?, ?, 'd1')",
         [
-            ("1", "matched", None, 101, 83),
-            ("2", "matched", None, 102, 83),
-            ("3", "matched", None, 103, 83),
-            ("4", "matched", None, 104, 70),
-            ("5", "unmatched", "no_result", None, None),
+            ("1", "trouve", None, 101, 83),
+            ("2", "trouve", None, 102, 83),
+            ("3", "trouve", None, 103, 83),
+            ("4", "trouve", None, 104, 70),
+            ("5", "non_trouve", "no_result", None, None),
         ],
     )
     conn.commit()

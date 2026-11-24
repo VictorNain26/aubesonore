@@ -99,14 +99,14 @@ def _ready(conn: Any, tmp: Path, ids: list[int]) -> None:
         f = tmp / f"{tid}.mp3"
         f.write_bytes(b"audio")
         conn.execute(
-            "INSERT INTO acquisitions VALUES (?, 'ready', NULL, 1, ?, ?)", (tid, str(f), NOW)
+            "INSERT INTO telechargements VALUES (?, 'pret', NULL, 1, ?, ?)", (tid, str(f), NOW)
         )
     conn.commit()
 
 
 def _library_files(conn: Any) -> None:
-    conn.execute("UPDATE library_tracks SET file = '/media/plex/Musique/' || plex_key || '.flac'")
-    conn.execute("UPDATE library_tracks SET file = '/media/musique/x.flac' WHERE plex_key = 'p0-0'")
+    conn.execute("UPDATE bibliotheque SET file = '/media/plex/Musique/' || plex_key || '.flac'")
+    conn.execute("UPDATE bibliotheque SET file = '/media/musique/x.flac' WHERE plex_key = 'p0-0'")
     conn.commit()
 
 
@@ -167,7 +167,7 @@ def _on_air(
 def _categories(conn: Any) -> dict[int, tuple[str, str]]:
     return {
         int(r[0]): (str(r[1]), str(r[2]))
-        for r in conn.execute("SELECT deezer_track_id, categorie, path FROM antenne")
+        for r in conn.execute("SELECT titre_id, categorie, path FROM antenne")
     }
 
 
@@ -187,9 +187,7 @@ def test_publish_ready_files_and_references(tmp_path: Path, no_tools: list[Tags]
     assert not any((tmp_path / f"{t}.mp3").exists() for t in ready)  # effacés après dépôt
     cats = dict(conn.execute("SELECT categorie, COUNT(*) FROM antenne GROUP BY 1").fetchall())
     assert cats == {"decouvertes": 8, "reperes": 2}
-    refs = [
-        r[0] for r in conn.execute("SELECT deezer_track_id FROM antenne WHERE origin = 'repere'")
-    ]
+    refs = [r[0] for r in conn.execute("SELECT titre_id FROM antenne WHERE provenance = 'repere'")]
     assert 100000 not in refs  # fichier hors de la racine Plex : jamais lu
     assert sorted(t.deezer_id for t in no_tools) == sorted(refs)
     assert all(t.album == f"Album {t.deezer_id}" and t.cover == b"jpeg" for t in no_tools)
@@ -202,7 +200,7 @@ def test_a_reference_never_gives_an_artist_a_second_title(
     # Breaks if a reference is drawn for an artist who already has a title on air.
     conn = make_model_db(tmp_path)
     _library_files(conn)
-    one_each = [(100000 + 10 * a, "decouverte", "fond") for a in range(12)]
+    one_each = [(100000 + 10 * a, "telecharge", "fond") for a in range(12)]
     station = _on_air(conn, one_each, LATER)
 
     rep = _run(conn, station, fond=12, reperes=12)
@@ -215,8 +213,8 @@ def test_a_fresh_pick_enters_as_a_fresh_pick(tmp_path: Path, no_tools: None) -> 
     conn = make_model_db(tmp_path)
     serve_scores(conn)
     conn.execute(
-        "UPDATE candidates SET source = 'hypem', seed_artist_id = NULL, "
-        "neighbour_artist_id = NULL, detail = 'Blog' WHERE deezer_track_id = 200600"
+        "UPDATE candidats SET source = 'hypem', seed_artist_id = NULL, "
+        "neighbour_artist_id = NULL, detail = 'Blog' WHERE titre_id = 200600"
     )
     _ready(conn, tmp_path, [200600, 200700])
     _run(conn, FakeStation())
@@ -228,7 +226,7 @@ def test_a_fresh_pick_enters_as_a_fresh_pick(tmp_path: Path, no_tools: None) -> 
 
 def test_reconcile_forgets_missing_and_counts_unknown(tmp_path: Path, no_tools: None) -> None:
     conn = make_model_db(tmp_path)
-    _on_air(conn, [(5, "decouverte", "decouvertes")], LATER)
+    _on_air(conn, [(5, "telecharge", "decouvertes")], LATER)
     station = FakeStation([Media(2, "u", "antenne/9.mp3"), Media(3, "v", "repos/8.mp3")])
     rep = _run(conn, station)
     assert (rep.n_forgotten, rep.n_unknown, rep.n_total) == (1, 2, 0)
@@ -240,12 +238,12 @@ def test_after_its_first_stay_the_best_rests_and_the_rest_leaves(
 ) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    best = [int(r[0]) for r in conn.execute("SELECT deezer_track_id FROM scores ORDER BY -score")]
+    best = [int(r[0]) for r in conn.execute("SELECT titre_id FROM notes ORDER BY -score")]
     ids = best[:10]
     station = _on_air(
-        conn, [(t, "decouverte", "decouvertes") for t in ids], LATER - timedelta(weeks=7)
+        conn, [(t, "telecharge", "decouvertes") for t in ids], LATER - timedelta(weeks=7)
     )
-    add_vote(conn, ids[9], "exam", "oui")  # la moins bien notée, mais aimée
+    add_vote(conn, ids[9], "examen", "oui")  # la moins bien notée, mais aimée
     station.busy = {f"s{ids[5]}"}
 
     rep = _run(conn, station, part_promue=0.2)
@@ -265,11 +263,11 @@ def test_a_promotion_never_gives_an_artist_a_second_title(tmp_path: Path, no_too
     # air (here a title in play, which the dedup leaves for the next pass).
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    station = _on_air(conn, [(200001, "decouverte", "fond")], LATER)
+    station = _on_air(conn, [(200001, "telecharge", "fond")], LATER)
     station.busy = {"s200001"}
     cohort = [200003, 200103, 200203, 200303]
     old = _on_air(
-        conn, [(t, "decouverte", "decouvertes") for t in cohort], LATER - timedelta(weeks=7)
+        conn, [(t, "telecharge", "decouvertes") for t in cohort], LATER - timedelta(weeks=7)
     )
     station.media += old.media
 
@@ -291,25 +289,25 @@ def test_an_artist_keeps_one_title_the_liked_then_in_rotation_then_best_scored(
     conn = make_model_db(tmp_path)
     serve_scores(conn)
     rows = [
-        (200000, "decouverte", "fond"),
-        (200001, "decouverte", "decouvertes"),
-        (200002, "decouverte", "decouvertes"),
-        (200100, "decouverte", "fond"),
-        (200101, "decouverte", "decouvertes"),
-        (200102, "decouverte", "decouvertes"),
-        (200200, "decouverte", "decouvertes"),
-        (200201, "decouverte", "fond"),
+        (200000, "telecharge", "fond"),
+        (200001, "telecharge", "decouvertes"),
+        (200002, "telecharge", "decouvertes"),
+        (200100, "telecharge", "fond"),
+        (200101, "telecharge", "decouvertes"),
+        (200102, "telecharge", "decouvertes"),
+        (200200, "telecharge", "decouvertes"),
+        (200201, "telecharge", "fond"),
         (100000, "repere", "reperes"),
         (100001, "repere", "reperes"),
     ]
     station = _on_air(conn, rows, LATER)
-    add_vote(conn, 200000, "exam", "oui")
+    add_vote(conn, 200000, "examen", "oui")
     station.busy = {"s200201"}
     best = max(
         (200101, 200102),
-        key=lambda t: conn.execute(
-            "SELECT score FROM scores WHERE deezer_track_id = ?", (t,)
-        ).fetchone()[0],
+        key=lambda t: conn.execute("SELECT score FROM notes WHERE titre_id = ?", (t,)).fetchone()[
+            0
+        ],
     )
 
     rep = _run(conn, station, fond=10, reperes=2)
@@ -324,16 +322,16 @@ def test_an_artist_keeps_one_title_the_liked_then_in_rotation_then_best_scored(
         f"antenne/{200101 + 200102 - best}.mp3",
         "antenne/100001.mp3",
     }
-    left = [r[0] for r in conn.execute("SELECT deezer_track_id FROM repere_sorties")]
+    left = [r[0] for r in conn.execute("SELECT titre_id FROM reperes_sortis")]
     assert left == [100001]  # un repère sorti n'est pas retiré avant son repos
 
 
 def test_a_young_title_stays_whatever_its_score(tmp_path: Path, no_tools: None) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    worst = [int(r[0]) for r in conn.execute("SELECT deezer_track_id FROM scores ORDER BY score")]
+    worst = [int(r[0]) for r in conn.execute("SELECT titre_id FROM notes ORDER BY score")]
     station = _on_air(
-        conn, [(t, "decouverte", "decouvertes") for t in worst[:3]], LATER - timedelta(weeks=5)
+        conn, [(t, "telecharge", "decouvertes") for t in worst[:3]], LATER - timedelta(weeks=5)
     )
     rep = _run(conn, station)
     assert (rep.n_promoted, rep.n_ended, rep.n_total) == (0, 0, 3)
@@ -345,20 +343,20 @@ def test_platooning_rests_the_tired_and_brings_back_the_longest_rested(
     conn = make_model_db(tmp_path)
     tired = _on_air(
         conn,
-        [(200000, "decouverte", "fond"), (200300, "decouverte", "fond")],
+        [(200000, "telecharge", "fond"), (200300, "telecharge", "fond")],
         LATER - timedelta(weeks=7),
     )
     rested = _on_air(
         conn,
-        [(200100, "decouverte", "repos"), (200400, "decouverte", "repos")],
+        [(200100, "telecharge", "repos"), (200400, "telecharge", "repos")],
         LATER - timedelta(weeks=13),
         folder="repos",
     )
     conn.execute(
-        "UPDATE antenne SET since = ? WHERE deezer_track_id = 200400",
+        "UPDATE antenne SET since = ? WHERE titre_id = 200400",
         ((LATER - timedelta(weeks=20)).isoformat(),),
     )
-    resting = _on_air(conn, [(200200, "decouverte", "repos")], LATER - timedelta(weeks=5), "repos")
+    resting = _on_air(conn, [(200200, "telecharge", "repos")], LATER - timedelta(weeks=5), "repos")
     station = FakeStation(tired.media + rested.media + resting.media)
 
     rep = _run(conn, station, fond=1)
@@ -375,7 +373,7 @@ def test_a_recurrent_expires_eighteen_months_after_its_first_play(
     tmp_path: Path, no_tools: None
 ) -> None:
     conn = make_model_db(tmp_path)
-    station = _on_air(conn, [(200000, "decouverte", "fond")], LATER - timedelta(weeks=2))
+    station = _on_air(conn, [(200000, "telecharge", "fond")], LATER - timedelta(weeks=2))
     conn.execute(
         "UPDATE antenne SET published_at = ?", ((LATER - timedelta(weeks=79)).isoformat(),)
     )
@@ -389,7 +387,7 @@ def test_references_rotate_and_rest_before_coming_back(
 ) -> None:
     conn = make_model_db(tmp_path)
     _library_files(conn)
-    conn.execute("UPDATE library_tracks SET file = NULL WHERE plex_key NOT IN ('p1-0', 'p1-1')")
+    conn.execute("UPDATE bibliotheque SET file = NULL WHERE plex_key NOT IN ('p1-0', 'p1-1')")
     station = _on_air(conn, [(100010, "repere", "reperes")], LATER - timedelta(weeks=7))
 
     rep = _run(conn, station, reperes=6)
@@ -397,14 +395,14 @@ def test_references_rotate_and_rest_before_coming_back(
     # Le repère fatigué sort ; seul l'autre titre lisible peut entrer, l'ancien se repose.
     assert rep.n_references_out == 1 and station.deleted == ["antenne/100010.mp3"]
     assert [t.deezer_id for t in no_tools] == [100011]
-    left = conn.execute("SELECT deezer_track_id FROM repere_sorties").fetchall()
+    left = conn.execute("SELECT titre_id FROM reperes_sortis").fetchall()
     assert [r[0] for r in left] == [100010]
 
 
 def test_a_reference_is_read_only_under_the_plex_root(tmp_path: Path, no_tools: list[Tags]) -> None:
     # Breaks if a library path outside the Plex root, relative, or climbing out with `..` is read.
     conn = make_model_db(tmp_path)
-    conn.execute("UPDATE library_tracks SET file = NULL")
+    conn.execute("UPDATE bibliotheque SET file = NULL")
     files = {
         "p1-0": "/media/plex/Musique/p1-0.flac",
         "p2-0": "/media/musique/p2-0.flac",
@@ -412,7 +410,7 @@ def test_a_reference_is_read_only_under_the_plex_root(tmp_path: Path, no_tools: 
         "p4-0": "/media/plex/Musique/../../../etc/p4-0.flac",
     }
     conn.executemany(
-        "UPDATE library_tracks SET file = ? WHERE plex_key = ?", [(f, k) for k, f in files.items()]
+        "UPDATE bibliotheque SET file = ? WHERE plex_key = ?", [(f, k) for k, f in files.items()]
     )
     conn.commit()
 
@@ -439,8 +437,8 @@ def test_a_discovery_removed_from_antenna_is_never_republished(
     _ready(conn, tmp_path, [200000])
     station = FakeStation()
     assert _run(conn, station).n_published == 1
-    status = conn.execute("SELECT status, file FROM acquisitions").fetchone()
-    assert tuple(status) == ("published", None)
+    status = conn.execute("SELECT status, file FROM telechargements").fetchone()
+    assert tuple(status) == ("publie", None)
 
     station.media = []  # retiré dans l'interface d'AzuraCast, ou sorti en fin de séjour
     rep = _run(conn, station)
@@ -452,21 +450,21 @@ def test_voted_no_leaves_the_antenna_unless_busy(tmp_path: Path, no_tools: list[
     conn = make_model_db(tmp_path)
     serve_scores(conn)
     _library_files(conn)
-    rows = [(200000, "decouverte", "decouvertes"), (200001, "decouverte", "decouvertes")]
-    rows += [(200002, "decouverte", "decouvertes"), (100010, "repere", "reperes")]
+    rows = [(200000, "telecharge", "decouvertes"), (200001, "telecharge", "decouvertes")]
+    rows += [(200002, "telecharge", "decouvertes"), (100010, "repere", "reperes")]
     station = _on_air(conn, rows, LATER)
     for tid in (200000, 200001, 100010):
-        add_vote(conn, tid, "exam", "non")
+        add_vote(conn, tid, "examen", "non")
     station.busy = {"s200001"}
     # Seuls deux titres de la bibliothèque sont lisibles, dont le repère voté « non ».
-    conn.execute("UPDATE library_tracks SET file = NULL WHERE plex_key NOT IN ('p1-0', 'p1-1')")
+    conn.execute("UPDATE bibliotheque SET file = NULL WHERE plex_key NOT IN ('p1-0', 'p1-1')")
     conn.commit()
 
     rep = _run(conn, station, reperes=1)
 
     assert sorted(station.deleted) == ["antenne/100010.mp3", "antenne/200000.mp3"]
     assert rep.n_voted_out == 2
-    on_air = {r[0] for r in conn.execute("SELECT deezer_track_id FROM antenne")}
+    on_air = {r[0] for r in conn.execute("SELECT titre_id FROM antenne")}
     assert {200001, 200002} <= on_air and not on_air & {200000, 100010}
     assert [t.deezer_id for t in no_tools] == [100011]  # le repère voté « non » n'est pas repris
 
@@ -477,13 +475,13 @@ def test_voted_no_leaves_the_antenna_unless_busy(tmp_path: Path, no_tools: list[
 def test_a_ready_file_voted_no_is_never_published(tmp_path: Path, no_tools: None) -> None:
     conn = make_model_db(tmp_path)
     _ready(conn, tmp_path, [200000])
-    add_vote(conn, 200000, "lesson", "non")
+    add_vote(conn, 200000, "lecon", "non")
     station = FakeStation()
     rep = _run(conn, station)
     assert (rep.n_voted_out, rep.n_published, rep.errors) == (1, 0, [])
     assert station.media == [] and not (tmp_path / "200000.mp3").exists()
-    row = conn.execute("SELECT status, reason FROM acquisitions").fetchone()
-    assert tuple(row) == ("failed", "voté non")
+    row = conn.execute("SELECT status, reason FROM telechargements").fetchone()
+    assert tuple(row) == ("echec", "voté non")
 
 
 def test_a_failed_reference_is_skipped_without_failing_the_pass(
@@ -514,7 +512,7 @@ def test_reference_gone_from_deezer_or_without_cover(tmp_path: Path, no_tools: l
     conn = make_model_db(tmp_path)
     serve_scores(conn)
     _library_files(conn)
-    pool = [int(r[0]) for r in conn.execute("SELECT deezer_track_id FROM deezer_matches")]
+    pool = [int(r[0]) for r in conn.execute("SELECT titre_id FROM rapprochements")]
     rep = _run(conn, FakeStation(), FakeDeezer(frozenset(pool[:20]), no_cover=True), reperes=24)
     assert rep.errors == []
     assert rep.n_references == rep.n_references_no_cover
