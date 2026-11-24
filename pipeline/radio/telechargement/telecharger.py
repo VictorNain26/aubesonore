@@ -52,14 +52,14 @@ def a_telecharger(conn: sqlite3.Connection, cfg: TelechargementConfig) -> ATelec
     une nouveauté vieillit, puis les mieux notés ; un seul par artiste libre."""
     rows = conn.execute(
         """
-        SELECT s.deezer_track_id, t.deezer_artist_id FROM scores s
-        JOIN candidates c USING (deezer_track_id)
-        JOIN tracks t USING (deezer_track_id)
-        LEFT JOIN acquisitions a USING (deezer_track_id)
-        WHERE s.accepted = 1
-          AND (a.deezer_track_id IS NULL OR (a.status = 'failed' AND a.attempts < ?))
-          AND s.deezer_track_id NOT IN (SELECT deezer_track_id FROM votes WHERE vote = 'non')
-        ORDER BY c.run_id DESC, s.score DESC, s.deezer_track_id
+        SELECT s.titre_id, t.artiste_id FROM notes s
+        JOIN candidats c USING (titre_id)
+        JOIN titres t USING (titre_id)
+        LEFT JOIN telechargements a USING (titre_id)
+        WHERE s.retenu = 1
+          AND (a.titre_id IS NULL OR (a.status = 'echec' AND a.attempts < ?))
+          AND s.titre_id NOT IN (SELECT titre_id FROM votes WHERE vote = 'non')
+        ORDER BY c.fournee_id DESC, s.score DESC, s.titre_id
         """,
         (cfg.tentatives_max,),
     ).fetchall()
@@ -68,10 +68,10 @@ def a_telecharger(conn: sqlite3.Connection, cfg: TelechargementConfig) -> ATelec
         int(r[0])
         for r in conn.execute(
             """
-            SELECT t.deezer_artist_id FROM antenne n JOIN tracks t USING (deezer_track_id)
+            SELECT t.artiste_id FROM antenne n JOIN titres t USING (titre_id)
             UNION
-            SELECT t.deezer_artist_id FROM acquisitions a JOIN tracks t USING (deezer_track_id)
-            WHERE a.status = 'ready'
+            SELECT t.artiste_id FROM telechargements a JOIN titres t USING (titre_id)
+            WHERE a.status = 'pret'
             """
         )
     }
@@ -92,12 +92,12 @@ def _save(
     with conn:
         conn.execute(
             """
-            INSERT INTO acquisitions VALUES (?, ?, ?, 1, ?, ?)
-            ON CONFLICT (deezer_track_id) DO UPDATE SET status = excluded.status,
+            INSERT INTO telechargements VALUES (?, ?, ?, 1, ?, ?)
+            ON CONFLICT (titre_id) DO UPDATE SET status = excluded.status,
                 reason = excluded.reason, attempts = attempts + 1, file = excluded.file,
                 attempted_at = excluded.attempted_at
             """,
-            (tid, "ready" if file else "failed", reason, str(file) if file else None, now),
+            (tid, "pret" if file else "echec", reason, str(file) if file else None, now),
         )
 
 

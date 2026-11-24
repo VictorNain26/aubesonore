@@ -80,21 +80,21 @@ def predict(model: Pipeline, table: TableEmpreintes, rows: Ints) -> Floats:
 
 def _serving_row(conn: sqlite3.Connection) -> sqlite3.Row | None:
     row: sqlite3.Row | None = conn.execute(
-        "SELECT model_id, file FROM models WHERE promoted = 1 ORDER BY model_id DESC LIMIT 1"
+        "SELECT modele_id, file FROM modeles WHERE promoted = 1 ORDER BY modele_id DESC LIMIT 1"
     ).fetchone()
     return row
 
 
 def id_en_service(conn: sqlite3.Connection) -> int | None:
     row = _serving_row(conn)
-    return None if row is None else int(row["model_id"])
+    return None if row is None else int(row["modele_id"])
 
 
 def en_service(conn: sqlite3.Connection, models_dir: Path) -> tuple[int, Pipeline] | None:
     row = _serving_row(conn)
     if row is None:
         return None
-    return int(row["model_id"]), joblib.load(models_dir / row["file"])
+    return int(row["modele_id"]), joblib.load(models_dir / row["file"])
 
 
 @dataclass(frozen=True)
@@ -117,19 +117,18 @@ def ecrire_notes(
     par famille, les `keep[famille]` mieux notés : découvertes et nouveautés ne se disputent pas
     la même coupure. Un titre noté sous `floor[famille]` n'est jamais retenu, même quota restant :
     il ne réserve pas son artiste, et le premier de chaque artiste ainsi écarté alors que le quota
-    restait est marqué `floored`, pour le rapport. Un artiste n'entre qu'un titre par fournée,
+    restait est marqué `sous_plancher`, pour le rapport. Un artiste n'entre qu'un titre par fournée,
     toutes familles confondues : son mieux noté (Release Radar,
     docs/recherches/2026-10-02-programmation.md §1). Un candidat entré depuis dans la
     bibliothèque n'est plus une découverte."""
     group_of = {
         int(t): (int(run), FAMILY[str(source)])
-        for t, run, source in conn.execute("SELECT deezer_track_id, run_id, source FROM candidates")
+        for t, run, source in conn.execute("SELECT titre_id, fournee_id, source FROM candidats")
     }
     artist_of = {
         int(t): int(a)
         for t, a in conn.execute(
-            "SELECT deezer_track_id, deezer_artist_id FROM tracks JOIN candidates "
-            "USING (deezer_track_id)"
+            "SELECT titre_id, artiste_id FROM titres JOIN candidats USING (titre_id)"
         )
     }
     rows = np.array(
@@ -138,7 +137,7 @@ def ecrire_notes(
             for i, (t, origin) in enumerate(
                 zip(table.track_ids.tolist(), table.origins, strict=True)
             )
-            if t in group_of and origin == "candidate"
+            if t in group_of and origin == "candidat"
         ],
         dtype=np.int64,
     )
@@ -168,9 +167,9 @@ def ecrire_notes(
             left[family] -= 1
             taken.add(artist)
     with conn:
-        conn.execute("DELETE FROM scores")
+        conn.execute("DELETE FROM notes")
         conn.executemany(
-            "INSERT INTO scores VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO notes VALUES (?, ?, ?, ?, ?)",
             [
                 (int(table.track_ids[i]), model_id, float(s), int(a), int(f))
                 for i, s, a, f in zip(rows, scores, accepted, floored, strict=True)
@@ -181,9 +180,9 @@ def ecrire_notes(
 def derniere_fournee(conn: sqlite3.Connection) -> Fournee | None:
     row = conn.execute(
         """
-        SELECT c.run_id, COUNT(*), SUM(s.accepted), SUM(s.floored)
-        FROM scores s JOIN candidates c USING (deezer_track_id)
-        GROUP BY c.run_id ORDER BY c.run_id DESC LIMIT 1
+        SELECT c.fournee_id, COUNT(*), SUM(s.retenu), SUM(s.sous_plancher)
+        FROM notes s JOIN candidats c USING (titre_id)
+        GROUP BY c.fournee_id ORDER BY c.fournee_id DESC LIMIT 1
         """
     ).fetchone()
     return None if row is None else Fournee(int(row[0]), int(row[1]), int(row[2]), int(row[3]))
@@ -197,15 +196,14 @@ def votes_digest(conn: sqlite3.Connection) -> str:
     """Empreinte des votes qui comptent : un vote corrigé la change comme un vote de plus, alors
     que leur nombre, lui, ne bouge pas."""
     rows = conn.execute(
-        "SELECT deezer_track_id, kind, vote FROM votes WHERE vote != 'passer' "
-        "ORDER BY deezer_track_id"
+        "SELECT titre_id, type, vote FROM votes WHERE vote != 'passer' ORDER BY titre_id"
     ).fetchall()
     return hashlib.sha256(json.dumps([tuple(r) for r in rows]).encode()).hexdigest()
 
 
 def entraine_sur(conn: sqlite3.Connection) -> str | None:
     """Empreinte des votes vus par le dernier entraînement (None avant qu'elle soit gardée)."""
-    row = conn.execute("SELECT params FROM models ORDER BY model_id DESC LIMIT 1").fetchone()
+    row = conn.execute("SELECT params FROM modeles ORDER BY modele_id DESC LIMIT 1").fetchone()
     return None if row is None else json.loads(row[0]).get("votes_digest")
 
 
@@ -262,7 +260,7 @@ def entrainer(conn: sqlite3.Connection, models_dir: Path, cfg: GoutConfig, now: 
     models_dir.mkdir(parents=True, exist_ok=True)
     with conn:
         model_id = conn.execute(
-            "INSERT INTO models (trained_at, file, promoted, verdict, params, metrics) "
+            "INSERT INTO modeles (trained_at, file, promoted, verdict, params, metrics) "
             "VALUES (?, '', ?, ?, ?, ?)",
             (now, int(refusal is None), verdict, json.dumps(params), json.dumps(metrics)),
         ).lastrowid
@@ -270,7 +268,7 @@ def entrainer(conn: sqlite3.Connection, models_dir: Path, cfg: GoutConfig, now: 
         file = f"modele-{model_id:04d}.joblib"
         # Dans la transaction : si l'écriture du fichier échoue, la ligne n'existe pas.
         joblib.dump(model, models_dir / file)
-        conn.execute("UPDATE models SET file = ? WHERE model_id = ?", (file, model_id))
+        conn.execute("UPDATE modeles SET file = ? WHERE modele_id = ?", (file, model_id))
     return RapportGout(
         model_id=model_id,
         promoted=refusal is None,
@@ -311,14 +309,14 @@ def favoris_retenus(conn: sqlite3.Connection, models_dir: Path) -> FavorisRetenu
     row = conn.execute(
         """
         WITH latest AS (
-            SELECT s.score, s.accepted FROM scores s JOIN candidates c USING (deezer_track_id)
-            WHERE c.source = 'voisin' AND c.run_id = (SELECT MAX(run_id) FROM candidates)
-        ), cut AS (SELECT MIN(score) AS score FROM latest WHERE accepted = 1)
+            SELECT s.score, s.retenu FROM notes s JOIN candidats c USING (titre_id)
+            WHERE c.source = 'voisin' AND c.fournee_id = (SELECT MAX(fournee_id) FROM candidats)
+        ), cut AS (SELECT MIN(score) AS score FROM latest WHERE retenu = 1)
         SELECT cut.score, AVG(latest.score >= cut.score) FROM latest, cut
         """
     ).fetchone()
     table = charger_empreintes(conn)
-    rows = np.array([i for i, o in enumerate(table.origins) if o == "favorite"], dtype=np.int64)
+    rows = np.array([i for i, o in enumerate(table.origins) if o == "favori"], dtype=np.int64)
     if current is None or row[0] is None or len(rows) == 0:
         return None
     scores = predict(current[1], table, rows)

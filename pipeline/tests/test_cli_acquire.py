@@ -33,7 +33,7 @@ def _env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, editorial: str = "") -
 
 
 def _stage(db: Path) -> tuple[int, str] | None:
-    rows = sqlite3.connect(db).execute("SELECT ok, counts FROM stage_reports").fetchall()
+    rows = sqlite3.connect(db).execute("SELECT ok, counts FROM rapports").fetchall()
     assert len(rows) <= 1  # une seule ligne par étape, même quand elle enregistre puis échoue
     return None if not rows else (int(rows[0][0]), str(rows[0][1]))
 
@@ -110,7 +110,7 @@ def test_an_unexpected_error_is_reported_without_its_message(
 def _stages(db: Path, rows: list[tuple[str, str, int, str]]) -> None:
     conn = sqlite3.connect(db)
     conn.executemany(
-        "INSERT INTO stage_reports (invocation, stage, finished_at, ok, counts) "
+        "INSERT INTO rapports (invocation, stage, finished_at, ok, counts) "
         "VALUES (?, ?, 'd', ?, ?)",
         rows,
     )

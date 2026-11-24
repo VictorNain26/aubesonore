@@ -65,7 +65,7 @@ class FakeLastfm:
 
 
 def status(conn: sqlite3.Connection) -> str:
-    return str(conn.execute("SELECT status FROM discover_runs").fetchone()[0])
+    return str(conn.execute("SELECT status FROM fournees").fetchone()[0])
 
 
 def test_discover_pass(tmp_path: Path) -> None:
@@ -77,7 +77,7 @@ def test_discover_pass(tmp_path: Path) -> None:
     assert (rep.n_duplicates, rep.n_filtered, rep.skipped) == (1, 2, [])
     assert sorted(dz.top_calls) == [1, 2]
     rows = conn.execute(
-        "SELECT deezer_track_id, run_id, neighbour_artist_id FROM candidates ORDER BY 1"
+        "SELECT titre_id, fournee_id, neighbour_artist_id FROM candidats ORDER BY 1"
     ).fetchall()
     assert [(r[0], r[1], r[2]) for r in rows] == [(11, 1, 1), (21, 1, 2)]
     assert status(conn) == "done"

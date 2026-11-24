@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 def record_stage(conn: sqlite3.Connection, stage: str, ok: bool, counts: dict[str, object]) -> None:
     with conn:
         conn.execute(
-            "INSERT INTO stage_reports (invocation, stage, finished_at, ok, counts) "
+            "INSERT INTO rapports (invocation, stage, finished_at, ok, counts) "
             "VALUES (?, ?, ?, ?, ?)",
             (
                 os.environ.get("INVOCATION_ID"),
@@ -26,9 +26,9 @@ def last_stages(conn: sqlite3.Connection) -> list[tuple[str, str, bool, dict[str
     ancien."""
     rows = conn.execute(
         """
-        SELECT stage, finished_at, ok, counts FROM stage_reports
-        WHERE report_id IN (SELECT MAX(report_id) FROM stage_reports GROUP BY stage)
-        ORDER BY report_id DESC
+        SELECT stage, finished_at, ok, counts FROM rapports
+        WHERE rapport_id IN (SELECT MAX(rapport_id) FROM rapports GROUP BY stage)
+        ORDER BY rapport_id DESC
         """
     ).fetchall()
     return [(str(r[0]), str(r[1]), bool(r[2]), json.loads(r[3])) for r in rows]
@@ -39,7 +39,7 @@ def invocation_stages(
 ) -> list[tuple[str, bool, dict[str, object]]]:
     """Rapports des étapes d'une passe systemd, dans l'ordre : (étape, réussie, compteurs)."""
     rows = conn.execute(
-        "SELECT stage, ok, counts FROM stage_reports WHERE invocation = ? ORDER BY report_id",
+        "SELECT stage, ok, counts FROM rapports WHERE invocation = ? ORDER BY rapport_id",
         (invocation,),
     ).fetchall()
     return [(str(r[0]), bool(r[1]), json.loads(r[2])) for r in rows]

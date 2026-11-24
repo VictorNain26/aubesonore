@@ -22,12 +22,12 @@ def test_add_tracks_dedupes(tmp_path: Path) -> None:
             1,
             "Knife",
             [dt(1, "Heartbeats"), dt(2, "Heartbeats (Remastered)"), dt(3, "Silent Shout")],
-            "candidate",
+            "candidat",
             "d",
         )
     assert added == [1, 3]
     with conn:
-        assert ajouter_titres(conn, 1, "Knife", [dt(1, "Heartbeats")], "candidate", "d") == []
-        assert ajouter_titres(conn, 1, "Knife", [dt(4, "Heartbeats")], "negative", "d") == [4]
-    name = conn.execute("SELECT name FROM artists WHERE deezer_artist_id = 1").fetchone()[0]
+        assert ajouter_titres(conn, 1, "Knife", [dt(1, "Heartbeats")], "candidat", "d") == []
+        assert ajouter_titres(conn, 1, "Knife", [dt(4, "Heartbeats")], "negatif", "d") == [4]
+    name = conn.execute("SELECT name FROM artistes WHERE artiste_id = 1").fetchone()[0]
     assert name == "Knife"

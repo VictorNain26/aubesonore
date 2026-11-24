@@ -22,11 +22,11 @@ class TableEmpreintes:
 def charger_empreintes(conn: sqlite3.Connection) -> TableEmpreintes:
     rows = conn.execute(
         """
-        SELECT t.deezer_track_id AS tid, t.deezer_artist_id AS aid, t.origin, m.embedding,
+        SELECT t.titre_id AS tid, t.artiste_id AS aid, t.provenance, m.embedding,
                a.name AS aname
-        FROM tracks t JOIN track_measures m USING (deezer_track_id)
-             JOIN artists a ON a.deezer_artist_id = t.deezer_artist_id
-        WHERE m.status = 'ok' AND m.model = ? ORDER BY t.deezer_track_id
+        FROM titres t JOIN empreintes m USING (titre_id)
+             JOIN artistes a ON a.artiste_id = t.artiste_id
+        WHERE m.status = 'ok' AND m.model = ? ORDER BY t.titre_id
         """,
         (MODEL_TAG,),
     ).fetchall()
@@ -37,6 +37,6 @@ def charger_empreintes(conn: sqlite3.Connection) -> TableEmpreintes:
         track_ids=np.array([r["tid"] for r in rows], dtype=np.int64),
         artist_ids=np.array([r["aid"] for r in rows], dtype=np.int64),
         artist_keys=[normalize(r["aname"]) or f"#{r['aid']}" for r in rows],
-        origins=[r["origin"] for r in rows],
+        origins=[r["provenance"] for r in rows],
         audio=audio,
     )

@@ -43,10 +43,10 @@ def calculer_empreintes(
 ) -> RapportEmpreintes:
     todo = conn.execute(
         """
-        SELECT t.deezer_track_id AS tid, t.title, a.name
-        FROM tracks t JOIN artists a USING (deezer_artist_id)
-        LEFT JOIN track_measures m USING (deezer_track_id)
-        WHERE m.deezer_track_id IS NULL ORDER BY t.deezer_track_id
+        SELECT t.titre_id AS tid, t.title, a.name
+        FROM titres t JOIN artistes a USING (artiste_id)
+        LEFT JOIN empreintes m USING (titre_id)
+        WHERE m.titre_id IS NULL ORDER BY t.titre_id
         """
     ).fetchall()
     rep = RapportEmpreintes(n_todo=len(todo))
@@ -54,7 +54,7 @@ def calculer_empreintes(
 
     def flush() -> None:
         with conn:
-            conn.executemany("INSERT INTO track_measures VALUES (?, ?, ?, ?, ?)", rows)
+            conn.executemany("INSERT INTO empreintes VALUES (?, ?, ?, ?, ?)", rows)
         rows.clear()
 
     try:
@@ -66,17 +66,17 @@ def calculer_empreintes(
             try:
                 got = deezer.track(r["tid"])
                 if got is None:
-                    status = "gone"
+                    status = "disparu"
                 else:
                     _, url = got
                     if url is None:
-                        status = "no_preview"
+                        status = "sans_extrait"
                     else:
                         try:
                             vec = embedder.embed(deezer.download(url))
                         except DeezerError:
                             vec = None
-                        status = "ok" if vec is not None else "audio_failed"
+                        status = "ok" if vec is not None else "audio_rate"
                         blob = to_blob(vec) if vec is not None else None
             except DeezerUnavailable:
                 logger.warning("measure: stopped at track %s (%d)", r["title"], r["tid"])
@@ -87,9 +87,9 @@ def calculer_empreintes(
             rows.append((r["tid"], status, blob, MODEL_TAG, now))
             if status == "ok":
                 rep.n_ok += 1
-            elif status == "no_preview":
+            elif status == "sans_extrait":
                 rep.n_no_preview += 1
-            elif status == "audio_failed":
+            elif status == "audio_rate":
                 rep.n_audio_failed += 1
             else:
                 rep.n_gone += 1

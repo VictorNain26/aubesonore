@@ -57,7 +57,7 @@ def empreintes() -> None:
             f"{_n(meas.n_gone)} disparus de Deezer, {_n(len(meas.errors))} en erreur",
             *(f"  erreur : {x}" for x in meas.errors),
             f"Empreintes prêtes : {_n(origins.total())} titres (bibliothèque "
-            f"{_n(origins['library'])}, candidats {_n(origins['candidate'])}, négatifs "
-            f"{_n(origins['negative'])})",
+            f"{_n(origins['bibliotheque'])}, candidats {_n(origins['candidat'])}, négatifs "
+            f"{_n(origins['negatif'])})",
         ]
     )

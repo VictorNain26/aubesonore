@@ -103,9 +103,9 @@ def test_vote_is_recorded_and_page_moves_on(db: Path) -> None:
     assert r.status_code == 303 and r.headers["location"] == "/"
     conn = connect(db)
     row = conn.execute(
-        "SELECT kind, vote, source FROM votes WHERE deezer_track_id = ?", (b.deezer_track_id,)
+        "SELECT type, vote FROM votes WHERE titre_id = ?", (b.deezer_track_id,)
     ).fetchone()
-    assert tuple(row) == (b.kind, "non", "page")
+    assert tuple(row) == (b.kind, "non")
     assert len(bulletins_en_attente(conn)) == 19
     conn.close()
     unknown = c.post("/vote", data={"tid": "400000", "choix": "oui"}, headers=OK)
@@ -146,9 +146,9 @@ def test_the_week_page_corrects_a_vote_blind(db: Path) -> None:
     assert r.status_code == 303 and r.headers["location"] == "/semaine"
     conn = connect(db)
     assert (
-        conn.execute(
-            "SELECT vote FROM votes WHERE deezer_track_id = ?", (b.deezer_track_id,)
-        ).fetchone()[0]
+        conn.execute("SELECT vote FROM votes WHERE titre_id = ?", (b.deezer_track_id,)).fetchone()[
+            0
+        ]
         == "oui"
     )
     assert len(bulletins_en_attente(conn)) == 19
@@ -157,7 +157,7 @@ def test_the_week_page_corrects_a_vote_blind(db: Path) -> None:
 
 def test_empty_queue_says_so(db: Path) -> None:
     conn = connect(db)
-    conn.execute("DELETE FROM ballots")
+    conn.execute("DELETE FROM bulletins")
     conn.commit()
     conn.close()
     r = _client(db).get("/", headers=OK)
@@ -235,7 +235,7 @@ def test_the_follow_up_page_is_guarded_and_shows_each_source(db: Path) -> None:
     client = _client(db)
     assert client.get("/suivi").status_code == 403
     conn = connect(db)
-    exam = next(b for b in bulletins_en_attente(conn) if b.kind == "exam")
+    exam = next(b for b in bulletins_en_attente(conn) if b.kind == "examen")
     conn.close()
     client.post("/vote", data={"tid": str(exam.deezer_track_id), "choix": "oui"}, headers=OK)
     page = client.get("/suivi", headers=OK)

@@ -62,9 +62,9 @@ def test_import_negatives(tmp_path: Path) -> None:
     rep = importer_negatifs(conn, dz, NEGS, 10, "d")
     assert (rep.n_artists, rep.n_already, rep.n_added) == (2, 0, 1)
     assert (rep.n_duplicates, rep.n_filtered, rep.skipped) == (1, 1, ["Broken (DeezerError)"])
-    row = conn.execute("SELECT * FROM negative_artists").fetchone()
-    assert (row["deezer_artist_id"], row["category"]) == (900, "commercial_fr")
-    assert conn.execute("SELECT origin FROM tracks").fetchone()[0] == "negative"
+    row = conn.execute("SELECT * FROM artistes_negatifs").fetchone()
+    assert (row["artiste_id"], row["category"]) == (900, "commercial_fr")
+    assert conn.execute("SELECT provenance FROM titres").fetchone()[0] == "negatif"
     dz.calls.clear()
     rep2 = importer_negatifs(conn, dz, NEGS, 10, "d")
     assert rep2.n_already == 1 and dz.calls == [901]
@@ -83,9 +83,7 @@ def test_import_negatives_skips_library_artists(tmp_path: Path) -> None:
     assert rep.skipped == ["M83 imposteur (dans la bibliothèque)"]
     assert (rep.n_added, dz.calls) == (1, [901])
     assert (
-        conn.execute(
-            "SELECT COUNT(*) FROM negative_artists WHERE deezer_artist_id = 83"
-        ).fetchone()[0]
+        conn.execute("SELECT COUNT(*) FROM artistes_negatifs WHERE artiste_id = 83").fetchone()[0]
         == 0
     )
 
@@ -95,4 +93,4 @@ def test_import_stops_when_deezer_is_unavailable(tmp_path: Path) -> None:
     dz = FakeDeezer({900: [dt(1, 900, "Tchikita")], 901: DeezerUnavailable("code 4")})
     with pytest.raises(DeezerUnavailable):
         importer_negatifs(conn, dz, NEGS, 10, "d")
-    assert conn.execute("SELECT COUNT(*) FROM negative_artists").fetchone()[0] == 1
+    assert conn.execute("SELECT COUNT(*) FROM artistes_negatifs").fetchone()[0] == 1

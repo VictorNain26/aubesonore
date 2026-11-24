@@ -51,22 +51,22 @@ class Flux:
 def derniers_flux(conn: sqlite3.Connection) -> tuple[int | None, list[Flux]]:
     """Parcours de chaque source, et de chaque genre ou blog, dans la dernière fournée. Les blogs
     de Hype Machine sont trop nombreux pour un parcours chacun : la source suffit."""
-    run = conn.execute("SELECT MAX(run_id) FROM candidates").fetchone()[0]
+    run = conn.execute("SELECT MAX(fournee_id) FROM candidats").fetchone()[0]
     if run is None:
         return None, []
     rows = conn.execute(
         """
         SELECT c.source, CASE c.source WHEN 'deezer_editorial' THEN c.detail END,
-               COUNT(*), COALESCE(SUM(s.accepted), 0),
-               COUNT(*) FILTER (WHERE a.status IN ('ready', 'published')),
-               COUNT(*) FILTER (WHERE a.status = 'failed'),
-               COUNT(n.deezer_track_id)
-        FROM candidates c
-        LEFT JOIN scores s USING (deezer_track_id)
-        LEFT JOIN acquisitions a USING (deezer_track_id)
+               COUNT(*), COALESCE(SUM(s.retenu), 0),
+               COUNT(*) FILTER (WHERE a.status IN ('pret', 'publie')),
+               COUNT(*) FILTER (WHERE a.status = 'echec'),
+               COUNT(n.titre_id)
+        FROM candidats c
+        LEFT JOIN notes s USING (titre_id)
+        LEFT JOIN telechargements a USING (titre_id)
         LEFT JOIN antenne n
-            ON n.deezer_track_id = c.deezer_track_id AND n.categorie != 'repos'
-        WHERE c.run_id = ?
+            ON n.titre_id = c.titre_id AND n.categorie != 'repos'
+        WHERE c.fournee_id = ?
         GROUP BY 1, 2 ORDER BY 1, 2
         """,
         (run,),
@@ -82,8 +82,8 @@ def oui_par_source(conn: sqlite3.Connection) -> list[tuple[str, TauxOui]]:
     le modèle."""
     rows = conn.execute(
         """
-        SELECT c.source, c.detail, v.vote FROM votes v JOIN candidates c USING (deezer_track_id)
-        WHERE v.kind = 'exam' AND v.vote != 'passer'
+        SELECT c.source, c.detail, v.vote FROM votes v JOIN candidats c USING (titre_id)
+        WHERE v.type = 'examen' AND v.vote != 'passer'
         """
     ).fetchall()
     groups: dict[str, list[int]] = {}
@@ -103,8 +103,8 @@ def adjustments(
     exam = conn.execute(
         """
         SELECT c.source, c.detail, v.vote = 'oui' FROM votes v
-        JOIN candidates c USING (deezer_track_id)
-        WHERE v.kind = 'exam' AND v.vote != 'passer'
+        JOIN candidats c USING (titre_id)
+        WHERE v.type = 'examen' AND v.vote != 'passer'
         """
     ).fetchall()
     for key, r in oui_par_source(conn):

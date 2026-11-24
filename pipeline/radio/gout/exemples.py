@@ -63,9 +63,9 @@ def _plays(conn: sqlite3.Connection) -> dict[int, int]:
         int(r[0]): int(r[1])
         for r in conn.execute(
             """
-            SELECT m.deezer_track_id, SUM(t.plays)
-            FROM deezer_matches m JOIN library_tracks t USING (plex_key)
-            WHERE m.status = 'matched' GROUP BY m.deezer_track_id
+            SELECT m.titre_id, SUM(t.plays)
+            FROM rapprochements m JOIN bibliotheque t USING (plex_key)
+            WHERE m.status = 'trouve' GROUP BY m.titre_id
             """
         )
     }
@@ -75,21 +75,20 @@ def build_labels(conn: sqlite3.Connection, table: TableEmpreintes, fenetre_exame
     index = {int(t): i for i, t in enumerate(table.track_ids)}
     votes = conn.execute(
         """
-        SELECT deezer_track_id AS tid, kind, vote, voted_at FROM votes
-        WHERE vote != 'passer' ORDER BY voted_at, deezer_track_id
+        SELECT titre_id AS tid, type, vote, voted_at FROM votes
+        WHERE vote != 'passer' ORDER BY voted_at, titre_id
         """
     ).fetchall()
     unmeasured = sum(1 for v in votes if v["tid"] not in index)
-    exam_ids = {v["tid"] for v in votes if v["kind"] == "exam"}
-    exam = [v for v in votes if v["kind"] == "exam" and v["tid"] in index][-fenetre_examen:]
-    lesson = {v["tid"]: v["vote"] for v in votes if v["kind"] == "lesson" and v["tid"] in index}
-    keys = {
-        int(r[0]): str(r[1]) for r in conn.execute("SELECT deezer_track_id, dedupe_key FROM tracks")
-    }
+    exam_ids = {v["tid"] for v in votes if v["type"] == "examen"}
+    exam = [v for v in votes if v["type"] == "examen" and v["tid"] in index][-fenetre_examen:]
+    lesson = {v["tid"]: v["vote"] for v in votes if v["type"] == "lecon" and v["tid"] in index}
+    keys = {int(r[0]): str(r[1]) for r in conn.execute("SELECT titre_id, dedupe_key FROM titres")}
     exam_keys = {keys[t] for t in exam_ids if t in keys}
     protected = {keys[t] for t in lesson} | exam_keys
     protected |= {
-        str(r[0]) for r in conn.execute("SELECT dedupe_key FROM tracks WHERE origin = 'library'")
+        str(r[0])
+        for r in conn.execute("SELECT dedupe_key FROM titres WHERE provenance = 'bibliotheque'")
     }
     lib_ids = {a.deezer_artist_id for a in artistes_bibliotheque(conn)}
     lib_names = noms_bibliotheque(conn)
@@ -106,11 +105,11 @@ def build_labels(conn: sqlite3.Connection, table: TableEmpreintes, fenetre_exame
         if tid in lesson:
             yes = lesson[tid] == "oui"
             label, weight, cat = int(yes), VOTE_WEIGHT, VOTE_YES if yes else VOTE_NO
-        elif origin == "library":
+        elif origin == "bibliotheque":
             if keys[tid] in exam_keys:
                 continue  # autre version d'un titre d'examen : elle le révélerait au modèle
             label, weight, cat = 1, poids_ecoute(plays.get(tid, 0)), LIBRARY
-        elif origin == "negative":
+        elif origin == "negatif":
             if (
                 int(table.artist_ids[i]) in lib_ids
                 or table.artist_keys[i] in lib_names

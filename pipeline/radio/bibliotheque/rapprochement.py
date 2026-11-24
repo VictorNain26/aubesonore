@@ -176,7 +176,7 @@ def rapprocher_bibliotheque(
     todo = conn.execute(
         """
         SELECT t.plex_key, t.artist, t.title, t.duration_ms
-        FROM library_tracks t LEFT JOIN deezer_matches m USING (plex_key)
+        FROM bibliotheque t LEFT JOIN rapprochements m USING (plex_key)
         WHERE m.plex_key IS NULL ORDER BY t.plex_key
         """
     ).fetchall()
@@ -187,14 +187,14 @@ def rapprocher_bibliotheque(
 
     def flush() -> None:
         with conn:
-            conn.executemany("INSERT INTO deezer_matches VALUES (?, ?, ?, ?, ?, ?)", rows)
+            conn.executemany("INSERT INTO rapprochements VALUES (?, ?, ?, ?, ?, ?)", rows)
         rows.clear()
 
     try:
         for i, r in enumerate(todo, 1):
             key, artist, title, dur = r["plex_key"], r["artist"], r["title"], r["duration_ms"]
             if dur is None:
-                rows.append((key, "unmatched", "no_duration", None, None, now))
+                rows.append((key, "non_trouve", "no_duration", None, None, now))
                 unmatched["no_duration"] += 1
             else:
                 try:
@@ -204,11 +204,11 @@ def rapprocher_bibliotheque(
                     continue
                 best = pick_match(artist, title, dur, results, tolerance_s)
                 if best is not None:
-                    rows.append((key, "matched", None, best.id, best.artist_id, now))
+                    rows.append((key, "trouve", None, best.id, best.artist_id, now))
                     matched += 1
                 else:
                     reason = "no_exact_match" if results else "no_result"
-                    rows.append((key, "unmatched", reason, None, None, now))
+                    rows.append((key, "non_trouve", reason, None, None, now))
                     unmatched[reason] += 1
             if len(rows) >= batch:
                 flush()
@@ -221,7 +221,7 @@ def rapprocher_bibliotheque(
 
 def coverage(conn: sqlite3.Connection) -> tuple[int, int]:
     matched = conn.execute(
-        "SELECT COUNT(*) FROM deezer_matches WHERE status = 'matched'"
+        "SELECT COUNT(*) FROM rapprochements WHERE status = 'trouve'"
     ).fetchone()[0]
-    total = conn.execute("SELECT COUNT(*) FROM library_tracks").fetchone()[0]
+    total = conn.execute("SELECT COUNT(*) FROM bibliotheque").fetchone()[0]
     return int(matched), int(total)

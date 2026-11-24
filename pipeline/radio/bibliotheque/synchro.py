@@ -1,4 +1,4 @@
-"""Synchronisation Plex → library_tracks. Plex fait autorité ; la base est un reflet."""
+"""Synchronisation Plex → bibliotheque. Plex fait autorité ; la base est un reflet."""
 
 import sqlite3
 from dataclasses import dataclass
@@ -25,7 +25,7 @@ def synchroniser_bibliotheque(
         raise BibliothequeVideError("Plex returned no track")
     known = {
         r["plex_key"]: (r["artist"], r["title"], r["duration_ms"])
-        for r in conn.execute("SELECT plex_key, artist, title, duration_ms FROM library_tracks")
+        for r in conn.execute("SELECT plex_key, artist, title, duration_ms FROM bibliotheque")
     }
     incoming = {t.key: t for t in tracks}
     added = [t for t in tracks if t.key not in known]
@@ -35,12 +35,12 @@ def synchroniser_bibliotheque(
     removed = [k for k in known if k not in incoming]
     with conn:
         conn.executemany(
-            "DELETE FROM deezer_matches WHERE plex_key = ?", [(t.key,) for t in changed]
+            "DELETE FROM rapprochements WHERE plex_key = ?", [(t.key,) for t in changed]
         )
-        conn.executemany("DELETE FROM library_tracks WHERE plex_key = ?", [(k,) for k in removed])
+        conn.executemany("DELETE FROM bibliotheque WHERE plex_key = ?", [(k,) for k in removed])
         conn.executemany(
             """
-            INSERT INTO library_tracks
+            INSERT INTO bibliotheque
                 (plex_key, artist, title, album, duration_ms, plays, synced_at, file)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (plex_key) DO UPDATE SET

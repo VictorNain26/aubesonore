@@ -57,13 +57,13 @@ class FakeDeezer:
 def _db(tmp_path: Path) -> sqlite3.Connection:
     conn = make_library(tmp_path)
     enregistrer_bibliotheque(conn, NOW)
-    conn.execute("INSERT INTO discover_runs VALUES (4, 'd', 'd', 'done')")
+    conn.execute("INSERT INTO fournees VALUES (4, 'd', 'd', 'done')")
     conn.commit()
     return conn
 
 
 def _candidates(conn: sqlite3.Connection) -> dict[int, tuple[str, str | None]]:
-    rows = conn.execute("SELECT deezer_track_id, run_id, source, detail FROM candidates")
+    rows = conn.execute("SELECT titre_id, fournee_id, source, detail FROM candidats")
     out = {}
     for tid, run, source, detail in rows:
         assert run == 4
@@ -121,7 +121,7 @@ def test_exam_yes_rate_by_source_and_blog(tmp_path: Path) -> None:
         NOW,
     )
     for tid, vote in ((501, "oui"), (704, "non"), (703, "oui")):
-        conn.execute("INSERT INTO votes VALUES (?, 'exam', ?, 'd', 'page')", (tid, vote))
+        conn.execute("INSERT INTO votes VALUES (?, 'examen', ?, 'd')", (tid, vote))
     conn.commit()
     rates = {key: (r.yes, r.n) for key, r in oui_par_source(conn)}
     assert rates == {
@@ -189,7 +189,7 @@ def test_cli_reports_the_fresh_stage_and_fails_on_a_broken_source(
     assert "source sautée : Hype Machine, page 1 (HypemUnavailable : HTTP 503)" in result.output
     rows = (
         sqlite3.connect(tmp_path / "data" / "radio.db")
-        .execute("SELECT ok FROM stage_reports WHERE stage = 'nouveautes'")
+        .execute("SELECT ok FROM rapports WHERE stage = 'nouveautes'")
         .fetchall()
     )
     assert rows == [(0,)]

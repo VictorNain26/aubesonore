@@ -26,8 +26,8 @@ def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def test_train_promotes_scores_then_skips_without_new_votes(env: Path) -> None:
     conn = make_model_db(env / "data")
     seed_run(conn)
-    add_vote(conn, 200600, "exam", "oui")
-    add_vote(conn, 300600, "exam", "non")
+    add_vote(conn, 200600, "examen", "oui")
+    add_vote(conn, 300600, "examen", "non")
     conn.close()
 
     res = runner.invoke(commandes.app, ["gout"])
@@ -38,9 +38,7 @@ def test_train_promotes_scores_then_skips_without_new_votes(env: Path) -> None:
     assert "Dernière fournée (passe n°1) : 24 retenus sur 96 candidats" in res.output
 
     conn = connect(env / "data" / "radio.db")
-    kept = conn.execute(
-        "SELECT deezer_track_id < 300000, SUM(accepted) FROM scores GROUP BY 1"
-    ).fetchall()
+    kept = conn.execute("SELECT titre_id < 300000, SUM(retenu) FROM notes GROUP BY 1").fetchall()
     conn.close()
     # La coupure (80) dépasse les 24 artistes : chacun entre son titre le mieux noté, un seul.
     assert sorted(tuple(r) for r in kept) == [(0, 12), (1, 12)]
@@ -56,15 +54,15 @@ def test_train_learns_a_corrected_vote(env: Path) -> None:
     # its selection is still the latest, keeps that number.
     conn = make_model_db(env / "data")
     seed_run(conn)
-    add_vote(conn, 200600, "exam", "oui")
-    add_vote(conn, 300600, "exam", "non")
+    add_vote(conn, 200600, "examen", "oui")
+    add_vote(conn, 300600, "examen", "non")
     conn.close()
     assert runner.invoke(commandes.app, ["gout"]).exit_code == 0
 
     conn = connect(env / "data" / "radio.db")
     with conn:
-        conn.execute("INSERT INTO selections (selected_at, model_id) VALUES (?, 1)", (NOW,))
-        conn.execute("INSERT INTO ballots VALUES (200100, 1, 'lesson', 0, 1)")
+        conn.execute("INSERT INTO tirages (selected_at, modele_id) VALUES (?, 1)", (NOW,))
+        conn.execute("INSERT INTO bulletins VALUES (200100, 1, 'lecon', 0, 1)")
     assert enregistrer_vote(conn, 200100, "oui", NOW)
     conn.close()
     res = runner.invoke(commandes.app, ["gout"])
@@ -94,7 +92,7 @@ def test_train_reports_the_news_kept_off_air_by_the_floor(env: Path) -> None:
     ) in res.output
     conn = connect(env / "data" / "radio.db")
     counts = json.loads(
-        conn.execute("SELECT counts FROM stage_reports WHERE stage = 'gout'").fetchone()[0]
+        conn.execute("SELECT counts FROM rapports WHERE stage = 'gout'").fetchone()[0]
     )
     conn.close()
     assert counts["retenus"] == 12 and counts["nouveautés sous le plancher"] == 12
@@ -110,7 +108,7 @@ def test_first_training_without_exam_votes_is_promoted(env: Path) -> None:
 
 def test_train_without_negatives_exits_1(env: Path) -> None:
     conn = make_model_db(env / "data", n_artists=4, per_artist=2)
-    conn.execute("DELETE FROM track_measures WHERE deezer_track_id >= 300000")
+    conn.execute("DELETE FROM empreintes WHERE titre_id >= 300000")
     conn.commit()
     conn.close()
     res = runner.invoke(commandes.app, ["gout"])

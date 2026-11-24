@@ -85,18 +85,18 @@ class FakeDeezer:
 def _db(tmp_path: Path) -> sqlite3.Connection:
     conn = make_library(tmp_path)
     enregistrer_bibliotheque(conn, NOW)
-    conn.execute("INSERT INTO discover_runs VALUES (4, 'd', 'd', 'done')")
+    conn.execute("INSERT INTO fournees VALUES (4, 'd', 'd', 'done')")
     # Sea Calls Me Home est déjà candidat de la fournée 4.
     ajouter_titres(
         conn,
         60,
         "Julia Holter",
         [dt(601, 60, "Julia Holter", "Sea Calls Me Home")],
-        "candidate",
+        "candidat",
         NOW,
     )
     conn.execute(
-        "INSERT INTO candidates (deezer_track_id, run_id, source, detail) "
+        "INSERT INTO candidats (titre_id, fournee_id, source, detail) "
         "VALUES (601, 4, 'hypem', 'Blog')"
     )
     conn.commit()
@@ -104,9 +104,7 @@ def _db(tmp_path: Path) -> sqlite3.Connection:
 
 
 def _origins(conn: sqlite3.Connection) -> dict[int, str]:
-    return {
-        int(r[0]): str(r[1]) for r in conn.execute("SELECT deezer_track_id, origin FROM tracks")
-    }
+    return {int(r[0]): str(r[1]) for r in conn.execute("SELECT titre_id, provenance FROM titres")}
 
 
 def test_a_favorite_is_no_longer_a_discovery_and_the_library_keeps_its_own(tmp_path: Path) -> None:
@@ -121,8 +119,8 @@ def test_a_favorite_is_no_longer_a_discovery_and_the_library_keeps_its_own(tmp_p
     rep = importer_favoris(conn, FakeDeezer(), FakeHypem(favorites), "GhostRAvage", 3, NOW)  # type: ignore[arg-type]
 
     origins = _origins(conn)
-    assert origins[501] == "favorite" and origins[601] == "favorite"
-    assert origins[101] == "library"
+    assert origins[501] == "favori" and origins[601] == "favori"
+    assert origins[101] == "bibliotheque"
     assert (rep.n_seen, rep.n_matched, rep.n_unmatched, rep.n_library) == (4, 3, 1, 1)
 
 
@@ -137,7 +135,7 @@ def test_an_unfavorited_track_returns_to_its_batch_or_is_forgotten(tmp_path: Pat
     rep = importer_favoris(conn, FakeDeezer(), FakeHypem([]), "GhostRAvage", 3, NOW)  # type: ignore[arg-type]
 
     origins = _origins(conn)
-    assert origins[601] == "candidate"
+    assert origins[601] == "candidat"
     assert 501 not in origins
     assert rep.n_dropped == 2
 
@@ -169,10 +167,10 @@ def test_the_share_of_favorites_the_model_would_keep(tmp_path: Path) -> None:
 
     for k, direction in enumerate([LIKED] * 3 + [DISLIKED] * 3):
         tid = 900000 + k
-        ajouter_titres(conn, 9000, "Fav", [dt(tid, 9000, "Fav", f"F{k}")], "favorite", NOW)
+        ajouter_titres(conn, 9000, "Fav", [dt(tid, 9000, "Fav", f"F{k}")], "favori", NOW)
         v = 6 * direction + np.eye(DIM, dtype=np.float32)[2] * 0.1
         conn.execute(
-            "INSERT INTO track_measures VALUES (?, 'ok', ?, ?, ?)",
+            "INSERT INTO empreintes VALUES (?, 'ok', ?, ?, ?)",
             (tid, to_blob((v / np.linalg.norm(v)).astype(np.float32)), MODEL_TAG, NOW),
         )
     conn.commit()
