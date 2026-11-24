@@ -14,20 +14,20 @@ from radio.bibliotheque.rapprochement import normalize
 
 
 @dataclass(frozen=True)
-class LibraryArtist:
+class ArtisteBibliotheque:
     deezer_artist_id: int
     name: str
     plays: int
 
 
 @dataclass(frozen=True)
-class RegisterReport:
+class RapportArtistes:
     n_tracks: int
     n_artists: int
     n_removed: int
 
 
-def library_artists(conn: sqlite3.Connection) -> list[LibraryArtist]:
+def artistes_bibliotheque(conn: sqlite3.Connection) -> list[ArtisteBibliotheque]:
     names: defaultdict[int, Counter[str]] = defaultdict(Counter)
     for r in conn.execute(
         """
@@ -45,11 +45,11 @@ def library_artists(conn: sqlite3.Connection) -> list[LibraryArtist]:
     for aid, c in sorted(names.items()):
         # Le nom le plus fréquent, puis l'ordre alphabétique : déterministe.
         name = min(c, key=lambda n: (-c[n], n))
-        out.append(LibraryArtist(aid, name, sum(plays[n] for n in c)))
+        out.append(ArtisteBibliotheque(aid, name, sum(plays[n] for n in c)))
     return out
 
 
-def library_names(conn: sqlite3.Connection) -> frozenset[str]:
+def noms_bibliotheque(conn: sqlite3.Connection) -> frozenset[str]:
     """Noms normalisés de tous les artistes Plex et Deezer rapprochés.
 
     Les noms Deezer ne couvrent que les artistes déjà enregistrés dans la table `artists`
@@ -70,8 +70,8 @@ def library_names(conn: sqlite3.Connection) -> frozenset[str]:
     return frozenset(names)
 
 
-def register_library(conn: sqlite3.Connection, now: str) -> RegisterReport:
-    artists = library_artists(conn)
+def enregistrer_bibliotheque(conn: sqlite3.Connection, now: str) -> RapportArtistes:
+    artists = artistes_bibliotheque(conn)
     first: dict[int, tuple[int, str]] = {}
     for r in conn.execute(
         """
@@ -114,4 +114,4 @@ def register_library(conn: sqlite3.Connection, now: str) -> RegisterReport:
             """,
             [(tid, aid, titles[tid], key, now) for tid, (aid, key) in sorted(first.items())],
         )
-    return RegisterReport(len(first), len(artists), removed)
+    return RapportArtistes(len(first), len(artists), removed)

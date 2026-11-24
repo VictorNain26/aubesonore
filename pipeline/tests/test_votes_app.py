@@ -10,7 +10,7 @@ from radio.socle.db import connect
 from radio.sources.deezer import DeezerError, DeezerUnavailable
 from radio.votes.acces import HEADER
 from radio.votes.page import create_app
-from radio.votes.tirage import Ballot, pending_ballots, select_batch
+from radio.votes.tirage import Bulletin, pending_ballots, tirer_bulletins
 from tests.factories import OK, SIGNED, PreviewDeezer, verify
 from tests.model_factory import NO_FLOOR, NOW, make_model_db, serve_scores
 
@@ -19,7 +19,7 @@ from tests.model_factory import NO_FLOOR, NOW, make_model_db, serve_scores
 def db(tmp_path: Path) -> Path:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
-    select_batch(conn, np.random.default_rng(0), 10, 10, NOW, floor=NO_FLOOR)
+    tirer_bulletins(conn, np.random.default_rng(0), 10, 10, NOW, floor=NO_FLOOR)
     conn.close()
     return tmp_path / "radio.db"
 
@@ -28,7 +28,7 @@ def _client(db: Path, deezer: PreviewDeezer | None = None) -> TestClient:
     return TestClient(create_app(db, deezer or PreviewDeezer(), verify))
 
 
-def _first(db: Path) -> Ballot:
+def _first(db: Path) -> Bulletin:
     conn = connect(db)
     try:
         return pending_ballots(conn)[0]

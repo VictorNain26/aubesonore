@@ -9,7 +9,7 @@ import radio.commandes as commandes
 from radio.socle.config import Settings
 from radio.socle.db import connect
 from radio.socle.rapports import last_stages
-from radio.socle.sauvegarde import BackupError, backup
+from radio.socle.sauvegarde import SauvegardeError, sauvegarder
 from tests.model_factory import add_vote, make_model_db
 
 TODAY = date(2026, 10, 2)
@@ -25,7 +25,7 @@ def test_backup_is_a_sound_copy_and_keeps_only_recent_days(tmp_path: Path) -> No
     (dest / "2026-09-17").mkdir(parents=True)  # au-delà de 14 jours
     (dest / "2026-09-18").mkdir()
 
-    target = backup(tmp_path / "data" / "radio.db", models, dest, TODAY, 14)
+    target = sauvegarder(tmp_path / "data" / "radio.db", models, dest, TODAY, 14)
 
     assert target == dest / "2026-10-02"
     copy = sqlite3.connect(target / "radio.db")
@@ -45,11 +45,11 @@ def test_a_second_backup_the_same_day_replaces_the_first(tmp_path: Path) -> None
     models.mkdir()
     (models / "modele-0001.joblib").write_bytes(b"m1")
     dest = tmp_path / "sauvegardes"
-    backup(db, models, dest, TODAY, 14)
+    sauvegarder(db, models, dest, TODAY, 14)
     conn.execute("INSERT INTO votes VALUES (1, 'lesson', 'non', 'd', 'test')")
     conn.commit()
     (models / "modele-0002.joblib").write_bytes(b"m2")
-    target = backup(db, models, dest, TODAY, 14)
+    target = sauvegarder(db, models, dest, TODAY, 14)
     assert sqlite3.connect(target / "radio.db").execute(
         "SELECT COUNT(*) FROM votes"
     ).fetchone() == (1,)
@@ -79,8 +79,8 @@ def test_an_unsound_copy_is_refused_and_older_backups_are_kept(tmp_path: Path) -
     dest = tmp_path / "sauvegardes"
     (dest / "2026-09-01").mkdir(parents=True)  # au-delà de 14 jours, mais la seule saine
 
-    with pytest.raises(BackupError, match="integrity_check : row 1 missing from index t_a"):
-        backup(db, models, dest, TODAY, 14)
+    with pytest.raises(SauvegardeError, match="integrity_check : row 1 missing from index t_a"):
+        sauvegarder(db, models, dest, TODAY, 14)
     assert (dest / "2026-09-01").is_dir()
     # Nothing of the refused copy stays: the newest day must still be a sound one to restore.
     assert sorted(p.name for p in dest.iterdir()) == ["2026-09-01"]
@@ -92,7 +92,7 @@ def test_a_refused_copy_keeps_the_sound_one_made_earlier_the_same_day(tmp_path: 
     make_model_db(tmp_path).close()
     models = tmp_path / "models"
     dest = tmp_path / "sauvegardes"
-    target = backup(db, models, dest, TODAY, 14)
+    target = sauvegarder(db, models, dest, TODAY, 14)
     sound = (target / "radio.db").read_bytes()
     broken = sqlite3.connect(db)
     broken.executescript(
@@ -102,8 +102,8 @@ def test_a_refused_copy_keeps_the_sound_one_made_earlier_the_same_day(tmp_path: 
     )
     broken.close()
 
-    with pytest.raises(BackupError):
-        backup(db, models, dest, TODAY, 14)
+    with pytest.raises(SauvegardeError):
+        sauvegarder(db, models, dest, TODAY, 14)
     assert (target / "radio.db").read_bytes() == sound
     assert sorted(p.name for p in target.iterdir()) == ["radio.db"]
 

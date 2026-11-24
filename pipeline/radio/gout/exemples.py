@@ -15,9 +15,9 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 
-from radio.bibliotheque.artistes import library_artists, library_names
+from radio.bibliotheque.artistes import artistes_bibliotheque, noms_bibliotheque
 from radio.bibliotheque.poids import WEIGHT_CAP, play_weight
-from radio.empreintes.table import SignalTable
+from radio.empreintes.table import TableEmpreintes
 
 Floats = npt.NDArray[np.float64]
 Ints = npt.NDArray[np.int64]
@@ -28,13 +28,13 @@ LIBRARY, VOTE_YES, VOTE_NO, WEAK = range(len(CATEGORIES))
 VOTE_WEIGHT = WEIGHT_CAP
 
 
-class MissingExamplesError(Exception):
+class ExemplesManquantsError(Exception):
     """Il faut des exemples positifs et négatifs de poids non nul."""
 
 
 @dataclass(frozen=True)
 class Dataset:
-    rows: Ints  # indices dans la SignalTable
+    rows: Ints  # indices dans la TableEmpreintes
     labels: Ints  # 1 positif, 0 négatif
     base_weights: Floats  # avant négatifs faibles et équilibrage
     categories: Ints  # index dans CATEGORIES
@@ -44,7 +44,7 @@ class Dataset:
 
 
 @dataclass(frozen=True)
-class ExamSet:
+class Examen:
     rows: Ints
     labels: Ints
 
@@ -52,7 +52,7 @@ class ExamSet:
 @dataclass(frozen=True)
 class Labels:
     train: Dataset
-    exam: ExamSet
+    exam: Examen
     n_votes_unmeasured: int
     n_weak_excluded: int
     n_votes: int
@@ -71,7 +71,7 @@ def _plays(conn: sqlite3.Connection) -> dict[int, int]:
     }
 
 
-def build_labels(conn: sqlite3.Connection, table: SignalTable, fenetre_examen: int) -> Labels:
+def build_labels(conn: sqlite3.Connection, table: TableEmpreintes, fenetre_examen: int) -> Labels:
     index = {int(t): i for i, t in enumerate(table.track_ids)}
     votes = conn.execute(
         """
@@ -91,8 +91,8 @@ def build_labels(conn: sqlite3.Connection, table: SignalTable, fenetre_examen: i
     protected |= {
         str(r[0]) for r in conn.execute("SELECT dedupe_key FROM tracks WHERE origin = 'library'")
     }
-    lib_ids = {a.deezer_artist_id for a in library_artists(conn)}
-    lib_names = library_names(conn)
+    lib_ids = {a.deezer_artist_id for a in artistes_bibliotheque(conn)}
+    lib_names = noms_bibliotheque(conn)
     plays = _plays(conn)
 
     rows: list[int] = []
@@ -131,7 +131,7 @@ def build_labels(conn: sqlite3.Connection, table: SignalTable, fenetre_examen: i
         base_weights=np.array(base, dtype=np.float64),
         categories=np.array(cats, dtype=np.int64),
     )
-    exam_set = ExamSet(
+    exam_set = Examen(
         rows=np.array([index[v["tid"]] for v in exam], dtype=np.int64),
         labels=np.array([int(v["vote"] == "oui") for v in exam], dtype=np.int64),
     )
@@ -145,7 +145,7 @@ def weights(ds: Dataset, poids_negatifs_faibles: float) -> Floats:
     w[ds.categories == WEAK] *= poids_negatifs_faibles
     pos, neg = w[ds.labels == 1].sum(), w[ds.labels == 0].sum()
     if pos == 0 or neg == 0:
-        raise MissingExamplesError("il faut des exemples positifs et négatifs")
+        raise ExemplesManquantsError("il faut des exemples positifs et négatifs")
     w[ds.labels == 1] /= pos
     w[ds.labels == 0] /= neg
     return w

@@ -10,7 +10,7 @@ from radio.socle.config import TelechargementConfig
 from radio.socle.media import Probe, Tags
 from radio.sources.deezer import DeezerAlbum, DeezerError, DeezerTrack, DeezerUnavailable, TrackPage
 from radio.telechargement.sockseek import SockseekError
-from radio.telechargement.telecharger import acquire_pass, pending
+from radio.telechargement.telecharger import pending, telecharger_fournee
 from tests.model_factory import NOW, add_vote, make_model_db, serve_scores
 
 CFG = TelechargementConfig(max_par_passe=4, tentatives_max=2)
@@ -87,7 +87,7 @@ prepared: dict[int, Tags] = {}
 
 
 def _pass(conn: Any, tmp: Path, found: set[int], n: int, deezer: Any = None) -> Any:
-    return acquire_pass(
+    return telecharger_fournee(
         conn,
         deezer or FakeDeezer(),
         (tmp / f"work{n}", tmp / "antenne", tmp),
@@ -180,7 +180,7 @@ def test_a_title_gone_from_deezer_is_counted(tmp_path: Path, fake_audio: dict[in
     conn = make_model_db(tmp_path)
     serve_scores(conn)
     gone = pending(conn, CFG).tids[0]
-    rep = acquire_pass(
+    rep = telecharger_fournee(
         conn,
         FakeDeezer(frozenset({gone})),
         (tmp_path / "w", tmp_path / "antenne", tmp_path),
@@ -291,7 +291,7 @@ def test_a_failed_sockseek_consumes_no_attempt(
         return code
 
     with pytest.raises(SockseekError):
-        acquire_pass(
+        telecharger_fournee(
             conn,
             FakeDeezer(),
             (tmp_path / "w", tmp_path / "antenne", tmp_path),
@@ -319,7 +319,7 @@ def test_titles_missing_from_a_partial_index_are_not_attempts(
         index.write_text("\n".join(index.read_text().splitlines()[:2]))
         return 1
 
-    rep = acquire_pass(
+    rep = telecharger_fournee(
         conn,
         FakeDeezer(),
         (tmp_path / "w", tmp_path / "antenne", tmp_path),

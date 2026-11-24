@@ -10,7 +10,7 @@ from radio.mesures.musicnn import (
     MODELS,
     Features,
     check_models,
-    measure_antenna,
+    mesurer_antenne,
     played,
     summarize,
 )
@@ -95,7 +95,7 @@ def test_titles_on_air_are_measured_once_and_missing_files_named(tmp_path: Path)
     conn.commit()
     fake = FakeExtractor({"2.mp3"})
 
-    rep = measure_antenna(conn, media, fake, NOW)
+    rep = mesurer_antenne(conn, media, fake, NOW)
     assert (rep.n_todo, rep.n_ok, rep.n_failed, rep.missing) == (3, 1, 1, ["antenne/3.mp3"])
     rows = {
         r[0]: (r[1], r[2])
@@ -103,7 +103,7 @@ def test_titles_on_air_are_measured_once_and_missing_files_named(tmp_path: Path)
     }
     assert rows == {1: ("ok", 122.0), 2: ("audio_failed", None)}
 
-    again = measure_antenna(conn, media, fake, NOW)
+    again = mesurer_antenne(conn, media, fake, NOW)
     assert (again.n_todo, again.missing) == (1, ["antenne/3.mp3"])  # seul l'absent est retenté
     assert fake.seen == ["1.mp3", "2.mp3"]
     assert fake.cues == {"1.mp3": Cue(0.2, 0.9), "2.mp3": None}
@@ -124,7 +124,7 @@ def test_a_file_whose_cues_cannot_be_read_is_a_failed_measure(tmp_path: Path) ->
     )
     conn.commit()
     fake = FakeExtractor(set())
-    rep = measure_antenna(conn, media, fake, NOW)
+    rep = mesurer_antenne(conn, media, fake, NOW)
     assert (rep.n_todo, rep.n_ok, rep.n_failed, rep.missing) == (2, 1, 1, [])
     assert fake.seen == ["2.mp3"]
     rows = dict(conn.execute("SELECT deezer_track_id, status FROM track_features"))
@@ -166,7 +166,7 @@ def test_a_measure_of_another_model_is_replaced_in_place(tmp_path: Path) -> None
     )
     conn.commit()
     fake = FakeExtractor(set())
-    rep = measure_antenna(conn, media, fake, NOW)
+    rep = mesurer_antenne(conn, media, fake, NOW)
     assert (rep.n_todo, fake.seen) == (1, ["1.mp3"])
     rows = dict(conn.execute("SELECT deezer_track_id, duration_s FROM track_features"))
     assert rows == {1: 200.0, 2: 300.0}

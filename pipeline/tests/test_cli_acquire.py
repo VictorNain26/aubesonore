@@ -8,10 +8,10 @@ from pydantic import SecretStr
 from typer.testing import CliRunner
 
 import radio.commandes as commandes
-from radio.antenne.publication import AntenneReport
+from radio.antenne.publication import RapportAntenne
 from radio.socle.config import REPO_ROOT, Settings
 from radio.telechargement.sockseek import SockseekError
-from radio.telechargement.telecharger import AcquireReport
+from radio.telechargement.telecharger import RapportTelechargement
 
 runner = CliRunner()
 
@@ -38,7 +38,7 @@ def _stage(db: Path) -> tuple[int, str] | None:
     return None if not rows else (int(rows[0][0]), str(rows[0][1]))
 
 
-def _report(rep: AcquireReport) -> Any:
+def _report(rep: RapportTelechargement) -> Any:
     return lambda *a, **k: rep
 
 
@@ -47,10 +47,10 @@ def test_sockseek_failure_exits_1_and_reports_the_failed_stage(
 ) -> None:
     db = _env(tmp_path, monkeypatch)
 
-    def boom(*a: Any, **k: Any) -> AcquireReport:
+    def boom(*a: Any, **k: Any) -> RapportTelechargement:
         raise SockseekError("aucun index écrit")
 
-    monkeypatch.setattr(commandes.telechargement, "acquire_pass", boom)
+    monkeypatch.setattr(commandes.telechargement, "telecharger_fournee", boom)
     result = runner.invoke(commandes.app, ["telechargement"])
     assert result.exit_code == 1
     assert "Sockseek en échec (aucun index écrit) : aucune tentative comptée" in result.output
@@ -62,8 +62,8 @@ def test_interrupted_sockseek_fails_the_stage(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     db = _env(tmp_path, monkeypatch)
-    rep = AcquireReport(n_wanted=4, n_ready=1, n_unindexed=3)
-    monkeypatch.setattr(commandes.telechargement, "acquire_pass", _report(rep))
+    rep = RapportTelechargement(n_wanted=4, n_ready=1, n_unindexed=3)
+    monkeypatch.setattr(commandes.telechargement, "telecharger_fournee", _report(rep))
     result = runner.invoke(commandes.app, ["telechargement"])
     assert result.exit_code == 1
     assert "arrêté avant 3 titres" in result.output
@@ -75,8 +75,8 @@ def test_success_rate_floor_comes_from_editorial(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _env(tmp_path, monkeypatch, "[telechargement]\ntentatives_min_pour_taux = 3\n")
-    rep = AcquireReport(n_wanted=3, failures=Counter({"aucun résultat": 3}))
-    monkeypatch.setattr(commandes.telechargement, "acquire_pass", _report(rep))
+    rep = RapportTelechargement(n_wanted=3, failures=Counter({"aucun résultat": 3}))
+    monkeypatch.setattr(commandes.telechargement, "telecharger_fournee", _report(rep))
     assert runner.invoke(commandes.app, ["telechargement"]).exit_code == 1
 
 
@@ -84,8 +84,8 @@ def test_missing_cover_is_reported_not_failed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     db = _env(tmp_path, monkeypatch)
-    rep = AcquireReport(n_wanted=2, n_ready=2, n_no_cover=1)
-    monkeypatch.setattr(commandes.telechargement, "acquire_pass", _report(rep))
+    rep = RapportTelechargement(n_wanted=2, n_ready=2, n_no_cover=1)
+    monkeypatch.setattr(commandes.telechargement, "telecharger_fournee", _report(rep))
     result = runner.invoke(commandes.app, ["telechargement"])
     assert result.exit_code == 0
     assert "prêts sans pochette : 1" in result.output
@@ -98,10 +98,10 @@ def test_an_unexpected_error_is_reported_without_its_message(
 ) -> None:
     db = _env(tmp_path, monkeypatch)
 
-    def boom(*a: Any, **k: Any) -> AcquireReport:
+    def boom(*a: Any, **k: Any) -> RapportTelechargement:
         raise RuntimeError("https://cdn.example/preview?hdnea=SECRET")
 
-    monkeypatch.setattr(commandes.telechargement, "acquire_pass", boom)
+    monkeypatch.setattr(commandes.telechargement, "telecharger_fournee", boom)
     result = runner.invoke(commandes.app, ["telechargement"])
     assert result.exit_code == 1
     assert _stage(db) == (0, '{"erreur": "RuntimeError"}')
@@ -162,7 +162,7 @@ def test_check_reads_what_antenne_published(
     settings = commandes.commun._settings().model_copy(update={"azuracast_api_key": SecretStr("k")})
     monkeypatch.setattr(commandes.commun, "_settings", lambda: settings)
     monkeypatch.setattr(
-        commandes.antenne, "antenne_pass", lambda *a, **k: AntenneReport(n_published=2)
+        commandes.antenne, "antenne_pass", lambda *a, **k: RapportAntenne(n_published=2)
     )
     monkeypatch.setenv("INVOCATION_ID", "p")
     result = runner.invoke(commandes.app, ["antenne"])

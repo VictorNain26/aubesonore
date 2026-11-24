@@ -7,8 +7,8 @@ import responses
 from typer.testing import CliRunner
 
 import radio.commandes as commandes
-from radio.bibliotheque.artistes import register_library
-from radio.decouverte.nouveautes import NoBatchError, fresh_pass
+from radio.bibliotheque.artistes import enregistrer_bibliotheque
+from radio.decouverte.nouveautes import AucuneFourneeError, chercher_nouveautes
 from radio.socle.config import NouveautesConfig, Settings
 from radio.sources.deezer import DeezerTrack
 from radio.sources.hypem import API, HypemClient, HypemError, HypemTrack, HypemUnavailable
@@ -56,7 +56,7 @@ class FakeDeezer:
 
 def _db(tmp_path: Path) -> sqlite3.Connection:
     conn = make_library(tmp_path)
-    register_library(conn, NOW)
+    enregistrer_bibliotheque(conn, NOW)
     conn.execute("INSERT INTO discover_runs VALUES (4, 'd', 'd', 'done')")
     conn.commit()
     return conn
@@ -80,7 +80,7 @@ def test_fresh_titles_join_the_last_batch_with_their_source(tmp_path: Path) -> N
             HypemTrack("M83", "Midnight City", 243, "Some Blog"),  # déjà dans la bibliothèque
         ]
     )
-    rep = fresh_pass(conn, FakeDeezer(), hypem, CFG, 3, NOW)  # type: ignore[arg-type]
+    rep = chercher_nouveautes(conn, FakeDeezer(), hypem, CFG, 3, NOW)  # type: ignore[arg-type]
 
     assert _candidates(conn) == {
         501: ("hypem", "Gorilla vs. Bear"),
@@ -92,27 +92,27 @@ def test_fresh_titles_join_the_last_batch_with_their_source(tmp_path: Path) -> N
     assert (rep.n_unmatched, rep.n_known, rep.skipped) == (1, 1, [])
 
     # La semaine suivante, mêmes sélections : rien de neuf, et c'est compté par source.
-    again = fresh_pass(conn, FakeDeezer(), hypem, CFG, 3, NOW)  # type: ignore[arg-type]
+    again = chercher_nouveautes(conn, FakeDeezer(), hypem, CFG, 3, NOW)  # type: ignore[arg-type]
     assert sum(again.added.values()) == 0
     assert dict(again.already) == {"hypem": 1, "deezer_editorial": 2}
 
 
 def test_a_broken_source_is_named_and_the_others_still_run(tmp_path: Path) -> None:
     conn = _db(tmp_path)
-    rep = fresh_pass(conn, FakeDeezer(), FakeHypem(HypemError("not a list")), CFG, 3, NOW)  # type: ignore[arg-type]
+    rep = chercher_nouveautes(conn, FakeDeezer(), FakeHypem(HypemError("not a list")), CFG, 3, NOW)  # type: ignore[arg-type]
     assert rep.skipped == ["Hype Machine, page 1 (HypemError : not a list)"]
     assert dict(rep.added) == {"deezer_editorial": 2}
 
 
 def test_fresh_needs_a_batch(tmp_path: Path) -> None:
     conn = make_library(tmp_path)
-    with pytest.raises(NoBatchError):
-        fresh_pass(conn, FakeDeezer(), FakeHypem([]), CFG, 3, NOW)  # type: ignore[arg-type]
+    with pytest.raises(AucuneFourneeError):
+        chercher_nouveautes(conn, FakeDeezer(), FakeHypem([]), CFG, 3, NOW)  # type: ignore[arg-type]
 
 
 def test_exam_yes_rate_by_source_and_blog(tmp_path: Path) -> None:
     conn = _db(tmp_path)
-    fresh_pass(
+    chercher_nouveautes(
         conn,
         FakeDeezer(),  # type: ignore[arg-type]
         FakeHypem([HypemTrack("Fine", "Sometimes i rush", 201, "Gorilla vs. Bear")]),  # type: ignore[arg-type]

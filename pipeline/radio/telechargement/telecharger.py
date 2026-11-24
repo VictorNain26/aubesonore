@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class AcquireReport:
+class RapportTelechargement:
     n_wanted: int = 0
     n_ready: int = 0
     n_no_cover: int = 0
@@ -129,7 +129,7 @@ def _verify_and_prepare(
     return dest, None, tags
 
 
-def acquire_pass(
+def telecharger_fournee(
     conn: sqlite3.Connection,
     deezer: DeezerClient,
     dirs: tuple[Path, Path, Path],
@@ -138,12 +138,12 @@ def acquire_pass(
     cfg: TelechargementConfig,
     now: str,
     run: Runner = run_command,
-) -> AcquireReport:
+) -> RapportTelechargement:
     """`dirs` : dossier de travail de la passe (supprimé à la fin, quoi qu'il arrive), dossier
     des fichiers prêts, dossier de la config Sockseek (tmpfs, effacé par systemd)."""
     workdir, ready_dir, conf_dir = dirs
     sockseek, rsgain = binaries
-    rep = AcquireReport()
+    rep = RapportTelechargement()
     wanted: list[Wanted] = []
     keys: set[tuple[str, str, int]] = set()
     todo = pending(conn, cfg)

@@ -26,7 +26,7 @@ def mesures() -> None:
     except ModelError as e:
         _fail(f"Modèles de mesure refusés : {e}", 2)
     with _db(settings) as conn:
-        rep = musicnn.measure_antenna(conn, settings.azuracast_media_dir, extractor, _now())
+        rep = musicnn.mesurer_antenne(conn, settings.azuracast_media_dir, extractor, _now())
         _record(
             conn,
             "mesures",

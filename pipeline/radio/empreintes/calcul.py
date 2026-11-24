@@ -25,7 +25,7 @@ class Embedder(Protocol):
 
 
 @dataclass
-class MeasureReport:
+class RapportEmpreintes:
     n_todo: int
     n_ok: int = 0
     n_no_preview: int = 0
@@ -40,7 +40,7 @@ def measure_tracks(
     embedder: Embedder,
     now: str,
     batch: int = 20,
-) -> MeasureReport:
+) -> RapportEmpreintes:
     todo = conn.execute(
         """
         SELECT t.deezer_track_id AS tid, t.title, a.name
@@ -49,7 +49,7 @@ def measure_tracks(
         WHERE m.deezer_track_id IS NULL ORDER BY t.deezer_track_id
         """
     ).fetchall()
-    rep = MeasureReport(n_todo=len(todo))
+    rep = RapportEmpreintes(n_todo=len(todo))
     rows: list[tuple[object, ...]] = []
 
     def flush() -> None:

@@ -16,10 +16,10 @@ from datetime import datetime
 
 import numpy as np
 
-from radio.bibliotheque.artistes import library_artists, library_names
-from radio.decouverte.candidats import add_candidates, add_tracks, keep_tracks
+from radio.bibliotheque.artistes import artistes_bibliotheque, noms_bibliotheque
+from radio.decouverte.candidats import add_tracks, ajouter_candidats, keep_tracks
 from radio.decouverte.graines import finish_run, start_run
-from radio.decouverte.voisins import neighbours
+from radio.decouverte.voisins import chercher_voisins
 from radio.socle.config import DecouverteConfig
 from radio.sources.deezer import DeezerClient, DeezerError, DeezerUnavailable
 from radio.sources.lastfm import LastfmClient, LastfmError, LastfmUnavailable
@@ -27,12 +27,12 @@ from radio.sources.lastfm import LastfmClient, LastfmError, LastfmUnavailable
 logger = logging.getLogger(__name__)
 
 
-class NoLibraryArtistsError(Exception):
+class AucunArtisteBibliothequeError(Exception):
     """Aucun artiste de la bibliothèque n'est rapproché de Deezer : pas de graine possible."""
 
 
 @dataclass
-class DiscoverReport:
+class RapportDecouverte:
     run_id: int
     resumed: bool
     n_seeds: int
@@ -45,28 +45,28 @@ class DiscoverReport:
     skipped: list[str] = field(default_factory=list)
 
 
-def discover_pass(
+def decouvrir(
     conn: sqlite3.Connection,
     deezer: DeezerClient,
     lastfm: LastfmClient,
     cfg: DecouverteConfig,
     now: datetime,
     rng: np.random.Generator,
-) -> DiscoverReport:
-    artists = library_artists(conn)
+) -> RapportDecouverte:
+    artists = artistes_bibliotheque(conn)
     if not artists:
-        raise NoLibraryArtistsError("no library artist matched on Deezer")
+        raise AucunArtisteBibliothequeError("no library artist matched on Deezer")
     run = start_run(conn, artists, cfg, now, rng)
     exclude_ids = {a.deezer_artist_id for a in artists}
-    exclude_names = library_names(conn)
-    rep = DiscoverReport(run.run_id, run.resumed, len(run.seeds), run.n_dropped)
+    exclude_names = noms_bibliotheque(conn)
+    rep = RapportDecouverte(run.run_id, run.resumed, len(run.seeds), run.n_dropped)
     seen: set[int] = set()
     stamp = now.isoformat()
     answered = no_related = no_similar = 0
     for i, seed in enumerate(run.seeds, 1):
         logger.info("discover: seed %d/%d", i, len(run.seeds))
         try:
-            found = neighbours(
+            found = chercher_voisins(
                 seed, deezer, lastfm, cfg.similaires_lastfm, exclude_ids, exclude_names
             )
         except (DeezerUnavailable, LastfmUnavailable):
@@ -97,7 +97,7 @@ def discover_pass(
             kept = keep_tracks(top, n.id)
             with conn:
                 added = add_tracks(conn, n.id, n.name, kept, "candidate", stamp)
-                add_candidates(
+                ajouter_candidats(
                     conn,
                     run.run_id,
                     "voisin",

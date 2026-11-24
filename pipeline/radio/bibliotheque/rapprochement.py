@@ -163,16 +163,16 @@ def pick_match(
 
 
 @dataclass(frozen=True)
-class MatchReport:
+class RapportRapprochement:
     n_todo: int
     n_matched: int
     unmatched: dict[str, int] = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
 
 
-def match_library(
+def rapprocher_bibliotheque(
     conn: sqlite3.Connection, deezer: DeezerClient, tolerance_s: int, now: str, batch: int = 50
-) -> MatchReport:
+) -> RapportRapprochement:
     todo = conn.execute(
         """
         SELECT t.plex_key, t.artist, t.title, t.duration_ms
@@ -216,7 +216,7 @@ def match_library(
                 logger.info("match: %d/%d tracks processed", i, len(todo))
     finally:
         flush()
-    return MatchReport(len(todo), matched, dict(unmatched), errors)
+    return RapportRapprochement(len(todo), matched, dict(unmatched), errors)
 
 
 def coverage(conn: sqlite3.Connection) -> tuple[int, int]:

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import jwt
 
-from radio.bibliotheque.synchro import sync_library
+from radio.bibliotheque.synchro import synchroniser_bibliotheque
 from radio.socle.db import connect
 from radio.sources.deezer import DeezerTrack
 from radio.sources.plex import PlexTrack
@@ -44,7 +44,7 @@ def verify(token: str) -> None:
 def make_library(directory: Path) -> sqlite3.Connection:
     """M83 (Deezer 83 : titres 101, 102, 103), Wire (70 : 104), Obscure Band jamais rapproché."""
     conn = connect(directory / "radio.db")
-    sync_library(
+    synchroniser_bibliotheque(
         conn,
         [
             PlexTrack("1", "M83", "Midnight City", "Hurry Up", 243000, 10),

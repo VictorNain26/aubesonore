@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 
 import numpy as np
 
-from radio.bibliotheque.artistes import LibraryArtist
+from radio.bibliotheque.artistes import ArtisteBibliotheque
 from radio.bibliotheque.poids import play_weight
 from radio.socle.config import DecouverteConfig
 
@@ -20,7 +20,7 @@ from radio.socle.config import DecouverteConfig
 @dataclass(frozen=True)
 class Run:
     run_id: int
-    seeds: list[LibraryArtist]
+    seeds: list[ArtisteBibliotheque]
     resumed: bool
     n_dropped: int
 
@@ -39,9 +39,9 @@ def recently_used(conn: sqlite3.Connection, now: datetime, days: int) -> set[int
     }
 
 
-def draw_seeds(
-    artists: list[LibraryArtist], exclude: set[int], k: int, rng: np.random.Generator
-) -> list[LibraryArtist]:
+def tirer_graines(
+    artists: list[ArtisteBibliotheque], exclude: set[int], k: int, rng: np.random.Generator
+) -> list[ArtisteBibliotheque]:
     pool = [a for a in artists if a.deezer_artist_id not in exclude]
     if not pool:
         return []
@@ -52,7 +52,7 @@ def draw_seeds(
 
 def start_run(
     conn: sqlite3.Connection,
-    artists: list[LibraryArtist],
+    artists: list[ArtisteBibliotheque],
     cfg: DecouverteConfig,
     now: datetime,
     rng: np.random.Generator,
@@ -69,7 +69,7 @@ def start_run(
         ]
         seeds = [by_id[i] for i in seed_ids if i in by_id]
         return Run(running[0], seeds, resumed=True, n_dropped=len(seed_ids) - len(seeds))
-    seeds = draw_seeds(
+    seeds = tirer_graines(
         artists, recently_used(conn, now, cfg.repos_graine_jours), cfg.graines_par_fournee, rng
     )
     with conn:

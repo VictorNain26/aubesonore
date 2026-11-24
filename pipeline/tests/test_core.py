@@ -209,7 +209,7 @@ def test_paths_derive_from_the_two_directories(tmp_path: Path) -> None:
     # sauvegarde de data_dir les emporte, un retéléchargement des poids ne les touche pas.
     s = Settings(_env_file=None, RADIO_DATA_DIR=tmp_path / "data", RADIO_MODELS_DIR=tmp_path / "w")
     assert s.db_path == tmp_path / "data" / "radio.db"
-    assert s.trained_models_dir == tmp_path / "data" / "models"
+    assert s.dossier_modeles == tmp_path / "data" / "models"
     assert s.effnet_model == tmp_path / "w" / "discogs-effnet-bs64-1.pb"
 
 

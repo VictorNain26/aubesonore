@@ -18,7 +18,7 @@ _FORBIDDEN_SECTIONS = frozenset({"musique second wave"})
 _TRACK_BATCH = 5000
 
 
-class LibraryGuardError(Exception):
+class SectionInterditeError(Exception):
     """La section ou la racine configurée n'est pas sûre : on refuse de lire."""
 
 
@@ -39,13 +39,13 @@ def _safe(p: PurePosixPath) -> bool:
 
 def check_section(title: str, locations: Iterable[str], root: PurePosixPath) -> None:
     if title.casefold() in _FORBIDDEN_SECTIONS:
-        raise LibraryGuardError(f"section interdite : {title}")
+        raise SectionInterditeError(f"section interdite : {title}")
     if not _safe(root) or len(root.parts) < 3:
-        raise LibraryGuardError(f"racine refusée : {root}")
+        raise SectionInterditeError(f"racine refusée : {root}")
     for loc in locations:
         p = PurePosixPath(loc)
         if not _safe(p) or not p.is_relative_to(root):
-            raise LibraryGuardError(f"emplacement hors racine : {loc}")
+            raise SectionInterditeError(f"emplacement hors racine : {loc}")
 
 
 class PlexSource:
@@ -59,7 +59,7 @@ class PlexSource:
     ) -> None:
         section = server_factory(url, token).library.section(section_title)
         if section.type != "artist":
-            raise LibraryGuardError(f"section non musicale : {section_title}")
+            raise SectionInterditeError(f"section non musicale : {section_title}")
         check_section(section.title, section.locations, root)
         self._section = section
 

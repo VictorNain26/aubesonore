@@ -28,7 +28,7 @@ from sklearn.preprocessing import StandardScaler
 
 from radio.decouverte.familles import FAMILY
 from radio.empreintes.effnet import MODEL_TAG
-from radio.empreintes.table import SignalTable, load_signals
+from radio.empreintes.table import TableEmpreintes, charger_empreintes
 from radio.gout.exemples import Dataset, build_labels, weights
 from radio.socle.config import GoutConfig
 
@@ -37,7 +37,7 @@ Ints = npt.NDArray[np.int64]
 
 
 @dataclass(frozen=True)
-class YesRate:
+class TauxOui:
     n: int
     yes: int
     low: float
@@ -48,13 +48,13 @@ class YesRate:
         return self.yes / self.n
 
 
-def yes_rate(labels: Ints) -> YesRate | None:
+def yes_rate(labels: Ints) -> TauxOui | None:
     """Taux de oui, intervalle de Wilson à 95 %."""
     n, yes = len(labels), int(labels.sum())
     if n == 0:
         return None
     ci = binomtest(yes, n).proportion_ci(confidence_level=0.95, method="wilson")
-    return YesRate(n, yes, float(ci.low), float(ci.high))
+    return TauxOui(n, yes, float(ci.low), float(ci.high))
 
 
 def auc(labels: Ints, scores: Floats) -> float | None:
@@ -63,7 +63,7 @@ def auc(labels: Ints, scores: Floats) -> float | None:
     return float(roc_auc_score(labels, scores))
 
 
-def fit(table: SignalTable, ds: Dataset, cfg: GoutConfig) -> Pipeline:
+def fit(table: TableEmpreintes, ds: Dataset, cfg: GoutConfig) -> Pipeline:
     model = make_pipeline(StandardScaler(), LogisticRegression(C=cfg.c, max_iter=3000))
     return model.fit(
         table.audio[ds.rows],
@@ -72,7 +72,7 @@ def fit(table: SignalTable, ds: Dataset, cfg: GoutConfig) -> Pipeline:
     )
 
 
-def predict(model: Pipeline, table: SignalTable, rows: Ints) -> Floats:
+def predict(model: Pipeline, table: TableEmpreintes, rows: Ints) -> Floats:
     if len(rows) == 0:
         return np.zeros(0)
     return np.asarray(model.predict_proba(table.audio[rows])[:, 1], dtype=np.float64)
@@ -98,7 +98,7 @@ def serving(conn: sqlite3.Connection, models_dir: Path) -> tuple[int, Pipeline] 
 
 
 @dataclass(frozen=True)
-class Batch:
+class Fournee:
     run_id: int
     n: int
     retained: int
@@ -109,7 +109,7 @@ def write_scores(
     conn: sqlite3.Connection,
     model_id: int,
     model: Pipeline,
-    table: SignalTable,
+    table: TableEmpreintes,
     keep: Mapping[str, int],
     floor: Mapping[str, float],
 ) -> None:
@@ -178,7 +178,7 @@ def write_scores(
         )
 
 
-def last_batch(conn: sqlite3.Connection) -> Batch | None:
+def derniere_fournee(conn: sqlite3.Connection) -> Fournee | None:
     row = conn.execute(
         """
         SELECT c.run_id, COUNT(*), SUM(s.accepted), SUM(s.floored)
@@ -186,7 +186,7 @@ def last_batch(conn: sqlite3.Connection) -> Batch | None:
         GROUP BY c.run_id ORDER BY c.run_id DESC LIMIT 1
         """
     ).fetchone()
-    return None if row is None else Batch(int(row[0]), int(row[1]), int(row[2]), int(row[3]))
+    return None if row is None else Fournee(int(row[0]), int(row[1]), int(row[2]), int(row[3]))
 
 
 def votes_count(conn: sqlite3.Connection) -> int:
@@ -203,14 +203,14 @@ def votes_digest(conn: sqlite3.Connection) -> str:
     return hashlib.sha256(json.dumps([tuple(r) for r in rows]).encode()).hexdigest()
 
 
-def trained_on(conn: sqlite3.Connection) -> str | None:
+def entraine_sur(conn: sqlite3.Connection) -> str | None:
     """Empreinte des votes vus par le dernier entraînement (None avant qu'elle soit gardée)."""
     row = conn.execute("SELECT params FROM models ORDER BY model_id DESC LIMIT 1").fetchone()
     return None if row is None else json.loads(row[0]).get("votes_digest")
 
 
 @dataclass(frozen=True)
-class TrainReport:
+class RapportGout:
     model_id: int
     promoted: bool
     verdict: str
@@ -235,10 +235,10 @@ def _decide(
     return None
 
 
-def train(conn: sqlite3.Connection, models_dir: Path, cfg: GoutConfig, now: str) -> TrainReport:
+def entrainer(conn: sqlite3.Connection, models_dir: Path, cfg: GoutConfig, now: str) -> RapportGout:
     # Lue avant les exemples : un vote arrivé pendant l'entraînement relance le suivant.
     digest = votes_digest(conn)
-    table = load_signals(conn)
+    table = charger_empreintes(conn)
     labels = build_labels(conn, table, cfg.fenetre_examen)
     model = fit(table, labels.train, cfg)
     exam = labels.exam
@@ -271,7 +271,7 @@ def train(conn: sqlite3.Connection, models_dir: Path, cfg: GoutConfig, now: str)
         # Dans la transaction : si l'écriture du fichier échoue, la ligne n'existe pas.
         joblib.dump(model, models_dir / file)
         conn.execute("UPDATE models SET file = ? WHERE model_id = ?", (file, model_id))
-    return TrainReport(
+    return RapportGout(
         model_id=model_id,
         promoted=refusal is None,
         verdict=verdict,
@@ -290,18 +290,18 @@ def rescore(conn: sqlite3.Connection, models_dir: Path, cfg: GoutConfig) -> int 
     if current is None:
         return None
     model_id, model = current
-    write_scores(conn, model_id, model, load_signals(conn), cfg.retenus, cfg.planchers)
+    write_scores(conn, model_id, model, charger_empreintes(conn), cfg.retenus, cfg.planchers)
     return model_id
 
 
 @dataclass(frozen=True)
-class FavoritesRetained:
+class FavorisRetenus:
     share: float
     n: int
     chance: float
 
 
-def favorites_retained(conn: sqlite3.Connection, models_dir: Path) -> FavoritesRetained | None:
+def favoris_retenus(conn: sqlite3.Connection, models_dir: Path) -> FavorisRetenus | None:
     """Part des favoris Hype Machine mesurés que le modèle en service retiendrait, à la coupure
     des découvertes de la dernière fournée ; le hasard en retiendrait `chance`, la part de ces
     découvertes notées à la coupure ou au-dessus (et non la part retenue : la règle d'un titre
@@ -317,9 +317,9 @@ def favorites_retained(conn: sqlite3.Connection, models_dir: Path) -> FavoritesR
         SELECT cut.score, AVG(latest.score >= cut.score) FROM latest, cut
         """
     ).fetchone()
-    table = load_signals(conn)
+    table = charger_empreintes(conn)
     rows = np.array([i for i, o in enumerate(table.origins) if o == "favorite"], dtype=np.int64)
     if current is None or row[0] is None or len(rows) == 0:
         return None
     scores = predict(current[1], table, rows)
-    return FavoritesRetained(float((scores >= float(row[0])).mean()), len(rows), float(row[1]))
+    return FavorisRetenus(float((scores >= float(row[0])).mean()), len(rows), float(row[1]))

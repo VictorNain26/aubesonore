@@ -3,10 +3,10 @@ from pathlib import Path
 
 import numpy as np
 
-from radio.gout.modele import Batch, train
+from radio.gout.modele import Fournee, entrainer
 from radio.socle.config import GoutConfig
 from radio.votes.etat import load_status
-from radio.votes.tirage import select_batch
+from radio.votes.tirage import tirer_bulletins
 from tests.model_factory import NO_FLOOR, NOW, add_vote, make_model_db, serve_scores
 
 LATER = datetime(2026, 9, 26, tzinfo=UTC)
@@ -24,7 +24,7 @@ def test_status_measures_the_serving_model_and_the_page_yes_rate(tmp_path: Path)
     conn.execute("INSERT INTO votes VALUES (200700, 'exam', 'non', '2026-09-24T12:00:00', 'page')")
     conn.execute("INSERT INTO votes VALUES (300800, 'exam', 'non', '2026-09-24T12:00:00', 'page')")
     conn.commit()
-    report = train(conn, tmp_path / "models", GoutConfig(), NOW)
+    report = entrainer(conn, tmp_path / "models", GoutConfig(), NOW)
 
     st = load_status(conn, tmp_path / "models", 60, 7, LATER)
     assert st.model_id == report.model_id
@@ -39,12 +39,12 @@ def test_status_without_a_model_still_counts_ballots(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     assert load_status(conn, tmp_path / "models", 60, 7, LATER).model_id is None
     serve_scores(conn)  # modèle n°1 promu, sans fichier : on ne mesure que la file ici
-    select_batch(conn, np.random.default_rng(0), 10, 10, NOW, floor=NO_FLOOR)
+    tirer_bulletins(conn, np.random.default_rng(0), 10, 10, NOW, floor=NO_FLOOR)
     conn.execute("UPDATE models SET promoted = 0")
     conn.commit()
     st = load_status(conn, tmp_path / "models", 60, 7, LATER)
     assert st.model_id is None and st.exam_auc is None
     assert st.pending == 20
     assert st.last_selection == NOW
-    assert st.batch == Batch(2, 48, 24, 0)
+    assert st.batch == Fournee(2, 48, 24, 0)
     assert st.stale_selection_days == 1

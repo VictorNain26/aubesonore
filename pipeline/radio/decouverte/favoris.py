@@ -17,7 +17,7 @@ from radio.sources.hypem import HypemClient
 
 
 @dataclass
-class FavoritesReport:
+class RapportFavoris:
     n_seen: int
     n_matched: int = 0
     n_unmatched: int = 0
@@ -25,16 +25,16 @@ class FavoritesReport:
     n_dropped: int = 0
 
 
-def favorites_pass(
+def importer_favoris(
     conn: sqlite3.Connection,
     deezer: DeezerClient,
     hypem: HypemClient,
     user: str,
     tolerance_s: int,
     now: str,
-) -> FavoritesReport:
+) -> RapportFavoris:
     favorites = hypem.favorites(user)
-    rep = FavoritesReport(n_seen=len(favorites))
+    rep = RapportFavoris(n_seen=len(favorites))
     kept: set[int] = set()
     for h in favorites:
         found = on_deezer(deezer, h, tolerance_s)

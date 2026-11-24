@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from typer.testing import CliRunner
 
 import radio.commandes as commandes
-from radio.gout.modele import Batch, YesRate
+from radio.gout.modele import Fournee, TauxOui
 from radio.socle.config import Settings
 from radio.socle.rapports import record_stage
 from radio.votes.etat import Status
@@ -40,13 +40,13 @@ def _st(**kw: Any) -> Status:
         "model_id": 3,
         "exam_auc": 0.8,
         "n_exam": 60,
-        "yes": YesRate(48, 40, 0.70, 0.91),
+        "yes": TauxOui(48, 40, 0.70, 0.91),
         "last_exam_vote": "2026-09-20T10:00:00+00:00",
         "pending": 20,
         "last_selection": "2026-09-27T03:40:00+00:00",
         "stale_selection_days": 0,
         "recent_votes": 12,
-        "batch": Batch(7, 400, 133, 0),
+        "batch": Fournee(7, 400, 133, 0),
     }
     base.update(kw)
     return Status(**base)
@@ -57,7 +57,7 @@ def test_status_lines() -> None:
     assert "Modèle n°3 : AUC d'examen 0,800 sur 60" in lines
     assert "Taux de oui des retenus : 83,3 % [70,0 % - 91,0 %] sur 48 votes d'examen" in lines
     assert "Dernière fournée (passe n°7) : 133 retenus sur 400 candidats" in lines
-    floored = commandes.exploitation._status_lines(_st(batch=Batch(7, 400, 133, 5)), 7)
+    floored = commandes.exploitation._status_lines(_st(batch=Fournee(7, 400, 133, 5)), 7)
     assert (
         "Dernière fournée (passe n°7) : 133 retenus sur 400 candidats, "
         "5 nouveautés écartées sous le plancher de score"

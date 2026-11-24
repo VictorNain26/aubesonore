@@ -11,11 +11,11 @@ from datetime import date, timedelta
 from pathlib import Path
 
 
-class BackupError(Exception):
+class SauvegardeError(Exception):
     """La copie n'est pas une base saine."""
 
 
-def backup(db: Path, models: Path, dest: Path, today: date, jours_gardes: int) -> Path:
+def sauvegarder(db: Path, models: Path, dest: Path, today: date, jours_gardes: int) -> Path:
     # The copy is made beside the days and enters its day only once sound: a refused copy leaves
     # nothing, so the newest day stays one to restore, even a sound copy made earlier today.
     dest.mkdir(parents=True, exist_ok=True)
@@ -27,7 +27,7 @@ def backup(db: Path, models: Path, dest: Path, today: date, jours_gardes: int) -
             src.backup(dst)
             check = dst.execute("PRAGMA integrity_check").fetchone()[0]
         if check != "ok":
-            raise BackupError(f"integrity_check : {check}")
+            raise SauvegardeError(f"integrity_check : {check}")
         target = dest / today.isoformat()
         target.mkdir(exist_ok=True)
         partial.replace(target / "radio.db")

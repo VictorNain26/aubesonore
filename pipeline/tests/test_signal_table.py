@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 
 from radio.empreintes.effnet import DIM, MODEL_TAG, to_blob
-from radio.empreintes.table import load_signals
+from radio.empreintes.table import charger_empreintes
 from tests.factories import make_library
 
 VEC = np.full(DIM, 1 / np.sqrt(DIM), dtype=np.float32)
@@ -41,7 +41,7 @@ def build(tmp_path: Path) -> sqlite3.Connection:
 
 
 def test_load_signals_keeps_measured_tracks_of_the_current_model(tmp_path: Path) -> None:
-    t = load_signals(build(tmp_path))
+    t = charger_empreintes(build(tmp_path))
     assert t.track_ids.tolist() == [1, 9, 101]
     assert t.origins == ["candidate", "negative", "library"]
     assert t.artist_keys == ["knife", "jul", "m83"]
@@ -52,4 +52,4 @@ def test_artist_key_falls_back_to_the_id(tmp_path: Path) -> None:
     conn = build(tmp_path)
     conn.execute("UPDATE artists SET name = '!!!' WHERE deezer_artist_id = 9")
     conn.commit()
-    assert load_signals(conn).artist_keys[1] == "#9"
+    assert charger_empreintes(conn).artist_keys[1] == "#9"

@@ -16,7 +16,7 @@ import typer
 from pydantic import ValidationError
 
 from radio.gout.modele import (
-    Batch,
+    Fournee,
 )
 from radio.socle.config import Editorial, Settings, load_editorial
 from radio.socle.db import connect
@@ -161,7 +161,7 @@ def main() -> None:
     logging.getLogger("urllib3").setLevel(logging.ERROR)
 
 
-def _batch_line(b: Batch) -> str:
+def _ligne_fournee(b: Fournee) -> str:
     line = (
         f"Dernière fournée (passe n°{b.run_id}) : {_n(b.retained)} retenus sur {_n(b.n)} candidats"
     )

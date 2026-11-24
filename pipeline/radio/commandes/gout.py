@@ -2,32 +2,32 @@
 
 from radio.commandes import commun
 from radio.commandes.commun import (
-    _batch_line,
     _db,
     _dec,
     _echo,
     _editorial,
     _fail,
+    _ligne_fournee,
     _n,
     _now,
     _record,
     _stage,
     app,
 )
-from radio.gout.exemples import MissingExamplesError
+from radio.gout.exemples import ExemplesManquantsError
 from radio.gout.modele import (
-    TrainReport,
-    favorites_retained,
-    last_batch,
+    RapportGout,
+    derniere_fournee,
+    entraine_sur,
+    entrainer,
+    favoris_retenus,
     rescore,
-    train,
-    trained_on,
     votes_count,
     votes_digest,
 )
 
 
-def _train_lines(r: TrainReport) -> list[str]:
+def _lignes_gout(r: RapportGout) -> list[str]:
     c = r.counts
     verdict = "promu" if r.promoted else "non promu"
     return [
@@ -46,26 +46,26 @@ def gout() -> None:
     """Entraîne le modèle s'il y a des votes nouveaux ou corrigés, puis note les candidats."""
     settings = commun._settings()
     cfg = _editorial(settings).gout
-    models_dir = settings.trained_models_dir
+    models_dir = settings.dossier_modeles
     lines = []
     with _db(settings) as conn:
-        if votes_digest(conn) == trained_on(conn):
+        if votes_digest(conn) == entraine_sur(conn):
             lines.append(
                 f"Aucun vote nouveau ni corrigé ({_n(votes_count(conn))} votes) : "
                 "pas de réentraînement"
             )
         else:
             try:
-                lines += _train_lines(train(conn, models_dir, cfg, _now()))
-            except MissingExamplesError:
+                lines += _lignes_gout(entrainer(conn, models_dir, cfg, _now()))
+            except ExemplesManquantsError:
                 _fail(
                     "Exemples insuffisants (il faut des titres de la bibliothèque et des négatifs "
                     "mesurés) : lancer radio negatifs puis radio empreintes",
                     1,
                 )
         model_id = rescore(conn, models_dir, cfg)
-        batch = last_batch(conn)
-        favorites = favorites_retained(conn, models_dir)
+        batch = derniere_fournee(conn)
+        favorites = favoris_retenus(conn, models_dir)
         _record(
             conn,
             "gout",
@@ -83,7 +83,7 @@ def gout() -> None:
     else:
         lines.append(f"Candidats notés par le modèle n°{model_id}")
         if batch is not None:
-            lines.append(_batch_line(batch))
+            lines.append(_ligne_fournee(batch))
         if favorites is not None:
             lines.append(
                 f"Favoris Hype Machine retenus par ce modèle : {favorites.share:.0%} de "

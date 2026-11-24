@@ -4,33 +4,33 @@ from pathlib import Path
 
 import numpy as np
 
-from radio.bibliotheque.artistes import LibraryArtist
-from radio.decouverte.graines import draw_seeds, finish_run, recently_used, start_run
+from radio.bibliotheque.artistes import ArtisteBibliotheque
+from radio.decouverte.graines import finish_run, recently_used, start_run, tirer_graines
 from radio.socle.config import DecouverteConfig
 from radio.socle.db import connect
 
-A = [LibraryArtist(i, f"A{i}", plays) for i, plays in [(1, 0), (2, 100), (3, 5)]]
+A = [ArtisteBibliotheque(i, f"A{i}", plays) for i, plays in [(1, 0), (2, 100), (3, 5)]]
 NOW = datetime(2026, 9, 25, tzinfo=UTC)
 CFG = DecouverteConfig(graines_par_fournee=2, repos_graine_jours=30)
 
 
-def ids(artists: list[LibraryArtist]) -> set[int]:
+def ids(artists: list[ArtisteBibliotheque]) -> set[int]:
     return {a.deezer_artist_id for a in artists}
 
 
 def test_draw_without_replacement() -> None:
-    got = draw_seeds(A, set(), 3, np.random.default_rng(0))
+    got = tirer_graines(A, set(), 3, np.random.default_rng(0))
     assert sorted(a.deezer_artist_id for a in got) == [1, 2, 3]
 
 
 def test_draw_respects_exclusion_and_pool_size() -> None:
-    assert ids(draw_seeds(A, {2}, 5, np.random.default_rng(0))) == {1, 3}
-    assert draw_seeds(A, {1, 2, 3}, 5, np.random.default_rng(0)) == []
+    assert ids(tirer_graines(A, {2}, 5, np.random.default_rng(0))) == {1, 3}
+    assert tirer_graines(A, {1, 2, 3}, 5, np.random.default_rng(0)) == []
 
 
 def test_listened_artists_are_favoured_but_everyone_keeps_a_chance() -> None:
     rng = np.random.default_rng(42)
-    counts = Counter(draw_seeds(A[:2], set(), 1, rng)[0].deezer_artist_id for _ in range(4000))
+    counts = Counter(tirer_graines(A[:2], set(), 1, rng)[0].deezer_artist_id for _ in range(4000))
     # Poids 1 (aucune écoute) contre 4 (plafond) : 20 % contre 80 %.
     assert 0.15 < counts[1] / 4000 < 0.25
 

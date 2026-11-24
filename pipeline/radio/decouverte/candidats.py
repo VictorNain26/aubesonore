@@ -44,7 +44,7 @@ def add_tracks(
     return added
 
 
-def add_candidates(
+def ajouter_candidats(
     conn: sqlite3.Connection,
     run_id: int,
     source: str,

@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from radio.gout.modele import YesRate, yes_rate
+from radio.gout.modele import TauxOui, yes_rate
 from radio.socle.config import NouveautesConfig
 
 MIN_VOTES = 20
@@ -29,7 +29,7 @@ def pct(x: float) -> str:
 class Suivi:
     run_id: int | None
     flows: list["Flow"]
-    by_source: list[tuple[str, YesRate]]
+    by_source: list[tuple[str, TauxOui]]
     to_adjust: list[str]
 
 
@@ -76,7 +76,7 @@ def last_flows(conn: sqlite3.Connection) -> tuple[int | None, list[Flow]]:
     ]
 
 
-def yes_by_source(conn: sqlite3.Connection) -> list[tuple[str, YesRate]]:
+def yes_by_source(conn: sqlite3.Connection) -> list[tuple[str, TauxOui]]:
     """Taux de oui à l'examen par source (docs/conception.md §3), puis par blog ou genre : l'examen
     tire uniformément dans chaque famille de la fournée, donc il juge la source elle-même, avant
     le modèle."""
