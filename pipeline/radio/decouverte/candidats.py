@@ -19,7 +19,7 @@ def ajouter_titres(
     artist_id: int,
     artist_name: str,
     tracks: list[DeezerTrack],
-    origin: str,
+    provenance: str,
     now: str,
 ) -> list[int]:
     """Insère l'artiste et ses titres ; renvoie les ids ajoutés. Un doublon (même id, ou même clé
@@ -37,7 +37,7 @@ def ajouter_titres(
                                 added_at)
             VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING
             """,
-            (t.id, artist_id, t.title, origin, dedupe_key(artist_name, t.title), now),
+            (t.id, artist_id, t.title, provenance, dedupe_key(artist_name, t.title), now),
         )
         if cur.rowcount:
             added.append(t.id)
@@ -46,7 +46,7 @@ def ajouter_titres(
 
 def ajouter_candidats(
     conn: sqlite3.Connection,
-    run_id: int,
+    fournee_id: int,
     source: str,
     track_ids: list[int],
     *,
@@ -54,11 +54,15 @@ def ajouter_candidats(
     seed_artist_id: int | None = None,
     neighbour_artist_id: int | None = None,
 ) -> None:
-    """Inscrit des titres déjà ajoutés comme candidats de la fournée `run_id`, venus de `source`."""
+    """Inscrit des titres déjà ajoutés comme candidats de la fournée `fournee_id`, venus de
+    `source`."""
     conn.executemany(
         "INSERT INTO candidats (titre_id, fournee_id, source, detail, seed_artist_id, "
         "neighbour_artist_id) VALUES (?, ?, ?, ?, ?, ?)",
-        [(tid, run_id, source, detail, seed_artist_id, neighbour_artist_id) for tid in track_ids],
+        [
+            (tid, fournee_id, source, detail, seed_artist_id, neighbour_artist_id)
+            for tid in track_ids
+        ],
     )
 
 

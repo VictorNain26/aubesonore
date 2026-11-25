@@ -33,7 +33,7 @@ class AucunArtisteBibliothequeError(Exception):
 
 @dataclass
 class RapportDecouverte:
-    run_id: int
+    fournee_id: int
     resumed: bool
     n_seeds: int
     n_dropped: int
@@ -57,9 +57,9 @@ def decouvrir(
     if not artists:
         raise AucunArtisteBibliothequeError("no library artist matched on Deezer")
     run = start_run(conn, artists, cfg, now, rng)
-    exclude_ids = {a.deezer_artist_id for a in artists}
+    exclude_ids = {a.artiste_id for a in artists}
     exclude_names = noms_bibliotheque(conn)
-    rep = RapportDecouverte(run.run_id, run.resumed, len(run.seeds), run.n_dropped)
+    rep = RapportDecouverte(run.fournee_id, run.resumed, len(run.seeds), run.n_dropped)
     seen: set[int] = set()
     stamp = now.isoformat()
     answered = no_related = no_similar = 0
@@ -70,7 +70,7 @@ def decouvrir(
                 seed, deezer, lastfm, cfg.similaires_lastfm, exclude_ids, exclude_names
             )
         except (DeezerUnavailable, LastfmUnavailable):
-            logger.warning("discover: stopped at seed %s (%d)", seed.name, seed.deezer_artist_id)
+            logger.warning("discover: stopped at seed %s (%d)", seed.name, seed.artiste_id)
             raise
         except (DeezerError, LastfmError) as e:
             rep.skipped.append(f"{seed.name} ({type(e).__name__})")
@@ -99,10 +99,10 @@ def decouvrir(
                 added = ajouter_titres(conn, n.id, n.name, kept, "candidat", stamp)
                 ajouter_candidats(
                     conn,
-                    run.run_id,
+                    run.fournee_id,
                     "voisin",
                     added,
-                    seed_artist_id=seed.deezer_artist_id,
+                    seed_artist_id=seed.artiste_id,
                     neighbour_artist_id=n.id,
                 )
             rep.n_seen += len(top)
@@ -115,5 +115,5 @@ def decouvrir(
         raise LastfmUnavailable(f"aucun artiste similaire pour {answered} graines")
     if rep.n_neighbours and not rep.n_seen:
         raise DeezerUnavailable(f"aucun titre pour {rep.n_neighbours} voisins")
-    finish_run(conn, run.run_id, now)
+    finish_run(conn, run.fournee_id, now)
     return rep

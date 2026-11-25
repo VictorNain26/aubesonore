@@ -163,8 +163,9 @@ def main() -> None:
 
 def _ligne_fournee(b: Fournee) -> str:
     line = (
-        f"Dernière fournée (passe n°{b.run_id}) : {_n(b.retained)} retenus sur {_n(b.n)} candidats"
+        f"Dernière fournée (passe n°{b.fournee_id}) : "
+        f"{_n(b.retenu)} retenus sur {_n(b.n)} candidats"
     )
-    if b.floored:
-        line += f", {_n(b.floored)} nouveautés écartées sous le plancher de score"
+    if b.sous_plancher:
+        line += f", {_n(b.sous_plancher)} nouveautés écartées sous le plancher de score"
     return line

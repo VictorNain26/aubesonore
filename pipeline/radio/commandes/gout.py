@@ -36,7 +36,7 @@ def _lignes_gout(r: RapportGout) -> list[str]:
         f"({_n(r.n_weak_excluded)} écartés) ; {_n(r.n_votes_unmeasured)} votes sans empreinte",
         f"Examen : {_n(r.n_exam)} votes, AUC {_dec(r.new_auc)} (modèle en service : "
         f"{_dec(r.current_auc)})",
-        f"Modèle n°{r.model_id} : {verdict} — {r.verdict}",
+        f"Modèle n°{r.modele_id} : {verdict} — {r.verdict}",
     ]
 
 
@@ -63,25 +63,25 @@ def gout() -> None:
                     "mesurés) : lancer radio negatifs puis radio empreintes",
                     1,
                 )
-        model_id = renoter(conn, models_dir, cfg)
+        modele_id = renoter(conn, models_dir, cfg)
         batch = derniere_fournee(conn)
         favorites = favoris_retenus(conn, models_dir)
         _record(
             conn,
             "gout",
-            model_id is not None,
+            modele_id is not None,
             {
-                "modèle en service": model_id,
+                "modèle en service": modele_id,
                 "candidats": batch.n if batch else 0,
-                "retenus": batch.retained if batch else 0,
-                "nouveautés sous le plancher": batch.floored if batch else 0,
+                "retenus": batch.retenu if batch else 0,
+                "nouveautés sous le plancher": batch.sous_plancher if batch else 0,
                 "favoris retenus": None if favorites is None else round(favorites.share, 3),
             },
         )
-    if model_id is None:
+    if modele_id is None:
         lines.append("Aucun modèle en service : candidats non notés")
     else:
-        lines.append(f"Candidats notés par le modèle n°{model_id}")
+        lines.append(f"Candidats notés par le modèle n°{modele_id}")
         if batch is not None:
             lines.append(_ligne_fournee(batch))
         if favorites is not None:

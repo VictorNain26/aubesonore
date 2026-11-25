@@ -29,7 +29,7 @@ def test_status_measures_the_serving_model_and_the_page_yes_rate(tmp_path: Path)
     report = entrainer(conn, tmp_path / "models", GoutConfig(), NOW)
 
     st = charger_etat(conn, tmp_path / "models", 60, 7, LATER)
-    assert st.model_id == report.model_id
+    assert st.modele_id == report.modele_id
     assert st.exam_auc is not None and st.n_exam == 4
     assert st.yes is not None and (st.yes.n, st.yes.yes) == (1, 0)
     assert st.last_exam_vote == "2026-09-25T09:00:00+00:00"
@@ -39,13 +39,13 @@ def test_status_measures_the_serving_model_and_the_page_yes_rate(tmp_path: Path)
 
 def test_status_without_a_model_still_counts_ballots(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
-    assert charger_etat(conn, tmp_path / "models", 60, 7, LATER).model_id is None
+    assert charger_etat(conn, tmp_path / "models", 60, 7, LATER).modele_id is None
     serve_scores(conn)  # modèle n°1 promu, sans fichier : on ne mesure que la file ici
     tirer_bulletins(conn, np.random.default_rng(0), 10, 10, NOW, floor=NO_FLOOR)
     conn.execute("UPDATE modeles SET promoted = 0")
     conn.commit()
     st = charger_etat(conn, tmp_path / "models", 60, 7, LATER)
-    assert st.model_id is None and st.exam_auc is None
+    assert st.modele_id is None and st.exam_auc is None
     assert st.pending == 20
     assert st.last_selection == NOW
     assert st.batch == Fournee(2, 48, 24, 0)

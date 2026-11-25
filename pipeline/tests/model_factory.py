@@ -41,7 +41,7 @@ def make_model_db(
     conn.executemany("INSERT INTO rapprochements VALUES (?, ?, ?, ?, ?, ?)", matches)
     conn.commit()
     enregistrer_bibliotheque(conn, NOW)
-    for base, origin in ((2000, "candidat"), (3000, "candidat"), (4000, "negatif")):
+    for base, provenance in ((2000, "candidat"), (3000, "candidat"), (4000, "negatif")):
         for a in range(n_artists):
             aid = base + a
             tracks = [
@@ -50,11 +50,11 @@ def make_model_db(
                 )
                 for k in range(per_artist)
             ]
-            ajouter_titres(conn, aid, f"Art {aid}", tracks, origin, NOW)
-    for tid, aid, origin in conn.execute(
+            ajouter_titres(conn, aid, f"Art {aid}", tracks, provenance, NOW)
+    for tid, aid, provenance in conn.execute(
         "SELECT titre_id, artiste_id, provenance FROM titres"
     ).fetchall():
-        liked = origin == "bibliotheque" or 2000 <= aid < 3000
+        liked = provenance == "bibliotheque" or 2000 <= aid < 3000
         noise = np.zeros(DIM)
         noise[:16] = rng.normal(size=16)
         v = 6 * (LIKED if liked else DISLIKED) + noise
@@ -113,14 +113,14 @@ def as_news(
     *,
     source: str = "hypem",
     detail: str = "Blog",
-    run_id: int | None = None,
+    fournee_id: int | None = None,
 ) -> None:
     """Les candidats `low` à `high` deviennent des nouveautés `source` (dans la fournée
-    `run_id` si elle est donnée)."""
+    `fournee_id` si elle est donnée)."""
     conn.execute(
         "UPDATE candidats SET source = ?, seed_artist_id = NULL, neighbour_artist_id = NULL, "
         "detail = ?, fournee_id = COALESCE(?, fournee_id) WHERE titre_id BETWEEN ? AND ?",
-        (source, detail, run_id, low, high),
+        (source, detail, fournee_id, low, high),
     )
     conn.commit()
 

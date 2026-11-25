@@ -58,11 +58,11 @@ def tirage() -> None:
             True,
             {"examen": len(sel.exam), "leçon": len(sel.lesson), "fournée": sel.n_batch},
         )
-    if sel.selection_id is None:
+    if sel.tirage_id is None:
         typer.echo("Rien à présenter : tous les candidats notés ont déjà été présentés")
         return
     typer.echo(
-        f"Sélection n°{sel.selection_id} (modèle n°{sel.model_id}, fournée n°{sel.run_id}) : "
+        f"Sélection n°{sel.tirage_id} (modèle n°{sel.modele_id}, fournée n°{sel.fournee_id}) : "
         f"{_n(len(sel.exam))} d'examen parmi {_n(sel.n_batch)} titres de la fournée, "
         f"{_n(len(sel.lesson))} de leçon"
     )

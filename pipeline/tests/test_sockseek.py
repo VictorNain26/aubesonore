@@ -69,7 +69,7 @@ def test_download_passes_the_list_and_reads_the_index(tmp_path: Path) -> None:
     )
 
     # 333 n'a pas été tenté (Sockseek interrompu) : pas d'issue, donc aucune tentative comptée.
-    assert [(o.deezer_track_id, o.file, o.reason) for o in out] == [
+    assert [(o.titre_id, o.file, o.reason) for o in out] == [
         (111, tmp_path / "111.mp3", None),
         (222, None, "aucun fichier conforme"),
     ]
@@ -131,7 +131,7 @@ def test_a_stuck_sockseek_is_stopped_and_its_finished_tracks_kept(
         out = download(WANTED, tmp_path, tmp_path, Path("/x"), "u", "p", cfg, stuck)
 
     assert seen["timeout"] == time_limit(len(WANTED), cfg)
-    assert [o.deezer_track_id for o in out] == [111]
+    assert [o.titre_id for o in out] == [111]
     assert "délai" in caplog.text
     assert not (tmp_path / "sockseek.conf").exists()
 

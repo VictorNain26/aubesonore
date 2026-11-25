@@ -36,7 +36,7 @@ def empreintes() -> None:
             meas = calculer_empreintes(conn, DeezerClient(), embedder, now)
         except DeezerUnavailable as e:
             _fail(_unavailable(e), 1)
-        origins = Counter(charger_empreintes(conn).origins)
+        provenances = Counter(charger_empreintes(conn).provenances)
         _record(
             conn,
             "empreintes",
@@ -56,8 +56,8 @@ def empreintes() -> None:
             f"{_n(meas.n_no_preview)} sans extrait, {_n(meas.n_audio_failed)} empreinte ratée, "
             f"{_n(meas.n_gone)} disparus de Deezer, {_n(len(meas.errors))} en erreur",
             *(f"  erreur : {x}" for x in meas.errors),
-            f"Empreintes prêtes : {_n(origins.total())} titres (bibliothèque "
-            f"{_n(origins['bibliotheque'])}, candidats {_n(origins['candidat'])}, négatifs "
-            f"{_n(origins['negatif'])})",
+            f"Empreintes prêtes : {_n(provenances.total())} titres (bibliothèque "
+            f"{_n(provenances['bibliotheque'])}, candidats {_n(provenances['candidat'])}, négatifs "
+            f"{_n(provenances['negatif'])})",
         ]
     )

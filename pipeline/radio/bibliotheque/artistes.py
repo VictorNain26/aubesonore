@@ -15,7 +15,7 @@ from radio.bibliotheque.rapprochement import normalize
 
 @dataclass(frozen=True)
 class ArtisteBibliotheque:
-    deezer_artist_id: int
+    artiste_id: int
     name: str
     plays: int
 
@@ -95,7 +95,7 @@ def enregistrer_bibliotheque(conn: sqlite3.Connection, now: str) -> RapportArtis
     with conn:
         conn.executemany(
             "INSERT INTO artistes (artiste_id, name) VALUES (?, ?) ON CONFLICT DO NOTHING",
-            [(a.deezer_artist_id, a.name) for a in artists],
+            [(a.artiste_id, a.name) for a in artists],
         )
         removed = conn.execute(
             """

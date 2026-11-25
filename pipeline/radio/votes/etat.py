@@ -19,7 +19,7 @@ from radio.votes.tirage import bulletins_en_attente
 
 @dataclass(frozen=True)
 class Etat:
-    model_id: int | None
+    modele_id: int | None
     exam_auc: float | None
     n_exam: int
     yes: TauxOui | None
@@ -61,7 +61,7 @@ def charger_etat(
     ).fetchone()[0]
     last_selection = conn.execute("SELECT MAX(selected_at) FROM tirages").fetchone()[0]
     return Etat(
-        model_id=None if current is None else current[0],
+        modele_id=None if current is None else current[0],
         exam_auc=exam_auc,
         n_exam=n_exam,
         yes=taux_oui(np.array([int(r[0]) for r in page], dtype=np.int64)),

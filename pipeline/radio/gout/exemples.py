@@ -90,7 +90,7 @@ def build_labels(conn: sqlite3.Connection, table: TableEmpreintes, fenetre_exame
         str(r[0])
         for r in conn.execute("SELECT dedupe_key FROM titres WHERE provenance = 'bibliotheque'")
     }
-    lib_ids = {a.deezer_artist_id for a in artistes_bibliotheque(conn)}
+    lib_ids = {a.artiste_id for a in artistes_bibliotheque(conn)}
     lib_names = noms_bibliotheque(conn)
     plays = _plays(conn)
 
@@ -99,17 +99,19 @@ def build_labels(conn: sqlite3.Connection, table: TableEmpreintes, fenetre_exame
     base: list[float] = []
     cats: list[int] = []
     excluded = 0
-    for i, (tid, origin) in enumerate(zip(table.track_ids.tolist(), table.origins, strict=True)):
+    for i, (tid, provenance) in enumerate(
+        zip(table.track_ids.tolist(), table.provenances, strict=True)
+    ):
         if tid in exam_ids:
             continue
         if tid in lesson:
             yes = lesson[tid] == "oui"
             label, weight, cat = int(yes), VOTE_WEIGHT, VOTE_YES if yes else VOTE_NO
-        elif origin == "bibliotheque":
+        elif provenance == "bibliotheque":
             if keys[tid] in exam_keys:
                 continue  # autre version d'un titre d'examen : elle le révélerait au modèle
             label, weight, cat = 1, poids_ecoute(plays.get(tid, 0)), LIBRARY
-        elif origin == "negatif":
+        elif provenance == "negatif":
             if (
                 int(table.artist_ids[i]) in lib_ids
                 or table.artist_keys[i] in lib_names

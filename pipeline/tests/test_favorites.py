@@ -118,9 +118,9 @@ def test_a_favorite_is_no_longer_a_discovery_and_the_library_keeps_its_own(tmp_p
 
     rep = importer_favoris(conn, FakeDeezer(), FakeHypem(favorites), "GhostRAvage", 3, NOW)  # type: ignore[arg-type]
 
-    origins = _origins(conn)
-    assert origins[501] == "favori" and origins[601] == "favori"
-    assert origins[101] == "bibliotheque"
+    provenances = _origins(conn)
+    assert provenances[501] == "favori" and provenances[601] == "favori"
+    assert provenances[101] == "bibliotheque"
     assert (rep.n_seen, rep.n_matched, rep.n_unmatched, rep.n_library) == (4, 3, 1, 1)
 
 
@@ -134,9 +134,9 @@ def test_an_unfavorited_track_returns_to_its_batch_or_is_forgotten(tmp_path: Pat
 
     rep = importer_favoris(conn, FakeDeezer(), FakeHypem([]), "GhostRAvage", 3, NOW)  # type: ignore[arg-type]
 
-    origins = _origins(conn)
-    assert origins[601] == "candidat"
-    assert 501 not in origins
+    provenances = _origins(conn)
+    assert provenances[601] == "candidat"
+    assert 501 not in provenances
     assert rep.n_dropped == 2
 
 

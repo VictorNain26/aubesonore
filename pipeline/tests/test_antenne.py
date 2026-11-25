@@ -146,12 +146,12 @@ def _on_air(
     conn: Any, rows: list[tuple[int, str, str]], since: datetime, folder: str = "antenne"
 ) -> FakeStation:
     """Inscrit des titres (id, origine, catégorie) entrés à `since`, et leurs fichiers."""
-    for tid, origin, categorie in rows:
+    for tid, provenance, categorie in rows:
         conn.execute(
             "INSERT INTO antenne VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 tid,
-                origin,
+                provenance,
                 categorie,
                 tid,
                 f"s{tid}",

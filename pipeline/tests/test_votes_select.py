@@ -23,8 +23,8 @@ def test_exam_from_latest_batch_lesson_most_uncertain(tmp_path: Path) -> None:
     conn = make_model_db(tmp_path)
     serve_scores(conn)
     sel = tirer_bulletins(conn, _rng(), 10, 10, NOW, floor=NO_FLOOR)
-    assert sel.selection_id == 1 and sel.model_id == 1
-    assert sel.run_id == 2 and sel.n_batch == 48
+    assert sel.tirage_id == 1 and sel.modele_id == 1
+    assert sel.fournee_id == 2 and sel.n_batch == 48
     assert len(sel.exam) == 10
     assert all(t // 100 % 100 >= 6 for t in sel.exam)  # dernière fournée : artistes 6 à 11
     assert len(sel.lesson) == 10
@@ -32,7 +32,7 @@ def test_exam_from_latest_batch_lesson_most_uncertain(tmp_path: Path) -> None:
     assert not {t // 100 for t in sel.exam} & {t // 100 for t in sel.lesson}
     ballots = bulletins_en_attente(conn)
     assert sorted(b.position for b in ballots) == list(range(20))
-    kinds = {b.deezer_track_id: b.kind for b in ballots}
+    kinds = {b.titre_id: b.type for b in ballots}
     assert kinds == {**dict.fromkeys(sel.exam, "examen"), **dict.fromkeys(sel.lesson, "lecon")}
     assert ballots[0].artist.startswith("Art ") and ballots[0].title.startswith("Titre ")
 
@@ -128,7 +128,7 @@ def test_an_artist_once_examined_never_gets_a_lesson(tmp_path: Path) -> None:
     serve_scores(conn)
     first = tirer_bulletins(conn, _rng(), 10, 0, NOW, floor=NO_FLOOR)
     for b in bulletins_en_attente(conn):
-        assert enregistrer_vote(conn, b.deezer_track_id, "oui", NOW)
+        assert enregistrer_vote(conn, b.titre_id, "oui", NOW)
     second = tirer_bulletins(conn, _rng(1), 0, 10, NOW, floor=NO_FLOOR)
     assert second.lesson
     assert not {t // 100 for t in first.exam} & {t // 100 for t in second.lesson}
@@ -148,7 +148,7 @@ def test_votes_empty_the_queue_and_titles_never_return(tmp_path: Path) -> None:
     serve_scores(conn)
     first = tirer_bulletins(conn, _rng(), 10, 10, NOW, floor=NO_FLOOR)
     for b in bulletins_en_attente(conn):
-        assert enregistrer_vote(conn, b.deezer_track_id, "oui", NOW)
+        assert enregistrer_vote(conn, b.titre_id, "oui", NOW)
     assert bulletins_en_attente(conn) == []
     assert not enregistrer_vote(conn, 400000, "oui", NOW)  # jamais présenté
     kinds = dict(conn.execute("SELECT titre_id, type FROM votes").fetchall())
@@ -207,7 +207,7 @@ def test_a_vote_is_corrected_until_the_next_selection_freezes_it(tmp_path: Path)
     serve_scores(conn)
     first = tirer_bulletins(conn, _rng(), 10, 10, NOW, floor=NO_FLOOR)
     for b in bulletins_en_attente(conn):
-        assert enregistrer_vote(conn, b.deezer_track_id, "oui", NOW)
+        assert enregistrer_vote(conn, b.titre_id, "oui", NOW)
     tid = first.lesson[0]
     assert enregistrer_vote(conn, tid, "non", "2026-10-11T12:00:00+00:00")
     row = conn.execute(
@@ -216,7 +216,7 @@ def test_a_vote_is_corrected_until_the_next_selection_freezes_it(tmp_path: Path)
     assert tuple(row) == ("lecon", "non", NOW)  # l'heure du premier vote reste
     week = votes_semaine(conn)
     assert [c.bulletin.position for c in week] == list(range(20))
-    assert {c.bulletin.deezer_track_id: c.vote for c in week}[tid] == "non"
+    assert {c.bulletin.titre_id: c.vote for c in week}[tid] == "non"
 
     tirer_bulletins(conn, _rng(1), 10, 10, NOW, floor=NO_FLOOR)
     assert not enregistrer_vote(conn, tid, "oui", NOW)  # figé par la nouvelle sélection

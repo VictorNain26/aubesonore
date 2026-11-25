@@ -31,7 +31,7 @@ def chercher_voisins(
     names = lastfm.similar_artists(seed.name, limit=similar_limit)
     similar = {normalize(s) for s in names}
     similar.discard("")
-    related = deezer.related(seed.deezer_artist_id)
+    related = deezer.related(seed.artiste_id)
     out = []
     for a in related:
         n = normalize(a.name)

@@ -37,7 +37,7 @@ def full(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 def _st(**kw: Any) -> Etat:
     base: dict[str, Any] = {
-        "model_id": 3,
+        "modele_id": 3,
         "exam_auc": 0.8,
         "n_exam": 60,
         "yes": TauxOui(48, 40, 0.70, 0.91),
@@ -57,13 +57,13 @@ def test_status_lines() -> None:
     assert "Modèle n°3 : AUC d'examen 0,800 sur 60" in lines
     assert "Taux de oui des retenus : 83,3 % [70,0 % - 91,0 %] sur 48 votes d'examen" in lines
     assert "Dernière fournée (passe n°7) : 133 retenus sur 400 candidats" in lines
-    floored = commandes.exploitation._status_lines(_st(batch=Fournee(7, 400, 133, 5)), 7)
+    sous_plancher = commandes.exploitation._status_lines(_st(batch=Fournee(7, 400, 133, 5)), 7)
     assert (
         "Dernière fournée (passe n°7) : 133 retenus sur 400 candidats, "
         "5 nouveautés écartées sous le plancher de score"
-    ) in floored
+    ) in sous_plancher
     none = commandes.exploitation._status_lines(
-        _st(model_id=None, exam_auc=None, n_exam=0, yes=None), 7
+        _st(modele_id=None, exam_auc=None, n_exam=0, yes=None), 7
     )
     assert none[:2] == [
         "Aucun modèle en service",

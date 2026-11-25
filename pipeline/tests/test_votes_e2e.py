@@ -59,7 +59,7 @@ def test_votes_lifecycle_from_training_to_a_second_selection(env: Path) -> None:
         choix = "oui" if i % 2 == 0 else "non"
         r = client.post(
             "/vote",
-            data={"tid": str(bulletin.deezer_track_id), "choix": choix},
+            data={"tid": str(bulletin.titre_id), "choix": choix},
             headers=OK,
             follow_redirects=False,
         )

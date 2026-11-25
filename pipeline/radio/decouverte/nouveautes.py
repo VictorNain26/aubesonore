@@ -24,7 +24,7 @@ class AucuneFourneeError(Exception):
 
 @dataclass
 class RapportNouveautes:
-    run_id: int
+    fournee_id: int
     seen: Counter[str] = field(default_factory=Counter)
     added: Counter[str] = field(default_factory=Counter)
     # Déjà candidats d'une fournée précédente : une source qui ne renouvelle pas sa sélection.
@@ -58,7 +58,7 @@ def _add(
         return
     with conn:
         added = ajouter_titres(conn, track.artist_id, track.artist_name, [track], "candidat", now)
-        ajouter_candidats(conn, rep.run_id, source, added, detail=detail)
+        ajouter_candidats(conn, rep.fournee_id, source, added, detail=detail)
     rep.added[source] += len(added)
     if not added:
         rep.already[source] += 1

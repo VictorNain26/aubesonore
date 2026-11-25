@@ -54,7 +54,7 @@ def test_page_shows_next_ballot_blind(db: Path) -> None:
     assert r.status_code == 200
     assert "20 à écouter" in r.text
     assert b.title in r.text and b.artist in r.text
-    assert f"/extrait/{b.deezer_track_id}" in r.text
+    assert f"/extrait/{b.titre_id}" in r.text
     for hidden in ("exam", "lesson", "leçon", "score", "seuil"):  # à l'aveugle
         assert hidden not in r.text
 
@@ -82,7 +82,7 @@ def test_page_shows_a_hint_when_the_preview_fails_to_play(db: Path) -> None:
     i = next(
         i
         for i, (tag, attrs, _) in enumerate(page.elements)
-        if tag == "audio" and attrs.get("src") == f"/extrait/{b.deezer_track_id}"
+        if tag == "audio" and attrs.get("src") == f"/extrait/{b.titre_id}"
     )
     # L'aide suit le lecteur, cachée ; une erreur de lecture la montre.
     assert page.elements[i][1]["onerror"] == "this.nextElementSibling.hidden=false"
@@ -96,25 +96,23 @@ def test_vote_is_recorded_and_page_moves_on(db: Path) -> None:
     c = _client(db)
     r = c.post(
         "/vote",
-        data={"tid": str(b.deezer_track_id), "choix": "non"},
+        data={"tid": str(b.titre_id), "choix": "non"},
         headers=OK,
         follow_redirects=False,
     )
     assert r.status_code == 303 and r.headers["location"] == "/"
     conn = connect(db)
-    row = conn.execute(
-        "SELECT type, vote FROM votes WHERE titre_id = ?", (b.deezer_track_id,)
-    ).fetchone()
-    assert tuple(row) == (b.kind, "non")
+    row = conn.execute("SELECT type, vote FROM votes WHERE titre_id = ?", (b.titre_id,)).fetchone()
+    assert tuple(row) == (b.type, "non")
     assert len(bulletins_en_attente(conn)) == 19
     conn.close()
     unknown = c.post("/vote", data={"tid": "400000", "choix": "oui"}, headers=OK)
     assert unknown.status_code == 409
-    bad = c.post("/vote", data={"tid": str(b.deezer_track_id), "choix": "bof"}, headers=OK)
+    bad = c.post("/vote", data={"tid": str(b.titre_id), "choix": "bof"}, headers=OK)
     assert bad.status_code == 422
     elsewhere = c.post(
         "/vote",
-        data={"tid": str(b.deezer_track_id), "choix": "oui", "retour": "https://ailleurs.example"},
+        data={"tid": str(b.titre_id), "choix": "oui", "retour": "https://ailleurs.example"},
         headers=OK,
     )
     assert elsewhere.status_code == 422
@@ -125,30 +123,28 @@ def test_the_week_page_corrects_a_vote_blind(db: Path) -> None:
     c = _client(db)
     assert c.get("/semaine").status_code == 403
     assert "/semaine" not in c.get("/", headers=OK).text  # rien voté encore
-    c.post("/vote", data={"tid": str(b.deezer_track_id), "choix": "non"}, headers=OK)
+    c.post("/vote", data={"tid": str(b.titre_id), "choix": "non"}, headers=OK)
     assert "Revoir les votes de la semaine (1)" in c.get("/", headers=OK).text
 
     page = c.get("/semaine", headers=OK).text
     assert b.title in page and b.artist in page
-    assert f'src="/extrait/{b.deezer_track_id}"' in page
+    assert f'src="/extrait/{b.titre_id}"' in page
     assert 'value="non" class="non" aria-pressed="true"' in page
     assert 'value="oui" class="oui" aria-pressed="false"' in page
     for hidden in ("exam", "lesson", "leçon", "score", "seuil"):  # à l'aveugle
         assert hidden not in page
-    assert c.get(f"/extrait/{b.deezer_track_id}", headers=OK).status_code == 200
+    assert c.get(f"/extrait/{b.titre_id}", headers=OK).status_code == 200
 
     r = c.post(
         "/vote",
-        data={"tid": str(b.deezer_track_id), "choix": "oui", "retour": "/semaine"},
+        data={"tid": str(b.titre_id), "choix": "oui", "retour": "/semaine"},
         headers=OK,
         follow_redirects=False,
     )
     assert r.status_code == 303 and r.headers["location"] == "/semaine"
     conn = connect(db)
     assert (
-        conn.execute("SELECT vote FROM votes WHERE titre_id = ?", (b.deezer_track_id,)).fetchone()[
-            0
-        ]
+        conn.execute("SELECT vote FROM votes WHERE titre_id = ?", (b.titre_id,)).fetchone()[0]
         == "oui"
     )
     assert len(bulletins_en_attente(conn)) == 19
@@ -171,7 +167,7 @@ def test_preview_is_relayed_and_its_url_never_leaks(
     b = _first(db)
     deezer = PreviewDeezer()
     c = _client(db, deezer)
-    r = c.get(f"/extrait/{b.deezer_track_id}", headers=OK)
+    r = c.get(f"/extrait/{b.titre_id}", headers=OK)
     assert r.status_code == 200 and r.content == b"ID3-mp3"
     assert r.headers["content-type"] == "audio/mpeg"
     assert r.headers["cache-control"] == "no-store"
@@ -192,7 +188,7 @@ def test_preview_is_relayed_and_its_url_never_leaks(
 )
 def test_preview_failures(db: Path, deezer: PreviewDeezer, status: int) -> None:
     b = _first(db)
-    r = _client(db, deezer).get(f"/extrait/{b.deezer_track_id}", headers=OK)
+    r = _client(db, deezer).get(f"/extrait/{b.titre_id}", headers=OK)
     assert r.status_code == status
 
 
@@ -201,7 +197,7 @@ def test_extrait_supports_byte_ranges(db: Path) -> None:
     # Content Guide) ; PreviewDeezer renvoie b"ID3-mp3", 7 octets.
     b = _first(db)
     c = _client(db)
-    tid = b.deezer_track_id
+    tid = b.titre_id
 
     r = c.get(f"/extrait/{tid}", headers={**OK, "Range": "bytes=0-1"})
     assert r.status_code == 206
@@ -219,7 +215,7 @@ def test_extrait_supports_byte_ranges(db: Path) -> None:
 def test_extraits_never_outlive_the_app(db: Path) -> None:
     # Starlette ne lance pas la tâche de nettoyage sur un 416 : le fichier reste dans le
     # répertoire de l'application, supprimé avec elle.
-    tid = _first(db).deezer_track_id
+    tid = _first(db).titre_id
     app = create_app(db, PreviewDeezer(), verify)
     c = TestClient(app)
     folder = Path(app.state.extraits.name)
@@ -235,9 +231,9 @@ def test_the_follow_up_page_is_guarded_and_shows_each_source(db: Path) -> None:
     client = _client(db)
     assert client.get("/suivi").status_code == 403
     conn = connect(db)
-    exam = next(b for b in bulletins_en_attente(conn) if b.kind == "examen")
+    exam = next(b for b in bulletins_en_attente(conn) if b.type == "examen")
     conn.close()
-    client.post("/vote", data={"tid": str(exam.deezer_track_id), "choix": "oui"}, headers=OK)
+    client.post("/vote", data={"tid": str(exam.titre_id), "choix": "oui"}, headers=OK)
     page = client.get("/suivi", headers=OK)
     assert page.status_code == 200
     assert "Suivi des sources" in page.text
@@ -255,7 +251,7 @@ def test_the_page_offers_the_three_answers_for_the_title_shown(db: Path) -> None
     form = next(i for i, (tag, _, _) in enumerate(page.elements) if tag == "form")
     assert page.elements[form][1] == {"method": "post", "action": "/vote"}
     inside = page.elements[form + 1 : form + 5]
-    assert inside[0][1] == {"type": "hidden", "name": "tid", "value": str(b.deezer_track_id)}
+    assert inside[0][1] == {"type": "hidden", "name": "tid", "value": str(b.titre_id)}
     assert [(tag, attrs["value"], text) for tag, attrs, text in inside[1:]] == [
         ("button", "oui", "Oui"),
         ("button", "non", "Non"),
