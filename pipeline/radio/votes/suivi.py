@@ -27,7 +27,7 @@ def pct(x: float) -> str:
 
 @dataclass(frozen=True)
 class Suivi:
-    run_id: int | None
+    fournee_id: int | None
     flows: list["Flux"]
     by_source: list[tuple[str, TauxOui]]
     to_adjust: list[str]
@@ -38,7 +38,7 @@ class Flux:
     source: str
     detail: str | None
     candidates: int
-    retained: int
+    retenu: int
     ready: int
     failed: int
     on_air: int
@@ -142,15 +142,15 @@ def load_suivi(conn: sqlite3.Connection, fresh: NouveautesConfig) -> Suivi:
         + (["hypem"] if fresh.pages_hypem else [])
         + (["deezer_editorial"] if genres else [])
     )
-    run_id, flows = derniers_flux(conn)
-    return Suivi(run_id, flows, oui_par_source(conn), adjustments(conn, flows, genres, sources))
+    fournee_id, flows = derniers_flux(conn)
+    return Suivi(fournee_id, flows, oui_par_source(conn), adjustments(conn, flows, genres, sources))
 
 
 def suivi_lines(s: Suivi) -> list[str]:
-    head = "Parcours de la dernière fournée" + (f" (n°{s.run_id})" if s.run_id else "")
+    head = "Parcours de la dernière fournée" + (f" (n°{s.fournee_id})" if s.fournee_id else "")
     lines = [head + " : candidats → retenus → prêts (échecs) → à l'antenne"]
     lines += [
-        f"  {f.key} : {f.candidates} → {f.retained} → {f.ready} ({f.failed}) → {f.on_air}"
+        f"  {f.key} : {f.candidates} → {f.retenu} → {f.ready} ({f.failed}) → {f.on_air}"
         for f in s.flows
     ] or ["  aucune fournée"]
     lines.append("Taux de oui à l'examen par source :")

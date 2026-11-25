@@ -116,19 +116,19 @@ def _page(ballots: list[Bulletin], n_voted: int) -> str:
         f'<p class="reste">{len(ballots)} à écouter</p>'
         f"<h1>{html.escape(b.title)}</h1>"
         f'<p class="artiste">{html.escape(b.artist)}</p>'
-        f'<audio controls autoplay preload="auto" src="/extrait/{b.deezer_track_id}" '
+        f'<audio controls autoplay preload="auto" src="/extrait/{b.titre_id}" '
         'onerror="this.nextElementSibling.hidden=false"></audio>'
         '<p class="indispo" hidden>Extrait indisponible : choisir « Passer ».</p>'
         '<p class="question">À sa place sur AubeSonore ?</p>'
         '<form method="post" action="/vote">'
-        f'<input type="hidden" name="tid" value="{b.deezer_track_id}">{buttons}</form>'
+        f'<input type="hidden" name="tid" value="{b.titre_id}">{buttons}</form>'
         + _week_link(n_voted)
     )
 
 
 def _week_page(votes: list[VoteExprime]) -> str:
     def item(c: VoteExprime) -> str:
-        tid = c.bulletin.deezer_track_id
+        tid = c.bulletin.titre_id
         buttons = "".join(
             f'<button name="choix" value="{v}" class="{v}" '
             f'aria-pressed="{"true" if v == c.vote else "false"}">{label}</button>'
@@ -158,14 +158,14 @@ def _suivi_page(s: Suivi) -> str:
         return "<tr>" + "".join(f"<td>{html.escape(c)}</td>" for c in cells) + "</tr>"
 
     flows = "".join(
-        row([f.key, str(f.candidates), str(f.retained), str(f.ready), str(f.failed), str(f.on_air)])
+        row([f.key, str(f.candidates), str(f.retenu), str(f.ready), str(f.failed), str(f.on_air)])
         for f in s.flows
     )
     rates = "".join(
         row([k, pct(r.rate), f"{pct(r.low)} - {pct(r.high)}", str(r.n)]) for k, r in s.by_source
     )
     adjust = "".join(f"<li>{html.escape(a)}</li>" for a in s.to_adjust) or "<li>rien</li>"
-    run = f" (fournée n°{s.run_id})" if s.run_id else ""
+    run = f" (fournée n°{s.fournee_id})" if s.fournee_id else ""
     return _shell(
         "<h1>Suivi des sources</h1>"
         f"<h2>À ajuster</h2><ul>{adjust}</ul>"
@@ -253,9 +253,7 @@ def create_app(
 
     @app.get("/extrait/{tid}", dependencies=guarded)
     def extrait(tid: int) -> Response:
-        if tid not in {b.deezer_track_id for b in waiting()} | {
-            c.bulletin.deezer_track_id for c in week()
-        }:
+        if tid not in {b.titre_id for b in waiting()} | {c.bulletin.titre_id for c in week()}:
             raise HTTPException(404, "Titre inconnu")
         try:
             found = deezer.track(tid)

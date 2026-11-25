@@ -114,7 +114,7 @@ def _verify_and_prepare(
     if refusal is not None:
         return None, refusal, None
     # L'URL d'extrait est signée et expire : relue juste avant usage, avec l'album.
-    page = deezer.track_page(want.deezer_track_id)
+    page = deezer.track_page(want.titre_id)
     if page is None or page.preview_url is None:
         return None, "extrait Deezer indisponible", None
     with tempfile.NamedTemporaryFile(suffix=".mp3") as preview:
@@ -123,8 +123,8 @@ def _verify_and_prepare(
         score = similarity(fingerprint(file), fingerprint(Path(preview.name)))
     if score < cfg.seuil_identite:
         return None, "identité", None
-    dest = ready_dir / f"{want.deezer_track_id}.mp3"
-    tags = tags_for(deezer, want.deezer_track_id, want.artist, want.title, page)
+    dest = ready_dir / f"{want.titre_id}.mp3"
+    tags = tags_for(deezer, want.titre_id, want.artist, want.title, page)
     prepare(file, dest, p.codec, tags, rsgain)
     return dest, None, tags
 
@@ -169,7 +169,7 @@ def telecharger_fournee(
         return rep
     ready_dir.mkdir(parents=True, exist_ok=True)
     workdir.mkdir(parents=True)
-    by_id = {w.deezer_track_id: w for w in wanted}
+    by_id = {w.titre_id: w for w in wanted}
     try:
         outcomes = download(wanted, workdir, conf_dir, sockseek, *credentials, cfg, run)
         rep.n_unindexed = len(wanted) - len(outcomes)
@@ -178,7 +178,7 @@ def telecharger_fournee(
             if out.file is not None:
                 try:
                     file, reason, tags = _verify_and_prepare(
-                        out.file, by_id[out.deezer_track_id], deezer, ready_dir, rsgain, cfg
+                        out.file, by_id[out.titre_id], deezer, ready_dir, rsgain, cfg
                     )
                     if tags is not None and tags.cover is None:
                         rep.n_no_cover += 1
@@ -186,7 +186,7 @@ def telecharger_fournee(
                     reason = f"{type(e).__name__} : {e}"
                 finally:
                     out.file.unlink(missing_ok=True)
-            _save(conn, out.deezer_track_id, file, reason, now)
+            _save(conn, out.titre_id, file, reason, now)
             if file is not None:
                 rep.n_ready += 1
             else:

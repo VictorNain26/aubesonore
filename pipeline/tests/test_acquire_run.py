@@ -131,7 +131,7 @@ def _artist(conn: Any, tid: int) -> int:
 
 
 @pytest.mark.parametrize(
-    ("origin", "categorie"),
+    ("provenance", "categorie"),
     [
         ("telecharge", "decouvertes"),
         ("telecharge", "fond"),
@@ -140,7 +140,7 @@ def _artist(conn: Any, tid: int) -> int:
     ],
 )
 def test_one_title_per_artist_enters_and_the_next_waits_its_turn(
-    tmp_path: Path, origin: str, categorie: str
+    tmp_path: Path, provenance: str, categorie: str
 ) -> None:
     # Breaks if an artist with any title on air, at rest included, gets a second one, or if a
     # waiting title is not counted.
@@ -159,7 +159,7 @@ def test_one_title_per_artist_enters_and_the_next_waits_its_turn(
     ).fetchone()[0]
     conn.execute(
         "INSERT INTO antenne VALUES (?, ?, ?, 1, 's1', 'antenne/1.mp3', ?, ?)",
-        (other, origin, categorie, NOW, NOW),
+        (other, provenance, categorie, NOW, NOW),
     )
     conn.commit()
     again = a_telecharger(conn, cfg)

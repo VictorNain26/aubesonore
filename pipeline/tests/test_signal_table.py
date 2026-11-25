@@ -43,7 +43,7 @@ def build(tmp_path: Path) -> sqlite3.Connection:
 def test_load_signals_keeps_measured_tracks_of_the_current_model(tmp_path: Path) -> None:
     t = charger_empreintes(build(tmp_path))
     assert t.track_ids.tolist() == [1, 9, 101]
-    assert t.origins == ["candidat", "negatif", "bibliotheque"]
+    assert t.provenances == ["candidat", "negatif", "bibliotheque"]
     assert t.artist_keys == ["knife", "jul", "m83"]
     assert np.array_equal(t.audio, np.stack([VEC] * 3))
 

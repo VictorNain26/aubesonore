@@ -72,7 +72,7 @@ def test_discover_pass(tmp_path: Path) -> None:
     conn = make_library(tmp_path)
     dz, lf = FakeDeezer(), FakeLastfm()
     rep = decouvrir(conn, dz, lf, CFG, NOW, np.random.default_rng(0))
-    assert (rep.run_id, rep.resumed, rep.n_seeds, rep.n_dropped) == (1, False, 2, 0)
+    assert (rep.fournee_id, rep.resumed, rep.n_seeds, rep.n_dropped) == (1, False, 2, 0)
     assert (rep.n_neighbours, rep.n_seen, rep.n_added) == (2, 5, 2)
     assert (rep.n_duplicates, rep.n_filtered, rep.skipped) == (1, 2, [])
     assert sorted(dz.top_calls) == [1, 2]
@@ -162,7 +162,7 @@ def test_unavailable_logs_the_seed_keeps_work_and_resumes_same_run(
     assert graines_recentes(conn, NOW, 30) == set()
     lf = FakeLastfm()
     rep = decouvrir(conn, dz, lf, CFG, NOW, np.random.default_rng(1))
-    assert rep.resumed and rep.run_id == 1
+    assert rep.resumed and rep.fournee_id == 1
     assert status(conn) == "done"
 
 

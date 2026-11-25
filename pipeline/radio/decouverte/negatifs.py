@@ -57,7 +57,7 @@ def importer_negatifs(
     now: str,
 ) -> RapportNegatifs:
     done = {r[0] for r in conn.execute("SELECT artiste_id FROM artistes_negatifs")}
-    library_ids = {a.deezer_artist_id for a in artistes_bibliotheque(conn)}
+    library_ids = {a.artiste_id for a in artistes_bibliotheque(conn)}
     rep = RapportNegatifs(n_artists=len(negatives))
     for n in negatives:
         if n.deezer_id in done:

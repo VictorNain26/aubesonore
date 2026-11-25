@@ -42,7 +42,7 @@ class SockseekError(Exception):
 
 @dataclass(frozen=True)
 class Wanted:
-    deezer_track_id: int
+    titre_id: int
     artist: str
     title: str
     duration_s: int
@@ -50,7 +50,7 @@ class Wanted:
 
 @dataclass(frozen=True)
 class Outcome:
-    deezer_track_id: int
+    titre_id: int
     file: Path | None
     reason: str | None  # None si `file` est présent
 
@@ -96,7 +96,7 @@ def download(
     with listing.open("w", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
         w.writerow(["Artist", "Title", "Length", "URI"])
-        w.writerows([t.artist, t.title, t.duration_s, t.deezer_track_id] for t in wanted)
+        w.writerows([t.artist, t.title, t.duration_s, t.titre_id] for t in wanted)
     conf = conf_dir / "sockseek.conf"
     _write_config(conf, user, password)
     limit = time_limit(len(wanted), cfg)
@@ -149,7 +149,7 @@ def download(
 def read_index(index: Path, wanted: list[Wanted]) -> list[Outcome]:
     """Les issues des titres terminés, dans l'ordre de l'index. Un titre absent de l'index n'a
     pas été tenté (Sockseek interrompu) : il n'a pas d'issue."""
-    by_key = {(t.artist, t.title, t.duration_s): t.deezer_track_id for t in wanted}
+    by_key = {(t.artist, t.title, t.duration_s): t.titre_id for t in wanted}
     found: dict[int, Outcome] = {}
     with index.open(encoding="utf-8", newline="") as f:
         for row in csv.DictReader(f):

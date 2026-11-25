@@ -76,15 +76,15 @@ class Features:
     danceability: float
     danceability_start: float
     danceability_end: float
-    arousal: float
-    arousal_start: float
-    arousal_end: float
+    energie: float
+    energie_start: float
+    energie_end: float
     valence: float
     valence_start: float
     valence_end: float
-    bpm: float
-    bpm_start: float
-    bpm_end: float
+    tempo: float
+    tempo_start: float
+    tempo_end: float
 
 
 def _edges(values: Floats, duration_s: float) -> tuple[float, float, float]:
@@ -98,29 +98,29 @@ def _majority(values: Floats) -> float:
     return float(Counter(np.round(values).tolist()).most_common(1)[0][0])
 
 
-def _same_octave(values: Floats, bpm: float) -> Floats:
+def _same_octave(values: Floats, tempo: float) -> Floats:
     """Ramène au tempo du titre les valeurs à un facteur 2 ou 3 près, à 4 % (« Accuracy2 »,
     Schreiber et Müller, ISMIR 2018, §4) : sur les quelques valeurs d'un début ou d'une fin,
     une erreur d'octave l'emporte sinon."""
     out = values.copy()
     for factor in (2.0, 3.0, 0.5, 1 / 3):
-        hit = np.abs(values / (bpm * factor) - 1) <= 0.04
+        hit = np.abs(values / (tempo * factor) - 1) <= 0.04
         out[hit] = values[hit] / factor
     return out
 
 
 def summarize(
-    danceable: Floats, valence: Floats, arousal: Floats, local_bpm: Floats, duration_s: float
+    danceable: Floats, valence: Floats, energie: Floats, local_tempo: Floats, duration_s: float
 ) -> Features:
-    k = max(1, round(len(local_bpm) * EDGE_S / duration_s))
-    bpm = _majority(local_bpm)
-    folded = _same_octave(local_bpm, bpm)
+    k = max(1, round(len(local_tempo) * EDGE_S / duration_s))
+    tempo = _majority(local_tempo)
+    folded = _same_octave(local_tempo, tempo)
     return Features(
         duration_s,
         *_edges(danceable, duration_s),
-        *_edges(arousal, duration_s),
+        *_edges(energie, duration_s),
         *_edges(valence, duration_s),
-        bpm,
+        tempo,
         _majority(folded[:k]),
         _majority(folded[-k:]),
     )
@@ -184,10 +184,10 @@ class FeatureExtractor:
                 return None
             dance = np.asarray(self._dance(emb), dtype=np.float32)
             av = np.asarray(self._deam(emb), dtype=np.float32)
-            _, local_bpm, _ = self._tempo(a11)
+            _, local_tempo, _ = self._tempo(a11)
         except RuntimeError:
             return None
-        local = np.asarray(local_bpm, dtype=np.float32)
+        local = np.asarray(local_tempo, dtype=np.float32)
         if local.size == 0:
             return None
         return summarize(

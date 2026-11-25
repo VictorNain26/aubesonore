@@ -69,8 +69,8 @@ class RapportAntenne:
     errors: list[str] = field(default_factory=list)
 
 
-def _insert(conn: sqlite3.Connection, tid: int, origin: str, m: Media, now: str) -> None:
-    if origin == "repere":
+def _insert(conn: sqlite3.Connection, tid: int, provenance: str, m: Media, now: str) -> None:
+    if provenance == "repere":
         categorie = "reperes"
     else:
         # Toute acquisition vient d'un candidat (radio/telechargement/telecharger.py) : pas de
@@ -82,9 +82,9 @@ def _insert(conn: sqlite3.Connection, tid: int, origin: str, m: Media, now: str)
     with conn:
         conn.execute(
             "INSERT INTO antenne VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (tid, origin, categorie, m.id, m.song_id, m.path, now, now),
+            (tid, provenance, categorie, m.id, m.song_id, m.path, now, now),
         )
-        if origin == "telecharge":
+        if provenance == "telecharge":
             conn.execute(
                 "UPDATE telechargements SET status = 'publie', file = NULL WHERE titre_id = ?",
                 (tid,),
@@ -105,7 +105,7 @@ def _upload(
     conn: sqlite3.Connection,
     station: MediaStore,
     tid: int,
-    origin: str,
+    provenance: str,
     file: Path,
     now: str,
     rep: RapportAntenne,
@@ -115,7 +115,7 @@ def _upload(
     except AzuracastError as e:
         rep.errors.append(f"dépôt {tid} : {e}")
         return False
-    _insert(conn, tid, origin, m, now)
+    _insert(conn, tid, provenance, m, now)
     return True
 
 
@@ -235,11 +235,11 @@ def un_par_artiste(
     ).fetchall()
     kept: set[int] = set()
     out: list[tuple[int, str, str]] = []
-    for tid, path, song, origin, artist in rows:
+    for tid, path, song, provenance, artist in rows:
         if artist not in kept:
             kept.add(int(artist))
         elif song not in busy:
-            out.append((int(tid), str(path), str(origin)))
+            out.append((int(tid), str(path), str(provenance)))
     rep.n_artist_doubles = _remove(conn, station, [p for _, p, _ in out], rep)
     still = {int(r[0]) for r in conn.execute("SELECT titre_id FROM antenne")}
     with conn:

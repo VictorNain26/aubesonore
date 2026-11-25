@@ -35,10 +35,10 @@ def test_the_flow_of_each_source_from_batch_to_antenna(tmp_path: Path) -> None:
     conn.commit()
     s = load_suivi(conn, NouveautesConfig(pages_hypem=0, deezer_editorial={"jazz": 129}))
     flows = {f.key: f for f in s.flows}
-    assert s.run_id == 2
+    assert s.fournee_id == 2
     v = flows["voisin"]
-    assert (v.candidates, v.retained, v.ready, v.failed, v.on_air) == (24, 24, 2, 1, 1)
-    assert flows["deezer_editorial · jazz"].retained == 0
+    assert (v.candidates, v.retenu, v.ready, v.failed, v.on_air) == (24, 24, 2, 1, 1)
+    assert flows["deezer_editorial · jazz"].retenu == 0
     assert s.to_adjust == []
     assert "  voisin : 24 → 24 → 2 (1) → 1" in suivi_lines(s)
 

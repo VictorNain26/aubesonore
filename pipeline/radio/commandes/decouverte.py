@@ -64,7 +64,7 @@ def decouverte() -> None:
         )
     kind = "reprise" if rep.resumed else "nouvelle"
     lines = [
-        f"Découverte : passe n°{rep.run_id} ({kind}), {_n(rep.n_seeds)} graines → "
+        f"Découverte : passe n°{rep.fournee_id} ({kind}), {_n(rep.n_seeds)} graines → "
         f"{_n(rep.n_neighbours)} voisins, {_n(rep.n_seen)} titres vus → {_n(rep.n_added)} "
         f"ajoutés, {_n(rep.n_duplicates)} doublons, {_n(rep.n_filtered)} écartés (pas "
         f"l'artiste principal ou sans extrait), {_n(len(rep.skipped))} sautés"
@@ -112,7 +112,7 @@ def nouveautes() -> None:
         )
     _echo(
         [
-            f"Nouveautés (fournée n°{rep.run_id}) : "
+            f"Nouveautés (fournée n°{rep.fournee_id}) : "
             + ", ".join(
                 f"{src} {_n(rep.added[src])} ajoutés sur {_n(n)} vus "
                 f"({_n(rep.already[src])} déjà vus)"

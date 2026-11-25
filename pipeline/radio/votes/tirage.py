@@ -47,8 +47,8 @@ class BulletinsEnAttenteError(Exception):
 
 @dataclass(frozen=True)
 class Bulletin:
-    deezer_track_id: int
-    kind: str
+    titre_id: int
+    type: str
     position: int
     artist: str
     title: str
@@ -62,9 +62,9 @@ class VoteExprime:
 
 @dataclass(frozen=True)
 class Tirage:
-    selection_id: int | None  # None : rien à présenter
-    model_id: int
-    run_id: int
+    tirage_id: int | None  # None : rien à présenter
+    modele_id: int
+    fournee_id: int
     n_batch: int  # titres de la dernière fournée encore jamais présentés
     exam: list[int]
     lesson: list[int]
@@ -171,17 +171,17 @@ def tirer_bulletins(
     waiting = bulletins_en_attente(conn)
     if waiting:
         raise BulletinsEnAttenteError(len(waiting))
-    model_id = id_en_service(conn)
-    if model_id is None:
+    modele_id = id_en_service(conn)
+    if modele_id is None:
         raise AucunModeleEnServiceError
     last_run = conn.execute(
         "SELECT MAX(c.fournee_id) FROM notes s JOIN candidats c USING (titre_id) "
         "WHERE s.modele_id = ?",
-        (model_id,),
+        (modele_id,),
     ).fetchone()[0]
     if last_run is None:
         raise AucuneNoteError
-    run_id = int(last_run)
+    fournee_id = int(last_run)
     rows = conn.execute(
         """
         SELECT s.titre_id, s.score, s.retenu, c.fournee_id, t.artiste_id, c.source
@@ -193,13 +193,13 @@ def tirer_bulletins(
           AND s.titre_id NOT IN (SELECT titre_id FROM bulletins)
         ORDER BY s.titre_id
         """,
-        (model_id,),
+        (modele_id,),
     ).fetchall()
     families: dict[str, list[int]] = {}
     for r in rows:
-        if int(r[3]) == run_id:
+        if int(r[3]) == fournee_id:
             families.setdefault(FAMILY[str(r[5])], []).append(int(r[0]))
-    retained = {int(r[0]) for r in rows if int(r[2]) == 1}
+    retenu = {int(r[0]) for r in rows if int(r[2]) == 1}
     # La coupure d'une famille est la limite qui a vraiment tranché : son plancher s'il a écarté
     # des titres alors que le quota restait, sinon la plus basse note retenue. Une famille sans
     # l'un ni l'autre n'a pas de coupure, donc pas de leçon.
@@ -208,7 +208,7 @@ def tirer_bulletins(
         "SELECT c.source, MIN(CASE WHEN s.retenu = 1 THEN s.score END), MAX(s.sous_plancher) "
         "FROM notes s JOIN candidats c USING (titre_id) WHERE c.fournee_id = ? "
         "GROUP BY c.source",
-        (run_id,),
+        (fournee_id,),
     ):
         family = FAMILY[str(source)]
         if any_floored:
@@ -228,19 +228,19 @@ def tirer_bulletins(
     lesson = _pick_lessons(rows, cuts, examined, n_lesson)
     chosen = [(t, "examen") for t in exam] + [(t, "lecon") for t in lesson]
     if not chosen:
-        return Tirage(None, model_id, run_id, sum(map(len, families.values())), [], [])
+        return Tirage(None, modele_id, fournee_id, sum(map(len, families.values())), [], [])
     positions = rng.permutation(len(chosen))
     with conn:
         cur = conn.execute(
-            "INSERT INTO tirages (selected_at, modele_id) VALUES (?, ?)", (now, model_id)
+            "INSERT INTO tirages (selected_at, modele_id) VALUES (?, ?)", (now, modele_id)
         )
-        selection_id = cur.lastrowid
-        assert selection_id is not None
+        tirage_id = cur.lastrowid
+        assert tirage_id is not None
         conn.executemany(
             "INSERT INTO bulletins VALUES (?, ?, ?, ?, ?)",
             [
-                (tid, selection_id, kind, int(p), int(tid in retained))
-                for (tid, kind), p in zip(chosen, positions, strict=True)
+                (tid, tirage_id, type_, int(p), int(tid in retenu))
+                for (tid, type_), p in zip(chosen, positions, strict=True)
             ],
         )
-    return Tirage(selection_id, model_id, run_id, sum(map(len, families.values())), exam, lesson)
+    return Tirage(tirage_id, modele_id, fournee_id, sum(map(len, families.values())), exam, lesson)

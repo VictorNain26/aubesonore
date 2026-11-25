@@ -24,31 +24,33 @@ NOW = "2026-10-02T12:00:00+00:00"
 def test_summary_of_the_whole_title_its_start_and_its_end() -> None:
     # 120 s : 40 patches de 3 s (10 au début, 10 à la fin) et 20 tempos de 6 s (5 et 5).
     dance = np.array([0.2] * 10 + [0.5] * 20 + [0.8] * 10, dtype=np.float32)
-    arousal = np.array([3.0] * 10 + [5.0] * 20 + [7.0] * 10, dtype=np.float32)
+    energie = np.array([3.0] * 10 + [5.0] * 20 + [7.0] * 10, dtype=np.float32)
     valence = np.full(40, 4.0, dtype=np.float32)
-    bpm = np.array([90.2] * 4 + [150.0] + [120.0] * 10 + [128.0] * 5, dtype=np.float32)
-    f = summarize(dance, valence, arousal, bpm, 120.0)
+    tempo = np.array([90.2] * 4 + [150.0] + [120.0] * 10 + [128.0] * 5, dtype=np.float32)
+    f = summarize(dance, valence, energie, tempo, 120.0)
     assert f.duration_s == 120.0
     assert (f.danceability, f.danceability_start, f.danceability_end) == pytest.approx(
         (0.5, 0.2, 0.8)
     )
-    assert (f.arousal, f.arousal_start, f.arousal_end) == pytest.approx((5.0, 3.0, 7.0))
+    assert (f.energie, f.energie_start, f.energie_end) == pytest.approx((5.0, 3.0, 7.0))
     assert (f.valence, f.valence_start, f.valence_end) == pytest.approx((4.0, 4.0, 4.0))
-    assert (f.bpm, f.bpm_start, f.bpm_end) == (120.0, 90.0, 128.0)
+    assert (f.tempo, f.tempo_start, f.tempo_end) == (120.0, 90.0, 128.0)
 
 
 def test_octave_errors_at_the_edges_fold_back_to_the_title_tempo() -> None:
     # Forme mesurée le 2026-10-02 sur un vrai titre à 85 bpm : 85, 168, 84… au début.
-    bpm = np.array([85, 168, 84, 170, 171] + [85] * 30, dtype=np.float32)
+    tempo = np.array([85, 168, 84, 170, 171] + [85] * 30, dtype=np.float32)
     flat = np.full(35, 0.5, dtype=np.float32)
-    f = summarize(flat, flat, flat, bpm, 210.0)
-    assert (f.bpm, f.bpm_start) == (85.0, 85.0)
+    f = summarize(flat, flat, flat, tempo, 210.0)
+    assert (f.tempo, f.tempo_start) == (85.0, 85.0)
 
 
 def test_a_title_shorter_than_its_edges_keeps_one_value_each() -> None:
     one = np.array([0.4], dtype=np.float32)
     f = summarize(one, one, one, np.array([100.0], dtype=np.float32), 20.0)
-    assert (f.danceability_start, f.danceability_end, f.bpm_end) == pytest.approx((0.4, 0.4, 100.0))
+    assert (f.danceability_start, f.danceability_end, f.tempo_end) == pytest.approx(
+        (0.4, 0.4, 100.0)
+    )
 
 
 class FakeExtractor:

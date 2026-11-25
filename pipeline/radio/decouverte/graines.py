@@ -19,7 +19,7 @@ from radio.socle.config import DecouverteConfig
 
 @dataclass(frozen=True)
 class Run:
-    run_id: int
+    fournee_id: int
     seeds: list[ArtisteBibliotheque]
     resumed: bool
     n_dropped: int
@@ -42,7 +42,7 @@ def graines_recentes(conn: sqlite3.Connection, now: datetime, days: int) -> set[
 def tirer_graines(
     artists: list[ArtisteBibliotheque], exclude: set[int], k: int, rng: np.random.Generator
 ) -> list[ArtisteBibliotheque]:
-    pool = [a for a in artists if a.deezer_artist_id not in exclude]
+    pool = [a for a in artists if a.artiste_id not in exclude]
     if not pool:
         return []
     w = np.array([poids_ecoute(a.plays) for a in pool])
@@ -59,7 +59,7 @@ def start_run(
 ) -> Run:
     running = conn.execute("SELECT fournee_id FROM fournees WHERE status = 'running'").fetchone()
     if running is not None:
-        by_id = {a.deezer_artist_id: a for a in artists}
+        by_id = {a.artiste_id: a for a in artists}
         seed_ids = [
             r[0]
             for r in conn.execute(
@@ -77,17 +77,17 @@ def start_run(
             "INSERT INTO fournees (started_at, status) VALUES (?, 'running')",
             (now.isoformat(),),
         )
-        run_id = cur.lastrowid
-        assert run_id is not None
+        fournee_id = cur.lastrowid
+        assert fournee_id is not None
         conn.executemany(
-            "INSERT INTO graines VALUES (?, ?)", [(run_id, s.deezer_artist_id) for s in seeds]
+            "INSERT INTO graines VALUES (?, ?)", [(fournee_id, s.artiste_id) for s in seeds]
         )
-    return Run(run_id, seeds, resumed=False, n_dropped=0)
+    return Run(fournee_id, seeds, resumed=False, n_dropped=0)
 
 
-def finish_run(conn: sqlite3.Connection, run_id: int, now: datetime) -> None:
+def finish_run(conn: sqlite3.Connection, fournee_id: int, now: datetime) -> None:
     with conn:
         conn.execute(
             "UPDATE fournees SET status = 'done', finished_at = ? WHERE fournee_id = ?",
-            (now.isoformat(), run_id),
+            (now.isoformat(), fournee_id),
         )

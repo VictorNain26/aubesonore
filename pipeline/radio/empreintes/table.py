@@ -15,7 +15,7 @@ class TableEmpreintes:
     track_ids: npt.NDArray[np.int64]
     artist_ids: npt.NDArray[np.int64]
     artist_keys: list[str]
-    origins: list[str]
+    provenances: list[str]
     audio: npt.NDArray[np.float32]
 
 
@@ -37,6 +37,6 @@ def charger_empreintes(conn: sqlite3.Connection) -> TableEmpreintes:
         track_ids=np.array([r["tid"] for r in rows], dtype=np.int64),
         artist_ids=np.array([r["aid"] for r in rows], dtype=np.int64),
         artist_keys=[normalize(r["aname"]) or f"#{r['aid']}" for r in rows],
-        origins=[r["provenance"] for r in rows],
+        provenances=[r["provenance"] for r in rows],
         audio=audio,
     )
