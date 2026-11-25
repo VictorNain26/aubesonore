@@ -57,11 +57,11 @@ def test_status_lines() -> None:
     assert "Modèle n°3 : AUC d'examen 0,800 sur 60" in lines
     assert "Taux de oui des retenus : 83,3 % [70,0 % - 91,0 %] sur 48 votes d'examen" in lines
     assert "Dernière fournée (passe n°7) : 133 retenus sur 400 candidats" in lines
-    sous_plancher = commandes.exploitation._status_lines(_st(batch=Fournee(7, 400, 133, 5)), 7)
+    lines = commandes.exploitation._status_lines(_st(batch=Fournee(7, 400, 133, 5)), 7)
     assert (
         "Dernière fournée (passe n°7) : 133 retenus sur 400 candidats, "
         "5 nouveautés écartées sous le plancher de score"
-    ) in sous_plancher
+    ) in lines
     none = commandes.exploitation._status_lines(
         _st(modele_id=None, exam_auc=None, n_exam=0, yes=None), 7
     )

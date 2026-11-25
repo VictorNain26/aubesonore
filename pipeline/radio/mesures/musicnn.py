@@ -110,11 +110,11 @@ def _same_octave(values: Floats, tempo: float) -> Floats:
 
 
 def summarize(
-    danceable: Floats, valence: Floats, energie: Floats, local_bpm: Floats, duration_s: float
+    danceable: Floats, valence: Floats, energie: Floats, local_tempo: Floats, duration_s: float
 ) -> Features:
-    k = max(1, round(len(local_bpm) * EDGE_S / duration_s))
-    tempo = _majority(local_bpm)
-    folded = _same_octave(local_bpm, tempo)
+    k = max(1, round(len(local_tempo) * EDGE_S / duration_s))
+    tempo = _majority(local_tempo)
+    folded = _same_octave(local_tempo, tempo)
     return Features(
         duration_s,
         *_edges(danceable, duration_s),
@@ -184,10 +184,10 @@ class FeatureExtractor:
                 return None
             dance = np.asarray(self._dance(emb), dtype=np.float32)
             av = np.asarray(self._deam(emb), dtype=np.float32)
-            _, local_bpm, _ = self._tempo(a11)
+            _, local_tempo, _ = self._tempo(a11)
         except RuntimeError:
             return None
-        local = np.asarray(local_bpm, dtype=np.float32)
+        local = np.asarray(local_tempo, dtype=np.float32)
         if local.size == 0:
             return None
         return summarize(

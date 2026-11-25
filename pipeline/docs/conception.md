@@ -62,7 +62,8 @@ techniques (`conn`, `path`, `client`, `retry`) et les noms des outils (`song_id`
 Appliqués une PR à la fois : le code et les commandes, puis les unités, puis la base (migration
 `018_noms_de_la_base.sql`). Les commandes, les unités, les paquets, les classes et fonctions du
 métier, les réglages, la base et les champs Python qui reprennent une colonne
-(`Bulletin.titre_id`, `Tirage.tirage_id`…) portent les noms de droite. La colonne de gauche aide à lire les notes datées de `docs/recherches/` et les migrations figées.
+(`Bulletin.titre_id`, `Tirage.tirage_id`…) portent les noms de droite. La colonne de gauche aide
+à lire les notes datées de `docs/recherches/` et les migrations figées.
 
 | Avant | Aujourd'hui |
 |---|---|

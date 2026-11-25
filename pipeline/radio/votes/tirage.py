@@ -239,8 +239,8 @@ def tirer_bulletins(
         conn.executemany(
             "INSERT INTO bulletins VALUES (?, ?, ?, ?, ?)",
             [
-                (tid, tirage_id, kind, int(p), int(tid in retenu))
-                for (tid, kind), p in zip(chosen, positions, strict=True)
+                (tid, tirage_id, type_, int(p), int(tid in retenu))
+                for (tid, type_), p in zip(chosen, positions, strict=True)
             ],
         )
     return Tirage(tirage_id, modele_id, fournee_id, sum(map(len, families.values())), exam, lesson)

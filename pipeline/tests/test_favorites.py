@@ -103,7 +103,7 @@ def _db(tmp_path: Path) -> sqlite3.Connection:
     return conn
 
 
-def _origins(conn: sqlite3.Connection) -> dict[int, str]:
+def _provenances(conn: sqlite3.Connection) -> dict[int, str]:
     return {int(r[0]): str(r[1]) for r in conn.execute("SELECT titre_id, provenance FROM titres")}
 
 
@@ -118,7 +118,7 @@ def test_a_favorite_is_no_longer_a_discovery_and_the_library_keeps_its_own(tmp_p
 
     rep = importer_favoris(conn, FakeDeezer(), FakeHypem(favorites), "GhostRAvage", 3, NOW)  # type: ignore[arg-type]
 
-    provenances = _origins(conn)
+    provenances = _provenances(conn)
     assert provenances[501] == "favori" and provenances[601] == "favori"
     assert provenances[101] == "bibliotheque"
     assert (rep.n_seen, rep.n_matched, rep.n_unmatched, rep.n_library) == (4, 3, 1, 1)
@@ -134,7 +134,7 @@ def test_an_unfavorited_track_returns_to_its_batch_or_is_forgotten(tmp_path: Pat
 
     rep = importer_favoris(conn, FakeDeezer(), FakeHypem([]), "GhostRAvage", 3, NOW)  # type: ignore[arg-type]
 
-    provenances = _origins(conn)
+    provenances = _provenances(conn)
     assert provenances[601] == "candidat"
     assert 501 not in provenances
     assert rep.n_dropped == 2

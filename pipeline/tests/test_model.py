@@ -81,7 +81,9 @@ def test_each_batch_and_family_keeps_its_best_and_library_titles_are_not_discove
     )
 
 
-def _kept_and_floored(conn: Any) -> tuple[Counter[tuple[int, str]], Counter[tuple[int, str]]]:
+def _retenus_et_sous_plancher(
+    conn: Any,
+) -> tuple[Counter[tuple[int, str]], Counter[tuple[int, str]]]:
     kept: Counter[tuple[int, str]] = Counter()
     sous_plancher: Counter[tuple[int, str]] = Counter()
     for run, source, accepted, below in conn.execute(
@@ -105,7 +107,7 @@ def test_the_floor_keeps_low_scored_news_off_air_and_counts_them_once_per_artist
     cfg = GoutConfig(retenus_decouvertes=100, retenus_nouveautes=100, plancher_nouveautes=0.5)
     assert entrainer(conn, tmp_path / "models", cfg, NOW).promoted
     renoter(conn, tmp_path / "models", cfg)
-    kept, sous_plancher = _kept_and_floored(conn)
+    kept, sous_plancher = _retenus_et_sous_plancher(conn)
     # Les aimés passent le plancher, un titre par artiste ; les rejetés restent sous le plancher
     # et sont comptés une fois par artiste, comme ils auraient été retenus.
     assert kept[(1, "hypem")] == 3
@@ -129,7 +131,7 @@ def test_a_zero_floor_keeps_every_news_artist(tmp_path: Path) -> None:
     cfg = GoutConfig(retenus_decouvertes=100, retenus_nouveautes=100)
     assert entrainer(conn, tmp_path / "models", cfg, NOW).promoted
     renoter(conn, tmp_path / "models", cfg)
-    kept, sous_plancher = _kept_and_floored(conn)
+    kept, sous_plancher = _retenus_et_sous_plancher(conn)
     assert kept[(1, "hypem")] == 9 and not sous_plancher
 
 
@@ -140,7 +142,7 @@ def test_no_news_above_the_floor_retains_none_and_names_them_all(tmp_path: Path)
     cfg = GoutConfig(retenus_decouvertes=10, retenus_nouveautes=100, plancher_nouveautes=0.5)
     assert entrainer(conn, tmp_path / "models", cfg, NOW).promoted
     renoter(conn, tmp_path / "models", cfg)
-    kept, sous_plancher = _kept_and_floored(conn)
+    kept, sous_plancher = _retenus_et_sous_plancher(conn)
     assert (1, "hypem") not in kept and sous_plancher == {(1, "hypem"): 6}
     assert kept[(1, "voisin")] == 10 and kept[(2, "voisin")] == 6
 
@@ -153,7 +155,7 @@ def test_news_stopped_by_an_exhausted_quota_are_not_counted_as_floored(tmp_path:
     cfg = GoutConfig(retenus_decouvertes=100, retenus_nouveautes=3, plancher_nouveautes=0.5)
     assert entrainer(conn, tmp_path / "models", cfg, NOW).promoted
     renoter(conn, tmp_path / "models", cfg)
-    kept, sous_plancher = _kept_and_floored(conn)
+    kept, sous_plancher = _retenus_et_sous_plancher(conn)
     # Les 3 aimés épuisent le quota avant que les rejetés n'atteignent le plancher.
     assert kept[(1, "hypem")] == 3 and not sous_plancher
 
@@ -166,7 +168,7 @@ def test_floored_news_are_counted_only_up_to_the_quota_left(tmp_path: Path) -> N
     cfg = GoutConfig(retenus_decouvertes=100, retenus_nouveautes=5, plancher_nouveautes=0.5)
     assert entrainer(conn, tmp_path / "models", cfg, NOW).promoted
     renoter(conn, tmp_path / "models", cfg)
-    kept, sous_plancher = _kept_and_floored(conn)
+    kept, sous_plancher = _retenus_et_sous_plancher(conn)
     # 3 aimés retenus, 2 places restaient : sans plancher, 2 rejetés seulement seraient entrés.
     assert kept[(1, "hypem")] == 3 and sous_plancher == {(1, "hypem"): 2}
 
@@ -199,7 +201,7 @@ def test_a_floored_news_does_not_take_its_artist_away_from_discoveries(tmp_path:
     renoter(conn, tmp_path / "models", cfg)
     accepted = {int(r[0]) for r in conn.execute("SELECT titre_id FROM notes WHERE retenu")}
     assert set(lowest) <= accepted
-    kept, sous_plancher = _kept_and_floored(conn)
+    kept, sous_plancher = _retenus_et_sous_plancher(conn)
     assert (1, "hypem") not in kept and sous_plancher == {(1, "hypem"): 6}
 
 
