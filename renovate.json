@@ -88,6 +88,11 @@
       "groupName": "playwright"
     },
     {
+      "description": "pnpm is pinned twice: `packageManager` in site/package.json for CI, mise.toml for the workstation's git hooks. One PR moves both, or the hooks switch pnpm again",
+      "matchPackageNames": ["pnpm"],
+      "groupName": "pnpm"
+    },
+    {
       "description": "Tools pipeline/scripts/dev-setup.sh downloads: their pinned SHA-256 is replaced by hand in the same PR",
       "matchFileNames": ["pipeline/scripts/dev-setup.sh"],
       "automerge": false,

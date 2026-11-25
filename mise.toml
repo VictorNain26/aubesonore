@@ -1,0 +1,5 @@
+# The workstation's pnpm for this repository, so the git hooks run the version site/package.json
+# pins (`packageManager`) instead of making a global pnpm switch to it: pnpm then has nothing to
+# download (pnpm.io/settings/cli#pmonfail). Renovate moves both in one PR (renovate.json, "pnpm").
+[tools]
+pnpm = "10.34.9"

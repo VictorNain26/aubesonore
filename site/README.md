@@ -42,7 +42,7 @@ Auth : Better Auth (email vérifié + OAuth Google). Liens d'écoute : API iTune
 ### Prérequis
 
 - Docker avec Compose v2.22 ou plus (profils, `develop.watch`), OpenSSL
-- Node.js ≥ 22 et pnpm ≥ 10 pour les commandes du dépôt (tests, lint)
+- Node.js ≥ 22 et pnpm ≥ 10 pour les commandes du dépôt (tests, lint) ; avec [mise](https://mise.jdx.dev), `mise trust` puis `mise install` à la racine du dépôt installent le pnpm épinglé (`mise.toml`), celui que lancent les hooks git ; un hook ne passe pas par l'invite du shell, où `mise activate` règle le `PATH` : `~/.config/husky/init.sh`, que husky lit avant chaque hook ([doc](https://typicode.github.io/husky/how-to.html#node-version-managers-and-guis)), y met les shims de mise ([doc](https://mise.jdx.dev/dev-tools/shims.html)) : `export PATH="$HOME/.local/share/mise/shims:$PATH"`
 
 ### La pile locale, en une commande
 
