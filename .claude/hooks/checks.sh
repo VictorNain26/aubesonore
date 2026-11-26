@@ -23,9 +23,11 @@ changed() {
 
 status=0
 if changed site; then
-  # Lint resolves @aubesonore/shared-types from its build, which a fresh worktree lacks.
-  { pnpm -C site exec turbo build --filter=@aubesonore/shared-types &&
-    pnpm -C site typecheck && pnpm -C site lint; } 1>&2 || status=2
+  # The typecheck only, as the documented example (code.claude.com/docs/en/best-practices,
+  # "Enforce the check with a Stop hook"): it runs on every turn, so the set stays small. turbo
+  # builds shared-types first (typecheck dependsOn ^build). ESLint, 65 s of the 100 s this hook
+  # took, runs on staged files at commit (lint-staged), and in full in pre-push and CI.
+  pnpm -C site typecheck 1>&2 || status=2
 fi
 for piece in pipeline musilogy; do
   if changed "$piece"; then
