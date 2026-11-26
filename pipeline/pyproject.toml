@@ -30,7 +30,7 @@ dev = [
     "pytest>=9.2.0",
     "responses>=0.26.3",
     "mypy>=2.4.1",
-    "ruff>=0.17.4",
+    "ruff>=0.17.5",
     "types-requests",
     "httpx2>=2.16.0",
 ]
