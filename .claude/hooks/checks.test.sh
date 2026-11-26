@@ -19,8 +19,10 @@ EOF
 done
 chmod +x "$tmp/bin/"*
 
+# The scratch repository ignores the machine's git config (signing, hooksPath, templates).
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
 repo=$tmp/repo
-git init -q "$repo"
+git init -q --template= "$repo"
 for piece in site pipeline musilogy; do mkdir -p "$repo/$piece" && echo a >"$repo/$piece/file"; done
 git -C "$repo" add -A
 git -C "$repo" -c user.name=t -c user.email=t@t commit -qm base
@@ -60,5 +62,17 @@ check 'an untracked file counts' "$sent/$status" \
   'uv --directory pipeline run ruff check;uv --directory pipeline run mypy/0'
 run 'mypy'
 check 'a mypy error sends Claude back' "$status" 2
+
+rm "$repo/pipeline/new"
+echo b >"$repo/musilogy/file"
+run
+check 'musilogy changed: its checks only' "$sent/$status" \
+  'uv --directory musilogy run ruff check;uv --directory musilogy run mypy/0'
+
+git -C "$repo" checkout -q -- musilogy
+git -C "$repo" update-ref -d refs/remotes/origin/master
+run
+check 'without origin/master every piece counts' "$sent/$status" \
+  'pnpm -C site typecheck;uv --directory pipeline run ruff check;uv --directory pipeline run mypy;uv --directory musilogy run ruff check;uv --directory musilogy run mypy/0'
 
 [ "$failures" -eq 0 ]
