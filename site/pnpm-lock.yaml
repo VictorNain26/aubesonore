@@ -217,8 +217,8 @@ importers:
         specifier: 4.14.0
         version: 4.14.0(playwright-core@1.65.1)
       '@inlang/plugin-message-format':
-        specifier: 4.6.0
-        version: 4.6.0
+        specifier: 4.6.1
+        version: 4.6.1
       '@playwright/test':
         specifier: 1.65.1
         version: 1.65.1
@@ -1712,14 +1712,18 @@ packages:
       vite:
         optional: true
 
-  '@inlang/plugin-message-format@4.6.0':
-    resolution: {integrity: sha512-DK2GZvypDygLchnUaFK/RdCIm2baiRlQftOiesGNKDtjNqioqWHnnu0zg6NKNlo3kD42h5xlRCke7zEjBFzZrg==}
+  '@inlang/plugin-message-format@4.6.1':
+    resolution: {integrity: sha512-at7FwysYatUf/hbsYPclIywAzhFut0CXOAGEe70n4WiELfZqbR8IS413GJWKrbOIFh6mRCvFdzM4F/IHRFfaqg==}
 
   '@inlang/recommend-sherlock@0.2.1':
     resolution: {integrity: sha512-ckv8HvHy/iTqaVAEKrr+gnl+p3XFNwe5D2+6w6wJk2ORV2XkcRkKOJ/XsTUJbPSiyi4PI+p+T3bqbmNx/rDUlg==}
 
   '@inlang/sdk@4.2.0':
     resolution: {integrity: sha512-Cmaqvn34wsxiF27318Zw2rg+017HHNJWV5MH8rfyVKVANZNpzlztxzRbFienE/gASMLD8oluYHHolIb/p6Egrw==}
+    engines: {node: '>=20.0.0'}
+
+  '@inlang/sdk@4.3.0':
+    resolution: {integrity: sha512-ZPX9nqex9DglvMO9URpY6EtpwzUkTeArHZLcHx03hO+v6jsQPOtKgfki2nbgKEysfhJVMy0JDOAiax9zPZuF4w==}
     engines: {node: '>=20.0.0'}
 
   '@inquirer/ansi@2.0.5':
@@ -7732,9 +7736,9 @@ snapshots:
       typescript: 5.9.3
       vite: 8.3.8(@types/node@25.9.9)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.51.2)(tsx@4.21.0)(yaml@2.9.1)
 
-  '@inlang/plugin-message-format@4.6.0':
+  '@inlang/plugin-message-format@4.6.1':
     dependencies:
-      '@inlang/sdk': 4.2.0
+      '@inlang/sdk': 4.3.0
       '@sinclair/typebox': 0.31.30
 
   '@inlang/recommend-sherlock@0.2.1':
@@ -7742,6 +7746,13 @@ snapshots:
       comment-json: 4.6.2
 
   '@inlang/sdk@4.2.0':
+    dependencies:
+      '@lix-js/sdk': 0.20.1
+      '@sinclair/typebox': 0.31.30
+      kysely: 0.28.17
+      uuid: 14.0.1
+
+  '@inlang/sdk@4.3.0':
     dependencies:
       '@lix-js/sdk': 0.20.1
       '@sinclair/typebox': 0.31.30
