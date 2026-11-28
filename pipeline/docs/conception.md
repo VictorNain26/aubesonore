@@ -238,15 +238,21 @@ priorité.
   attente (`recherches/2026-10-02-programmation.md` §1 et §2 : FIP joue 2,8 titres par artiste et
   par an, Nova 1,6). La règle précédente, deux titres dont un au fond ou en repère, laissait 100
   artistes à plusieurs titres le 2026-10-11 (jusqu'à 9 pour Holy Wave, hérités du 2026-10-01).
+- **Face à des références simples** (2026-11-27, 160 votes d'examen) : le modèle en service a
+  0,773 [0,70 ; 0,84] ; le centre de la bibliothèque 0,596, ses plus proches voisins 0,48 à 0,49.
+  Sans vote de leçon, il a 0,762, et sans négatifs faibles 0,755 : des écarts sous le bruit. Les
+  votes servent surtout à juger le modèle (`recherches/2026-11-27-gout-references.md`).
 - **Pistes écartées après mesure** : ressemblance kNN sur l'empreinte (AUC 0,67), filtre
   « couleur » à négatifs par catégories, têtes de style Essentia, modèle Jev (texte seul). Leurs
   recherches sont dans l'historique git (`git show f7d7081:docs/recherches/`).
 
-**Votes.** Chaque semaine, 10 titres d'examen et 10 de leçon, présentés à l'aveugle.
+**Votes.** Chaque semaine, 15 titres d'examen et 5 de leçon, présentés à l'aveugle (10 et 10
+jusqu'au 2026-11-28 : les leçons n'améliorent presque plus le modèle et l'examen le juge,
+`recherches/2026-11-27-gout-references.md`).
 
-- **Examen.** Tirage uniforme dans chaque famille de la fournée, à parts égales (5 découvertes,
-  5 nouveautés) : tiré sur toute la fournée, l'examen ne donnerait que ~3 votes par semaine aux
-  nouveautés, et aucune source ne serait jugée avant des mois. Le verdict « retenu » au moment du
+- **Examen.** Tirage uniforme dans chaque famille de la fournée, à parts égales (8 et 7,
+  dans un sens ou dans l'autre) : tiré sur toute la fournée, l'examen ne donnerait que 4 ou 5
+  votes par semaine aux nouveautés, et aucune source ne serait jugée avant des mois. Le verdict « retenu » au moment du
   tirage est gardé. Ces votes jugent le modèle et ne servent jamais à l'entraîner.
 - **Leçon.** Les titres les plus proches de la coupure de leur famille, un par artiste, jamais d'un artiste déjà
   tiré à l'examen : le modèle candidat l'aurait vu et pas celui en service. Ces votes entraînent

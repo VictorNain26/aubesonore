@@ -169,9 +169,11 @@ tempo = 0.75
 
 [votes]
 # Titres d'examen par sélection hebdomadaire, tirés au hasard à parts égales par famille (découvertes, nouveautés).
-examen_par_tirage = 10
+# 15 et 5 depuis le 2026-11-28 : les leçons n'améliorent presque plus le modèle, l'examen le juge
+# (docs/recherches/2026-11-27-gout-references.md).
+examen_par_tirage = 15
 # Titres de leçon par sélection : les plus proches de la coupure, un par artiste.
-lecon_par_tirage = 10
+lecon_par_tirage = 5
 # Fenêtre des votes récents du rapport. Page de vote publiée et aucun titre en attente : une
 # sélection plus ancienne met une ligne ALERTE dans le rapport (passe hebdomadaire en échec ?).
 jours_silence = 7
