@@ -38,7 +38,7 @@
     "zustand": "^5.1.0"
   },
   "devDependencies": {
-    "@axe-core/playwright": "4.14.0",
+    "@axe-core/playwright": "4.14.1",
     "@inlang/plugin-message-format": "4.6.1",
     "@playwright/test": "1.65.1",
     "@storybook/addon-a11y": "10.6.8",
