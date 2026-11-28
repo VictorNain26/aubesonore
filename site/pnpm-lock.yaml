@@ -217,8 +217,8 @@ importers:
         specifier: 4.14.1
         version: 4.14.1(playwright-core@1.65.1)
       '@inlang/plugin-message-format':
-        specifier: 4.6.1
-        version: 4.6.1
+        specifier: 4.6.2
+        version: 4.6.2
       '@playwright/test':
         specifier: 1.65.1
         version: 1.65.1
@@ -1712,8 +1712,8 @@ packages:
       vite:
         optional: true
 
-  '@inlang/plugin-message-format@4.6.1':
-    resolution: {integrity: sha512-at7FwysYatUf/hbsYPclIywAzhFut0CXOAGEe70n4WiELfZqbR8IS413GJWKrbOIFh6mRCvFdzM4F/IHRFfaqg==}
+  '@inlang/plugin-message-format@4.6.2':
+    resolution: {integrity: sha512-d91p4wChwXD4HpeDGHThETTcW5HZCLSJiC2i08Su1AQhftvEKX0AYiUHRm5A5/zLVH6c6ulo9OiNMJrpoc6fBg==}
 
   '@inlang/recommend-sherlock@0.2.1':
     resolution: {integrity: sha512-ckv8HvHy/iTqaVAEKrr+gnl+p3XFNwe5D2+6w6wJk2ORV2XkcRkKOJ/XsTUJbPSiyi4PI+p+T3bqbmNx/rDUlg==}
@@ -7740,7 +7740,7 @@ snapshots:
       typescript: 5.9.3
       vite: 8.3.8(@types/node@25.9.9)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.51.2)(tsx@4.21.0)(yaml@2.9.1)
 
-  '@inlang/plugin-message-format@4.6.1':
+  '@inlang/plugin-message-format@4.6.2':
     dependencies:
       '@inlang/sdk': 4.3.0
       '@sinclair/typebox': 0.31.30
