@@ -75,7 +75,11 @@ titres que Victor aimerait : c'est une borne basse, pas une AUC d'examen.
 
 ## Décision
 
-Proposition faite à Victor le 2026-11-28 : garder le modèle et ses réglages tels quels. Le seul
-point qui pourrait bouger concerne les votes : l'effort de leçon (10 votes par semaine) n'améliore
-plus le modèle, et les votes d'examen sont ce qui le juge. La répartition entre examen et leçon
-reste à sa décision.
+Décision de Victor le 2026-11-28 :
+- le modèle et ses réglages ne changent pas ;
+- les 20 votes de la semaine passent de 10 d'examen et 10 de leçon à 15 et 5
+  (`config/editorial.toml`, `[votes]`). L'examen juge plus vite le modèle et les sources, et la
+  leçon garde un peu d'apprentissage près de la coupure.
+
+À la prochaine étude, la fenêtre de promotion (`fenetre_examen`, 60 votes) couvrira 4 semaines au
+lieu de 6.
