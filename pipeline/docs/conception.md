@@ -238,6 +238,10 @@ priorité.
   attente (`recherches/2026-10-02-programmation.md` §1 et §2 : FIP joue 2,8 titres par artiste et
   par an, Nova 1,6). La règle précédente, deux titres dont un au fond ou en repère, laissait 100
   artistes à plusieurs titres le 2026-10-11 (jusqu'à 9 pour Holy Wave, hérités du 2026-10-01).
+- **Face à des références simples** (2026-11-27, 160 votes d'examen) : le modèle en service a
+  0,773 [0,70 ; 0,84] ; le centre de la bibliothèque 0,596, ses plus proches voisins 0,48 à 0,49.
+  Sans vote de leçon, il a 0,762, et sans négatifs faibles 0,755 : des écarts sous le bruit. Les
+  votes servent surtout à juger le modèle (`recherches/2026-11-27-gout-references.md`).
 - **Pistes écartées après mesure** : ressemblance kNN sur l'empreinte (AUC 0,67), filtre
   « couleur » à négatifs par catégories, têtes de style Essentia, modèle Jev (texte seul). Leurs
   recherches sont dans l'historique git (`git show f7d7081:docs/recherches/`).
