@@ -275,6 +275,11 @@ tel quel.
 
 ## 5. Acquisition (étape 5)
 
+**Arrêtée le 2026-11-28.** `radio telechargement` ne fait plus partie de `radio-passe`.
+- **Pourquoi.** Télécharger sur Soulseek est une reproduction sans l'accord des producteurs (L213-1 CPI, puni par L335-4), que le dossier soit partagé ou non. L'exception de copie privée exige une source licite (L211-3 2°), et la copie d'une radio n'est pas privée. AubeSonore doit être en règle pour devenir une association qui paie ses licences.
+- **La suite.** Le circuit qui la remplace note ce que la radio reçoit légalement, promos et achats, déposé dans un dossier d'arrivée. Jusqu'à son arrivée, l'antenne tourne sur ce qu'elle a déjà, et `radio bilan` n'exige plus de titre neuf publié dans la semaine.
+- **Ce qui suit dans cette section** décrit le téléchargement tel qu'il était, en attendant sa suppression du code.
+
 Justification des choix : `recherches/2026-09-30-acquisition-publication-observabilite.md` §1 et
 §2.
 
@@ -596,11 +601,10 @@ page de vote :
 Seuils, par étape : taux d'acquisition au-dessus de `taux_reussite_min` dès
 `tentatives_min_pour_taux` tentatives (`editorial.toml`) ; aucune erreur à l'antenne.
 
-`nouveautes`, `favoris`, `telechargement`, `mesures` et `grille` sont préfixées de `-` dans l'unité :
-une source en panne n'arrête pas la passe, et un échec de `telechargement` n'empêche pas `antenne` de
-publier ce qui est prêt. La dernière étape, `radio bilan`, juge la passe entière : une étape en échec, ou aucune
-découverte publiée, ou une étape sans ligne de rapport (processus tué), la fait échouer, et
-l'unité `radio-passe` est en échec (§8.2).
+`nouveautes`, `favoris`, `mesures` et `grille` sont préfixées de `-` dans l'unité : une source en
+panne n'arrête pas la passe. La dernière étape, `radio bilan`, juge la passe entière : une étape en
+échec, ou une étape sans ligne de rapport (processus tué), la fait échouer, et l'unité
+`radio-passe` est en échec (§8.2).
 
 ### 8.2 Pannes
 
@@ -655,7 +659,7 @@ le dernier passage.
 
 | Quand | Unité systemd utilisateur | Ce qui se passe |
 |---|---|---|
-| dimanche 03:00 | `radio-passe` | `bibliotheque`, `decouverte`, `nouveautes`, `favoris`, `empreintes`, `gout`, `tirage`, `telechargement`, `antenne`, `mesures`, `grille --aujourdhui`, `bilan` ; bornée à 12 h |
+| dimanche 03:00 | `radio-passe` | `bibliotheque`, `decouverte`, `nouveautes`, `favoris`, `empreintes`, `gout`, `tirage`, `antenne`, `mesures`, `grille --aujourdhui`, `bilan` ; bornée à 12 h |
 | chaque jour 23:00 | `radio-grille` | grille du lendemain dans les 24 playlists horaires du jour |
 | chaque jour 04:30 | `radio-sauvegarde` | copie de `data/radio.db` (API de sauvegarde SQLite, `integrity_check` vérifié avant d'entrer dans son jour : une copie refusée ne laisse rien) et de `data/models/` dans `RADIO_BACKUP_DIR` (`/media/plex/.backups/radio`, autre disque physique), 14 jours gardés |
 | en continu | `radio-page-votes` | page de vote, `127.0.0.1:8040`, publiée sur `votes.aubesonore.fr` |

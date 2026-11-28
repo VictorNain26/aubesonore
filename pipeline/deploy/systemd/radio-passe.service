@@ -8,7 +8,7 @@ OnFailure=radio-alerte@%N.service
 [Service]
 Type=oneshot
 WorkingDirectory=%h/aubesonore/pipeline
-# Sockseek et rsgain sont dans ~/.local/bin ; ffmpeg et fpcalc viennent d'apt.
+# rsgain est dans ~/.local/bin ; ffmpeg et fpcalc viennent d'apt.
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 EnvironmentFile=%h/aubesonore/pipeline/.env
 # Machine partagée : la diffusion et les autres services passent avant.
@@ -21,15 +21,12 @@ IOSchedulingClass=idle
 MemoryHigh=3584M
 MemoryMax=4608M
 TimeoutStartSec=12h
-# Config Sockseek (mot de passe Soulseek) sur tmpfs, sous $XDG_RUNTIME_DIR ; exportée en
-# $RUNTIME_DIRECTORY et supprimée à l'arrêt de l'unité, même tuée au délai (systemd.exec(5)).
-RuntimeDirectory=radio-passe
-RuntimeDirectoryMode=0700
 # Une étape en échec arrête la suite : pas de sélection sur des notes périmées.
 # gout ne réentraîne que s'il y a des votes nouveaux ou corrigés ; il note toujours les candidats.
-# nouveautes, favoris et telechargement préfixés de « - » : une source en panne n'arrête pas la
-# passe, et un échec de telechargement n'empêche pas antenne de publier ce qui est prêt
+# nouveautes et favoris préfixés de « - » : une source en panne n'arrête pas la passe
 # (systemd.service(5), « Command lines ») ; bilan fait échouer la passe en fin de course.
+# Plus de telechargement depuis le 2026-11-28 : Soulseek est une reproduction sans l'accord des
+# producteurs (L213-1 CPI), incompatible avec une radio en règle (docs/conception.md §5).
 ExecStart=%h/aubesonore/pipeline/.venv/bin/radio bibliotheque
 ExecStart=%h/aubesonore/pipeline/.venv/bin/radio decouverte
 ExecStart=-%h/aubesonore/pipeline/.venv/bin/radio nouveautes
@@ -37,7 +34,6 @@ ExecStart=-%h/aubesonore/pipeline/.venv/bin/radio favoris
 ExecStart=%h/aubesonore/pipeline/.venv/bin/radio empreintes
 ExecStart=%h/aubesonore/pipeline/.venv/bin/radio gout
 ExecStart=%h/aubesonore/pipeline/.venv/bin/radio tirage
-ExecStart=-%h/aubesonore/pipeline/.venv/bin/radio telechargement
 ExecStart=%h/aubesonore/pipeline/.venv/bin/radio antenne
 # mesures préfixée de « - » : bilan tourne quand même et fait échouer la passe sur cette étape,
 # avec le résumé de toutes les autres.

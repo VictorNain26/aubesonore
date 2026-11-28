@@ -128,15 +128,17 @@ def _pass(**over: tuple[int, str]) -> list[tuple[str, str, int, str]]:
 @pytest.mark.parametrize(
     ("rows", "code", "message"),
     [
-        (_pass(), 0, "11 étapes, 0 en échec, 3 publiés"),
-        (_pass(telechargement=(0, "{}")), 1, "Étapes en échec : telechargement"),
-        (_pass(antenne=(1, '{"publiés": 0}')), 1, "Aucune découverte publiée"),
+        (_pass(), 0, "10 étapes, 0 en échec, 3 publiés"),
+        (_pass(tirage=(0, "{}")), 1, "Étapes en échec : tirage"),
+        # Plus de téléchargement depuis le 2026-11-28 (docs/conception.md §5) : une semaine sans
+        # titre neuf à publier n'est pas une passe en échec.
+        (_pass(antenne=(1, '{"publiés": 0}')), 0, "0 publiés"),
         (
-            [r for r in _pass() if r[1] != "telechargement"],
+            [r for r in _pass() if r[1] != "tirage"],
             1,
-            "Étapes sans rapport (tuées ?) : telechargement",
+            "Étapes sans rapport (tuées ?) : tirage",
         ),
-        ([("autre", "telechargement", 0, "{}"), *_pass()], 0, ""),
+        ([("autre", "tirage", 0, "{}"), *_pass()], 0, ""),
     ],
 )
 def test_check_judges_only_the_current_pass(
@@ -171,7 +173,7 @@ def test_check_reads_what_antenne_published(
     _stages(db, [r for r in _pass() if r[1] != "antenne"])
     result = runner.invoke(commandes.app, ["bilan"])
     assert result.exit_code == 0, result.output
-    assert "11 étapes, 0 en échec, 2 publiés" in result.output
+    assert "10 étapes, 0 en échec, 2 publiés" in result.output
 
 
 def test_check_needs_systemd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
